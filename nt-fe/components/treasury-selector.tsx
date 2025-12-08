@@ -11,17 +11,50 @@ import {
 import { useTreasury } from "@/stores/treasury-store";
 import { Database } from "lucide-react";
 import Link from "next/link";
-
-const treasuries = [
-  { name: "NextCore Solutions", value: "nextcore.sputnikdao.near", balance: 45400.00 },
-  { name: "DevHub", value: "devdao.sputnikdao.near", balance: 12500.00 },
-  { name: "Nearn-Staging", value: "nearn-staging.sputnikdao.near", balance: 8300.00 },
-];
+import { useNear } from "@/stores/near-store";
+import { useUserTreasuries } from "@/hooks/use-treasury-queries";
 
 export function TreasurySelector() {
   const { selectedTreasury, setSelectedTreasury } = useTreasury();
+  const { accountId, } = useNear();
 
-  const currentTreasury = treasuries.find(t => t.value === selectedTreasury);
+  const { data: treasuries = [], isLoading } = useUserTreasuries(accountId);
+
+  const currentTreasury = treasuries.find(t => t.daoId === selectedTreasury);
+
+  React.useEffect(() => {
+    console.log("treasuries", treasuries);
+    console.log("selectedTreasury", selectedTreasury);
+    if (treasuries.length > 0 && !selectedTreasury) {
+      setSelectedTreasury(treasuries[0].daoId);
+    }
+  }, [treasuries]);
+
+  if (isLoading) {
+    return (
+      <div className="w-full px-2.5 py-2 h-14 flex items-center">
+        <div className="flex items-center gap-2">
+          <Database className="h-3.5 w-3.5 text-muted-foreground animate-pulse" />
+          <span className="text-sm text-muted-foreground">Loading treasuries...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!accountId) {
+    return (
+      <div className="w-full px-2.5 py-2 h-14 flex items-center">
+        <div className="flex items-center gap-2">
+          <Database className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Connect wallet to view treasuries</span>
+        </div>
+      </div>
+    );
+  }
+
+  const getTreasuryName = (treasury: typeof treasuries[0]) => {
+    return treasury.config?.name || treasury.daoId;
+  };
 
   return (
     <Select value={selectedTreasury} onValueChange={setSelectedTreasury} >
@@ -32,11 +65,11 @@ export function TreasurySelector() {
           </div>
           <div className="flex flex-col items-start flex-1 min-w-0">
             <span className="text-sm font-medium truncate max-w-full leading-snug">
-              {currentTreasury?.name || "Select treasury"}
+              {currentTreasury ? getTreasuryName(currentTreasury) : "Select treasury"}
             </span>
             {currentTreasury && (
               <span className="text-xs text-muted-foreground leading-none">
-                ${currentTreasury.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currentTreasury.daoId}
               </span>
             )}
           </div>
@@ -45,8 +78,8 @@ export function TreasurySelector() {
       <SelectContent>
         {treasuries.map((treasury) => (
           <SelectItem
-            key={treasury.value}
-            value={treasury.value}
+            key={treasury.daoId}
+            value={treasury.daoId}
             className=" focus:text-accent-foreground py-3"
           >
             <div className="flex items-center gap-3">
@@ -54,9 +87,9 @@ export function TreasurySelector() {
                 <Database className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="flex flex-col items-start">
-                <span className="text-sm font-medium">{treasury.name}</span>
+                <span className="text-sm font-medium">{getTreasuryName(treasury)}</span>
                 <span className="text-xs text-muted-foreground">
-                  ${treasury.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {treasury.daoId}
                 </span>
               </div>
             </div>

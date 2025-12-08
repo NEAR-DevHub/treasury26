@@ -1,9 +1,10 @@
 "use client";
 
-import { Menu, Sun, Moon, Bell, ChevronDown } from "lucide-react";
+import { Menu, Sun, Moon, Bell } from "lucide-react";
 import { useSidebar } from "@/stores/sidebar-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { Button } from "@/components/ui/button";
+import { SignIn } from "@/components/sign-in";
 import { ReactNode, useEffect } from "react";
 
 interface PageComponentLayoutProps {
@@ -61,13 +62,7 @@ export function PageComponentLayout({ title, description, children }: PageCompon
             <Bell className="h-5 w-5" />
           </Button>
 
-          <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-muted cursor-pointer">
-            <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-              <span className="text-xs font-semibold text-white">HN</span>
-            </div>
-            <span className="text-sm font-medium hidden sm:inline">harry.near</span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:inline" />
-          </div>
+          <SignIn />
         </div>
       </header>
 
