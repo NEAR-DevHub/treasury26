@@ -23,8 +23,6 @@ export function TreasurySelector() {
   const currentTreasury = treasuries.find(t => t.daoId === selectedTreasury);
 
   React.useEffect(() => {
-    console.log("treasuries", treasuries);
-    console.log("selectedTreasury", selectedTreasury);
     if (treasuries.length > 0 && !selectedTreasury) {
       setSelectedTreasury(treasuries[0].daoId);
     }

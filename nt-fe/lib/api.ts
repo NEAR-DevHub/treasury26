@@ -1,19 +1,6 @@
 import axios from "axios";
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "";
-
-interface Logger {
-  info: (message: string, data?: unknown) => void;
-  warn: (message: string, data?: unknown) => void;
-  error: (message: string, error?: unknown) => void;
-}
-
-const logger: Logger = {
-  info: (message, data) => console.log(message, data),
-  warn: (message, data) => console.warn(message, data),
-  error: (message, error) => console.error(message, error),
-};
-
 export interface TreasuryMetadata {
   primaryColor?: string;
   flagLogo?: string;
@@ -42,19 +29,13 @@ export async function getUserTreasuries(
 
   try {
     const url = `${BACKEND_API_BASE}/user-treasuries`;
-    logger.info("Fetching user treasuries", { accountId, url });
 
     const response = await axios.get<Treasury[]>(url, {
       params: { accountId },
     });
-
-    logger.info("Successfully fetched user treasuries", {
-      count: response.data.length,
-    });
-
     return response.data;
   } catch (error) {
-    logger.error("Error getting user treasuries", error);
+    console.error("Error getting user treasuries", error);
     return [];
   }
 }
@@ -62,7 +43,7 @@ export async function getUserTreasuries(
 export interface WhitelistToken {
   id: string;
   decimals: number;
-  balance: number;
+  balance: bigint;
   balanceUSD: number;
   price: number;
   symbol: string;
@@ -98,28 +79,24 @@ export async function getTreasuryAssets(
 
   try {
     const url = `${BACKEND_API_BASE}/whitelist-tokens`;
-    logger.info("Fetching whitelist tokens", { treasuryId, url });
 
     const response = await axios.get<WhitelistTokenRaw[]>(url, {
       params: { accountId: treasuryId },
     });
 
-    logger.info("Successfully fetched whitelist tokens", {
-      count: response.data.length,
-    });
 
     // Transform raw tokens with USD values
     const tokensWithUSD = response.data.map((token) => {
       const parsedBalance =
         BigInt(token.balance) / BigInt(10) ** BigInt(token.decimals);
-      const balance = Number(parsedBalance);
+      const balanceFull = Number(parsedBalance);
       const price = parseFloat(token.price);
-      const balanceUSD = balance * price;
+      const balanceUSD = balanceFull * price;
 
       return {
         id: token.id,
         decimals: token.decimals,
-        balance,
+        balance: BigInt(token.balance),
         balanceUSD,
         price,
         symbol: token.symbol,
@@ -146,7 +123,7 @@ export async function getTreasuryAssets(
       totalBalanceUSD: totalUSD,
     };
   } catch (error) {
-    logger.error("Error getting whitelist tokens", error);
+    console.error("Error getting whitelist tokens", error);
     return { tokens: [], totalBalanceUSD: 0 };
   }
 }

@@ -13,8 +13,8 @@ export default function AppPage() {
   const { data } = useWhitelistTokens(accountId);
   const { tokens, totalBalanceUSD } = data || { tokens: [], totalBalanceUSD: 0 };
 
-  const filteredTokens = useMemo(() => tokens.filter((token) => token.balance > 0), [tokens]);
 
+  const filteredTokens = useMemo(() => tokens.filter((token) => token.balance > BigInt(0)), [tokens]);
   return (
     <PageComponentLayout
       title="Dashboard"

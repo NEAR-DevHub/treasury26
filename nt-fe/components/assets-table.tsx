@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { WhitelistToken } from "@/lib/api";
+import { formatBalance } from "@/lib/utils";
 
 const columnHelper = createColumnHelper<WhitelistToken>();
 
@@ -89,7 +90,7 @@ export function AssetsTable({ tokens }: Props) {
                 {formatCurrency(token.balanceUSD)}
               </div>
               <div className="text-xs text-muted-foreground">
-                {formatNumber(token.balance)} {token.symbol}
+                {formatBalance(token.balance, token.decimals)} {token.symbol}
               </div>
             </div>
           );
@@ -138,13 +139,8 @@ export function AssetsTable({ tokens }: Props) {
 
   if (tokens.length === 0) {
     return (
-      <div className="rounded-lg border bg-card overflow-hidden">
-        <div className="p-6 border-b">
-          <h2 className="text-lg font-semibold">Assets</h2>
-        </div>
-        <div className="p-8 text-center text-muted-foreground">
-          No assets found.
-        </div>
+      <div className="p-8 text-center text-muted-foreground">
+        No assets found.
       </div>
     );
   }
