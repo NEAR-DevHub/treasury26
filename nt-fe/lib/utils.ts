@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 
-export function formatBalance(balance: string | bigint, decimals: number, displayDecimals: number = 2): string {
+export function formatBalance(balance: string | bigint, decimals: number, displayDecimals: number = 5): string {
 
   let parsedBalance: bigint;
   if (typeof balance === "string") {

@@ -132,6 +132,7 @@ export interface BalanceHistoryEntry {
   timestamp: number;
   date: string;
   balance: string;
+  decimals: number;
 }
 
 export interface TokenBalanceHistory {
@@ -164,5 +165,110 @@ export async function getTokenBalanceHistory(
   } catch (error) {
     console.error("Error getting token balance history", error);
     return null;
+  }
+}
+
+export interface TokenPrice {
+  token_id: string;
+  price: number;
+  source: string;
+}
+
+/**
+ * Get price for a single token (supports both NEAR and FT tokens)
+ * Fetches from backend which aggregates data from multiple price sources
+ */
+export async function getTokenPrice(tokenId: string): Promise<TokenPrice | null> {
+  if (!tokenId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/token-price`;
+
+    const response = await axios.get<TokenPrice>(url, {
+      params: { tokenId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting price for token ${tokenId}`, error);
+    return null;
+  }
+}
+
+/**
+ * Get prices for multiple tokens in a single batch request
+ * More efficient than making individual requests for each token
+ */
+export async function getBatchTokenPrices(
+  tokenIds: string[]
+): Promise<TokenPrice[]> {
+  if (!tokenIds || tokenIds.length === 0) return [];
+
+  try {
+    const url = `${BACKEND_API_BASE}/token-prices/batch`;
+
+    const response = await axios.get<TokenPrice[]>(url, {
+      params: { tokenIds: tokenIds.join(',') },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error getting batch token prices", error);
+    return [];
+  }
+}
+
+export interface TokenBalance {
+  account_id: string;
+  token_id: string;
+  balance: string;
+  decimals: number;
+}
+
+/**
+ * Get balance for a single token (supports both NEAR and FT tokens)
+ * Fetches current balance from blockchain via backend
+ */
+export async function getTokenBalance(
+  accountId: string,
+  tokenId: string
+): Promise<TokenBalance | null> {
+  if (!accountId || !tokenId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/token-balance`;
+
+    const response = await axios.get<TokenBalance>(url, {
+      params: { accountId, tokenId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting balance for ${accountId} / ${tokenId}`, error);
+    return null;
+  }
+}
+
+/**
+ * Get balances for multiple tokens in a single batch request
+ * More efficient than making individual requests for each token
+ */
+export async function getBatchTokenBalances(
+  accountId: string,
+  tokenIds: string[]
+): Promise<TokenBalance[]> {
+  if (!accountId || !tokenIds || tokenIds.length === 0) return [];
+
+  try {
+    const url = `${BACKEND_API_BASE}/token-balances/batch`;
+
+    const response = await axios.get<TokenBalance[]>(url, {
+      params: { accountId, tokenIds: tokenIds.join(',') },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error getting batch token balances", error);
+    return [];
   }
 }

@@ -24,6 +24,7 @@ pub struct BalanceHistoryEntry {
     pub timestamp: u64,
     pub date: String,
     pub balance: String,
+    pub decimals: u8,
 }
 
 /// Period configuration for balance history
@@ -229,24 +230,16 @@ async fn fetch_period_history(
         .collect();
 
     let results = futures::future::join_all(futures).await;
-    println!("Lenght before: {}", results.len());
     let entries: Vec<BalanceHistoryEntry> = results
         .into_iter()
         .flatten()
-        .map(|(timestamp, balance)| {
-            let mut balance_string = balance.to_string();
-            if let Some(i) = balance_string.find(' ') {
-                balance_string = balance_string[..i].to_string();
-            }
-
-            BalanceHistoryEntry {
-                timestamp,
-                date: period.format_timestamp(timestamp),
-                balance: balance_string,
-            }
+        .map(|(timestamp, balance)| BalanceHistoryEntry {
+            timestamp,
+            date: period.format_timestamp(timestamp),
+            balance: balance.amount().to_string(),
+            decimals: balance.decimals(),
         })
         .collect();
-    println!("Lenght aftere: {}", entries.len());
 
     Ok(entries)
 }

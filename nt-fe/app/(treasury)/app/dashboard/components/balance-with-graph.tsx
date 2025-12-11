@@ -9,6 +9,7 @@ import { useTreasury } from "@/stores/treasury-store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { subscribeWithSelector } from "zustand/middleware";
 import { PageCard } from "@/components/card";
+import { formatBalance } from "@/lib/utils";
 
 interface Props {
     totalBalanceUSD: number;
@@ -41,7 +42,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
 
         return balanceHistory[selectedPeriod].map((entry) => ({
             name: entry.date,
-            value: parseFloat(entry.balance),
+            value: parseFloat(formatBalance(entry.balance, entry.decimals)),
         }));
     }, [balanceHistory, selectedPeriod]);
 

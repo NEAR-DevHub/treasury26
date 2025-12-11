@@ -17,5 +17,21 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/token-balance-history",
             get(handlers::token_balance_history::get_token_balance_history),
         )
+        .route(
+            "/api/token-price",
+            get(handlers::token_price::get_token_price),
+        )
+        .route(
+            "/api/token-prices/batch",
+            get(handlers::token_price::get_batch_token_prices),
+        )
+        .route(
+            "/api/token-balance",
+            get(handlers::token_balance::get_token_balance),
+        )
+        .route(
+            "/api/token-balances/batch",
+            get(handlers::token_balance::get_batch_token_balances),
+        )
         .with_state(state)
 }
