@@ -5,33 +5,35 @@ use crate::{AppState, handlers};
 
 pub fn create_routes(state: Arc<AppState>) -> Router {
     Router::new()
+        // Token endpoints
         .route(
-            "/api/user-treasuries",
-            get(handlers::user_treasuries::get_user_treasuries),
+            "/api/token/price",
+            get(handlers::token::price::get_token_price),
         )
         .route(
-            "/api/whitelist-tokens",
-            get(handlers::whitelist_tokens::get_whitelist_tokens),
+            "/api/token/price/batch",
+            get(handlers::token::price::get_batch_token_prices),
+        )
+        // User endpoints
+        .route(
+            "/api/user/balance",
+            get(handlers::user::balance::get_token_balance),
         )
         .route(
-            "/api/token-balance-history",
-            get(handlers::token_balance_history::get_token_balance_history),
+            "/api/user/balance/batch",
+            get(handlers::user::balance::get_batch_token_balances),
         )
         .route(
-            "/api/token-price",
-            get(handlers::token_price::get_token_price),
+            "/api/user/balance/history",
+            get(handlers::user::balance_history::get_token_balance_history),
         )
         .route(
-            "/api/token-prices/batch",
-            get(handlers::token_price::get_batch_token_prices),
+            "/api/user/treasuries",
+            get(handlers::user::treasuries::get_user_treasuries),
         )
         .route(
-            "/api/token-balance",
-            get(handlers::token_balance::get_token_balance),
-        )
-        .route(
-            "/api/token-balances/batch",
-            get(handlers::token_balance::get_batch_token_balances),
+            "/api/user/assets",
+            get(handlers::user::assets::get_user_assets),
         )
         .with_state(state)
 }

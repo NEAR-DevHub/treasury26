@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-pub struct WhitelistTokensQuery {
+pub struct UserAssetsQuery {
     #[serde(rename = "accountId")]
     pub account_id: String,
 }
@@ -326,9 +326,9 @@ fn build_simplified_tokens(
     simplified_tokens
 }
 
-pub async fn get_whitelist_tokens(
+pub async fn get_user_assets(
     State(state): State<Arc<AppState>>,
-    Query(params): Query<WhitelistTokensQuery>,
+    Query(params): Query<UserAssetsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let account = &params.account_id;
 
@@ -336,11 +336,11 @@ pub async fn get_whitelist_tokens(
         return Err((StatusCode::BAD_REQUEST, "account is required".to_string()));
     }
 
-    let cache_key = format!("{}-whitelist-tokens", account);
+    let cache_key = format!("{}-user-assets", account);
 
     // Check cache
     if let Some(cached_tokens) = state.cache.get(&cache_key).await {
-        println!("🔁 Returning cached whitelist tokens for {}", account);
+        println!("🔁 Returning cached user assets for {}", account);
         return Ok((StatusCode::OK, Json(cached_tokens)));
     }
 

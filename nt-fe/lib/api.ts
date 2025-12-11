@@ -28,7 +28,7 @@ export async function getUserTreasuries(
   if (!accountId) return [];
 
   try {
-    const url = `${BACKEND_API_BASE}/user-treasuries`;
+    const url = `${BACKEND_API_BASE}/user/treasuries`;
 
     const response = await axios.get<Treasury[]>(url, {
       params: { accountId },
@@ -68,7 +68,7 @@ interface WhitelistTokenRaw {
 }
 
 /**
- * Get whitelisted tokens with balances and prices for an account
+ * Get treasury assets (tokens with balances and prices)
  * Fetches from backend which aggregates data from Ref Finance and FastNear
  * Returns transformed data with calculated USD values and weights
  */
@@ -78,7 +78,7 @@ export async function getTreasuryAssets(
   if (!treasuryId) return { tokens: [], totalBalanceUSD: 0 };
 
   try {
-    const url = `${BACKEND_API_BASE}/whitelist-tokens`;
+    const url = `${BACKEND_API_BASE}/user/assets`;
 
     const response = await axios.get<WhitelistTokenRaw[]>(url, {
       params: { accountId: treasuryId },
@@ -155,7 +155,7 @@ export async function getTokenBalanceHistory(
   if (!accountId || !tokenId) return null;
 
   try {
-    const url = `${BACKEND_API_BASE}/token-balance-history`;
+    const url = `${BACKEND_API_BASE}/user/balance/history`;
 
     const response = await axios.get<TokenBalanceHistory>(url, {
       params: { accountId, tokenId },
@@ -182,7 +182,7 @@ export async function getTokenPrice(tokenId: string): Promise<TokenPrice | null>
   if (!tokenId) return null;
 
   try {
-    const url = `${BACKEND_API_BASE}/token-price`;
+    const url = `${BACKEND_API_BASE}/token/price`;
 
     const response = await axios.get<TokenPrice>(url, {
       params: { tokenId },
@@ -205,7 +205,7 @@ export async function getBatchTokenPrices(
   if (!tokenIds || tokenIds.length === 0) return [];
 
   try {
-    const url = `${BACKEND_API_BASE}/token-prices/batch`;
+    const url = `${BACKEND_API_BASE}/token/price/batch`;
 
     const response = await axios.get<TokenPrice[]>(url, {
       params: { tokenIds: tokenIds.join(',') },
@@ -236,7 +236,7 @@ export async function getTokenBalance(
   if (!accountId || !tokenId) return null;
 
   try {
-    const url = `${BACKEND_API_BASE}/token-balance`;
+    const url = `${BACKEND_API_BASE}/user/balance`;
 
     const response = await axios.get<TokenBalance>(url, {
       params: { accountId, tokenId },
@@ -260,7 +260,7 @@ export async function getBatchTokenBalances(
   if (!accountId || !tokenIds || tokenIds.length === 0) return [];
 
   try {
-    const url = `${BACKEND_API_BASE}/token-balances/batch`;
+    const url = `${BACKEND_API_BASE}/user/balance/batch`;
 
     const response = await axios.get<TokenBalance[]>(url, {
       params: { accountId, tokenIds: tokenIds.join(',') },
