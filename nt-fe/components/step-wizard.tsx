@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { ArrowLeftIcon } from "lucide-react";
 import { FormDescription, FormField, FormLabel } from "./ui/form";
 import { Switch } from "./ui/switch";
+import { motion, AnimatePresence } from "motion/react";
 
 interface Step {
     nextButton: React.ComponentType<{ handleNext: () => void }>;
@@ -18,23 +19,57 @@ export function StepWizard({
     steps,
 }: StepWizardProps) {
     const [index, setIndex] = useState(0);
+    const [direction, setDirection] = useState<1 | -1>(1);
 
     const CurrentStep = steps[index];
 
     // Handle next step (validate current step)
     const handleNext = async () => {
+        setDirection(1);
         setIndex((i) => i + 1);
     };
 
     const handleBack = () => {
+        setDirection(-1);
         setIndex((i) => i - 1);
     };
 
+    const variants = {
+        enter: (direction: number) => ({
+            x: direction > 0 ? '100%' : '-100%',
+            opacity: 0,
+        }),
+        center: {
+            x: 0,
+            opacity: 1,
+        },
+        exit: (direction: number) => ({
+            x: direction > 0 ? '-100%' : '100%',
+            opacity: 0,
+        }),
+    };
+
     return (
-        <>
-            <CurrentStep.component handleBack={index > 0 ? handleBack : undefined} />
-            <CurrentStep.nextButton handleNext={handleNext} />
-        </>
+        <div className="relative overflow-hidden">
+            <AnimatePresence initial={false} custom={direction} mode="popLayout">
+                <motion.div
+                    key={index}
+                    custom={direction}
+                    variants={variants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{
+                        x: { type: "tween", duration: 0.25, ease: "easeInOut" },
+                        opacity: { duration: 0.20 },
+                    }}
+                    className="flex flex-col gap-4"
+                >
+                    <CurrentStep.component handleBack={index > 0 ? handleBack : undefined} />
+                    <CurrentStep.nextButton handleNext={handleNext} />
+                </motion.div>
+            </AnimatePresence>
+        </div>
     );
 }
 
@@ -45,9 +80,9 @@ interface HandleBackWithTitleProps {
 
 export function StepperHeader({ title, handleBack }: HandleBackWithTitleProps) {
     return (
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
             {
-                handleBack && <Button variant={'ghost'} size={'icon'} onClick={handleBack}>{<ArrowLeftIcon className="size-4" />}</Button>
+                handleBack && <Button variant={'ghost'} size={'icon'} type="button" onClick={handleBack}>{<ArrowLeftIcon className="size-4" />}</Button>
             }
             <p className="text-lg font-semibold">{title}</p>
         </div>
