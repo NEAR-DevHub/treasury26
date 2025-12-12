@@ -3,8 +3,7 @@
 import { create } from "zustand";
 import { NearConnector, SignAndSendTransactionsParams, SignedMessage } from "@hot-labs/near-connect";
 import { NEAR_TREASURY_CONFIG } from "@/constants/config";
-import { EventMap } from "@hot-labs/near-connect/build/types/wallet-events";
-import { FinalExecutionOutcome } from "@hot-labs/near-connect/build/types/wallet";
+import { EventMap, FinalExecutionOutcome } from "@hot-labs/near-connect/build/types";
 
 interface NearStore {
     connector: NearConnector | null;

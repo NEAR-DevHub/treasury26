@@ -1,3 +1,4 @@
+import Big from "big.js";
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -9,17 +10,17 @@ export function toBase64(json: any) {
   return Buffer.from(JSON.stringify(json)).toString("base64");
 }
 
-export function formatBalance(balance: string | bigint, decimals: number, displayDecimals: number = 5): string {
+export function formatBalance(balance: string | Big, decimals: number, displayDecimals: number = 5): string {
 
-  let parsedBalance: bigint;
+  let parsedBalance: Big;
   if (typeof balance === "string") {
-    parsedBalance = BigInt(balance);
+    parsedBalance = Big(balance);
   } else {
     parsedBalance = balance;
   }
   return (
-    (Number(parsedBalance / BigInt(10) ** BigInt(decimals - displayDecimals)))
-    / (10 ** displayDecimals)).toFixed(displayDecimals);
+    parsedBalance.div(Big(10).pow(decimals)).toFixed(displayDecimals)
+  );
 }
 
 

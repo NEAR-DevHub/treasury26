@@ -17,7 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
 import { encodeToMarkdown } from "@/lib/utils";
-import { Action } from "@hot-labs/near-connect/build/types/transactions";
+import Big from "big.js";
+import { ConnectorAction } from "@hot-labs/near-connect";
 
 const paymentFormSchema = z.object({
   payment: z.object({
@@ -173,7 +174,7 @@ export default function PaymentsPage() {
                     Transfer: {
                       token_id: isNEAR ? "" : data.payment.tokenAddress,
                       receiver_id: data.payment.address,
-                      amount: (BigInt(data.payment.amount) * (BigInt(10) ** BigInt(data.payment.tokenDecimals))).toString(),
+                      amount: Big(data.payment.amount).mul(Big(10).pow(data.payment.tokenDecimals)).toFixed(),
                     },
                   },
                 },
@@ -190,7 +191,7 @@ export default function PaymentsPage() {
       !isNEAR
 
     if (needsStorageDeposit) {
-      const depositInYocto = BigInt(125) * BigInt(10) ** BigInt(24);
+      const depositInYocto = Big(0.125).mul(Big(10).pow(24)).toFixed();
       calls.push({
         receiverId: data.payment.tokenAddress,
         actions: [
@@ -203,7 +204,7 @@ export default function PaymentsPage() {
                 registration_only: true,
               } as any,
               gas,
-              deposit: depositInYocto.toString(),
+              deposit: depositInYocto,
             },
           },
         ],
@@ -215,7 +216,7 @@ export default function PaymentsPage() {
       const result = signAndSendTransactions({
         transactions: calls.map((call) => ({
           receiverId: call.receiverId!,
-          actions: call.actions as Action[],
+          actions: call.actions as ConnectorAction[],
         })),
         network: "mainnet",
       });

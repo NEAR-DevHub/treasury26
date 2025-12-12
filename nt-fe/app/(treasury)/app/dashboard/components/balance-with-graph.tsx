@@ -51,7 +51,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
             <div className="flex justify-around gap-4 mb-6">
                 <div className="flex-1">
                     <h3 className="text-xs font-medium text-muted-foreground">Total Balance</h3>
-                    <p className="text-3xl font-bold mt-2">{balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+                    <p className="text-3xl font-bold mt-2">${balance.toFixed(2)}</p>
                 </div>
                 <div className="flex gap-2 items-center">
                     <Select value={selectedToken} onValueChange={setSelectedToken}>

@@ -1,5 +1,6 @@
 import { Policy } from "@/types/policy";
 import axios from "axios";
+import Big from "big.js";
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "";
 export interface TreasuryMetadata {
@@ -44,7 +45,7 @@ export async function getUserTreasuries(
 export interface TreasuryAsset {
   id: string;
   decimals: number;
-  balance: bigint;
+  balance: Big;
   balanceUSD: number;
   price: number;
   symbol: string;
@@ -56,7 +57,7 @@ export interface TreasuryAsset {
 
 export interface TreasuryAssets {
   tokens: TreasuryAsset[];
-  totalBalanceUSD: number;
+  totalBalanceUSD: Big;
 }
 
 interface TreasuryAssetRaw {
@@ -78,7 +79,7 @@ interface TreasuryAssetRaw {
 export async function getTreasuryAssets(
   treasuryId: string
 ): Promise<TreasuryAssets> {
-  if (!treasuryId) return { tokens: [], totalBalanceUSD: 0 };
+  if (!treasuryId) return { tokens: [], totalBalanceUSD: Big(0) };
 
   try {
     const url = `${BACKEND_API_BASE}/user/assets`;
@@ -90,16 +91,14 @@ export async function getTreasuryAssets(
 
     // Transform raw tokens with USD values
     const tokensWithUSD = response.data.map((token) => {
-      const parsedBalance =
-        BigInt(token.balance) / BigInt(10) ** BigInt(token.decimals);
-      const balanceFull = Number(parsedBalance);
+      const balance = Big(token.balance).div(Big(10).pow(token.decimals));
       const price = parseFloat(token.price);
-      const balanceUSD = balanceFull * price;
+      const balanceUSD = balance.mul(price).toNumber();
 
       return {
         id: token.id,
         decimals: token.decimals,
-        balance: BigInt(token.balance),
+        balance: Big(token.balance),
         balanceUSD,
         price,
         symbol: token.symbol,
@@ -112,14 +111,14 @@ export async function getTreasuryAssets(
 
     // Calculate total USD value
     const totalUSD = tokensWithUSD.reduce(
-      (sum, token) => sum + token.balanceUSD,
-      0
+      (sum, token) => sum.add(token.balanceUSD),
+      Big(0)
     );
 
     // Calculate weights
-    const tokens = tokensWithUSD.map((token) => ({
+    const tokens: TreasuryAsset[] = tokensWithUSD.map((token) => ({
       ...token,
-      weight: totalUSD > 0 ? (token.balanceUSD / totalUSD) * 100 : 0,
+      weight: totalUSD.gt(0) ? Big(token.balanceUSD).div(totalUSD).mul(100).toNumber() : 0,
     }));
 
     return {
@@ -128,7 +127,7 @@ export async function getTreasuryAssets(
     };
   } catch (error) {
     console.error("Error getting whitelist tokens", error);
-    return { tokens: [], totalBalanceUSD: 0 };
+    return { tokens: [], totalBalanceUSD: Big(0) };
   }
 }
 
