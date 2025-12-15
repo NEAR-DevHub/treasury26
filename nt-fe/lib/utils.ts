@@ -10,6 +10,14 @@ export function toBase64(json: any) {
   return Buffer.from(JSON.stringify(json)).toString("base64");
 }
 
+
+export function formatTimestamp(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime() * 1000000;
+}
+
+
 export function formatBalance(balance: string | Big, decimals: number, displayDecimals: number = 5): string {
 
   let parsedBalance: Big;

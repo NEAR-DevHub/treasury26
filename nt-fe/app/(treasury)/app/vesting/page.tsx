@@ -10,12 +10,16 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { RecipientInput } from "@/components/recipient-input";
 import { ReviewStep, StepperHeader, StepperNextButton, StepProps, StepWizard } from "@/components/step-wizard";
 import { TokenInput, tokenSchema } from "@/components/token-input";
-import { Form } from "@/components/ui/form";
+import { Form, FormField } from "@/components/ui/form";
+import { Textarea } from "@/components/textarea";
 import { NEAR_TOKEN } from "@/constants/token";
 import { useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { encodeToMarkdown, formatTimestamp, toBase64 } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ConnectorAction } from "@hot-labs/near-connect";
+import Big from "big.js";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import { useForm, useFormContext } from "react-hook-form";
@@ -26,14 +30,15 @@ const vestingFormSchema = z.object({
     address: z.string().min(2, "Recipient should be at least 2 characters").max(64, "Recipient must be less than 64 characters"),
     amount: z
       .string()
-      .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-        message: "Amount must be greater than 0",
+      .refine((val) => !isNaN(Number(val)) && Number(val) >= 3.5, {
+        message: "Amount must be greater than or equal to 3.5",
       }),
     memo: z.string().optional(),
     isRegistered: z.boolean().optional(),
     token: tokenSchema,
     startDate: z.date({ message: "Start date is required" }),
     endDate: z.date({ message: "End date is required" }),
+    cliffDate: z.date({ message: "Cliff date is required" }).optional(),
     allowEarn: z.boolean().optional(),
     allowCancel: z.boolean().optional(),
   }),
@@ -52,6 +57,17 @@ const vestingFormSchema = z.object({
       path: [`vesting.endDate`],
       message: "Start date must be before end date",
     });
+  }
+
+  if (data.vesting.cliffDate) {
+    if (data.vesting.cliffDate < data.vesting.startDate || data.vesting.cliffDate >= data.vesting.endDate) {
+      ctx.addIssue({
+        code: "custom",
+        path: [`vesting.cliffDate`],
+        message: `Cliff date must be between ${format(data.vesting.startDate, "MM/dd/yyyy")} and ${format(data.vesting.endDate, "MM/dd/yyyy")}`,
+      });
+    }
+
   }
 });
 
@@ -78,6 +94,7 @@ function Step1() {
 
 function Step2({ handleBack }: StepProps) {
   const form = useFormContext<VestingFormValues>();
+  const allowCancel = form.watch("vesting.allowCancel");
   return (
     <>
       <StepperHeader title="Advanced Settings" handleBack={handleBack} />
@@ -87,13 +104,27 @@ function Step2({ handleBack }: StepProps) {
         title="Allow Cancellation"
         description="Allows the NEAR Foundation to cancel the lockup at any time. Non-cancellable lockups are not compatible with cliff dates."
       />
+      {allowCancel && (
+        <DateInput control={form.control} name="vesting.cliffDate" title="Cliff Date" />
+      )}
       <CheckboxInput
         control={form.control}
         name="vesting.allowEarn"
         title="Allow Earn"
         description="Allows the owner of the lockup to stake the full amount of tokens in the lockup (even before the cliff date)."
       />
-      <ApprovalInfo />
+      <FormField control={form.control} name={`vesting.memo`} render={({ field }) => (
+        <InputBlock title="Note (optional)" invalid={false}>
+          <Textarea
+            borderless
+            value={field.value}
+            onChange={field.onChange}
+            rows={2}
+            className="p-0 pt-1"
+            placeholder="Add a comment for this vesting schedule (optional)..."
+          />
+        </InputBlock>
+      )} />
     </>
   )
 }
@@ -110,6 +141,37 @@ function Step3({ handleBack }: StepProps) {
     return Number(vesting.amount) * usdPrice.price;
   }, [usdPrice?.price, vesting.amount]);
 
+  const infoItems = useMemo(() => {
+    let items = [
+      {
+        label: "Recipient",
+        value: vesting.address,
+      },
+      {
+        label: "Start Date",
+        value: format(vesting.startDate, "MM/dd/yyyy"),
+      },
+      {
+        label: "End Date",
+        value: format(vesting.endDate, "MM/dd/yyyy"),
+      },
+      {
+        label: "Cliff Date",
+        value: vesting.cliffDate ? format(vesting.cliffDate, "MM/dd/yyyy") : "N/A",
+      },
+      {
+        label: 'Cancelable',
+        value: vesting.allowCancel ? "Yes" : "No",
+      },
+      {
+        label: 'Allow Earn',
+        value: vesting.allowEarn ? "Yes" : "No",
+      },
+    ];
+
+    return items;
+  }, [vesting]);
+
   return (
     <ReviewStep control={form.control} reviewingTitle="Review Your Vesting Schedule" approveWithMyVoteName="approveWithMyVote" handleBack={handleBack}>
       <div className="flex flex-col gap-6">
@@ -124,28 +186,7 @@ function Step3({ handleBack }: StepProps) {
             })}</p>
           </div>
         </InputBlock>
-        <InfoDisplay items={[
-          {
-            label: "Recipient",
-            value: vesting.address,
-          },
-          {
-            label: "Start Date",
-            value: format(vesting.startDate, "MM/dd/yyyy"),
-          },
-          {
-            label: "End Date",
-            value: format(vesting.endDate, "MM/dd/yyyy"),
-          },
-          {
-            label: 'Cancelable',
-            value: vesting.allowCancel ? "Yes" : "No",
-          },
-          {
-            label: 'Allow Earn',
-            value: vesting.allowEarn ? "Yes" : "No",
-          }]}
-        />
+        <InfoDisplay items={infoItems} />
       </div>
     </ReviewStep>
   )
@@ -165,6 +206,7 @@ export default function VestingPage() {
         amount: "",
         memo: "",
         startDate: undefined,
+        cliffDate: undefined,
         endDate: undefined,
         allowCancel: false,
         allowEarn: false,
@@ -175,7 +217,87 @@ export default function VestingPage() {
   });
 
   const onSubmit = async (data: VestingFormValues) => {
-    console.log("Vesting data", data);
+    setIsSubmitting(true);
+    try {
+      const description = {
+        title: `Create vesting schedule for ${data.vesting.address}`,
+        notes: data.vesting.memo || "",
+      }
+      const proposalBond = policy?.proposal_bond || "0";
+      const gas = "270000000000000";
+      const deposit = Big(data.vesting.amount)
+        .mul(Big(10).pow(data.vesting.token.decimals))
+        .toFixed();
+      const vestingArgs = data.vesting.allowCancel
+        ? {
+          vesting_schedule: {
+            VestingSchedule: {
+              cliff_timestamp: formatTimestamp(data.vesting.cliffDate || data.vesting.startDate).toString(),
+              end_timestamp: formatTimestamp(data.vesting.endDate).toString(),
+              start_timestamp: formatTimestamp(data.vesting.startDate).toString(),
+            },
+          },
+        }
+        : {
+          lockup_timestamp: formatTimestamp(data.vesting.startDate).toString(),
+          release_duration: (
+            formatTimestamp(data.vesting.endDate) - formatTimestamp(data.vesting.startDate)
+          ).toString(),
+        };
+
+      const action: ConnectorAction =
+      {
+        type: "FunctionCall",
+        params: {
+          methodName: "add_proposal",
+          args: {
+            proposal: {
+              description: encodeToMarkdown(description),
+              kind: {
+                FunctionCall: {
+                  receiver_id: "lockup.near",
+                  actions: [
+                    {
+                      method_name: "create",
+                      args: toBase64(
+                        data.vesting.allowEarn
+                          ? {
+                            lockup_duration: "0",
+                            owner_account_id: data.vesting.address,
+                            ...vestingArgs,
+                          }
+                          : {
+                            lockup_duration: "0",
+                            owner_account_id: data.vesting.address,
+                            whitelist_account_id: "lockup-no-whitelist.near",
+                            ...vestingArgs,
+                          }
+                      ),
+                      deposit,
+                      gas: "150000000000000",
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          gas,
+          deposit: proposalBond
+        },
+      };
+
+      await signAndSendTransactions({
+        transactions: [{
+          receiverId: selectedTreasury!,
+          actions: [action],
+        }],
+        network: "mainnet",
+      });
+    } catch (error) {
+      console.error("Vesting error", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -196,7 +318,13 @@ export default function VestingPage() {
                   component: Step1,
                 },
                 {
-                  nextButton: ({ handleNext }) => StepperNextButton({ text: "Review Request" })(handleNext),
+                  nextButton: ({ handleNext }) => StepperNextButton({ text: "Review Request" })(() => {
+                    form.trigger().then((isValid) => {
+                      if (isValid) {
+                        return handleNext();
+                      }
+                    });
+                  }),
                   component: Step2,
                 },
                 {
