@@ -14,19 +14,24 @@ interface TokenSelectProps {
     selectedToken: string | null;
     setSelectedToken: (token: TreasuryAsset) => void;
     disabled?: boolean;
+    locked?: boolean;
+    lockedTokenData?: {
+        symbol: string;
+        icon: string;
+    };
 }
 
-export default function TokenSelect({ selectedToken, setSelectedToken, disabled }: TokenSelectProps) {
+export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData }: TokenSelectProps) {
     const { selectedTreasury } = useTreasury();
     const { data: { tokens = [] } = {} } = useTreasuryAssets(selectedTreasury, { onlyPositiveBalance: true });
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
 
     useEffect(() => {
-        if (tokens.length > 0 && !selectedToken) {
+        if (tokens.length > 0 && !selectedToken && !locked) {
             setSelectedToken(tokens[0]);
         }
-    }, [tokens, selectedToken]);
+    }, [tokens, selectedToken, locked]);
 
     const filteredTokens = tokens.filter(token =>
         token.symbol.toLowerCase().includes(search.toLowerCase()) ||
@@ -34,15 +39,25 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled 
     );
 
     const selectedTokenData = tokens.find(t => t.symbol === selectedToken);
+    const displayTokenData = locked && lockedTokenData ? lockedTokenData : selectedTokenData;
+
+    if (locked && lockedTokenData) {
+        return (
+            <div className="flex gap-2 items-center h-9 px-4 py-2 has-[>svg]:px-3 bg-card rounded-full cursor-default hover:bg-card hover:border-border">
+                <img src={lockedTokenData.icon} alt={lockedTokenData.symbol} className="size-6 rounded-full shrink-0" />
+                <span className="font-medium">{lockedTokenData.symbol}</span>
+            </div>
+        );
+    }
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild disabled={disabled}>
                 <Button variant="outline" className="bg-card hover:bg-card hover:border-muted-foreground rounded-full">
-                    {selectedTokenData ? (
+                    {displayTokenData ? (
                         <>
-                            <img src={selectedTokenData.icon} alt={selectedTokenData.symbol} className="size-6 rounded-full shrink-0" />
-                            <span className="font-medium">{selectedTokenData.symbol}</span>
+                            <img src={displayTokenData.icon} alt={displayTokenData.symbol} className="size-6 rounded-full shrink-0" />
+                            <span className="font-medium">{displayTokenData.symbol}</span>
                         </>
                     ) : (
                         <span className="text-muted-foreground">Select token</span>

@@ -9,8 +9,9 @@ import { InputBlock } from "@/components/input-block";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { RecipientInput } from "@/components/recipient-input";
 import { ReviewStep, StepperHeader, StepperNextButton, StepProps, StepWizard } from "@/components/step-wizard";
-import { TokenInput } from "@/components/token-input";
+import { TokenInput, tokenSchema } from "@/components/token-input";
 import { Form } from "@/components/ui/form";
+import { NEAR_TOKEN } from "@/constants/token";
 import { useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
@@ -30,11 +31,7 @@ const vestingFormSchema = z.object({
       }),
     memo: z.string().optional(),
     isRegistered: z.boolean().optional(),
-    tokenSymbol: z.string().min(1, "Token symbol is required"),
-    tokenAddress: z.string().min(1, "Token address is required"),
-    tokenNetwork: z.string().min(1, "Token network is required"),
-    tokenDecimals: z.number().min(1, "Token decimals is required"),
-    tokenIcon: z.string().min(1, "Token icon is required"),
+    token: tokenSchema,
     startDate: z.date({ message: "Start date is required" }),
     endDate: z.date({ message: "End date is required" }),
     allowEarn: z.boolean().optional(),
@@ -42,7 +39,7 @@ const vestingFormSchema = z.object({
   }),
   approveWithMyVote: z.boolean()
 }).superRefine((data, ctx) => {
-  if (data.vesting.address === data.vesting.tokenAddress) {
+  if (data.vesting.address === data.vesting.token.address) {
     ctx.addIssue({
       code: "custom",
       path: [`vesting.address`],
@@ -65,7 +62,9 @@ function Step1() {
   return (
     <>
       <StepperHeader title="New Vesting Schedule" />
-      <TokenInput title="Amount" control={form.control} amountName={`vesting.amount`} tokenSymbolName={`vesting.tokenSymbol`} tokenAddressName={`vesting.tokenAddress`} tokenNetworkName={`vesting.tokenNetwork`} tokenIconName={`vesting.tokenIcon`} tokenDecimalsName={`vesting.tokenDecimals`} />
+      <TokenInput title="Amount" tokenSelect={{
+        locked: true,
+      }} control={form.control} amountName={`vesting.amount`} tokenName={`vesting.token`} />
       <RecipientInput control={form.control} name="vesting.address" />
 
       <div className="grid grid-cols-2 gap-4">
@@ -102,7 +101,7 @@ function Step2({ handleBack }: StepProps) {
 function Step3({ handleBack }: StepProps) {
   const form = useFormContext<VestingFormValues>();
   const { vesting } = form.watch()
-  const { data: usdPrice } = useTokenPrice(vesting.tokenAddress, vesting.tokenNetwork);
+  const { data: usdPrice } = useTokenPrice(vesting.token.address, vesting.token.network);
 
   const estimatedUSDValue = useMemo(() => {
     if (!usdPrice?.price || !vesting.amount || isNaN(Number(vesting.amount))) {
@@ -117,8 +116,8 @@ function Step3({ handleBack }: StepProps) {
         <InputBlock title="" invalid={false}>
           <div className="flex flex-col gap-2 p-2 text-xs text-center justify-center items-center">
             <p>You are creating a vesting schedule for</p>
-            <img src={vesting.tokenIcon} alt={vesting.tokenSymbol} className="size-10 shrink-0 rounded-full" />
-            <p className="text-xl font-semibold">{vesting.amount} {vesting.tokenSymbol}</p>
+            <img src={vesting.token.icon} alt={vesting.token.symbol} className="size-10 shrink-0 rounded-full" />
+            <p className="text-xl font-semibold">{vesting.amount} {vesting.token.symbol}</p>
             <p className="text-sm text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2
@@ -163,12 +162,13 @@ export default function VestingPage() {
     defaultValues: {
       vesting: {
         address: "",
-        amount: "0",
+        amount: "",
         memo: "",
         startDate: undefined,
         endDate: undefined,
         allowCancel: false,
         allowEarn: false,
+        token: NEAR_TOKEN
       },
       approveWithMyVote: false,
     },

@@ -2,7 +2,7 @@
 
 import { PageCard } from "@/components/card";
 import { RecipientInput } from "@/components/recipient-input";
-import { TokenInput } from "@/components/token-input";
+import { TokenInput, tokenSchema } from "@/components/token-input";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { useFieldArray, useForm, useFormContext, } from "react-hook-form";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
@@ -21,9 +21,10 @@ import Big from "big.js";
 import { ConnectorAction } from "@hot-labs/near-connect";
 import { Button } from "@/components/button";
 import { Plus, Trash } from "lucide-react";
+import { NEAR_TOKEN } from "@/constants/token";
 
 const paymentFormSchema = z.object({
-  payment: z.array(z.object({
+  payments: z.array(z.object({
     address: z.string().min(2, "Recipient should be at least 2 characters").max(64, "Recipient must be less than 64 characters"),
     amount: z
       .string()
@@ -33,15 +34,11 @@ const paymentFormSchema = z.object({
     memo: z.string().optional(),
     isRegistered: z.boolean().optional(),
   })),
-  tokenSymbol: z.string().min(1, "Token symbol is required"),
-  tokenAddress: z.string().min(1, "Token address is required"),
-  tokenNetwork: z.string().min(1, "Token network is required"),
-  tokenDecimals: z.number().min(1, "Token decimals is required"),
-  tokenIcon: z.string().min(1, "Token icon is required"),
+  token: tokenSchema,
   approveWithMyVote: z.boolean()
 }).superRefine((data, ctx) => {
-  for (const [index, payment] of data.payment.entries()) {
-    if (payment.address === data.tokenAddress) {
+  for (const [index, payment] of data.payments.entries()) {
+    if (payment.address === data.token.address) {
       ctx.addIssue({
         code: "custom",
         path: [`payment.${index}.address`],
@@ -55,15 +52,15 @@ function Step1() {
   const form = useFormContext<PaymentFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "payment",
+    name: "payments",
   });
   return (
     <>
       <StepperHeader title="New Payment" />
       {fields.map((field, index) => (
         <Fragment key={field.id}>
-          <TokenInput key={field.id} disabledTokenSelect={index > 0} control={form.control} amountName={`payment.${index}.amount`} tokenSymbolName={`tokenSymbol`} tokenAddressName={`tokenAddress`} tokenNetworkName={`tokenNetwork`} tokenIconName={`tokenIcon`} tokenDecimalsName={`tokenDecimals`} />
-          <RecipientInput control={form.control} name={`payment.${index}.address`} />
+          <TokenInput key={field.id} tokenSelect={{ disabled: index > 0 }} control={form.control} amountName={`payments.${index}.amount`} tokenName={`token`} />
+          <RecipientInput control={form.control} name={`payments.${index}.address`} />
           {fields.length > 1 && (
             <div className="flex justify-end">
               <Button variant={'link'} type="button" className="text-muted-foreground/80 hover:text-muted-foreground" size={'sm'} onClick={() => remove(index)}><Trash className="size-3 text-primary" /> Remove Recipient</Button>
@@ -83,14 +80,11 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
   const form = useFormContext<PaymentFormValues>();
   const { fields } = useFieldArray({
     control: form.control,
-    name: "payment",
+    name: "payments",
   });
-  const tokenSymbol = form.watch("tokenSymbol");
-  const tokenIcon = form.watch("tokenIcon");
-  const tokenAddress = form.watch("tokenAddress");
-  const tokenNetwork = form.watch("tokenNetwork");
-  const { data: storageDepositData } = useBatchStorageDepositIsRegistered(fields.map((field) => ({ accountId: field.address, tokenId: tokenAddress })));
-  const { data: tokenPriceData } = useTokenPrice(tokenAddress, tokenNetwork);
+  const token = form.watch("token");
+  const { data: storageDepositData } = useBatchStorageDepositIsRegistered(fields.map((field) => ({ accountId: field.address, tokenId: token.address })));
+  const { data: tokenPriceData } = useTokenPrice(token.address, token.network);
 
   useEffect(() => {
     if (!storageDepositData) return;
@@ -100,7 +94,7 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
       const matchingDeposit = storageDepositData.find(
         (deposit) => deposit.account_id === field.address
       );
-      form.setValue(`payment.${index}.isRegistered`, matchingDeposit?.is_registered ?? false);
+      form.setValue(`payments.${index}.isRegistered`, matchingDeposit?.is_registered ?? false);
     }
   }, [storageDepositData, fields, form]);
 
@@ -137,9 +131,9 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
                 <div className="flex justify-between items-center w-full text-sm ">
                   <p className=" font-semibold">{field.address}</p>
                   <div className="flex items-center gap-2">
-                    <img src={tokenIcon} alt={tokenSymbol} className="size-6 rounded-full" />
+                    <img src={token.icon} alt={token.symbol} className="size-6 rounded-full" />
                     <div className="flex flex-col items-end">
-                      <p className="text-sm font-semibold">{field.amount} {tokenSymbol}</p>
+                      <p className="text-sm font-semibold">{field.amount} {token.symbol}</p>
                       <p className="text-xs text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
@@ -147,7 +141,7 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
                     </div>
                   </div>
                 </div>
-                <FormField control={form.control} name={`payment.${index}.memo`} render={({ field }) => (
+                <FormField control={form.control} name={`payments.${index}.memo`} render={({ field }) => (
                   <Textarea
                     value={field.value}
                     onChange={field.onChange}
@@ -176,24 +170,25 @@ export default function PaymentsPage() {
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
-      payment: [{
+      payments: [{
         address: "",
-        amount: "0",
+        amount: "",
         memo: "",
       }],
+      token: NEAR_TOKEN,
       approveWithMyVote: false,
     },
   });
 
   const onSubmit = async (data: PaymentFormValues) => {
     setIsSubmitting(true);
-    if (data.payment.length > 0) {
+    if (data.payments.length > 0) {
       alert("Batch payments are not supported yet");
       return;
     }
-    const payment = data.payment[0];
+    const payment = data.payments[0];
     try {
-      const isNEAR = data.tokenSymbol === "NEAR";
+      const isNEAR = data.token.symbol === "NEAR";
       const description = {
         title: "Payment Request",
         notes: payment.memo || "",
@@ -214,9 +209,9 @@ export default function PaymentsPage() {
                     description: encodeToMarkdown(description),
                     kind: {
                       Transfer: {
-                        token_id: isNEAR ? "" : data.tokenAddress,
+                        token_id: isNEAR ? "" : data.token.address,
                         receiver_id: payment.address,
-                        amount: Big(payment.amount).mul(Big(10).pow(data.tokenDecimals)).toFixed(),
+                        amount: Big(payment.amount).mul(Big(10).pow(data.token.decimals)).toFixed(),
                       },
                     },
                   },
@@ -235,7 +230,7 @@ export default function PaymentsPage() {
       if (needsStorageDeposit) {
         const depositInYocto = Big(0.125).mul(Big(10).pow(24)).toFixed();
         calls.push({
-          receiverId: data.tokenAddress,
+          receiverId: data.token.address,
           actions: [
             {
               type: "FunctionCall",

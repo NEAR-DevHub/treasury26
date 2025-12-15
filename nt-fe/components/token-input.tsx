@@ -1,6 +1,6 @@
 "use client";
 
-import { Dispatch, SetStateAction, useMemo } from "react";
+import { useMemo } from "react";
 import { Button } from "./ui/button";
 import { useTokenBalance, useTokenPrice } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
@@ -10,30 +10,47 @@ import { LargeInput } from "./large-input";
 import { InputBlock } from "./input-block";
 import { FormField, FormMessage } from "./ui/form";
 import { Control, FieldValues, Path, PathValue, useFormContext, useWatch } from "react-hook-form";
+import z from "zod";
 
-interface TokenInputProps<TFieldValues extends FieldValues = FieldValues> {
+export const tokenSchema = z.object({
+    symbol: z.string(),
+    address: z.string(),
+    network: z.string(),
+    icon: z.string(),
+    decimals: z.number(),
+});
+
+export type Token = z.infer<typeof tokenSchema>;
+
+interface TokenInputProps<
+    TFieldValues extends FieldValues = FieldValues,
+    TTokenPath extends Path<TFieldValues> = Path<TFieldValues>
+> {
     control: Control<TFieldValues>;
     title?: string;
     amountName: Path<TFieldValues>;
-    tokenSymbolName: Path<TFieldValues>;
-    tokenAddressName: Path<TFieldValues>;
-    tokenNetworkName: Path<TFieldValues>;
-    tokenIconName: Path<TFieldValues>;
-    tokenDecimalsName: Path<TFieldValues>;
-    disabledTokenSelect?: boolean;
+    tokenName: TTokenPath extends Path<TFieldValues>
+    ? PathValue<TFieldValues, TTokenPath> extends Token
+    ? TTokenPath
+    : never
+    : never;
+    tokenSelect?: {
+        disabled?: boolean;
+        locked?: boolean;
+    };
 }
 
-export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ control, title, amountName, tokenSymbolName, tokenAddressName, tokenNetworkName, tokenIconName, tokenDecimalsName, disabledTokenSelect }: TokenInputProps<TFieldValues>) {
+export function TokenInput<
+    TFieldValues extends FieldValues = FieldValues,
+    TTokenPath extends Path<TFieldValues> = Path<TFieldValues>
+>({ control, title, amountName, tokenName, tokenSelect }: TokenInputProps<TFieldValues, TTokenPath>) {
     const { selectedTreasury } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
+    const token = useWatch({ control, name: tokenName }) as Token;
 
-    const tokenSymbol = useWatch({ control, name: tokenSymbolName });
-    const tokenAddress = useWatch({ control, name: tokenAddressName });
-    const tokenNetwork = useWatch({ control, name: tokenNetworkName });
-
-    const { data: tokenBalanceData, isLoading: isBalanceLoading } = useTokenBalance(selectedTreasury, tokenAddress, tokenNetwork);
-    const { data: tokenPriceData, isLoading: isPriceLoading } = useTokenPrice(tokenAddress, tokenNetwork);
+    const { data: tokenBalanceData, isLoading: isBalanceLoading } = useTokenBalance(selectedTreasury, token.address, token.network);
+    const { data: tokenPriceData, isLoading: isPriceLoading } = useTokenPrice(token.address, token.network);
 
     const estimatedUSDValue = useMemo(() => {
         if (!tokenPriceData?.price || !amount || isNaN(amount) || amount <= 0) {
@@ -52,7 +69,7 @@ export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ con
                         {tokenBalanceData?.balance && !isBalanceLoading && (
                             <>
                                 <p className="text-xs text-muted-foreground">
-                                    Balance: {formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals)} {tokenSymbol.toUpperCase()}
+                                    Balance: {formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals)} {token.symbol.toUpperCase()}
                                 </p>
                                 <Button type="button" variant="secondary" size="sm" onClick={() => {
                                     setValue(amountName, formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals) as PathValue<TFieldValues, Path<TFieldValues>>);
@@ -65,19 +82,28 @@ export function TokenInput<TFieldValues extends FieldValues = FieldValues>({ con
                     <>
                         <div className="flex justify-between items-center">
                             <div className="flex-1">
-                                <LargeInput type="number" borderless {...field} placeholder="0" className="text-3xl!" />
+                                <LargeInput type="number" borderless onChange={(e) => field.onChange(e.target.value.replace(/^0+(?=\d)/, ""))} onBlur={field.onBlur} value={field.value} placeholder="0" className="text-3xl!" />
                             </div>
                             <FormField
                                 control={control}
-                                name={tokenSymbolName}
+                                name={`${tokenName}.symbol` as Path<TFieldValues>}
                                 render={({ field }) => (
-                                    <TokenSelect disabled={disabledTokenSelect} selectedToken={field.value} setSelectedToken={(token) => {
-                                        field.onChange(token.symbol);
-                                        setValue(tokenAddressName, token.id as PathValue<TFieldValues, Path<TFieldValues>>);
-                                        setValue(tokenNetworkName, token.network as PathValue<TFieldValues, Path<TFieldValues>>);
-                                        setValue(tokenIconName, token.icon as PathValue<TFieldValues, Path<TFieldValues>>);
-                                        setValue(tokenDecimalsName, token.decimals as PathValue<TFieldValues, Path<TFieldValues>>);
-                                    }} />
+                                    <TokenSelect
+                                        disabled={tokenSelect?.disabled}
+                                        locked={tokenSelect?.locked}
+                                        lockedTokenData={tokenSelect?.locked ? {
+                                            symbol: token.symbol,
+                                            icon: token.icon
+                                        } : undefined}
+                                        selectedToken={field.value}
+                                        setSelectedToken={(selectedToken) => {
+                                            field.onChange(selectedToken.symbol);
+                                            setValue(`${tokenName}.address` as Path<TFieldValues>, selectedToken.id as PathValue<TFieldValues, Path<TFieldValues>>);
+                                            setValue(`${tokenName}.network` as Path<TFieldValues>, selectedToken.network as PathValue<TFieldValues, Path<TFieldValues>>);
+                                            setValue(`${tokenName}.icon` as Path<TFieldValues>, selectedToken.icon as PathValue<TFieldValues, Path<TFieldValues>>);
+                                            setValue(`${tokenName}.decimals` as Path<TFieldValues>, selectedToken.decimals as PathValue<TFieldValues, Path<TFieldValues>>);
+                                        }}
+                                    />
                                 )}
                             />
                         </div>
