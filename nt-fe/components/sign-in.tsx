@@ -4,10 +4,12 @@ import { useState } from "react";
 import { LogIn, LogOut, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/button";
 import { useNear } from "@/stores/near-store";
+import { useRouter } from "next/navigation";
 
 export function SignIn() {
   const { accountId: signedAccountId, isInitializing, connect, disconnect } = useNear();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const router = useRouter();
 
   if (isInitializing) {
     return (
@@ -64,7 +66,9 @@ export function SignIn() {
                 variant="ghost"
                 className="w-full justify-start gap-2 text-sm"
                 onClick={() => {
-                  disconnect();
+                  disconnect().then(() => {
+                    router.push("/app");
+                  });
                   setIsMenuOpen(false);
                 }}
               >
