@@ -2,17 +2,17 @@ import { TreasuryAsset } from "@/lib/api";
 import { useState, useMemo } from "react";
 import BalanceChart from "./chart";
 import { Button } from "@/components/button";
-import { ArrowLeftRight, ArrowUpRightIcon, Database, Download } from "lucide-react";
+import { ArrowLeftRight, ArrowUpRightIcon, Database, Download, } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useTokenBalanceHistory } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { subscribeWithSelector } from "zustand/middleware";
 import { PageCard } from "@/components/card";
 import { formatBalance } from "@/lib/utils";
+import Link from "next/link";
 
 interface Props {
-    totalBalanceUSD: number;
+    totalBalanceUSD: number | Big.Big;
     tokens: TreasuryAsset[];
 }
 
@@ -73,7 +73,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Button><Download className="size-4" /> Deposit</Button>
-                <Button><ArrowUpRightIcon className="size-4" /> Send</Button>
+                <Link href="/app/payments" className="flex"> <Button className="w-full"><ArrowUpRightIcon className="size-4" />Send</Button></Link>
                 <Button><ArrowLeftRight className="size-4" /> Exchange</Button>
                 <Button><Database className="size-4" /> Earn</Button>
             </div>
