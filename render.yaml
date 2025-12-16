@@ -30,5 +30,8 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_BACKEND_API_BASE
-        sync: false
+        fromService:
+          type: web
+          name: near-treasury-backend
+          envVarKey: RENDER_EXTERNAL_URL
     healthCheckPath: /
