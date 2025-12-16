@@ -24,7 +24,7 @@ services:
     runtime: node
     plan: starter
     rootDir: nt-fe
-    buildCommand: bun install && bun run build
+    buildCommand: bun install && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
     startCommand: node .next/standalone/server.js
     envVars:
       - key: NODE_ENV
