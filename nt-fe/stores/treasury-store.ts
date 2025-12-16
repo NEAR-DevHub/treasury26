@@ -4,21 +4,20 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 export type Treasury = {
+  daoId: string;
   name: string;
-  value: string;
-  balance: number;
 };
 
 type TreasuryStore = {
-  selectedTreasury: string | null;
-  setSelectedTreasury: (treasury: string) => void;
+  selectedTreasury: Treasury | null;
+  setSelectedTreasury: (treasury: Treasury) => void;
 };
 
 export const useTreasuryStore = create<TreasuryStore>()(
   persist(
     (set) => ({
       selectedTreasury: null,
-      setSelectedTreasury: (treasury: string) =>
+      setSelectedTreasury: (treasury: Treasury) =>
         set({ selectedTreasury: treasury }),
     }),
     {
@@ -34,5 +33,5 @@ export const useTreasury = () => {
   const setSelectedTreasury = useTreasuryStore(
     (state) => state.setSelectedTreasury
   );
-  return { selectedTreasury, setSelectedTreasury };
+  return { selectedTreasury: selectedTreasury?.daoId, treasury: selectedTreasury, setSelectedTreasury };
 };

@@ -35,7 +35,7 @@ interface GeneralTabProps {
 
 export function GeneralTab({ currentTreasury }: GeneralTabProps) {
   const [displayName, setDisplayName] = useState(currentTreasury?.name || "");
-  const [accountName, setAccountName] = useState(currentTreasury?.value || "");
+  const [accountName, setAccountName] = useState(currentTreasury?.daoId || "");
   const [selectedColor, setSelectedColor] = useState("#3B82F6");
 
   return (

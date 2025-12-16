@@ -29,7 +29,7 @@ export function TreasurySelector() {
 
   React.useEffect(() => {
     if (treasuryId) {
-      setSelectedTreasury(treasuryId);
+      setSelectedTreasury({ daoId: treasuryId, name: currentTreasury?.config?.name || "" });
     }
   }, [treasuryId, setSelectedTreasury]);
 

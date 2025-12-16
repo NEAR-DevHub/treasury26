@@ -20,13 +20,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/button";
-import { WhitelistToken } from "@/lib/api";
+import { TreasuryAsset } from "@/lib/api";
 import { formatBalance } from "@/lib/utils";
 
-const columnHelper = createColumnHelper<WhitelistToken>();
+const columnHelper = createColumnHelper<TreasuryAsset>();
 
 interface Props {
-  tokens: WhitelistToken[];
+  tokens: TreasuryAsset[];
 }
 
 export function AssetsTable({ tokens }: Props) {
@@ -50,7 +50,7 @@ export function AssetsTable({ tokens }: Props) {
   };
 
   // Define columns
-  const columns = useMemo<ColumnDef<WhitelistToken, any>[]>(
+  const columns = useMemo<ColumnDef<TreasuryAsset, any>[]>(
     () => [
       columnHelper.accessor("symbol", {
         header: "Token",

@@ -1,10 +1,20 @@
-use axum::{Router, routing::{get, post}};
+use axum::{
+    Json, Router,
+    routing::{get, post},
+};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 use crate::{AppState, handlers};
 
+async fn health_check() -> Json<Value> {
+    Json(json!({"status": "ok"}))
+}
+
 pub fn create_routes(state: Arc<AppState>) -> Router {
     Router::new()
+        // Health check
+        .route("/api/health", get(health_check))
         // Token endpoints
         .route(
             "/api/token/price",
@@ -13,6 +23,18 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/token/price/batch",
             get(handlers::token::price::get_batch_token_prices),
+        )
+        .route(
+            "/api/token/storage-deposit/is-registered",
+            get(handlers::token::storage_deposit::is_registered::is_storage_deposit_registered),
+        )
+        .route(
+            "/api/token/storage-deposit/is-registered/batch",
+            post(handlers::token::storage_deposit::is_registered::get_batch_storage_deposit_is_registered),
+        )
+        .route(
+            "/api/treasury/policy",
+            get(handlers::treasury::policy::get_treasury_policy)
         )
         // User endpoints
         .route(
@@ -34,18 +56,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/user/assets",
             get(handlers::user::assets::get_user_assets),
-        )
-        .route(
-            "/api/token/storage-deposit/is-registered",
-            get(handlers::token::storage_deposit::is_registered::is_storage_deposit_registered),
-        )
-        .route(
-            "/api/token/storage-deposit/is-registered/batch",
-            post(handlers::token::storage_deposit::is_registered::get_batch_storage_deposit_is_registered),
-        )
-        .route(
-            "/api/treasury/policy",
-            get(handlers::treasury::policy::get_treasury_policy),
         )
         .with_state(state)
 }

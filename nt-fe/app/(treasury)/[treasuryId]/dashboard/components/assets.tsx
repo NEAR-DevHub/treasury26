@@ -1,10 +1,10 @@
 import { AssetsTable } from "@/components/assets-table";
 import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/components/underline-tabs";
-import { WhitelistToken } from "@/lib/api";
+import { TreasuryAsset } from "@/lib/api";
 import { PageCard } from "@/components/card";
 
 interface Props {
-    tokens: WhitelistToken[];
+    tokens: TreasuryAsset[];
 }
 
 export default function Assets({ tokens }: Props) {

@@ -6,11 +6,9 @@ import { useTreasury, } from "@/stores/treasury-store";
 import { GeneralTab } from "./components/general-tab";
 import { VotingTab } from "./components/voting-tab";
 import { PreferencesTab } from "./components/preferences-tab";
-import { PageCard } from "@/components/card";
-
 
 export default function SettingsPage() {
-  const { selectedTreasury } = useTreasury();
+  const { treasury } = useTreasury();
 
   return (
     <PageComponentLayout title="Settings" description="Adjust your application settings">
@@ -22,7 +20,7 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="general">
-          <GeneralTab currentTreasury={selectedTreasury} />
+          <GeneralTab currentTreasury={treasury || undefined} />
         </TabsContent>
 
         <TabsContent value="voting">

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: near-treasury-frontend
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: node .next/standalone/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_BACKEND_API_BASE
+        sync: false
+    healthCheckPath: /

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: near-treasury-backend
+    runtime: rust
+    plan: starter
+    buildCommand: cargo build --release
+    startCommand: ./target/release/nf-be
+    envVars:
+      - key: PIKESPEAK_KEY
+        sync: false
+      - key: FASTNEAR_API_KEY
+        sync: false
+      - key: RUST_LOG
+        value: info
+      - key: PORT
+        value: 10000
+    healthCheckPath: /api/health
