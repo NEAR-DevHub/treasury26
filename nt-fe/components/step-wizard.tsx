@@ -5,7 +5,7 @@ import { ArrowLeftIcon, Loader2 } from "lucide-react";
 import { FormDescription, FormField, FormLabel } from "./ui/form";
 import { Switch } from "./ui/switch";
 import { motion, AnimatePresence } from "motion/react";
-
+import { cn } from "@/lib/utils";
 export interface StepProps {
     handleBack?: () => void;
 }
@@ -15,12 +15,48 @@ interface Step {
     component: React.ComponentType<{ handleBack?: () => void }>;
 }
 
+interface StepIndicatorProps {
+    steps: string[];
+    currentStep: number;
+}
+
+export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
+    return (
+        <div className="w-full">
+            <div className="flex items-center justify-start gap-6">
+                {steps.map((step, index) => (
+                    <button
+                        key={index}
+                        type="button"
+                        disabled
+                        className={cn(
+                            "w-full font-semibold inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm",
+                            "whitespace-nowrap transition-all duration-300 ease-in-out",
+                            "pb-2 relative border-none bg-transparent shadow-none",
+                            "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0",
+                            "after:transition-all after:duration-300 after:ease-in-out",
+                            index === currentStep
+                                ? 'text-foreground after:bg-primary after:h-[3px]'
+                                : 'text-muted-foreground after:bg-border after:h-[2px]'
+
+                        )}
+                    >
+                        {step}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 interface StepWizardProps {
     steps: Step[];
+    stepTitles?: string[];
 }
 
 export function StepWizard({
     steps,
+    stepTitles,
 }: StepWizardProps) {
     const [index, setIndex] = useState(0);
     const [direction, setDirection] = useState<1 | -1>(1);
@@ -54,7 +90,10 @@ export function StepWizard({
     };
 
     return (
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden flex flex-col gap-6">
+            {stepTitles && stepTitles.length > 0 && (
+                <StepIndicator steps={stepTitles} currentStep={index} />
+            )}
             <AnimatePresence initial={false} custom={direction} mode="popLayout">
                 <motion.div
                     key={index}

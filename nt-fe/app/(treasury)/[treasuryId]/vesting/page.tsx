@@ -75,7 +75,7 @@ type VestingFormValues = z.infer<typeof vestingFormSchema>;
 function Step1() {
   const form = useFormContext<VestingFormValues>();
   return (
-    <>
+    <PageCard>
       <StepperHeader title="New Vesting Schedule" />
       <TokenInput title="Amount" tokenSelect={{
         locked: true,
@@ -88,14 +88,14 @@ function Step1() {
       </div>
 
       <ApprovalInfo />
-    </>)
+    </PageCard>)
 }
 
 function Step2({ handleBack }: StepProps) {
   const form = useFormContext<VestingFormValues>();
   const allowCancel = form.watch("vesting.allowCancel");
   return (
-    <>
+    <PageCard>
       <StepperHeader title="Advanced Settings" handleBack={handleBack} />
       <CheckboxInput
         control={form.control}
@@ -124,7 +124,7 @@ function Step2({ handleBack }: StepProps) {
           />
         </InputBlock>
       )} />
-    </>
+    </PageCard>
   )
 }
 
@@ -172,22 +172,24 @@ function Step3({ handleBack }: StepProps) {
   }, [vesting]);
 
   return (
-    <ReviewStep control={form.control} reviewingTitle="Review Your Vesting Schedule" approveWithMyVoteName="approveWithMyVote" handleBack={handleBack}>
-      <div className="flex flex-col gap-6">
-        <InputBlock title="" invalid={false}>
-          <div className="flex flex-col gap-2 p-2 text-xs text-center justify-center items-center">
-            <p>You are creating a vesting schedule for</p>
-            <img src={vesting.token.icon} alt={vesting.token.symbol} className="size-10 shrink-0 rounded-full" />
-            <p className="text-xl font-semibold">{vesting.amount} {vesting.token.symbol}</p>
-            <p className="text-sm text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })}</p>
-          </div>
-        </InputBlock>
-        <InfoDisplay items={infoItems} />
-      </div>
-    </ReviewStep>
+    <PageCard>
+      <ReviewStep control={form.control} reviewingTitle="Review Your Vesting Schedule" approveWithMyVoteName="approveWithMyVote" handleBack={handleBack}>
+        <div className="flex flex-col gap-6">
+          <InputBlock title="" invalid={false}>
+            <div className="flex flex-col gap-2 p-2 text-xs text-center justify-center items-center">
+              <p>You are creating a vesting schedule for</p>
+              <img src={vesting.token.icon} alt={vesting.token.symbol} className="size-10 shrink-0 rounded-full" />
+              <p className="text-xl font-semibold">{vesting.amount} {vesting.token.symbol}</p>
+              <p className="text-sm text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}</p>
+            </div>
+          </InputBlock>
+          <InfoDisplay items={infoItems} />
+        </div>
+      </ReviewStep>
+    </PageCard>
   )
 }
 
@@ -287,36 +289,35 @@ export default function VestingPage() {
     <PageComponentLayout title="Vesting" description="Create vesting schedules quickly and effortlessly">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 max-w-[600px] mx-auto">
-          <PageCard className="gap-3">
-            <StepWizard
-              steps={[
-                {
-                  nextButton: ({ handleNext }) => StepperNextButton({ text: "Continue" })(() => {
-                    form.trigger().then((isValid) => {
-                      if (isValid) {
-                        return handleNext();
-                      }
-                    });
-                  }),
-                  component: Step1,
-                },
-                {
-                  nextButton: ({ handleNext }) => StepperNextButton({ text: "Review Request" })(() => {
-                    form.trigger().then((isValid) => {
-                      if (isValid) {
-                        return handleNext();
-                      }
-                    });
-                  }),
-                  component: Step2,
-                },
-                {
-                  nextButton: ({ }) => StepperNextButton({ text: "Confirm and Submit Request", loading: isSubmitting })(),
-                  component: Step3,
-                }
-              ]}
-            />
-          </PageCard>
+          <StepWizard
+            stepTitles={["Details", "Settings", "Review"]}
+            steps={[
+              {
+                nextButton: ({ handleNext }) => StepperNextButton({ text: "Continue" })(() => {
+                  form.trigger().then((isValid) => {
+                    if (isValid) {
+                      return handleNext();
+                    }
+                  });
+                }),
+                component: Step1,
+              },
+              {
+                nextButton: ({ handleNext }) => StepperNextButton({ text: "Review Request" })(() => {
+                  form.trigger().then((isValid) => {
+                    if (isValid) {
+                      return handleNext();
+                    }
+                  });
+                }),
+                component: Step2,
+              },
+              {
+                nextButton: ({ }) => StepperNextButton({ text: "Confirm and Submit Request", loading: isSubmitting })(),
+                component: Step3,
+              }
+            ]}
+          />
         </form>
       </Form>
     </PageComponentLayout>
