@@ -7,6 +7,7 @@ import { getApproversAndThreshold, getKindFromProposal } from "@/lib/config-util
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { User } from "@/components/user";
+import { getProposalStatus } from "@/features/proposals/utils/proposal-utils";
 
 interface ProposalSidebarProps {
   proposal: Proposal;
@@ -51,51 +52,55 @@ function TransactionCreated() {
 
 function VotingSection({ proposal, policy, accountId }: { proposal: Proposal, policy: Policy, accountId: string }) {
   const votes = proposal.votes;
-  const voteCounts = proposal.vote_counts;
 
-  const totalVotesReceived = Object.values(voteCounts).length;
+  const totalApprovesReceived = Object.values(votes).filter((vote) => vote === "Approve").length;
   const { requiredVotes } = getApproversAndThreshold(policy, accountId ?? "", proposal.kind, false);
-
   const votesArray = Object.entries(votes);
-  if (totalVotesReceived >= requiredVotes) {
 
-    return (
-      <div className="space-y-3 relative z-10">
-        <div className="flex items-center gap-2">
-          <StepIcon status={totalVotesReceived >= requiredVotes ? "Success" : "Pending"} />
-          <div>
-            <p className="text-sm font-semibold">Voting</p>
-            <p className="text-xs text-muted-foreground">
-              {totalVotesReceived}/{requiredVotes} votes received
-            </p>
-          </div>
-        </div>
+  let proposalStatus = getProposalStatus(proposal, policy);
+  let statusIconStatus: "Pending" | "Failed" | "Success" = "Pending";
+  if (proposalStatus === "Expired") {
+    statusIconStatus = "Failed";
+  } else if (proposalStatus !== "Pending") {
+    statusIconStatus = "Success";
+  }
 
-        <div className="ml-3 space-y-2 pl-6">
-          {votesArray.map(([account, vote]) => {
-            const isApproved = vote === "Approve";
-            const isRejected = vote === "Reject";
-            const action = isApproved ? "Approved" : isRejected ? "Rejected" : "Removed";
-            return (
-              <div key={account} className="flex items-center gap-2">
-                <User accountId={account} />
-                <span
-                  className={`text-xs font-medium ${isApproved
-                    ? 'text-green-600'
-                    : isRejected
-                      ? 'text-red-600'
-                      : 'text-muted-foreground'
-                    }`}
-                >
-                  {action}
-                </span>
-              </div>
-            );
-          })}
+  return (
+    <div className="space-y-3 relative z-10">
+      <div className="flex items-center gap-2">
+        <StepIcon status={statusIconStatus} />
+        <div>
+          <p className="text-sm font-semibold">Voting</p>
+          <p className="text-xs text-muted-foreground">
+            {totalApprovesReceived}/{requiredVotes} approvals received
+          </p>
         </div>
       </div>
-    );
-  }
+
+      <div className="ml-3 space-y-2 pl-6">
+        {votesArray.map(([account, vote]) => {
+          const isApproved = vote === "Approve";
+          const isRejected = vote === "Reject";
+          const action = isApproved ? "Approved" : isRejected ? "Rejected" : "Removed";
+          return (
+            <div key={account} className="flex items-center gap-2">
+              <User accountId={account} />
+              <span
+                className={`text-xs font-medium ${isApproved
+                  ? 'text-green-600'
+                  : isRejected
+                    ? 'text-red-600'
+                    : 'text-muted-foreground'
+                  }`}
+              >
+                {action}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function ExecutedSection({ status }: { status: ProposalStatus }) {
@@ -150,10 +155,8 @@ export function ProposalSidebar({ proposal, policy }: ProposalSidebarProps) {
 
   return (
     <PageCard className="w-full">
-
-      {/* Status Timeline */}
       <div className="relative flex flex-col gap-4">
-        <div className="absolute left-[11px] top-0 bottom-0 w-[1px] bg-muted-foreground/20" />
+        <div className="absolute left-[11px] top-0 bottom-0 w-px bg-muted-foreground/20" />
         <TransactionCreated />
         <VotingSection proposal={proposal} policy={policy} accountId={accountId ?? ""} />
         <ExecutedSection status={proposal.status} />

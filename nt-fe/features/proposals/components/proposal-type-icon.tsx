@@ -1,6 +1,6 @@
 import { ArrowLeftRight, FileText, Shield, Send, Coins, Download, Upload, Clock } from "lucide-react";
 import { Proposal } from "@/lib/proposals-api";
-import { getProposalType } from "../utils/get-proposal-type";
+import { getProposalType } from "../utils/proposal-utils";
 
 interface ProposalTypeIconProps {
   proposal: Proposal;
@@ -55,19 +55,19 @@ export function ProposalTypeIcon({ proposal, className = "h-5 w-5" }: ProposalTy
 
   // Default icons based on type
   switch (type) {
-    case "Transfer":
+    case "Payment Request":
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
           <Send className={`${className} text-blue-600`} />
         </div>
       );
-    case "FunctionCall":
+    case "Function Call":
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
           <FileText className={`${className} text-blue-600`} />
         </div>
       );
-    case "ChangePolicy":
+    case "Change Policy":
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
           <Shield className={`${className} text-amber-600`} />

@@ -20,7 +20,7 @@ import { Policy } from "@/types/policy";
 import { formatDate } from "@/lib/utils";
 import { User } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getProposalType } from "../utils/get-proposal-type";
+import { getProposalStatus, getProposalType } from "../utils/proposal-utils";
 
 interface ProposalsTableProps {
   proposals: Proposal[];
@@ -40,28 +40,6 @@ function getStatusColor(status: ProposalStatus): string {
       return "bg-gray-500/10 text-gray-600";
     default:
       return "bg-muted text-muted-foreground";
-  }
-}
-
-function getStatusLabel(proposal: Proposal, policy: Policy): string {
-  const { proposal_period } = policy;
-  const proposalPeriod = parseInt(proposal_period);
-  const submissionTime = parseInt(proposal.submission_time);
-
-  switch (proposal.status) {
-    case "Approved":
-      return "Executed";
-    case "Rejected":
-      return "Rejected";
-    case "Failed":
-      return "Rejected";
-    case "InProgress":
-      if ((submissionTime + proposalPeriod) / 1_000_000 < Date.now()) {
-        return "Expired";
-      }
-      return "Pending";
-    default:
-      return proposal.status;
   }
 }
 
@@ -185,7 +163,7 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
                       proposal.status
                     )}`}
                   >
-                    {getStatusLabel(proposal, policy)}
+                    {getProposalStatus(proposal, policy)}
                   </span>
                 </TableCell>
 

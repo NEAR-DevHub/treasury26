@@ -1,9 +1,10 @@
 import { Proposal } from "@/lib/proposals-api";
 import { FunctionCallCell } from "./function-call-cell";
 import { ChangePolicyCell } from "./change-policy-cell";
-import { getProposalType } from "../../utils/get-proposal-type";
 import { TokenCell } from "./token-cell";
 import { decodeArgs } from "@/lib/utils";
+import { getProposalType } from "../../utils/proposal-utils";
+import { fetchTransferFromDirect, fetchTransferFromFT } from "../expanded-view/transfer-expanded";
 
 interface TransactionCellProps {
   proposal: Proposal;
@@ -17,9 +18,15 @@ export function TransactionCell({ proposal }: TransactionCellProps) {
 
   switch (type) {
     case "Payment Request":
-      if (!('Transfer' in proposal.kind)) return null;
-      const transfer = proposal.kind.Transfer;
-      return <TokenCell tokenId={transfer.token_id} amount={transfer.amount} receiver={transfer.receiver_id} />;
+      let data;
+      if ('Transfer' in proposal.kind) {
+        data = fetchTransferFromDirect(proposal);
+      } else if ('FunctionCall' in proposal.kind) {
+        data = fetchTransferFromFT(proposal);
+      } else {
+        return null;
+      }
+      return <TokenCell tokenId={data?.tokenId || "near"} amount={data?.amount || "0"} receiver={data?.receiver || ""} />;
     case "Function Call":
       return <FunctionCallCell proposal={proposal} />;
     case "Change Policy":

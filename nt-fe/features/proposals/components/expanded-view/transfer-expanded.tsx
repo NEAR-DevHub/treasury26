@@ -1,52 +1,64 @@
+import { useToken } from "@/hooks/use-treasury-queries";
 import { Proposal } from "@/lib/proposals-api";
-import { formatNearAmount } from "@/lib/utils";
-
+import { decodeArgs, decodeProposalDescription, formatNearAmount } from "@/lib/utils";
+import { Amount } from "../amount";
+import { InfoDisplay } from "@/components/info-display";
 interface TransferExpandedProps {
   proposal: Proposal;
 }
 
 export function TransferExpanded({ proposal }: TransferExpandedProps) {
-  if (!('Transfer' in proposal.kind)) return null;
+  let data;
+  if ('Transfer' in proposal.kind) {
+    data = fetchTransferFromDirect(proposal);
+  } else if ('FunctionCall' in proposal.kind) {
+    data = fetchTransferFromFT(proposal);
+  } else {
+    return null;
+  }
 
-  const transfer = proposal.kind.Transfer;
-  const amount = transfer.amount;
-  const receiver = transfer.receiver_id;
-  const tokenId = transfer.token_id || "NEAR";
-  const msg = transfer.msg;
+  const notes = decodeProposalDescription("notes", proposal.description);
 
-  const formattedAmount = tokenId === "NEAR" || tokenId === ""
-    ? formatNearAmount(amount)
-    : amount;
-
+  const infoItems = [
+    {
+      label: "Recipient",
+      value: data?.receiver
+    },
+    {
+      label: "Amount",
+      value: <Amount amount={data?.amount || "0"} tokenId={data?.tokenId || "near"} />
+    }
+  ];
+  if (notes && notes !== "") {
+    infoItems.push({ label: "Notes", value: notes });
+  }
   return (
-    <div className="p-4 bg-muted/30 rounded-lg space-y-3">
-      <h4 className="font-semibold text-sm">Transfer Details</h4>
-
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <span className="text-muted-foreground">Amount:</span>
-          <p className="font-medium">{formattedAmount} {tokenId || "NEAR"}</p>
-        </div>
-
-        <div>
-          <span className="text-muted-foreground">Receiver:</span>
-          <p className="font-medium break-all">{receiver}</p>
-        </div>
-
-        {tokenId && tokenId !== "" && (
-          <div>
-            <span className="text-muted-foreground">Token ID:</span>
-            <p className="font-medium break-all">{tokenId}</p>
-          </div>
-        )}
-
-        {msg && (
-          <div className="col-span-2">
-            <span className="text-muted-foreground">Message:</span>
-            <p className="font-medium">{msg}</p>
-          </div>
-        )}
-      </div>
-    </div>
+    <InfoDisplay items={infoItems} />
   );
+}
+
+export function fetchTransferFromDirect(proposal: Proposal) {
+  if (!('Transfer' in proposal.kind)) return null;
+  const transfer = proposal.kind.Transfer;
+  const tokenId = transfer.token_id.length > 0 ? transfer.token_id : "near";
+  return {
+    tokenId,
+    amount: transfer.amount,
+    receiver: transfer.receiver_id
+  };
+}
+
+export function fetchTransferFromFT(proposal: Proposal) {
+  if (!('FunctionCall' in proposal.kind)) return null;
+  const functionCall = proposal.kind.FunctionCall;
+  const actions = functionCall.actions;
+  const action = actions.find(a => a.method_name === "ft_transfer" || a.method_name === "ft_transfer_call");
+  if (!action) return null;
+  const args = decodeArgs(action.args);
+  if (!args) return null;
+  return {
+    tokenId: functionCall.receiver_id,
+    amount: args.amount,
+    receiver: args.receiver_id
+  }
 }

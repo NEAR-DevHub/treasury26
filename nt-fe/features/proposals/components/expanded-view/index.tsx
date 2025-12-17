@@ -9,14 +9,14 @@ import { Button } from "@/components/button";
 import { Copy, ExternalLink, MoreHorizontal } from "lucide-react";
 import { TxDetails } from "./common/tx-details";
 import { Policy } from "@/types/policy";
-import { getProposalType } from "../../utils/get-proposal-type";
+import { getProposalType } from "../../utils/proposal-utils";
 
 interface ExpandedViewProps {
   proposal: Proposal;
   policy: Policy;
 }
 
-function ExpandedViewInternal({ proposal, policy }: ExpandedViewProps) {
+function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
   const type = getProposalType(proposal);
   switch (type) {
     case "Payment Request":

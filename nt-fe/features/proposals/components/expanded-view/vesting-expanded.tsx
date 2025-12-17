@@ -1,10 +1,11 @@
 import { Proposal } from "@/lib/proposals-api";
 import { InfoDisplay } from "@/components/info-display";
-import { formatNearAmount, decodeArgs, formatDate } from "@/lib/utils";
+import { formatNearAmount, decodeArgs, formatDate, decodeProposalDescription } from "@/lib/utils";
 import { NEAR_TOKEN } from "@/constants/token";
 import { useTokenPrice } from "@/hooks/use-treasury-queries";
 import { useMemo } from "react";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
+import { Amount } from "../amount";
 
 interface VestingExpandedProps {
   proposal: Proposal;
@@ -44,13 +45,7 @@ export function VestingExpanded({ proposal }: VestingExpandedProps) {
     { label: "Recipient", value: recipient || "N/A" },
     {
       label: "Amount",
-      value: (
-        <div className="flex items-center gap-2">
-          <img src={NEAR_TOKEN.icon} alt="NEAR" width={20} height={20} />
-          <span>{nearAmount} NEAR</span>
-          <span className="text-muted-foreground text-xs">(${estimatedUSDValue.toFixed(2)})</span>
-        </div>
-      )
+      value: <Amount amount={nearAmount} tokenId="near" />
     },
   ];
 
@@ -66,6 +61,11 @@ export function VestingExpanded({ proposal }: VestingExpandedProps) {
     { label: "Allow Cancellation", value: foundationAccountId ? "Yes" : "No" },
     { label: "Allow Staking", value: whitelistAccountId === LOCKUP_NO_WHITELIST_ACCOUNT_ID ? "No" : "Yes" }
   );
+
+  const notes = decodeProposalDescription("notes", proposal.description);
+  if (notes && notes !== "") {
+    infoItems.push({ label: "Notes", value: notes });
+  }
 
   return (
     <InfoDisplay items={infoItems} />

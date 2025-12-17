@@ -46,7 +46,7 @@ export function FunctionCallExpanded({ proposal }: FunctionCallExpandedProps) {
                   <div className="col-span-2">
                     <span className="text-muted-foreground">Arguments:</span>
                     <pre className="font-mono text-xs bg-muted p-2 rounded mt-1 overflow-x-auto">
-                      {decodeArgs(action.args)}
+                      {JSON.stringify(decodeArgs(action.args), null, 2)}
                     </pre>
                   </div>
                 </div>
