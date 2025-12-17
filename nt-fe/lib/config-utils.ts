@@ -1,7 +1,7 @@
 import type { Policy, RoleKind } from "@/types/policy";
 import { ProposalKind } from "./proposals-api";
 
-export type ProposalPermissionKind = "transfer" | "call" | "policy";
+export type ProposalPermissionKind = "transfer" | "call" | "policy" | "config";
 
 
 export function getKindFromProposal(proposalKind: ProposalKind): ProposalPermissionKind | undefined {
@@ -15,6 +15,10 @@ export function getKindFromProposal(proposalKind: ProposalKind): ProposalPermiss
 
   if ('ChangePolicy' in proposalKind) {
     return "policy";
+  }
+
+  if ('ChangeConfig' in proposalKind) {
+    return "config";
   }
 
   return undefined;

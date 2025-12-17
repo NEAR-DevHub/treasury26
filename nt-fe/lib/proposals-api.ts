@@ -64,7 +64,17 @@ export interface ChangePolicyKind {
   };
 }
 
-export type ProposalKind = TransferKind | FunctionCallKind | ChangePolicyKind;
+export interface ChangeConfigKind {
+  ChangeConfig: {
+    config: {
+      metadata: string;
+      purpose: string;
+      name: string;
+    }
+  };
+}
+
+export type ProposalKind = TransferKind | FunctionCallKind | ChangePolicyKind | ChangeConfigKind;
 
 export interface VoteCounts {
   [roleName: string]: [number, number, number];

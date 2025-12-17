@@ -32,6 +32,8 @@ export function TransactionCell({ proposal }: TransactionCellProps) {
       return <FunctionCallCell proposal={proposal} />;
     case "Change Policy":
       return <ChangePolicyCell proposal={proposal} />;
+    case "Change Config":
+      return "Updated Treasury Config";
     case "Staking":
       return <StakingCell proposal={proposal} />;
     case "Vesting":

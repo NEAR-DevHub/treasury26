@@ -14,12 +14,13 @@ import Link from "next/link";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
 import { useUserTreasuries } from "@/hooks/use-treasury-queries";
+import Image from "next/image";
 
 export function TreasurySelector() {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
-  const { setSelectedTreasury } = useTreasury();
+  const { setSelectedTreasury, treasury } = useTreasury();
   const { accountId } = useNear();
 
   const { data: treasuries = [], isLoading } = useUserTreasuries(accountId);
@@ -29,7 +30,7 @@ export function TreasurySelector() {
 
   React.useEffect(() => {
     if (treasuryId) {
-      setSelectedTreasury({ daoId: treasuryId, name: currentTreasury?.config?.name || "" });
+      setSelectedTreasury({ daoId: treasuryId, name: currentTreasury?.config?.name || "", flagLogo: currentTreasury?.config?.metadata?.flagLogo || "" });
     }
   }, [treasuryId, setSelectedTreasury]);
 
@@ -70,13 +71,19 @@ export function TreasurySelector() {
     router.push(`/${newTreasuryId}/${pathAfterTreasury}`);
   };
 
+  const Logo = ({ logo }: { logo?: string }) => {
+    if (logo) {
+      return <img src={logo} alt="Treasury Flag Logo" className="rounded-md size-7" />;
+    }
+    return <div className="flex items-center justify-center size-7 rounded shrink-0">
+      <Database className="h-3.5 w-3.5 text-muted-foreground" />
+    </div>;
+  }
   return (
     <Select value={treasuryId} onValueChange={handleTreasuryChange} >
       <SelectTrigger className="w-44 px-2.5 py-2 border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted! h-14!">
         <div className="flex items-center gap-2 w-full max-w-36 truncate">
-          <div className="flex items-center justify-center w-7 h-7 rounded shrink-0">
-            <Database className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
+          <Logo logo={treasury?.flagLogo} />
           <div className="flex flex-col items-start flex-1 min-w-0">
             <span className="text-xs font-medium truncate max-w-full leading-snug">
               {currentTreasury ? getTreasuryName(currentTreasury) : "Select treasury"}
@@ -97,9 +104,7 @@ export function TreasurySelector() {
             className=" focus:text-accent-foreground py-3"
           >
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded">
-                <Database className="h-5 w-5 text-muted-foreground" />
-              </div>
+              <Logo logo={treasury.config.metadata?.flagLogo} />
               <div className="flex flex-col items-start">
                 <span className="text-sm font-medium">{getTreasuryName(treasury)}</span>
                 <span className="text-xs text-muted-foreground">

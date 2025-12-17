@@ -53,6 +53,8 @@ export function getProposalType(proposal: Proposal) {
       return "Function Call";
     case "policy":
       return "Change Policy";
+    case "config":
+      return "Change Config";
     default:
       return "Unknown";
   }

@@ -6,6 +6,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 export type Treasury = {
   daoId: string;
   name: string;
+  flagLogo: string;
 };
 
 type TreasuryStore = {
