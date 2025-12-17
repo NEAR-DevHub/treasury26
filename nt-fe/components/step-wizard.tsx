@@ -6,6 +6,10 @@ import { FormDescription, FormField, FormLabel } from "./ui/form";
 import { Switch } from "./ui/switch";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
+import { getApproversAndThreshold, ProposalPermissionKind } from "@/lib/config-utils";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useTreasury } from "@/stores/treasury-store";
+import { useNear } from "@/stores/near-store";
 export interface StepProps {
     handleBack?: () => void;
 }
@@ -149,24 +153,32 @@ interface ReviewStepProps<TFieldValues extends FieldValues = FieldValues> {
     reviewingTitle: string;
     children: React.ReactNode;
     approveWithMyVoteName: Path<TFieldValues>;
+    proposalKind: ProposalPermissionKind;
     handleBack?: () => void;
 }
 
-export function ReviewStep<TFieldValues extends FieldValues = FieldValues>({ control, reviewingTitle, children, approveWithMyVoteName, handleBack }: ReviewStepProps<TFieldValues>) {
+export function ReviewStep<TFieldValues extends FieldValues = FieldValues>({ control, reviewingTitle, children, approveWithMyVoteName, proposalKind, handleBack }: ReviewStepProps<TFieldValues>) {
+    const { selectedTreasury } = useTreasury();
+    const { accountId } = useNear();
+    const { data: policy } = useTreasuryPolicy(selectedTreasury);
+
+    const { approverAccounts } = policy ? getApproversAndThreshold(policy, accountId ?? "", proposalKind, false) : { approverAccounts: [] as string[] };
+
     return (
         <div className="flex flex-col gap-4">
             <StepperHeader title={reviewingTitle} handleBack={handleBack} />
             {children}
-
-            <FormField control={control} name={approveWithMyVoteName} render={({ field }) => (
-                <div className="flex items-center gap-4">
-                    <Switch id="approveWithMyVote" checked={field.value} onCheckedChange={field.onChange} />
-                    <div className="flex flex-col gap-1">
-                        <FormLabel htmlFor="approveWithMyVote" className="font-semibold">Approve with my vote</FormLabel>
-                        <FormDescription className="text-xs">This will count as the first approval for this payment request</FormDescription>
+            {approverAccounts.includes(accountId ?? "") && (
+                <FormField control={control} name={approveWithMyVoteName} render={({ field }) => (
+                    <div className="flex items-center gap-4">
+                        <Switch id="approveWithMyVote" checked={field.value} onCheckedChange={field.onChange} />
+                        <div className="flex flex-col gap-1">
+                            <FormLabel htmlFor="approveWithMyVote" className="font-semibold">Approve with my vote</FormLabel>
+                            <FormDescription className="text-xs">This will count as the first approval for this payment request</FormDescription>
+                        </div>
                     </div>
-                </div>
-            )} />
+                )} />
+            )}
         </div>
     );
 }

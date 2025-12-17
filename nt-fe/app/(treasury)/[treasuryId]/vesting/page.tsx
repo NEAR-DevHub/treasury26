@@ -178,7 +178,7 @@ function Step3({ handleBack }: StepProps) {
 
   return (
     <PageCard>
-      <ReviewStep control={form.control} reviewingTitle="Review Your Vesting Schedule" approveWithMyVoteName="approveWithMyVote" handleBack={handleBack}>
+      <ReviewStep control={form.control} reviewingTitle="Review Your Vesting Schedule" approveWithMyVoteName="approveWithMyVote" proposalKind="call" handleBack={handleBack}>
         <div className="flex flex-col gap-6">
           <InputBlock title="" invalid={false}>
             <div className="flex flex-col gap-2 p-2 text-xs text-center justify-center items-center">

@@ -5,7 +5,7 @@ import { RecipientInput } from "@/components/recipient-input";
 import { TokenInput, tokenSchema } from "@/components/token-input";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { useFieldArray, useForm, useFormContext, } from "react-hook-form";
-import { Form, FormField, FormMessage } from "@/components/ui/form";
+import { Form, FormField } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { InputBlock } from "@/components/input-block";
@@ -108,7 +108,7 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
 
 
   return (
-    <ReviewStep control={form.control} reviewingTitle="Review Your Payment" approveWithMyVoteName="approveWithMyVote" handleBack={handleBack}>
+    <ReviewStep control={form.control} reviewingTitle="Review Your Payment" approveWithMyVoteName="approveWithMyVote" proposalKind="transfer" handleBack={handleBack}>
       <InputBlock title="" invalid={false}>
         <div className="flex flex-col gap-1 text-sm text-center">
           <p>You are sending a total of</p>

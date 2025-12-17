@@ -10,7 +10,7 @@ export function Textarea({ className, borderless, ...props }: TextareaComponentP
     return (
         <TextareaComponent
             {...props}
-            className={cn(borderless && "border-none focus-visible:ring-0 focus-visible:ring-offset-0", className)}
+            className={cn(borderless && "border-none bg-muted! focus-visible:ring-0 focus-visible:ring-offset-0", className)}
         />
     );
 }
