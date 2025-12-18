@@ -14,7 +14,6 @@ import Link from "next/link";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
 import { useUserTreasuries } from "@/hooks/use-treasury-queries";
-import Image from "next/image";
 
 export function TreasurySelector() {
   const router = useRouter();
@@ -81,16 +80,16 @@ export function TreasurySelector() {
   }
   return (
     <Select value={treasuryId} onValueChange={handleTreasuryChange} >
-      <SelectTrigger className="w-44 px-2.5 py-2 border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted! h-14!">
-        <div className="flex items-center gap-2 w-full max-w-36 truncate">
+      <SelectTrigger className="w-full px-3 py-2 border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted! h-14!">
+        <div className="flex items-center gap-2 w-full max-w-52 truncate">
           <Logo logo={treasury?.flagLogo} />
           <div className="flex flex-col items-start flex-1 min-w-0">
             <span className="text-xs font-medium truncate max-w-full leading-snug">
               {currentTreasury ? getTreasuryName(currentTreasury) : "Select treasury"}
             </span>
             {currentTreasury && (
-              <span className="text-xs text-muted-foreground leading-none">
-                {currentTreasury.daoId.slice(0, 10)}...
+              <span className="text-xs text-muted-foreground truncate max-w-full leading-none">
+                {currentTreasury.daoId}
               </span>
             )}
           </div>

@@ -8,24 +8,23 @@ import { cn } from "@/lib/utils";
 import {
   Send,
   CreditCard,
-  ArrowLeftRight,
-  Layers,
-  Clock,
   Users,
   Settings,
   HelpCircle,
   type LucideIcon,
-  PanelsTopLeft,
   Database,
+  Clock10,
+  ArrowRightLeft,
+  ChartColumn,
 } from "lucide-react";
 
 const navLinks: { path: string; label: string; icon: LucideIcon }[] = [
-  { path: "", label: "Dashboard", icon: PanelsTopLeft },
+  { path: "", label: "Dashboard", icon: ChartColumn },
   { path: "requests", label: "Requests", icon: Send },
   { path: "payments", label: "Payments", icon: CreditCard },
-  { path: "exchange", label: "Exchange", icon: ArrowLeftRight },
-  { path: "earn", label: "Earn", icon: Layers },
-  { path: "vesting", label: "Vesting", icon: Clock },
+  { path: "exchange", label: "Exchange", icon: ArrowRightLeft },
+  { path: "earn", label: "Earn", icon: Database },
+  { path: "vesting", label: "Vesting", icon: Clock10 },
   { path: "members", label: "Members", icon: Users },
   { path: "settings", label: "Settings", icon: Settings },
 ];
@@ -53,26 +52,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-screen w-50 flex-col bg-sidebar border-r transition-transform duration-300 lg:relative lg:translate-x-0",
+          "fixed left-0 top-0 z-40 flex gap-2 h-screen w-56 flex-col bg-card border-r transition-transform duration-300 lg:relative lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center gap-3 p-3 pb-2">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-foreground shrink-0">
-            <Database className="h-4 w-4 text-background " />
+        <div className="border-b">
+          <div className="p-3.5">
+            <TreasurySelector />
           </div>
-          <h2 className="text-md font-semibold tracking-wider uppercase">Treasury</h2>
         </div>
 
-        <Separator />
-
-        <div className="px-3 py-2 w-full h-fit">
-          <TreasurySelector />
-        </div>
-
-        <Separator />
-
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 flex flex-col gap-1 px-3.5">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const href = treasuryId ? `/${treasuryId}${link.path ? `/${link.path}` : ''}` : `/${link.path ? `/${link.path}` : ''}`;
@@ -85,9 +75,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 href={href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center rounded-[6px] justify-between gap-3 px-3 py-[5.5px] text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-accent text-accent-foreground border-l-4 border-foreground"
+                    ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
@@ -105,9 +95,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        <Separator />
-
-        <div className="p-4">
+        <div className="px-3.5 py-2">
           <Link
             href={treasuryId ? `/${treasuryId}/help` : "/help"}
             onClick={onClose}

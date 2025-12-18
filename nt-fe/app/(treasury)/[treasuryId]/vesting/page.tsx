@@ -23,6 +23,7 @@ import { useMemo, useState } from "react";
 import { useForm, useFormContext } from "react-hook-form";
 import z from "zod";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
+import { SendingTotal } from "@/components/sending-total";
 
 const vestingFormSchema = z.object({
   vesting: z.object({
@@ -180,17 +181,12 @@ function Step3({ handleBack }: StepProps) {
     <PageCard>
       <ReviewStep control={form.control} reviewingTitle="Review Your Vesting Schedule" approveWithMyVoteName="approveWithMyVote" proposalKind="call" handleBack={handleBack}>
         <div className="flex flex-col gap-6">
-          <InputBlock title="" invalid={false}>
-            <div className="flex flex-col gap-2 p-2 text-xs text-center justify-center items-center">
-              <p>You are creating a vesting schedule for</p>
-              <img src={vesting.token.icon} alt={vesting.token.symbol} className="size-10 shrink-0 rounded-full" />
-              <p className="text-xl font-semibold">{vesting.amount} {vesting.token.symbol}</p>
-              <p className="text-sm text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}</p>
-            </div>
-          </InputBlock>
+          <SendingTotal total={Number(vesting.amount)} token={vesting.token}>
+            <p>≈ ${estimatedUSDValue.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}</p>
+          </SendingTotal>
           <InfoDisplay items={infoItems} />
         </div>
       </ReviewStep>

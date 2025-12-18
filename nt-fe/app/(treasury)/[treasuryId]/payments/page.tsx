@@ -22,6 +22,8 @@ import { ConnectorAction } from "@hot-labs/near-connect";
 import { Button } from "@/components/button";
 import { Plus, Trash } from "lucide-react";
 import { NEAR_TOKEN } from "@/constants/token";
+import { SendingTotal } from "@/components/sending-total";
+import { CircleNumber } from "@/components/circle-number";
 
 const paymentFormSchema = z.object({
   payments: z.array(z.object({
@@ -98,43 +100,34 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
     }
   }, [storageDepositData, fields, form]);
 
-  const totalEstimatedUSDValue = useMemo(() => {
-    if (!tokenPriceData?.price) return 0;
-
+  const total = useMemo(() => {
     return fields.reduce((total, field) => {
-      return total + (Number(field.amount) * tokenPriceData.price);
+      return total + Number(field.amount);
     }, 0);
-  }, [fields, tokenPriceData]);
+  }, [fields]);
 
 
   return (
     <ReviewStep control={form.control} reviewingTitle="Review Your Payment" approveWithMyVoteName="approveWithMyVote" proposalKind="transfer" handleBack={handleBack}>
-      <InputBlock title="" invalid={false}>
-        <div className="flex flex-col gap-1 text-sm text-center">
-          <p>You are sending a total of</p>
-          <p className="text-2xl font-semibold">${totalEstimatedUSDValue.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}</p>
-          <p>to 1 recipient</p>
-        </div>
-      </InputBlock>
+      <SendingTotal total={total} token={token}>
+        <p>to {fields.length} recipient{fields.length > 1 ? 's' : ''}</p>
+      </SendingTotal>
       <div className="flex flex-col gap-2">
-        <p className="font-semibold">Recipients</p>
+        <p className="font-semibold">Recipient{fields.length > 1 ? 's' : ''}</p>
         {fields.map((field, index) => {
           const estimatedUSDValue = tokenPriceData?.price ? Number(field.amount) * tokenPriceData.price : 0;
 
           return (
             <div key={index} className="flex gap-2 items-baseline w-full">
-              <div className="py-1.5 px-3 rounded-full bg-muted text-muted-foreground text-sm font-semibold">{index + 1}</div>
+              <CircleNumber number={index + 1} />
               <div className="flex flex-col gap-1 w-full">
-                <div className="flex justify-between items-center w-full text-sm ">
+                <div className="flex justify-between items-center w-full text-xs ">
                   <p className=" font-semibold">{field.address}</p>
                   <div className="flex items-center gap-2">
-                    <img src={token.icon} alt={token.symbol} className="size-6 rounded-full" />
-                    <div className="flex flex-col items-end">
-                      <p className="text-sm font-semibold">{field.amount} {token.symbol}</p>
-                      <p className="text-xs text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
+                    <img src={token.icon} alt={token.symbol} className="size-5 rounded-full" />
+                    <div className="flex flex-col gap-[3px] items-end">
+                      <p className="text-xs font-semibold">{field.amount} {token.symbol}</p>
+                      <p className="text-[10px] text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                       })}</p>

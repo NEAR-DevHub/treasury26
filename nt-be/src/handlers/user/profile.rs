@@ -50,8 +50,6 @@ async fn fetch_profile(state: &Arc<AppState>, account_id: &str) -> Result<Profil
         })?
         .data;
 
-    println!("Profile result: {:?}", result);
-
     // Extract profile data from the result
     let profile = result
         .get(account_id)

@@ -20,7 +20,7 @@
   --accent-foreground: rgb(10, 10, 10);
   --destructive: rgb(207, 0, 28);
   --destructive-foreground: rgb(255, 255, 255);
-  --border: rgb(229, 229, 229);
+  --border: rgb(245, 245, 245);
   --input: rgb(229, 229, 229);
   --ring: rgb(161, 161, 161);
   --chart-1: rgb(164, 246, 204);
@@ -59,7 +59,7 @@
 }
 
 .dark {
-  --background: rgb(25, 25, 26);
+  --background: rgb(15, 15, 16);
   --foreground: rgb(250, 250, 250);
   --card: rgb(25, 25, 26);
   --card-foreground: rgb(250, 250, 250);
