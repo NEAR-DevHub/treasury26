@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button } from "./ui/button";
+import { Button } from "./button";
 import { useTokenBalance, useTokenPrice } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { cn, formatBalance } from "@/lib/utils";
@@ -71,7 +71,7 @@ export function TokenInput<
                                 <p className="text-xs text-muted-foreground">
                                     Balance: {formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals)} {token.symbol.toUpperCase()}
                                 </p>
-                                <Button type="button" variant="secondary" size="sm" onClick={() => {
+                                <Button type="button" variant="secondary" className="bg-muted-foreground/10 hover:bg-muted-foreground/20" size="sm" onClick={() => {
                                     setValue(amountName, formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals) as PathValue<TFieldValues, Path<TFieldValues>>);
                                 }}>MAX</Button>
                             </>

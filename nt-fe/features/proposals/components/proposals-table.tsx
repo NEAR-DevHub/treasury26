@@ -124,9 +124,7 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
 
           return (
             <Fragment key={proposal.id}>
-              <TableRow
-                className={`${isSelected ? 'bg-muted/30' : ''} cursor-pointer`}
-              >
+              <TableRow>
                 <TableCell>
                   <Checkbox
                     checked={isSelected}
@@ -185,10 +183,8 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
 
               {isExpanded && (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-0 bg-muted/5">
-                    <div className="p-4">
-                      <ExpandedView proposal={proposal} policy={policy} />
-                    </div>
+                  <TableCell colSpan={7} className="p-4 bg-background">
+                    <ExpandedView proposal={proposal} policy={policy} />
                   </TableCell>
                 </TableRow>
               )}

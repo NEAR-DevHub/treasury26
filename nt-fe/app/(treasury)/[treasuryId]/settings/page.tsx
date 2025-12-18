@@ -1,7 +1,7 @@
 "use client";
 
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import { useTreasury, } from "@/stores/treasury-store";
 import { GeneralTab } from "./components/general-tab";
 import { VotingTab } from "./components/voting-tab";
@@ -19,17 +19,19 @@ export default function SettingsPage() {
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general">
-          <GeneralTab currentTreasury={treasury || undefined} />
-        </TabsContent>
+        <TabsContents>
+          <TabsContent value="general">
+            <GeneralTab currentTreasury={treasury || undefined} />
+          </TabsContent>
 
-        <TabsContent value="voting">
-          <VotingTab />
-        </TabsContent>
+          <TabsContent value="voting">
+            <VotingTab />
+          </TabsContent>
 
-        <TabsContent value="preferences">
-          <PreferencesTab />
-        </TabsContent>
+          <TabsContent value="preferences">
+            <PreferencesTab />
+          </TabsContent>
+        </TabsContents>
       </Tabs>
     </PageComponentLayout >
   );

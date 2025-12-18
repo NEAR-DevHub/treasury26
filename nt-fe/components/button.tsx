@@ -13,8 +13,14 @@ export function Button({ variant, className: classNameOverride, size, ...props }
         case "link":
             className = "hover:no-underline font-semibold text-primary/80 hover:text-primary";
             break;
-        case "secondary":
-            className = "border-border hover:border";
+        default:
+            className = "";
+            break;
+    }
+
+    switch (size) {
+        case "sm":
+            className = cn(className, "py-0.5 px-2.5 h-5");
             break;
         default:
             className = "";
