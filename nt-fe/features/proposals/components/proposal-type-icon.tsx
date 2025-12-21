@@ -1,6 +1,6 @@
-import { ArrowLeftRight, FileText, Shield, Send, Coins, Download, Upload, Clock, CreditCard, TerminalSquare, Database } from "lucide-react";
+import { FileText, Shield, Clock, CreditCard, TerminalSquare, Database } from "lucide-react";
 import { Proposal } from "@/lib/proposals-api";
-import { getProposalType } from "../utils/proposal-utils";
+import { getProposalUIKind } from "../utils/proposal-utils";
 
 interface ProposalTypeIconProps {
   proposal: Proposal;
@@ -8,7 +8,7 @@ interface ProposalTypeIconProps {
 }
 
 export function ProposalTypeIcon({ proposal }: ProposalTypeIconProps) {
-  const type = getProposalType(proposal);
+  const type = getProposalUIKind(proposal);
 
   switch (type) {
     case "Payment Request":
@@ -39,6 +39,12 @@ export function ProposalTypeIcon({ proposal }: ProposalTypeIconProps) {
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg dark:bg-green-500/10 bg-green-100">
           <Database className="size-5 dark:text-green-300 text-green-700" />
+        </div>
+      );
+    case "Swap Request":
+      return (
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg dark:bg-pink-500/10 bg-pink-100">
+          <CreditCard className="size-5 dark:text-pink-300 text-pink-800" />
         </div>
       );
     default:

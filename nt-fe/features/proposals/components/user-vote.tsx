@@ -7,7 +7,7 @@ import { Check, Trash, X, } from "lucide-react";
 
 const iconStyle = "size-3 text-white rounded-full p-0.5 stroke-3";
 
-export function UserVote({ accountId, vote }: { accountId: string, vote: Vote }) {
+export function UserVote({ accountId, vote, iconOnly = true }: { accountId: string, vote: Vote, iconOnly?: boolean }) {
     let icon;
     let action;
     switch (vote) {
@@ -27,9 +27,9 @@ export function UserVote({ accountId, vote }: { accountId: string, vote: Vote })
 
     return (
         <Tooltip content={`${accountId}: ${action}`}>
-            <Button variant="ghost" size="icon-sm" className="relative">
-                <User accountId={accountId} iconOnly />
-                <div className="absolute bottom-0.5 right-0.5">
+            <Button variant="ghost" size={"sm"} className="relative p-2 m-0">
+                <User accountId={accountId} iconOnly={iconOnly} />
+                <div className="absolute left-5.5 bottom-0.5">
                     {icon}
                 </div>
             </Button>

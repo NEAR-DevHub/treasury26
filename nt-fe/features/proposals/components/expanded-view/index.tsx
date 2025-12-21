@@ -6,15 +6,25 @@ import { VestingExpanded } from "./vesting-expanded";
 import { ProposalSidebar } from "./common/proposal-sidebar";
 import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
-import { Copy, ExternalLink, MoreHorizontal } from "lucide-react";
+import { Copy, ExternalLink } from "lucide-react";
 import { TxDetails } from "./common/tx-details";
 import { Policy } from "@/types/policy";
-import { getProposalType } from "../../utils/proposal-utils";
 import { StakingExpanded } from "./staking-expanded";
 import { ChangeConfigExpanded } from "./change-config-expanded";
+import { SwapExpanded } from "./swap-expanded";
 import { useTreasury } from "@/stores/treasury-store";
 import Link from "next/link";
 import { toast } from "sonner";
+import { extractProposalData } from "../../utils/proposal-extractors";
+import {
+  PaymentRequestData,
+  FunctionCallData,
+  ChangePolicyData,
+  ChangeConfigData,
+  StakingData,
+  VestingData,
+  SwapRequestData,
+} from "../../types/index";
 
 interface ExpandedViewProps {
   proposal: Proposal;
@@ -23,20 +33,38 @@ interface ExpandedViewProps {
 }
 
 function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
-  const type = getProposalType(proposal);
+  const { type, data } = extractProposalData(proposal);
+
   switch (type) {
-    case "Payment Request":
-      return <TransferExpanded proposal={proposal} />;
-    case "Function Call":
-      return <FunctionCallExpanded proposal={proposal} />;
-    case "Change Policy":
-      return <ChangePolicyExpanded proposal={proposal} />;
-    case "Vesting":
-      return <VestingExpanded proposal={proposal} />;
+    case "Payment Request": {
+      const paymentData = data as PaymentRequestData;
+      return <TransferExpanded data={paymentData} />;
+    }
+    case "Function Call": {
+      const functionCallData = data as FunctionCallData;
+      return <FunctionCallExpanded data={functionCallData} />;
+    }
+    case "Change Policy": {
+      const policyData = data as ChangePolicyData;
+      return <ChangePolicyExpanded data={policyData} />;
+    }
+    case "Vesting": {
+      const vestingData = data as VestingData;
+      return <VestingExpanded data={vestingData} />;
+    }
     case "Staking":
-      return <StakingExpanded proposal={proposal} />;
-    case "Change Config":
-      return <ChangeConfigExpanded proposal={proposal} />;
+    case "Withdraw": {
+      const stakingData = data as StakingData;
+      return <StakingExpanded data={stakingData} />;
+    }
+    case "Change Config": {
+      const configData = data as ChangeConfigData;
+      return <ChangeConfigExpanded data={configData} />;
+    }
+    case "Swap Request": {
+      const swapData = data as SwapRequestData;
+      return <SwapExpanded data={swapData} />;
+    }
     default:
       return (
         <div className="p-4 bg-muted/30 rounded-lg">

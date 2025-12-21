@@ -1,27 +1,54 @@
 import { useToken, useTokenPrice } from "@/hooks/use-treasury-queries";
-import { formatBalance } from "@/lib/utils";
+import { cn, formatBalance } from "@/lib/utils";
 import { useMemo } from "react";
 
-export function Amount({ amount, tokenId }: { amount: string, tokenId: string }) {
-    const { data: tokenData } = useToken(tokenId, "NEAR");
-    const { data: tokenPriceData } = useTokenPrice(tokenId, "NEAR");
-    const amountValue = formatBalance(amount, tokenData?.decimals || 24);
+interface AmountProps {
+    amount?: string;
+    amountWithDecimals?: string;
+    tokenId: string;
+    network?: string;
+    showUSDValue?: boolean;
+    showNetwork?: boolean;
+    iconSize?: "sm" | "md" | "lg";
+}
 
+const iconSizeClasses = {
+    sm: "size-4",
+    md: "size-5",
+    lg: "size-6",
+}
+
+export function Amount({ amount, amountWithDecimals, tokenId, network = "NEAR", showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
+    const { data: tokenData } = useToken(tokenId, network);
+    const { data: tokenPriceData } = useTokenPrice(showUSDValue ? null : tokenId, network);
+    const amountValue = amount ? formatBalance(amount, tokenData?.decimals || 24) : Number(amountWithDecimals).toFixed(6);
     const estimatedUSDValue = useMemo(() => {
-        if (!tokenPriceData?.price || !amountValue || isNaN(Number(amountValue))) {
-            return 0;
+        const isPriceAvailable = tokenPriceData?.price || tokenData?.price;
+        if (!isPriceAvailable || !amountValue || isNaN(Number(amountValue))) {
+            return "N/A";
         }
-        return Number(amountValue) * tokenPriceData.price;
-    }, [tokenPriceData?.price, amount]);
+
+
+        const price = tokenPriceData?.price || tokenData?.price;
+        return `≈ $${(Number(amountValue) * price!).toFixed(2)}`;
+    }, [tokenPriceData, tokenData, amountValue]);
+    const iconClass = iconSizeClasses[iconSize];
     return (
-        <div className="flex items-center gap-2">
-            {tokenData && (
-                <img src={tokenData?.icon} alt={tokenData?.name} width={20} height={20} />
+        <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2">
+                {tokenData && (
+                    <img src={tokenData?.icon} className={cn("rounded-full shrink-0", iconClass)} alt={tokenData?.name} />
+                )}
+                {tokenData && (
+                    <span>{amountValue} {tokenData?.symbol}</span>
+                )}
+                {showUSDValue && <span className="text-muted-foreground text-xs">({estimatedUSDValue})</span>}
+            </div>
+            {showNetwork && tokenData?.chain_name && (
+                <span className="text-muted-foreground text-xs">
+                    Network: {tokenData.chain_name.toUpperCase()}
+                </span>
             )}
-            {tokenData && (
-                <span>{amountValue} </span>
-            )}
-            <span className="text-muted-foreground text-xs">(${estimatedUSDValue.toFixed(2)})</span>
         </div>
     );
 }

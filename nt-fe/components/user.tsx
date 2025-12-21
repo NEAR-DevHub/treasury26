@@ -5,6 +5,7 @@ import Link from "next/link";
 interface UserProps {
     accountId: string;
     iconOnly?: boolean;
+    withName?: boolean;
     size?: "sm" | "md" | "lg";
     withLink?: boolean;
 }
@@ -15,17 +16,17 @@ const sizeClasses = {
     lg: "size-10",
 }
 
-export function User({ accountId, iconOnly = false, size = "sm", withLink = true }: UserProps) {
-    const { data: profile } = useProfile(accountId);
+export function User({ accountId, iconOnly = false, size = "sm", withLink = true, withName = true }: UserProps) {
+    const { data: profile } = useProfile(withName ? accountId : undefined);
     const name = profile?.name || accountId.split('.')[0];
     const image = `https://i.near.social/magic/large/https://near.social/magic/img/account/${accountId}`;
 
     const content = (
         <>
-            <img src={image} alt="User Logo" className={cn("rounded-full", sizeClasses[size])} />
+            <img src={image} alt="User Logo" className={cn("rounded-full border", sizeClasses[size])} />
             {!iconOnly && (
-                <div className="flex flex-col">
-                    <span className="font-medium">{name}</span>
+                <div className="flex flex-col items-start">
+                    {withName && <span className="font-medium">{name}</span>}
                     <span className="text-xs text-muted-foreground">{accountId}</span>
                 </div>
             )}
@@ -34,11 +35,11 @@ export function User({ accountId, iconOnly = false, size = "sm", withLink = true
 
     return (
         withLink ? (
-            <Link href={`https://nearblocks.io/address/${accountId}`} target="_blank" className="flex items-center gap-2">
+            <Link href={`https://nearblocks.io/address/${accountId}`} target="_blank" className="flex items-center gap-1.5">
                 {content}
             </Link>
         ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
                 {content}
             </div>
         )

@@ -1,6 +1,7 @@
 import { getKindFromProposal } from "@/lib/config-utils";
 import { Proposal } from "@/lib/proposals-api";
 import { Policy } from "@/types/policy";
+import { ProposalUIKind } from "../types/index";
 
 function isVestingProposal(proposal: Proposal): boolean {
   if (!('FunctionCall' in proposal.kind)) return false;
@@ -18,6 +19,12 @@ function isFTTransferProposal(proposal: Proposal): boolean {
   return functionCall.actions.some(action => action.method_name === 'ft_transfer' || action.method_name === 'ft_transfer_call');
 }
 
+function isMTTransferProposal(proposal: Proposal): boolean {
+  if (!('FunctionCall' in proposal.kind)) return false;
+  const functionCall = proposal.kind.FunctionCall;
+  return functionCall.actions.some(action => action.method_name === 'mt_transfer' || action.method_name === 'mt_transfer_call');
+}
+
 function isStakingProposal(proposal: Proposal): boolean {
   if (!('FunctionCall' in proposal.kind)) return false;
   const functionCall = proposal.kind.FunctionCall;
@@ -32,7 +39,13 @@ function isStakingWithdrawProposal(proposal: Proposal): boolean {
   return isPool && functionCall.actions.some(action => action.method_name === 'withdraw' || action.method_name === 'unstake');
 }
 
-export function getProposalType(proposal: Proposal) {
+/**
+ * Determines the UI kind/category for a proposal
+ * This classifies proposals into user-facing categories for display
+ * @param proposal The proposal to classify
+ * @returns The UI kind of the proposal
+ */
+export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
   const proposalType = getKindFromProposal(proposal.kind);
   switch (proposalType) {
     case "transfer":
@@ -43,6 +56,9 @@ export function getProposalType(proposal: Proposal) {
       }
       if (isFTTransferProposal(proposal)) {
         return "Payment Request";
+      }
+      if (isMTTransferProposal(proposal)) {
+        return "Swap Request";
       }
       if (isStakingProposal(proposal)) {
         return "Staking";

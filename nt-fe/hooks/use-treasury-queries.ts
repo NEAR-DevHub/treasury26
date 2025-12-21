@@ -172,9 +172,9 @@ export function useBatchStorageDepositIsRegistered(
 }
 
 /**
- * Query hook to get token metadata (name, symbol, decimals, icon)
- * Fetches from backend which queries the token contract on the blockchain
- * Supports both NEAR and FT tokens
+ * Query hook to get token metadata (name, symbol, decimals, icon, price, blockchain, chain_name)
+ * Fetches from backend which enriches data from bridge and external price APIs
+ * Supports both NEAR and cross-chain tokens
  */
 export function useToken(
   tokenId: string | null | undefined,
@@ -184,7 +184,8 @@ export function useToken(
     queryKey: ["tokenMetadata", tokenId, network],
     queryFn: () => getTokenMetadata(tokenId!, network!),
     enabled: !!tokenId && !!network,
-    staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
+    staleTime: 1000 * 60 * 5, // 5 minutes (token metadata and price)
+    refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
   });
 }
 

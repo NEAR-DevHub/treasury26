@@ -1,34 +1,29 @@
 import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { Proposal } from "@/lib/proposals-api";
-import { decodeArgs } from "@/lib/utils";
+import { ChangeConfigData } from "../../types/index";
 
 interface ChangeConfigExpandedProps {
-    proposal: Proposal;
+    data: ChangeConfigData;
 }
 
-export function ChangeConfigExpanded({ proposal }: ChangeConfigExpandedProps) {
-    if (!('ChangeConfig' in proposal.kind)) return null;
-    const changeConfig = proposal.kind.ChangeConfig;
-    const { metadata, purpose, name } = changeConfig.config;
-    const metadataFromBase64 = decodeArgs(metadata);
-
+export function ChangeConfigExpanded({ data }: ChangeConfigExpandedProps) {
     let infoItems: InfoItem[] = [
         {
             label: "Name",
-            value: name
+            value: <span>{data.name}</span>
         },
         {
             label: "Purpose",
-            value: purpose,
+            value: <span>{data.purpose}</span>,
         },
     ];
 
-    for (const key in metadataFromBase64) {
+    for (const key in data.metadata) {
         infoItems.push({
             label: key,
-            value: metadataFromBase64[key]
+            value: <span>{data.metadata[key]}</span>
         });
     }
+
     return (
         <InfoDisplay items={infoItems} />
     );

@@ -1,39 +1,32 @@
-import { PageCard } from "@/components/card";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { User } from "@/components/user";
-import { Proposal } from "@/lib/proposals-api";
-import { decodeArgs, formatBalance, formatGas, formatNearAmount } from "@/lib/utils";
+import { formatGas, formatNearAmount } from "@/lib/utils";
+import { FunctionCallData } from "../../types/index";
 
 interface FunctionCallExpandedProps {
-  proposal: Proposal;
+  data: FunctionCallData;
 }
 
-export function FunctionCallExpanded({ proposal }: FunctionCallExpandedProps) {
-  if (!('FunctionCall' in proposal.kind)) return null;
-
-  const functionCall = proposal.kind.FunctionCall;
-  const action = functionCall.actions[0];
-  const args = decodeArgs(action.args);
-
+export function FunctionCallExpanded({ data }: FunctionCallExpandedProps) {
   let items: InfoItem[] = [
     {
       label: "Recipient",
-      value: <User accountId={functionCall.receiver_id} />
+      value: <User accountId={data.receiver} />
     },
     {
       label: "Method",
-      value: action?.method_name
+      value: <span>{data.methodName}</span>
     },
     {
       label: "Gas",
-      value: `${formatGas(action.gas)} TGas`
+      value: <span>{formatGas(data.gas)} TGas</span>
     }
   ];
 
-  if (action?.deposit && action.deposit !== "0") {
+  if (data.deposit && data.deposit !== "0") {
     items.push({
       label: "Deposit",
-      value: formatNearAmount(action.deposit)
+      value: <span>{formatNearAmount(data.deposit)}</span>
     });
   }
 
@@ -42,11 +35,10 @@ export function FunctionCallExpanded({ proposal }: FunctionCallExpandedProps) {
     differentLine: true,
     value: <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs">
       <code className="text-foreground/90">
-        {JSON.stringify(args, null, 2)}
+        {JSON.stringify(data.args, null, 2)}
       </code>
     </pre>
   });
-
 
   return (
     <InfoDisplay items={items} />

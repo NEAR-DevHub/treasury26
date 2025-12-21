@@ -8,6 +8,7 @@ import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { User } from "@/components/user";
 import { getProposalStatus } from "@/features/proposals/utils/proposal-utils";
+import { UserVote } from "../../user-vote";
 
 interface ProposalSidebarProps {
   proposal: Proposal;
@@ -24,9 +25,7 @@ function StepIcon({ status }: { status: "Success" | "Pending" | "Failed" }) {
       );
     case "Pending":
       return (
-        <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-muted-foreground/30 bg-background">
-          <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-        </div>
+        <div className="flex h-6 w-6 items-center justify-center rounded-full border border-muted-foreground/20 bg-card" />
       );
     case "Failed":
       return (
@@ -61,7 +60,7 @@ function VotingSection({ proposal, policy, accountId }: { proposal: Proposal, po
   let statusIconStatus: "Pending" | "Failed" | "Success" = "Pending";
   if (proposalStatus === "Expired") {
     statusIconStatus = "Failed";
-  } else if (proposalStatus !== "Pending") {
+  } else if (proposalStatus === "Approved" || proposalStatus === "Executed") {
     statusIconStatus = "Success";
   }
 
@@ -77,24 +76,11 @@ function VotingSection({ proposal, policy, accountId }: { proposal: Proposal, po
         </div>
       </div>
 
-      <div className="ml-3 space-y-2 pl-6">
+      <div className="ml-5">
         {votesArray.map(([account, vote]) => {
-          const isApproved = vote === "Approve";
-          const isRejected = vote === "Reject";
-          const action = isApproved ? "Approved" : isRejected ? "Rejected" : "Removed";
           return (
             <div key={account} className="flex items-center gap-2">
-              <User accountId={account} />
-              <span
-                className={`text-xs font-medium ${isApproved
-                  ? 'text-green-600'
-                  : isRejected
-                    ? 'text-red-600'
-                    : 'text-muted-foreground'
-                  }`}
-              >
-                {action}
-              </span>
+              <UserVote accountId={account} vote={vote} iconOnly={false} />
             </div>
           );
         })}

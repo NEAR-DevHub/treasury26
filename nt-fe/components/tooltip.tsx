@@ -13,7 +13,7 @@ export function Tooltip({ children, content, contentProps, triggerProps }: Toolt
             <TooltipTrigger asChild {...triggerProps}>
                 {children}
             </TooltipTrigger>
-            <TooltipContent {...contentProps}>
+            <TooltipContent className="max-w-80" {...contentProps}>
                 {content}
             </TooltipContent>
         </TooltipPrimitive>

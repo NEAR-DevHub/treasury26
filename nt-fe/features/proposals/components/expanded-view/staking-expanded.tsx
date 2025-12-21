@@ -1,55 +1,37 @@
-import { useLockupPool, useToken } from "@/hooks/use-treasury-queries";
-import { Proposal } from "@/lib/proposals-api";
-import { decodeArgs, decodeProposalDescription, formatNearAmount } from "@/lib/utils";
+import { useLockupPool } from "@/hooks/use-treasury-queries";
 import { Amount } from "../amount";
-import { InfoDisplay } from "@/components/info-display";
+import { InfoDisplay, InfoItem } from "@/components/info-display";
 import Link from "next/link";
-
+import { StakingData } from "../../types/index";
 
 interface StakingExpandedProps {
-    proposal: Proposal;
+    data: StakingData;
 }
 
-export function StakingExpanded({ proposal }: StakingExpandedProps) {
-    if (!('FunctionCall' in proposal.kind)) return null;
-    const functionCall = proposal.kind.FunctionCall;
+export function StakingExpanded({ data }: StakingExpandedProps) {
+    const { data: lockupPool } = useLockupPool(data.isLockup ? data.receiver : null);
+    const validator = data.isLockup ? lockupPool : data.receiver;
 
-    const isLockup = functionCall.receiver_id.endsWith('lockup.near')
-    const { data: lockupPool } = useLockupPool(isLockup ? functionCall.receiver_id : null);
-
-    const actions = functionCall.actions;
-    const stakingAction = actions.find(action => action.method_name === 'stake' || action.method_name === 'deposit_and_stake' || action.method_name === 'deposit');
-    const withdrawAction = actions.find(action => action.method_name === 'withdraw' || action.method_name === 'unstake');
-    if (!stakingAction && !withdrawAction) return null;
-
-    const args = decodeArgs(stakingAction?.args || withdrawAction?.args || '');
-    if (!args) return null;
-
-    const notes = decodeProposalDescription("notes", proposal.description);
-    const validator = isLockup ? lockupPool : functionCall.receiver_id;
-
-    const infoItems = [
+    const infoItems: InfoItem[] = [
         {
             label: "Source Wallet",
-            value: isLockup ? "Lockup" : "Wallet"
+            value: <span>{data.sourceWallet}</span>
         },
         {
             label: "Amount",
-            value: <Amount amount={args.amount} tokenId="near" />
+            value: <Amount amount={data.amount} tokenId={data.tokenId} />
         },
         {
             label: "Validator",
-            value: <Link href={`https://nearblocks.io/node-explorer/${validator}`} target="_blank">{validator}</Link>
+            value: <Link href={data.validatorUrl} target="_blank">{validator}</Link>
         }
     ];
-    if (notes && notes !== "") {
-        infoItems.push({ label: "Notes", value: notes });
+
+    if (data.notes && data.notes !== "") {
+        infoItems.push({ label: "Notes", value: <span>{data.notes}</span> });
     }
+
     return (
         <InfoDisplay items={infoItems} />
     );
-}
-
-export function extractStakingData(proposal: Proposal) {
-
 }

@@ -83,5 +83,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/lockup/pool",
             get(handlers::lookup::pool::get_lockup_pool),
         )
+        // Intents endpoints
+        .route(
+            "/api/intents/supported-tokens",
+            get(handlers::intents::supported_tokens::get_supported_tokens),
+        )
         .with_state(state)
 }

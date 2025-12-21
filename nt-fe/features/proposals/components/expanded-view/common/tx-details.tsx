@@ -16,7 +16,7 @@ export function TxDetails({ proposal, policy }: TxDetailsProps) {
     let creatorInfo: { label: string; value: React.ReactNode }[] = [
         {
             label: "Created By",
-            value: <User accountId={proposal.proposer} />
+            value: <User accountId={proposal.proposer} withName={false} />
         },
         {
             label: "Created Date",

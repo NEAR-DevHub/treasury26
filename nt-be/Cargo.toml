@@ -18,3 +18,4 @@ base64 = "0.22"
 serde_with = { version = "3.16.1", features = ["base64"] }
 chrono = "0.4"
 futures = "0.3"
+lazy_static = "1.4"

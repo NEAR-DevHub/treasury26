@@ -53,6 +53,8 @@ export interface TreasuryAsset {
   icon: string;
   weight: number;
   network: string;
+  blockchain?: string;
+  chain_name?: string;
 }
 
 export interface TreasuryAssets {
@@ -370,6 +372,10 @@ export interface TokenMetadata {
   symbol: string;
   decimals: number;
   icon?: string;
+  price?: number;
+  price_updated_at?: string;
+  blockchain?: string;
+  chain_name?: string;
 }
 
 /**

@@ -20,10 +20,25 @@ export function formatTimestamp(date: Date) {
 
 export function formatDate(date: Date | string | number) {
   if (!date) return "";
-  if (typeof date === "string") {
+  if (typeof date === "string" || typeof date === "number") {
     date = new Date(date);
   }
-  return format(date, "MM/dd/yyyy");
+
+  // Get timezone offset in minutes
+  const timezoneOffset = date.getTimezoneOffset();
+
+  // Calculate hours and minutes
+  const offsetHours = Math.abs(Math.floor(timezoneOffset / 60));
+  const offsetMinutes = Math.abs(timezoneOffset % 60);
+
+  // Determine timezone string
+  let timezoneStr = "UTC";
+  if (timezoneOffset !== 0) {
+    const sign = timezoneOffset > 0 ? "-" : "+";
+    timezoneStr = `UTC${sign}${offsetHours}${offsetMinutes > 0 ? `:${offsetMinutes.toString().padStart(2, "0")}` : ""}`;
+  }
+
+  return `${format(date, "MMM dd, yyyy HH:mm")} ${timezoneStr}`;
 }
 
 export function formatGas(gas: string): string {

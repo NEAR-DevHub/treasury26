@@ -1,13 +1,11 @@
-import { Proposal } from "@/lib/proposals-api";
+import { ChangePolicyData } from "../../types/index";
 
 interface ChangePolicyExpandedProps {
-  proposal: Proposal;
+  data: ChangePolicyData;
 }
 
-export function ChangePolicyExpanded({ proposal }: ChangePolicyExpandedProps) {
-  if (!('ChangePolicy' in proposal.kind)) return null;
-
-  const policy = proposal.kind.ChangePolicy.policy;
+export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
+  const policy = data.policy;
   const roles = policy.roles;
 
   return (

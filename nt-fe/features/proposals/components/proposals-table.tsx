@@ -20,7 +20,7 @@ import { Policy } from "@/types/policy";
 import { formatDate } from "@/lib/utils";
 import { User } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getProposalStatus, getProposalType } from "../utils/proposal-utils";
+import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
 
 interface ProposalsTableProps {
   proposals: Proposal[];
@@ -97,10 +97,10 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
               onCheckedChange={toggleSelectAll}
             />
           </TableHead>
-          <TableHead className="w-[400px] text-xs font-medium uppercase text-muted-foreground">
+          <TableHead className="w-fit text-xs font-medium uppercase text-muted-foreground">
             Request
           </TableHead>
-          <TableHead className="text-xs font-medium uppercase text-muted-foreground">
+          <TableHead className="max-w-[400px] text-xs font-medium uppercase text-muted-foreground">
             Transaction
           </TableHead>
           <TableHead className="text-xs font-medium uppercase text-muted-foreground">
@@ -119,7 +119,7 @@ export function ProposalsTable({ proposals, policy }: ProposalsTableProps) {
         {proposals.map((proposal) => {
           const isExpanded = expandedRows.has(proposal.id);
           const isSelected = selectedRows.has(proposal.id);
-          const title = getProposalType(proposal);
+          const title = getProposalUIKind(proposal);
           const date = formatDate(new Date(parseInt(proposal.submission_time) / 1000000));
 
           return (
