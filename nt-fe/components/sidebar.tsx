@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { ApprovalInfo } from "./approval-info";
 
-const navLinks: { path: string; label: string; icon: LucideIcon }[] = [
+const topNavLinks: { path: string; label: string; icon: LucideIcon }[] = [
   { path: "", label: "Dashboard", icon: ChartColumn },
   { path: "requests", label: "Requests", icon: Send },
   { path: "payments", label: "Payments", icon: CreditCard },
@@ -28,7 +28,7 @@ const navLinks: { path: string; label: string; icon: LucideIcon }[] = [
   { path: "vesting", label: "Vesting", icon: Clock10 },
 ];
 
-const bottomLinks: { path: string; label: string; icon: LucideIcon }[] = [
+const bottomNavLinks: { path: string; label: string; icon: LucideIcon }[] = [
   { path: "members", label: "Members", icon: Users },
   { path: "settings", label: "Settings", icon: Settings },
   { path: "help", label: "Help & Support", icon: HelpCircle },
@@ -58,7 +58,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <div
         className={cn(
           "fixed left-0 top-0 z-40 flex gap-2 h-screen w-56 flex-col bg-card border-r transition-transform duration-300 lg:relative lg:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="border-b">
@@ -71,9 +71,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex-1 flex flex-col gap-1 px-3.5">
-          {navLinks.map((link) => {
+          {topNavLinks.map((link) => {
             const Icon = link.icon;
-            const href = treasuryId ? `/${treasuryId}${link.path ? `/${link.path}` : ''}` : `/${link.path ? `/${link.path}` : ''}`;
+            const href = treasuryId
+              ? `/${treasuryId}${link.path ? `/${link.path}` : ""}`
+              : `/${link.path ? `/${link.path}` : ""}`;
             const isActive = pathname === href;
             const showBadge = link.path === "requests";
 
@@ -86,7 +88,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   "flex items-center rounded-[6px] justify-between gap-3 px-3 py-[5.5px] text-sm font-medium transition-colors",
                   isActive
                     ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -103,32 +105,34 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        <nav className="flex-1 justify-end flex flex-col gap-1 px-3.5 py-2">
-          {bottomLinks.map((link) => {
-            const Icon = link.icon;
-            const href = treasuryId ? `/${treasuryId}${link.path ? `/${link.path}` : ''}` : `/${link.path ? `/${link.path}` : ''}`;
-            const isActive = pathname === href;
+        <div className="px-3.5 pb-2">
+          <div className="flex flex-col gap-1">
+            {bottomNavLinks.map((link) => {
+              const Icon = link.icon;
+              const href = treasuryId
+                ? `/${treasuryId}${link.path ? `/${link.path}` : ""}`
+                : `/${link.path ? `/${link.path}` : ""}`;
+              const isActive = pathname === href;
 
-            return (
-              <Link
-                key={link.path}
-                href={href}
-                onClick={onClose}
-                className={cn(
-                  "flex items-center rounded-[6px] justify-between gap-3 px-3 py-[5.5px] text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <div className="flex items-center gap-3">
+              return (
+                <Link
+                  key={link.path}
+                  href={href}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center rounded-[6px] gap-3 px-3 py-[5.5px] text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                >
                   <Icon className="h-5 w-5" />
                   {link.label}
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </>
   );

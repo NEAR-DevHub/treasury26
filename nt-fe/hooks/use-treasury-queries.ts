@@ -1,17 +1,46 @@
 import { useQuery } from "@tanstack/react-query";
-import { getUserTreasuries, getTreasuryAssets, getTokenBalanceHistory, getTokenPrice, getBatchTokenPrices, getTokenBalance, getBatchTokenBalances, getTreasuryPolicy, getStorageDepositIsRegistered, getBatchStorageDepositIsRegistered, getTokenMetadata, getLockupPool, getProfile, getBatchProfiles, getBatchPayment, StorageDepositRequest } from "@/lib/api";
+import {
+  getUserTreasuries,
+  getTreasuryConfig,
+  getTreasuryAssets,
+  getTokenBalanceHistory,
+  getTokenPrice,
+  getBatchTokenPrices,
+  getTokenBalance,
+  getBatchTokenBalances,
+  getTreasuryPolicy,
+  getStorageDepositIsRegistered,
+  getBatchStorageDepositIsRegistered,
+  getTokenMetadata,
+  getLockupPool,
+  getProfile,
+  getBatchProfiles,
+  StorageDepositRequest,
+  getBatchPayment
+} from "@/lib/api";
 
 /**
  * Query hook to get user's treasuries with config data
  * Requires Near instance for blockchain queries
  */
-export function useUserTreasuries(
-  accountId: string | null | undefined,
-) {
+export function useUserTreasuries(accountId: string | null | undefined) {
   return useQuery({
     queryKey: ["userTreasuries", accountId],
     queryFn: () => getUserTreasuries(accountId!),
     enabled: !!accountId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+/**
+ * Query hook to get a single treasury's config data
+ * Fetches directly from the treasury contract via backend
+ */
+export function useTreasuryConfig(treasuryId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["treasuryConfig", treasuryId],
+    queryFn: () => getTreasuryConfig(treasuryId!),
+    enabled: !!treasuryId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
@@ -24,7 +53,7 @@ export function useTreasuryAssets(
   treasuryId: string | null | undefined,
   options?: {
     onlyPositiveBalance?: boolean;
-  }
+  },
 ) {
   return useQuery({
     queryKey: ["treasuryAssets", treasuryId, options?.onlyPositiveBalance],
@@ -33,7 +62,9 @@ export function useTreasuryAssets(
     staleTime: 1000 * 60 * 5, // 5 minutes
     select: (data) => {
       if (options?.onlyPositiveBalance) {
-        const filteredTokens = data.tokens.filter((asset) => Number(asset.balance) > 0);
+        const filteredTokens = data.tokens.filter(
+          (asset) => Number(asset.balance) > 0,
+        );
         return {
           ...data,
           tokens: filteredTokens,
@@ -65,7 +96,10 @@ export function useTokenBalanceHistory(
  * Fetches from backend which aggregates data from multiple price sources
  * Supports both NEAR and FT tokens
  */
-export function useTokenPrice(tokenId: string | null | undefined, network: string | null | undefined) {
+export function useTokenPrice(
+  tokenId: string | null | undefined,
+  network: string | null | undefined,
+) {
   return useQuery({
     queryKey: ["tokenPrice", tokenId, network],
     queryFn: () => getTokenPrice(tokenId!, network!),
@@ -97,7 +131,7 @@ export function useBatchTokenPrices(tokenIds: string[]) {
 export function useTokenBalance(
   accountId: string | null | undefined,
   tokenId: string | null | undefined,
-  network: string | null | undefined
+  network: string | null | undefined,
 ) {
   return useQuery({
     queryKey: ["tokenBalance", accountId, tokenId],
@@ -114,7 +148,7 @@ export function useTokenBalance(
  */
 export function useBatchTokenBalances(
   accountId: string | null | undefined,
-  tokenIds: string[]
+  tokenIds: string[],
 ) {
   return useQuery({
     queryKey: ["batchTokenBalances", accountId, tokenIds],
@@ -145,7 +179,7 @@ export function useTreasuryPolicy(treasuryId: string | null | undefined) {
  */
 export function useStorageDepositIsRegistered(
   accountId: string | null | undefined,
-  tokenId: string | null | undefined
+  tokenId: string | null | undefined,
 ) {
   return useQuery({
     queryKey: ["storageDepositIsRegistered", accountId, tokenId],
@@ -161,7 +195,7 @@ export function useStorageDepositIsRegistered(
  * Re-uses individual cache entries on the backend rather than caching the full batch query
  */
 export function useBatchStorageDepositIsRegistered(
-  requests: StorageDepositRequest[]
+  requests: StorageDepositRequest[],
 ) {
   return useQuery({
     queryKey: ["batchStorageDepositIsRegistered", requests],
@@ -178,7 +212,7 @@ export function useBatchStorageDepositIsRegistered(
  */
 export function useToken(
   tokenId: string | null | undefined,
-  network: string | null | undefined
+  network: string | null | undefined,
 ) {
   return useQuery({
     queryKey: ["tokenMetadata", tokenId, network],
