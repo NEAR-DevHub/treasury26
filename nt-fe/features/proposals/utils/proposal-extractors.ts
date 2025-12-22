@@ -31,7 +31,7 @@ function extractFTTransferData(functionCall: FunctionCallKind["FunctionCall"], a
         tokenId: functionCall.receiver_id,
         amount: args.amount || "0",
         receiver: args.receiver_id || "",
-        network: "NEAR",
+        network: "near",
       };
     }
   }
@@ -45,7 +45,7 @@ export function extractPaymentRequestData(proposal: Proposal): PaymentRequestDat
   let tokenId = "near";
   let amount = "0";
   let receiver = "";
-  let network = "NEAR";
+  let network = "near";
 
   if ("Transfer" in proposal.kind) {
     const transfer = proposal.kind.Transfer;
@@ -153,17 +153,26 @@ export function extractStakingData(proposal: Proposal): StakingData {
       action.method_name === "deposit"
   );
   const withdrawAction = actions.find(
-    (action) => action.method_name === "withdraw" || action.method_name === "unstake"
+    (action) => action.method_name === "Withdraw Earnings" || action.method_name === "unstake"
   );
 
   const selectedAction = stakingAction || withdrawAction;
   const args = selectedAction ? decodeArgs(selectedAction.args) : null;
 
   const notes = decodeProposalDescription("notes", proposal.description);
+  const withdrawAmount = decodeProposalDescription(
+    "amount",
+    proposal.description
+  );
+  const customNotes = decodeProposalDescription(
+    "customNotes",
+    proposal.description
+  );
+
 
   return {
     tokenId: "near",
-    amount: args?.amount || "0",
+    amount: args?.amount || withdrawAmount || "0",
     receiver: functionCall.receiver_id,
     action: (selectedAction?.method_name as StakingData["action"]) || "stake",
     sourceWallet: isLockup ? "Lockup" : "Wallet",
@@ -280,7 +289,7 @@ export function extractSwapRequestData(proposal: Proposal): SwapRequestData {
     tokenOut,
     amountOut,
     destinationNetwork,
-    sourceNetwork: "NEAR", // As from mt_transfer_call
+    sourceNetwork: "near", // As from mt_transfer_call
     quoteSignature,
     depositAddress,
     timeEstimate: timeEstimate || undefined,
@@ -302,6 +311,7 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
     (a) => a.method_name === "ft_transfer_call" || a.method_name === "approve_list"
   );
 
+
   if (!action) {
     throw new Error("Proposal is not a Batch Payment Request proposal");
   }
@@ -318,6 +328,7 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
       batchId: args.list_id || "",
     }
   }
+
 
 
   return {
@@ -364,8 +375,9 @@ export function extractProposalData(proposal: Proposal): {
     case "Change Config":
       data = extractChangeConfigData(proposal);
       break;
-    case "Staking":
-    case "Withdraw":
+    case "Earn NEAR":
+    case "Unstake NEAR":
+    case "Withdraw Earnings":
       data = extractStakingData(proposal);
       break;
     case "Vesting":

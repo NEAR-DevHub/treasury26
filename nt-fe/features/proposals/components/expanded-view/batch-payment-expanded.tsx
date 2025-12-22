@@ -30,7 +30,7 @@ function PaymentDisplay({ number, payment, expanded, onExpandedClick, tokenId }:
             </div>
             <div className="flex gap-3 items-baseline text-sm text-muted-foreground">
                 <Address address={payment.recipient} />
-                <Amount amount={payment.amount.toString()} textOnly tokenId={tokenId} showUSDValue={false} network="NEAR" />
+                <Amount amount={payment.amount.toString()} textOnly tokenId={tokenId} showUSDValue={false} network="near" />
             </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -41,7 +41,7 @@ function PaymentDisplay({ number, payment, expanded, onExpandedClick, tokenId }:
                 },
                 {
                     label: "Amount",
-                    value: <Amount amount={payment.amount.toString()} tokenId={tokenId} network="NEAR" />
+                    value: <Amount amount={payment.amount.toString()} tokenId={tokenId} network="near" />
                 }
             ]} />
 
@@ -100,7 +100,7 @@ export function BatchPaymentRequestExpanded({ data }: BatchPaymentRequestExpande
     const items: InfoItem[] = [
         {
             label: "Total Amount",
-            value: <Amount showNetwork amount={data.totalAmount} tokenId={data.tokenId} network="NEAR" />
+            value: <Amount showNetwork amount={data.totalAmount} tokenId={data.tokenId} network="near" />
         },
         recipientsDisplay({ batchData, tokenId: data.tokenId })
     ];

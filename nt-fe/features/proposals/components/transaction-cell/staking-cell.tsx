@@ -7,6 +7,6 @@ interface StakingCellProps {
 
 export function StakingCell({ data }: StakingCellProps) {
     return (
-        <TokenCell data={data} />
+        <TokenCell data={data} prefix="Validator:" />
     );
 }

@@ -12,9 +12,10 @@ export type ProposalUIKind =
     | "Function Call"
     | "Change Policy"
     | "Change Config"
-    | "Staking"
+    | "Earn NEAR"
+    | "Unstake NEAR"
     | "Vesting"
-    | "Withdraw"
+    | "Withdraw Earnings"
     | "Unknown";
 
 /**
@@ -79,7 +80,7 @@ export interface StakingData {
     tokenId: string;
     amount: string;
     receiver: string;
-    action: "stake" | "deposit" | "deposit_and_stake" | "withdraw" | "unstake";
+    action: "stake" | "deposit" | "deposit_and_stake" | "Withdraw Earnings" | "unstake";
     sourceWallet: "Lockup" | "Wallet";
     validatorUrl: string;
     isLockup: boolean;
@@ -140,11 +141,12 @@ export interface ProposalTypeDataMap {
     "Function Call": FunctionCallData;
     "Change Policy": ChangePolicyData;
     "Change Config": ChangeConfigData;
-    Staking: StakingData;
+    "Earn NEAR": StakingData;
+    "Unstake NEAR": StakingData;
+    "Withdraw Earnings": StakingData;
     Vesting: VestingData;
     "Exchange": SwapRequestData;
     "Batch Payment Request": BatchPaymentRequestData;
-    Withdraw: StakingData; // Same as Staking
     Unknown: UnknownData;
 }
 

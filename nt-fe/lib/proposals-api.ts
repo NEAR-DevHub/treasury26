@@ -101,7 +101,7 @@ export interface ProposalsResponse {
   proposals: Proposal[];
 }
 
-export type StakeType = "stake" | "unstake" | "withdraw" | "whitelist";
+export type StakeType = "stake" | "unstake" | "Withdraw Earnings" | "whitelist";
 
 export type SourceType = "sputnikdao" | "intents" | "lockup";
 

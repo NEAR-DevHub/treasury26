@@ -19,7 +19,7 @@ const iconSizeClasses = {
     lg: "size-6",
 }
 
-export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, network = "NEAR", showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
+export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, network = "near", showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
     const { data: tokenData } = useToken(tokenId, network);
     const { data: tokenPriceData } = useTokenPrice(showUSDValue ? null : tokenId, network);
     const amountValue = amount ? formatBalance(amount, tokenData?.decimals || 24) : Number(amountWithDecimals).toFixed(6);
@@ -28,7 +28,6 @@ export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, 
         if (!isPriceAvailable || !amountValue || isNaN(Number(amountValue))) {
             return "N/A";
         }
-
 
         const price = tokenPriceData?.price || tokenData?.price;
         return `≈ $${(Number(amountValue) * price!).toFixed(2)}`;

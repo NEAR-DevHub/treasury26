@@ -45,8 +45,9 @@ export function TransactionCell({ proposal }: TransactionCellProps) {
     }
     case "Change Config":
       return "Updated Treasury Config";
-    case "Staking":
-    case "Withdraw": {
+    case "Earn NEAR":
+    case "Unstake NEAR":
+    case "Withdraw Earnings": {
       const stakingData = data as StakingData;
       return <StakingCell data={stakingData} />;
     }

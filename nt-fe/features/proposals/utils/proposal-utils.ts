@@ -50,18 +50,22 @@ function isMTTransferProposal(proposal: Proposal): boolean {
   return functionCall.actions.some(action => action.method_name === 'mt_transfer' || action.method_name === 'mt_transfer_call');
 }
 
-function isStakingProposal(proposal: Proposal): boolean {
-  if (!('FunctionCall' in proposal.kind)) return false;
+function stakingType(proposal: Proposal): "Earn NEAR" | "Withdraw Earnings" | "Unstake NEAR" | undefined {
+  if (!('FunctionCall' in proposal.kind)) return undefined;
   const functionCall = proposal.kind.FunctionCall;
   const isPool = functionCall.receiver_id.endsWith('poolv1.near') || functionCall.receiver_id.endsWith('lockup.near');
-  return isPool && functionCall.actions.some(action => action.method_name === 'stake' || action.method_name === 'deposit_and_stake' || action.method_name === 'deposit');
-}
+  if (!isPool) return undefined;
+  if (functionCall.actions.some(action => action.method_name === 'stake' || action.method_name === 'deposit_and_stake' || action.method_name === 'deposit')) {
+    return "Earn NEAR";
+  }
+  if (functionCall.actions.some(action => action.method_name === 'withdraw' || action.method_name === 'withdraw_all' || action.method_name === 'withdraw_all_from_staking_pool')) {
+    return "Withdraw Earnings";
+  }
+  if (functionCall.actions.some(action => action.method_name === 'unstake')) {
+    return "Unstake NEAR";
+  }
+  return undefined;
 
-function isStakingWithdrawProposal(proposal: Proposal): boolean {
-  if (!('FunctionCall' in proposal.kind)) return false;
-  const functionCall = proposal.kind.FunctionCall;
-  const isPool = functionCall.receiver_id.endsWith('poolv1.near') || functionCall.receiver_id.endsWith('lockup.near');
-  return isPool && functionCall.actions.some(action => action.method_name === 'withdraw' || action.method_name === 'unstake');
 }
 
 /**
@@ -89,11 +93,9 @@ export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
       if (isMTTransferProposal(proposal)) {
         return "Exchange";
       }
-      if (isStakingProposal(proposal)) {
-        return "Staking";
-      }
-      if (isStakingWithdrawProposal(proposal)) {
-        return "Withdraw";
+      const stakingTypeResult = stakingType(proposal);
+      if (stakingTypeResult) {
+        return stakingTypeResult;
       }
       return "Function Call";
     case "policy":

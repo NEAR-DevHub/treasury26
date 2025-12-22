@@ -54,8 +54,9 @@ function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
       const vestingData = data as VestingData;
       return <VestingExpanded data={vestingData} />;
     }
-    case "Staking":
-    case "Withdraw": {
+    case "Earn NEAR":
+    case "Unstake NEAR":
+    case "Withdraw Earnings": {
       const stakingData = data as StakingData;
       return <StakingExpanded data={stakingData} />;
     }

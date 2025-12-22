@@ -1,4 +1,4 @@
-import { FileText, Shield, Clock, CreditCard, TerminalSquare, Database } from "lucide-react";
+import { FileText, Shield, Clock, CreditCard, TerminalSquare, Database, ArrowDownToLine } from "lucide-react";
 import { Proposal } from "@/lib/proposals-api";
 import { getProposalUIKind } from "../utils/proposal-utils";
 
@@ -36,10 +36,22 @@ export function ProposalTypeIcon({ proposal }: ProposalTypeIconProps) {
           <Clock className="size-5 dark:text-indigo-300 text-indigo-800" />
         </div>
       );
-    case "Staking":
+    case "Earn NEAR":
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg dark:bg-green-500/10 bg-green-100">
           <Database className="size-5 dark:text-green-300 text-green-700" />
+        </div>
+      );
+    case "Unstake NEAR":
+      return (
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg dark:bg-orange-500/10 bg-orange-100">
+          <ArrowDownToLine className="size-5 dark:text-orange-300 text-orange-800" />
+        </div>
+      );
+    case "Withdraw Earnings":
+      return (
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg dark:bg-green-500/10 bg-green-100">
+          <ArrowDownToLine className="size-5 dark:text-green-300 text-green-700" />
         </div>
       );
     case "Exchange":
