@@ -1,38 +1,51 @@
 "use client";
 
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/components/underline-tabs";
-import { useTreasury, } from "@/stores/treasury-store";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { GeneralTab } from "./components/general-tab";
 import { VotingTab } from "./components/voting-tab";
 import { PreferencesTab } from "./components/preferences-tab";
+import { useState } from "react";
 
 export default function SettingsPage() {
-  const { treasury } = useTreasury();
+  const [activeTab, setActiveTab] = useState("general");
 
+  const toggleGroupItemStyle =
+    "h-8 !rounded-full px-3 text-sm font-medium transition-all data-[state=off]:bg-transparent data-[state=off]:text-foreground data-[state=off]:hover:text-foreground/80 data-[state=on]:!bg-foreground data-[state=on]:!text-background data-[state=on]:shadow-none data-[state=on]:!rounded-full";
   return (
-    <PageComponentLayout title="Settings" description="Adjust your application settings">
-      <Tabs defaultValue="general" className="w-full max-w-3xl mx-auto gap-4">
-        <TabsList >
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="voting">Voting</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
-        </TabsList>
+    <PageComponentLayout
+      title="Settings"
+      description="Adjust your application settings"
+    >
+      <div className="w-full max-w-4xl mx-auto px-4">
+        <div className="flex mb-6">
+          <div className="inline-flex items-center gap-1 rounded-full bg-card border shadow-sm p-1">
+            <ToggleGroup
+              type="single"
+              value={activeTab}
+              onValueChange={(value) => value && setActiveTab(value)}
+              className="flex gap-1"
+            >
+              <ToggleGroupItem value="general" className={toggleGroupItemStyle}>
+                General
+              </ToggleGroupItem>
+              <ToggleGroupItem value="voting" className={toggleGroupItemStyle}>
+                Voting
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="preferences"
+                className={toggleGroupItemStyle}
+              >
+                Preferences
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </div>
 
-        <TabsContents>
-          <TabsContent value="general">
-            <GeneralTab currentTreasury={treasury || undefined} />
-          </TabsContent>
-
-          <TabsContent value="voting">
-            <VotingTab />
-          </TabsContent>
-
-          <TabsContent value="preferences">
-            <PreferencesTab />
-          </TabsContent>
-        </TabsContents>
-      </Tabs>
-    </PageComponentLayout >
+        {activeTab === "general" && <GeneralTab />}
+        {activeTab === "voting" && <VotingTab />}
+        {activeTab === "preferences" && <PreferencesTab />}
+      </div>
+    </PageComponentLayout>
   );
 }

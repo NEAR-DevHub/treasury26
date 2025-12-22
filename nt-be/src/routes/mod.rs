@@ -40,6 +40,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/treasury/policy",
             get(handlers::treasury::policy::get_treasury_policy)
         )
+        .route(
+            "/api/treasury/config",
+            get(handlers::treasury::config::get_treasury_config)
+        )
         // User endpoints
         .route(
             "/api/user/balance",

@@ -26,11 +26,9 @@ export interface UserInfo {
 
 export type WeightOrRatio =
   | string // U128 as string
-  | { Ratio: [number, number] }; // (numerator, denominator)
+  | [number, number]; // (numerator, denominator)
 
-export type WeightKind =
-  | "TokenWeight"
-  | "RoleWeight";
+export type WeightKind = "TokenWeight" | "RoleWeight";
 
 export interface VotePolicy {
   /** Kind of weight to use for votes */

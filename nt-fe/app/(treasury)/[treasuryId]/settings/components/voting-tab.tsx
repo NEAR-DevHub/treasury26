@@ -4,75 +4,557 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/button";
 import { Slider } from "@/components/ui/slider";
-import { AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { Info, AlertTriangle, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { PageCard } from "@/components/card";
+import { useTreasury } from "@/stores/treasury-store";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  TabsContents,
+} from "@/components/underline-tabs";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { config, z } from "zod";
+import {
+  Form,
+  FormField,
+  FormControl,
+  FormItem,
+  FormMessage,
+} from "@/components/ui/form";
+import { useNear } from "@/stores/near-store";
+import { getApproversAndThreshold } from "@/lib/config-utils";
+import { User } from "@/components/user";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { encodeToMarkdown } from "@/lib/utils";
+
+const votingFormSchema = z.object({
+  voteDuration: z
+    .string()
+    .min(1, "Vote duration is required")
+    .refine((val) => !isNaN(Number(val)), {
+      message: "Vote duration must be a valid number",
+    })
+    .refine((val) => Number(val) >= 1, {
+      message: "Vote duration must be at least 1 day",
+    })
+    .refine((val) => Number(val) < 1000, {
+      message: "Vote duration must be less than 1000 days",
+    })
+    .refine((val) => Number.isInteger(Number(val)), {
+      message: "Vote duration must be a whole day",
+    }),
+  thresholds: z.record(z.string(), z.number()),
+});
+
+type VotingFormValues = z.infer<typeof votingFormSchema>;
+
+const proposalKinds = [
+  "config",
+  "policy",
+  "add_bounty",
+  "bounty_done",
+  "transfer",
+  "vote",
+  "remove_member_from_role",
+  "add_member_to_role",
+  "call",
+  "upgrade_self",
+  "upgrade_remote",
+  "set_vote_token",
+];
 
 export function VotingTab() {
-  const [votingThreshold, setVotingThreshold] = useState([2]);
-  const [voteDuration, setVoteDuration] = useState("7");
+  const { selectedTreasury } = useTreasury();
+  const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const { accountId, createProposal } = useNear();
+  const router = useRouter();
 
+  const form = useForm<VotingFormValues>({
+    resolver: zodResolver(votingFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      voteDuration: "7",
+      thresholds: {},
+    },
+  });
+
+  const [activeTab, setActiveTab] = useState<string>("");
+  const [originalDuration, setOriginalDuration] = useState<string>("");
+  const [originalThresholds, setOriginalThresholds] = useState<
+    Record<string, number>
+  >({});
+  const [isSubmittingThreshold, setIsSubmittingThreshold] = useState(false);
+  const [isSubmittingDuration, setIsSubmittingDuration] = useState(false);
+
+  // Check if user is authorized to make policy changes
+  const { approverAccounts } = useMemo(() => {
+    if (!policy || !accountId) return { approverAccounts: [] as string[] };
+    return getApproversAndThreshold(policy, accountId, "policy", false);
+  }, [policy, accountId]);
+
+  const isAuthorized = accountId && approverAccounts.includes(accountId);
+
+  // Get roles with Group kind (filter out Everyone and Member)
+  const groupRoles = useMemo(() => {
+    if (!policy?.roles) return [];
+
+    return policy.roles
+      .filter((role) => {
+        // Only include roles with Group kind
+        if (!("Group" in role.kind)) return false;
+
+        // Filter out specific role names
+        const roleName = role.name.toLowerCase();
+        if (
+          roleName === "create requests" ||
+          roleName === "requestor" ||
+          roleName === "all"
+        ) {
+          return false;
+        }
+
+        return true;
+      })
+      .map((role) => {
+        // Get the first available vote policy key, or use default
+        const firstPolicyKey = Object.keys(role.vote_policy)[0];
+        const votePolicy = firstPolicyKey
+          ? role.vote_policy[firstPolicyKey]
+          : policy.default_vote_policy;
+
+        const members = (
+          "Group" in role.kind ? role.kind.Group : []
+        ) as string[];
+        const memberCount = members.length;
+
+        // Calculate threshold for THIS specific role
+        let threshold = 1;
+        if (votePolicy.weight_kind === "RoleWeight") {
+          if (Array.isArray(votePolicy.threshold)) {
+            // It's a ratio array: [numerator, denominator]
+            const [numerator, denominator] = votePolicy.threshold;
+            if (denominator > 0) {
+              threshold = Math.ceil((numerator / denominator) * memberCount);
+            }
+          } else if (typeof votePolicy.threshold === "string") {
+            // It's a direct number as string (U128)
+            threshold = parseFloat(votePolicy.threshold);
+          }
+        }
+
+        threshold = Math.max(1, threshold || 1);
+        return {
+          name: role.name,
+          members,
+          votePolicy,
+          threshold,
+          memberCount,
+        };
+      });
+  }, [policy]);
+
+  // Initialize form with policy data
+  useEffect(() => {
+    if (policy?.proposal_period && groupRoles.length > 0) {
+      const nanoseconds = BigInt(policy.proposal_period);
+      const days = Number(nanoseconds / BigInt(86400000000000)); // ns to days
+
+      // Initialize thresholds for each role
+      const initialThresholds: Record<string, number> = {};
+      groupRoles.forEach((role) => {
+        initialThresholds[role.name] = role.threshold;
+      });
+
+      setOriginalDuration(days.toString());
+
+      form.reset({
+        voteDuration: days.toString(),
+        thresholds: initialThresholds,
+      });
+
+      // Save original thresholds for comparison
+      setOriginalThresholds(initialThresholds);
+
+      // Set initial active tab
+      if (!activeTab && groupRoles.length > 0) {
+        setActiveTab(groupRoles[0].name);
+      }
+    }
+  }, [policy, groupRoles, form, activeTab]);
+
+  // Check if we have specific roles for custom description
+  const hasApproversAndGovernance = useMemo(() => {
+    const roleNames = groupRoles.map((role) => role.name.toLowerCase());
+    return roleNames.includes("approvers") && roleNames.includes("governance");
+  }, [groupRoles]);
+
+  const thresholdDescription = hasApproversAndGovernance
+    ? "Define how many votes are required to approve payment and team-related requests. Configure thresholds separately for Approvers and Governance."
+    : "Define how many votes are required to approve requests. Configure thresholds for each role based on their responsibilities.";
+
+  const handleThresholdChange = async () => {
+    if (!selectedTreasury || !policy || !activeTab) {
+      toast.error("Missing required data");
+      return;
+    }
+
+    setIsSubmittingThreshold(true);
+    try {
+      const thresholds = form.watch("thresholds");
+      const newThreshold = thresholds[activeTab];
+
+      const description = {
+        title: "Update policy - Voting Thresholds",
+        summary: `${accountId} requested to change voting threshold from ${originalThresholds[activeTab]} to ${newThreshold}.`,
+      };
+
+      const proposalBond = policy?.proposal_bond || "0";
+
+      const result = await createProposal({
+        treasuryId: selectedTreasury,
+        proposal: {
+          description: encodeToMarkdown(description),
+          kind: {
+            ChangePolicy: {
+              policy: {
+                ...policy,
+                roles: policy.roles?.map((role) => {
+                  if (role.name === activeTab) {
+                    const vote_policy = proposalKinds.reduce(
+                      (policy: Record<string, any>, kind: string) => {
+                        (policy as Record<string, any>)[kind] = {
+                          weight_kind: "RoleWeight",
+                          quorum: "0",
+                          threshold: newThreshold.toString(),
+                        };
+                        return policy;
+                      },
+                      {},
+                    );
+                    return {
+                      ...role,
+                      vote_policy,
+                    };
+                  }
+                  return role;
+                }),
+              },
+            },
+          },
+        },
+        proposalBond: proposalBond,
+      });
+
+      toast.success("Request to update settings submitted", {
+        action: {
+          label: "View Request",
+          onClick: () => router.push(`/${selectedTreasury}/requests`),
+        },
+      });
+      // Update original thresholds
+      setOriginalThresholds((prev) => ({
+        ...prev,
+        [activeTab]: newThreshold,
+      }));
+    } catch (error) {
+      console.error("Error creating proposal:", error);
+      toast.error("Failed to create proposal");
+    } finally {
+      setIsSubmittingThreshold(false);
+    }
+  };
+
+  const handleDurationChange = async () => {
+    if (!selectedTreasury || !policy) {
+      toast.error("Missing required data");
+      return;
+    }
+
+    // Validate the vote duration field
+    const isValid = await form.trigger("voteDuration");
+    if (!isValid) {
+      return;
+    }
+
+    setIsSubmittingDuration(true);
+    try {
+      const voteDuration = form.watch("voteDuration");
+      const durationInNanoseconds =
+        Number(voteDuration) * 24 * 60 * 60 * 1_000_000_000;
+
+      const description = {
+        title: "Update policy - Voting Duration",
+        summary: `${accountId} requested to change voting duration from ${originalDuration} to ${voteDuration}.`,
+      };
+
+      const proposalBond = policy?.proposal_bond || "0";
+
+      await createProposal({
+        treasuryId: selectedTreasury,
+        proposal: {
+          description: encodeToMarkdown(description),
+          kind: {
+            ChangePolicyUpdateParameters: {
+              parameters: {
+                proposal_period: durationInNanoseconds.toString(),
+              },
+            },
+          },
+        },
+        proposalBond: proposalBond,
+      });
+
+      toast.success("Request to update settings submitted", {
+        action: {
+          label: "View Request",
+          onClick: () => router.push(`/${selectedTreasury}/requests`),
+        },
+      });
+      // Mark as not dirty
+      form.reset(form.getValues());
+    } catch (error) {
+      console.error("Error creating proposal:", error);
+      toast.error("Failed to create proposal");
+    } finally {
+      setIsSubmittingDuration(false);
+    }
+  };
+
+  console.log(form.watch("thresholds"));
   return (
-    <div className="space-y-6">
-      <PageCard>
-        <div>
-          <h3 className="text-lg font-semibold">Voting Threshold</h3>
-          <p className="text-sm text-muted-foreground">
-            The number of votes required for a proposal to pass.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>1</span>
-            <span className="text-2xl font-bold text-foreground">{votingThreshold[0]}</span>
-            <span>3</span>
-            <span>4</span>
-          </div>
-
-          <Slider
-            value={votingThreshold}
-            onValueChange={setVotingThreshold}
-            min={1}
-            max={4}
-            step={1}
-            className="w-full"
-          />
-
-          <div className="flex items-start gap-2 rounded-lg bg-muted p-4 border">
-            <AlertTriangle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-blue-500">
-              A 2-of-4 threshold provides a good balance between security and operational flexibility.
+    <Form {...form}>
+      <div className="space-y-6">
+        <PageCard>
+          <div>
+            <h3 className="text-lg font-semibold">Voting Threshold</h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              {thresholdDescription}
             </p>
           </div>
-        </div>
-      </PageCard>
 
-      <PageCard>
-        <div>
-          <h3 className="text-lg font-semibold">Vote Duration</h3>
-          <p className="text-sm text-muted-foreground">
-            The length of time (in days) a proposal will remain open for voting.
-          </p>
-        </div>
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <TabsList>
+              {groupRoles.map((role) => (
+                <TabsTrigger key={role.name} value={role.name}>
+                  {role.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-        <div className="space-y-2">
-          <Label htmlFor="vote-duration">Days</Label>
-          <Input
-            id="vote-duration"
-            type="number"
-            value={voteDuration}
-            onChange={(e) => setVoteDuration(e.target.value)}
-            min="1"
+            <TabsContents>
+              {groupRoles.map((role) => (
+                <TabsContent key={role.name} value={role.name}>
+                  <div className="space-y-4 mt-2">
+                    {/* Members who can vote */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">
+                        Members who can vote
+                      </span>
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-sm">
+                        {role.memberCount}
+                      </span>
+                    </div>
+
+                    {/* Member avatars */}
+                    <div className="flex items-center">
+                      {role.members
+                        .slice(0, 10)
+                        .map((member: string, index: number) => (
+                          <div key={member} className="-ml-2 first:ml-0">
+                            <User
+                              accountId={member}
+                              iconOnly={true}
+                              size="lg"
+                              withLink={false}
+                            />
+                          </div>
+                        ))}
+                      {role.memberCount > 10 && (
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          +{role.memberCount - 10} more
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Threshold slider */}
+                    {(() => {
+                      const thresholds = form.watch("thresholds");
+                      const currentThreshold =
+                        thresholds?.[role.name] ?? role.threshold;
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="space-y-2 bg-muted rounded-lg p-4">
+                            <div className="flex items-center justify-between text-sm mb-2">
+                              {Array.from(
+                                { length: role.memberCount },
+                                (_, i) => i + 1,
+                              ).map((num) => (
+                                <span
+                                  key={num}
+                                  className={
+                                    num === currentThreshold
+                                      ? "font-semibold text-foreground"
+                                      : "text-muted-foreground"
+                                  }
+                                >
+                                  {num}
+                                </span>
+                              ))}
+                            </div>
+
+                            <Slider
+                              value={[currentThreshold]}
+                              onValueChange={(value) => {
+                                form.setValue(
+                                  "thresholds",
+                                  {
+                                    ...thresholds,
+                                    [role.name]: value[0],
+                                  },
+                                  { shouldDirty: true },
+                                );
+                              }}
+                              min={1}
+                              max={role.memberCount}
+                              step={1}
+                              className="w-full **:data-[slot=slider-track]:bg-gray-300 dark:**:data-[slot=slider-track]:bg-gray-700 **:data-[slot=slider-track]:h-2 **:data-[slot=slider-range]:bg-black dark:**:data-[slot=slider-range]:bg-white"
+                              disabled={!isAuthorized}
+                            />
+                          </div>
+
+                          {/* Warning banner - show when threshold is 1 */}
+                          {currentThreshold === 1 && (
+                            <div className="mt-3 flex items-start gap-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 p-3 border border-yellow-200 dark:border-yellow-900">
+                              <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                              <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                                A 1-of-{role.memberCount} threshold means any
+                                single member can execute transactions. This
+                                reduces security.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Info banner - only show if threshold is between 1 and less than total */}
+                          {currentThreshold > 1 &&
+                            currentThreshold < role.memberCount && (
+                              <div className="mt-3 flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 border border-blue-200 dark:border-blue-900">
+                                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                                <p className="text-sm text-blue-600 dark:text-blue-400">
+                                  A {currentThreshold}-of-{role.memberCount}{" "}
+                                  threshold provides a good balance between
+                                  security and operational flexibility.
+                                </p>
+                              </div>
+                            )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </TabsContent>
+              ))}
+            </TabsContents>
+          </Tabs>
+
+          <div className="rounded-lg border bg-card p-0 overflow-hidden">
+            <Button
+              className="w-full h-10 rounded-none"
+              onClick={handleThresholdChange}
+              disabled={
+                !isAuthorized ||
+                !activeTab ||
+                !form.watch("thresholds")?.[activeTab] ||
+                form.watch("thresholds")[activeTab] ===
+                  originalThresholds[activeTab] ||
+                isSubmittingThreshold
+              }
+            >
+              {isSubmittingThreshold ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Proposal...
+                </>
+              ) : !accountId ? (
+                "Sign in required"
+              ) : !isAuthorized ? (
+                "You don't have permission to change the voting threshold"
+              ) : (
+                "Create Request"
+              )}
+            </Button>
+          </div>
+        </PageCard>
+
+        <PageCard>
+          <div>
+            <h3 className="text-lg font-semibold">Vote Duration</h3>
+            <p className="text-sm text-muted-foreground">
+              The length of time (in days) a proposal will remain open for
+              voting. If voting is not completed within this period, the
+              decision expires. This duration applies equally to both Governance
+              and Approver roles.
+            </p>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="voteDuration"
+            render={({ field }) => (
+              <FormItem>
+                <Label htmlFor="vote-duration">Days</Label>
+                <FormControl>
+                  <Input
+                    id="vote-duration"
+                    type="number"
+                    min="1"
+                    max="999"
+                    step="1"
+                    disabled={!isAuthorized}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
-      </PageCard>
 
-      <div className="rounded-lg border bg-card">
-        <Button className="w-full h-14">
-          Create Request
-        </Button>
+          <div className="rounded-lg border bg-card p-0 overflow-hidden mt-4">
+            <Button
+              className="w-full h-10 rounded-none"
+              onClick={handleDurationChange}
+              disabled={
+                !isAuthorized ||
+                !form.formState.dirtyFields.voteDuration ||
+                !!form.formState.errors.voteDuration ||
+                isSubmittingDuration
+              }
+            >
+              {isSubmittingDuration ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Proposal...
+                </>
+              ) : !accountId ? (
+                "Sign in required"
+              ) : !isAuthorized ? (
+                "You don't have permission to change the vote duration"
+              ) : (
+                "Create Request"
+              )}
+            </Button>
+          </div>
+        </PageCard>
       </div>
-    </div>
+    </Form>
   );
 }

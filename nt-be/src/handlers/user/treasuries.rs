@@ -20,11 +20,10 @@ pub struct UserTreasuriesQuery {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TreasuryMetadata {
-    #[serde(rename = "primaryColor")]
+    #[serde(rename = "primaryColor", default)]
     pub primary_color: Option<String>,
-    #[serde(rename = "flagLogo")]
+    #[serde(rename = "flagLogo", default)]
     pub flag_logo: Option<String>,
-    pub theme: Option<String>,
 }
 
 #[serde_as]
@@ -32,11 +31,12 @@ pub struct TreasuryMetadata {
 pub struct TreasuryConfigFromContract {
     #[serde_as(as = "Base64Json<TreasuryMetadata>")]
     pub metadata: Option<TreasuryMetadata>,
+    #[serde(default)]
     pub name: Option<String>,
+    #[serde(default)]
     pub purpose: Option<String>,
 }
 
-#[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TreasuryConfig {
     pub metadata: Option<TreasuryMetadata>,
