@@ -27,7 +27,7 @@ export function SwapExpanded({ data }: SwapExpandedProps) {
     },
     {
       label: "Rate",
-      value: <Rate tokenIn={data.tokenIn} networkIn={data.sourceNetwork} tokenOut={data.tokenOut} networkOut={data.destinationNetwork} amountIn={Big(data.amountIn)} amountOutWithDecimals={Big(data.amountOut)} />,
+      value: <Rate tokenIn={data.tokenIn} networkIn={data.sourceNetwork} tokenOut={data.tokenOut} networkOut={data.destinationNetwork} amountIn={Big(data.amountIn)} amountOutWithDecimals={data.amountOut} />,
     }
   ];
 

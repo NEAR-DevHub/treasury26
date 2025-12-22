@@ -13,7 +13,6 @@ import { format } from "date-fns";
 const FILTER_OPTIONS = [
     { id: "proposal_types", label: "Requests Type" },
     { id: "created_date", label: "Created Date" },
-    { id: "statuses", label: "Status" },
     { id: "recipients", label: "Recipient" },
     { id: "tokens", label: "Token" },
     { id: "proposers", label: "Requester" },

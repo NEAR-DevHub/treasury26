@@ -10,8 +10,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, Filter, Download } from "lucide-react";
+import { Download } from "lucide-react";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
@@ -67,7 +66,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
     }
 
     return f;
-  }, [page, pageSize, status, searchParams]);
+  }, [page, pageSize, searchParams]);
 
   const updatePage = useCallback((newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());

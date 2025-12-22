@@ -166,7 +166,7 @@ export async function getProposals(
   filters?: ProposalFilters
 ): Promise<ProposalsResponse> {
   if (!daoId) {
-    return { page: 0, page_size: 0, proposals: [] };
+    return { page: 0, page_size: 0, total: 0, proposals: [] };
   }
 
   try {
@@ -217,7 +217,7 @@ export async function getProposals(
     return response.data;
   } catch (error) {
     console.error(`Error getting proposals for DAO ${daoId}`, error);
-    return { page: 0, page_size: 0, proposals: [] };
+    return { page: 0, page_size: 0, total: 0, proposals: [] };
   }
 }
 

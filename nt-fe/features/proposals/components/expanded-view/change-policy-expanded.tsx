@@ -39,7 +39,7 @@ export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
                   <div>
                     <span className="text-muted-foreground">Members:</span>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {role.kind.Group.map((member, idx) => (
+                      {"Group" in role.kind && role.kind.Group.map((member, idx) => (
                         <span
                           key={idx}
                           className="px-2 py-1 bg-muted rounded text-xs font-medium"

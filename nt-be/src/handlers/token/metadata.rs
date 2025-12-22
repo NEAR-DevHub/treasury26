@@ -1,11 +1,10 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use axum::{
     Json,
     extract::{Query, State},
     response::IntoResponse,
 };
-use near_api::{AccountId, NetworkConfig, Tokens};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
@@ -31,31 +30,6 @@ pub struct TokenMetadataResponse {
     pub price_updated_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub chain_name: Option<String>,
-}
-
-async fn fetch_near_token_metadata(
-    token_id: AccountId,
-    network: &NetworkConfig,
-) -> Result<TokenMetadataResponse, String> {
-    let metadata = Tokens::ft_metadata(token_id.clone())
-        .fetch_from(network)
-        .await
-        .map_err(|e| {
-            eprintln!("Error fetching token metadata for {}: {}", token_id, e);
-            format!("Failed to fetch token metadata: {}", e)
-        })?
-        .data;
-
-    Ok(TokenMetadataResponse {
-        token_id: token_id.to_string(),
-        name: metadata.name,
-        symbol: metadata.symbol,
-        decimals: metadata.decimals,
-        icon: metadata.icon,
-        price: None,
-        price_updated_at: None,
-        chain_name: Some("near".to_string()),
-    })
 }
 
 pub async fn get_token_metadata(

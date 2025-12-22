@@ -4,7 +4,7 @@ export { TransactionCell } from "./components/transaction-cell";
 export { ExpandedView } from "./components/expanded-view";
 
 // Utils
-export { getProposalType } from "./utils/proposal-utils";
+export { getProposalUIKind } from "./utils/proposal-utils";
 
 // Types
 export type { ProposalType, ProposalTypeInfo } from "./types";
