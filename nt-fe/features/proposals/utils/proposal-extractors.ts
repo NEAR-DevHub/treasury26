@@ -164,11 +164,6 @@ export function extractStakingData(proposal: Proposal): StakingData {
     "amount",
     proposal.description
   );
-  const customNotes = decodeProposalDescription(
-    "customNotes",
-    proposal.description
-  );
-
 
   return {
     tokenId: "near",
