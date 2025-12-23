@@ -23,3 +23,6 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres",
 uuid = { version = "1.11", features = ["v4", "serde"] }
 env_logger = "0.11"
 log = "0.4"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

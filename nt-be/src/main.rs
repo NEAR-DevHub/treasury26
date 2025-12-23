@@ -1,25 +1,12 @@
-mod constants;
-mod handlers;
-mod routes;
-mod utils;
-
 use axum::Router;
 use moka::future::Cache;
 use near_api::{NetworkConfig, RPCEndpoint};
+use nf_be::AppState;
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::utils::env::EnvVars;
-
-pub struct AppState {
-    pub http_client: reqwest::Client,
-    pub cache: Cache<String, serde_json::Value>,
-    pub network: NetworkConfig,
-    pub archival_network: NetworkConfig,
-    pub env_vars: EnvVars,
-    pub db_pool: sqlx::PgPool,
-}
+use nf_be::utils::env::EnvVars;
 
 #[tokio::main]
 async fn main() {
@@ -90,7 +77,7 @@ async fn main() {
         .allow_headers(Any);
 
     let app = Router::new()
-        .merge(routes::create_routes(state))
+        .merge(nf_be::routes::create_routes(state))
         .layer(cors);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());

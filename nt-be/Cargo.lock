@@ -1655,6 +1655,7 @@ dependencies = [
  "serde_with",
  "sqlx",
  "tokio",
+ "tower",
  "tower-http",
  "uuid",
 ]
