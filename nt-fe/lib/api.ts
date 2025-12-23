@@ -16,7 +16,7 @@ export interface Timezone {
 export async function getTimezones(): Promise<Timezone[]> {
   try {
     const response = await fetch(
-      `https://ref-sdk-test-cold-haze-1300-2.fly.dev/api/timezones`,
+      `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api/proxy/timezones`,
       {
         method: "GET",
         headers: {

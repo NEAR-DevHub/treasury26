@@ -97,5 +97,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/intents/supported-tokens",
             get(handlers::intents::supported_tokens::get_supported_tokens),
         )
+        // Proxy endpoints - catch-all for external API
+        .route(
+            "/api/proxy/{*path}",
+            get(handlers::proxy::external::proxy_external_api),
+        )
         .with_state(state)
 }

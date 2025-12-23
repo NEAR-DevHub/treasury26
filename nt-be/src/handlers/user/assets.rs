@@ -293,23 +293,25 @@ fn build_simplified_tokens(
                 &token_id
             };
 
-            if let Some(price_data) = token_prices.get(price_key)
-                && let Some(price) = price_data.get("price").and_then(|p| p.as_str())
-            {
-                Some(SimplifiedToken {
-                    id: token_id.clone(),
-                    decimals: token_metadata.decimals,
-                    balance: get_token_balance(&token_id, user_balances, &balance_map),
-                    price: price.to_string(),
-                    symbol: token_metadata.symbol.clone(),
-                    name: if token_metadata.name.is_empty() {
-                        token_metadata.symbol.clone()
-                    } else {
-                        token_metadata.name.clone()
-                    },
-                    icon: get_token_icon(&token_id, &token_metadata),
-                    network: "NEAR".to_string(),
-                })
+            if let Some(price_data) = token_prices.get(price_key) {
+                if let Some(price) = price_data.get("price").and_then(|p| p.as_str()) {
+                    Some(SimplifiedToken {
+                        id: token_id.clone(),
+                        decimals: token_metadata.decimals,
+                        balance: get_token_balance(&token_id, user_balances, &balance_map),
+                        price: price.to_string(),
+                        symbol: token_metadata.symbol.clone(),
+                        name: if token_metadata.name.is_empty() {
+                            token_metadata.symbol.clone()
+                        } else {
+                            token_metadata.name.clone()
+                        },
+                        icon: get_token_icon(&token_id, &token_metadata),
+                        network: "NEAR".to_string(),
+                    })
+                } else {
+                    None
+                }
             } else {
                 None
             }

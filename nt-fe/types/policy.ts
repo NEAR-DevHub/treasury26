@@ -4,7 +4,7 @@
  */
 
 export type RoleKind =
-  | { Everyone: {} }
+  | "Everyone"
   | { Member: string } // NearToken as string
   | { Group: string[] }; // Set of AccountIds
 

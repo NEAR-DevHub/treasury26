@@ -301,7 +301,10 @@ export function PreferencesTab() {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <div className="flex items-center gap-2 px-2 pb-2 border-b sticky top-0 bg-popover z-10">
+                        <div 
+                          className="flex items-center gap-2 px-2 pb-2 border-b sticky top-0 bg-popover z-10"
+                          onPointerDown={(e) => e.stopPropagation()}
+                        >
                           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
                           <Input
                             placeholder="Search timezones..."
@@ -310,6 +313,7 @@ export function PreferencesTab() {
                             className="h-8 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                             onClick={(e) => e.stopPropagation()}
                             onKeyDown={(e) => e.stopPropagation()}
+                            autoFocus
                           />
                         </div>
                         <div className="max-h-[300px] overflow-y-auto">

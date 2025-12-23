@@ -106,8 +106,7 @@ export function VotingTab() {
 
     return policy.roles
       .filter((role) => {
-        // Only include roles with Group kind
-        if (!("Group" in role.kind)) return false;
+        if (role.kind === "Everyone") return false;
 
         // Filter out specific role names
         const roleName = role.name.toLowerCase();
@@ -129,7 +128,9 @@ export function VotingTab() {
           : policy.default_vote_policy;
 
         const members = (
-          "Group" in role.kind ? role.kind.Group : []
+          typeof role.kind === "object" && "Group" in role.kind
+            ? role.kind.Group
+            : []
         ) as string[];
         const memberCount = members.length;
 
@@ -235,7 +236,7 @@ export function VotingTab() {
                         };
                         return policy;
                       },
-                      {},
+                      {}
                     );
                     return {
                       ...role,
@@ -375,7 +376,7 @@ export function VotingTab() {
                               accountId={member}
                               iconOnly={true}
                               size="lg"
-                              withLink={false}
+                              withLink={true}
                             />
                           </div>
                         ))}
@@ -398,7 +399,7 @@ export function VotingTab() {
                             <div className="flex items-center justify-between text-sm mb-2">
                               {Array.from(
                                 { length: role.memberCount },
-                                (_, i) => i + 1,
+                                (_, i) => i + 1
                               ).map((num) => (
                                 <span
                                   key={num}
@@ -422,7 +423,7 @@ export function VotingTab() {
                                     ...thresholds,
                                     [role.name]: value[0],
                                   },
-                                  { shouldDirty: true },
+                                  { shouldDirty: true }
                                 );
                               }}
                               min={1}
@@ -501,8 +502,10 @@ export function VotingTab() {
             <p className="text-sm text-muted-foreground">
               The length of time (in days) a proposal will remain open for
               voting. If voting is not completed within this period, the
-              decision expires. This duration applies equally to both Governance
-              and Approver roles.
+              decision expires.
+              {hasApproversAndGovernance
+                ? " This duration applies equally to both Governance and Approver roles."
+                : " This duration is consistent across all treasury roles."}
             </p>
           </div>
 
