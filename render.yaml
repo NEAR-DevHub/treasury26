@@ -18,6 +18,10 @@ services:
         value: info
       - key: PORT
         value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: database
+          property: connectionString
     healthCheckPath: /api/health
 
   # Frontend Service (Next.js)
@@ -37,3 +41,7 @@ services:
           name: near-treasury-backend
           envVarKey: RENDER_EXTERNAL_URL
     healthCheckPath: /
+
+databases:
+  - name: database
+    plan: free
