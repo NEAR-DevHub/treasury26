@@ -1,6 +1,3 @@
-import { useToken } from "@/hooks/use-treasury-queries";
-import { formatBalance } from "@/lib/utils";
-import { Coins } from "lucide-react";
 import { PaymentRequestData, VestingData, StakingData } from "../../types/index";
 import { Amount } from "../amount";
 import { TooltipUser } from "@/components/user";
