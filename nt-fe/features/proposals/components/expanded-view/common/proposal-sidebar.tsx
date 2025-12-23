@@ -118,26 +118,27 @@ function ExecutedSection({ status }: { status: ProposalStatus }) {
 }
 
 export function ProposalSidebar({ proposal, policy }: ProposalSidebarProps) {
-  const { accountId, voteProposal } = useNear();
+  const { accountId, voteProposals } = useNear();
   const { selectedTreasury } = useTreasury();
   const isPending = proposal.status === "InProgress";
   const proposalKind = getKindFromProposal(proposal.kind) ?? "call";
   const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposalKind, false);
 
   const canVote = approverAccounts.includes(accountId ?? "") && accountId && selectedTreasury;
-  const onReject = () => {
-    if (!canVote) return;
-    voteProposal(selectedTreasury ?? "", proposal.id.toString(), proposalKind, "Reject").then((result) => {
-      console.log(result);
-    });
-  }
 
-  const onApprove = async () => {
+  const handleVote = async (vote: "Approve" | "Reject") => {
     if (!canVote) return;
-    await voteProposal(selectedTreasury ?? "", proposal.id.toString(), proposalKind, "Approve").then((result) => {
+    try {
+      const result = await voteProposals(selectedTreasury ?? "", [{
+        proposalId: proposal.id,
+        vote: vote,
+        proposalKind,
+      }]);
       console.log(result);
-    });
-  }
+    } catch (error) {
+      console.error(`Failed to ${vote.toLowerCase()} proposal:`, error);
+    }
+  };
 
   return (
     <PageCard className="w-full">
@@ -154,14 +155,14 @@ export function ProposalSidebar({ proposal, policy }: ProposalSidebarProps) {
           <Button
             variant="secondary"
             className="flex-1"
-            onClick={onReject}
+            onClick={() => handleVote("Reject")}
           >
             <X className="h-4 w-4 mr-2" />
             Reject
           </Button>
           <Button
             className="flex-1"
-            onClick={onApprove}
+            onClick={() => handleVote("Approve")}
           >
             <Check className="h-4 w-4 mr-2" />
             Approve

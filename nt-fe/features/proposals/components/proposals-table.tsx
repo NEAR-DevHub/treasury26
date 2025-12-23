@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Proposal, ProposalStatus } from "@/lib/proposals-api";
+import { Proposal, ProposalStatus, Vote } from "@/lib/proposals-api";
 import {
   Table,
   TableBody,
@@ -11,19 +11,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/button";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, X, Check } from "lucide-react";
 import { TransactionCell } from "./transaction-cell";
 import { ExpandedView } from "./expanded-view";
 import { ProposalTypeIcon } from "./proposal-type-icon";
 import { VotingIndicator } from "./voting-indicator";
 import { Policy } from "@/types/policy";
 import { formatDate } from "@/lib/utils";
-import { TooltipUser, User } from "@/components/user";
+import { TooltipUser } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Pagination } from "@/components/pagination";
 import { ProposalStatusPill } from "./proposal-status-pill";
+import { useNear } from "@/stores/near-store";
+import { useTreasury } from "@/stores/treasury-store";
+import { getApproversAndThreshold, getKindFromProposal } from "@/lib/config-utils";
 
 import {
   ColumnDef,
@@ -57,6 +60,8 @@ export function ProposalsTable({
 }: ProposalsTableProps) {
   const [rowSelection, setRowSelection] = useState({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const { accountId, voteProposals } = useNear();
+  const { selectedTreasury } = useTreasury();
 
   const columns = useMemo<ColumnDef<Proposal, any>[]>(
     () => [
@@ -69,13 +74,25 @@ export function ProposalsTable({
             aria-label="Select all"
           />
         ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
+        cell: ({ row }) => {
+          const proposal = row.original;
+          const proposalKind = getKindFromProposal(proposal.kind) ?? "call";
+          const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposalKind, false);
+          const proposalStatus = getProposalStatus(proposal, policy);
+          const canVote = approverAccounts.includes(accountId ?? "") && accountId && selectedTreasury && proposal.status === "InProgress" && proposalStatus !== "Expired";
+
+          if (!canVote) {
+            return null;
+          }
+
+          return (
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+            />
+          );
+        },
         enableSorting: false,
         enableHiding: false,
       }),
@@ -154,7 +171,7 @@ export function ProposalsTable({
         ),
       }),
     ],
-    [policy]
+    [policy, accountId, selectedTreasury]
   );
 
   const table = useReactTable({
@@ -175,6 +192,13 @@ export function ProposalsTable({
     getExpandedRowModel: getExpandedRowModel(),
     getRowId: (row) => row.id.toString(),
     manualPagination: true,
+    enableRowSelection: (row) => {
+      const proposal = row.original;
+      const proposalKind = getKindFromProposal(proposal.kind) ?? "call";
+      const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposalKind, false);
+      const proposalStatus = getProposalStatus(proposal, policy);
+      return approverAccounts.includes(accountId ?? "") && !!accountId && !!selectedTreasury && proposal.status === "InProgress" && proposalStatus !== "Expired";
+    },
   });
 
   if (proposals.length === 0 && pageIndex === 0) {
@@ -186,9 +210,48 @@ export function ProposalsTable({
   }
 
   const totalPages = Math.ceil(total / pageSize);
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
+  const selectedProposals = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+
+  const handleBulkVote = async (vote: "Approve" | "Reject") => {
+    if (!selectedTreasury || !accountId) return;
+
+    // All selected proposals are guaranteed to be votable due to enableRowSelection
+    await voteProposals(selectedTreasury, selectedProposals.map(proposal => ({
+      proposalId: proposal.id,
+      vote: vote,
+      proposalKind: getKindFromProposal(proposal.kind) ?? "call",
+    })));
+
+    // Clear selection after voting
+    table.resetRowSelection();
+  };
 
   return (
     <div className="flex flex-col gap-4">
+      {selectedCount > 0 && (
+        <div className="flex items-center justify-between pt-6 pb-4 px-5 border-b">
+          <span className="font-semibold">
+            {selectedCount} {selectedCount === 1 ? 'request' : 'requests'} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => handleBulkVote("Reject")}
+            >
+              <X className="h-4 w-4" />
+              Reject
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => handleBulkVote("Approve")}
+            >
+              <Check className="h-4 w-4" />
+              Approve
+            </Button>
+          </div>
+        </div>
+      )}
       <ScrollArea className="grid">
         <Table>
           <TableHeader>
@@ -210,7 +273,22 @@ export function ProposalsTable({
           <TableBody>
             {table.getRowModel().rows.map((row) => (
               <Fragment key={row.id}>
-                <TableRow data-state={row.getIsSelected() && "selected"}>
+                <TableRow
+                  data-state={row.getIsSelected() && "selected"}
+                  onClick={(e) => {
+                    // Don't expand if clicking on checkbox or expand button
+                    const target = e.target as HTMLElement;
+                    if (
+                      target.closest('button') ||
+                      target.closest('[role="checkbox"]') ||
+                      target.tagName === 'INPUT'
+                    ) {
+                      return;
+                    }
+                    row.toggleExpanded();
+                  }}
+                  className="cursor-pointer"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

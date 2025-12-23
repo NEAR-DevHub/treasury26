@@ -81,12 +81,6 @@ pub async fn get_token_metadata(
         chain_name: Some(token.chain_name),
     };
 
-    if (metadata.decimals != 24 && params.token_id == "wrap.near") {
-        println!("Tokens: {:#?}", tokens);
-        println!("Token {} has 9 decimals", params.token_id);
-        println!("Token metadata: {:?}", metadata);
-        println!("Params: {} / {}", params.token_id, params.network);
-    }
     if is_near {
         metadata.name = "NEAR".to_string();
         metadata.symbol = "NEAR".to_string();

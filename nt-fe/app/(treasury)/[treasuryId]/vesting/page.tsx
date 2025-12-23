@@ -250,7 +250,7 @@ export default function VestingPage() {
         whitelist_account_id: LOCKUP_NO_WHITELIST_ACCOUNT_ID,
       } : {};
 
-      await createProposal({
+      await createProposal("Request to create vesting schedule submitted", {
         treasuryId: selectedTreasury!,
         proposal: {
           description: encodeToMarkdown(description),
@@ -276,6 +276,7 @@ export default function VestingPage() {
         },
         proposalBond,
       });
+      form.reset(form.getValues());
     } catch (error) {
       console.error("Vesting error", error);
     } finally {

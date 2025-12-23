@@ -214,7 +214,7 @@ export default function PaymentsPage() {
         });
       }
 
-      await createProposal({
+      await createProposal("Request to send payment submitted", {
         treasuryId: selectedTreasury!,
         proposal: {
           description: encodeToMarkdown(description),
@@ -229,6 +229,7 @@ export default function PaymentsPage() {
         proposalBond,
         additionalTransactions,
       });
+      form.reset(form.getValues());
     } catch (error) {
       console.error("Payments error", error);
     } finally {

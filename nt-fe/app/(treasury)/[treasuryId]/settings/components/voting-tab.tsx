@@ -217,7 +217,7 @@ export function VotingTab() {
 
       const proposalBond = policy?.proposal_bond || "0";
 
-      const result = await createProposal({
+      await createProposal("Request to update voting threshold submitted", {
         treasuryId: selectedTreasury,
         proposal: {
           description: encodeToMarkdown(description),
@@ -252,12 +252,6 @@ export function VotingTab() {
         proposalBond: proposalBond,
       });
 
-      toast.success("Request to update settings submitted", {
-        action: {
-          label: "View Request",
-          onClick: () => router.push(`/${selectedTreasury}/requests`),
-        },
-      });
       // Update original thresholds
       setOriginalThresholds((prev) => ({
         ...prev,
@@ -296,7 +290,7 @@ export function VotingTab() {
 
       const proposalBond = policy?.proposal_bond || "0";
 
-      await createProposal({
+      await createProposal("Request to update settings submitted", {
         treasuryId: selectedTreasury,
         proposal: {
           description: encodeToMarkdown(description),
@@ -311,12 +305,6 @@ export function VotingTab() {
         proposalBond: proposalBond,
       });
 
-      toast.success("Request to update settings submitted", {
-        action: {
-          label: "View Request",
-          onClick: () => router.push(`/${selectedTreasury}/requests`),
-        },
-      });
       // Mark as not dirty
       form.reset(form.getValues());
     } catch (error) {
@@ -476,7 +464,7 @@ export function VotingTab() {
                 !activeTab ||
                 !form.watch("thresholds")?.[activeTab] ||
                 form.watch("thresholds")[activeTab] ===
-                  originalThresholds[activeTab] ||
+                originalThresholds[activeTab] ||
                 isSubmittingThreshold
               }
             >

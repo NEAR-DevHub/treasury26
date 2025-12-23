@@ -4,8 +4,10 @@ import { create } from "zustand";
 import { NearConnector, SignAndSendTransactionsParams, SignedMessage, ConnectorAction } from "@hot-labs/near-connect";
 import { NEAR_TREASURY_CONFIG } from "@/constants/config";
 import { EventMap, FinalExecutionOutcome } from "@hot-labs/near-connect/build/types";
-import { Vote } from "@/lib/proposals-api";
+import { Vote as ProposalVote } from "@/lib/proposals-api";
 import { ProposalPermissionKind } from "@/lib/config-utils";
+import { toast } from "sonner";
+import Big from "big.js";
 
 export interface CreateProposalParams {
     treasuryId: string;
@@ -20,6 +22,12 @@ export interface CreateProposalParams {
     }>;
 }
 
+interface Vote {
+    proposalId: number;
+    vote: ProposalVote;
+    proposalKind: ProposalPermissionKind;
+}
+
 interface NearStore {
     connector: NearConnector | null;
     accountId: string | null;
@@ -29,8 +37,8 @@ interface NearStore {
     disconnect: () => Promise<void>;
     signMessage: (message: string) => Promise<{ signatureData: SignedMessage; signedData: string }>;
     signAndSendTransactions: (params: SignAndSendTransactionsParams) => Promise<Array<FinalExecutionOutcome>>;
-    createProposal: (params: CreateProposalParams) => Promise<Array<FinalExecutionOutcome>>;
-    voteProposal: (treasuryId: string, proposalId: string, proposalKind: ProposalPermissionKind, vote: Vote) => Promise<Array<FinalExecutionOutcome>>;
+    createProposal: (toastMessage: string, params: CreateProposalParams) => Promise<Array<FinalExecutionOutcome>>;
+    voteProposals: (treasuryId: string, votes: Vote[]) => Promise<Array<FinalExecutionOutcome>>;
 }
 
 export const useNearStore = create<NearStore>((set, get) => ({
@@ -118,7 +126,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         return wallet.signAndSendTransactions(params);
     },
 
-    createProposal: async (params: CreateProposalParams) => {
+    createProposal: async (toastMessage: string, params: CreateProposalParams) => {
         const { connector } = get();
         if (!connector) {
             throw new Error("Connector not initialized");
@@ -147,40 +155,62 @@ export const useNearStore = create<NearStore>((set, get) => ({
             proposalTransaction,
             ...(params.additionalTransactions || []),
         ];
-
-        const wallet = await connector.wallet();
-        return wallet.signAndSendTransactions({
-            transactions,
-            network: "mainnet",
-        });
-    },
-
-    voteProposal: async (treasuryId: string, proposalId: string, proposalKind: ProposalPermissionKind, vote: Vote) => {
-        const { signAndSendTransactions } = get();
-        return await signAndSendTransactions({
-            transactions: [
-                {
-                    receiverId: treasuryId,
-                    actions: [
-                        {
-                            type: "FunctionCall",
-                            params: {
-                                methodName: "act_proposal",
-                                args: {
-                                    id: parseInt(proposalId),
-                                    action: `Vote${vote}`,
-                                    proposal: proposalKind,
-                                },
-                                gas: "300000000000000",
-                                deposit: "0",
-                            },
-                        },
-                    ],
+        try {
+            const wallet = await connector.wallet();
+            const results = await wallet.signAndSendTransactions({
+                transactions,
+                network: "mainnet",
+            });
+            toast.success(toastMessage, {
+                action: {
+                    label: "View Request",
+                    onClick: () => window.open(`/${params.treasuryId}/requests?tab=Pending`),
                 },
-            ],
-        });
+            });
+            return results;
+        } catch (error) {
+            console.error("Failed to create proposal:", error);
+            toast.error("Failed to create proposal");
+            return [];
+        }
     },
 
+    voteProposals: async (treasuryId: string, votes: Vote[]) => {
+        const { signAndSendTransactions } = get();
+        const gas = Big("300000000000000").div(votes.length).toFixed();
+        try {
+            const results = await signAndSendTransactions({
+                transactions: [
+                    {
+                        receiverId: treasuryId,
+                        actions: [
+                            ...votes.map(vote => ({
+                                type: "FunctionCall",
+                                params: {
+                                    methodName: "act_proposal",
+                                    args: {
+                                        id: vote.proposalId,
+                                        action: `Vote${vote.vote}`,
+                                        proposal: vote.proposalKind,
+                                    },
+                                    gas: gas.toString(),
+                                    deposit: "0",
+                                },
+                            })),
+                        ],
+                    },
+                ],
+            });
+            toast.success(`Successfully voted on ${votes.length} proposal${votes.length > 1 ? "s" : ""}`);
+            return results;
+        } catch (error) {
+            console.error("Failed to vote proposals:", error);
+            toast.error(`Failed to vote proposal${votes.length > 1 ? "s" : ""}`);
+            return [];
+        }
+
+
+    },
 
 }));
 
@@ -195,7 +225,7 @@ export const useNear = () => {
         signMessage,
         signAndSendTransactions,
         createProposal,
-        voteProposal,
+        voteProposals,
     } = useNearStore();
 
     return {
@@ -207,6 +237,6 @@ export const useNear = () => {
         signMessage,
         signAndSendTransactions,
         createProposal,
-        voteProposal,
+        voteProposals,
     };
 };

@@ -108,7 +108,7 @@ export function GeneralTab() {
         title: "Update Config - Theme & logo",
       };
 
-      const result = await createProposal({
+      await createProposal("Request to update settings submitted", {
         treasuryId: selectedTreasury,
         proposal: {
           description: encodeToMarkdown(description),
@@ -125,13 +125,6 @@ export function GeneralTab() {
           },
         },
         proposalBond: proposalBond,
-      });
-
-      toast.success("Request to update settings submitted", {
-        action: {
-          label: "View Request",
-          onClick: () => router.push(`/${selectedTreasury}/requests`),
-        },
       });
       // Reset form to mark as not dirty
       form.reset(data);
@@ -346,11 +339,10 @@ export function GeneralTab() {
                       key={color}
                       type="button"
                       onClick={() => handleColorChange(color)}
-                      className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${
-                        field.value === color
+                      className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${field.value === color
                           ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
                           : ""
-                      }`}
+                        }`}
                       style={{ backgroundColor: color }}
                       aria-label={`Select color ${color}`}
                     />

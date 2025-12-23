@@ -22,6 +22,8 @@ export function Button({ variant, className: classNameOverride, size, ...props }
         case "sm":
             className = cn(className, "py-0.5 px-2.5 h-5 text-xs");
             break;
+        case "default":
+            className = cn(className, "py-[5.5px] px-5 gap-1.5 rounded-[8px]");
         default:
             className = "";
             break;
