@@ -1,6 +1,6 @@
 import { Proposal, ProposalKind } from "@/lib/proposals-api";
 
-export type ProposalType = "Transfer" | "FunctionCall" | "ChangePolicy" | "Unknown";
+export type ProposalType = keyof ProposalKind | "Unsupported";
 
 export interface ProposalTypeInfo {
   type: ProposalType;

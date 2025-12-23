@@ -1,7 +1,20 @@
 import type { Policy, RoleKind } from "@/types/policy";
 import { ProposalKind } from "./proposals-api";
 
-export type ProposalPermissionKind = "transfer" | "call" | "policy" | "config";
+export type ProposalPermissionKind =
+  | "transfer"
+  | "call"
+  | "policy"
+  | "config"
+  | "add_member_to_role"
+  | "remove_member_from_role"
+  | "upgrade_self"
+  | "upgrade_remote"
+  | "set_staking_contract"
+  | "add_bounty"
+  | "bounty_done"
+  | "vote"
+  | "factory_info_update";
 
 
 export function getKindFromProposal(proposalKind: ProposalKind): ProposalPermissionKind | undefined {
@@ -23,6 +36,58 @@ export function getKindFromProposal(proposalKind: ProposalKind): ProposalPermiss
 
   if ('ChangeConfig' in proposalKind) {
     return "config";
+  }
+
+  if ('ChangePolicyUpdateParameters' in proposalKind) {
+    return "policy";
+  }
+
+  if ('AddMemberToRole' in proposalKind) {
+    return "add_member_to_role";
+  }
+
+  if ('RemoveMemberFromRole' in proposalKind) {
+    return "remove_member_from_role";
+  }
+
+  if ('UpgradeSelf' in proposalKind) {
+    return "upgrade_self";
+  }
+
+  if ('UpgradeRemote' in proposalKind) {
+    return "upgrade_remote";
+  }
+
+  if ('SetStakingContract' in proposalKind) {
+    return "set_staking_contract";
+  }
+
+  if ('AddBounty' in proposalKind) {
+    return "add_bounty";
+  }
+
+  if ('BountyDone' in proposalKind) {
+    return "bounty_done";
+  }
+
+  if ('Vote' in proposalKind) {
+    return "vote";
+  }
+
+  if ('FactoryInfoUpdate' in proposalKind) {
+    return "factory_info_update";
+  }
+
+  if ('ChangePolicyAddOrUpdateRole' in proposalKind) {
+    return "policy";
+  }
+
+  if ('ChangePolicyRemoveRole' in proposalKind) {
+    return "policy";
+  }
+
+  if ('ChangePolicyUpdateDefaultVotePolicy' in proposalKind) {
+    return "policy";
   }
 
   return undefined;

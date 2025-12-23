@@ -18,10 +18,22 @@ export function ChangeConfigExpanded({ data }: ChangeConfigExpandedProps) {
     ];
 
     for (const key in data.metadata) {
-        infoItems.push({
-            label: key,
-            value: <span>{data.metadata[key]}</span>
-        });
+        if (key === "primaryColor") {
+            infoItems.push({
+                label: key,
+                value: <div className="w-5 h-5 rounded-full" style={{ backgroundColor: data.metadata[key] }}></div>
+            });
+        } else if (key === "flagLogo") {
+            infoItems.push({
+                label: key,
+                value: <img src={data.metadata[key]} alt="Flag Logo" className="w-5 h-5 rounded-md" />
+            });
+        } else {
+            infoItems.push({
+                label: key,
+                value: <span>{data.metadata[key]}</span>
+            });
+        }
     }
 
     return (

@@ -1,3 +1,4 @@
+import { VotePolicy } from "@/types/policy";
 import axios from "axios";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
@@ -74,7 +75,141 @@ export interface ChangeConfigKind {
   };
 }
 
-export type ProposalKind = TransferKind | FunctionCallKind | ChangePolicyKind | ChangeConfigKind;
+export interface ChangePolicyUpdateParametersKind {
+  ChangePolicyUpdateParameters: {
+    parameters: {
+      bounty_bond: string | null;
+      bounty_forgiveness_period: string | null;
+      proposal_bond: string | null;
+      proposal_period: string | null;
+    };
+  };
+}
+
+export interface AddMemberToRoleKind {
+  AddMemberToRole: {
+    member_id: string;
+    role: string;
+  };
+}
+
+export interface RemoveMemberFromRoleKind {
+  RemoveMemberFromRole: {
+    member_id: string;
+    role: string;
+  };
+}
+
+export interface UpgradeSelfKind {
+  UpgradeSelf: {
+    hash: string;
+  };
+}
+
+export interface UpgradeRemoteKind {
+  UpgradeRemote: {
+    receiver_id: string;
+    method_name: string;
+    hash: string;
+  };
+}
+
+export interface SetStakingContractKind {
+  SetStakingContract: {
+    staking_id: string;
+  };
+}
+
+export interface Bounty {
+  description: string;
+  token: string;
+  amount: string;
+  times: number;
+  max_deadline: string;
+}
+
+export interface AddBountyKind {
+  AddBounty: {
+    bounty: Bounty;
+  };
+}
+
+export interface BountyDoneKind {
+  BountyDone: {
+    bounty_id: number;
+    receiver_id: string;
+  };
+}
+
+export interface VoteKind {
+  Vote: {};
+}
+
+export interface FactoryInfo {
+  factory_id: string;
+  auto_update: boolean;
+}
+
+export interface FactoryInfoUpdateKind {
+  FactoryInfoUpdate: {
+    factory_info: FactoryInfo;
+  };
+}
+
+export type RoleKind =
+  | { Everyone: {} }
+  | { Member: string }
+  | { Group: string[] };
+
+export type WeightKind = "TokenWeight" | "RoleWeight";
+
+export type WeightOrRatio =
+  | { Weight: string }
+  | { Ratio: [number, number] };
+
+export interface RolePermission {
+  name: string;
+  kind: RoleKind;
+  permissions: string[];
+  vote_policy: Record<string, VotePolicy>;
+}
+
+export interface ChangePolicyAddOrUpdateRoleKind {
+  ChangePolicyAddOrUpdateRole: {
+    role: RolePermission;
+  };
+}
+
+export interface ChangePolicyRemoveRoleKind {
+  ChangePolicyRemoveRole: {
+    role: string;
+  };
+}
+
+export interface ChangePolicyUpdateDefaultVotePolicyKind {
+  ChangePolicyUpdateDefaultVotePolicy: {
+    vote_policy: VotePolicy;
+  };
+}
+
+export type ProposalKind =
+  | TransferKind
+  | FunctionCallKind
+  | ChangePolicyKind
+  | ChangePolicyUpdateParametersKind
+  | ChangeConfigKind
+  | AddMemberToRoleKind
+  | RemoveMemberFromRoleKind
+  | UpgradeSelfKind
+  | UpgradeRemoteKind
+  | SetStakingContractKind
+  | AddBountyKind
+  | BountyDoneKind
+  | VoteKind
+  | FactoryInfoUpdateKind
+  | ChangePolicyAddOrUpdateRoleKind
+  | ChangePolicyRemoveRoleKind
+  | ChangePolicyUpdateDefaultVotePolicyKind;
 
 export interface VoteCounts {
   [roleName: string]: [number, number, number];
