@@ -8,6 +8,7 @@ import { Vote as ProposalVote } from "@/lib/proposals-api";
 import { ProposalPermissionKind } from "@/lib/config-utils";
 import { toast } from "sonner";
 import Big from "big.js";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface CreateProposalParams {
     treasuryId: string;
@@ -164,7 +165,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
             toast.success(toastMessage, {
                 action: {
                     label: "View Request",
-                    onClick: () => window.open(`/${params.treasuryId}/requests?tab=Pending`),
+                    onClick: () => window.open(`/${params.treasuryId}/requests?tab=pending`),
                 },
             });
             return results;
@@ -224,9 +225,36 @@ export const useNear = () => {
         disconnect,
         signMessage,
         signAndSendTransactions,
-        createProposal,
-        voteProposals,
+        createProposal: storeCreateProposal,
+        voteProposals: storeVoteProposals,
     } = useNearStore();
+
+    const queryClient = useQueryClient();
+
+    const createProposal = async (toastMessage: string, params: CreateProposalParams) => {
+        const results = await storeCreateProposal(toastMessage, params);
+        if (results.length > 0) {
+            // Invalidate both proposals list and individual proposal queries
+            await queryClient.invalidateQueries({ queryKey: ["proposals", params.treasuryId] });
+            await queryClient.invalidateQueries({ queryKey: ["proposal", params.treasuryId] });
+        }
+        return results;
+    };
+
+    const voteProposals = async (treasuryId: string, votes: Vote[]) => {
+        const results = await storeVoteProposals(treasuryId, votes);
+        if (results.length > 0) {
+            // Invalidate proposals list
+            await queryClient.invalidateQueries({ queryKey: ["proposals", treasuryId] });
+            // Invalidate individual proposal queries for the voted proposals
+            await Promise.all(
+                votes.map(vote =>
+                    queryClient.invalidateQueries({ queryKey: ["proposal", treasuryId, vote.proposalId.toString()] })
+                )
+            );
+        }
+        return results;
+    };
 
     return {
         connector,
