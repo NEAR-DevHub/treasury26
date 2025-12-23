@@ -67,13 +67,22 @@ export function ProposalsTable({
     () => [
       columnHelper.display({
         id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-          />
-        ),
+        header: ({ table }) => {
+          // Only show header checkbox if at least one row can be selected
+          const hasSelectableRows = table.getRowModel().rows.some(row => row.getCanSelect());
+
+          if (!hasSelectableRows) {
+            return null;
+          }
+
+          return (
+            <Checkbox
+              checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+              aria-label="Select all"
+            />
+          );
+        },
         cell: ({ row }) => {
           const proposal = row.original;
           const proposalKind = getKindFromProposal(proposal.kind) ?? "call";
