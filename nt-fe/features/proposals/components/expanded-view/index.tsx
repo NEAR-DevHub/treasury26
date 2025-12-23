@@ -60,7 +60,7 @@ function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
       const stakingData = data as StakingData;
       return <StakingExpanded data={stakingData} />;
     }
-    case "Change Config": {
+    case "Update General Settings": {
       const configData = data as ChangeConfigData;
       return <ChangeConfigExpanded data={configData} />;
     }
@@ -74,9 +74,7 @@ function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
     }
     default:
       return (
-        <div className="p-4 bg-muted/30 rounded-lg">
-          <p className="text-sm text-muted-foreground">Unknown proposal type</p>
-        </div>
+        <p className="text-sm text-muted-foreground">Unsupported proposal type</p>
       );
   }
 }

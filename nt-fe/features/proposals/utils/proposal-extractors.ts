@@ -13,11 +13,18 @@ import {
   VestingSchedule,
   AnyProposalData,
   BatchPaymentRequestData,
+  MembersData,
+  UpgradeData,
+  SetStakingContractData,
+  BountyData,
+  VoteData,
+  FactoryInfoUpdateData,
 } from "../types/index";
 import { getProposalUIKind } from "./proposal-utils";
 import { ProposalUIKind } from "../types/index";
 import { Policy } from "@/types/policy";
 import { Action } from "@hot-labs/near-connect/build/types";
+import { getKindFromProposal } from "@/lib/config-utils";
 
 
 function extractFTTransferData(functionCall: FunctionCallKind["FunctionCall"], actions: Action[]): Omit<PaymentRequestData, "notes"> | undefined {
@@ -103,16 +110,61 @@ export function extractFunctionCallData(proposal: Proposal): FunctionCallData {
  * Extract Change Policy data from proposal
  */
 export function extractChangePolicyData(proposal: Proposal): ChangePolicyData {
-  if (!("ChangePolicy" in proposal.kind)) {
-    throw new Error("Proposal is not a Change Policy proposal");
+  if ("ChangePolicy" in proposal.kind) {
+    const policy = proposal.kind.ChangePolicy.policy;
+    return {
+      type: "full",
+      policy: policy as Policy,
+      rolesCount: policy.roles.length,
+    };
   }
 
-  const policy = proposal.kind.ChangePolicy.policy;
+  if ("ChangePolicyUpdateParameters" in proposal.kind) {
+    const parameters = proposal.kind.ChangePolicyUpdateParameters.parameters;
+    return {
+      type: "update_parameters",
+      parameters: {
+        bounty_bond: parameters.bounty_bond,
+        bounty_forgiveness_period: parameters.bounty_forgiveness_period,
+        proposal_bond: parameters.proposal_bond,
+        proposal_period: parameters.proposal_period,
+      },
+    };
+  }
 
-  return {
-    policy: policy as Policy,
-    rolesCount: policy.roles.length,
-  };
+  if ("ChangePolicyAddOrUpdateRole" in proposal.kind) {
+    const role = proposal.kind.ChangePolicyAddOrUpdateRole.role;
+    return {
+      type: "add_or_update_role",
+      role: {
+        name: role.name,
+        permissions: role.permissions,
+        vote_policy: role.vote_policy,
+      },
+    };
+  }
+
+  if ("ChangePolicyRemoveRole" in proposal.kind) {
+    const roleName = proposal.kind.ChangePolicyRemoveRole.role;
+    return {
+      type: "remove_role",
+      roleName,
+    };
+  }
+
+  if ("ChangePolicyUpdateDefaultVotePolicy" in proposal.kind) {
+    const votePolicy = proposal.kind.ChangePolicyUpdateDefaultVotePolicy.vote_policy;
+    return {
+      type: "update_default_vote_policy",
+      votePolicy: {
+        weight_kind: votePolicy.weight_kind,
+        quorum: votePolicy.quorum,
+        threshold: votePolicy.threshold,
+      },
+    };
+  }
+
+  throw new Error("Proposal is not a Change Policy proposal");
 }
 
 /**
@@ -334,11 +386,132 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
 }
 
 /**
+ * Extract Members data from proposal (Add/Remove Member to/from Role)
+ */
+export function extractMembersData(proposal: Proposal): MembersData {
+  if ("AddMemberToRole" in proposal.kind) {
+    const data = proposal.kind.AddMemberToRole;
+    return {
+      memberId: data.member_id,
+      role: data.role,
+      action: "add",
+    };
+  }
+
+  if ("RemoveMemberFromRole" in proposal.kind) {
+    const data = proposal.kind.RemoveMemberFromRole;
+    return {
+      memberId: data.member_id,
+      role: data.role,
+      action: "remove",
+    };
+  }
+
+  throw new Error("Proposal is not a Members proposal");
+}
+
+/**
+ * Extract Upgrade data from proposal (Self/Remote)
+ */
+export function extractUpgradeData(proposal: Proposal): UpgradeData {
+  if ("UpgradeSelf" in proposal.kind) {
+    const data = proposal.kind.UpgradeSelf;
+    return {
+      hash: data.hash,
+      type: "self",
+    };
+  }
+
+  if ("UpgradeRemote" in proposal.kind) {
+    const data = proposal.kind.UpgradeRemote;
+    return {
+      hash: data.hash,
+      type: "remote",
+      receiverId: data.receiver_id,
+      methodName: data.method_name,
+    };
+  }
+
+  throw new Error("Proposal is not an Upgrade proposal");
+}
+
+/**
+ * Extract Set Staking Contract data from proposal
+ */
+export function extractSetStakingContractData(proposal: Proposal): SetStakingContractData {
+  if (!("SetStakingContract" in proposal.kind)) {
+    throw new Error("Proposal is not a Set Staking Contract proposal");
+  }
+
+  const data = proposal.kind.SetStakingContract;
+  return {
+    stakingId: data.staking_id,
+  };
+}
+
+/**
+ * Extract Bounty data from proposal (Add/Done)
+ */
+export function extractBountyData(proposal: Proposal): BountyData {
+  if ("AddBounty" in proposal.kind) {
+    const bounty = proposal.kind.AddBounty.bounty;
+    return {
+      action: "add",
+      description: bounty.description,
+      token: bounty.token,
+      amount: bounty.amount,
+      times: bounty.times,
+      maxDeadline: bounty.max_deadline,
+    };
+  }
+
+  if ("BountyDone" in proposal.kind) {
+    const data = proposal.kind.BountyDone;
+    return {
+      action: "done",
+      bountyId: data.bounty_id,
+      receiverId: data.receiver_id,
+    };
+  }
+
+  throw new Error("Proposal is not a Bounty proposal");
+}
+
+/**
+ * Extract Vote data from proposal
+ */
+export function extractVoteData(proposal: Proposal): VoteData {
+  if (!("Vote" in proposal.kind)) {
+    throw new Error("Proposal is not a Vote proposal");
+  }
+
+  return {
+    message: proposal.description || "Vote proposal (signaling only)",
+  };
+}
+
+/**
+ * Extract Factory Info Update data from proposal
+ */
+export function extractFactoryInfoUpdateData(proposal: Proposal): FactoryInfoUpdateData {
+  if (!("FactoryInfoUpdate" in proposal.kind)) {
+    throw new Error("Proposal is not a Factory Info Update proposal");
+  }
+
+  const factoryInfo = proposal.kind.FactoryInfoUpdate.factory_info;
+  return {
+    factoryId: factoryInfo.factory_id,
+    autoUpdate: factoryInfo.auto_update,
+  };
+}
+
+/**
  * Extract Unknown proposal data
  */
 export function extractUnknownData(proposal: Proposal): UnknownData {
+  const proposalType = getKindFromProposal(proposal.kind);
   return {
-    message: "Unknown proposal type",
+    proposalType
   };
 }
 
@@ -361,13 +534,12 @@ export function extractProposalData(proposal: Proposal): {
       data = extractFunctionCallData(proposal);
       break;
     case "Batch Payment Request":
-      console.log("Batch Payment Request", proposal);
       data = extractBatchPaymentRequestData(proposal);
       break;
     case "Change Policy":
       data = extractChangePolicyData(proposal);
       break;
-    case "Change Config":
+    case "Update General Settings":
       data = extractChangeConfigData(proposal);
       break;
     case "Earn NEAR":
@@ -381,7 +553,25 @@ export function extractProposalData(proposal: Proposal): {
     case "Exchange":
       data = extractSwapRequestData(proposal);
       break;
-    case "Unknown":
+    case "Members":
+      data = extractMembersData(proposal);
+      break;
+    case "Upgrade":
+      data = extractUpgradeData(proposal);
+      break;
+    case "Set Staking Contract":
+      data = extractSetStakingContractData(proposal);
+      break;
+    case "Bounty":
+      data = extractBountyData(proposal);
+      break;
+    case "Vote":
+      data = extractVoteData(proposal);
+      break;
+    case "Factory Info Update":
+      data = extractFactoryInfoUpdateData(proposal);
+      break;
+    case "Unsupported":
     default:
       data = extractUnknownData(proposal);
       break;

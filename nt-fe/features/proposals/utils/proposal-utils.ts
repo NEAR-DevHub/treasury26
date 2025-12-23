@@ -101,9 +101,12 @@ export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
     case "policy":
       return "Change Policy";
     case "config":
-      return "Change Config";
+      return "Update General Settings";
+    case "upgrade_self":
+    case "upgrade_remote":
+      return "Upgrade";
     default:
-      return "Unknown";
+      return "Unsupported";
   }
 }
 

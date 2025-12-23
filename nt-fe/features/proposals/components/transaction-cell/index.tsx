@@ -14,7 +14,10 @@ import {
   StakingData,
   VestingData,
   SwapRequestData,
+  ChangeConfigData,
+  UnknownData,
 } from "../../types/index";
+import { ChangeConfigCell } from "./change-config-cell";
 
 interface TransactionCellProps {
   proposal: Proposal;
@@ -43,8 +46,9 @@ export function TransactionCell({ proposal }: TransactionCellProps) {
       const policyData = data as ChangePolicyData;
       return <ChangePolicyCell data={policyData} />;
     }
-    case "Change Config":
-      return "Updated Treasury Config";
+    case "Update General Settings":
+      const configData = data as ChangeConfigData;
+      return <ChangeConfigCell data={configData} />;
     case "Earn NEAR":
     case "Unstake NEAR":
     case "Withdraw Earnings": {
@@ -59,11 +63,18 @@ export function TransactionCell({ proposal }: TransactionCellProps) {
       const swapData = data as SwapRequestData;
       return <SwapCell data={swapData} />;
     }
+    case "Unsupported": {
+      const unknownData = data as UnknownData;
+      return <div className="flex flex-col gap-1">
+        <span className="font-medium">Unsupported proposal type </span>
+        <span className="text-xs text-muted-foreground">{unknownData.proposalType}</span>
+      </div>
+    }
     default:
       return (
         <div className="flex flex-col gap-1">
-          <span className="font-medium">Unknown</span>
-          <span className="text-xs text-muted-foreground">Unknown proposal type</span>
+          <span className="font-medium">Unsupported proposal type </span>
+          <span className="text-xs text-muted-foreground">{type}</span>
         </div>
       );
   }

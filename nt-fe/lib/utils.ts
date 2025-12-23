@@ -143,3 +143,43 @@ export const decodeProposalDescription = (key: string, description: string) => {
 
   return null; // Return null if key not found
 };
+
+/**
+ * Format nanoseconds to human-readable duration
+ * @param nanoseconds - Duration in nanoseconds as string
+ * @returns Human-readable duration string (e.g., "7 days", "2 weeks, 3 days", "5 hours")
+ */
+export function formatNanosecondDuration(nanoseconds: string): string {
+  const ns = BigInt(nanoseconds);
+
+  // Convert to different units
+  const seconds = Number(ns / BigInt(1_000_000_000));
+  const minutes = seconds / 60;
+  const hours = minutes / 60;
+  const days = hours / 24;
+  const weeks = days / 7;
+
+  if (weeks >= 1) {
+    const wholeWeeks = Math.floor(weeks);
+    const remainingDays = Math.floor(days % 7);
+    if (remainingDays > 0) {
+      return `${wholeWeeks} week${wholeWeeks !== 1 ? 's' : ''}, ${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+    }
+    return `${wholeWeeks} week${wholeWeeks !== 1 ? 's' : ''}`;
+  } else if (days >= 1) {
+    const wholeDays = Math.floor(days);
+    const remainingHours = Math.floor(hours % 24);
+    if (remainingHours > 0) {
+      return `${wholeDays} day${wholeDays !== 1 ? 's' : ''}, ${remainingHours} hour${remainingHours !== 1 ? 's' : ''}`;
+    }
+    return `${wholeDays} day${wholeDays !== 1 ? 's' : ''}`;
+  } else if (hours >= 1) {
+    const wholeHours = Math.floor(hours);
+    return `${wholeHours} hour${wholeHours !== 1 ? 's' : ''}`;
+  } else if (minutes >= 1) {
+    const wholeMinutes = Math.floor(minutes);
+    return `${wholeMinutes} minute${wholeMinutes !== 1 ? 's' : ''}`;
+  } else {
+    return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+  }
+}

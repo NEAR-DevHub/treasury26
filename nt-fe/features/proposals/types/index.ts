@@ -1,5 +1,6 @@
+import { ProposalPermissionKind } from "@/lib/config-utils";
 import { Proposal } from "@/lib/proposals-api";
-import { Policy } from "@/types/policy";
+import { Policy, VotePolicy } from "@/types/policy";
 
 /**
  * UI representation of proposal kinds
@@ -11,12 +12,18 @@ export type ProposalUIKind =
     | "Exchange"
     | "Function Call"
     | "Change Policy"
-    | "Change Config"
+    | "Update General Settings"
     | "Earn NEAR"
     | "Unstake NEAR"
     | "Vesting"
     | "Withdraw Earnings"
-    | "Unknown";
+    | "Members"
+    | "Upgrade"
+    | "Set Staking Contract"
+    | "Bounty"
+    | "Vote"
+    | "Factory Info Update"
+    | "Unsupported";
 
 /**
  * @deprecated Use ProposalUIKind instead
@@ -60,8 +67,26 @@ export interface FunctionCallData {
  * Data structure for Change Policy proposals
  */
 export interface ChangePolicyData {
-    policy: Policy;
-    rolesCount: number;
+    type: "full" | "update_parameters" | "add_or_update_role" | "remove_role" | "update_default_vote_policy";
+    policy?: Policy;
+    rolesCount?: number;
+    parameters?: {
+        bounty_bond: string | null;
+        bounty_forgiveness_period: string | null;
+        proposal_bond: string | null;
+        proposal_period: string | null;
+    };
+    role?: {
+        name: string;
+        permissions: string[];
+        vote_policy: Record<string, VotePolicy>;
+    };
+    roleName?: string;
+    votePolicy?: {
+        weight_kind: string;
+        quorum: string;
+        threshold: string | [number, number] | { Weight: string } | { Ratio: [number, number] };
+    };
 }
 
 /**
@@ -130,7 +155,62 @@ export interface BatchPaymentRequestData {
  * Data structure for Unknown proposals
  */
 export interface UnknownData {
+    proposalType: ProposalPermissionKind;
+}
+
+/**
+ * Data structure for Members proposals (Add/Remove Member to/from Role)
+ */
+export interface MembersData {
+    memberId: string;
+    role: string;
+    action: "add" | "remove";
+}
+
+/**
+ * Data structure for Upgrade proposals (Self/Remote)
+ */
+export interface UpgradeData {
+    hash: string;
+    type: "self" | "remote";
+    receiverId?: string;
+    methodName?: string;
+}
+
+/**
+ * Data structure for Set Staking Contract proposals
+ */
+export interface SetStakingContractData {
+    stakingId: string;
+}
+
+/**
+ * Data structure for Bounty proposals (Add/Done)
+ */
+export interface BountyData {
+    action: "add" | "done";
+    bountyId?: number;
+    receiverId?: string;
+    description?: string;
+    token?: string;
+    amount?: string;
+    times?: number;
+    maxDeadline?: string;
+}
+
+/**
+ * Data structure for Vote proposals (signaling only)
+ */
+export interface VoteData {
     message: string;
+}
+
+/**
+ * Data structure for Factory Info Update proposals
+ */
+export interface FactoryInfoUpdateData {
+    factoryId: string;
+    autoUpdate: boolean;
 }
 
 /**
@@ -140,14 +220,20 @@ export interface ProposalTypeDataMap {
     "Payment Request": PaymentRequestData;
     "Function Call": FunctionCallData;
     "Change Policy": ChangePolicyData;
-    "Change Config": ChangeConfigData;
+    "Update General Settings": ChangeConfigData;
     "Earn NEAR": StakingData;
     "Unstake NEAR": StakingData;
     "Withdraw Earnings": StakingData;
-    Vesting: VestingData;
+    "Vesting": VestingData;
     "Exchange": SwapRequestData;
     "Batch Payment Request": BatchPaymentRequestData;
-    Unknown: UnknownData;
+    "Members": MembersData;
+    "Upgrade": UpgradeData;
+    "Set Staking Contract": SetStakingContractData;
+    "Bounty": BountyData;
+    "Vote": VoteData;
+    "Factory Info Update": FactoryInfoUpdateData;
+    "Unsupported": UnknownData;
 }
 
 /**
@@ -177,4 +263,10 @@ export type AnyProposalData =
     | StakingData
     | VestingData
     | SwapRequestData
+    | MembersData
+    | UpgradeData
+    | SetStakingContractData
+    | BountyData
+    | VoteData
+    | FactoryInfoUpdateData
     | UnknownData;
