@@ -18,11 +18,40 @@ pub struct AppState {
     pub network: NetworkConfig,
     pub archival_network: NetworkConfig,
     pub env_vars: EnvVars,
+    pub db_pool: sqlx::PgPool,
 }
 
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok();
+
+    // Initialize logging
+    if std::env::var("RUST_LOG").is_err() {
+        unsafe {
+            std::env::set_var("RUST_LOG", "info");
+        }
+    }
+    env_logger::init();
+
+    // Database connection
+    let database_url = std::env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set in environment");
+    
+    log::info!("Connecting to database...");
+    let db_pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(20)
+        .acquire_timeout(Duration::from_secs(3))
+        .connect(&database_url)
+        .await
+        .expect("Failed to connect to database");
+    
+    log::info!("Running database migrations...");
+    sqlx::migrate!("./migrations")
+        .run(&db_pool)
+        .await
+        .expect("Failed to run migrations");
+    
+    log::info!("Database connection established successfully");
 
     let cache = Cache::builder()
         .max_capacity(10_000)
@@ -52,6 +81,7 @@ async fn main() {
             ..NetworkConfig::mainnet()
         },
         env_vars,
+        db_pool,
     });
 
     let cors = CorsLayer::new()
