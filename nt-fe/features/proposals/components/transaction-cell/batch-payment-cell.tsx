@@ -21,6 +21,6 @@ export function BatchPaymentCell({ data }: BatchPaymentCellProps) {
     } as PaymentRequestData;
 
     return (
-        <TokenCell data={tokenData} />
+        <TokenCell data={tokenData} isUser={false} />
     );
 }

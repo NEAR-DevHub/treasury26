@@ -8,8 +8,6 @@ import { useFieldArray, useForm, useFormContext, } from "react-hook-form";
 import { Form, FormField } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { InputBlock } from "@/components/input-block";
-import { ApprovalInfo } from "@/components/approval-info";
 import { ReviewStep, StepperHeader, StepperNextButton, StepWizard } from "@/components/step-wizard";
 import { useBatchStorageDepositIsRegistered, useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -73,7 +71,6 @@ function Step1() {
       <div className="flex justify-start">
         <Button variant={'link'} type="button" size={'sm'} onClick={() => append({ address: "", amount: "0", memo: "" })}><Plus className="size-3 text-primary" /> Add New Recipient</Button>
       </div>
-      < ApprovalInfo />
     </>
   );
 }

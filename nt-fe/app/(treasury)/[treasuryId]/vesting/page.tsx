@@ -1,6 +1,5 @@
 "use client";
 
-import { ApprovalInfo } from "@/components/approval-info";
 import { PageCard } from "@/components/card";
 import { CheckboxInput } from "@/components/checkbox-input";
 import { DateInput } from "@/components/date-input";
@@ -90,8 +89,6 @@ function Step1() {
         <DateInput control={form.control} name="vesting.startDate" title="Start Date" maxDate={endDate} />
         <DateInput control={form.control} name="vesting.endDate" title="End Date" minDate={startDate} />
       </div>
-
-      <ApprovalInfo />
     </PageCard>)
 }
 

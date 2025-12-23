@@ -18,7 +18,7 @@ import { ProposalTypeIcon } from "./proposal-type-icon";
 import { VotingIndicator } from "./voting-indicator";
 import { Policy } from "@/types/policy";
 import { formatDate } from "@/lib/utils";
-import { User } from "@/components/user";
+import { TooltipUser, User } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -114,7 +114,14 @@ export function ProposalsTable({
       }),
       columnHelper.accessor("proposer", {
         header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Requester</span>,
-        cell: (info) => <User accountId={info.getValue()} />,
+        cell: (info) => {
+          const value = info.getValue();
+          return (
+            <TooltipUser accountId={value}>
+              <span className="text-sm">{value}</span>
+            </TooltipUser>
+          )
+        }
       }),
       columnHelper.display({
         id: "voting",

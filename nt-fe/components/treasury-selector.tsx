@@ -75,20 +75,20 @@ export function TreasurySelector() {
       return <img src={logo} alt="Treasury Flag Logo" className="rounded-md size-7" />;
     }
     return <div className="flex items-center justify-center size-7 rounded shrink-0">
-      <Database className="h-3.5 w-3.5 text-muted-foreground" />
+      <Database className="size-5 text-muted-foreground" />
     </div>;
   }
   return (
     <Select value={treasuryId} onValueChange={handleTreasuryChange} >
-      <SelectTrigger className="w-full px-3 py-2 border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted! h-14!">
-        <div className="flex items-center gap-2 w-full max-w-52 truncate">
+      <SelectTrigger className="w-full px-3 py-1.5 h-fit border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted!">
+        <div className="flex items-center gap-2 w-full max-w-52 truncate h-9">
           <Logo logo={treasury?.flagLogo} />
-          <div className="flex flex-col items-start flex-1 min-w-0">
-            <span className="text-xs font-medium truncate max-w-full leading-snug">
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-xs font-medium truncate max-w-full ">
               {currentTreasury ? getTreasuryName(currentTreasury) : "Select treasury"}
             </span>
             {currentTreasury && (
-              <span className="text-xs text-muted-foreground truncate max-w-full leading-none">
+              <span className="text-xs text-muted-foreground truncate max-w-full font-medium">
                 {currentTreasury.daoId}
               </span>
             )}

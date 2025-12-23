@@ -1,4 +1,5 @@
-import { Tooltip as TooltipPrimitive, TooltipContent as TooltipContentPrimitive, TooltipTrigger } from "./ui/tooltip";
+import { Separator } from "./ui/separator";
+import { Tooltip as TooltipPrimitive, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export interface TooltipProps {
     children: React.ReactNode;
@@ -7,12 +8,8 @@ export interface TooltipProps {
     triggerProps?: Omit<React.ComponentProps<typeof TooltipTrigger>, 'children'>;
 }
 
-export function TooltipContent({ children, ...props }: React.ComponentProps<typeof TooltipContentPrimitive>) {
-    return (
-        <TooltipContentPrimitive className="max-w-80 bg-card text-primary border-border border text-sm" {...props}>
-            {children}
-        </TooltipContentPrimitive>
-    );
+export function TooltipSeparator() {
+    return <Separator className="bg-background/10" />;
 }
 
 export function Tooltip({ children, content, contentProps, triggerProps }: TooltipProps) {
