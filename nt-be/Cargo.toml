@@ -19,7 +19,8 @@ serde_with = { version = "3.16.1", features = ["base64"] }
 chrono = "0.4"
 futures = "0.3"
 lazy_static = "1.4"
-sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "migrate"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "migrate", "bigdecimal"] }
+bigdecimal = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.11", features = ["v4", "serde"] }
 env_logger = "0.11"
 log = "0.4"

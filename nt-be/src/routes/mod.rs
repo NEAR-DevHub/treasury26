@@ -9,6 +9,8 @@ use std::sync::Arc;
 
 use crate::{AppState, handlers};
 
+mod balance_changes;
+
 async fn health_check(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
@@ -50,6 +52,11 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
     Router::new()
         // Health check
         .route("/api/health", get(health_check))
+        // Balance changes endpoint
+        .route(
+            "/api/balance-changes",
+            get(balance_changes::get_balance_changes),
+        )
         // Token endpoints
         .route(
             "/api/token/price",

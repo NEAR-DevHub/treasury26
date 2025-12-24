@@ -17,9 +17,9 @@ CREATE TABLE balance_changes (
     token_id VARCHAR(64),
     receipt_id TEXT[] NOT NULL DEFAULT '{}',
     counterparty VARCHAR(64) NOT NULL,
-    amount BIGINT NOT NULL,
-    balance_before BIGINT NOT NULL,
-    balance_after BIGINT NOT NULL,
+    amount NUMERIC(78, 0) NOT NULL,  -- Up to 78 digits for yoctoNEAR amounts
+    balance_before NUMERIC(78, 0) NOT NULL,  -- Arbitrary precision for large token amounts
+    balance_after NUMERIC(78, 0) NOT NULL,  -- Arbitrary precision for large token amounts
     
     -- Raw data for debugging
     actions JSONB,
