@@ -68,7 +68,7 @@ jobs:
     
     - name: Run integration tests
       working-directory: nt-be
-      run: cargo test --test database_test
+      run: cargo test --tests
     
     - name: Check formatting
       working-directory: nt-be
