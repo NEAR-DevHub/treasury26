@@ -305,27 +305,26 @@ async fn test_load_and_query_balance_changes() {
     println!("  Page 2: {} records", page2.len());
 
     // Pages should have different records
-    if !page1.is_empty() && !page2.is_empty() {
-        assert_ne!(
-            page1[0].id, page2[0].id,
-            "Different pages should have different records"
-        );
-    }
+    assert!(!page1.is_empty(), "Page 1 should not be empty");
+    assert!(!page2.is_empty(), "Page 2 should not be empty");
+    assert_ne!(
+        page1[0].id, page2[0].id,
+        "Different pages should have different records"
+    );
 
     // Test 4: Verify response structure
     println!("\nTest 4: Verify response structure");
-    if let Some(change) = changes.first() {
-        println!("  Sample record:");
-        println!("    ID: {}", change.id);
-        println!("    Account: {}", change.account_id);
-        println!("    Block: {}", change.block_height);
-        println!("    Token: {}", change.token_id);
-        println!("    Amount: {}", change.amount);
+    let change = changes.first().expect("Should have at least one change");
+    println!("  Sample record:");
+    println!("    ID: {}", change.id);
+    println!("    Account: {}", change.account_id);
+    println!("    Block: {}", change.block_height);
+    println!("    Token: {}", change.token_id);
+    println!("    Amount: {}", change.amount);
 
-        assert_eq!(change.account_id, account_id);
-        assert!(change.block_height > 0);
-        assert!(!change.token_id.is_empty());
-    }
+    assert_eq!(change.account_id, account_id);
+    assert!(change.block_height > 0);
+    assert!(!change.token_id.is_empty());
 
     // Clean up
     sqlx::query("DELETE FROM balance_changes WHERE account_id = $1")
