@@ -102,7 +102,7 @@ async fn test_load_and_query_balance_changes() {
         .expect("Failed to clean up test data");
 
     // Read and parse the JSON file
-    let json_str = fs::read_to_string("../test-webassemblymusic-treasury.json")
+    let json_str = fs::read_to_string("../test-data/test-webassemblymusic-treasury.json")
         .expect("Failed to read test JSON file");
     let data: Value = serde_json::from_str(&json_str).expect("Failed to parse JSON");
 

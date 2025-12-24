@@ -29,8 +29,11 @@ The NEAR Treasury backend will use PostgreSQL as its primary database for storin
 
 Update `nt-be/Cargo.toml` to include:
 ```toml
-sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json"] }
-uuid = { version = "1.0", features = ["v4", "serde"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "migrate", "bigdecimal"] }
+bigdecimal = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.11", features = ["v4", "serde"] }
+env_logger = "0.11"
+log = "0.4"
 ```
 
 ### 2. Database Schema Design
@@ -65,9 +68,9 @@ CREATE TABLE balance_changes (
     token_id VARCHAR(64),
     receipt_id  TEXT[] NOT NULL DEFAULT '{}',
     counterparty VARCHAR(64) NOT NULL, -- account that sent or received tokens from this account
-    amount BIGINT NOT NULL, -- positive for ingoing amounts, negative for outgoing
-    balance_before BIGINT NOT NULL,
-    balance_after BIGINT NOT NULL,
+    amount NUMERIC(78, 0) NOT NULL, -- positive for ingoing amounts, negative for outgoing. NUMERIC for arbitrary precision (yoctoNEAR exceeds BIGINT)
+    balance_before NUMERIC(78, 0) NOT NULL, -- arbitrary precision for large token amounts
+    balance_after NUMERIC(78, 0) NOT NULL, -- arbitrary precision for large token amounts
     
     -- Raw data (optional - for debugging/auditing)
     actions JSONB,  -- Store full actions array, only for the block where the transaction is submitted
@@ -93,25 +96,6 @@ CREATE INDEX idx_balance_changes_counterparty ON balance_changes(counterparty);
 CREATE INDEX idx_balance_changes_receipt_id ON balance_changes USING GIN(receipt_id);
 ```
 
-**Optional: `sync_status`** - Track sync progress per account
-```sql
-CREATE TABLE sync_status (
-    id SERIAL PRIMARY KEY,
-    account_id VARCHAR(64) NOT NULL UNIQUE,
-    
-    last_synced_block BIGINT NOT NULL,
-    last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    
-    first_block BIGINT,  -- First block with data
-    total_changes INTEGER DEFAULT 0,
-    
-    sync_errors JSONB,  -- Track any sync issues
-    
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
-
 #### Example Queries
 
 **Get recent balance changes for an account**:
@@ -128,7 +112,7 @@ LIMIT 10;
 SELECT balance_after
 FROM balance_changes
 WHERE account_id = 'treasury.sputnik-dao.near'
-  AND token_id IS NULL  -- NULL means NEAR token
+  AND token_id = 'near'  -- 'near' for NEAR token
   AND block_height <= 152093047
 ORDER BY block_height DESC
 LIMIT 1;
@@ -175,8 +159,7 @@ ORDER BY block_height;
 Migration structure:
 ```
 nt-be/migrations/
-  ├── 20251223000001_create_balance_changes.sql
-  └── 20251223000002_create_sync_status.sql
+  └── 20251223000001_create_balance_changes.sql
 ```
 
 ### 3. Connection Pool Setup
@@ -193,11 +176,12 @@ pub struct AppState {
 }
 ```
 
-Configure connection pool in `main.rs`:
+Configure connection pool in `lib.rs` (refactored from `main.rs`):
 - Read `DATABASE_URL` from environment
-- Set appropriate pool size (max 10-20 connections for Render free tier)
-- Configure connection timeouts
-- Add graceful shutdown handling
+- Set appropriate pool size (20 connections configured)
+- Configure connection timeouts (3 second acquire timeout)
+- Automatic migration execution on startup
+- Logging initialization with env_logger
 
 ### 4. Local Development Setup
 
@@ -258,16 +242,19 @@ Response format:
 
 ### 6. Integration Tests
 
-Create `nt-be/tests/database_test.rs`:
-- Test database connection establishment
-- Test health endpoint returns 200 when DB is up
-- Test health endpoint returns 503 when DB is down
-- Test basic CRUD operations (once schema is defined)
+Created integration tests:
+- `nt-be/tests/database_test.rs`: Tests health endpoint with real server process
+- `nt-be/tests/balance_changes_test.rs`: Tests balance changes API end-to-end
+  - Loads test data from JSON
+  - Spawns actual server using `cargo run --bin nf-be`
+  - Tests queries, filtering, pagination
+  - Automatic cleanup via Drop trait
 
 CI/CD considerations:
-- Use `postgres_test` service in GitHub Actions
-- Run migrations before tests
-- Clean up test data after each test
+- GitHub Actions workflow in `.github/workflows/backend-tests.yml`
+- PostgreSQL service container in CI
+- Runs migrations, unit tests, integration tests
+- Code quality checks: `cargo fmt --check` and `cargo clippy`
 
 ### 7. Error Handling
 
@@ -277,24 +264,46 @@ Implement proper error handling for:
 - Pool exhaustion
 - Migration failures
 
-### 8. Documentation
+### 7. Balance Changes API
 
-Update README with:
-- How to start local database
-- How to run migrations
-- How to run integration tests
-- Database connection troubleshooting
+Implemented REST API endpoint for querying balance changes:
+- **Endpoint:** `GET /api/balance-changes`
+- **Query Parameters:**
+  - `account_id` (required): NEAR account to query
+  - `token_id` (optional): Filter by specific token
+  - `limit` (optional, default 100): Results per page
+  - `offset` (optional, default 0): Pagination offset
+- **Implementation:** `nt-be/src/routes/balance_changes.rs`
+- Uses BigDecimal for NUMERIC field serialization
+- Efficient queries with composite indexes
+
+### 8. Data Loading Utilities
+
+Created utilities for loading test/development data:
+- `nt-be/src/bin/load_test_data.rs`: Loads JSON data into database
+- `nt-be/src/bin/convert_test_data.rs`: Converts JSON to SQL INSERT statements
+- Test data: 150 balance changes from real NEAR account
+
+### 9. Documentation
+
+Created comprehensive documentation:
+- `nt-be/DATABASE.md`: Complete setup guide with troubleshooting
+- `docs/implementation-plans/balance-changes-api-summary.md`: API implementation details
+- Updated README with database setup instructions
 
 ## Acceptance Criteria
 
-- ✅ Database dependencies added to Cargo.toml
-- ✅ Connection pool configured in AppState
-- ✅ Local Docker setup working
-- ✅ Health endpoint implemented and tested
-- ✅ Integration tests passing locally and in CI
-- ✅ Database migrations working
-- ✅ Production deployment successful with database connection
-- ✅ Documentation complete
+- ✅ Database dependencies added to Cargo.toml (sqlx, bigdecimal, uuid)
+- ✅ Connection pool configured in AppState (lib.rs)
+- ✅ Local Docker setup working (docker-compose.yml with dev + test databases)
+- ✅ Health endpoint enhanced with database connectivity checks
+- ✅ Integration tests passing locally and in CI (database_test.rs, balance_changes_test.rs)
+- ✅ Database migrations working (automatic execution on startup)
+- ✅ Balance changes API implemented with pagination and filtering
+- ✅ Data loading utilities created (load_test_data, convert_test_data binaries)
+- ✅ NUMERIC(78, 0) used for arbitrary precision yoctoNEAR amounts
+- ✅ CI/CD workflow configured (.github/workflows/backend-tests.yml)
+- ✅ Documentation complete (DATABASE.md, balance-changes-api-summary.md)
 
 ## Future Enhancements
 
@@ -306,7 +315,9 @@ Update README with:
 
 ## Notes
 
-- Start with minimal schema - iterate based on features needed
-- Consider using database for caching instead of in-memory for horizontal scaling
-- Ensure proper connection cleanup on shutdown
-- Use prepared statements to prevent SQL injection
+- ✅ NUMERIC(78, 0) chosen over BIGINT because yoctoNEAR amounts (10^24) exceed BIGINT max (~9.2×10^18)
+- ✅ BigDecimal used in Rust for NUMERIC field serialization with serde support
+- ✅ Test binaries require `--bin` flag: `cargo run --bin nf-be` (multiple binaries in project)
+- ✅ Render.yaml updated to use `cargo build --release --bin nf-be`
+- ✅ Connection pool automatically handles cleanup via Drop trait
+- ✅ sqlx uses prepared statements by default, preventing SQL injection

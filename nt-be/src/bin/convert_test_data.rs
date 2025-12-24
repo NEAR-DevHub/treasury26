@@ -7,7 +7,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
 
     // Read the JSON file
-    let json_str = fs::read_to_string("../test-webassemblymusic-treasury.json")?;
+    let json_str = fs::read_to_string("../test-data/test-webassemblymusic-treasury.json")?;
     let data: Value = serde_json::from_str(&json_str)?;
 
     let account_id = data["accountId"].as_str().unwrap();

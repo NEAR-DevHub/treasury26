@@ -121,12 +121,6 @@ Main table storing account balance history:
 - Tracks before/after balances
 - Includes transaction metadata and counterparty info
 
-### sync_status
-Tracks synchronization progress for accounts:
-- Last synced block height
-- Total number of changes imported
-- Error tracking
-
 ## Troubleshooting
 
 ### Port Already in Use
