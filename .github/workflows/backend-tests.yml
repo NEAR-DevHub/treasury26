@@ -52,7 +52,7 @@ jobs:
       working-directory: nt-be
       run: |
         cat > .env << EOF
-        DATABASE_URL=postgres://postgres:postgres@localhost:5433/treasury_test
+        DATABASE_URL=postgres://treasury_test:test_password@localhost:5433/treasury_test_db
         PORT=3000
         EOF
     
