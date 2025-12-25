@@ -623,133 +623,125 @@ async fn test_fill_gaps_end_to_end(pool: PgPool) {
 
 ---
 
-## Phase 17: Account Coordinator
+## Phase 17: Monitored Accounts Table
 
-**Goal:** Process multiple accounts with rate limit avoidance.
+**Goal:** Create database table for accounts to monitor continuously.
 
-**New module:** `src/services/account_coordinator.rs`
+**New migration:** `migrations/XXXXXX_create_monitored_accounts.sql`
 
 **TDD approach:**
-1. Write integration test with multiple accounts
-2. Write unit test simulating rate limit avoidance
-3. Implement coordinator
-4. Tests validate correct scheduling
+1. Write integration test that inserts and queries monitored accounts
+2. Create migration
+3. Add model struct
+4. Tests pass
+
+**Table schema:**
+```sql
+CREATE TABLE monitored_accounts (
+    account_id TEXT PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    last_synced_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_monitored_accounts_enabled ON monitored_accounts(enabled) WHERE enabled = true;
+```
+
+**Model struct:**
+```rust
+pub struct MonitoredAccount {
+    pub account_id: String,
+    pub enabled: bool,
+    pub last_synced_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+```
+
+**Integration test:**
+```rust
+#[sqlx::test]
+async fn test_monitored_accounts(pool: PgPool) {
+    // Insert monitored account
+    // Query enabled accounts
+    // Update last_synced_at after processing
+    // Verify updates
+}
+```
+
+**Review criteria:**
+- Migration runs successfully
+- Can insert and query accounts
+- Index improves query performance
+- Clear model struct
+
+---
+
+## Phase 18: Continuous Monitoring Service
+
+**Goal:** Implement continuous monitoring loop that processes enabled accounts.
+
+**New module:** `src/services/account_monitor.rs`
+
+**TDD approach:**
+1. Write integration test with monitored accounts
+2. Implement monitoring loop
+3. Test validates continuous processing
 
 **Function:**
 ```rust
-pub async fn process_accounts(
+pub async fn run_monitor_loop(
     pool: &PgPool,
-    account_ids: Vec<String>,
-    start_block: i64,
-) -> Result<ProcessingSummary>
+    interval_seconds: u64,
+) -> Result<()>
 ```
+
+**Logic:**
+1. Query enabled accounts from `monitored_accounts` table
+2. For each account:
+   - Get current block height
+   - Query all known tokens for this account from balance_changes
+   - For each token:
+     - Get current balance at current block
+     - Get last recorded balance_after
+     - If different: run gap detection and filling
+   - Update `last_synced_at` timestamp
+3. Rotate between accounts to avoid rate limits
+4. Sleep for interval between full cycles
+5. Handle errors gracefully, continue with next account
 
 **Integration test:**
 ```rust
 #[sqlx::test]
-async fn test_process_multiple_accounts(pool: PgPool) {
-    let accounts = vec!["acc1.near", "acc2.near"];
-    let summary = process_accounts(
-        &pool,
-        accounts,
-        123456789,
-    ).await.unwrap();
-    // Verify all accounts processed
-    // Verify no rate limit exhaustion
+async fn test_continuous_monitoring(pool: PgPool) {
+    // Insert monitored accounts
+    // Run one cycle of monitoring
+    // Verify last_synced_at updated
+    // Verify balance changes collected
+    // Verify accounts processed in rotation
 }
 ```
 
 **Review criteria:**
-- Clear scheduling logic
-- Good error reporting
+- Clear monitoring loop logic
+- Graceful error handling
+- Updates sync status after processing
 - Integration test validates behavior
-- No complex nested loops
-
----
-
-## Phase 18: HTTP Endpoint
-
-**Goal:** Expose API endpoint to trigger data collection.
-
-**New file:** `src/handlers/balance_collection.rs`
-
-**TDD approach:**
-1. Write integration test calling endpoint
-2. Implement handler
-3. Test validates response and async behavior
-
-**Endpoint:** `POST /api/balance-collection/trigger`
-
-**Integration test:**
-```rust
-#[sqlx::test]
-async fn test_trigger_endpoint(pool: PgPool) {
-    // Setup test server
-    // POST to endpoint
-    // Verify response
-    // Wait for job completion
-    // Verify data collected
-}
-```
-
-**Review criteria:**
-- Spawns async task for collection
-- Returns job ID or status
-- Integration test validates full flow
-- Input validation
-
----
-
-## Phase 19: Error Recovery Tests
-
-**Goal:** Test error scenarios and resumption.
-
-**Add to:** `tests/balance_collection_integration_test.rs`
-
-**Test scenarios:**
-1. API unavailable - falls back to RPC
-2. RPC temporarily out of sync - can resume
-3. Database connection lost - can resume
-4. Partial gap filling - continues from where it left off
-
-**Review criteria:**
-- Uses mock API clients that can fail on demand
-- Verifies data integrity after resume
-- All error paths tested
-- Clear test documentation
-
----
-
-## Phase 20: Documentation and CLI Tool
-
-**Goal:** Add user-facing documentation and CLI for manual triggers.
-
-**Files:**
-- Update `README.md` with balance collection info
-- Add `src/bin/collect_balances.rs` for CLI tool
-
-**TDD approach:**
-1. Write CLI integration test
-2. Implement CLI
-3. Test validates command behavior
-
-**Review criteria:**
-- Clear usage examples
-- Command-line argument parsing
-- Progress output
-- Integration test validates CLI execution
+- No blocking operations
 
 ---
 
 ## Implementation Order Notes
 
 - **TDD is mandatory:** Write tests before implementation in every phase
+- **Documentation is mandatory:** Each phase includes module-level docs and inline comments
 - Each phase should be a separate PR for easy review
 - Integration tests start in Phase 1 and grow with each phase
 - Keep functions small (ideally < 50 lines, max 80 lines)
 - Use helper functions to break up complex logic
 - Add inline comments explaining "why", not "what"
-- Each module should have module-level documentation
+- Each module should have module-level documentation explaining its purpose
 - Mark tests requiring external services with `#[ignore]` but run them during development
 
 ## Quick Start Recommendation
