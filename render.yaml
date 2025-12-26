@@ -5,7 +5,7 @@ services:
     runtime: rust
     plan: starter
     rootDir: nt-be
-    buildCommand: cargo build --release
+    buildCommand: cargo build --release --bin nf-be
     startCommand: ./target/release/nf-be
     envVars:
       - key: PIKESPEAK_KEY

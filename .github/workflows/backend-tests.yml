@@ -1,0 +1,84 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Start PostgreSQL with Docker Compose
+      working-directory: nt-be
+      run: |
+        docker compose up -d postgres_test
+        sleep 5
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        components: rustfmt, clippy
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache cargo build
+      uses: actions/cache@v4
+      with:
+        path: nt-be/target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Create .env file
+      working-directory: nt-be
+      run: |
+        cat > .env << EOF
+        DATABASE_URL=postgres://treasury_test:test_password@localhost:5433/treasury_test_db
+        PORT=3000
+        PIKESPEAK_KEY=${{ secrets.PIKESPEAK_KEY }}
+        FASTNEAR_API_KEY=${{ secrets.FASTNEAR_API_KEY }}
+        EOF
+    
+    - name: Run unit tests
+      working-directory: nt-be
+      run: cargo test --lib --bins
+    
+    - name: Build binary for integration tests
+      working-directory: nt-be
+      run: cargo build
+    
+    - name: Run integration tests
+      working-directory: nt-be
+      run: cargo test --tests
+    
+    - name: Check formatting
+      working-directory: nt-be
+      run: cargo fmt -- --check
+    
+    - name: Run clippy
+      working-directory: nt-be
+      run: cargo clippy -- -D warnings
+    
+    - name: Stop PostgreSQL
+      if: always()
+      working-directory: nt-be
+      run: docker compose down

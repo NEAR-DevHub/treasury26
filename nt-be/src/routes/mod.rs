@@ -1,5 +1,7 @@
 use axum::{
     Json, Router,
+    extract::State,
+    http::StatusCode,
     routing::{get, post},
 };
 use serde_json::{Value, json};
@@ -7,14 +9,54 @@ use std::sync::Arc;
 
 use crate::{AppState, handlers};
 
-async fn health_check() -> Json<Value> {
-    Json(json!({"status": "ok"}))
+mod balance_changes;
+
+async fn health_check(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    // Test database connection
+    let db_connected = sqlx::query("SELECT 1")
+        .fetch_one(&state.db_pool)
+        .await
+        .is_ok();
+
+    let pool_size = state.db_pool.size();
+    let idle_connections = state.db_pool.num_idle();
+
+    if !db_connected {
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "status": "unhealthy",
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "database": {
+                    "connected": false,
+                    "error": "Database connection failed"
+                }
+            })),
+        ));
+    }
+
+    Ok(Json(json!({
+        "status": "healthy",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "database": {
+            "connected": true,
+            "pool_size": pool_size,
+            "idle_connections": idle_connections
+        }
+    })))
 }
 
 pub fn create_routes(state: Arc<AppState>) -> Router {
     Router::new()
         // Health check
         .route("/api/health", get(health_check))
+        // Balance changes endpoint
+        .route(
+            "/api/balance-changes",
+            get(balance_changes::get_balance_changes),
+        )
         // Token endpoints
         .route(
             "/api/token/price",

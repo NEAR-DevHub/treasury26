@@ -111,13 +111,11 @@ pub async fn get_batch_storage_deposit_is_registered(
 
         futures.push(async move {
             match check_storage_deposit(&state_clone, account_id.clone(), token_id.clone()).await {
-                Ok(is_registered) => {
-                    Some(StorageDepositResponse {
-                        account_id: account_id.to_string(),
-                        token_id: token_id.to_string(),
-                        is_registered,
-                    })
-                }
+                Ok(is_registered) => Some(StorageDepositResponse {
+                    account_id: account_id.to_string(),
+                    token_id: token_id.to_string(),
+                    is_registered,
+                }),
                 Err(e) => {
                     eprintln!(
                         "Error checking storage deposit for {} / {}: {}",
