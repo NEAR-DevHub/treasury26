@@ -16,7 +16,7 @@ async fn main() {
 
     // Initialize application state
     let state = Arc::new(
-        nf_be::init_app_state()
+        nt_be::init_app_state()
             .await
             .expect("Failed to initialize application state"),
     );
@@ -27,7 +27,7 @@ async fn main() {
         .allow_headers(Any);
 
     let app = Router::new()
-        .merge(nf_be::routes::create_routes(state))
+        .merge(nt_be::routes::create_routes(state))
         .layer(cors);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
