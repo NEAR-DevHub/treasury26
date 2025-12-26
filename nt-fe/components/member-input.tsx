@@ -21,7 +21,7 @@ export const memberSchema = z.array(z.object({
     roles: z.array(z.enum(["governance", "requestor", "financial"])).min(1, "At least one role is required"),
 }));
 
-export type MembersArray = z.infer<typeof memberSchema>[];
+export type MembersArray = z.infer<typeof memberSchema>;
 export type Member = z.infer<typeof memberSchema>[number];
 
 interface MemberInputProps<

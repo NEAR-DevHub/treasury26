@@ -60,7 +60,7 @@ export default function AppRedirect() {
                   Welcome to your Treasury
                 </h1>
                 <p className="text-sm text-muted-foreground font-medium">
-                  Using your wallet works like signing in to Treasury..
+                  Use your wallet to sign in into your treasury.
                 </p>
               </div>
               <div className="flex flex-col w-full px-4 lg:px-16 px gap-3">
