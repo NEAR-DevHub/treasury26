@@ -187,7 +187,7 @@ WHERE prev_block_height IS NOT NULL
 **New module:** `src/services/balance_query.rs`
 
 **TDD approach:**
-1. Write integration test querying real testnet account
+1. Write integration test querying real mainnet account
 2. Write unit tests with mocked RPC responses
 3. Implement balance queries
 4. Tests pass

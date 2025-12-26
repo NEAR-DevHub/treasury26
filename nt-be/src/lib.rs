@@ -1,7 +1,6 @@
 pub mod constants;
 pub mod handlers;
 pub mod routes;
-pub mod services;
 pub mod utils;
 
 use moka::future::Cache;
