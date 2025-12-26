@@ -18,6 +18,7 @@ import { useNear } from "@/stores/near-store";
 import { ThresholdSlider } from "@/components/threshold";
 import { CircleCheck, Database, Info, UsersRound, Vote } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useRouter } from "next/navigation";
 
 const treasuryFormSchema = z.object({
     details: z.object({
@@ -220,7 +221,8 @@ function Step3({ handleBack }: StepProps) {
 }
 
 export default function NewTreasuryPage() {
-    const { accountId } = useNear();
+    const { accountId, isInitializing } = useNear();
+    const router = useRouter();
     const form = useForm<TreasuryFormValues>({
         resolver: zodResolver(treasuryFormSchema),
         defaultValues: {
@@ -237,11 +239,15 @@ export default function NewTreasuryPage() {
             ],
         },
     });
-    console.log('Errors:', form.formState.errors);
-
     useEffect(() => {
         if (accountId) {
             form.setValue("members.0.accountId", accountId);
+        }
+    }, [accountId]);
+
+    useEffect(() => {
+        if (!isInitializing && !accountId) {
+            router.push("/app/");
         }
     }, [accountId]);
 
