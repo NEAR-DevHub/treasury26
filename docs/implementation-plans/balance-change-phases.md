@@ -109,7 +109,7 @@ pub struct BalanceGap {
 
 **Goal:** Implement logic to scan existing records and find gaps.
 
-**New module:** `src/services/gap_detector.rs`
+**New module:** `src/handlers/balance_changes/gap_detector.rs`
 
 **TDD approach:**
 1. Write integration test with known gap scenarios
@@ -184,7 +184,7 @@ WHERE prev_block_height IS NOT NULL
 
 **Goal:** Query balance at specific block heights via RPC.
 
-**New module:** `src/services/balance_query.rs`
+**New module:** `src/handlers/balance_changes/balance/mod.rs` (with submodules: `near.rs`, `ft.rs`, `intents.rs`)
 
 **TDD approach:**
 1. Write integration test querying real mainnet account
@@ -210,7 +210,6 @@ pub async fn get_balance_change_at_block(
 **Integration test:**
 ```rust
 #[tokio::test]
-#[ignore] // Requires RPC access
 async fn test_query_mainnet_balance() {
     let balance = get_balance_at_block(
         "webassemblymusic-treasury.sputnik-dao.near",
@@ -234,7 +233,7 @@ async fn test_query_mainnet_balance() {
 
 **Goal:** Retrieve block timestamps from RPC.
 
-**Add to:** `src/services/balance_query.rs` or new `src/services/block_info.rs`
+**Add to:** `src/handlers/balance_changes/balance/mod.rs` or new `src/handlers/balance_changes/block_info.rs`
 
 **TDD approach:**
 1. Write integration test querying known mainnet block from test data
@@ -259,7 +258,7 @@ pub async fn get_block_timestamp(
 
 **Goal:** Implement RPC-based binary search to find exact block of change.
 
-**New module:** `src/services/binary_search.rs`
+**New module:** `src/handlers/balance_changes/binary_search.rs`
 
 **TDD approach:**
 1. Write integration test with known balance change block on mainnet (from test data)
@@ -300,7 +299,7 @@ pub async fn find_balance_change_block(
 
 **Goal:** Query transaction data from Nearblocks API.
 
-**New module:** `src/services/api_clients/nearblocks.rs`
+**New module:** `src/handlers/balance_changes/api_clients/nearblocks.rs`
 
 **TDD approach:**
 1. Write integration test with real API (marked `#[ignore]`)
@@ -328,7 +327,6 @@ impl NearBlocksClient {
 **Integration test:**
 ```rust
 #[tokio::test]
-#[ignore] // Requires API key
 async fn test_nearblocks_real_query() {
     let client = NearBlocksClient::new();
     let txs = client.get_transactions(
@@ -353,10 +351,10 @@ async fn test_nearblocks_real_query() {
 
 **Goal:** Query transaction data from Pikespeak API.
 
-**New module:** `src/services/api_clients/pikespeak.rs`
+**New module:** `src/handlers/balance_changes/api_clients/pikespeak.rs`
 
 **TDD approach:**
-1. Write integration test (marked `#[ignore]`)
+1. Write integration test
 2. Write unit tests with mocked responses
 3. Implement client with same interface as Nearblocks
 4. Tests pass
@@ -372,7 +370,7 @@ async fn test_nearblocks_real_query() {
 
 **Goal:** Query transaction data from NEAR Intents explorer.
 
-**New module:** `src/services/api_clients/near_intents.rs`
+**New module:** `src/handlers/balance_changes/api_clients/near_intents.rs`
 
 **TDD approach:**
 1. Write integration tests for both transaction queries and balance polls
@@ -410,10 +408,10 @@ pub async fn get_batch_balances(
 
 **Goal:** Orchestrate API calls with fallback logic.
 
-**New module:** `src/services/api_coordinator.rs`
+**New module:** `src/handlers/balance_changes/api_coordinator.rs`
 
 **TDD approach:**
-1. Write integration test with real APIs (marked `#[ignore]`)
+1. Write integration test with real APIs
 2. Write unit tests simulating rate limits and failures
 3. Implement fallback chain
 4. Tests validate correct fallback behavior
@@ -445,7 +443,7 @@ pub async fn find_last_transaction_in_range(
 
 **Goal:** Extract counterparty from transaction receipts.
 
-**New module:** `src/services/counterparty_extractor.rs`
+**New module:** `src/handlers/balance_changes/counterparty_extractor.rs`
 
 **TDD approach:**
 1. Collect real receipt JSON examples from mainnet (from test data)
@@ -479,7 +477,7 @@ pub fn extract_counterparty(
 
 **Goal:** Discover NEAR balance changes for an account.
 
-**New module:** `src/services/token_discovery.rs`
+**New module:** `src/handlers/balance_changes/token_discovery.rs`
 
 **TDD approach:**
 1. Write integration test with known mainnet account (from test data)
@@ -497,7 +495,6 @@ pub async fn check_near_balance_at_block(
 **Integration test:**
 ```rust
 #[sqlx::test]
-#[ignore] // Requires RPC
 async fn test_discover_near_balance(pool: PgPool) {
     let change = check_near_balance_at_block(
         "webassemblymusic-treasury.sputnik-dao.near",
@@ -518,7 +515,7 @@ async fn test_discover_near_balance(pool: PgPool) {
 
 **Goal:** Discover FT tokens from NEAR balance changes.
 
-**Add to:** `src/services/token_discovery.rs`
+**Add to:** `src/handlers/balance_changes/token_discovery.rs`
 
 **TDD approach:**
 1. Collect real FT transfer receipt from mainnet (from test data)
@@ -550,7 +547,7 @@ pub async fn discover_ft_tokens_from_receipt(
 
 **Goal:** Poll NEAR Intents for token holdings.
 
-**Add to:** `src/services/token_discovery.rs`
+**Add to:** `src/handlers/balance_changes/token_discovery.rs`
 
 **TDD approach:**
 1. Write integration test querying real Intents contract
@@ -567,7 +564,6 @@ pub async fn poll_intents_tokens(
 **Integration test:**
 ```rust
 #[tokio::test]
-#[ignore] // Requires RPC
 async fn test_poll_intents_real_account() {
     let tokens = poll_intents_tokens(
         "known-account.near"
@@ -587,7 +583,7 @@ async fn test_poll_intents_real_account() {
 
 **Goal:** Main service that fills gaps using all components.
 
-**New module:** `src/services/gap_filler.rs`
+**New module:** `src/handlers/balance_changes/gap_filler.rs`
 
 **TDD approach:**
 1. Update integration test to fill actual gaps end-to-end
@@ -683,7 +679,7 @@ async fn test_monitored_accounts(pool: PgPool) {
 
 **Goal:** Implement continuous monitoring loop that processes enabled accounts.
 
-**New module:** `src/services/account_monitor.rs`
+**New module:** `src/handlers/balance_changes/account_monitor.rs`
 
 **TDD approach:**
 1. Write integration test with monitored accounts
@@ -743,7 +739,7 @@ async fn test_continuous_monitoring(pool: PgPool) {
 - Use helper functions to break up complex logic
 - Add inline comments explaining "why", not "what"
 - Each module should have module-level documentation explaining its purpose
-- Mark tests requiring external services with `#[ignore]` but run them during development
+- All integration tests should run in CI with proper environment setup
 
 ## Quick Start Recommendation
 

@@ -21,8 +21,9 @@ pub async fn get_balance_at_block(
     token_id: &str,
     block_height: u64,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    // Parse token_id format: "contract:token_id"
-    let parts: Vec<&str> = token_id.split(':').collect();
+    // Parse token_id format: "contract:token_id" (split on first colon only)
+    // Example: "intents.near:nep141:btc.omft.near" -> contract="intents.near", token="nep141:btc.omft.near"
+    let parts: Vec<&str> = token_id.splitn(2, ':').collect();
     if parts.len() != 2 {
         return Err(format!("Invalid Intents token format: {}", token_id).into());
     }

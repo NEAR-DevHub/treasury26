@@ -30,5 +30,10 @@ pub async fn get_balance_at_block(
         .fetch_from(network)
         .await?;
     
-    Ok(balance.to_string())
+    // near-api returns a NearToken type which formats as "X FT"
+    // Extract just the numeric part for consistency with other balance types
+    let balance_str = balance.to_string();
+    let numeric_balance = balance_str.trim_end_matches(" FT").to_string();
+    
+    Ok(numeric_balance)
 }

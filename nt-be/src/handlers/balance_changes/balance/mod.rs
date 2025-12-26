@@ -78,15 +78,11 @@ pub async fn get_balance_change_at_block(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_app_state;
+    use crate::utils::test_utils::init_test_state;
 
     #[tokio::test]
     async fn test_query_mainnet_near_balance() {
-        // Load both .env files for complete environment setup
-        dotenvy::from_filename("../.env").ok();
-        dotenvy::from_filename(".env.test").ok();
-        
-        let state = init_app_state().await.expect("Failed to initialize app state");
+        let state = init_test_state().await;
         
         // Block 151386339 from test data
         let balance = get_balance_at_block(
@@ -102,14 +98,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_balance_change() {
-        // Load both .env files for complete environment setup
-        dotenvy::from_filename("../.env").ok();
-        dotenvy::from_filename(".env.test").ok();
-        
         // Add a small delay to avoid rate limiting when running multiple tests
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         
-        let state = init_app_state().await.expect("Failed to initialize app state");
+        let state = init_test_state().await;
         
         // Block 151386339 from test data with known before/after balances
         let (before, after) = get_balance_change_at_block(
