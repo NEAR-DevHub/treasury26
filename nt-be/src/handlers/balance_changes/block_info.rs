@@ -1,14 +1,27 @@
 //! Block Information Service
 //!
-//! Functions to query block metadata including timestamps via RPC.
+//! Functions to query block metadata including timestamps and receipt data via RPC.
 
 use near_api::{Chain, NetworkConfig, Reference};
+use near_jsonrpc_client::{JsonRpcClient, methods, auth};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+// Re-export types from near-primitives for convenience
+pub use near_primitives::views::{ChunkView, ReceiptView, SignedTransactionView};
+
 /// In-memory cache for block timestamps to avoid redundant RPC calls
 type BlockTimestampCache = Arc<RwLock<HashMap<u64, i64>>>;
+
+/// Receipt execution outcome data for an account at a specific block
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlockReceiptData {
+    pub block_height: u64,
+    pub block_hash: String,
+    pub receipts: Vec<ReceiptView>,
+}
 
 /// Get block timestamp at a specific block height
 ///
@@ -49,6 +62,91 @@ pub async fn get_block_timestamp(
     }
 
     Ok(timestamp)
+}
+
+/// Get block data including all receipts affecting a specific account
+///
+/// Queries the block, iterates through all chunks, and examines receipts
+/// to find all receipts where the account is the receiver.
+///
+/// # Arguments
+/// * `network` - NEAR network configuration (archival RPC)
+/// * `account_id` - The account ID to look for in receipts  
+/// * `block_height` - The block height to query
+///
+/// # Returns
+/// BlockReceiptData containing all relevant receipts, or an error
+pub async fn get_block_data(
+    network: &NetworkConfig,
+    account_id: &str,
+    block_height: u64,
+) -> Result<BlockReceiptData, Box<dyn std::error::Error + Send + Sync>> {
+    // Query the block first
+    let block = Chain::block()
+        .at(Reference::AtBlock(block_height))
+        .fetch_from(network)
+        .await?;
+
+    let block_hash = block.header.hash.to_string();
+    let mut all_receipts = Vec::new();
+
+    // Set up JSON-RPC client for chunk queries
+    let rpc_endpoint = network
+        .rpc_endpoints
+        .first()
+        .ok_or("No RPC endpoint configured")?;
+    
+    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
+    
+    if let Some(bearer) = &rpc_endpoint.bearer_header {
+        // bearer_header already includes "Bearer " prefix from with_api_key()
+        // Extract just the token part
+        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
+        client = client.header(auth::Authorization::bearer(token)?);
+    }
+
+    for chunk_header in &block.chunks {
+        let chunk_hash_str = chunk_header.chunk_hash.to_string();
+
+        // Query the chunk using near-jsonrpc-client
+        let chunk_request = methods::chunk::RpcChunkRequest {
+            chunk_reference: methods::chunk::ChunkReference::ChunkHash {
+                chunk_id: chunk_hash_str.parse()?,
+            },
+        };
+
+        let chunk_response = match client.call(chunk_request).await {
+            Ok(chunk) => chunk,
+            Err(e) => {
+                eprintln!("Warning: Failed to fetch chunk {}: {}", chunk_hash_str, e);
+                continue;
+            }
+        };
+        
+        // Debug: print chunk info
+        let tx_count = chunk_response.transactions.len();
+        let receipt_count = chunk_response.receipts.len();
+        eprintln!("Chunk {} has {} transactions and {} receipts", 
+                  chunk_hash_str, tx_count, receipt_count);
+
+        // Look through receipts for ones affecting our account
+        for receipt in chunk_response.receipts {
+            if receipt.receiver_id.as_str() == account_id {
+                // Debug: print full receipt structure
+                eprintln!("Receipt details: {:#?}", receipt);
+                
+                // Store the full receipt - we'll serialize to JSON in raw_data
+                all_receipts.push(receipt);
+            }
+        }
+
+    }
+
+    Ok(BlockReceiptData {
+        block_height,
+        block_hash,
+        receipts: all_receipts,
+    })
 }
 
 /// Create a new block timestamp cache

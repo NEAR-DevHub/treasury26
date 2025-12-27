@@ -1248,7 +1248,7 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
 /// This test queries block 176927244 to examine receipt data for testing-astradao.sputnik-dao.near
 #[sqlx::test]
 async fn test_get_block_receipt_data(_pool: PgPool) -> sqlx::Result<()> {
-    use nt_be::handlers::balance_changes::gap_filler::get_block_data;
+    use nt_be::handlers::balance_changes::block_info::get_block_data;
 
     let network = create_archival_network();
     let account_id = "testing-astradao.sputnik-dao.near";
@@ -1261,6 +1261,14 @@ async fn test_get_block_receipt_data(_pool: PgPool) -> sqlx::Result<()> {
         .expect("Should successfully get block data");
 
     println!("Block data: {:#?}", block_data);
+    
+    println!("\nFound {} receipts:", block_data.receipts.len());
+    for (i, receipt) in block_data.receipts.iter().enumerate() {
+        println!("\nReceipt #{}", i + 1);
+        println!("  Receipt ID: {}", receipt.receipt_id);
+        println!("  Receiver ID: {}", receipt.receiver_id);
+        println!("  Predecessor ID: {}", receipt.predecessor_id);
+    }
 
     // Assert specific values from block 176927244
     assert_eq!(
@@ -1279,15 +1287,15 @@ async fn test_get_block_receipt_data(_pool: PgPool) -> sqlx::Result<()> {
     // Assert receipt details
     let receipt = &block_data.receipts[0];
     assert_eq!(
-        receipt.receipt_id, "6Giwt4xJ9V7wLAxdo45i7G7vupYzECQaXjCtLe4KfcSY",
+        receipt.receipt_id.to_string(), "6Giwt4xJ9V7wLAxdo45i7G7vupYzECQaXjCtLe4KfcSY",
         "Receipt ID should match"
     );
     assert_eq!(
-        receipt.receiver_id, "testing-astradao.sputnik-dao.near",
+        receipt.receiver_id.as_str(), "testing-astradao.sputnik-dao.near",
         "Receiver ID should match"
     );
     assert_eq!(
-        receipt.predecessor_id, "blackdragon.tkn.near",
+        receipt.predecessor_id.as_str(), "blackdragon.tkn.near",
         "Predecessor ID should match"
     );
 

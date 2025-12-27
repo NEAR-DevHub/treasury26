@@ -15,8 +15,6 @@
 //! This approach uses only RPC queries and doesn't require external APIs.
 
 use near_api::NetworkConfig;
-use near_jsonrpc_client::{JsonRpcClient,methods,auth};
-use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use sqlx::types::BigDecimal;
 use std::str::FromStr;
@@ -29,22 +27,6 @@ use crate::handlers::balance_changes::{
 /// Error type for gap filler operations
 pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
 
-/// Receipt execution outcome data for an account at a specific block
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BlockReceiptData {
-    pub block_height: u64,
-    pub block_hash: String,
-    pub receipts: Vec<ReceiptInfo>,
-}
-
-/// Information about a receipt that affected an account
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ReceiptInfo {
-    pub receipt_id: String,
-    pub receiver_id: String,
-    pub predecessor_id: String,
-}
-
 /// Result of filling a single gap
 #[derive(Debug, Clone)]
 pub struct FilledGap {
@@ -54,86 +36,6 @@ pub struct FilledGap {
     pub block_timestamp: i64,
     pub balance_before: String,
     pub balance_after: String,
-}
-
-/// Get block data including all receipts affecting a specific account
-///
-/// Queries the block, iterates through all chunks, and examines receipts
-/// to find all receipts where the account is the receiver.
-///
-/// # Arguments
-/// * `network` - NEAR network configuration (archival RPC)
-/// * `account_id` - The account ID to look for in receipts  
-/// * `block_height` - The block height to query
-///
-/// # Returns
-/// BlockReceiptData containing all relevant receipts, or an error
-pub async fn get_block_data(
-    network: &NetworkConfig,
-    account_id: &str,
-    block_height: u64,
-) -> Result<BlockReceiptData, GapFillerError> {
-    use near_api::{Chain, Reference};
-
-    // Query the block first
-    let block = Chain::block()
-        .at(Reference::AtBlock(block_height))
-        .fetch_from(network)
-        .await?;
-
-    let block_hash = block.header.hash.to_string();
-    let mut all_receipts = Vec::new();
-
-    // Set up JSON-RPC client for chunk queries
-    let rpc_endpoint = network
-        .rpc_endpoints
-        .first()
-        .ok_or("No RPC endpoint configured")?;
-    
-    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
-    
-    if let Some(bearer) = &rpc_endpoint.bearer_header {
-        // bearer_header already includes "Bearer " prefix from with_api_key()
-        // Extract just the token part
-        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
-        client = client.header(auth::Authorization::bearer(token)?);
-    }
-
-    for chunk_header in &block.chunks {
-        let chunk_hash_str = chunk_header.chunk_hash.to_string();
-
-        // Query the chunk using near-jsonrpc-client
-        let chunk_request = methods::chunk::RpcChunkRequest {
-            chunk_reference: methods::chunk::ChunkReference::ChunkHash {
-                chunk_id: chunk_hash_str.parse()?,
-            },
-        };
-
-        let chunk_response = match client.call(chunk_request).await {
-            Ok(chunk) => chunk,
-            Err(e) => {
-                eprintln!("Warning: Failed to fetch chunk {}: {}", chunk_hash_str, e);
-                continue;
-            }
-        };
-
-        // Look through receipts for ones affecting our account
-        for receipt in chunk_response.receipts {
-            if receipt.receiver_id.as_str() == account_id {
-                all_receipts.push(ReceiptInfo {
-                    receipt_id: receipt.receipt_id.to_string(),
-                    receiver_id: receipt.receiver_id.to_string(),
-                    predecessor_id: receipt.predecessor_id.to_string(),
-                });
-            }
-        }
-    }
-
-    Ok(BlockReceiptData {
-        block_height,
-        block_hash,
-        receipts: all_receipts,
-    })
 }
 
 /// Fill a single gap in the balance change chain
@@ -637,26 +539,24 @@ async fn insert_balance_change_record(
     let amount = &after_bd - &before_bd;
 
     // Get receipt data for this block
-    let block_data = get_block_data(network, account_id, block_height).await?;
+    let block_data = block_info::get_block_data(network, account_id, block_height).await
+        .map_err(|e| -> GapFillerError { e.to_string().into() })?;
     
     // Extract receipt information if available
     let (receipt_ids, signer_id, receiver_id, counterparty) = if let Some(receipt) = block_data.receipts.first() {
         (
-            vec![receipt.receipt_id.clone()],
-            Some(receipt.predecessor_id.clone()), // predecessor is the signer
-            Some(receipt.receiver_id.clone()),
-            receipt.predecessor_id.clone(), // counterparty is the predecessor
+            vec![receipt.receipt_id.to_string()],
+            Some(receipt.predecessor_id.to_string()), // predecessor is the signer
+            Some(receipt.receiver_id.to_string()),
+            receipt.predecessor_id.to_string(), // counterparty is the predecessor
         )
     } else {
         (vec![], None, None, "unknown".to_string())
     };
     
+    // Serialize the full receipt to raw_data
     let raw_data = if let Some(receipt) = block_data.receipts.first() {
-        serde_json::json!({
-            "receipt_id": receipt.receipt_id,
-            "predecessor_id": receipt.predecessor_id,
-            "receiver_id": receipt.receiver_id
-        })
+        serde_json::to_value(receipt).unwrap_or_else(|_| serde_json::json!({}))
     } else {
         serde_json::json!({})
     };

@@ -2066,6 +2066,7 @@ dependencies = [
  "near-account-id",
  "near-api",
  "near-jsonrpc-client",
+ "near-primitives",
  "reqwest",
  "serde",
  "serde_json",
