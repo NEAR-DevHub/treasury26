@@ -1,0 +1,174 @@
+use axum::{
+    Json,
+    extract::{Path, Query, State},
+    http::StatusCode,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use sqlx::types::chrono::{DateTime, Utc};
+use std::sync::Arc;
+
+use crate::AppState;
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct MonitoredAccount {
+    pub account_id: String,
+    pub enabled: bool,
+    pub last_synced_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AddAccountRequest {
+    pub account_id: String,
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+
+fn default_enabled() -> bool {
+    true
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListAccountsQuery {
+    pub enabled: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateAccountRequest {
+    pub enabled: bool,
+}
+
+/// Add a new monitored account
+pub async fn add_monitored_account(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<AddAccountRequest>,
+) -> Result<Json<MonitoredAccount>, (StatusCode, Json<Value>)> {
+    let account = sqlx::query_as::<_, MonitoredAccount>(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, $2)
+        ON CONFLICT (account_id) DO UPDATE
+        SET enabled = EXCLUDED.enabled,
+            updated_at = NOW()
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at
+        "#,
+    )
+    .bind(&payload.account_id)
+    .bind(payload.enabled)
+    .fetch_one(&state.db_pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Database error: {}", e) })),
+        )
+    })?;
+
+    Ok(Json(account))
+}
+
+/// List monitored accounts
+pub async fn list_monitored_accounts(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<ListAccountsQuery>,
+) -> Result<Json<Vec<MonitoredAccount>>, (StatusCode, Json<Value>)> {
+    let accounts = if let Some(enabled) = params.enabled {
+        sqlx::query_as::<_, MonitoredAccount>(
+            r#"
+            SELECT account_id, enabled, last_synced_at, created_at, updated_at
+            FROM monitored_accounts
+            WHERE enabled = $1
+            ORDER BY account_id
+            "#,
+        )
+        .bind(enabled)
+        .fetch_all(&state.db_pool)
+        .await
+    } else {
+        sqlx::query_as::<_, MonitoredAccount>(
+            r#"
+            SELECT account_id, enabled, last_synced_at, created_at, updated_at
+            FROM monitored_accounts
+            ORDER BY account_id
+            "#,
+        )
+        .fetch_all(&state.db_pool)
+        .await
+    }
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Database error: {}", e) })),
+        )
+    })?;
+
+    Ok(Json(accounts))
+}
+
+/// Update a monitored account (enable/disable)
+pub async fn update_monitored_account(
+    State(state): State<Arc<AppState>>,
+    Path(account_id): Path<String>,
+    Json(payload): Json<UpdateAccountRequest>,
+) -> Result<Json<MonitoredAccount>, (StatusCode, Json<Value>)> {
+    let account = sqlx::query_as::<_, MonitoredAccount>(
+        r#"
+        UPDATE monitored_accounts
+        SET enabled = $2,
+            updated_at = NOW()
+        WHERE account_id = $1
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at
+        "#,
+    )
+    .bind(&account_id)
+    .bind(payload.enabled)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Database error: {}", e) })),
+        )
+    })?;
+
+    account.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Account not found" })),
+        )
+    })
+    .map(Json)
+}
+
+/// Delete a monitored account
+pub async fn delete_monitored_account(
+    State(state): State<Arc<AppState>>,
+    Path(account_id): Path<String>,
+) -> Result<StatusCode, (StatusCode, Json<Value>)> {
+    let result = sqlx::query!(
+        r#"
+        DELETE FROM monitored_accounts
+        WHERE account_id = $1
+        "#,
+        account_id
+    )
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Database error: {}", e) })),
+        )
+    })?;
+
+    if result.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Account not found" })),
+        ));
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}

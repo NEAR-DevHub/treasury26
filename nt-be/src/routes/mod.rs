@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     extract::State,
     http::StatusCode,
-    routing::{get, post},
+    routing::{get, patch, post},
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::{AppState, handlers};
 
 mod balance_changes;
+mod monitored_accounts;
 
 async fn health_check(
     State(state): State<Arc<AppState>>,
@@ -56,6 +57,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/balance-changes",
             get(balance_changes::get_balance_changes),
+        )
+        .route(
+            "/api/balance-changes/fill-gaps",
+            post(balance_changes::fill_gaps),
         )
         // Token endpoints
         .route(
@@ -150,6 +155,17 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/intents/supported-tokens",
             get(handlers::intents::supported_tokens::get_supported_tokens),
+        )
+        // Monitored accounts endpoints
+        .route(
+            "/api/monitored-accounts",
+            post(monitored_accounts::add_monitored_account)
+                .get(monitored_accounts::list_monitored_accounts),
+        )
+        .route(
+            "/api/monitored-accounts/{account_id}",
+            patch(monitored_accounts::update_monitored_account)
+                .delete(monitored_accounts::delete_monitored_account),
         )
         // Proxy endpoints - catch-all for external API
         .route(

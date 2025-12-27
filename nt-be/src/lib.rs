@@ -21,14 +21,14 @@ pub struct AppState {
 
 /// Initialize the application state with database connection and migrations
 pub async fn init_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
-    // Database connection
-    let database_url = std::env::var("DATABASE_URL")?;
+    let env_vars = utils::env::EnvVars::default();
 
+    // Database connection
     log::info!("Connecting to database...");
     let db_pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(20)
         .acquire_timeout(Duration::from_secs(3))
-        .connect(&database_url)
+        .connect(&env_vars.database_url)
         .await?;
 
     log::info!("Running database migrations...");
@@ -40,8 +40,6 @@ pub async fn init_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
         .max_capacity(10_000)
         .time_to_live(Duration::from_secs(600))
         .build();
-
-    let env_vars = utils::env::EnvVars::default();
 
     Ok(AppState {
         http_client: reqwest::Client::new(),

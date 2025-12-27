@@ -2,6 +2,7 @@ use near_api::{AccountId, SecretKey};
 
 #[derive(Clone, Debug)]
 pub struct EnvVars {
+    pub database_url: String,
     pub pikespeak_key: String,
     pub fastnear_api_key: String,
     pub sputnik_dao_api_base: String,
@@ -13,6 +14,7 @@ pub struct EnvVars {
 impl Default for EnvVars {
     fn default() -> Self {
         Self {
+            database_url: std::env::var("DATABASE_URL").expect("DATABASE_URL is not set"),
             pikespeak_key: std::env::var("PIKESPEAK_KEY").expect("PIKESPEAK_KEY is not set"),
             fastnear_api_key: std::env::var("FASTNEAR_API_KEY")
                 .expect("FASTNEAR_API_KEY is not set"),
