@@ -191,16 +191,16 @@ mod tests {
     async fn test_find_gaps_multiple_gaps(pool: PgPool) -> sqlx::Result<()> {
         let records = vec![
             (100i64, "1000", "900"),
-            (200i64, "700", "600"),  // Gap 1: 900 -> 700
-            (300i64, "600", "500"),  // Continuous
-            (400i64, "400", "300"),  // Gap 2: 500 -> 400
+            (200i64, "700", "600"), // Gap 1: 900 -> 700
+            (300i64, "600", "500"), // Continuous
+            (400i64, "400", "300"), // Gap 2: 500 -> 400
         ];
 
         for (block, before, after) in records {
             let before_bd = BigDecimal::from_str(before).unwrap();
             let after_bd = BigDecimal::from_str(after).unwrap();
             let amount = &before_bd - &after_bd;
-            
+
             sqlx::query!(
                 r#"
                 INSERT INTO balance_changes 

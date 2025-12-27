@@ -57,6 +57,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/balance-changes",
             get(balance_changes::get_balance_changes),
         )
+        .route(
+            "/api/balance-changes/fill-gaps",
+            post(balance_changes::fill_gaps),
+        )
         // Token endpoints
         .route(
             "/api/token/price",

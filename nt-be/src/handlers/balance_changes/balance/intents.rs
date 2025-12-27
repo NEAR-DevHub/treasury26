@@ -2,10 +2,13 @@
 //!
 //! Functions to query NEAR Intents multi-token balances at specific block heights via RPC.
 
-use near_api::{Contract, NetworkConfig, Reference, types::Data};
+use near_api::{Contract, NetworkConfig, Reference};
 use std::str::FromStr;
 
 /// Query NEAR Intents multi-token balance at a specific block height
+///
+/// If the RPC returns a 422 error (unprocessable entity), assumes the block doesn't exist
+/// and retries with previous blocks (up to 10 attempts).
 ///
 /// # Arguments
 /// * `network` - The NEAR network configuration (use archival network for historical queries)
@@ -28,21 +31,69 @@ pub async fn get_balance_at_block(
         return Err(format!("Invalid Intents token format: {}", token_id).into());
     }
     let (contract_str, token) = (parts[0], parts[1]);
-    
+
     let contract_id = near_api::types::AccountId::from_str(contract_str)?;
     let contract = Contract(contract_id);
-    
-    let args = serde_json::json!({
-        "account_id": account_id,
-        "token_id": token
-    });
-    
-    let balance: Data<String> = contract
-        .call_function("mt_balance_of", args)
-        .read_only()
-        .at(Reference::AtBlock(block_height))
-        .fetch_from(network)
-        .await?;
-    
-    Ok(balance.data)
+    let max_retries = 10;
+
+    for offset in 0..=max_retries {
+        let current_block = block_height.saturating_sub(offset);
+
+        let args = serde_json::json!({
+            "account_id": account_id,
+            "token_id": token
+        });
+
+        match contract
+            .call_function("mt_balance_of", args)
+            .read_only()
+            .at(Reference::AtBlock(current_block))
+            .fetch_from(network)
+            .await
+        {
+            Ok(balance) => {
+                if offset > 0 {
+                    log::warn!(
+                        "Block {} not available for Intents token {}, used block {} instead (offset: {})",
+                        block_height,
+                        token_id,
+                        current_block,
+                        offset
+                    );
+                }
+                return Ok(balance.data);
+            }
+            Err(e) => {
+                let err_str = e.to_string();
+                // Check if this is a 422 error (unprocessable entity) or block not found error
+                if err_str.contains("422") || err_str.contains("UnknownBlock") {
+                    if offset < max_retries {
+                        log::debug!(
+                            "Block {} not available for Intents token {} ({}), trying previous block",
+                            current_block,
+                            token_id,
+                            err_str
+                        );
+                        continue;
+                    } else {
+                        return Err(format!(
+                            "Failed to query Intents balance after {} retries: {}",
+                            max_retries, err_str
+                        )
+                        .into());
+                    }
+                } else {
+                    // For other errors, fail immediately
+                    return Err(e.into());
+                }
+            }
+        }
+    }
+
+    Err(format!(
+        "Failed to query Intents balance for block {} after {} attempts",
+        block_height,
+        max_retries + 1
+    )
+    .into())
 }

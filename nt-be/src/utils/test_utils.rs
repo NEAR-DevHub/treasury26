@@ -26,21 +26,21 @@ pub fn load_test_env() {
 }
 
 /// Initialize app state with loaded environment variables
-/// 
+///
 /// This creates a minimal AppState for unit tests that only need
 /// network configuration (no database connection or migrations).
 /// Use this for tests that query the blockchain but don't need DB.
 #[cfg(test)]
 pub async fn init_test_state() -> AppState {
     load_test_env();
-    
+
     let env_vars = crate::utils::env::EnvVars::default();
-    
+
     let cache = Cache::builder()
         .max_capacity(10_000)
         .time_to_live(Duration::from_secs(600))
         .build();
-    
+
     // Create a dummy pool that won't be used in unit tests
     // Tests that need DB should use sqlx::test macro instead
     let db_pool = sqlx::postgres::PgPoolOptions::new()
@@ -48,7 +48,7 @@ pub async fn init_test_state() -> AppState {
         .acquire_timeout(Duration::from_secs(1))
         .connect_lazy(&env_vars.database_url)
         .expect("Failed to create lazy pool");
-    
+
     AppState {
         http_client: reqwest::Client::new(),
         cache,

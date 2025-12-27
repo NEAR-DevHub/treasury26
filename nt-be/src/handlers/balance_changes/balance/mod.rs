@@ -36,6 +36,12 @@ pub async fn get_balance_at_block(
     token_id: &str,
     block_height: u64,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    log::info!(
+        "Get balance at block {} {} {}",
+        account_id,
+        token_id,
+        block_height
+    );
     if token_id == "NEAR" || token_id == "near" {
         near::get_balance_at_block(network, account_id, block_height).await
     } else if token_id.contains(':') {
@@ -71,7 +77,7 @@ pub async fn get_balance_change_at_block(
     } else {
         "0".to_string()
     };
-    
+
     Ok((balance_before, balance_after))
 }
 
@@ -83,15 +89,17 @@ mod tests {
     #[tokio::test]
     async fn test_query_mainnet_near_balance() {
         let state = init_test_state().await;
-        
+
         // Block 151386339 from test data
         let balance = get_balance_at_block(
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "NEAR",
             151386339,
-        ).await.unwrap();
-        
+        )
+        .await
+        .unwrap();
+
         // Expected balance after from test data
         assert_eq!(balance, "11100211126630537100000000");
     }
@@ -100,17 +108,19 @@ mod tests {
     async fn test_query_balance_change() {
         // Add a small delay to avoid rate limiting when running multiple tests
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-        
+
         let state = init_test_state().await;
-        
+
         // Block 151386339 from test data with known before/after balances
         let (before, after) = get_balance_change_at_block(
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "NEAR",
             151386339,
-        ).await.unwrap();
-        
+        )
+        .await
+        .unwrap();
+
         // From test data: balanceBefore and balanceAfter at block 151386339
         assert_eq!(before, "6100211126630537100000000");
         assert_eq!(after, "11100211126630537100000000");

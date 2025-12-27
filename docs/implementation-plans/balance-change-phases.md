@@ -276,16 +276,18 @@ pub async fn find_balance_change_block(
 
 ---
 
-## Phase 8: Gap Filler Service (RPC-based) 🔄 IN PROGRESS
+## Phase 8: Gap Filler Service (RPC-based) ✅ COMPLETED
 
 **Goal:** Main service that fills gaps using RPC-based binary search. This is the core functionality that enables balance change collection without external APIs.
 
-**New module:** `src/handlers/balance_changes/gap_filler.rs`
+**Implemented in:** `src/handlers/balance_changes/gap_filler.rs`
 
 **TDD approach:**
 1. Update integration test to fill actual gaps end-to-end
 2. Implement orchestration using existing RPC components
 3. Test validates gaps are filled correctly
+
+**Key implementation note:** Binary search must search up to `end_block - 1` because RPC returns balance at the END of a block, while `expected_balance_before` at block N equals balance at the END of block (N-1).
 
 **Function:**
 ```rust

@@ -10,6 +10,7 @@ use sqlx::types::chrono::{DateTime, Utc};
 use std::sync::Arc;
 
 use crate::AppState;
+use crate::handlers::balance_changes::gap_filler;
 
 #[derive(Debug, Deserialize)]
 pub struct BalanceChangesQuery {
@@ -91,4 +92,85 @@ pub async fn get_balance_changes(
             ))
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FillGapsRequest {
+    pub account_id: String,
+    pub token_id: String,
+    pub up_to_block: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FillGapsResponse {
+    pub gaps_filled: usize,
+    pub account_id: String,
+    pub token_id: String,
+    pub up_to_block: i64,
+}
+
+pub async fn fill_gaps(
+    State(state): State<Arc<AppState>>,
+    Json(params): Json<FillGapsRequest>,
+) -> Result<Json<FillGapsResponse>, (StatusCode, Json<Value>)> {
+    // Get current block height from RPC if not specified
+    let up_to_block = if let Some(block) = params.up_to_block {
+        block
+    } else {
+        // Query current block height from RPC
+        match get_current_block_height(&state.network).await {
+            Ok(height) => height as i64,
+            Err(e) => {
+                log::error!("Failed to get current block height: {}", e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "Failed to get current block height",
+                        "details": e.to_string()
+                    })),
+                ));
+            }
+        }
+    };
+
+    log::info!(
+        "fill_gaps request: account={}, token={}, up_to_block={}",
+        params.account_id,
+        params.token_id,
+        up_to_block
+    );
+
+    match gap_filler::fill_gaps(
+        &state.db_pool,
+        &state.archival_network,
+        &params.account_id,
+        &params.token_id,
+        up_to_block,
+    )
+    .await
+    {
+        Ok(filled) => Ok(Json(FillGapsResponse {
+            gaps_filled: filled.len(),
+            account_id: params.account_id,
+            token_id: params.token_id,
+            up_to_block,
+        })),
+        Err(e) => {
+            log::error!("Failed to fill gaps: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Failed to fill gaps",
+                    "details": e.to_string()
+                })),
+            ))
+        }
+    }
+}
+
+async fn get_current_block_height(
+    _network: &near_api::NetworkConfig,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let block = near_api::Chain::block().fetch_from_mainnet().await?;
+    Ok(block.header.height)
 }
