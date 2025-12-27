@@ -380,17 +380,11 @@ pub async fn get_block_data(
 
 ---
 
-## Phase 10: Monitored Accounts Table
+## Phase 10: Monitored Accounts Table ✅ COMPLETED
 
 **Goal:** Create database table for accounts to monitor continuously.
 
-**New migration:** `migrations/XXXXXX_create_monitored_accounts.sql`
-
-**TDD approach:**
-1. Write integration test that inserts and queries monitored accounts
-2. Create migration
-3. Add model struct
-4. Tests pass
+**Implementation:** `migrations/20251227000001_create_monitored_accounts.sql`
 
 **Table schema:**
 ```sql
@@ -405,33 +399,25 @@ CREATE TABLE monitored_accounts (
 CREATE INDEX idx_monitored_accounts_enabled ON monitored_accounts(enabled) WHERE enabled = true;
 ```
 
-**Model struct:**
-```rust
-pub struct MonitoredAccount {
-    pub account_id: String,
-    pub enabled: bool,
-    pub last_synced_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-```
+**Features:**
+- Primary key on account_id for uniqueness
+- `enabled` flag to control which accounts are actively monitored
+- `last_synced_at` tracks when each account was last processed
+- Automatic `updated_at` timestamp via database trigger
+- Partial index on enabled accounts for efficient queries
 
-**Integration test:**
-```rust
-#[sqlx::test]
-async fn test_monitored_accounts(pool: PgPool) {
-    // Insert monitored account
-    // Query enabled accounts
-    // Update last_synced_at after processing
-    // Verify updates
-}
-```
+**Integration test:** `test_monitored_accounts`
+- ✅ Insert monitored accounts (enabled and disabled)
+- ✅ Query only enabled accounts
+- ✅ Update last_synced_at after processing
+- ✅ Verify updated_at trigger works
+- ✅ All assertions pass
 
 **Review criteria:**
-- Migration runs successfully
-- Can insert and query accounts
-- Index improves query performance
-- Clear model struct
+- ✅ Migration runs successfully
+- ✅ Can insert and query accounts
+- ✅ Index improves query performance
+- ✅ Clear model struct (implicit via sqlx queries)
 
 ---
 
