@@ -342,7 +342,7 @@ async fn test_fill_gaps_end_to_end(pool: PgPool) -> sqlx::Result<()> {
 
 ---
 
-## Phase 13: Counterparty Extraction ✅ COMPLETED
+## Phase 9: Counterparty Extraction ✅ COMPLETED
 
 **Goal:** Extract counterparty from transaction receipts.
 
@@ -380,7 +380,7 @@ pub async fn get_block_data(
 
 ---
 
-## Phase 14: Monitored Accounts Table
+## Phase 10: Monitored Accounts Table
 
 **Goal:** Create database table for accounts to monitor continuously.
 
@@ -435,7 +435,7 @@ async fn test_monitored_accounts(pool: PgPool) {
 
 ---
 
-## Phase 15: Continuous Monitoring Service
+## Phase 11: Continuous Monitoring Service
 
 **Goal:** Implement continuous monitoring loop that processes enabled accounts.
 
@@ -489,7 +489,7 @@ async fn test_continuous_monitoring(pool: PgPool) {
 
 ---
 
-## Phase 16: Third-Party API Client - Nearblocks (Optional Optimization)
+## Phase 12: Third-Party API Client - Nearblocks (Optional Optimization)
 
 **Goal:** Query transaction data from Nearblocks API to speed up gap filling.
 
@@ -541,7 +541,7 @@ async fn test_nearblocks_real_query() {
 
 ---
 
-## Phase 17: Third-Party API Client - Pikespeak (Optional Optimization)
+## Phase 13: Third-Party API Client - Pikespeak (Optional Optimization)
 
 **Goal:** Query transaction data from Pikespeak API.
 
@@ -560,7 +560,7 @@ async fn test_nearblocks_real_query() {
 
 ---
 
-## Phase 18: Third-Party API Client - NEAR Intents (Optional Optimization)
+## Phase 14: Third-Party API Client - NEAR Intents (Optional Optimization)
 
 **Goal:** Query transaction data from NEAR Intents explorer.
 
@@ -598,7 +598,7 @@ pub async fn get_batch_balances(
 
 ---
 
-## Phase 19: API Coordinator (Optional Optimization)
+## Phase 15: API Coordinator (Optional Optimization)
 
 **Goal:** Orchestrate API calls with fallback logic to speed up gap filling.
 
@@ -633,7 +633,7 @@ pub async fn find_last_transaction_in_range(
 
 ---
 
-## Phase 20: Token Discovery - NEAR Native
+## Phase 16: Token Discovery - NEAR Native
 
 **Goal:** Discover NEAR balance changes for an account.
 
@@ -671,7 +671,7 @@ async fn test_discover_near_balance(pool: PgPool) {
 
 ---
 
-## Phase 21: Token Discovery - Fungible Tokens
+## Phase 17: Token Discovery - Fungible Tokens
 
 **Goal:** Discover FT tokens from NEAR balance changes.
 
@@ -703,7 +703,7 @@ pub async fn discover_ft_tokens_from_receipt(
 
 ---
 
-## Phase 22: Token Discovery - NEAR Intents
+## Phase 18: Token Discovery - NEAR Intents
 
 **Goal:** Poll NEAR Intents for token holdings.
 
