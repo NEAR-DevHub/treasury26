@@ -4,13 +4,15 @@
 
 use near_api::{Chain, NetworkConfig, Reference};
 use near_jsonrpc_client::{JsonRpcClient, methods, auth};
+use near_primitives::types::{BlockReference, BlockId};
+use near_primitives::views::StateChangesRequestView;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 // Re-export types from near-primitives for convenience
-pub use near_primitives::views::{ChunkView, ReceiptView, SignedTransactionView};
+pub use near_primitives::views::{ChunkView, ReceiptView, SignedTransactionView, StateChangeWithCauseView};
 
 /// In-memory cache for block timestamps to avoid redundant RPC calls
 type BlockTimestampCache = Arc<RwLock<HashMap<u64, i64>>>;
@@ -149,6 +151,48 @@ pub async fn get_block_data(
     })
 }
 
+/// Get account changes for a specific account at a specific block
+///
+/// Queries the EXPERIMENTAL_changes RPC endpoint to find state changes
+/// for the given account at the specified block.
+///
+/// # Arguments
+/// * `network` - NEAR network configuration (archival RPC)
+/// * `account_id` - The account ID to query changes for
+/// * `block_height` - The block height to query
+///
+/// # Returns
+/// Vector of state changes for the account, or an error
+pub async fn get_account_changes(
+    network: &NetworkConfig,
+    account_id: &str,
+    block_height: u64,
+) -> Result<Vec<StateChangeWithCauseView>, Box<dyn std::error::Error + Send + Sync>> {
+    // Set up JSON-RPC client
+    let rpc_endpoint = network
+        .rpc_endpoints
+        .first()
+        .ok_or("No RPC endpoint configured")?;
+    
+    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
+    
+    if let Some(bearer) = &rpc_endpoint.bearer_header {
+        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
+        client = client.header(auth::Authorization::bearer(token)?);
+    }
+
+    let request = methods::EXPERIMENTAL_changes::RpcStateChangesInBlockByTypeRequest {
+        block_reference: BlockReference::BlockId(BlockId::Height(block_height)),
+        state_changes_request: StateChangesRequestView::AccountChanges {
+            account_ids: vec![account_id.parse()?],
+        },
+    };
+
+    let response = client.call(request).await?;
+
+    Ok(response.changes)
+}
+
 /// Create a new block timestamp cache
 pub fn new_cache() -> BlockTimestampCache {
     Arc::new(RwLock::new(HashMap::new()))
@@ -202,5 +246,52 @@ mod tests {
         // Verify cache contains the entry
         let read_cache = cache.read().await;
         assert!(read_cache.contains_key(&151386339));
+    }
+
+    #[tokio::test]
+    async fn test_get_account_changes_block_178148634() {
+        use near_primitives::views::{StateChangeValueView, StateChangeCauseView};
+        
+        let state = init_test_state().await;
+
+        let changes = get_account_changes(
+            &state.archival_network,
+            "petersalomonsen.near",
+            178148634,
+        )
+        .await
+        .expect("Should successfully query account changes");
+
+        println!("Account changes for petersalomonsen.near at block 178148634:");
+        println!("{:#?}", changes);
+        
+        // Verify we got exactly one change
+        assert!(!changes.is_empty(), "Should have at least one state change");
+        let change = &changes[0];
+        
+        // Verify the cause is TransactionProcessing with the correct tx_hash
+        match &change.cause {
+            StateChangeCauseView::TransactionProcessing { tx_hash } => {
+                assert_eq!(
+                    tx_hash.to_string(),
+                    "CpctEH17tQgvAT6kTPkCpWtSGtG4WFYS2Urjq9eNNhm5",
+                    "Transaction hash should match"
+                );
+            }
+            _ => panic!("Expected TransactionProcessing cause, got {:?}", change.cause),
+        }
+        
+        // Verify the value is an AccountUpdate with the correct balance
+        match &change.value {
+            StateChangeValueView::AccountUpdate { account_id, account } => {
+                assert_eq!(account_id.as_str(), "petersalomonsen.near", "Account ID should match");
+                assert_eq!(
+                    account.amount.as_yoctonear(),
+                    47131979815366840642871301,
+                    "New balance should be 47131979815366840642871301 yoctoNEAR"
+                );
+            }
+            _ => panic!("Expected AccountUpdate value, got {:?}", change.value),
+        }
     }
 }

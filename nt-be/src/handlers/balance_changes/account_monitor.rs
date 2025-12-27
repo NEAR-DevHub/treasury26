@@ -43,7 +43,7 @@ pub async fn run_monitor_cycle(
         let account_id = &account.account_id;
         
         // Get all unique tokens for this account (excluding nulls which shouldn't happen but be safe)
-        let tokens: Vec<String> = sqlx::query_scalar(
+        let mut tokens: Vec<String> = sqlx::query_scalar(
             r#"
             SELECT DISTINCT token_id
             FROM balance_changes
@@ -55,9 +55,10 @@ pub async fn run_monitor_cycle(
         .fetch_all(pool)
         .await?;
 
+        // If no tokens are tracked yet, ensure we at least check NEAR balance
         if tokens.is_empty() {
-            println!("  {}: No known tokens, skipping", account_id);
-            continue;
+            println!("  {}: No known tokens, will seed NEAR balance", account_id);
+            tokens.push("near".to_string());
         }
 
         println!("  {}: Checking {} tokens", account_id, tokens.len());

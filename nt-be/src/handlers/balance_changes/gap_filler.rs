@@ -515,7 +515,10 @@ async fn fill_gap_to_past(
 }
 
 /// Helper to insert a balance change record at a specific block
-async fn insert_balance_change_record(
+/// 
+/// This is exposed for testing purposes to allow direct insertion of records
+/// at specific blocks to verify transaction hash capture.
+pub async fn insert_balance_change_record(
     pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
@@ -538,35 +541,51 @@ async fn insert_balance_change_record(
     let after_bd = BigDecimal::from_str(&balance_after)?;
     let amount = &after_bd - &before_bd;
 
-    // Get receipt data for this block
+    // Get account changes to find the transaction hash that caused this balance change
+    let account_changes = block_info::get_account_changes(network, account_id, block_height).await
+        .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+    
+    // Extract transaction hash and other details from account changes
+    let (transaction_hashes, raw_data) = if let Some(change) = account_changes.first() {
+        use near_primitives::views::StateChangeCauseView;
+        
+        let tx_hashes = match &change.cause {
+            StateChangeCauseView::TransactionProcessing { tx_hash } => vec![tx_hash.to_string()],
+            _ => vec![],
+        };
+        
+        let raw_data = serde_json::to_value(change).unwrap_or_else(|_| serde_json::json!({}));
+        (tx_hashes, raw_data)
+    } else {
+        (vec![], serde_json::json!({}))
+    };
+    
+    // Get receipt data for additional context (if available)
     let block_data = block_info::get_block_data(network, account_id, block_height).await
         .map_err(|e| -> GapFillerError { e.to_string().into() })?;
     
-    // Extract receipt information if available
-    let (receipt_ids, signer_id, receiver_id, counterparty) = if let Some(receipt) = block_data.receipts.first() {
+    // Build receipt_ids array from block data
+    let receipt_ids: Vec<String> = block_data.receipts.iter()
+        .map(|r| r.receipt_id.to_string())
+        .collect();
+    
+    // Extract signer/receiver/counterparty from receipts if available
+    let (signer_id, receiver_id, counterparty) = if let Some(receipt) = block_data.receipts.first() {
         (
-            vec![receipt.receipt_id.to_string()],
-            Some(receipt.predecessor_id.to_string()), // predecessor is the signer
+            Some(receipt.predecessor_id.to_string()),
             Some(receipt.receiver_id.to_string()),
-            receipt.predecessor_id.to_string(), // counterparty is the predecessor
+            receipt.predecessor_id.to_string(),
         )
     } else {
-        (vec![], None, None, "unknown".to_string())
-    };
-    
-    // Serialize the full receipt to raw_data
-    let raw_data = if let Some(receipt) = block_data.receipts.first() {
-        serde_json::to_value(receipt).unwrap_or_else(|_| serde_json::json!({}))
-    } else {
-        serde_json::json!({})
+        (None, None, "unknown".to_string())
     };
 
     // Insert the record
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
-        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         ON CONFLICT (account_id, block_height, token_id) DO NOTHING
         "#,
         account_id,
@@ -576,6 +595,7 @@ async fn insert_balance_change_record(
         amount,
         before_bd,
         after_bd,
+        &transaction_hashes[..],
         &receipt_ids[..],
         signer_id,
         receiver_id,
@@ -587,12 +607,14 @@ async fn insert_balance_change_record(
     .await?;
 
     log::info!(
-        "Inserted balance change at block {} for {}/{}: {} -> {}",
+        "Inserted balance change at block {} for {}/{}: {} -> {} (tx_hashes: {:?}, receipts: {})",
         block_height,
         account_id,
         token_id,
         balance_before,
-        balance_after
+        balance_after,
+        transaction_hashes,
+        receipt_ids.len()
     );
 
     Ok(Some(FilledGap {

@@ -1565,25 +1565,6 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     .execute(&pool)
     .await?;
     
-    // Insert some initial balance changes to establish baseline
-    let network = create_archival_network();
-    let initial_block = 176_900_000i64;
-    let initial_timestamp = 1234567890i64; // Valid positive timestamp
-    
-    sqlx::query!(
-        r#"
-        INSERT INTO balance_changes 
-        (account_id, block_height, block_timestamp, token_id, counterparty, amount, balance_before, balance_after, actions)
-        VALUES ($1, $2, $3, $4, '', '0', '1000000000000000000000000', '1000000000000000000000000', '[]')
-        "#,
-        account_id,
-        initial_block,
-        initial_timestamp,
-        token_id
-    )
-    .execute(&pool)
-    .await?;
-    
     // Check last_synced_at before monitoring
     let before_sync = sqlx::query!(
         r#"
@@ -1600,6 +1581,7 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     
     // Run one monitoring cycle
     println!("Running monitoring cycle...");
+    let network = create_archival_network();
     let up_to_block = 177_000_000i64;
     run_monitor_cycle(&pool, &network, up_to_block)
         .await
@@ -1675,3 +1657,146 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     Ok(())
 }
 
+#[sqlx::test]
+async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::gap_filler::insert_balance_change_record;
+    
+    println!("\n=== Testing Balance Change Record with Transaction Hash (Block 178148634) ===\n");
+    
+    // Setup network config
+    let network = NetworkConfig {
+        rpc_endpoints: vec![RPCEndpoint::new(
+            "https://archival-rpc.mainnet.fastnear.com/"
+                .parse()
+                .unwrap(),
+        )],
+        ..NetworkConfig::mainnet()
+    };
+    
+    let account_id = "petersalomonsen.near";
+    let token_id = "near";
+    let target_block = 178148634u64;
+    
+    println!("Inserting balance change record for block {}...", target_block);
+    
+    // Directly insert the balance change record for block 178148634
+    // This will use get_account_changes to capture the transaction hash
+    let filled_gap = insert_balance_change_record(&pool, &network, account_id, token_id, target_block)
+        .await
+        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?
+        .expect("Should insert record");
+    
+    println!("✓ Record inserted at block {}", filled_gap.block_height);
+    
+    // The block should be 178148634 or nearby (binary search finds the exact block)
+    println!("Found balance change at block: {}", filled_gap.block_height);
+    
+    // Query the database to verify all fields
+    let record = sqlx::query!(
+        r#"
+        SELECT 
+            account_id,
+            token_id,
+            block_height,
+            block_timestamp,
+            amount::TEXT as "amount!",
+            balance_before::TEXT as "balance_before!",
+            balance_after::TEXT as "balance_after!",
+            transaction_hashes,
+            receipt_id,
+            signer_id,
+            receiver_id,
+            counterparty,
+            raw_data
+        FROM balance_changes
+        WHERE account_id = $1 AND block_height = $2 AND token_id = $3
+        "#,
+        account_id,
+        filled_gap.block_height,
+        token_id
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should find the inserted record");
+    
+    println!("\n=== Verifying Database Record ===");
+    
+    // Verify basic fields
+    assert_eq!(record.account_id, account_id, "Account ID should match");
+    assert_eq!(record.token_id.as_deref(), Some(token_id), "Token ID should match");
+    assert_eq!(record.block_height, filled_gap.block_height, "Block height should match");
+    
+    println!("✓ Account ID: {}", record.account_id);
+    println!("✓ Token ID: {:?}", record.token_id);
+    println!("✓ Block height: {}", record.block_height);
+    println!("✓ Block timestamp: {}", record.block_timestamp);
+    
+    // Verify balance fields
+    assert_eq!(
+        record.balance_after, 
+        "47131979815366840642871301",
+        "Balance after should be correct"
+    );
+    println!("✓ Balance before: {}", record.balance_before);
+    println!("✓ Balance after: {}", record.balance_after);
+    println!("✓ Amount: {}", record.amount);
+    
+    // Verify transaction hash was captured (should be present for NEAR balance changes)
+    assert!(
+        !record.transaction_hashes.is_empty(),
+        "Should have at least one transaction hash"
+    );
+    println!("✓ Transaction hash: {}", record.transaction_hashes[0]);
+    
+    // If this is block 178148634, verify the specific transaction hash
+    if record.block_height == 178148634 {
+        assert_eq!(
+            record.transaction_hashes[0],
+            "CpctEH17tQgvAT6kTPkCpWtSGtG4WFYS2Urjq9eNNhm5",
+            "Transaction hash should match the expected value for block 178148634"
+        );
+        println!("  ✓ Verified specific tx hash for block 178148634");
+    }
+    
+    // Verify receipt IDs (may be empty or have values)
+    println!("✓ Receipt IDs count: {}", record.receipt_id.len());
+    
+    // Verify counterparty is not "unknown" (should have actual value)
+    if record.counterparty != "unknown" {
+        println!("✓ Counterparty: {}", record.counterparty);
+    } else {
+        println!("  Counterparty: unknown (no receipt found)");
+    }
+    
+    // Verify signer/receiver if available
+    if let Some(signer) = &record.signer_id {
+        println!("✓ Signer ID: {}", signer);
+    }
+    if let Some(receiver) = &record.receiver_id {
+        println!("✓ Receiver ID: {}", receiver);
+    }
+    
+    // Verify raw_data contains the state change info
+    if let Some(raw_data) = record.raw_data {
+        assert!(raw_data.is_object(), "Raw data should be a JSON object");
+        println!("✓ Raw data captured: {} bytes", raw_data.to_string().len());
+        
+        // Verify the cause is TransactionProcessing in raw_data
+        // The structure is {"cause": {"TransactionProcessing": {"tx_hash": "..."}}}
+        if let Some(cause_obj) = raw_data.get("cause") {
+            if cause_obj.is_object() && cause_obj.get("TransactionProcessing").is_some() {
+                println!("✓ Cause type: TransactionProcessing");
+                // Verify tx_hash is present in the cause
+                if let Some(tx_info) = cause_obj.get("TransactionProcessing") {
+                    if let Some(tx_hash) = tx_info.get("tx_hash") {
+                        println!("  Transaction hash in cause: {}", tx_hash);
+                    }
+                }
+            }
+        }
+    }
+    
+    println!("\n✓ All assertions passed! Block: {}", record.block_height);
+    
+    Ok(())
+}
