@@ -151,6 +151,75 @@ pub async fn get_block_data(
     })
 }
 
+/// Get ALL receipts in a block involving an account (as sender OR receiver)
+///
+/// Unlike get_block_data which only returns receipts where account is receiver,
+/// this returns receipts where the account is either predecessor OR receiver.
+/// Useful for token discovery where we need to see outgoing transactions.
+///
+/// # Arguments
+/// * `network` - NEAR network configuration (archival RPC)
+/// * `account_id` - The account ID to look for in receipts  
+/// * `block_height` - The block height to query
+///
+/// # Returns
+/// Vector of all receipts involving the account
+pub async fn get_all_account_receipts(
+    network: &NetworkConfig,
+    account_id: &str,
+    block_height: u64,
+) -> Result<Vec<ReceiptView>, Box<dyn std::error::Error + Send + Sync>> {
+    // Query the block first
+    let block = Chain::block()
+        .at(Reference::AtBlock(block_height))
+        .fetch_from(network)
+        .await?;
+
+    let mut all_receipts = Vec::new();
+
+    // Set up JSON-RPC client for chunk queries
+    let rpc_endpoint = network
+        .rpc_endpoints
+        .first()
+        .ok_or("No RPC endpoint configured")?;
+    
+    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
+    
+    if let Some(bearer) = &rpc_endpoint.bearer_header {
+        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
+        client = client.header(auth::Authorization::bearer(token)?);
+    }
+
+    for chunk_header in &block.chunks {
+        let chunk_hash_str = chunk_header.chunk_hash.to_string();
+
+        let chunk_request = methods::chunk::RpcChunkRequest {
+            chunk_reference: methods::chunk::ChunkReference::ChunkHash {
+                chunk_id: chunk_hash_str.parse()?,
+            },
+        };
+
+        let chunk_response = match client.call(chunk_request).await {
+            Ok(chunk) => chunk,
+            Err(e) => {
+                eprintln!("Warning: Failed to fetch chunk {}: {}", chunk_hash_str, e);
+                continue;
+            }
+        };
+
+        // Look through receipts for ones involving our account (as sender OR receiver)
+        for receipt in chunk_response.receipts {
+            if receipt.receiver_id.as_str() == account_id 
+                || receipt.predecessor_id.as_str() == account_id 
+            {
+                all_receipts.push(receipt);
+            }
+        }
+    }
+
+    Ok(all_receipts)
+}
+
 /// Get account changes for a specific account at a specific block
 ///
 /// Queries the EXPERIMENTAL_changes RPC endpoint to find state changes

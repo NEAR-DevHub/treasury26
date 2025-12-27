@@ -1800,3 +1800,341 @@ async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sq
     
     Ok(())
 }
+
+#[sqlx::test]
+async fn test_discover_ft_tokens_from_receipts(_pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::block_info::get_all_account_receipts;
+    use nt_be::handlers::balance_changes::token_discovery::extract_ft_tokens_from_receipt;
+    use std::collections::HashSet;
+
+    // Block 178148636 has an arizcredits.near FT transfer
+    // Receipt: D9XE4evM6wvM9zaYftkmpjz1nYApKhspaFgPqn3xp24k
+    // Token: arizcredits.near
+    let block_height = 178148636;
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    
+    let network = create_archival_network();
+    
+    println!("\n📦 Testing FT token discovery from receipts");
+    println!("Block: {}", block_height);
+    println!("Account: {}", account_id);
+    println!("Expected receipt: D9XE4evM6wvM9zaYftkmpjz1nYApKhspaFgPqn3xp24k");
+    println!("Expected token: arizcredits.near");
+    
+    // Get ALL receipts involving the account (as sender or receiver)
+    let receipts = get_all_account_receipts(&network, account_id, block_height).await
+        .expect("Should fetch receipts");
+    
+    println!("\nFound {} receipts involving account in block", receipts.len());
+    
+    // Extract FT tokens from all receipts
+    let mut all_tokens = HashSet::new();
+    for receipt in &receipts {
+        println!("\nAnalyzing receipt: {}", receipt.receipt_id);
+        println!("  Predecessor: {}", receipt.predecessor_id);
+        println!("  Receiver: {}", receipt.receiver_id);
+        
+        // Print actions if available
+        if let near_primitives::views::ReceiptEnumView::Action { actions, .. } = &receipt.receipt {
+            for action in actions {
+                if let near_primitives::views::ActionView::FunctionCall { method_name, .. } = action {
+                    println!("  Method: {}", method_name);
+                }
+            }
+        }
+        
+        let tokens = extract_ft_tokens_from_receipt(receipt, account_id);
+        if !tokens.is_empty() {
+            println!("  ✓ Found tokens: {:?}", tokens);
+        }
+        all_tokens.extend(tokens);
+    }
+    
+    println!("Discovered {} unique FT tokens:", all_tokens.len());
+    for token in &all_tokens {
+        println!("  - {}", token);
+    }
+    
+    // Should find arizcredits.near
+    assert!(
+        all_tokens.contains("arizcredits.near"),
+        "Should discover arizcredits.near FT token"
+    );
+    
+    println!("\n✓ Successfully discovered FT tokens from receipts");
+    
+    Ok(())
+}
+
+/// Test to check if FT contract appears as counterparty in NEAR balance changes
+#[sqlx::test]
+async fn test_ft_contract_as_counterparty(pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
+    
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    let expected_ft_contract = "arizcredits.near";
+    
+    println!("\n=== Testing FT Contract as Counterparty ===");
+    println!("Account: {}", account_id);
+    println!("Expected FT contract: {}", expected_ft_contract);
+    
+    // Insert the account as monitored
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, true)
+        "#,
+        account_id
+    )
+    .execute(&pool)
+    .await?;
+    
+    let network = create_archival_network();
+    let up_to_block = 178150000i64;
+    
+    // Run monitoring cycle to collect NEAR balance changes
+    println!("\n=== Running Monitoring Cycle ===");
+    run_monitor_cycle(&pool, &network, up_to_block)
+        .await
+        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    
+    // Query all counterparties from NEAR balance changes
+    let counterparties: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT counterparty
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = 'near'
+        ORDER BY counterparty
+        "#
+    )
+    .bind(account_id)
+    .fetch_all(&pool)
+    .await?;
+    
+    println!("\n=== Counterparties in NEAR Balance Changes ===");
+    for counterparty in &counterparties {
+        println!("  - {}", counterparty);
+    }
+    
+    // Check if the FT contract appears as a counterparty
+    let has_ft_as_counterparty = counterparties.contains(&expected_ft_contract.to_string());
+    
+    if has_ft_as_counterparty {
+        println!("\n✓ {} appears as counterparty in NEAR transactions", expected_ft_contract);
+        
+        // Show which blocks have this counterparty
+        let blocks: Vec<i64> = sqlx::query_scalar(
+            r#"
+            SELECT block_height
+            FROM balance_changes
+            WHERE account_id = $1 AND token_id = 'near' AND counterparty = $2
+            ORDER BY block_height
+            "#
+        )
+        .bind(account_id)
+        .bind(expected_ft_contract)
+        .fetch_all(&pool)
+        .await?;
+        
+        println!("  Found in {} blocks:", blocks.len());
+        for block in &blocks {
+            println!("    Block: {}", block);
+        }
+    } else {
+        println!("\n✗ {} does NOT appear as counterparty", expected_ft_contract);
+        println!("  This means we need to query receipts to discover it");
+    }
+    
+    Ok(())
+}
+
+/// Test end-to-end FT token discovery through monitoring
+/// This test verifies the complete flow:
+/// 1. Start monitoring an account (only NEAR initially)
+/// 2. Discover FT tokens from receipts during NEAR monitoring
+/// 3. Automatically start monitoring discovered FT tokens
+/// 4. Verify balance changes are collected for the discovered token
+#[sqlx::test]
+async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
+    
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    let expected_ft_token = "arizcredits.near";
+    
+    println!("\n=== Testing FT Token Discovery Through Monitoring ===");
+    println!("Account: {}", account_id);
+    println!("Expected discovered token: {}", expected_ft_token);
+    
+    // Insert the account as monitored (enabled)
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, true)
+        "#,
+        account_id
+    )
+    .execute(&pool)
+    .await?;
+    
+    println!("\n✓ Account added to monitored_accounts");
+    
+    // Verify no balance changes exist initially
+    let initial_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM balance_changes WHERE account_id = $1"
+    )
+    .bind(account_id)
+    .fetch_one(&pool)
+    .await?;
+    
+    assert_eq!(initial_count.0, 0, "Should start with no balance change records");
+    println!("✓ Verified empty state (0 records)");
+    
+    let network = create_archival_network();
+    
+    // Run first monitoring cycle
+    // This should:
+    // 1. Auto-seed NEAR token
+    // 2. Fill gaps for NEAR (which captures receipts with FT transfers)
+    // Block 178148636 contains arizcredits.near FT transfer
+    // We need to search from a point where there's an existing balance change
+    // that leads to block 178148636
+    let up_to_block = 178150000i64; // Well past the block with FT transfer
+    
+    println!("\n=== First Monitoring Cycle ===");
+    println!("Up to block: {}", up_to_block);
+    
+    run_monitor_cycle(&pool, &network, up_to_block)
+        .await
+        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    
+    // Check how many NEAR records were collected
+    let near_count: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = 'near'
+        "#
+    )
+    .bind(account_id)
+    .fetch_one(&pool)
+    .await?;
+    
+    println!("✓ Collected {} NEAR balance change records", near_count.0);
+    assert!(near_count.0 > 0, "Should have collected NEAR balance changes");
+    
+    println!("\n=== Second Monitoring Cycle ===");
+    println!("The first cycle should have discovered FT tokens from receipts");
+    println!("The second cycle should collect balance changes for discovered tokens");
+    
+    // Run second monitoring cycle - should pick up discovered FT tokens
+    run_monitor_cycle(&pool, &network, up_to_block)
+        .await
+        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    
+    println!("\n=== Verifying Automatic FT Token Discovery ===");
+    
+    // The monitoring system should have automatically discovered and started tracking
+    // the arizcredits.near FT token from receipts collected during NEAR monitoring.
+    // Verify FT balance changes were collected
+    let ft_count: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        "#
+    )
+    .bind(account_id)
+    .bind(expected_ft_token)
+    .fetch_one(&pool)
+    .await?;
+    
+    assert!(
+        ft_count.0 > 0,
+        "Should have collected balance changes for discovered token {}",
+        expected_ft_token
+    );
+    
+    println!("✓ Collected {} balance change records for {}", ft_count.0, expected_ft_token);
+    
+    // Verify the balance changes are valid
+    let ft_records = sqlx::query!(
+        r#"
+        SELECT 
+            block_height,
+            balance_before::TEXT as "balance_before!",
+            balance_after::TEXT as "balance_after!",
+            amount::TEXT as "amount!"
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        ORDER BY block_height
+        "#,
+        account_id,
+        expected_ft_token
+    )
+    .fetch_all(&pool)
+    .await?;
+    
+    println!("\n=== {} Balance Change Records ===", expected_ft_token);
+    for record in &ft_records {
+        println!(
+            "  Block {}: {} -> {} (amount: {})",
+            record.block_height,
+            record.balance_before,
+            record.balance_after,
+            record.amount
+        );
+    }
+    
+    // Verify chain integrity for FT token
+    let mut prev_balance_after: Option<String> = None;
+    for record in &ft_records {
+        if let Some(prev) = &prev_balance_after {
+            assert_eq!(
+                prev, &record.balance_before,
+                "FT balance chain broken at block {}: {} != {}",
+                record.block_height, prev, record.balance_before
+            );
+        }
+        prev_balance_after = Some(record.balance_after.clone());
+    }
+    
+    println!("✓ FT balance chain integrity verified");
+    
+    // Verify we're tracking both NEAR and the discovered FT token
+    let all_tokens: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT token_id
+        FROM balance_changes
+        WHERE account_id = $1
+        ORDER BY token_id
+        "#
+    )
+    .bind(account_id)
+    .fetch_all(&pool)
+    .await?;
+    
+    println!("\n=== All Tracked Tokens for {} ===", account_id);
+    for token in &all_tokens {
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM balance_changes WHERE account_id = $1 AND token_id = $2"
+        )
+        .bind(account_id)
+        .bind(token)
+        .fetch_one(&pool)
+        .await?;
+        
+        println!("  - {}: {} records", token, count.0);
+    }
+    
+    assert!(all_tokens.contains(&"near".to_string()), "Should track NEAR");
+    assert!(all_tokens.contains(&expected_ft_token.to_string()), "Should track discovered FT token");
+    assert_eq!(all_tokens.len(), 2, "Should track exactly 2 tokens (NEAR + discovered FT)");
+    
+    println!("\n✓ Full FT token discovery flow validated!");
+    println!("  ✓ Started with NEAR monitoring only");
+    println!("  ✓ Discovered {} from receipts", expected_ft_token);
+    println!("  ✓ Started monitoring discovered token");
+    println!("  ✓ Collected and validated balance changes for both tokens");
+    
+    Ok(())
+}

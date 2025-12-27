@@ -1,8 +1,12 @@
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 use std::collections::HashSet;
+use std::str::FromStr;
+use bigdecimal::BigDecimal;
 
 use super::gap_filler::fill_gaps;
+use super::block_info::get_block_timestamp;
+use super::balance::ft::get_balance_at_block as get_ft_balance;
 
 /// Run one cycle of monitoring for all enabled accounts
 /// 
@@ -101,10 +105,164 @@ pub async fn run_monitor_cycle(
         if !errors.is_empty() {
             eprintln!("  {}: {} errors occurred: {:?}", account_id, errors.len(), errors);
         }
+
+        // Discover new FT tokens from collected receipts
+        match discover_ft_tokens_from_receipts(pool, network, account_id, up_to_block).await {
+            Ok(discovered_count) => {
+                if discovered_count > 0 {
+                    println!("  {}: Discovered {} new FT tokens", account_id, discovered_count);
+                }
+            }
+            Err(e) => {
+                eprintln!("  {}: Error discovering FT tokens: {}", account_id, e);
+            }
+        }
     }
 
     println!("Monitor cycle complete");
     Ok(())
+}
+
+/// Discover FT tokens from counterparties in collected balance changes
+/// 
+/// This function:
+/// 1. Gets distinct counterparties from recent NEAR balance changes
+/// 2. Checks if each counterparty is an FT contract (by calling ft_balance_of)
+/// 3. For newly discovered FT tokens, seeds an initial balance change record
+async fn discover_ft_tokens_from_receipts(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    account_id: &str,
+    up_to_block: i64,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    // Get distinct counterparties from recent NEAR balance changes
+    // Exclude metadata values that are not actual account IDs
+    let counterparties: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT counterparty
+        FROM balance_changes
+        WHERE account_id = $1 
+          AND token_id = 'near'
+          AND counterparty NOT IN ('seed', 'unknown', 'discovered')
+        ORDER BY counterparty
+        LIMIT 100
+        "#,
+    )
+    .bind(account_id)
+    .fetch_all(pool)
+    .await?;
+
+    if counterparties.is_empty() {
+        return Ok(0);
+    }
+
+    // Get tokens we already know about
+    let known_tokens: HashSet<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT token_id
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id IS NOT NULL
+        "#,
+    )
+    .bind(account_id)
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .collect();
+
+    // Check each counterparty to see if it's an FT contract
+    let mut discovered_tokens = HashSet::new();
+    
+    for counterparty in counterparties {
+        // Skip if we already track this token
+        if known_tokens.contains(&counterparty) {
+            continue;
+        }
+        
+        // Try to query FT balance - if it succeeds, it's an FT contract
+        match get_ft_balance(network, account_id, &counterparty, up_to_block as u64).await {
+            Ok(_balance) => {
+                log::debug!("Counterparty {} is an FT contract", counterparty);
+                discovered_tokens.insert(counterparty);
+            }
+            Err(_) => {
+                // Not an FT contract, or error querying - skip it
+                log::debug!("Counterparty {} is not an FT contract", counterparty);
+            }
+        }
+    }
+
+    if discovered_tokens.is_empty() {
+        return Ok(0);
+    }
+
+    // For each discovered FT token, insert it into monitored tokens list
+    // The next monitoring cycle will automatically fill gaps for these tokens
+    let seeded_count = discovered_tokens.len();
+    for token_contract in discovered_tokens {
+        // Insert a marker record so the token appears in the distinct token_id query
+        // Use the earliest block where we have data to start gap filling from there
+        let earliest_block: Option<i64> = sqlx::query_scalar(
+            r#"
+            SELECT MIN(block_height)
+            FROM balance_changes
+            WHERE account_id = $1
+            "#
+        )
+        .bind(account_id)
+        .fetch_one(pool)
+        .await?;
+
+        if let Some(start_block) = earliest_block {
+            // Get current balance at a recent block
+            let balance = match get_ft_balance(network, account_id, &token_contract, up_to_block as u64).await {
+                Ok(b) => b,
+                Err(e) => {
+                    log::warn!("Failed to get balance for {}: {}", token_contract, e);
+                    continue;
+                }
+            };
+
+            let balance_bd = BigDecimal::from_str(&balance)?;
+            let block_timestamp = match get_block_timestamp(network, up_to_block as u64, None).await {
+                Ok(ts) => ts,
+                Err(e) => {
+                    log::warn!("Failed to get timestamp for block {}: {}", up_to_block, e);
+                    continue;
+                }
+            };
+
+            // Insert a marker record at the up_to_block so gap filling will work backwards from here
+            sqlx::query!(
+                r#"
+                INSERT INTO balance_changes 
+                    (account_id, token_id, block_height, block_timestamp, 
+                     amount, balance_before, balance_after, 
+                     transaction_hashes, receipt_id, signer_id, receiver_id, counterparty)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                ON CONFLICT (account_id, token_id, block_height) DO NOTHING
+                "#,
+                account_id,
+                token_contract,
+                up_to_block,
+                block_timestamp,
+                balance_bd.clone(),
+                balance_bd.clone(),
+                balance_bd,
+                &Vec::<String>::new(),
+                &Vec::<String>::new(),
+                None::<String>,
+                None::<String>,
+                "discovered"  // Marker for FT tokens discovered from counterparty analysis
+            )
+            .execute(pool)
+            .await?;
+
+            log::info!("Discovered FT token {} for account {}", token_contract, account_id);
+        }
+    }
+
+    Ok(seeded_count)
 }
 
 /// Discover new tokens for a monitored account by querying its current balance
