@@ -421,61 +421,158 @@ CREATE INDEX idx_monitored_accounts_enabled ON monitored_accounts(enabled) WHERE
 
 ---
 
-## Phase 11: Continuous Monitoring Service
+## Phase 11: Continuous Monitoring Service ✅ COMPLETED
 
 **Goal:** Implement continuous monitoring loop that processes enabled accounts.
 
-**New module:** `src/handlers/balance_changes/account_monitor.rs`
+**Implemented in:** `src/handlers/balance_changes/account_monitor.rs`, `src/main.rs`
+
+**Implementation:**
+- Created `run_monitor_cycle()` function that processes all enabled accounts
+- Background task in main.rs that runs automatically every 5 minutes (configurable)
+- Auto-seeds NEAR balance for accounts with no existing records
+- Graceful error handling - continues with next account/token on failures
+- Updates `last_synced_at` timestamp after successful processing
+
+**Key features:**
+- Queries enabled accounts ordered by last_synced_at (prioritizes least-recently-synced)
+- For each account:
+  - Gets all known tokens from balance_changes table
+  - If no tokens found, automatically adds "near" to seed the balance
+  - Runs fill_gaps for each token up to current block
+  - Updates sync timestamp after processing
+- Rotates between accounts to avoid hammering single account
+- Environment variable `MONITOR_INTERVAL_MINUTES` controls cycle frequency (default: 5)
+
+**Enhanced with transaction hash capture:**
+- Uses `EXPERIMENTAL_changes` RPC to capture transaction hashes
+- Stores tx hashes in `transaction_hashes` field (separate from receipts)
+- Captures state change cause (TransactionProcessing) in raw_data
+- Resolves issue where some records had empty receipt arrays
+
+**Integration test:** `test_continuous_monitoring`
+- ✅ Validates monitoring cycle processes enabled accounts
+- ✅ Verifies last_synced_at timestamp updates
+- ✅ Confirms balance changes are collected
+- ✅ Tests disabled accounts are skipped
+- ✅ Works with empty initial state (auto-seeds NEAR)
+
+**Additional test:** `test_fill_gap_with_transaction_hash_block_178148634`
+- ✅ Validates transaction hash capture for specific block
+- ✅ Verifies all database fields populated correctly
+- ✅ Confirms tx hash matches expected value
+
+**Review criteria:**
+- ✅ Clear monitoring loop logic
+- ✅ Graceful error handling
+- ✅ Updates sync status after processing
+- ✅ Integration test validates behavior
+- ✅ Automatic background execution on server startup
+
+---
+
+## Phase 12: Token Discovery - NEAR Native ✅ COMPLETED
+
+**Goal:** Discover NEAR balance changes for an account.
+
+**Implementation:** Integrated into `account_monitor.rs` via auto-seed logic
+
+**Approach taken:**
+- Every monitored account automatically has "near" token in its tokens list
+- Auto-seed logic in `run_monitor_cycle()` adds "near" if tokens list is empty
+- This ensures NEAR balance is always checked for all monitored accounts
+- No separate module needed - leverages existing balance query infrastructure
+
+**Key code:**
+```rust
+// In account_monitor.rs
+if tokens.is_empty() {
+    println!("  {}: No known tokens, will seed NEAR balance", account_id);
+    tokens.push("near".to_string());
+}
+```
+
+**Testing:**
+- ✅ Integration test `test_continuous_monitoring` validates auto-seeding
+- ✅ Works from completely empty state (no initial records)
+- ✅ NEAR balance changes automatically discovered and collected
+
+**Review criteria:**
+- ✅ NEAR native token always monitored
+- ✅ Integration test validates real behavior
+- ✅ Graceful handling of new accounts
+
+---
+
+## Phase 13: Token Discovery - Fungible Tokens
+
+**Goal:** Discover FT tokens from NEAR balance changes.
+
+**Add to:** `src/handlers/balance_changes/token_discovery.rs`
 
 **TDD approach:**
-1. Write integration test with monitored accounts
-2. Implement monitoring loop
-3. Test validates continuous processing
+1. Collect real FT transfer receipt from mainnet (from test data)
+2. Write test with this receipt
+3. Implement FT discovery
+4. Test extracts correct token IDs
 
 **Function:**
 ```rust
-pub async fn run_monitor_loop(
-    pool: &PgPool,
-    interval_seconds: u64,
-) -> Result<()>
+pub async fn discover_ft_tokens_from_receipt(
+    receipt: &serde_json::Value,
+) -> Result<Vec<String>>
 ```
 
-**Logic:**
-1. Query enabled accounts from `monitored_accounts` table
-2. For each account:
-   - Get current block height
-   - Query all known tokens for this account from balance_changes
-   - For each token:
-     - Get current balance at current block
-     - Get last recorded balance_after
-     - If different: run gap detection and filling
-   - Update `last_synced_at` timestamp
-3. Rotate between accounts to avoid rate limits
-4. Sleep for interval between full cycles
-5. Handle errors gracefully, continue with next account
+**Test fixtures:**
+- Receipt with FT transfer event → extracts token
+- Receipt with multiple FT events → extracts all
+- Receipt with no FT events → returns empty
+- Malformed event → handles gracefully
+
+**Review criteria:**
+- Parses NEP-141 event format correctly
+- Tests use real receipt examples
+- Handles malformed events gracefully
+
+---
+
+## Phase 14: Token Discovery - NEAR Intents
+
+**Goal:** Poll NEAR Intents for token holdings.
+
+**Add to:** `src/handlers/balance_changes/token_discovery.rs`
+
+**TDD approach:**
+1. Write integration test querying real Intents contract
+2. Implement polling functions
+3. Test validates correct data retrieval
+
+**Function:**
+```rust
+pub async fn poll_intents_tokens(
+    account_id: &str,
+) -> Result<HashMap<String, String>> // token_id -> balance
+```
 
 **Integration test:**
 ```rust
-#[sqlx::test]
-async fn test_continuous_monitoring(pool: PgPool) {
-    // Insert monitored accounts
-    // Run one cycle of monitoring
-    // Verify last_synced_at updated
-    // Verify balance changes collected
-    // Verify accounts processed in rotation
+#[tokio::test]
+async fn test_poll_intents_real_account() {
+    let tokens = poll_intents_tokens(
+        "known-account.near"
+    ).await.unwrap();
+    // Validate structure
 }
 ```
 
 **Review criteria:**
-- Clear monitoring loop logic
-- Graceful error handling
-- Updates sync status after processing
-- Integration test validates behavior
-- No blocking operations
+- Calls mt_tokens_for_owner and mt_batch_balance_of
+- Integration test validates real contract calls
+- Clear separation from transaction-based discovery
 
 ---
 
-## Phase 12: Third-Party API Client - Nearblocks (Optional Optimization)
+## Phase 15: Third-Party API Client - Nearblocks (Optional Optimization)
 
 **Goal:** Query transaction data from Nearblocks API to speed up gap filling.
 
@@ -527,7 +624,7 @@ async fn test_nearblocks_real_query() {
 
 ---
 
-## Phase 13: Third-Party API Client - Pikespeak (Optional Optimization)
+## Phase 16: Third-Party API Client - Pikespeak (Optional Optimization)
 
 **Goal:** Query transaction data from Pikespeak API.
 
@@ -546,7 +643,7 @@ async fn test_nearblocks_real_query() {
 
 ---
 
-## Phase 14: Third-Party API Client - NEAR Intents (Optional Optimization)
+## Phase 17: Third-Party API Client - NEAR Intents (Optional Optimization)
 
 **Goal:** Query transaction data from NEAR Intents explorer.
 
@@ -584,7 +681,7 @@ pub async fn get_batch_balances(
 
 ---
 
-## Phase 15: API Coordinator (Optional Optimization)
+## Phase 18: API Coordinator (Optional Optimization)
 
 **Goal:** Orchestrate API calls with fallback logic to speed up gap filling.
 
@@ -616,112 +713,6 @@ pub async fn find_last_transaction_in_range(
 - Clear fallback chain (APIs → RPC)
 - Well-documented error types
 - Tests demonstrate all fallback paths
-
----
-
-## Phase 16: Token Discovery - NEAR Native
-
-**Goal:** Discover NEAR balance changes for an account.
-
-**New module:** `src/handlers/balance_changes/token_discovery.rs`
-
-**TDD approach:**
-1. Write integration test with known mainnet account (from test data)
-2. Implement NEAR balance check
-3. Test validates balance detection
-
-**Function:**
-```rust
-pub async fn check_near_balance_at_block(
-    account_id: &str,
-    block_height: i64,
-) -> Result<Option<BalanceChange>>
-```
-
-**Integration test:**
-```rust
-#[sqlx::test]
-async fn test_discover_near_balance(pool: PgPool) {
-    let change = check_near_balance_at_block(
-        "webassemblymusic-treasury.sputnik-dao.near",
-        150000000, // Block from test data range
-    ).await.unwrap();
-    // Validate change is detected
-}
-```
-
-**Review criteria:**
-- Focused on NEAR native token only
-- Integration test validates real account
-- Clear error handling
-
----
-
-## Phase 17: Token Discovery - Fungible Tokens
-
-**Goal:** Discover FT tokens from NEAR balance changes.
-
-**Add to:** `src/handlers/balance_changes/token_discovery.rs`
-
-**TDD approach:**
-1. Collect real FT transfer receipt from mainnet (from test data)
-2. Write test with this receipt
-3. Implement FT discovery
-4. Test extracts correct token IDs
-
-**Function:**
-```rust
-pub async fn discover_ft_tokens_from_receipt(
-    receipt: &serde_json::Value,
-) -> Result<Vec<String>>
-```
-
-**Test fixtures:**
-- Receipt with FT transfer event → extracts token
-- Receipt with multiple FT events → extracts all
-- Receipt with no FT events → returns empty
-- Malformed event → handles gracefully
-
-**Review criteria:**
-- Parses NEP-141 event format correctly
-- Tests use real receipt examples
-- Handles malformed events gracefully
-
----
-
-## Phase 18: Token Discovery - NEAR Intents
-
-**Goal:** Poll NEAR Intents for token holdings.
-
-**Add to:** `src/handlers/balance_changes/token_discovery.rs`
-
-**TDD approach:**
-1. Write integration test querying real Intents contract
-2. Implement polling functions
-3. Test validates correct data retrieval
-
-**Function:**
-```rust
-pub async fn poll_intents_tokens(
-    account_id: &str,
-) -> Result<HashMap<String, String>> // token_id -> balance
-```
-
-**Integration test:**
-```rust
-#[tokio::test]
-async fn test_poll_intents_real_account() {
-    let tokens = poll_intents_tokens(
-        "known-account.near"
-    ).await.unwrap();
-    // Validate structure
-}
-```
-
-**Review criteria:**
-- Calls mt_tokens_for_owner and mt_batch_balance_of
-- Integration test validates real contract calls
-- Clear separation from transaction-based discovery
 
 ---
 
