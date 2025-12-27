@@ -1445,3 +1445,103 @@ async fn test_fill_gaps_loop_until_complete(pool: PgPool) -> sqlx::Result<()> {
 
     Ok(())
 }
+
+/// Test monitored_accounts table operations
+#[sqlx::test]
+async fn test_monitored_accounts(pool: PgPool) -> sqlx::Result<()> {
+    use chrono::Utc;
+    
+    // Insert a monitored account
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, $2)
+        "#,
+        "test-account.near",
+        true
+    )
+    .execute(&pool)
+    .await?;
+
+    // Insert another account that's disabled
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, $2)
+        "#,
+        "disabled-account.near",
+        false
+    )
+    .execute(&pool)
+    .await?;
+
+    // Query enabled accounts
+    let enabled = sqlx::query!(
+        r#"
+        SELECT account_id, enabled, last_synced_at, created_at, updated_at
+        FROM monitored_accounts
+        WHERE enabled = true
+        ORDER BY account_id
+        "#
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    assert_eq!(enabled.len(), 1, "Should have exactly one enabled account");
+    assert_eq!(enabled[0].account_id, "test-account.near");
+    assert!(enabled[0].enabled);
+    assert!(enabled[0].last_synced_at.is_none(), "last_synced_at should be NULL initially");
+
+    // Update last_synced_at after processing
+    let now = Utc::now();
+    sqlx::query!(
+        r#"
+        UPDATE monitored_accounts
+        SET last_synced_at = $2
+        WHERE account_id = $1
+        "#,
+        "test-account.near",
+        now.naive_utc()
+    )
+    .execute(&pool)
+    .await?;
+
+    // Verify the update
+    let updated = sqlx::query!(
+        r#"
+        SELECT account_id, last_synced_at, updated_at
+        FROM monitored_accounts
+        WHERE account_id = $1
+        "#,
+        "test-account.near"
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    assert!(updated.last_synced_at.is_some(), "last_synced_at should be set");
+    println!("✓ Monitored account created and updated successfully");
+    println!("  Account: {}", updated.account_id);
+    println!("  Last synced: {:?}", updated.last_synced_at);
+    println!("  Updated at: {:?}", updated.updated_at);
+
+    // Verify that disabled accounts are not returned in enabled query
+    let all_accounts = sqlx::query!(
+        r#"
+        SELECT account_id, enabled
+        FROM monitored_accounts
+        ORDER BY account_id
+        "#
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    assert_eq!(all_accounts.len(), 2, "Should have 2 total accounts");
+    assert_eq!(all_accounts[0].account_id, "disabled-account.near");
+    assert!(!all_accounts[0].enabled);
+    assert_eq!(all_accounts[1].account_id, "test-account.near");
+    assert!(all_accounts[1].enabled);
+
+    println!("✓ All monitored_accounts operations validated");
+
+    Ok(())
+}
