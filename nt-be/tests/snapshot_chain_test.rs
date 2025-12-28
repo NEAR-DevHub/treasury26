@@ -170,15 +170,18 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
     println!("\n✓ Gap filling completed");
     println!("  Filled {} gaps", filled.len());
     
-    // The gap SHOULD be filled because:
-    // - Binary search finds balance changed at block 177751529
-    // - No receipts found with the account as receiver (FT receipts go to token contract)
-    // - SNAPSHOT insertion fails (balance actually changed from 0 to 41.414178022306048887375898)
-    // - Falls back to UNKNOWN counterparty record
-    assert_eq!(filled.len(), 1, "Should have filled exactly 1 gap");
-    assert_eq!(filled[0].block_height, 177751529, "Gap should be filled at block 177751529");
-    assert_eq!(filled[0].balance_before, "0", "Balance before should be 0");
-    assert_eq!(filled[0].balance_after, "41.414178022306048887375898", "Balance after should be 41.414178022306048887375898 (decimal-adjusted)");
+    // With the new logic that always inserts SNAPSHOTs at lookback boundaries,
+    // we may fill 2 gaps: the actual balance change + a SNAPSHOT at lookback
+    // Find the actual balance change at block 177751529
+    let balance_change = filled.iter()
+        .find(|g| g.block_height == 177751529)
+        .expect("Should have filled gap at block 177751529");
+    
+    assert_eq!(balance_change.balance_before, "0", "Balance before should be 0");
+    assert_eq!(balance_change.balance_after, "41.414178022306048887375898", 
+        "Balance after should be 41.414178022306048887375898 (decimal-adjusted)");
+    
+    println!("  ✓ Found balance change at block 177751529: 0 -> 41.414178022306048887375898");
     
     // Query the filled record to verify it has UNKNOWN counterparty
     let filled_record = sqlx::query!(

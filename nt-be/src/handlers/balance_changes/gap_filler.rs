@@ -452,8 +452,12 @@ async fn fill_gap_to_present(
 
 /// Fill gap between the earliest record and zero balance (virtual start boundary)
 ///
-/// If the earliest record's balance_before is not 0, there was an earlier change
-/// that brought the balance from 0 to that value.
+/// If the earliest record's balance_before is not 0, OR if querying an earlier block
+/// shows a non-zero balance, there was an earlier change that needs to be recorded.
+///
+/// This handles two cases:
+/// 1. Earliest record has non-zero balance_before (obvious gap)
+/// 2. Earliest record is a SNAPSHOT with 0 balance, but actual historical balance was non-zero
 async fn fill_gap_to_past(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -463,7 +467,7 @@ async fn fill_gap_to_past(
     // Get the earliest record
     let earliest_record = sqlx::query!(
         r#"
-        SELECT block_height, balance_before::TEXT as "balance_before!"
+        SELECT block_height, balance_before::TEXT as "balance_before!", counterparty as "counterparty!"
         FROM balance_changes
         WHERE account_id = $1 AND token_id = $2
         ORDER BY block_height ASC
@@ -479,10 +483,16 @@ async fn fill_gap_to_past(
         return Ok(None); // No records exist
     };
 
-    // If balance_before is 0, we've reached the beginning
-    if earliest.balance_before == "0" {
+    // Case 1: If balance_before is non-zero, we definitely have a gap
+    let has_obvious_gap = earliest.balance_before != "0";
+    
+    // Case 2: Even if balance_before is 0, if this is a SNAPSHOT, we should check if there was
+    // a non-zero balance before the lookback window (SNAPSHOT may have missed earlier history)
+    let should_check_history = earliest.counterparty == "SNAPSHOT" && earliest.balance_before == "0";
+
+    if !has_obvious_gap && !should_check_history {
         log::info!(
-            "No gap to past: earliest record at block {} starts from 0 for {}/{}",
+            "No gap to past: earliest record at block {} starts from 0 for {}/{} (not a SNAPSHOT)",
             earliest.block_height,
             account_id,
             token_id
@@ -490,28 +500,57 @@ async fn fill_gap_to_past(
         return Ok(None);
     }
 
+    // Search backwards - use a reasonable lookback (about 7 days to avoid hitting too-old blocks)
+    let lookback_blocks: u64 = 600_000; // ~7 days
+    let start_block = (earliest.block_height as u64).saturating_sub(lookback_blocks);
+    
+    // Check actual balance at the lookback boundary
+    let balance_at_start = match balance::get_balance_at_block(
+        pool,
+        network,
+        account_id,
+        token_id,
+        start_block,
+    )
+    .await
+    {
+        Ok(balance) => balance,
+        Err(e) => {
+            log::warn!(
+                "Could not query balance at block {} for {}/{}: {} - skipping gap to past",
+                start_block,
+                account_id,
+                token_id,
+                e
+            );
+            return Ok(None);
+        }
+    };
+
+    // Always use the actual balance at lookback boundary as our target
+    // Even if it's 0, we'll insert a SNAPSHOT at the boundary to mark we've checked back to this point
+    // This prevents repeated expensive lookback searches on subsequent runs
+    let target_balance = balance_at_start.clone();
+
     log::info!(
-        "Gap to past detected: balance_before={} at block {} for {}/{}",
-        earliest.balance_before,
+        "Gap to past detected: balance was {} at block {} but earliest record is at block {} with balance_before={} for {}/{}",
+        balance_at_start,
+        start_block,
         earliest.block_height,
+        earliest.balance_before,
         account_id,
         token_id
     );
 
-    // Search backwards - we need to find when balance became earliest.balance_before
-    // Use a reasonable lookback (about 7 days to avoid hitting too-old blocks)
-    let lookback_blocks: u64 = 600_000; // ~7 days
-    let start_block = (earliest.block_height as u64).saturating_sub(lookback_blocks);
-
     log::info!(
-        "Searching for gap to past for {}/{}: {}-{} with balance {}",
+        "Searching for gap to past for {}/{}: target balance '{}' at lookback boundary block {}",
         account_id,
         token_id,
-        start_block,
-        (earliest.block_height - 1) as u64,
-        &earliest.balance_before
+        target_balance,
+        start_block
     );
-    // Binary search to find when the balance became balance_before
+
+    // Binary search to find when the balance became target_balance
     // If this fails (e.g., RPC can't find old blocks), we gracefully give up
     let change_block = match binary_search::find_balance_change_block(
         pool,
@@ -520,7 +559,7 @@ async fn fill_gap_to_past(
         token_id,
         start_block,
         (earliest.block_height - 1) as u64, // Search before the earliest record
-        &earliest.balance_before,
+        &target_balance,
     )
     .await
     {
@@ -537,14 +576,43 @@ async fn fill_gap_to_past(
     };
 
     let Some(block_height) = change_block else {
-        log::info!(
-            "Balance {} existed before block {} - may need larger lookback for {}/{}",
-            earliest.balance_before,
+        log::warn!(
+            "Balance {} existed before block {} - cannot find origin within lookback window for {}/{}. Consider inserting SNAPSHOT at boundary.",
+            target_balance,
             start_block,
             account_id,
             token_id
         );
-        return Ok(None);
+        
+        // Insert a SNAPSHOT at the lookback boundary to record that balance existed there
+        // This prevents repeated searches in future runs
+        match insert_snapshot_record(pool, network, account_id, token_id, start_block).await {
+            Ok(Some(snapshot)) => {
+                log::info!(
+                    "Inserted SNAPSHOT at lookback boundary block {} for {}/{} with balance {}",
+                    start_block,
+                    account_id,
+                    token_id,
+                    balance_at_start
+                );
+                return Ok(Some(snapshot));
+            }
+            Ok(None) => {
+                log::warn!(
+                    "Could not insert SNAPSHOT at block {} - balance may have changed",
+                    start_block
+                );
+                return Ok(None);
+            }
+            Err(e) => {
+                log::error!(
+                    "Error inserting SNAPSHOT at block {}: {}",
+                    start_block,
+                    e
+                );
+                return Ok(None);
+            }
+        }
     };
 
     // Try to insert the new record
