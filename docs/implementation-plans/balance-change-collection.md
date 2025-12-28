@@ -117,6 +117,71 @@ Snapshot records serve as boundary markers for the gap-filling algorithm:
 
 **Test Failure Criteria:** If a balance change is detected but no counterparty can be identified, this indicates a bug in the counterparty extraction logic and should fail tests. All balance changes must have traceable origins or destinations.
 
+## The Counterparty Table
+
+The counterparty table maintains metadata about accounts that appear as counterparties in balance changes. This enables proper classification, decimal conversion, and display of transactions.
+
+### Purpose
+
+1. **Account Classification:** Identify the type of each counterparty:
+   - Fungible Token (NEP-141) contract
+   - Staking pool
+   - DAO contract (e.g., Sputnik DAO)
+   - Personal account
+   - System account (protocol-level operations)
+   - Other contract types
+
+2. **Token Metadata Storage:** For fungible token contracts, store essential metadata:
+   - `decimals`: Number of decimal places (e.g., 6 for arizcredits.near, 24 for NEAR)
+   - `symbol`: Token symbol (e.g., "ARIZ", "NEAR")
+   - `name`: Full token name
+   - `icon`: Optional token icon URL
+
+3. **Decimal Conversion:** When storing FT balance changes, query the counterparty table to get the token's `decimals` field. Convert the raw amount (smallest units returned by `ft_balance_of`) to human-readable format by dividing by 10^decimals. Store the result as BigDecimal to preserve exact precision without rounding.
+
+### Schema
+
+```sql
+CREATE TABLE counterparties (
+    account_id TEXT PRIMARY KEY,
+    account_type TEXT NOT NULL,  -- 'ft_token', 'staking_pool', 'dao', 'personal', 'system', 'other'
+    
+    -- FT token metadata (NULL for non-FT accounts)
+    token_symbol TEXT,
+    token_name TEXT,
+    token_decimals SMALLINT,
+    token_icon TEXT,
+    
+    -- Discovery metadata
+    discovered_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_verified_at TIMESTAMP,
+    
+    -- Additional metadata (JSONB for flexibility)
+    metadata JSONB
+);
+```
+
+### Balance Conversion Flow
+
+1. Query raw balance from RPC: `ft_balance_of(account, token)` returns "2500000" (raw amount)
+2. Look up token in counterparty table: `SELECT token_decimals FROM counterparties WHERE account_id = 'arizcredits.near'` returns 6
+3. Convert to human-readable: `2500000 / 10^6 = 2.5`
+4. Store as BigDecimal in balance_changes table: `2.5` (exact precision, no rounding)
+
+This ensures all fungible token amounts are stored in their human-readable form with exact decimal precision, matching what users expect to see (e.g., "2.5 ARIZ" not "2500000").
+
+### Population Strategy
+
+- **Automatic Discovery:** When a new counterparty is encountered during balance collection:
+  1. Check if it's an FT contract by calling `ft_metadata()`
+  2. If successful, insert into counterparties table with `account_type = 'ft_token'` and store decimals/symbol/name
+  3. If ft_metadata fails, classify as 'other' (can be reclassified later)
+
+- **Lazy Loading:** Counterparty metadata is queried on-demand when processing balance changes. If not found, query and cache it.
+
+- **Periodic Verification:** Optionally refresh metadata for known tokens to catch any contract updates.
+
+
 ## Database Schema Changes
 
 **Required Migration:** Rename the `raw_data` JSONB column to `receipt` to better reflect its purpose of storing full receipt data including logs and events.

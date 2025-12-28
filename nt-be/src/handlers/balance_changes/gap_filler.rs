@@ -627,7 +627,12 @@ pub async fn insert_balance_change_record(
                 receipt.predecessor_id.to_string(),
             )
         } else {
-            (None, None, "unknown".to_string())
+            // If no receipt found, we cannot determine counterparty - this is an error condition
+            return Err(format!(
+                "No receipt found for block {} - cannot determine counterparty",
+                block_height
+            )
+            .into());
         }
     };
     

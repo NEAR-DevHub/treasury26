@@ -143,7 +143,7 @@ async fn discover_ft_tokens_from_receipts(
         FROM balance_changes
         WHERE account_id = $1 
           AND token_id = 'near'
-          AND counterparty NOT IN ('seed', 'unknown', 'discovered')
+          AND counterparty != 'SNAPSHOT'
         ORDER BY counterparty
         LIMIT 100
         "#,
@@ -213,17 +213,29 @@ async fn discover_ft_tokens_from_receipts(
         .fetch_one(pool)
         .await?;
 
-        if let Some(start_block) = earliest_block {
-            // Get current balance at a recent block
-            let balance = match get_ft_balance(network, account_id, &token_contract, up_to_block as u64).await {
+        if let Some(_start_block) = earliest_block {
+            // Query balance BEFORE the snapshot block (at block - 1)
+            let balance_before = match get_ft_balance(network, account_id, &token_contract, (up_to_block - 1) as u64).await {
                 Ok(b) => b,
                 Err(e) => {
-                    log::warn!("Failed to get balance for {}: {}", token_contract, e);
+                    log::warn!("Failed to get balance before block {} for {}: {}", up_to_block, token_contract, e);
                     continue;
                 }
             };
 
-            let balance_bd = BigDecimal::from_str(&balance)?;
+            // Query balance AFTER the snapshot block (at block)
+            let balance_after = match get_ft_balance(network, account_id, &token_contract, up_to_block as u64).await {
+                Ok(b) => b,
+                Err(e) => {
+                    log::warn!("Failed to get balance after block {} for {}: {}", up_to_block, token_contract, e);
+                    continue;
+                }
+            };
+
+            let balance_before_bd = BigDecimal::from_str(&balance_before)?;
+            let balance_after_bd = BigDecimal::from_str(&balance_after)?;
+            let amount_bd = &balance_after_bd - &balance_before_bd;
+            
             let block_timestamp = match get_block_timestamp(network, up_to_block as u64, None).await {
                 Ok(ts) => ts,
                 Err(e) => {
@@ -232,7 +244,9 @@ async fn discover_ft_tokens_from_receipts(
                 }
             };
 
-            // Insert a marker record at the up_to_block so gap filling will work backwards from here
+            // Insert a snapshot record at the up_to_block with correctly measured balances
+            // balance_before and balance_after are queried from before/after the block
+            // The gap detection algorithm will use these to identify intervals needing investigation
             sqlx::query!(
                 r#"
                 INSERT INTO balance_changes 
@@ -246,14 +260,14 @@ async fn discover_ft_tokens_from_receipts(
                 token_contract,
                 up_to_block,
                 block_timestamp,
-                balance_bd.clone(),
-                balance_bd.clone(),
-                balance_bd,
+                amount_bd,          // amount: actual change in this specific block
+                balance_before_bd,  // balance_before: measured at block - 1
+                balance_after_bd,   // balance_after: measured at block
                 &Vec::<String>::new(),
                 &Vec::<String>::new(),
                 None::<String>,
                 None::<String>,
-                "discovered"  // Marker for FT tokens discovered from counterparty analysis
+                "SNAPSHOT"  // Snapshot record with correctly measured balances
             )
             .execute(pool)
             .await?;
