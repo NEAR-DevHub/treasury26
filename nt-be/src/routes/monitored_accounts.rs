@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::types::chrono::{DateTime, Utc};
 use std::sync::Arc;
 
@@ -133,13 +133,14 @@ pub async fn update_monitored_account(
         )
     })?;
 
-    account.ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "Account not found" })),
-        )
-    })
-    .map(Json)
+    account
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Account not found" })),
+            )
+        })
+        .map(Json)
 }
 
 /// Delete a monitored account

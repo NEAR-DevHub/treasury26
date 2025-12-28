@@ -10,8 +10,8 @@ pub struct TestServer {
 impl TestServer {
     pub async fn start() -> Self {
         // Start the server in the background
-        let process = Command::new("cargo")
-            .args(&["run", "--bin", "nt-be"])
+        let mut process = Command::new("cargo")
+            .args(["run", "--bin", "nt-be"])
             .env("PORT", "3001")
             .env("RUST_LOG", "info")
             .env(
@@ -35,14 +35,16 @@ impl TestServer {
                 .get(format!("http://localhost:{}/api/health", port))
                 .send()
                 .await
+                && response.status().is_success()
             {
-                if response.status().is_success() {
-                    println!("Server ready after {} attempts", attempt + 1);
-                    return TestServer { process, port };
-                }
+                println!("Server ready after {} attempts", attempt + 1);
+                return TestServer { process, port };
             }
         }
 
+        // Kill process before panicking to avoid zombie
+        let _ = process.kill();
+        let _ = process.wait();
         panic!("Server failed to start within timeout");
     }
 

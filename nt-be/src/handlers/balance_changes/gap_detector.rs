@@ -5,14 +5,9 @@
 //! of the next record for the same account and token.
 
 use sqlx::PgPool;
-use sqlx::types::chrono::{DateTime, Utc};
 
-/// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
-fn block_timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<Utc> {
-    let secs = timestamp_nanos / 1_000_000_000;
-    let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
-    DateTime::from_timestamp(secs, nsecs).unwrap_or_else(|| Utc::now())
-}
+#[cfg(test)]
+use super::gap_filler::block_timestamp_to_datetime;
 
 /// Represents a gap in the balance change chain
 #[derive(Debug, Clone, sqlx::FromRow)]

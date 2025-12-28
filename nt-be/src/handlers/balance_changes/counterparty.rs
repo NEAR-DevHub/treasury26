@@ -122,24 +122,27 @@ pub async fn ensure_ft_metadata(
 }
 
 /// Convert raw FT amount to human-readable decimal string
-/// 
+///
 /// # Arguments
 /// * `raw_amount` - The raw amount from ft_balance_of (smallest units)
 /// * `decimals` - Number of decimal places for this token
-/// 
+///
 /// # Returns
 /// A decimal string like "2.5" instead of "2500000"
-pub fn convert_raw_to_decimal(raw_amount: &str, decimals: u8) -> Result<String, Box<dyn std::error::Error>> {
+pub fn convert_raw_to_decimal(
+    raw_amount: &str,
+    decimals: u8,
+) -> Result<String, Box<dyn std::error::Error>> {
     use bigdecimal::BigDecimal;
     use std::str::FromStr;
 
     let raw = BigDecimal::from_str(raw_amount)?;
-    
+
     // Create divisor as BigDecimal to avoid u64 overflow for large decimals (like NEAR's 24)
     // Calculate 10^decimals as a string and parse it
     let divisor_str = format!("1{}", "0".repeat(decimals as usize));
     let divisor = BigDecimal::from_str(&divisor_str)?;
-    
+
     let decimal = raw / divisor;
 
     // Normalize to remove trailing zeros (e.g., "11.1000" -> "11.1")
@@ -153,14 +156,8 @@ mod tests {
     #[test]
     fn test_convert_raw_to_decimal() {
         // arizcredits.near has 6 decimals
-        assert_eq!(
-            convert_raw_to_decimal("2500000", 6).unwrap(),
-            "2.5"
-        );
-        assert_eq!(
-            convert_raw_to_decimal("3000000", 6).unwrap(),
-            "3"
-        );
+        assert_eq!(convert_raw_to_decimal("2500000", 6).unwrap(), "2.5");
+        assert_eq!(convert_raw_to_decimal("3000000", 6).unwrap(), "3");
 
         // NEAR has 24 decimals
         assert_eq!(
@@ -173,9 +170,6 @@ mod tests {
         );
 
         // Zero decimals
-        assert_eq!(
-            convert_raw_to_decimal("100", 0).unwrap(),
-            "100"
-        );
+        assert_eq!(convert_raw_to_decimal("100", 0).unwrap(), "100");
     }
 }

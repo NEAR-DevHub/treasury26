@@ -76,7 +76,8 @@ pub async fn get_balance_change_at_block(
 ) -> Result<(String, String), Box<dyn std::error::Error>> {
     // For now, we query the block and the previous block
     // In the future, this should be optimized with transaction-specific queries
-    let balance_after = get_balance_at_block(pool, network, account_id, token_id, block_height).await?;
+    let balance_after =
+        get_balance_at_block(pool, network, account_id, token_id, block_height).await?;
     let balance_before = if block_height > 0 {
         get_balance_at_block(pool, network, account_id, token_id, block_height - 1).await?
     } else {

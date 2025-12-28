@@ -1,3 +1,6 @@
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::io_other_error)]
+
 use near_api::{NetworkConfig, RPCEndpoint};
 use nt_be::handlers::balance_changes::gap_detector::find_gaps;
 use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
@@ -6,24 +9,25 @@ use std::str::FromStr;
 
 /// Integration tests for balance change collection system.
 /// These tests validate the core gap detection and filling functionality.
-
 /// Helper to create archival network config for tests
 fn create_archival_network() -> NetworkConfig {
     // Load .env files to get FASTNEAR_API_KEY
     dotenvy::from_filename(".env").ok();
     dotenvy::from_filename(".env.test").ok();
-    
-    let fastnear_api_key = std::env::var("FASTNEAR_API_KEY")
-        .expect("FASTNEAR_API_KEY must be set in .env");
-    
+
+    let fastnear_api_key =
+        std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env");
+
     // Use fastnear archival RPC which supports historical queries
     NetworkConfig {
-        rpc_endpoints: vec![RPCEndpoint::new(
-            "https://archival-rpc.mainnet.fastnear.com/"
-                .parse()
-                .unwrap(),
-        )
-        .with_api_key(fastnear_api_key)],
+        rpc_endpoints: vec![
+            RPCEndpoint::new(
+                "https://archival-rpc.mainnet.fastnear.com/"
+                    .parse()
+                    .unwrap(),
+            )
+            .with_api_key(fastnear_api_key),
+        ],
         ..NetworkConfig::mainnet()
     }
 }
@@ -35,17 +39,17 @@ async fn test_fill_gap_end_to_end(pool: PgPool) -> sqlx::Result<()> {
     let account_id = "petersalomonsen.near";
     let token_id = "near";
     let network = create_archival_network();
-    
+
     // Use block range from real data - we know there are multiple changes between 178142668 and 178148638
     // Start from a later block and let the system fill gaps backward
     let start_block: i64 = 178_149_000;
     let filled = fill_gaps(&pool, &network, account_id, token_id, start_block)
         .await
         .expect("fill_gaps should not error");
-    
+
     assert!(!filled.is_empty(), "Should have found and filled gaps");
     println!("Filled {} initial records", filled.len());
-    
+
     // Get all non-SNAPSHOT records (actual balance changes)
     let records = sqlx::query!(
         "SELECT block_height FROM balance_changes 
@@ -56,15 +60,26 @@ async fn test_fill_gap_end_to_end(pool: PgPool) -> sqlx::Result<()> {
     )
     .fetch_all(&pool)
     .await?;
-    
+
     println!("Found {} non-SNAPSHOT records", records.len());
-    assert!(records.len() >= 2, "Need at least 2 records to test gap filling, got {}", records.len());
-    
+    assert!(
+        records.len() >= 2,
+        "Need at least 2 records to test gap filling, got {}",
+        records.len()
+    );
+
     // Remove a record from the middle (or the first if we only have 2)
-    let idx_to_remove = if records.len() > 2 { records.len() / 2 } else { 0 };
+    let idx_to_remove = if records.len() > 2 {
+        records.len() / 2
+    } else {
+        0
+    };
     let block_to_remove = records[idx_to_remove].block_height;
-    println!("Removing record at block {} (index {}) to create gap", block_to_remove, idx_to_remove);
-    
+    println!(
+        "Removing record at block {} (index {}) to create gap",
+        block_to_remove, idx_to_remove
+    );
+
     sqlx::query!(
         "DELETE FROM balance_changes WHERE account_id = $1 AND token_id = $2 AND block_height = $3",
         account_id,
@@ -73,20 +88,23 @@ async fn test_fill_gap_end_to_end(pool: PgPool) -> sqlx::Result<()> {
     )
     .execute(&pool)
     .await?;
-    
+
     // Verify gap exists
     let gaps_before = find_gaps(&pool, account_id, token_id, start_block).await?;
-    assert!(!gaps_before.is_empty(), "Should have at least one gap after removing record");
+    assert!(
+        !gaps_before.is_empty(),
+        "Should have at least one gap after removing record"
+    );
     println!("Detected {} gap(s)", gaps_before.len());
-    
+
     // Fill the gap
     let refilled = fill_gaps(&pool, &network, account_id, token_id, start_block)
         .await
         .expect("fill_gaps should not error");
-    
+
     assert!(!refilled.is_empty(), "Should have refilled the gap");
     println!("Refilled {} record(s)", refilled.len());
-    
+
     // Verify the specific block we removed was refilled
     let refilled_record = sqlx::query!(
         "SELECT block_height FROM balance_changes 
@@ -97,12 +115,16 @@ async fn test_fill_gap_end_to_end(pool: PgPool) -> sqlx::Result<()> {
     )
     .fetch_optional(&pool)
     .await?;
-    
-    assert!(refilled_record.is_some(), "Should have refilled the removed block {}", block_to_remove);
+
+    assert!(
+        refilled_record.is_some(),
+        "Should have refilled the removed block {}",
+        block_to_remove
+    );
     println!("✓ Successfully refilled block {}", block_to_remove);
-    
+
     println!("✓ Gap filling test completed successfully - deleted record was refilled");
-    
+
     Ok(())
 }
 
@@ -245,7 +267,10 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     .await?;
 
     println!("Record count after first call: {}", count_after_first.0);
-    assert_eq!(count_after_first.0, 2, "Should have exactly 2 records after first call");
+    assert_eq!(
+        count_after_first.0, 2,
+        "Should have exactly 2 records after first call"
+    );
 
     // Fetch all records with detailed information
     let records = sqlx::query!(
@@ -267,9 +292,12 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
 
     // Assert on specific blocks and balances from first call
     assert_eq!(records.len(), 2, "Should have exactly 2 records");
-    
+
     let record1 = &records[0];
-    assert_eq!(record1.block_height, 176927247, "First record should be at block 176927247");
+    assert_eq!(
+        record1.block_height, 176927247,
+        "First record should be at block 176927247"
+    );
     assert_eq!(
         record1.balance_before, "10449873124009596399999989",
         "Block 176927247 balance_before should match"
@@ -278,9 +306,12 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         record1.balance_after, "10449933795827029599999989",
         "Block 176927247 balance_after should match"
     );
-    
+
     let record2 = &records[1];
-    assert_eq!(record2.block_height, 176936471, "Second record should be at block 176936471");
+    assert_eq!(
+        record2.block_height, 176936471,
+        "Second record should be at block 176936471"
+    );
     assert_eq!(
         record2.balance_before, "10449933795827029599999989",
         "Block 176936471 balance_before should match"
@@ -316,7 +347,10 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     .await?;
 
     println!("Record count after second call: {}", count_after_second.0);
-    assert_eq!(count_after_second.0, 3, "Should have exactly 3 records after second call");
+    assert_eq!(
+        count_after_second.0, 3,
+        "Should have exactly 3 records after second call"
+    );
 
     // Fetch all records after second call with detailed information
     let records_final = sqlx::query!(
@@ -341,37 +375,52 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     .await?;
 
     println!("All records after second call:");
-    
+
     // Assert on all three blocks with exact values
-    assert_eq!(records_final.len(), 3, "Should have exactly 3 records total");
-    
+    assert_eq!(
+        records_final.len(),
+        3,
+        "Should have exactly 3 records total"
+    );
+
     // Block 176927244 (found in second call)
     let record_gap = &records_final[0];
-    assert_eq!(record_gap.block_height, 176927244, "Gap record should be at block 176927244");
-    
+    assert_eq!(
+        record_gap.block_height, 176927244,
+        "Gap record should be at block 176927244"
+    );
+
     // Verify receipt_id column is populated
-    assert!(!record_gap.receipt_id.is_empty(), "receipt_id array should not be empty");
+    assert!(
+        !record_gap.receipt_id.is_empty(),
+        "receipt_id array should not be empty"
+    );
     assert_eq!(
         record_gap.receipt_id[0], "6Giwt4xJ9V7wLAxdo45i7G7vupYzECQaXjCtLe4KfcSY",
         "Block 176927244 receipt_id column should match"
     );
-    
+
     // Verify signer_id, receiver_id, and counterparty are populated
     assert_eq!(
-        record_gap.signer_id.as_ref().unwrap(), "blackdragon.tkn.near",
+        record_gap.signer_id.as_ref().unwrap(),
+        "blackdragon.tkn.near",
         "Block 176927244 signer_id should be predecessor"
     );
     assert_eq!(
-        record_gap.receiver_id.as_ref().unwrap(), "testing-astradao.sputnik-dao.near",
+        record_gap.receiver_id.as_ref().unwrap(),
+        "testing-astradao.sputnik-dao.near",
         "Block 176927244 receiver_id should match account"
     );
     assert_eq!(
         record_gap.counterparty, "blackdragon.tkn.near",
         "Block 176927244 counterparty should be predecessor"
     );
-    
+
     // Verify receipt ID for block 176927244 in raw_data (backward compatibility)
-    let raw_data_gap = record_gap.raw_data.as_ref().expect("Block 176927244 should have raw_data");
+    let raw_data_gap = record_gap
+        .raw_data
+        .as_ref()
+        .expect("Block 176927244 should have raw_data");
     let receipt_id_gap = raw_data_gap["receipt_id"]
         .as_str()
         .expect("Block 176927244 should have receipt_id in raw_data");
@@ -380,73 +429,95 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         "Block 176927244 receipt_id should match"
     );
     println!("Block 176927244 receipt_id: {}", receipt_id_gap);
-    
+
     // Block 176927247 (from first call)
     let record1_final = &records_final[1];
-    assert_eq!(record1_final.block_height, 176927247, "Should still have block 176927247");
-    
+    assert_eq!(
+        record1_final.block_height, 176927247,
+        "Should still have block 176927247"
+    );
+
     // Verify receipt_id column is populated
-    assert!(!record1_final.receipt_id.is_empty(), "receipt_id array should not be empty");
+    assert!(
+        !record1_final.receipt_id.is_empty(),
+        "receipt_id array should not be empty"
+    );
     assert_eq!(
         record1_final.receipt_id[0], "A32isCEQAfFoyyfWPvTH6tysviXr8WbYYkdxADiWMKHo",
         "Block 176927247 receipt_id column should match"
     );
-    
+
     // Verify signer_id, receiver_id, and counterparty are populated
     assert_eq!(
-        record1_final.signer_id.as_ref().unwrap(), "blackdragon.tkn.near",
+        record1_final.signer_id.as_ref().unwrap(),
+        "blackdragon.tkn.near",
         "Block 176927247 signer_id should be predecessor"
     );
     assert_eq!(
-        record1_final.receiver_id.as_ref().unwrap(), "testing-astradao.sputnik-dao.near",
+        record1_final.receiver_id.as_ref().unwrap(),
+        "testing-astradao.sputnik-dao.near",
         "Block 176927247 receiver_id should match account"
     );
     assert_eq!(
         record1_final.counterparty, "blackdragon.tkn.near",
         "Block 176927247 counterparty should be predecessor"
     );
-    
+
     // Verify receipt ID for block 176927247 in raw_data (backward compatibility)
     if let Some(ref raw_data) = records_final[1].raw_data {
         if let Some(receipt_id) = raw_data.get("receipt_id").and_then(|v| v.as_str()) {
             println!("Block 176927247 receipt_id: {}", receipt_id);
-            assert_eq!(receipt_id, "A32isCEQAfFoyyfWPvTH6tysviXr8WbYYkdxADiWMKHo", "Block 176927247 raw_data receipt_id should match");
+            assert_eq!(
+                receipt_id, "A32isCEQAfFoyyfWPvTH6tysviXr8WbYYkdxADiWMKHo",
+                "Block 176927247 raw_data receipt_id should match"
+            );
         }
     }
-    
+
     // Block 176936471 (from first call)
     let record2_final = &records_final[2];
-    assert_eq!(record2_final.block_height, 176936471, "Should still have block 176936471");
-    
+    assert_eq!(
+        record2_final.block_height, 176936471,
+        "Should still have block 176936471"
+    );
+
     // Verify receipt_id column is populated
-    assert!(!record2_final.receipt_id.is_empty(), "receipt_id array should not be empty");
+    assert!(
+        !record2_final.receipt_id.is_empty(),
+        "receipt_id array should not be empty"
+    );
     assert_eq!(
         record2_final.receipt_id[0], "7yLs3ArYQbGoubMXBVZsekwFAfbdqHBbmYrkuVWDonfJ",
         "Block 176936471 receipt_id column should match"
     );
-    
+
     // Verify signer_id, receiver_id, and counterparty are populated
     assert_eq!(
-        record2_final.signer_id.as_ref().unwrap(), "olskik.near",
+        record2_final.signer_id.as_ref().unwrap(),
+        "olskik.near",
         "Block 176936471 signer_id should be predecessor"
     );
     assert_eq!(
-        record2_final.receiver_id.as_ref().unwrap(), "testing-astradao.sputnik-dao.near",
+        record2_final.receiver_id.as_ref().unwrap(),
+        "testing-astradao.sputnik-dao.near",
         "Block 176936471 receiver_id should match account"
     );
     assert_eq!(
         record2_final.counterparty, "olskik.near",
         "Block 176936471 counterparty should be predecessor"
     );
-    
+
     // Verify receipt ID for block 176936471 in raw_data (backward compatibility)
     if let Some(ref raw_data) = records_final[2].raw_data {
         if let Some(receipt_id) = raw_data.get("receipt_id").and_then(|v| v.as_str()) {
             println!("Block 176936471 receipt_id: {}", receipt_id);
-            assert_eq!(receipt_id, "7yLs3ArYQbGoubMXBVZsekwFAfbdqHBbmYrkuVWDonfJ", "Block 176936471 raw_data receipt_id should match");
+            assert_eq!(
+                receipt_id, "7yLs3ArYQbGoubMXBVZsekwFAfbdqHBbmYrkuVWDonfJ",
+                "Block 176936471 raw_data receipt_id should match"
+            );
         }
     }
-    
+
     assert_eq!(
         record1_final.balance_before, "10449873124009596399999989",
         "Block 176927247 balance_before should match"
@@ -455,7 +526,7 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         record1_final.balance_after, "10449933795827029599999989",
         "Block 176927247 balance_after should match"
     );
-    
+
     assert_eq!(
         record_gap.balance_before, "10326123124009596399999989",
         "Block 176927244 balance_before should match"
@@ -464,10 +535,13 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         record_gap.balance_after, "10449873124009596399999989",
         "Block 176927244 balance_after should match"
     );
-    
+
     // Block 176936471 (from first call)
     let record2_final = &records_final[2];
-    assert_eq!(record2_final.block_height, 176936471, "Should still have block 176936471");
+    assert_eq!(
+        record2_final.block_height, 176936471,
+        "Should still have block 176936471"
+    );
     assert_eq!(
         record2_final.balance_before, "10449933795827029599999989",
         "Block 176936471 balance_before should match"
@@ -483,7 +557,7 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
             r.block_height, r.balance_before, r.balance_after
         );
     }
-    
+
     // Verify balance continuity across all records
     assert_eq!(
         record_gap.balance_after, record1_final.balance_before,
@@ -516,7 +590,7 @@ async fn test_get_block_receipt_data(_pool: PgPool) -> sqlx::Result<()> {
         .expect("Should successfully get block data");
 
     println!("Block data: {:#?}", block_data);
-    
+
     println!("\nFound {} receipts:", block_data.receipts.len());
     for (i, receipt) in block_data.receipts.iter().enumerate() {
         println!("\nReceipt #{}", i + 1);
@@ -535,22 +609,26 @@ async fn test_get_block_receipt_data(_pool: PgPool) -> sqlx::Result<()> {
         "Block hash should match"
     );
     assert_eq!(
-        block_data.receipts.len(), 1,
+        block_data.receipts.len(),
+        1,
         "Should have exactly one receipt affecting the account"
     );
 
     // Assert receipt details
     let receipt = &block_data.receipts[0];
     assert_eq!(
-        receipt.receipt_id.to_string(), "6Giwt4xJ9V7wLAxdo45i7G7vupYzECQaXjCtLe4KfcSY",
+        receipt.receipt_id.to_string(),
+        "6Giwt4xJ9V7wLAxdo45i7G7vupYzECQaXjCtLe4KfcSY",
         "Receipt ID should match"
     );
     assert_eq!(
-        receipt.receiver_id.as_str(), "testing-astradao.sputnik-dao.near",
+        receipt.receiver_id.as_str(),
+        "testing-astradao.sputnik-dao.near",
         "Receiver ID should match"
     );
     assert_eq!(
-        receipt.predecessor_id.as_str(), "blackdragon.tkn.near",
+        receipt.predecessor_id.as_str(),
+        "blackdragon.tkn.near",
         "Predecessor ID should match"
     );
 
@@ -577,8 +655,14 @@ async fn test_query_unavailable_block_with_retry(pool: PgPool) -> sqlx::Result<(
     );
 
     // This should succeed by automatically retrying with previous blocks
-    let result =
-        balance::get_balance_change_at_block(&pool, &network, account_id, "near", problematic_block).await;
+    let result = balance::get_balance_change_at_block(
+        &pool,
+        &network,
+        account_id,
+        "near",
+        problematic_block,
+    )
+    .await;
 
     match result {
         Ok((balance_before, balance_after)) => {
@@ -706,7 +790,7 @@ async fn test_fill_gaps_loop_until_complete(pool: PgPool) -> sqlx::Result<()> {
 #[sqlx::test]
 async fn test_monitored_accounts(pool: PgPool) -> sqlx::Result<()> {
     use chrono::Utc;
-    
+
     // Insert a monitored account
     sqlx::query!(
         r#"
@@ -746,7 +830,10 @@ async fn test_monitored_accounts(pool: PgPool) -> sqlx::Result<()> {
     assert_eq!(enabled.len(), 1, "Should have exactly one enabled account");
     assert_eq!(enabled[0].account_id, "test-account.near");
     assert!(enabled[0].enabled);
-    assert!(enabled[0].last_synced_at.is_none(), "last_synced_at should be NULL initially");
+    assert!(
+        enabled[0].last_synced_at.is_none(),
+        "last_synced_at should be NULL initially"
+    );
 
     // Update last_synced_at after processing
     let now = Utc::now();
@@ -774,7 +861,10 @@ async fn test_monitored_accounts(pool: PgPool) -> sqlx::Result<()> {
     .fetch_one(&pool)
     .await?;
 
-    assert!(updated.last_synced_at.is_some(), "last_synced_at should be set");
+    assert!(
+        updated.last_synced_at.is_some(),
+        "last_synced_at should be set"
+    );
     println!("✓ Monitored account created and updated successfully");
     println!("  Account: {}", updated.account_id);
     println!("  Last synced: {:?}", updated.last_synced_at);
@@ -807,10 +897,10 @@ async fn test_monitored_accounts(pool: PgPool) -> sqlx::Result<()> {
 #[ignore = "Slow test - monitors multiple cycles. Run with: cargo test -- --ignored"]
 async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
-    
+
     let account_id = "testing-astradao.sputnik-dao.near";
     let token_id = "near";
-    
+
     // Insert a monitored account
     sqlx::query!(
         r#"
@@ -821,7 +911,7 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     )
     .execute(&pool)
     .await?;
-    
+
     // Check last_synced_at before monitoring
     let before_sync = sqlx::query!(
         r#"
@@ -833,17 +923,25 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     )
     .fetch_one(&pool)
     .await?;
-    
-    assert!(before_sync.last_synced_at.is_none(), "Should not be synced yet");
-    
+
+    assert!(
+        before_sync.last_synced_at.is_none(),
+        "Should not be synced yet"
+    );
+
     // Run one monitoring cycle
     println!("Running monitoring cycle...");
     let network = create_archival_network();
     let up_to_block = 177_000_000i64;
     run_monitor_cycle(&pool, &network, up_to_block)
         .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
-    
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
     // Verify last_synced_at was updated
     let after_sync = sqlx::query!(
         r#"
@@ -855,10 +953,13 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     )
     .fetch_one(&pool)
     .await?;
-    
-    assert!(after_sync.last_synced_at.is_some(), "Should be synced after cycle");
+
+    assert!(
+        after_sync.last_synced_at.is_some(),
+        "Should be synced after cycle"
+    );
     println!("✓ last_synced_at updated: {:?}", after_sync.last_synced_at);
-    
+
     // Verify balance changes were collected
     let change_count: (i64,) = sqlx::query_as(
         r#"
@@ -871,10 +972,13 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     .bind(token_id)
     .fetch_one(&pool)
     .await?;
-    
-    assert!(change_count.0 > 1, "Should have collected more balance changes");
+
+    assert!(
+        change_count.0 > 1,
+        "Should have collected more balance changes"
+    );
     println!("✓ Collected {} balance changes", change_count.0);
-    
+
     // Test with disabled account - should skip
     sqlx::query!(
         r#"
@@ -886,14 +990,19 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     )
     .execute(&pool)
     .await?;
-    
+
     let sync_time = after_sync.last_synced_at;
-    
+
     // Run another cycle
     run_monitor_cycle(&pool, &network, up_to_block)
         .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
-    
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
     // Verify last_synced_at didn't change (account was disabled)
     let after_disabled = sqlx::query!(
         r#"
@@ -905,21 +1014,24 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     )
     .fetch_one(&pool)
     .await?;
-    
-    assert_eq!(after_disabled.last_synced_at, sync_time, "Disabled account should not be processed");
+
+    assert_eq!(
+        after_disabled.last_synced_at, sync_time,
+        "Disabled account should not be processed"
+    );
     println!("✓ Disabled accounts are skipped");
-    
+
     println!("✓ Continuous monitoring validated");
-    
+
     Ok(())
 }
 
 #[sqlx::test]
 async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::gap_filler::insert_balance_change_record;
-    
+
     println!("\n=== Testing Balance Change Record with Transaction Hash (Block 178148634) ===\n");
-    
+
     // Setup network config
     let network = NetworkConfig {
         rpc_endpoints: vec![RPCEndpoint::new(
@@ -929,25 +1041,34 @@ async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sq
         )],
         ..NetworkConfig::mainnet()
     };
-    
+
     let account_id = "petersalomonsen.near";
     let token_id = "near";
     let target_block = 178148634u64;
-    
-    println!("Inserting balance change record for block {}...", target_block);
-    
+
+    println!(
+        "Inserting balance change record for block {}...",
+        target_block
+    );
+
     // Directly insert the balance change record for block 178148634
     // This will use get_account_changes to capture the transaction hash
-    let filled_gap = insert_balance_change_record(&pool, &network, account_id, token_id, target_block)
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?
-        .expect("Should insert record");
-    
+    let filled_gap =
+        insert_balance_change_record(&pool, &network, account_id, token_id, target_block)
+            .await
+            .map_err(|e| {
+                sqlx::Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    e.to_string(),
+                ))
+            })?
+            .expect("Should insert record");
+
     println!("✓ Record inserted at block {}", filled_gap.block_height);
-    
+
     // The block should be 178148634 or nearby (binary search finds the exact block)
     println!("Found balance change at block: {}", filled_gap.block_height);
-    
+
     // Query the database to verify all fields
     let record = sqlx::query!(
         r#"
@@ -975,52 +1096,57 @@ async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sq
     .fetch_one(&pool)
     .await
     .expect("Should find the inserted record");
-    
+
     println!("\n=== Verifying Database Record ===");
-    
+
     // Verify basic fields
     assert_eq!(record.account_id, account_id, "Account ID should match");
-    assert_eq!(record.token_id.as_deref(), Some(token_id), "Token ID should match");
-    assert_eq!(record.block_height, filled_gap.block_height, "Block height should match");
-    
+    assert_eq!(
+        record.token_id.as_deref(),
+        Some(token_id),
+        "Token ID should match"
+    );
+    assert_eq!(
+        record.block_height, filled_gap.block_height,
+        "Block height should match"
+    );
+
     println!("✓ Account ID: {}", record.account_id);
     println!("✓ Token ID: {:?}", record.token_id);
     println!("✓ Block height: {}", record.block_height);
     println!("✓ Block timestamp: {}", record.block_timestamp);
-    
+
     // Verify balance fields (decimal-adjusted: NEAR has 24 decimals)
     assert_eq!(
-        record.balance_after, 
-        "47.131979815366840642871301",
+        record.balance_after, "47.131979815366840642871301",
         "Balance after should be correct (decimal-adjusted)"
     );
     println!("✓ Balance before: {}", record.balance_before);
     println!("✓ Balance after: {}", record.balance_after);
     println!("✓ Amount: {}", record.amount);
-    
+
     // Verify transaction hash was captured (should be present for NEAR balance changes)
     assert!(
         !record.transaction_hashes.is_empty(),
         "Should have at least one transaction hash"
     );
     println!("✓ Transaction hash: {}", record.transaction_hashes[0]);
-    
+
     // If this is block 178148634, verify the specific transaction hash
     if record.block_height == 178148634 {
         assert_eq!(
-            record.transaction_hashes[0],
-            "CpctEH17tQgvAT6kTPkCpWtSGtG4WFYS2Urjq9eNNhm5",
+            record.transaction_hashes[0], "CpctEH17tQgvAT6kTPkCpWtSGtG4WFYS2Urjq9eNNhm5",
             "Transaction hash should match the expected value for block 178148634"
         );
         println!("  ✓ Verified specific tx hash for block 178148634");
     }
-    
+
     // Verify receipt IDs (may be empty or have values)
     println!("✓ Receipt IDs count: {}", record.receipt_id.len());
-    
+
     // Verify counterparty exists (should always have a value)
     println!("✓ Counterparty: {}", record.counterparty);
-    
+
     // Verify signer/receiver if available
     if let Some(signer) = &record.signer_id {
         println!("✓ Signer ID: {}", signer);
@@ -1028,12 +1154,12 @@ async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sq
     if let Some(receiver) = &record.receiver_id {
         println!("✓ Receiver ID: {}", receiver);
     }
-    
+
     // Verify raw_data contains the state change info
     if let Some(raw_data) = record.raw_data {
         assert!(raw_data.is_object(), "Raw data should be a JSON object");
         println!("✓ Raw data captured: {} bytes", raw_data.to_string().len());
-        
+
         // Verify the cause is TransactionProcessing in raw_data
         // The structure is {"cause": {"TransactionProcessing": {"tx_hash": "..."}}}
         if let Some(cause_obj) = raw_data.get("cause") {
@@ -1048,9 +1174,9 @@ async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sq
             }
         }
     }
-    
+
     println!("\n✓ All assertions passed! Block: {}", record.block_height);
-    
+
     Ok(())
 }
 
@@ -1065,57 +1191,62 @@ async fn test_discover_ft_tokens_from_receipts(_pool: PgPool) -> sqlx::Result<()
     // Token: arizcredits.near
     let block_height = 178148636;
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
-    
+
     let network = create_archival_network();
-    
+
     println!("\n📦 Testing FT token discovery from receipts");
     println!("Block: {}", block_height);
     println!("Account: {}", account_id);
     println!("Expected receipt: D9XE4evM6wvM9zaYftkmpjz1nYApKhspaFgPqn3xp24k");
     println!("Expected token: arizcredits.near");
-    
+
     // Get ALL receipts involving the account (as sender or receiver)
-    let receipts = get_all_account_receipts(&network, account_id, block_height).await
+    let receipts = get_all_account_receipts(&network, account_id, block_height)
+        .await
         .expect("Should fetch receipts");
-    
-    println!("\nFound {} receipts involving account in block", receipts.len());
-    
+
+    println!(
+        "\nFound {} receipts involving account in block",
+        receipts.len()
+    );
+
     // Extract FT tokens from all receipts
     let mut all_tokens = HashSet::new();
     for receipt in &receipts {
         println!("\nAnalyzing receipt: {}", receipt.receipt_id);
         println!("  Predecessor: {}", receipt.predecessor_id);
         println!("  Receiver: {}", receipt.receiver_id);
-        
+
         // Print actions if available
         if let near_primitives::views::ReceiptEnumView::Action { actions, .. } = &receipt.receipt {
             for action in actions {
-                if let near_primitives::views::ActionView::FunctionCall { method_name, .. } = action {
+                if let near_primitives::views::ActionView::FunctionCall { method_name, .. } = action
+                {
                     println!("  Method: {}", method_name);
                 }
             }
         }
-        
+
         let tokens = extract_ft_tokens_from_receipt(receipt, account_id);
         if !tokens.is_empty() {
             println!("  ✓ Found tokens: {:?}", tokens);
         }
         all_tokens.extend(tokens);
     }
-    
+
     println!("Discovered {} unique FT tokens:", all_tokens.len());
     for token in &all_tokens {
         println!("  - {}", token);
     }
-    
+
     // Should find arizcredits.near
     assert!(
         all_tokens.contains("arizcredits.near"),
         "Should discover arizcredits.near FT token"
     );
-    
+
     println!("\n✓ Successfully discovered FT tokens from receipts");
-    
+
     Ok(())
 }
 
@@ -1123,14 +1254,14 @@ async fn test_discover_ft_tokens_from_receipts(_pool: PgPool) -> sqlx::Result<()
 #[sqlx::test]
 async fn test_ft_contract_as_counterparty(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
-    
+
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
     let expected_ft_contract = "arizcredits.near";
-    
+
     println!("\n=== Testing FT Contract as Counterparty ===");
     println!("Account: {}", account_id);
     println!("Expected FT contract: {}", expected_ft_contract);
-    
+
     // Insert the account as monitored
     sqlx::query!(
         r#"
@@ -1141,16 +1272,21 @@ async fn test_ft_contract_as_counterparty(pool: PgPool) -> sqlx::Result<()> {
     )
     .execute(&pool)
     .await?;
-    
+
     let network = create_archival_network();
     let up_to_block = 178150000i64;
-    
+
     // Run monitoring cycle to collect NEAR balance changes
     println!("\n=== Running Monitoring Cycle ===");
     run_monitor_cycle(&pool, &network, up_to_block)
         .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
-    
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
     // Query all counterparties from NEAR balance changes
     let counterparties: Vec<String> = sqlx::query_scalar(
         r#"
@@ -1158,23 +1294,26 @@ async fn test_ft_contract_as_counterparty(pool: PgPool) -> sqlx::Result<()> {
         FROM balance_changes
         WHERE account_id = $1 AND token_id = 'near'
         ORDER BY counterparty
-        "#
+        "#,
     )
     .bind(account_id)
     .fetch_all(&pool)
     .await?;
-    
+
     println!("\n=== Counterparties in NEAR Balance Changes ===");
     for counterparty in &counterparties {
         println!("  - {}", counterparty);
     }
-    
+
     // Check if the FT contract appears as a counterparty
     let has_ft_as_counterparty = counterparties.contains(&expected_ft_contract.to_string());
-    
+
     if has_ft_as_counterparty {
-        println!("\n✓ {} appears as counterparty in NEAR transactions", expected_ft_contract);
-        
+        println!(
+            "\n✓ {} appears as counterparty in NEAR transactions",
+            expected_ft_contract
+        );
+
         // Show which blocks have this counterparty
         let blocks: Vec<i64> = sqlx::query_scalar(
             r#"
@@ -1182,22 +1321,25 @@ async fn test_ft_contract_as_counterparty(pool: PgPool) -> sqlx::Result<()> {
             FROM balance_changes
             WHERE account_id = $1 AND token_id = 'near' AND counterparty = $2
             ORDER BY block_height
-            "#
+            "#,
         )
         .bind(account_id)
         .bind(expected_ft_contract)
         .fetch_all(&pool)
         .await?;
-        
+
         println!("  Found in {} blocks:", blocks.len());
         for block in &blocks {
             println!("    Block: {}", block);
         }
     } else {
-        println!("\n✗ {} does NOT appear as counterparty", expected_ft_contract);
+        println!(
+            "\n✗ {} does NOT appear as counterparty",
+            expected_ft_contract
+        );
         println!("  This means we need to query receipts to discover it");
     }
-    
+
     Ok(())
 }
 
@@ -1211,14 +1353,14 @@ async fn test_ft_contract_as_counterparty(pool: PgPool) -> sqlx::Result<()> {
 #[ignore = "Slow test - monitors many blocks for token discovery. Run with: cargo test -- --ignored"]
 async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
-    
+
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
     let expected_ft_token = "arizcredits.near";
-    
+
     println!("\n=== Testing FT Token Discovery Through Monitoring ===");
     println!("Account: {}", account_id);
     println!("Expected discovered token: {}", expected_ft_token);
-    
+
     // Insert the account as monitored (enabled)
     sqlx::query!(
         r#"
@@ -1229,22 +1371,24 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     )
     .execute(&pool)
     .await?;
-    
+
     println!("\n✓ Account added to monitored_accounts");
-    
+
     // Verify no balance changes exist initially
-    let initial_count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM balance_changes WHERE account_id = $1"
-    )
-    .bind(account_id)
-    .fetch_one(&pool)
-    .await?;
-    
-    assert_eq!(initial_count.0, 0, "Should start with no balance change records");
+    let initial_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM balance_changes WHERE account_id = $1")
+            .bind(account_id)
+            .fetch_one(&pool)
+            .await?;
+
+    assert_eq!(
+        initial_count.0, 0,
+        "Should start with no balance change records"
+    );
     println!("✓ Verified empty state (0 records)");
-    
+
     let network = create_archival_network();
-    
+
     // Run first monitoring cycle
     // This should:
     // 1. Auto-seed NEAR token
@@ -1253,40 +1397,53 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     // We need to search from a point where there's an existing balance change
     // that leads to block 178148636
     let up_to_block = 178150000i64; // Well past the block with FT transfer
-    
+
     println!("\n=== First Monitoring Cycle ===");
     println!("Up to block: {}", up_to_block);
-    
+
     run_monitor_cycle(&pool, &network, up_to_block)
         .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
-    
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
     // Check how many NEAR records were collected
     let near_count: (i64,) = sqlx::query_as(
         r#"
         SELECT COUNT(*)
         FROM balance_changes
         WHERE account_id = $1 AND token_id = 'near'
-        "#
+        "#,
     )
     .bind(account_id)
     .fetch_one(&pool)
     .await?;
-    
+
     println!("✓ Collected {} NEAR balance change records", near_count.0);
-    assert!(near_count.0 > 0, "Should have collected NEAR balance changes");
-    
+    assert!(
+        near_count.0 > 0,
+        "Should have collected NEAR balance changes"
+    );
+
     println!("\n=== Second Monitoring Cycle ===");
     println!("The first cycle should have discovered FT tokens from receipts");
     println!("The second cycle should collect balance changes for discovered tokens");
-    
+
     // Run second monitoring cycle - should pick up discovered FT tokens
     run_monitor_cycle(&pool, &network, up_to_block)
         .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
-    
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
     println!("\n=== Verifying Automatic FT Token Discovery ===");
-    
+
     // The monitoring system should have automatically discovered and started tracking
     // the arizcredits.near FT token from receipts collected during NEAR monitoring.
     // Verify FT balance changes were collected
@@ -1295,21 +1452,24 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
         SELECT COUNT(*)
         FROM balance_changes
         WHERE account_id = $1 AND token_id = $2
-        "#
+        "#,
     )
     .bind(account_id)
     .bind(expected_ft_token)
     .fetch_one(&pool)
     .await?;
-    
+
     assert!(
         ft_count.0 > 0,
         "Should have collected balance changes for discovered token {}",
         expected_ft_token
     );
-    
-    println!("✓ Collected {} balance change records for {}", ft_count.0, expected_ft_token);
-    
+
+    println!(
+        "✓ Collected {} balance change records for {}",
+        ft_count.0, expected_ft_token
+    );
+
     // Verify the balance changes are valid
     let ft_records = sqlx::query!(
         r#"
@@ -1327,18 +1487,15 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     )
     .fetch_all(&pool)
     .await?;
-    
+
     println!("\n=== {} Balance Change Records ===", expected_ft_token);
     for record in &ft_records {
         println!(
             "  Block {}: {} -> {} (amount: {})",
-            record.block_height,
-            record.balance_before,
-            record.balance_after,
-            record.amount
+            record.block_height, record.balance_before, record.balance_after, record.amount
         );
     }
-    
+
     // Verify the snapshot record has correctly measured balances
     // The first record should be the snapshot at up_to_block
     if let Some(first_record) = ft_records.first() {
@@ -1350,19 +1507,21 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
                 .expect("balance_before should be valid");
             let balance_after = BigDecimal::from_str(&first_record.balance_after)
                 .expect("balance_after should be valid");
-            let amount = BigDecimal::from_str(&first_record.amount)
-                .expect("amount should be valid");
+            let amount =
+                BigDecimal::from_str(&first_record.amount).expect("amount should be valid");
             let calculated_amount = &balance_after - &balance_before;
-            
+
             assert_eq!(
                 amount, calculated_amount,
                 "Snapshot amount should equal balance_after - balance_before"
             );
-            println!("✓ Snapshot record has correctly measured balances: {} -> {} (amount: {})", 
-                first_record.balance_before, first_record.balance_after, first_record.amount);
+            println!(
+                "✓ Snapshot record has correctly measured balances: {} -> {} (amount: {})",
+                first_record.balance_before, first_record.balance_after, first_record.amount
+            );
         }
     }
-    
+
     // Verify chain integrity for FT token
     let mut prev_balance_after: Option<String> = None;
     for record in &ft_records {
@@ -1375,9 +1534,9 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
         }
         prev_balance_after = Some(record.balance_after.clone());
     }
-    
+
     println!("✓ FT balance chain integrity verified");
-    
+
     // Verify that FT records have real counterparties (not metadata values)
     // But only if we have more than just the discovery marker
     // (Discovery markers at the end block won't have transaction history)
@@ -1402,9 +1561,10 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     // If we only have one record (the discovery marker), it's okay to only have "SNAPSHOT"
     // If we have multiple records, at least one should have a real counterparty
     if ft_records.len() > 1 {
-        let has_real_counterparty = ft_counterparties.iter()
-            .any(|cp| !vec!["SNAPSHOT", "system"].contains(&cp.counterparty.as_str()));
-        
+        let has_real_counterparty = ft_counterparties
+            .iter()
+            .any(|cp| !["SNAPSHOT", "system"].contains(&cp.counterparty.as_str()));
+
         assert!(
             has_real_counterparty,
             "FT records with transaction history should have at least one real counterparty (not snapshot/metadata values)"
@@ -1420,29 +1580,39 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
         FROM balance_changes
         WHERE account_id = $1
         ORDER BY token_id
-        "#
+        "#,
     )
     .bind(account_id)
     .fetch_all(&pool)
     .await?;
-    
+
     println!("\n=== All Tracked Tokens for {} ===", account_id);
     for token in &all_tokens {
         let count: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM balance_changes WHERE account_id = $1 AND token_id = $2"
+            "SELECT COUNT(*) FROM balance_changes WHERE account_id = $1 AND token_id = $2",
         )
         .bind(account_id)
         .bind(token)
         .fetch_one(&pool)
         .await?;
-        
+
         println!("  - {}: {} records", token, count.0);
     }
-    
-    assert!(all_tokens.contains(&"near".to_string()), "Should track NEAR");
-    assert!(all_tokens.contains(&expected_ft_token.to_string()), "Should track discovered FT token");
-    assert_eq!(all_tokens.len(), 2, "Should track exactly 2 tokens (NEAR + discovered FT)");
-    
+
+    assert!(
+        all_tokens.contains(&"near".to_string()),
+        "Should track NEAR"
+    );
+    assert!(
+        all_tokens.contains(&expected_ft_token.to_string()),
+        "Should track discovered FT token"
+    );
+    assert_eq!(
+        all_tokens.len(),
+        2,
+        "Should track exactly 2 tokens (NEAR + discovered FT)"
+    );
+
     println!("\n✓ Full FT token discovery flow validated!");
     println!("  ✓ Started with NEAR monitoring only");
     println!("  ✓ Discovered {} from receipts", expected_ft_token);
@@ -1450,7 +1620,7 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     println!("  ✓ Collected and validated balance changes for both tokens");
     println!("  ✓ Discovery marker has correct values (0 -> balance)");
     println!("  ✓ FT records have real counterparties");
-    
+
     Ok(())
 }
 
@@ -1459,24 +1629,34 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
 #[sqlx::test]
 async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
-    
+
     let account_id = "petersalomonsen.near";
-    let target_block = 178086209i64;  // Block with NEAR balance change
-    
-    println!("\n=== Testing FT Discovery for {} at Block {} ===", account_id, target_block);
-    println!("This block has a NEAR balance change with transaction hash 2CqhsWNuFEu29TefK2MCDNHtW4B1BioduGQ8rXSi18GR");
-    
+    let target_block = 178086209i64; // Block with NEAR balance change
+
+    println!(
+        "\n=== Testing FT Discovery for {} at Block {} ===",
+        account_id, target_block
+    );
+    println!(
+        "This block has a NEAR balance change with transaction hash 2CqhsWNuFEu29TefK2MCDNHtW4B1BioduGQ8rXSi18GR"
+    );
+
     let network = create_archival_network();
-    
+
     // Directly fill gaps for NEAR - use target_block + 1 to ensure we search down to include target_block
     // The gap filler will seed from 178086210 and search backwards, which should find 178086209
     println!("\n=== Collecting NEAR Balance Changes ===");
     let filled = fill_gaps(&pool, &network, account_id, "near", target_block + 1)
         .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
-    
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
     println!("Filled {} NEAR balance change gaps", filled.len());
-    
+
     // Check specifically for block 178086209
     let block_209 = sqlx::query!(
         r#"
@@ -1499,9 +1679,13 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
     println!("\n=== Specific Query: Block 178086209 (ANY token) ===");
     if let Some(record) = &block_209 {
         println!("✓ Block {} FOUND!", record.block_height);
-        println!("  Token: {}", record.token_id.as_ref().unwrap_or(&"N/A".to_string()));
+        println!(
+            "  Token: {}",
+            record.token_id.as_ref().unwrap_or(&"N/A".to_string())
+        );
         println!("  Counterparty: {}", record.counterparty);
-        println!("  Balance: {} -> {}", 
+        println!(
+            "  Balance: {} -> {}",
             record.balance_before.as_ref().unwrap_or(&"N/A".to_string()),
             record.balance_after.as_ref().unwrap_or(&"N/A".to_string())
         );
@@ -1519,7 +1703,7 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
         println!("    - Binary search didn't check this specific block");
         println!("    - Balance was same before/after at this block");
     }
-    
+
     // Check what blocks were captured
     let records = sqlx::query!(
         r#"
@@ -1536,7 +1720,7 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
     )
     .fetch_all(&pool)
     .await?;
-    
+
     println!("\n=== NEAR Balance Changes ===");
     for record in &records {
         println!("  Block: {}", record.block_height);
@@ -1548,29 +1732,32 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
             println!("    Receipt ID: {}", record.receipt_id[0]);
         }
     }
-    
+
     // Find the block with transaction hash but unknown counterparty
-    let blocks_with_unknown_counterparty: Vec<_> = records.iter()
+    let blocks_with_unknown_counterparty: Vec<_> = records
+        .iter()
         .filter(|r| r.counterparty == "unknown" && !r.transaction_hashes.is_empty())
         .collect();
-    
+
     if !blocks_with_unknown_counterparty.is_empty() {
         println!("\n=== Blocks with 'unknown' counterparty but transaction hash ===");
         for record in &blocks_with_unknown_counterparty {
-            println!("  Block {}: tx_hash = {}", 
-                record.block_height, 
-                record.transaction_hashes[0]
+            println!(
+                "  Block {}: tx_hash = {}",
+                record.block_height, record.transaction_hashes[0]
             );
             println!("    These should be analyzed to discover FT contracts");
         }
-        
+
         // This demonstrates the gap in current implementation:
         // When counterparty is "unknown" but we have a transaction hash,
         // we should look up the transaction to find FT contract interactions
-        println!("\n⚠ Current limitation: Transactions with 'unknown' counterparty are not analyzed");
+        println!(
+            "\n⚠ Current limitation: Transactions with 'unknown' counterparty are not analyzed"
+        );
         println!("  Enhancement needed: Query transaction by hash to discover FT contracts");
     }
-    
+
     // Get all counterparties (excluding metadata values)
     let counterparties: Vec<String> = sqlx::query_scalar(
         r#"
@@ -1579,22 +1766,30 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
         WHERE account_id = $1 AND token_id = 'near'
           AND counterparty != 'SNAPSHOT'
         ORDER BY counterparty
-        "#
+        "#,
     )
     .bind(account_id)
     .fetch_all(&pool)
     .await?;
-    
+
     println!("\n=== Counterparties to Check for FT Contracts ===");
     if counterparties.is_empty() {
         println!("  (none found - only 'unknown' or 'system' counterparties)");
     } else {
         for counterparty in &counterparties {
             println!("  - {}", counterparty);
-            
+
             // Try to check if it's an FT contract
             use nt_be::handlers::balance_changes::balance::ft::get_balance_at_block as get_ft_balance;
-            match get_ft_balance(&pool, &network, account_id, counterparty, target_block as u64).await {
+            match get_ft_balance(
+                &pool,
+                &network,
+                account_id,
+                counterparty,
+                target_block as u64,
+            )
+            .await
+            {
                 Ok(balance) => {
                     println!("    ✓ IS an FT contract! Balance: {}", balance);
                 }
@@ -1604,7 +1799,7 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
             }
         }
     }
-    
+
     // Verify at least one NEAR record has a real counterparty (not snapshot/metadata)
     let near_counterparties: Vec<String> = sqlx::query_scalar(
         r#"
@@ -1612,21 +1807,22 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
         FROM balance_changes
         WHERE account_id = $1 AND token_id = 'near'
         ORDER BY counterparty
-        "#
+        "#,
     )
     .bind(account_id)
     .fetch_all(&pool)
     .await?;
-    
-    let has_real_near_counterparty = near_counterparties.iter()
+
+    let has_real_near_counterparty = near_counterparties
+        .iter()
         .any(|cp| cp.as_str() != "SNAPSHOT");
-    
+
     if has_real_near_counterparty {
         println!("\n✓ NEAR records have real counterparties");
     } else {
         println!("\n⚠ NEAR records only have SNAPSHOT counterparty (no transactions yet)");
     }
-    
+
     Ok(())
 }
 
@@ -1635,18 +1831,18 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
 #[sqlx::test]
 async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
-    
+
     let network = create_archival_network();
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
-    
+
     // Block 165324279 has a btc.omft.near intents balance change of 0.0002 BTC
     // Run monitor from 165324280 - gap filler searches backwards and finds 165324279
     let monitor_block: i64 = 165_324_280;
-    
+
     println!("\n=== Testing Intents Token Discovery via run_monitor_cycle ===");
     println!("Account: {}", account_id);
     println!("Monitor block: {}", monitor_block);
-    
+
     // Register the account for monitoring
     sqlx::query!(
         r#"
@@ -1657,29 +1853,33 @@ async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) ->
     )
     .execute(&pool)
     .await?;
-    
+
     // Run monitor cycle - should discover intents tokens and find balance changes
     run_monitor_cycle(&pool, &network, monitor_block)
         .await
         .expect("Monitor cycle should complete");
-    
+
     // Hard assertion: Must discover BTC intents token
     let btc_token = "intents.near:nep141:btc.omft.near";
     let btc_discovered: bool = sqlx::query_scalar(
-        r#"SELECT EXISTS(SELECT 1 FROM balance_changes WHERE account_id = $1 AND token_id = $2)"#
+        r#"SELECT EXISTS(SELECT 1 FROM balance_changes WHERE account_id = $1 AND token_id = $2)"#,
     )
     .bind(account_id)
     .bind(btc_token)
     .fetch_one(&pool)
     .await?;
-    
-    assert!(btc_discovered, "Must discover {} via run_monitor_cycle", btc_token);
-    
+
+    assert!(
+        btc_discovered,
+        "Must discover {} via run_monitor_cycle",
+        btc_token
+    );
+
     // Run second monitor cycle to fill gaps for discovered intents tokens
     run_monitor_cycle(&pool, &network, monitor_block)
         .await
         .expect("Second monitor cycle should complete");
-    
+
     // Hard assertion: Must find the BTC balance change at block 165324279
     let btc_change = sqlx::query!(
         r#"
@@ -1694,29 +1894,41 @@ async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) ->
     )
     .fetch_all(&pool)
     .await?;
-    
-    assert!(!btc_change.is_empty(), "Must find non-SNAPSHOT BTC balance change");
-    
+
+    assert!(
+        !btc_change.is_empty(),
+        "Must find non-SNAPSHOT BTC balance change"
+    );
+
     // Hard assertion: Must find the change at block 165324279
-    let block_165324279_change = btc_change.iter()
+    let block_165324279_change = btc_change
+        .iter()
         .find(|c| c.block_height == 165_324_279)
         .expect("Must find BTC balance change at block 165324279");
-    
+
     println!("\n   BTC change at block 165324279:");
     println!("   Block: {}", block_165324279_change.block_height);
     println!("   Amount: {}", block_165324279_change.amount);
-    println!("   Balance: {} -> {}", block_165324279_change.balance_before, block_165324279_change.balance_after);
+    println!(
+        "   Balance: {} -> {}",
+        block_165324279_change.balance_before, block_165324279_change.balance_after
+    );
     println!("   Counterparty: {}", block_165324279_change.counterparty);
-    
+
     // Hard assertion: Amount must be 0.0002 BTC (20000 satoshis, BTC has 8 decimals)
-    let amount = BigDecimal::from_str(&block_165324279_change.amount)
-        .expect("Amount must be valid decimal");
+    let amount =
+        BigDecimal::from_str(&block_165324279_change.amount).expect("Amount must be valid decimal");
     let expected_amount = BigDecimal::from(20000i64);
-    assert_eq!(amount.abs(), expected_amount, 
-        "BTC change amount must be 20000 satoshis (0.0002 BTC)");
-    
-    println!("\n✓ Found BTC intents balance change: {} satoshis at block 165324279", 
-        block_165324279_change.amount);
-    
+    assert_eq!(
+        amount.abs(),
+        expected_amount,
+        "BTC change amount must be 20000 satoshis (0.0002 BTC)"
+    );
+
+    println!(
+        "\n✓ Found BTC intents balance change: {} satoshis at block 165324279",
+        block_165324279_change.amount
+    );
+
     Ok(())
 }

@@ -49,11 +49,11 @@ pub async fn get_balance_at_block(
                         offset
                     );
                 }
-                
+
                 // Convert yoctoNEAR to human-readable NEAR (24 decimals)
                 let yocto_near = balance.total.as_yoctonear().to_string();
                 let decimal_near = convert_raw_to_decimal(&yocto_near, 24)?;
-                
+
                 return Ok(decimal_near);
             }
             Err(e) => {

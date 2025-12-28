@@ -29,13 +29,10 @@ use crate::handlers::balance_changes::{
 pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
 
 /// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
-fn block_timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<Utc> {
+pub(super) fn block_timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<Utc> {
     let secs = timestamp_nanos / 1_000_000_000;
     let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
-    DateTime::from_timestamp(secs, nsecs).unwrap_or_else(|| {
-        log::warn!("Invalid timestamp {}, using current time", timestamp_nanos);
-        Utc::now()
-    })
+    DateTime::from_timestamp(secs, nsecs).unwrap_or_else(Utc::now)
 }
 
 /// Result of filling a single gap
@@ -93,12 +90,15 @@ pub async fn fill_gap(
     })?;
 
     // Try to insert the balance change record with receipts
-    match insert_balance_change_record(pool, network, &gap.account_id, &gap.token_id, block_height).await {
+    match insert_balance_change_record(pool, network, &gap.account_id, &gap.token_id, block_height)
+        .await
+    {
         Ok(Some(result)) => Ok(result),
         Ok(None) => Err(format!(
             "Failed to insert balance change for gap: {} {} at block {}",
             gap.account_id, gap.token_id, block_height
-        ).into()),
+        )
+        .into()),
         Err(e) if e.to_string().contains("No receipt found") => {
             // Balance changed but no receipts found
             // Try to insert SNAPSHOT (for cases where balance existed before but didn't change at this block)
@@ -108,7 +108,7 @@ pub async fn fill_gap(
                 gap.account_id,
                 gap.token_id
             );
-            
+
             match insert_snapshot_record(
                 pool,
                 network,
@@ -147,7 +147,7 @@ pub async fn fill_gap(
                 }
             }
         }
-        Err(e) => Err(e.into()),
+        Err(e) => Err(e),
     }
 }
 
@@ -361,8 +361,9 @@ pub async fn seed_initial_balance(
     );
 
     // Use the shared insert helper
-    let result = insert_balance_change_record(pool, network, account_id, token_id, block_height).await?;
-    
+    let result =
+        insert_balance_change_record(pool, network, account_id, token_id, block_height).await?;
+
     if let Some(filled_gap) = &result {
         log::info!(
             "Seeded initial balance record at block {} for {}/{}: {} -> {}",
@@ -373,7 +374,7 @@ pub async fn seed_initial_balance(
             filled_gap.balance_after
         );
     }
-    
+
     Ok(result)
 }
 
@@ -408,9 +409,10 @@ async fn fill_gap_to_present(
     };
 
     // Get current balance at up_to_block
-    let current_balance = balance::get_balance_at_block(pool, network, account_id, token_id, up_to_block)
-        .await
-        .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+    let current_balance =
+        balance::get_balance_at_block(pool, network, account_id, token_id, up_to_block)
+            .await
+            .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
     // If balance hasn't changed, no gap
     if current_balance == latest.balance_after {
@@ -496,10 +498,11 @@ async fn fill_gap_to_past(
 
     // Case 1: If balance_before is non-zero, we definitely have a gap
     let has_obvious_gap = earliest.balance_before != "0";
-    
+
     // Case 2: Even if balance_before is 0, if this is a SNAPSHOT, we should check if there was
     // a non-zero balance before the lookback window (SNAPSHOT may have missed earlier history)
-    let should_check_history = earliest.counterparty == "SNAPSHOT" && earliest.balance_before == "0";
+    let should_check_history =
+        earliest.counterparty == "SNAPSHOT" && earliest.balance_before == "0";
 
     if !has_obvious_gap && !should_check_history {
         log::info!(
@@ -514,29 +517,23 @@ async fn fill_gap_to_past(
     // Search backwards - use a reasonable lookback (about 7 days to avoid hitting too-old blocks)
     let lookback_blocks: u64 = 600_000; // ~7 days
     let start_block = (earliest.block_height as u64).saturating_sub(lookback_blocks);
-    
+
     // Check actual balance at the lookback boundary
-    let balance_at_start = match balance::get_balance_at_block(
-        pool,
-        network,
-        account_id,
-        token_id,
-        start_block,
-    )
-    .await
-    {
-        Ok(balance) => balance,
-        Err(e) => {
-            log::warn!(
-                "Could not query balance at block {} for {}/{}: {} - skipping gap to past",
-                start_block,
-                account_id,
-                token_id,
-                e
-            );
-            return Ok(None);
-        }
-    };
+    let balance_at_start =
+        match balance::get_balance_at_block(pool, network, account_id, token_id, start_block).await
+        {
+            Ok(balance) => balance,
+            Err(e) => {
+                log::warn!(
+                    "Could not query balance at block {} for {}/{}: {} - skipping gap to past",
+                    start_block,
+                    account_id,
+                    token_id,
+                    e
+                );
+                return Ok(None);
+            }
+        };
 
     // Always use the actual balance at lookback boundary as our target
     // Even if it's 0, we'll insert a SNAPSHOT at the boundary to mark we've checked back to this point
@@ -594,7 +591,7 @@ async fn fill_gap_to_past(
             account_id,
             token_id
         );
-        
+
         // Insert a SNAPSHOT at the lookback boundary to record that balance existed there
         // This prevents repeated searches in future runs
         match insert_snapshot_record(pool, network, account_id, token_id, start_block).await {
@@ -616,11 +613,7 @@ async fn fill_gap_to_past(
                 return Ok(None);
             }
             Err(e) => {
-                log::error!(
-                    "Error inserting SNAPSHOT at block {}: {}",
-                    start_block,
-                    e
-                );
+                log::error!("Error inserting SNAPSHOT at block {}: {}", start_block, e);
                 return Ok(None);
             }
         }
@@ -635,7 +628,7 @@ async fn fill_gap_to_past(
                 "No receipts found at block {} - balance existed before search range. Inserting SNAPSHOT at lookback boundary.",
                 block_height
             );
-            
+
             // Insert SNAPSHOT at the lookback boundary to mark where our search stopped
             insert_snapshot_record(pool, network, account_id, token_id, start_block).await
         }
@@ -658,15 +651,10 @@ pub async fn insert_snapshot_record(
     block_height: u64,
 ) -> Result<Option<FilledGap>, GapFillerError> {
     // Get balance before (at block N-1) and after (at block N) to verify no change occurred
-    let (balance_before, balance_after) = balance::get_balance_change_at_block(
-        pool,
-        network,
-        account_id,
-        token_id,
-        block_height,
-    )
-    .await
-    .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+    let (balance_before, balance_after) =
+        balance::get_balance_change_at_block(pool, network, account_id, token_id, block_height)
+            .await
+            .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
     // Get block timestamp
     let block_timestamp = block_info::get_block_timestamp(network, block_height, None)
@@ -695,7 +683,7 @@ pub async fn insert_snapshot_record(
 
     // Insert SNAPSHOT: balance_before = balance_after (no change at this block)
     let block_time = block_timestamp_to_datetime(block_timestamp);
-    
+
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
@@ -756,15 +744,10 @@ pub async fn insert_unknown_counterparty_record(
     block_height: u64,
 ) -> Result<FilledGap, GapFillerError> {
     // Get the actual balance change at this block
-    let (balance_before, balance_after) = balance::get_balance_change_at_block(
-        pool,
-        network,
-        account_id,
-        token_id,
-        block_height,
-    )
-    .await
-    .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+    let (balance_before, balance_after) =
+        balance::get_balance_change_at_block(pool, network, account_id, token_id, block_height)
+            .await
+            .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
     let amount = BigDecimal::from_str(&balance_after)? - BigDecimal::from_str(&balance_before)?;
     let before_bd = BigDecimal::from_str(&balance_before)?;
@@ -787,7 +770,7 @@ pub async fn insert_unknown_counterparty_record(
 
     // Insert record with UNKNOWN counterparty
     let block_time = block_timestamp_to_datetime(block_timestamp);
-    
+
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 
@@ -832,7 +815,7 @@ pub async fn insert_unknown_counterparty_record(
 }
 
 /// Helper to insert a balance change record at a specific block
-/// 
+///
 /// This is exposed for testing purposes to allow direct insertion of records
 /// at specific blocks to verify transaction hash capture.
 pub async fn insert_balance_change_record(
@@ -859,24 +842,25 @@ pub async fn insert_balance_change_record(
     let amount = &after_bd - &before_bd;
 
     // Get account changes to find the transaction hash that caused this balance change
-    let account_changes = block_info::get_account_changes(network, account_id, block_height).await
+    let account_changes = block_info::get_account_changes(network, account_id, block_height)
+        .await
         .map_err(|e| -> GapFillerError { e.to_string().into() })?;
-    
+
     // Extract transaction hash and other details from account changes
     let (transaction_hashes, raw_data) = if let Some(change) = account_changes.first() {
         use near_primitives::views::StateChangeCauseView;
-        
+
         let tx_hashes = match &change.cause {
             StateChangeCauseView::TransactionProcessing { tx_hash } => vec![tx_hash.to_string()],
             _ => vec![],
         };
-        
+
         let raw_data = serde_json::to_value(change).unwrap_or_else(|_| serde_json::json!({}));
         (tx_hashes, raw_data)
     } else {
         (vec![], serde_json::json!({}))
     };
-    
+
     // If we have a transaction hash, query the full transaction to get signer and receiver
     let (signer_id, receiver_id, counterparty) = if let Some(tx_hash) = transaction_hashes.first() {
         match block_info::get_transaction(network, tx_hash, account_id).await {
@@ -890,27 +874,29 @@ pub async fn insert_balance_change_record(
                             let tx = &outcome.transaction;
                             let signer = tx.signer_id.to_string();
                             let receiver = tx.receiver_id.to_string();
-                            
+
                             // Counterparty is the receiver when account is signer, or signer when account is receiver
                             let counterparty = if signer == account_id {
                                 receiver.clone()
                             } else {
                                 signer.clone()
                             };
-                            
+
                             (Some(signer), Some(receiver), counterparty)
                         }
-                        FinalExecutionOutcomeViewEnum::FinalExecutionOutcomeWithReceipt(outcome) => {
+                        FinalExecutionOutcomeViewEnum::FinalExecutionOutcomeWithReceipt(
+                            outcome,
+                        ) => {
                             let tx = &outcome.final_outcome.transaction;
                             let signer = tx.signer_id.to_string();
                             let receiver = tx.receiver_id.to_string();
-                            
+
                             let counterparty = if signer == account_id {
                                 receiver.clone()
                             } else {
                                 signer.clone()
                             };
-                            
+
                             (Some(signer), Some(receiver), counterparty)
                         }
                     }
@@ -920,7 +906,11 @@ pub async fn insert_balance_change_record(
                 }
             }
             Err(e) => {
-                log::warn!("Failed to query transaction {}: {} - will try receipts", tx_hash, e);
+                log::warn!(
+                    "Failed to query transaction {}: {} - will try receipts",
+                    tx_hash,
+                    e
+                );
                 // Fall back to receipt-based logic below
                 (None, None, String::new())
             }
@@ -928,15 +918,16 @@ pub async fn insert_balance_change_record(
     } else {
         (None, None, String::new())
     };
-    
+
     // Get receipt data for additional context (if available)
     // Only use this if we don't have signer/receiver from transaction
     let (final_signer, final_receiver, final_counterparty) = if signer_id.is_some() {
         (signer_id, receiver_id, counterparty)
     } else {
-        let block_data = block_info::get_block_data(network, account_id, block_height).await
+        let block_data = block_info::get_block_data(network, account_id, block_height)
+            .await
             .map_err(|e| -> GapFillerError { e.to_string().into() })?;
-        
+
         if let Some(receipt) = block_data.receipts.first() {
             (
                 Some(receipt.predecessor_id.to_string()),
@@ -952,19 +943,22 @@ pub async fn insert_balance_change_record(
             .into());
         }
     };
-    
+
     // Always get receipt data for receipt_ids
-    let block_data = block_info::get_block_data(network, account_id, block_height).await
+    let block_data = block_info::get_block_data(network, account_id, block_height)
+        .await
         .map_err(|e| -> GapFillerError { e.to_string().into() })?;
-    
+
     // Build receipt_ids array from block data
-    let receipt_ids: Vec<String> = block_data.receipts.iter()
+    let receipt_ids: Vec<String> = block_data
+        .receipts
+        .iter()
         .map(|r| r.receipt_id.to_string())
         .collect();
 
     // Insert the record
     let block_time = block_timestamp_to_datetime(block_timestamp);
-    
+
     sqlx::query!(
         r#"
         INSERT INTO balance_changes 

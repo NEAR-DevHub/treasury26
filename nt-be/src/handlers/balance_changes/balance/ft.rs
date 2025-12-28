@@ -7,7 +7,7 @@ use near_api::{AccountId, Contract, NetworkConfig, Reference};
 use sqlx::PgPool;
 use std::str::FromStr;
 
-use crate::handlers::balance_changes::counterparty::{ensure_ft_metadata, convert_raw_to_decimal};
+use crate::handlers::balance_changes::counterparty::{convert_raw_to_decimal, ensure_ft_metadata};
 
 /// Query fungible token balance at a specific block height
 ///
@@ -35,7 +35,7 @@ pub async fn get_balance_at_block(
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Ensure metadata is cached and get decimals for conversion
     let decimals = ensure_ft_metadata(pool, network, token_contract).await?;
-    
+
     let token_contract_obj = AccountId::from_str(token_contract)?;
     let max_retries = 10;
 
@@ -73,9 +73,15 @@ pub async fn get_balance_at_block(
                 let raw_balance = match &data.data {
                     serde_json::Value::String(s) => s.clone(),
                     serde_json::Value::Number(n) => n.to_string(),
-                    _ => return Err(format!("Unexpected ft_balance_of response type: {:?}", data.data).into()),
+                    _ => {
+                        return Err(format!(
+                            "Unexpected ft_balance_of response type: {:?}",
+                            data.data
+                        )
+                        .into());
+                    }
                 };
-                
+
                 // Assert: The value should be a valid U128 (digits only, no decimals)
                 assert!(
                     raw_balance.chars().all(|c| c.is_ascii_digit()),

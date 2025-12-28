@@ -27,23 +27,26 @@ async fn main() {
     tokio::spawn(async move {
         use near_api::Chain;
         use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
-        
+
         // Get monitoring interval from env or default to 5 minutes
         let interval_minutes: u64 = std::env::var("MONITOR_INTERVAL_MINUTES")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(5);
-        
+
         let interval = Duration::from_secs(interval_minutes * 60);
-        
-        log::info!("Starting background monitoring service (interval: {} minutes)", interval_minutes);
-        
+
+        log::info!(
+            "Starting background monitoring service (interval: {} minutes)",
+            interval_minutes
+        );
+
         // Wait a bit before first run to let server fully start
         tokio::time::sleep(Duration::from_secs(10)).await;
-        
+
         loop {
             log::info!("Running monitoring cycle...");
-            
+
             // Get current block height from the network
             let up_to_block = match Chain::block().fetch_from(&state_clone.network).await {
                 Ok(block) => block.header.height as i64,
@@ -54,10 +57,16 @@ async fn main() {
                     continue;
                 }
             };
-            
+
             log::info!("Processing up to block {}", up_to_block);
-            
-            match run_monitor_cycle(&state_clone.db_pool, &state_clone.archival_network, up_to_block).await {
+
+            match run_monitor_cycle(
+                &state_clone.db_pool,
+                &state_clone.archival_network,
+                up_to_block,
+            )
+            .await
+            {
                 Ok(()) => {
                     log::info!("Monitoring cycle completed successfully");
                 }
@@ -65,7 +74,7 @@ async fn main() {
                     log::error!("Monitoring cycle failed: {}", e);
                 }
             }
-            
+
             log::info!("Next monitoring cycle in {} minutes", interval_minutes);
             tokio::time::sleep(interval).await;
         }

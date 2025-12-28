@@ -22,10 +22,7 @@ use std::collections::HashSet;
 ///
 /// # Returns
 /// Set of token contract addresses found in the receipt
-pub fn extract_ft_tokens_from_receipt(
-    receipt: &ReceiptView,
-    account_id: &str,
-) -> HashSet<String> {
+pub fn extract_ft_tokens_from_receipt(receipt: &ReceiptView, account_id: &str) -> HashSet<String> {
     let mut tokens = HashSet::new();
 
     // Check if this receipt has actions
@@ -33,14 +30,14 @@ pub fn extract_ft_tokens_from_receipt(
         for action in actions {
             if let near_primitives::views::ActionView::FunctionCall { method_name, .. } = action {
                 // Check for FT transfer methods
-                if method_name == "ft_transfer" 
+                if method_name == "ft_transfer"
                     || method_name == "ft_transfer_call"
                     || method_name == "ft_on_transfer"
                 {
                     // The receiver_id is the token contract
                     // Only include if the monitored account is involved
-                    if receipt.predecessor_id.as_str() == account_id 
-                        || receipt.receiver_id.as_str() == account_id 
+                    if receipt.predecessor_id.as_str() == account_id
+                        || receipt.receiver_id.as_str() == account_id
                     {
                         tokens.insert(receipt.receiver_id.to_string());
                     }
@@ -80,7 +77,7 @@ async fn call_mt_tokens_for_owner(
     account_id: &str,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     use near_api::{Contract, Reference};
-    use serde::{Deserialize};
+    use serde::Deserialize;
     use std::str::FromStr;
 
     #[derive(Deserialize)]
@@ -104,7 +101,8 @@ async fn call_mt_tokens_for_owner(
         .await?;
 
     // Extract token_ids and prepend "intents.near:" to match our format
-    let tokens: Vec<String> = response.data
+    let tokens: Vec<String> = response
+        .data
         .into_iter()
         .map(|entry| format!("intents.near:{}", entry.token_id))
         .collect();
