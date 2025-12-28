@@ -92,8 +92,8 @@ mod tests {
         let state = init_test_state().await;
 
         // Test data: balance changed at block 151386339
-        // Before: "6100211126630537100000000"
-        // After: "11100211126630537100000000"
+        // Before (raw): "6100211126630537100000000" yoctoNEAR = 6.1002111266305371 NEAR (decimal)
+        // After (raw): "11100211126630537100000000" yoctoNEAR = 11.1002111266305371 NEAR (decimal)
         let result = find_balance_change_block(
             &state.db_pool,
             &state.archival_network,
@@ -101,7 +101,7 @@ mod tests {
             "NEAR",
             151386338, // Block before the change
             151386340, // Block after the change
-            "11100211126630537100000000",
+            "11.1002111266305371", // Decimal-adjusted balance
         )
         .await
         .unwrap();
@@ -231,10 +231,10 @@ mod tests {
         println!("arizcredits balance before (168568480): '{}' (length: {})", balance_before, balance_before.len());
         println!("arizcredits balance after (168568485): '{}' (length: {})", balance_after, balance_after.len());
 
-        // Hard assertions on exact raw U128 amounts
-        // arizcredits.near has 6 decimals, so raw 3000000 = 3.0 ARIZ
+        // Hard assertions on decimal-adjusted amounts
+        // arizcredits.near has 6 decimals, so raw 3000000 = 3.0 ARIZ (decimal-adjusted)
         assert_eq!(balance_before, "0", "Balance before should be 0");
-        assert_eq!(balance_after, "3000000", "Balance after should be 3000000 (3.0 ARIZ with 6 decimals)");
+        assert_eq!(balance_after, "3", "Balance after should be 3 (3.0 ARIZ with 6 decimals, decimal-adjusted)");
     }
 
     #[tokio::test]
@@ -255,10 +255,10 @@ mod tests {
         .await
         .expect("FT balance query should succeed");
 
-        println!("ARIZ balance at block 178675608: {} (raw U128)", balance);
+        println!("ARIZ balance at block 178675608: {} (decimal-adjusted)", balance);
         
-        // Hard assertion: raw value should be 2500000 (which is 2.5 ARIZ with 6 decimals)
-        assert_eq!(balance, "2500000", "Raw balance should be 2500000 (2.5 ARIZ with 6 decimals, no rounding)");
+        // Hard assertion: decimal-adjusted value should be 2.5 (which is 2500000 raw with 6 decimals)
+        assert_eq!(balance, "2.5", "Decimal balance should be 2.5 (2500000 raw with 6 decimals)");
     }
 
     #[tokio::test]

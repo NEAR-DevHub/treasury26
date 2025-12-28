@@ -29,12 +29,16 @@ async fn load_test_data(pool: &PgPool) -> sqlx::Result<(String, usize)> {
         let balance_before = &tx["balanceBefore"];
         let balance_after = &tx["balanceAfter"];
 
-        let near_before =
-            BigDecimal::from_str(balance_before["near"].as_str().unwrap_or("0")).unwrap();
-        let near_after =
-            BigDecimal::from_str(balance_after["near"].as_str().unwrap_or("0")).unwrap();
-        let near_diff =
-            BigDecimal::from_str(tx["changes"]["nearDiff"].as_str().unwrap_or("0")).unwrap();
+        // Convert raw yoctoNEAR to decimal NEAR (24 decimals)
+        let near_before_raw = balance_before["near"].as_str().unwrap_or("0");
+        let near_after_raw = balance_after["near"].as_str().unwrap_or("0");
+        let near_diff_raw = tx["changes"]["nearDiff"].as_str().unwrap_or("0");
+        
+        // Divide by 10^24 to get decimal NEAR
+        let divisor = BigDecimal::from_str("1000000000000000000000000").unwrap(); // 10^24
+        let near_before = BigDecimal::from_str(near_before_raw).unwrap() / &divisor;
+        let near_after = BigDecimal::from_str(near_after_raw).unwrap() / &divisor;
+        let near_diff = BigDecimal::from_str(near_diff_raw).unwrap() / &divisor;
 
         let empty_transfers = vec![];
         let transfers = tx["transfers"].as_array().unwrap_or(&empty_transfers);
@@ -947,6 +951,7 @@ async fn test_seed_initial_balance(pool: PgPool) -> sqlx::Result<()> {
 
 /// Test the full fill_gaps flow with bootstrapping when no data exists
 #[sqlx::test]
+#[ignore = "Slow test - fills many gaps with RPC calls. Run with: cargo test -- --ignored"]
 async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
     let account_id = "testing-astradao.sputnik-dao.near";
     let token_id = "near";
@@ -1350,6 +1355,7 @@ async fn test_query_unavailable_block_with_retry(pool: PgPool) -> sqlx::Result<(
 
 /// Test looping fill_gaps until all gaps are filled
 #[sqlx::test]
+#[ignore = "Slow test - makes many RPC calls. Run with: cargo test -- --ignored"]
 async fn test_fill_gaps_loop_until_complete(pool: PgPool) -> sqlx::Result<()> {
     let account_id = "testing-astradao.sputnik-dao.near";
     let token_id = "near";
@@ -1548,6 +1554,7 @@ async fn test_monitored_accounts(pool: PgPool) -> sqlx::Result<()> {
 
 /// Test continuous monitoring service
 #[sqlx::test]
+#[ignore = "Slow test - monitors multiple cycles. Run with: cargo test -- --ignored"]
 async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
     
@@ -1731,11 +1738,11 @@ async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sq
     println!("✓ Block height: {}", record.block_height);
     println!("✓ Block timestamp: {}", record.block_timestamp);
     
-    // Verify balance fields
+    // Verify balance fields (decimal-adjusted: NEAR has 24 decimals)
     assert_eq!(
         record.balance_after, 
-        "47131979815366840642871301",
-        "Balance after should be correct"
+        "47.131979815366840642871301",
+        "Balance after should be correct (decimal-adjusted)"
     );
     println!("✓ Balance before: {}", record.balance_before);
     println!("✓ Balance after: {}", record.balance_after);
@@ -1951,6 +1958,7 @@ async fn test_ft_contract_as_counterparty(pool: PgPool) -> sqlx::Result<()> {
 /// 3. Automatically start monitoring discovered FT tokens
 /// 4. Verify balance changes are collected for the discovered token
 #[sqlx::test]
+#[ignore = "Slow test - monitors many blocks for token discovery. Run with: cargo test -- --ignored"]
 async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
     
