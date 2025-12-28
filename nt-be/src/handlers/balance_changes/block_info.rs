@@ -478,4 +478,230 @@ mod tests {
         // Assert that we found at least one change since user claims this block has a change
         assert!(!changes.is_empty(), "Expected to find state changes at block 178086209");
     }
+
+    #[tokio::test]
+    async fn test_get_block_data_with_event_json_logs() {
+        let state = init_test_state().await;
+
+        println!("\n=== Testing block 177751529 for EVENT_JSON logs ===");
+        println!("This block should have ft_transfer EVENT_JSON for petersalomonsen.near");
+        println!("Receipt: CX6MePrrcvuQA6Pgv4BueCkSVpbPbq1voDC5KuNRMg1t");
+        println!("From: distribution.nearmobile.near");
+        println!("To: petersalomonsen.near");
+        println!("Amount: 41414178022306048887375898");
+        
+        // Test 1: Get block data for petersalomonsen.near (receiver)
+        println!("\n--- Query 1: petersalomonsen.near as receiver ---");
+        let block_data = get_block_data(
+            &state.archival_network,
+            "petersalomonsen.near",
+            177751529,
+        )
+        .await
+        .expect("Should successfully query block data");
+
+        println!("Block height: {}", block_data.block_height);
+        println!("Block hash: {}", block_data.block_hash);
+        println!("Total receipts for petersalomonsen.near: {}", block_data.receipts.len());
+        
+        for (i, receipt) in block_data.receipts.iter().enumerate() {
+            println!("\n  Receipt {}:", i + 1);
+            println!("    Receipt ID: {}", receipt.receipt_id);
+            println!("    Predecessor: {}", receipt.predecessor_id);
+            println!("    Receiver: {}", receipt.receiver_id);
+            println!("    Receipt: {:#?}", receipt.receipt);
+        }
+        
+        // Test 2: Get block data for npro.nearmobile.near (token contract)
+        println!("\n--- Query 2: npro.nearmobile.near as receiver (token contract) ---");
+        let token_block_data = get_block_data(
+            &state.archival_network,
+            "npro.nearmobile.near",
+            177751529,
+        )
+        .await
+        .expect("Should successfully query block data for token contract");
+
+        println!("Total receipts for npro.nearmobile.near: {}", token_block_data.receipts.len());
+        
+        for (i, receipt) in token_block_data.receipts.iter().enumerate() {
+            println!("\n  Receipt {}:", i + 1);
+            println!("    Receipt ID: {}", receipt.receipt_id);
+            println!("    Predecessor: {}", receipt.predecessor_id);
+            println!("    Receiver: {}", receipt.receiver_id);
+            println!("    Receipt: {:#?}", receipt.receipt);
+        }
+        
+        // Test 3: Get ALL receipts in the block (to see if we're missing something)
+        println!("\n--- Query 3: Get all account receipts (sender or receiver) ---");
+        let all_receipts = get_all_account_receipts(
+            &state.archival_network,
+            "petersalomonsen.near",
+            177751529,
+        )
+        .await
+        .expect("Should successfully query all receipts");
+
+        println!("Total receipts involving petersalomonsen.near: {}", all_receipts.len());
+        
+        for (i, receipt) in all_receipts.iter().enumerate() {
+            println!("\n  Receipt {}:", i + 1);
+            println!("    Receipt ID: {}", receipt.receipt_id);
+            println!("    Predecessor: {}", receipt.predecessor_id);
+            println!("    Receiver: {}", receipt.receiver_id);
+            println!("    Receipt: {:#?}", receipt.receipt);
+        }
+        
+        // We should find at least some receipts
+        assert!(!block_data.receipts.is_empty() || !token_block_data.receipts.is_empty() || !all_receipts.is_empty(),
+            "Should find at least some receipts in block 177751529");
+        
+        // Test 4: Get chunk with execution outcomes to see EVENT_JSON logs
+        println!("\n--- Query 4: Get chunk with execution outcomes (includes EVENT_JSON logs) ---");
+        
+        let rpc_endpoint = state.archival_network
+            .rpc_endpoints
+            .first()
+            .expect("Should have RPC endpoint");
+        
+        let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
+        
+        if let Some(bearer) = &rpc_endpoint.bearer_header {
+            let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
+            client = client.header(auth::Authorization::bearer(token).unwrap());
+        }
+        
+        // Get the block first to find the right chunk
+        let block = Chain::block()
+            .at(Reference::AtBlock(177751529))
+            .fetch_from(&state.archival_network)
+            .await
+            .expect("Should be able to query block");
+        
+        // Look through each chunk for our receipt
+        for chunk_header in &block.chunks {
+            let chunk_hash_str = chunk_header.chunk_hash.to_string();
+            
+            let chunk_request = methods::chunk::RpcChunkRequest {
+                chunk_reference: methods::chunk::ChunkReference::ChunkHash {
+                    chunk_id: chunk_hash_str.parse().unwrap(),
+                },
+            };
+            
+            let chunk_response = client.call(chunk_request).await.expect("Should get chunk");
+            
+            // Check if this chunk has our receipt
+            let has_our_receipt = chunk_response.receipts.iter().any(|r| 
+                r.receipt_id.to_string() == "CX6MePrrcvuQA6Pgv4BueCkSVpbPbq1voDC5KuNRMg1t"
+            );
+            
+            if has_our_receipt {
+                println!("\n✓✓✓ Found our receipt in chunk {} ✓✓✓", chunk_hash_str);
+                println!("\n=== Chunk Details ===");
+                println!("Chunk hash: {}", chunk_hash_str);
+                println!("Author: {}", chunk_response.author);
+                println!("Header height: {}", chunk_response.header.height_created);
+                println!("Total receipts in chunk: {}", chunk_response.receipts.len());
+                println!("Total transactions in chunk: {}", chunk_response.transactions.len());
+                
+                // Print all receipt IDs in this chunk
+                println!("\nAll receipt IDs in this chunk:");
+                for (i, r) in chunk_response.receipts.iter().enumerate() {
+                    let is_ours = r.receipt_id.to_string() == "CX6MePrrcvuQA6Pgv4BueCkSVpbPbq1voDC5KuNRMg1t";
+                    let marker = if is_ours { " ← OUR RECEIPT" } else { "" };
+                    println!("  {}: {} (from {} to {}){}",
+                        i + 1,
+                        r.receipt_id,
+                        r.predecessor_id,
+                        r.receiver_id,
+                        marker
+                    );
+                }
+                
+                println!("\n=== Transactions in this chunk ===");
+                if chunk_response.transactions.is_empty() {
+                    println!("⚠️  NO TRANSACTIONS in this chunk!");
+                    println!("The receipt was created by a transaction in a DIFFERENT chunk.");
+                    println!("Receipt execution happens in a different chunk from where the transaction was submitted.");
+                } else {
+                    println!("Chunk has {} transactions:", chunk_response.transactions.len());
+                }
+                
+                for (i, tx_view) in chunk_response.transactions.iter().enumerate() {
+                    println!("Transaction {}: {} from {} to {}", 
+                        i + 1,
+                        tx_view.hash,
+                        tx_view.signer_id,
+                        tx_view.receiver_id
+                    );
+                    
+                    // Get full transaction details
+                    let tx_request = methods::tx::RpcTransactionStatusRequest {
+                        transaction_info: methods::tx::TransactionInfo::TransactionId {
+                            tx_hash: tx_view.hash.to_string().parse().unwrap(),
+                            sender_account_id: tx_view.signer_id.clone(),
+                        },
+                        wait_until: near_primitives::views::TxExecutionStatus::Final,
+                    };
+                    
+                    match client.call(tx_request).await {
+                        Ok(tx_response) => {
+                            println!("\n  Transaction details for {}:", tx_view.hash);
+                            
+                            // Check the final execution outcome
+                            if let Some(final_outcome_enum) = &tx_response.final_execution_outcome {
+                                use near_primitives::views::FinalExecutionOutcomeViewEnum;
+                                
+                                let receipts_outcome = match final_outcome_enum {
+                                    FinalExecutionOutcomeViewEnum::FinalExecutionOutcome(outcome) => &outcome.receipts_outcome,
+                                    FinalExecutionOutcomeViewEnum::FinalExecutionOutcomeWithReceipt(outcome) => &outcome.final_outcome.receipts_outcome,
+                                };
+                                
+                                // Check all receipt outcomes
+                                for (j, outcome) in receipts_outcome.iter().enumerate() {
+                                println!("\n  Receipt outcome {}:", j + 1);
+                                println!("    Receipt ID: {}", outcome.id);
+                                println!("    Executor: {}", outcome.outcome.executor_id);
+                                
+                                if outcome.id.to_string() == "CX6MePrrcvuQA6Pgv4BueCkSVpbPbq1voDC5KuNRMg1t" {
+                                    println!("\n    ✓✓✓ THIS IS OUR RECEIPT! ✓✓✓");
+                                    println!("    Status: {:?}", outcome.outcome.status);
+                                    println!("    Gas burnt: {}", outcome.outcome.gas_burnt);
+                                    
+                                    if !outcome.outcome.logs.is_empty() {
+                                        println!("\n    === LOGS ({} total) ===", outcome.outcome.logs.len());
+                                        for (k, log) in outcome.outcome.logs.iter().enumerate() {
+                                            println!("\n    Log {}:", k + 1);
+                                            println!("    {}", log);
+                                            
+                                            if log.starts_with("EVENT_JSON:") {
+                                                println!("    ^^^ EVENT_JSON LOG FOUND! ^^^");
+                                                if let Some(json_str) = log.strip_prefix("EVENT_JSON:") {
+                                                    match serde_json::from_str::<serde_json::Value>(json_str) {
+                                                        Ok(json) => {
+                                                            println!("\n    Parsed EVENT_JSON:");
+                                                            println!("{:#}", json);
+                                                        }
+                                                        Err(e) => println!("    Failed to parse: {}", e),
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        println!("    No logs found (unexpected!)");
+                                    }
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            println!("  Failed to get transaction details: {}", e);
+                        }
+                    }
+                }
+                
+                break; // Found our chunk, no need to check others
+            }
+        }
+    }
 }

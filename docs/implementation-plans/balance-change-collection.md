@@ -40,7 +40,7 @@ Query APIs (nearblocks, pikespeak, NEAR Intents explorer) for transactions in th
 ### Fallback: RPC Binary Search
 
 When APIs fail to resolve gaps, use archival RPC with binary search:
-Recording Balance Changes
+## Recording Balance Changes
 
 ### Data Collection per Block
 
@@ -139,12 +139,30 @@ The counterparty table maintains metadata about accounts that appear as counterp
 
 3. **Decimal Conversion:** When storing FT balance changes, query the counterparty table to get the token's `decimals` field. Convert the raw amount (smallest units returned by `ft_balance_of`) to human-readable format by dividing by 10^decimals. Store the result as BigDecimal to preserve exact precision without rounding.
 
+### Counterparty Detection
+
+When a balance change is detected, the system attempts to determine the counterparty (the other party involved in the transfer):
+
+**For Native NEAR transfers:** Query receipts where the account is the receiver. Extract counterparty from the receipt's `predecessor_id`.
+
+**For FT transfers:** The counterparty information is in EVENT_JSON logs emitted by the token contract. However, retrieving these logs requires:
+1. Finding the transaction hash that caused the balance change
+2. Using `EXPERIMENTAL_tx_status` to get execution outcomes with logs
+3. Parsing EVENT_JSON to extract the counterparty
+
+**UNKNOWN Counterparty:** When the counterparty cannot be determined (e.g., no receipts found for the block, or receipts don't contain the necessary information), use the special value `"UNKNOWN"`. This allows the system to continue recording balance changes even when full transaction details are unavailable. The counterparty can be resolved later through:
+- Third-party APIs (nearblocks, pikespeak)
+- Manual investigation
+- Future improvements to counterparty detection logic
+
+Using `"UNKNOWN"` is preferable to failing to record the balance change entirely, as the primary goal is to maintain a complete chain of balance changes.
+
 ### Schema
 
 ```sql
 CREATE TABLE counterparties (
     account_id TEXT PRIMARY KEY,
-    account_type TEXT NOT NULL,  -- 'ft_token', 'staking_pool', 'dao', 'personal', 'system', 'other'
+    account_type TEXT NOT NULL,  -- 'ft_token', 'staking_pool', 'dao', 'personal', 'system', 'unknown', 'other'
     
     -- FT token metadata (NULL for non-FT accounts)
     token_symbol TEXT,

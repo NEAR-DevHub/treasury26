@@ -81,16 +81,63 @@ pub async fn fill_gap(
         .into()
     })?;
 
-    // Use the shared insert helper
-    let result = insert_balance_change_record(pool, network, &gap.account_id, &gap.token_id, block_height).await?;
-    
-    result.ok_or_else(|| -> GapFillerError {
-        format!(
+    // Try to insert the balance change record with receipts
+    match insert_balance_change_record(pool, network, &gap.account_id, &gap.token_id, block_height).await {
+        Ok(Some(result)) => Ok(result),
+        Ok(None) => Err(format!(
             "Failed to insert balance change for gap: {} {} at block {}",
             gap.account_id, gap.token_id, block_height
-        )
-        .into()
-    })
+        ).into()),
+        Err(e) if e.to_string().contains("No receipt found") => {
+            // Balance changed but no receipts found
+            // Try to insert SNAPSHOT (for cases where balance existed before but didn't change at this block)
+            log::warn!(
+                "No receipts found at block {} for {}/{} - attempting to insert SNAPSHOT or UNKNOWN record",
+                block_height,
+                gap.account_id,
+                gap.token_id
+            );
+            
+            match insert_snapshot_record(
+                pool,
+                network,
+                &gap.account_id,
+                &gap.token_id,
+                block_height,
+            )
+            .await
+            {
+                Ok(Some(snapshot)) => {
+                    log::info!(
+                        "Inserted SNAPSHOT at block {} for {}/{} (balance existed but didn't change)",
+                        block_height,
+                        gap.account_id,
+                        gap.token_id
+                    );
+                    Ok(snapshot)
+                }
+                Ok(None) | Err(_) => {
+                    // SNAPSHOT insertion failed because balance actually changed
+                    // Insert a record with UNKNOWN counterparty instead
+                    log::warn!(
+                        "Balance changed at block {} for {}/{} but no receipts found - inserting UNKNOWN counterparty record",
+                        block_height,
+                        gap.account_id,
+                        gap.token_id
+                    );
+                    insert_unknown_counterparty_record(
+                        pool,
+                        network,
+                        &gap.account_id,
+                        &gap.token_id,
+                        block_height,
+                    )
+                    .await
+                }
+            }
+        }
+        Err(e) => Err(e.into()),
+    }
 }
 
 /// Fill all gaps in the balance change chain for an account and token
@@ -183,28 +230,14 @@ pub async fn fill_gaps(
         );
 
         for gap in &gaps {
-            match fill_gap(pool, network, gap).await {
-                Ok(filled_gap) => {
-                    log::info!(
-                        "Filled gap at block {} for {}/{}",
-                        filled_gap.block_height,
-                        account_id,
-                        token_id
-                    );
-                    filled.push(filled_gap);
-                }
-                Err(e) => {
-                    log::error!(
-                        "Failed to fill gap [{}-{}] for {}/{}: {}",
-                        gap.start_block,
-                        gap.end_block,
-                        account_id,
-                        token_id,
-                        e
-                    );
-                    // Continue with other gaps
-                }
-            }
+            let filled_gap = fill_gap(pool, network, gap).await?;
+            log::info!(
+                "Filled gap at block {} for {}/{}",
+                filled_gap.block_height,
+                account_id,
+                token_id
+            );
+            filled.push(filled_gap);
         }
     }
 
@@ -621,9 +654,96 @@ pub async fn insert_snapshot_record(
         token_id: token_id.to_string(),
         block_height: block_height as i64,
         block_timestamp,
+        balance_before: balance_before.to_string(),
+        balance_after: balance_after.to_string(),
+    }))
+}
+
+/// Helper to insert a balance change record with UNKNOWN counterparty
+///
+/// Used when a balance change is detected but no receipts can be found to determine
+/// the actual counterparty. This ensures the balance change chain remains complete
+/// even when full transaction details are unavailable.
+///
+/// The counterparty can be resolved later through third-party APIs or manual investigation.
+pub async fn insert_unknown_counterparty_record(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    account_id: &str,
+    token_id: &str,
+    block_height: u64,
+) -> Result<FilledGap, GapFillerError> {
+    // Get the actual balance change at this block
+    let (balance_before, balance_after) = balance::get_balance_change_at_block(
+        pool,
+        network,
+        account_id,
+        token_id,
+        block_height,
+    )
+    .await
+    .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+
+    let amount = BigDecimal::from_str(&balance_after)? - BigDecimal::from_str(&balance_before)?;
+    let before_bd = BigDecimal::from_str(&balance_before)?;
+    let after_bd = BigDecimal::from_str(&balance_after)?;
+
+    // Get block timestamp
+    let block_timestamp = block_info::get_block_timestamp(network, block_height, None)
+        .await
+        .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+
+    log::info!(
+        "Inserting UNKNOWN counterparty record at block {} for {}/{}: {} -> {} (amount: {})",
+        block_height,
+        account_id,
+        token_id,
         balance_before,
         balance_after,
-    }))
+        amount
+    );
+
+    // Insert record with UNKNOWN counterparty
+    sqlx::query!(
+        r#"
+        INSERT INTO balance_changes 
+        (account_id, token_id, block_height, block_timestamp, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (account_id, block_height, token_id) DO NOTHING
+        "#,
+        account_id,
+        token_id,
+        block_height as i64,
+        block_timestamp,
+        amount,
+        before_bd,
+        after_bd,
+        &Vec::<String>::new(),  // No transaction hashes available
+        &Vec::<String>::new(),  // No receipt IDs available
+        None::<String>,         // No signer known
+        None::<String>,         // No receiver known
+        "UNKNOWN",              // Special counterparty value
+        serde_json::json!({}),  // No actions available
+        serde_json::json!({})   // No raw data available
+    )
+    .execute(pool)
+    .await?;
+
+    log::warn!(
+        "Inserted UNKNOWN counterparty record at block {} for {}/{} - counterparty should be resolved later",
+        block_height,
+        account_id,
+        token_id
+    );
+
+    Ok(FilledGap {
+        account_id: account_id.to_string(),
+        token_id: token_id.to_string(),
+        block_height: block_height as i64,
+        block_timestamp,
+        balance_before: balance_before.to_string(),
+        balance_after: balance_after.to_string(),
+    })
 }
 
 /// Helper to insert a balance change record at a specific block
