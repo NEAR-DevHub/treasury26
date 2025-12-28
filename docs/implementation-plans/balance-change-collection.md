@@ -182,13 +182,11 @@ This ensures all fungible token amounts are stored in their human-readable form 
 - **Periodic Verification:** Optionally refresh metadata for known tokens to catch any contract updates.
 
 
-## Database Schema Changes
-
-**Required Migration:** Rename the `raw_data` JSONB column to `receipt` to better reflect its purpose of storing full receipt data including logs and events.
+## Database Schema
 
 **Field Definitions:**
 - `actions`: Transaction arguments from the initiating block
-- `receipt`: Full receipt data with logs and events/outcomes
+- `raw_data`: Full receipt data including logs and events/outcomes
 - `counterparty`: The account that sent or received the tokens (not signer or predecessor)
 - `block_height`: Receipt execution block (not transaction initiation block)
 - `block_timestamp`: Timestamp from the receipt execution block
@@ -223,7 +221,6 @@ The gap-detection algorithm naturally handles resumption by validating that `bal
 
 ## Implementation Checklist
 
-- [ ] Database migration: Rename `raw_data` to `receipt`
 - [ ] Implement gap detection algorithm (scan for disconnected balance chains)
 - [ ] Implement third-party API clients (nearblocks, pikespeak, NEAR Intents)
 - [ ] Implement RPC binary search fallback

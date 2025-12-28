@@ -1307,7 +1307,7 @@ async fn test_get_block_receipt_data(_pool: PgPool) -> sqlx::Result<()> {
 /// Test querying a block that returns 422 error (block 178462173)
 /// Should retry with previous blocks until finding a valid one
 #[sqlx::test]
-async fn test_query_unavailable_block_with_retry(_pool: PgPool) -> sqlx::Result<()> {
+async fn test_query_unavailable_block_with_retry(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::balance;
 
     let network = create_archival_network();
@@ -1323,7 +1323,7 @@ async fn test_query_unavailable_block_with_retry(_pool: PgPool) -> sqlx::Result<
 
     // This should succeed by automatically retrying with previous blocks
     let result =
-        balance::get_balance_change_at_block(&network, account_id, "near", problematic_block).await;
+        balance::get_balance_change_at_block(&pool, &network, account_id, "near", problematic_block).await;
 
     match result {
         Ok((balance_before, balance_after)) => {
@@ -2336,7 +2336,7 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
             
             // Try to check if it's an FT contract
             use nt_be::handlers::balance_changes::balance::ft::get_balance_at_block as get_ft_balance;
-            match get_ft_balance(&network, account_id, counterparty, target_block as u64).await {
+            match get_ft_balance(&pool, &network, account_id, counterparty, target_block as u64).await {
                 Ok(balance) => {
                     println!("    ✓ IS an FT contract! Balance: {}", balance);
                 }

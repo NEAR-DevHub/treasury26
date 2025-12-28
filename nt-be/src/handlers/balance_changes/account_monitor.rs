@@ -180,7 +180,7 @@ async fn discover_ft_tokens_from_receipts(
         }
         
         // Try to query FT balance - if it succeeds, it's an FT contract
-        match get_ft_balance(network, account_id, &counterparty, up_to_block as u64).await {
+        match get_ft_balance(pool, network, account_id, &counterparty, up_to_block as u64).await {
             Ok(_balance) => {
                 log::debug!("Counterparty {} is an FT contract", counterparty);
                 discovered_tokens.insert(counterparty);
@@ -215,7 +215,7 @@ async fn discover_ft_tokens_from_receipts(
 
         if let Some(_start_block) = earliest_block {
             // Query balance BEFORE the snapshot block (at block - 1)
-            let balance_before = match get_ft_balance(network, account_id, &token_contract, (up_to_block - 1) as u64).await {
+            let balance_before = match get_ft_balance(pool, network, account_id, &token_contract, (up_to_block - 1) as u64).await {
                 Ok(b) => b,
                 Err(e) => {
                     log::warn!("Failed to get balance before block {} for {}: {}", up_to_block, token_contract, e);
@@ -224,7 +224,7 @@ async fn discover_ft_tokens_from_receipts(
             };
 
             // Query balance AFTER the snapshot block (at block)
-            let balance_after = match get_ft_balance(network, account_id, &token_contract, up_to_block as u64).await {
+            let balance_after = match get_ft_balance(pool, network, account_id, &token_contract, up_to_block as u64).await {
                 Ok(b) => b,
                 Err(e) => {
                     log::warn!("Failed to get balance after block {} for {}: {}", up_to_block, token_contract, e);

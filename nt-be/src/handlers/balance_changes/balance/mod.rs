@@ -13,6 +13,7 @@ pub mod intents;
 pub mod near;
 
 use near_api::NetworkConfig;
+use sqlx::PgPool;
 
 /// Query balance at a specific block height for any token type
 ///
@@ -20,6 +21,7 @@ use near_api::NetworkConfig;
 /// based on the token_id format.
 ///
 /// # Arguments
+/// * `pool` - Database connection pool for querying token metadata (needed for FT tokens)
 /// * `network` - The NEAR network configuration (use archival network for historical queries)
 /// * `account_id` - The NEAR account to query
 /// * `token_id` - Token identifier:
@@ -31,6 +33,7 @@ use near_api::NetworkConfig;
 /// # Returns
 /// The balance as a string (to handle arbitrary precision)
 pub async fn get_balance_at_block(
+    pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
     token_id: &str,
@@ -49,13 +52,14 @@ pub async fn get_balance_at_block(
         intents::get_balance_at_block(network, account_id, token_id, block_height).await
     } else {
         // Fungible token contract address
-        ft::get_balance_at_block(network, account_id, token_id, block_height).await
+        ft::get_balance_at_block(pool, network, account_id, token_id, block_height).await
     }
 }
 
 /// Query balance change at a specific block (both before and after)
 ///
 /// # Arguments
+/// * `pool` - Database connection pool for querying token metadata (needed for FT tokens)
 /// * `network` - The NEAR network configuration (use archival network for historical queries)
 /// * `account_id` - The NEAR account to query
 /// * `token_id` - Token identifier (see `get_balance_at_block` for format)
@@ -64,6 +68,7 @@ pub async fn get_balance_at_block(
 /// # Returns
 /// Tuple of (balance_before, balance_after)
 pub async fn get_balance_change_at_block(
+    pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
     token_id: &str,
@@ -71,9 +76,9 @@ pub async fn get_balance_change_at_block(
 ) -> Result<(String, String), Box<dyn std::error::Error>> {
     // For now, we query the block and the previous block
     // In the future, this should be optimized with transaction-specific queries
-    let balance_after = get_balance_at_block(network, account_id, token_id, block_height).await?;
+    let balance_after = get_balance_at_block(pool, network, account_id, token_id, block_height).await?;
     let balance_before = if block_height > 0 {
-        get_balance_at_block(network, account_id, token_id, block_height - 1).await?
+        get_balance_at_block(pool, network, account_id, token_id, block_height - 1).await?
     } else {
         "0".to_string()
     };
@@ -92,6 +97,7 @@ mod tests {
 
         // Block 151386339 from test data
         let balance = get_balance_at_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "NEAR",
@@ -113,6 +119,7 @@ mod tests {
 
         // Block 151386339 from test data with known before/after balances
         let (before, after) = get_balance_change_at_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "NEAR",

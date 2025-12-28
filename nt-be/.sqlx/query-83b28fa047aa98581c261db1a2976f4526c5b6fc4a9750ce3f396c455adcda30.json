@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO counterparties (\n            account_id,\n            account_type,\n            token_symbol,\n            token_name,\n            token_decimals,\n            token_icon,\n            last_verified_at\n        ) VALUES ($1, 'ft_token', $2, $3, $4, $5, NOW())\n        ON CONFLICT (account_id) \n        DO UPDATE SET\n            token_symbol = EXCLUDED.token_symbol,\n            token_name = EXCLUDED.token_name,\n            token_decimals = EXCLUDED.token_decimals,\n            token_icon = EXCLUDED.token_icon,\n            last_verified_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Int2",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "83b28fa047aa98581c261db1a2976f4526c5b6fc4a9750ce3f396c455adcda30"
+}

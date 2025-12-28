@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT block_height, balance_before::TEXT as \"balance_before!\"\n        FROM balance_changes\n        WHERE account_id = $1 AND token_id = $2\n        ORDER BY block_height ASC\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "block_height",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "balance_before!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "547b76723bfee019fe9e71207f9939babcde79ba2d4b59be3602f12f8d5506a0"
+}

@@ -5,6 +5,7 @@
 
 use crate::handlers::balance_changes::balance;
 use near_api::NetworkConfig;
+use sqlx::PgPool;
 
 /// Find the exact block where a balance changed to match expected balance
 ///
@@ -12,6 +13,7 @@ use near_api::NetworkConfig;
 /// Searches the range [start_block, end_block] inclusive.
 ///
 /// # Arguments
+/// * `pool` - Database connection pool for querying token metadata
 /// * `network` - The NEAR network configuration (use archival network for historical queries)
 /// * `account_id` - The NEAR account to query
 /// * `token_id` - Token identifier (see balance::get_balance_at_block for format)
@@ -23,6 +25,7 @@ use near_api::NetworkConfig;
 /// * `Some(block_height)` - The block where balance changed to expected_balance
 /// * `None` - If the expected balance is not found in the range
 pub async fn find_balance_change_block(
+    pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
     token_id: &str,
@@ -37,7 +40,7 @@ pub async fn find_balance_change_block(
 
     // Check balance at end_block first
     let end_balance =
-        balance::get_balance_at_block(network, account_id, token_id, end_block).await?;
+        balance::get_balance_at_block(pool, network, account_id, token_id, end_block).await?;
 
     // If balance at end doesn't match, expected balance is not in this range
     if end_balance != expected_balance {
@@ -46,7 +49,7 @@ pub async fn find_balance_change_block(
 
     // Check balance at start_block
     let start_balance =
-        balance::get_balance_at_block(network, account_id, token_id, start_block).await?;
+        balance::get_balance_at_block(pool, network, account_id, token_id, start_block).await?;
 
     // If balance at start already matches, return start_block
     if start_balance == expected_balance {
@@ -61,7 +64,7 @@ pub async fn find_balance_change_block(
     while left <= right {
         let mid = left + (right - left) / 2;
 
-        let mid_balance = balance::get_balance_at_block(network, account_id, token_id, mid).await?;
+        let mid_balance = balance::get_balance_at_block(pool, network, account_id, token_id, mid).await?;
 
         if mid_balance == expected_balance {
             // Found a match - check if there's an earlier one
@@ -92,6 +95,7 @@ mod tests {
         // Before: "6100211126630537100000000"
         // After: "11100211126630537100000000"
         let result = find_balance_change_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "NEAR",
@@ -112,6 +116,7 @@ mod tests {
 
         // Search for a balance that doesn't exist in this range
         let result = find_balance_change_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "NEAR",
@@ -131,6 +136,7 @@ mod tests {
 
         // Single block range
         let result = find_balance_change_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "NEAR",
@@ -153,6 +159,7 @@ mod tests {
         // After: "32868"
         // Token format: "intents.near:nep141:btc.omft.near"
         let result = find_balance_change_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "intents.near:nep141:btc.omft.near",
@@ -173,6 +180,7 @@ mod tests {
 
         // Search for a balance that doesn't exist in this range
         let result = find_balance_change_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "intents.near:nep141:btc.omft.near",
@@ -198,6 +206,7 @@ mod tests {
 
         // Check balance before receiving (should be 0)
         let balance_before = balance::ft::get_balance_at_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "arizcredits.near",
@@ -208,6 +217,7 @@ mod tests {
 
         // Check balance after receiving
         let balance_after = balance::ft::get_balance_at_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "arizcredits.near",
@@ -238,6 +248,7 @@ mod tests {
 
         // First query the balance at a block after the transfer
         let balance_after = crate::handlers::balance_changes::balance::ft::get_balance_at_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "arizcredits.near",
@@ -250,6 +261,7 @@ mod tests {
 
         // Now binary search for when this balance first appeared
         let result = find_balance_change_block(
+            &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "arizcredits.near",

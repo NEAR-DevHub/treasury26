@@ -62,6 +62,7 @@ pub async fn fill_gap(
     let search_end_block = (gap.end_block - 1) as u64;
 
     let change_block = binary_search::find_balance_change_block(
+        pool,
         network,
         &gap.account_id,
         &gap.token_id,
@@ -255,7 +256,7 @@ pub async fn seed_initial_balance(
 
     // Get current balance
     let current_balance =
-        balance::get_balance_at_block(network, account_id, token_id, current_block)
+        balance::get_balance_at_block(pool, network, account_id, token_id, current_block)
             .await
             .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
@@ -285,6 +286,7 @@ pub async fn seed_initial_balance(
 
     // Binary search to find when the balance became the current value
     let change_block = binary_search::find_balance_change_block(
+        pool,
         network,
         account_id,
         token_id,
@@ -362,7 +364,7 @@ async fn fill_gap_to_present(
     };
 
     // Get current balance at up_to_block
-    let current_balance = balance::get_balance_at_block(network, account_id, token_id, up_to_block)
+    let current_balance = balance::get_balance_at_block(pool, network, account_id, token_id, up_to_block)
         .await
         .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
@@ -389,6 +391,7 @@ async fn fill_gap_to_present(
 
     // Binary search to find when the balance changed
     let change_block = binary_search::find_balance_change_block(
+        pool,
         network,
         account_id,
         token_id,
@@ -478,6 +481,7 @@ async fn fill_gap_to_past(
     // Binary search to find when the balance became balance_before
     // If this fails (e.g., RPC can't find old blocks), we gracefully give up
     let change_block = match binary_search::find_balance_change_block(
+        pool,
         network,
         account_id,
         token_id,
@@ -527,7 +531,7 @@ pub async fn insert_balance_change_record(
 ) -> Result<Option<FilledGap>, GapFillerError> {
     // Get balance before and after at the change block
     let (balance_before, balance_after) =
-        balance::get_balance_change_at_block(network, account_id, token_id, block_height)
+        balance::get_balance_change_at_block(pool, network, account_id, token_id, block_height)
             .await
             .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
@@ -714,6 +718,7 @@ mod tests {
 
         // We can't actually insert without a real DB, but we can test the binary search part
         let change_block = binary_search::find_balance_change_block(
+            &state.db_pool,
             &state.archival_network,
             &gap.account_id,
             &gap.token_id,
@@ -747,6 +752,7 @@ mod tests {
         };
 
         let change_block = binary_search::find_balance_change_block(
+            &state.db_pool,
             &state.archival_network,
             &gap.account_id,
             &gap.token_id,

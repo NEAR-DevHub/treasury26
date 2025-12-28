@@ -1,29 +1,42 @@
 //! Fungible Token (NEP-141) Balance Queries
 //!
 //! Functions to query FT token balances at specific block heights via RPC.
+//! Balances are returned as human-readable decimal strings (e.g., "2.5" not "2500000")
+//! using token metadata from the counterparties table.
 
 use near_api::{AccountId, NetworkConfig, Reference, Tokens};
+use sqlx::PgPool;
 use std::str::FromStr;
 
-/// Query fungible token balance at a specific block height
+use crate::handlers::balance_changes::counterparty::{ensure_ft_metadata, convert_raw_to_decimal};
+
+/// Query fungible token balance at a specific block height, converted to human-readable format
 ///
 /// If the RPC returns a 422 error (unprocessable entity), assumes the block doesn't exist
 /// and retries with previous blocks (up to 10 attempts).
 ///
+/// The raw balance from the contract is converted to human-readable format using
+/// the token's decimals field from the counterparties table.
+///
 /// # Arguments
+/// * `pool` - Database connection pool for querying token metadata
 /// * `network` - The NEAR network configuration (use archival network for historical queries)
 /// * `account_id` - The NEAR account to query
 /// * `token_contract` - The FT contract address
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
-/// The balance as a string (to handle arbitrary precision)
+/// The balance as a human-readable decimal string (e.g., "2.5" for 2.5 tokens)
 pub async fn get_balance_at_block(
+    pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
     token_contract: &str,
     block_height: u64,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    // Ensure we have token metadata (queries contract if not cached)
+    let decimals = ensure_ft_metadata(pool, network, token_contract).await?;
+    
     let account_id = AccountId::from_str(account_id)?;
     let token_id = AccountId::from_str(token_contract)?;
     let max_retries = 10;
@@ -49,11 +62,14 @@ pub async fn get_balance_at_block(
                 }
 
                 // near-api returns a NearToken type which formats as "X FT"
-                // Extract just the numeric part for consistency with other balance types
+                // Extract just the numeric part (raw amount in smallest units)
                 let balance_str = balance.to_string();
-                let numeric_balance = balance_str.trim_end_matches(" FT").to_string();
+                let raw_balance = balance_str.trim_end_matches(" FT");
 
-                return Ok(numeric_balance);
+                // Convert raw amount to human-readable decimal
+                let decimal_balance = convert_raw_to_decimal(raw_balance, decimals)?;
+
+                return Ok(decimal_balance);
             }
             Err(e) => {
                 let err_str = e.to_string();
