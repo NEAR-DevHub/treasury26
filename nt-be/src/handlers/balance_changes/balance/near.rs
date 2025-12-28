@@ -1,14 +1,20 @@
 //! NEAR Native Token Balance Queries
 //!
 //! Functions to query NEAR native token balances at specific block heights via RPC.
+//! Balances are returned as human-readable NEAR strings (e.g., "11.1002" not "11100211126630537100000000")
+//! using 24 decimals, consistent with FT token decimal conversion.
 
 use near_api::{AccountId, NetworkConfig, Reference, Tokens};
 use std::str::FromStr;
 
-/// Query NEAR native token balance at a specific block height
+use crate::handlers::balance_changes::counterparty::convert_raw_to_decimal;
+
+/// Query NEAR native token balance at a specific block height, converted to human-readable format
 ///
 /// If the RPC returns a 422 error (unprocessable entity), assumes the block doesn't exist
 /// and retries with previous blocks (up to 10 attempts).
+///
+/// The raw yoctoNEAR balance is converted to human-readable NEAR using 24 decimals.
 ///
 /// # Arguments
 /// * `network` - The NEAR network configuration (use archival network for historical queries)
@@ -16,7 +22,7 @@ use std::str::FromStr;
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
-/// The balance as a string (to handle arbitrary precision)
+/// The balance as a human-readable NEAR string (e.g., "11.1002" for 11.1002 NEAR)
 pub async fn get_balance_at_block(
     network: &NetworkConfig,
     account_id: &str,
@@ -43,7 +49,12 @@ pub async fn get_balance_at_block(
                         offset
                     );
                 }
-                return Ok(balance.total.as_yoctonear().to_string());
+                
+                // Convert yoctoNEAR to human-readable NEAR (24 decimals)
+                let yocto_near = balance.total.as_yoctonear().to_string();
+                let decimal_near = convert_raw_to_decimal(&yocto_near, 24)?;
+                
+                return Ok(decimal_near);
             }
             Err(e) => {
                 let err_str = e.to_string();

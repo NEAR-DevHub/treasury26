@@ -3,7 +3,7 @@
 //! Handles storage and retrieval of counterparty metadata, including FT token information
 //! for decimal conversion.
 
-use near_api::{AccountId, Contract, NetworkConfig, Reference};
+use near_api::{AccountId, Contract, NetworkConfig};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::str::FromStr;
@@ -28,16 +28,13 @@ pub async fn query_ft_metadata(
     let contract = Contract(account_id);
 
     // Call ft_metadata view function and get raw string response
-    let response: near_api::Data<String> = contract
+    let response: near_api::Data<FtMetadata> = contract
         .call_function("ft_metadata", serde_json::json!({}))
         .read_only()
-        .at(Reference::AtBlock(u64::MAX)) // Latest available block
         .fetch_from(network)
         .await?;
 
-    // Parse the JSON response
-    let metadata: FtMetadata = serde_json::from_str(&response.data)?;
-    Ok(metadata)
+    Ok(response.data)
 }
 
 /// Store or update FT token metadata in counterparties table
@@ -137,10 +134,16 @@ pub fn convert_raw_to_decimal(raw_amount: &str, decimals: u8) -> Result<String, 
     use std::str::FromStr;
 
     let raw = BigDecimal::from_str(raw_amount)?;
-    let divisor = BigDecimal::from(10_u64.pow(decimals as u32));
+    
+    // Create divisor as BigDecimal to avoid u64 overflow for large decimals (like NEAR's 24)
+    // Calculate 10^decimals as a string and parse it
+    let divisor_str = format!("1{}", "0".repeat(decimals as usize));
+    let divisor = BigDecimal::from_str(&divisor_str)?;
+    
     let decimal = raw / divisor;
 
-    Ok(decimal.to_string())
+    // Normalize to remove trailing zeros (e.g., "11.1000" -> "11.1")
+    Ok(decimal.normalized().to_string())
 }
 
 #[cfg(test)]

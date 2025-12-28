@@ -142,7 +142,7 @@ mod tests {
             "NEAR",
             151386339,
             151386339,
-            "11100211126630537100000000",
+            "11.1002111266305371",
         )
         .await
         .unwrap();
@@ -201,7 +201,9 @@ mod tests {
         let state = init_test_state().await;
 
         // Test FT balance query for arizcredits.near token
-        // At block 168568481, the treasury received 3000000 arizcredits tokens (6 decimals = 3.0 tokens)
+        // At block 168568481, the treasury received arizcredits tokens
+        // arizcredits.near has 6 decimals
+        // The raw balance we get is "3", which with 6 decimals = 0.000003 ARIZ
         // Query at different blocks to verify the balance mechanism works
 
         // Check balance before receiving (should be 0)
@@ -226,16 +228,37 @@ mod tests {
         .await
         .expect("FT balance query should succeed");
 
-        println!("arizcredits balance before (168568480): {}", balance_before);
-        println!("arizcredits balance after (168568485): {}", balance_after);
+        println!("arizcredits balance before (168568480): '{}' (length: {})", balance_before, balance_before.len());
+        println!("arizcredits balance after (168568485): '{}' (length: {})", balance_after, balance_after.len());
 
-        // Verify balance increased after the transfer
-        let before: u128 = balance_before.parse().unwrap_or(0);
-        let after: u128 = balance_after.parse().unwrap_or(0);
-        assert!(
-            after > before,
-            "Balance should increase after receiving tokens"
-        );
+        // Hard assertions on exact raw U128 amounts
+        // arizcredits.near has 6 decimals, so raw 3000000 = 3.0 ARIZ
+        assert_eq!(balance_before, "0", "Balance before should be 0");
+        assert_eq!(balance_after, "3000000", "Balance after should be 3000000 (3.0 ARIZ with 6 decimals)");
+    }
+
+    #[tokio::test]
+    async fn test_ariz_balance_at_block_178675608() {
+        use crate::handlers::balance_changes::balance;
+
+        let state = init_test_state().await;
+
+        // Check the ARIZ balance at the block mentioned by user
+        // User said: "At blockheight 178675608 the arizcredits.near token balance... should be 2.5 and not 3"
+        let balance = balance::ft::get_balance_at_block(
+            &state.db_pool,
+            &state.archival_network,
+            "webassemblymusic-treasury.sputnik-dao.near",
+            "arizcredits.near",
+            178675608,
+        )
+        .await
+        .expect("FT balance query should succeed");
+
+        println!("ARIZ balance at block 178675608: {} (raw U128)", balance);
+        
+        // Hard assertion: raw value should be 2500000 (which is 2.5 ARIZ with 6 decimals)
+        assert_eq!(balance, "2500000", "Raw balance should be 2500000 (2.5 ARIZ with 6 decimals, no rounding)");
     }
 
     #[tokio::test]

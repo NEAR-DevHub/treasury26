@@ -106,8 +106,8 @@ mod tests {
         .await
         .unwrap();
 
-        // Expected balance after from test data
-        assert_eq!(balance, "11100211126630537100000000");
+        // Expected balance after from test data (converted to NEAR from yoctoNEAR)
+        assert_eq!(balance, "11.1002111266305371");
     }
 
     #[tokio::test]
@@ -128,8 +128,8 @@ mod tests {
         .await
         .unwrap();
 
-        // From test data: balanceBefore and balanceAfter at block 151386339
-        assert_eq!(before, "6100211126630537100000000");
-        assert_eq!(after, "11100211126630537100000000");
+        // From test data: balanceBefore and balanceAfter at block 151386339 (converted to NEAR)
+        assert_eq!(before, "6.1002111266305371");
+        assert_eq!(after, "11.1002111266305371");
     }
 }

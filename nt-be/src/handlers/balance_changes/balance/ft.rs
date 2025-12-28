@@ -1,32 +1,31 @@
 //! Fungible Token (NEP-141) Balance Queries
 //!
 //! Functions to query FT token balances at specific block heights via RPC.
-//! Balances are returned as human-readable decimal strings (e.g., "2.5" not "2500000")
-//! using token metadata from the counterparties table.
+//! Returns the raw U128 balance value directly from ft_balance_of contract method.
 
-use near_api::{AccountId, NetworkConfig, Reference, Tokens};
+use near_api::{AccountId, Contract, NetworkConfig, Reference};
 use sqlx::PgPool;
 use std::str::FromStr;
 
-use crate::handlers::balance_changes::counterparty::{ensure_ft_metadata, convert_raw_to_decimal};
+use crate::handlers::balance_changes::counterparty::ensure_ft_metadata;
 
-/// Query fungible token balance at a specific block height, converted to human-readable format
+/// Query fungible token balance at a specific block height
 ///
 /// If the RPC returns a 422 error (unprocessable entity), assumes the block doesn't exist
 /// and retries with previous blocks (up to 10 attempts).
 ///
-/// The raw balance from the contract is converted to human-readable format using
-/// the token's decimals field from the counterparties table.
+/// Calls ft_balance_of directly on the contract to get the raw U128 value without any
+/// conversion or rounding. Also ensures metadata is cached in counterparties table.
 ///
 /// # Arguments
-/// * `pool` - Database connection pool for querying token metadata
+/// * `pool` - Database connection pool for storing/retrieving token metadata
 /// * `network` - The NEAR network configuration (use archival network for historical queries)
 /// * `account_id` - The NEAR account to query
 /// * `token_contract` - The FT contract address
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
-/// The balance as a human-readable decimal string (e.g., "2.5" for 2.5 tokens)
+/// The raw balance as a U128 string (e.g., "2500000" for 2.5 tokens with 6 decimals)
 pub async fn get_balance_at_block(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -34,23 +33,32 @@ pub async fn get_balance_at_block(
     token_contract: &str,
     block_height: u64,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    // Ensure we have token metadata (queries contract if not cached)
-    let decimals = ensure_ft_metadata(pool, network, token_contract).await?;
+    // Ensure metadata is cached (for future UI display needs)
+    let _decimals = ensure_ft_metadata(pool, network, token_contract).await?;
     
-    let account_id = AccountId::from_str(account_id)?;
-    let token_id = AccountId::from_str(token_contract)?;
+    let account_id_obj = AccountId::from_str(account_id)?;
+    let token_contract_obj = AccountId::from_str(token_contract)?;
     let max_retries = 10;
 
     for offset in 0..=max_retries {
         let current_block = block_height.saturating_sub(offset);
 
-        match Tokens::account(account_id.clone())
-            .ft_balance(token_id.clone())
+        // Call ft_balance_of directly to get raw U128 value without conversion
+        let contract = Contract(token_contract_obj.clone());
+        let result: Result<near_api::Data<serde_json::Value>, _> = contract
+            .call_function(
+                "ft_balance_of",
+                serde_json::json!({
+                    "account_id": account_id
+                }),
+            )
+            .read_only()
             .at(Reference::AtBlock(current_block))
             .fetch_from(network)
-            .await
-        {
-            Ok(balance) => {
+            .await;
+
+        match result {
+            Ok(data) => {
                 if offset > 0 {
                     log::warn!(
                         "Block {} not available for FT {}, used block {} instead (offset: {})",
@@ -61,15 +69,23 @@ pub async fn get_balance_at_block(
                     );
                 }
 
-                // near-api returns a NearToken type which formats as "X FT"
-                // Extract just the numeric part (raw amount in smallest units)
-                let balance_str = balance.to_string();
-                let raw_balance = balance_str.trim_end_matches(" FT");
+                // Parse the raw U128 value from the contract response
+                // NEP-141 ft_balance_of returns a U128 which can be either a string or number in JSON
+                // Example: 2500000 for 2.5 ARIZ with 6 decimals
+                let raw_balance = match &data.data {
+                    serde_json::Value::String(s) => s.clone(),
+                    serde_json::Value::Number(n) => n.to_string(),
+                    _ => return Err(format!("Unexpected ft_balance_of response type: {:?}", data.data).into()),
+                };
+                
+                // Assert: The value should be a valid U128 (digits only, no decimals)
+                assert!(
+                    raw_balance.chars().all(|c| c.is_ascii_digit()),
+                    "ft_balance_of must return a U128 value, got: {}",
+                    raw_balance
+                );
 
-                // Convert raw amount to human-readable decimal
-                let decimal_balance = convert_raw_to_decimal(raw_balance, decimals)?;
-
-                return Ok(decimal_balance);
+                return Ok(raw_balance);
             }
             Err(e) => {
                 let err_str = e.to_string();
