@@ -36,7 +36,6 @@ pub async fn get_balance_at_block(
     // Ensure metadata is cached (for future UI display needs)
     let _decimals = ensure_ft_metadata(pool, network, token_contract).await?;
     
-    let account_id_obj = AccountId::from_str(account_id)?;
     let token_contract_obj = AccountId::from_str(token_contract)?;
     let max_retries = 10;
 

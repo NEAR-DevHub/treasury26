@@ -30,10 +30,13 @@ pub struct BalanceChange {
     pub receipt_id: Vec<String>,
     pub transaction_hashes: Vec<String>,
     pub counterparty: Option<String>,
+    pub signer_id: Option<String>,
+    pub receiver_id: Option<String>,
     pub amount: BigDecimal,
     pub balance_before: BigDecimal,
     pub balance_after: BigDecimal,
-    pub actions: Value,
+    pub actions: Option<Value>,
+    pub raw_data: Option<Value>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -48,8 +51,8 @@ pub async fn get_balance_changes(
         sqlx::query_as::<_, BalanceChange>(
             r#"
             SELECT id, account_id, block_height, block_timestamp, token_id, 
-                   receipt_id, transaction_hashes, counterparty, amount, 
-                   balance_before, balance_after, actions, created_at
+                   receipt_id, transaction_hashes, counterparty, signer_id, receiver_id,
+                   amount, balance_before, balance_after, actions, raw_data, created_at
             FROM balance_changes
             WHERE account_id = $1 AND token_id = $2
             ORDER BY block_height DESC, id DESC
@@ -66,8 +69,8 @@ pub async fn get_balance_changes(
         sqlx::query_as::<_, BalanceChange>(
             r#"
             SELECT id, account_id, block_height, block_timestamp, token_id, 
-                   receipt_id, transaction_hashes, counterparty, amount, 
-                   balance_before, balance_after, actions, created_at
+                   receipt_id, transaction_hashes, counterparty, signer_id, receiver_id,
+                   amount, balance_before, balance_after, actions, raw_data, created_at
             FROM balance_changes
             WHERE account_id = $1
             ORDER BY block_height DESC, id DESC
