@@ -367,7 +367,7 @@ fn build_simplified_tokens(
     all_tokens: HashMap<String, TokenMetadata>,
     user_balances: &FastNearResponse,
     token_prices: &HashMap<String, serde_json::Value>,
-    enriched_tokens: &Vec<crate::handlers::intents::supported_tokens::EnrichedTokenMetadata>,
+    enriched_tokens: &[crate::handlers::intents::supported_tokens::EnrichedTokenMetadata],
 ) -> Vec<SimplifiedToken> {
     let balance_map = build_balance_map(user_balances);
     let mut simplified_tokens = all_tokens
@@ -467,7 +467,7 @@ fn build_simplified_tokens(
 /// Builds intents tokens from enriched metadata
 fn build_intents_tokens(
     tokens_with_balances: Vec<(String, String)>,
-    enriched_tokens: &Vec<crate::handlers::intents::supported_tokens::EnrichedTokenMetadata>,
+    enriched_tokens: &[crate::handlers::intents::supported_tokens::EnrichedTokenMetadata],
 ) -> Vec<SimplifiedToken> {
     // Build simplified tokens with metadata
     let mut simplified_tokens: Vec<SimplifiedToken> = tokens_with_balances
