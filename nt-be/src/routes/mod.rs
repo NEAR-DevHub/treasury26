@@ -62,6 +62,15 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/balance-changes/fill-gaps",
             post(balance_changes::fill_gaps),
         )
+        // Balance history endpoints
+        .route(
+            "/api/balance-history/chart",
+            get(handlers::balance_changes::history::get_balance_chart),
+        )
+        .route(
+            "/api/balance-history/csv",
+            get(handlers::balance_changes::history::export_balance_csv),
+        )
         // Token endpoints
         .route(
             "/api/token/price",

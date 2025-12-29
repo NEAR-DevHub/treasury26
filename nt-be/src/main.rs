@@ -29,10 +29,16 @@ async fn main() {
         use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 
         // Get monitoring interval from env or default to 5 minutes
+        // If set to 0, monitoring is disabled (useful for tests)
         let interval_minutes: u64 = std::env::var("MONITOR_INTERVAL_MINUTES")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(5);
+
+        if interval_minutes == 0 {
+            log::info!("Background monitoring disabled (MONITOR_INTERVAL_MINUTES=0)");
+            return;
+        }
 
         let interval = Duration::from_secs(interval_minutes * 60);
 
