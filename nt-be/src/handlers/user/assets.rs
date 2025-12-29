@@ -273,10 +273,112 @@ async fn fetch_intents_balances(
     Ok(balances.data)
 }
 
-/// Builds intents tokens from token metadata
+/// Builds the list of simplified tokens with balances and prices using enriched metadata
+fn build_simplified_tokens(
+    all_tokens: HashMap<String, TokenMetadata>,
+    user_balances: &FastNearResponse,
+    token_prices: &HashMap<String, serde_json::Value>,
+    enriched_tokens: &[crate::handlers::intents::supported_tokens::EnrichedTokenMetadata],
+) -> Vec<SimplifiedToken> {
+    let balance_map = build_balance_map(user_balances);
+    let mut simplified_tokens = all_tokens
+        .into_iter()
+        .flat_map(|(token_id, token_metadata)| {
+            let price_key = if token_id == "near" {
+                "wrap.near"
+            } else {
+                &token_id
+            };
+
+            // Try to find enriched metadata by near_token_id
+            let enriched_meta = enriched_tokens.iter().find(|m| {
+                (m.near_token_id
+                    .as_ref()
+                    .map(|id| id == &token_id)
+                    .unwrap_or(false)
+                    || m.contract_address == token_id)
+                    && m.chain_name == "near"
+            });
+
+            // Use price from enriched metadata first, then fallback to ref finance prices
+            let price = enriched_meta
+                .and_then(|m| m.price.map(|p| p.to_string()))
+                .or_else(|| {
+                    token_prices
+                        .get(price_key)
+                        .and_then(|p| p.get("price"))
+                        .and_then(|p| p.as_str())
+                        .map(|p| p.to_string())
+                });
+
+            if let Some(price) = price {
+                let decimals = token_metadata.decimals;
+
+                // Use enriched metadata first, fallback to token_metadata
+                let symbol = enriched_meta
+                    .map(|m| m.symbol.clone())
+                    .unwrap_or_else(|| token_metadata.symbol.clone());
+                let name = enriched_meta.map(|m| m.name.clone()).unwrap_or_else(|| {
+                    if token_metadata.name.is_empty() {
+                        token_metadata.symbol.clone()
+                    } else {
+                        token_metadata.name.clone()
+                    }
+                });
+
+                let is_near = token_id == "near";
+                let id = if is_near {
+                    "near".to_string()
+                } else {
+                    format!("ft:{}", token_id)
+                };
+
+                Some(SimplifiedToken {
+                    id,
+                    contract_id: if is_near {
+                        None
+                    } else {
+                        Some(token_id.clone())
+                    },
+                    decimals,
+                    balance: get_token_balance(&token_id, user_balances, &balance_map),
+                    price,
+                    symbol,
+                    name,
+                    icon: get_token_icon(
+                        &token_id,
+                        &token_metadata,
+                        enriched_meta.and_then(|m| m.icon.as_ref()),
+                    ),
+                    network: "near".to_string(),
+                    residency: if is_near {
+                        TokenResidency::Near
+                    } else {
+                        TokenResidency::Ft
+                    },
+                })
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    // Sort by parsed balance (highest first)
+    simplified_tokens.sort_by(|a, b| {
+        let a_val: u128 = a.balance.parse().unwrap_or(0);
+        let b_val: u128 = b.balance.parse().unwrap_or(0);
+        b_val
+            .partial_cmp(&a_val)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    simplified_tokens
+}
+
+/// Builds intents tokens from enriched metadata
 fn build_intents_tokens(
     tokens_with_balances: Vec<(String, String)>,
-    tokens_metadata: &[TokenMetadataResponse],
+    enriched_tokens: &[crate::handlers::intents::supported_tokens::EnrichedTokenMetadata],
 ) -> Vec<SimplifiedToken> {
     tokens_with_balances
         .into_iter()
