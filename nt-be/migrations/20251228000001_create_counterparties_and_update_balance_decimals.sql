@@ -1,23 +1,32 @@
+-- Create ENUM type for account types (provides better type safety)
+CREATE TYPE account_type_enum AS ENUM (
+    'ft_token',
+    'staking_pool',
+    'dao',
+    'personal',
+    'system',
+    'other'
+);
+
 -- Create counterparties table for storing account metadata
 CREATE TABLE counterparties (
     account_id VARCHAR(64) PRIMARY KEY,
-    account_type VARCHAR(32) NOT NULL,  -- 'ft_token', 'staking_pool', 'dao', 'personal', 'system', 'other'
-    
+    account_type account_type_enum NOT NULL,
+
     -- FT token metadata (NULL for non-FT accounts)
     token_symbol VARCHAR(16),
     token_name TEXT,
     token_decimals SMALLINT,
     token_icon TEXT,
-    
+
     -- Discovery metadata
     discovered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_verified_at TIMESTAMPTZ,
-    
+
     -- Additional metadata (JSONB for flexibility)
     metadata JSONB,
-    
+
     -- Constraints
-    CONSTRAINT valid_account_type CHECK (account_type IN ('ft_token', 'staking_pool', 'dao', 'personal', 'system', 'other')),
     CONSTRAINT ft_token_has_decimals CHECK (
         (account_type = 'ft_token' AND token_decimals IS NOT NULL) OR
         (account_type != 'ft_token')
