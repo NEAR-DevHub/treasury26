@@ -367,10 +367,7 @@ fn build_simplified_tokens(
     all_tokens: HashMap<String, TokenMetadata>,
     user_balances: &FastNearResponse,
     token_prices: &HashMap<String, serde_json::Value>,
-    enriched_metadata_map: &HashMap<
-        String,
-        crate::handlers::intents::supported_tokens::EnrichedTokenMetadata,
-    >,
+    enriched_tokens: &Vec<crate::handlers::intents::supported_tokens::EnrichedTokenMetadata>,
 ) -> Vec<SimplifiedToken> {
     let balance_map = build_balance_map(user_balances);
     let mut simplified_tokens = all_tokens
@@ -383,7 +380,7 @@ fn build_simplified_tokens(
             };
 
             // Try to find enriched metadata by near_token_id
-            let enriched_meta = enriched_metadata_map.values().find(|m| {
+            let enriched_meta = enriched_tokens.iter().find(|m| {
                 (m.near_token_id
                     .as_ref()
                     .map(|id| id == &token_id)
@@ -470,16 +467,13 @@ fn build_simplified_tokens(
 /// Builds intents tokens from enriched metadata
 fn build_intents_tokens(
     tokens_with_balances: Vec<(String, String)>,
-    enriched_metadata_map: &HashMap<
-        String,
-        crate::handlers::intents::supported_tokens::EnrichedTokenMetadata,
-    >,
+    enriched_tokens: &Vec<crate::handlers::intents::supported_tokens::EnrichedTokenMetadata>,
 ) -> Vec<SimplifiedToken> {
     // Build simplified tokens with metadata
     let mut simplified_tokens: Vec<SimplifiedToken> = tokens_with_balances
         .into_iter()
         .filter_map(|(token_id, balance)| {
-            let metadata = enriched_metadata_map.get(&token_id)?;
+            let metadata = enriched_tokens.iter().find(|t| t.intents_token_id.as_ref() == Some(&token_id))?;
 
             // Extract contract_id (remove prefix like "nep141:" if present)
             let contract_id = if token_id.starts_with("nep141:") {
@@ -590,19 +584,13 @@ pub async fn get_user_assets(
         )
     })?;
 
-    // Create enriched metadata map indexed by intents_token_id for quick lookup
-    let enriched_metadata_map: HashMap<String, _> = enriched_tokens
-        .into_iter()
-        .filter_map(|t| t.intents_token_id.clone().map(|id| (id, t)))
-        .collect();
-
     // Build REF Finance tokens with enriched metadata
     let (all_tokens, user_balances, token_prices) = ref_data_result?;
     let mut all_simplified_tokens = build_simplified_tokens(
         all_tokens,
         &user_balances,
         &token_prices,
-        &enriched_metadata_map,
+        &enriched_tokens,
     );
 
     // Build intents tokens with enriched metadata
@@ -611,7 +599,7 @@ pub async fn get_user_assets(
         Vec::new()
     });
 
-    let intents_tokens = build_intents_tokens(intents_balances, &enriched_metadata_map);
+    let intents_tokens = build_intents_tokens(intents_balances, &enriched_tokens);
     all_simplified_tokens.extend(intents_tokens);
 
     // Sort combined list by balance (highest first)

@@ -221,14 +221,11 @@ pub async fn fetch_enriched_tokens(state: &AppState) -> Result<Vec<EnrichedToken
 
             // Try to find icon from local token list
             let local_token =
-                intents_tokens::find_token_by_defuse_asset_id(&token.intents_token_id);
+                intents_tokens::find_token_by_unified_asset_id(&token.asset_name);
             let icon = local_token.as_ref().map(|t| t.icon.to_string());
-            let local_chain = local_token.as_ref().map(|t| t.origin_chain_name.clone());
             EnrichedTokenMetadata {
                 defuse_asset_id: token.defuse_asset_identifier.clone(),
-                contract_address: external_meta
-                    .and_then(|e| e.contract_address.clone())
-                    .unwrap_or_else(|| "native".to_string()),
+                contract_address: token.near_token_id.clone(),
                 decimals: token.decimals,
                 symbol: external_meta
                     .map(|e| e.symbol.clone())
@@ -238,9 +235,8 @@ pub async fn fetch_enriched_tokens(state: &AppState) -> Result<Vec<EnrichedToken
                     .map(|t| t.name.clone())
                     .unwrap_or_else(|| token.asset_name.clone()),
                 asset_name: token.asset_name.clone(),
-                chain_name: external_meta
-                    .map(|e| e.blockchain.clone())
-                    .or(local_chain)
+                chain_name: local_token
+                    .map(|e| e.grouped_tokens.iter().find(|t| t.defuse_asset_id == token.intents_token_id).map(|t| t.origin_chain_name.clone())).flatten()
                     .unwrap_or_else(|| "near".to_string()),
                 price: external_meta.and_then(|e| e.price),
                 price_updated_at: external_meta.and_then(|e| e.price_updated_at.clone()),
