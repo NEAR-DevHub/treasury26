@@ -6,6 +6,7 @@ import { InputBlock } from "./input-block";
 
 interface ThresholdSliderProps {
     currentThreshold: number;
+    originalThreshold?: number;
     memberCount: number;
     onValueChange: (value: number) => void;
     disabled?: boolean;
@@ -13,11 +14,34 @@ interface ThresholdSliderProps {
 
 export function ThresholdSlider({
     currentThreshold,
+    originalThreshold,
     memberCount,
     onValueChange,
     disabled = false,
 }: ThresholdSliderProps) {
-    let array = memberCount === 1 ? [0, 1] : Array.from({ length: memberCount }, (_, i) => i + 1);
+    // Show 0 in these cases to ensure visual fill:
+    // 1. When memberCount is 1 or 2
+    // 2. When originalThreshold (prevents labels from changing during drag)
+    let array: number[];
+    let sliderMin: number;
+    
+    const shouldShowZero = memberCount === 1 || 
+                          memberCount === 2 || 
+                          originalThreshold === 1 
+    
+    if (memberCount === 1) {
+        array = [0, 1];
+        sliderMin = 0;
+    } else if (shouldShowZero) {
+        // Include 0 to show visual progress
+        array = Array.from({ length: memberCount + 1 }, (_, i) => i);
+        sliderMin = 0;
+    } else {
+        array = Array.from({ length: memberCount }, (_, i) => i + 1);
+        sliderMin = 1;
+    }
+    
+    const sliderMax = memberCount;
 
     return (
         <div className="space-y-2">
@@ -40,16 +64,17 @@ export function ThresholdSlider({
                 <Slider
                     value={[currentThreshold]}
                     onValueChange={(value) => {
-                        if (value[0] > 0) {
+                        // Only allow values >= 1 (prevent selecting 0)
+                        if (value[0] >= 1) {
                             onValueChange(value[0]);
                         }
                     }}
-                    min={array[0]}
-                    max={array[array.length - 1]}
-
+                    min={sliderMin}
+                    max={sliderMax}
                     step={1}
                     className="w-full"
-                    disabled={disabled}
+                    disabled={disabled || memberCount === 1}
+                    showFullTrack={true}
                 />
             </InputBlock>
 
