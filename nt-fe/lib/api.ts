@@ -75,19 +75,21 @@ export async function getUserTreasuries(
   }
 }
 
+export type TokenResidency = "Near" | "Ft" | "Intents";
+
 export interface TreasuryAsset {
   id: string;
-  decimals: number;
-  balance: Big;
-  balanceUSD: number;
-  price: number;
+  contractId?: string;
+  residency: TokenResidency;
+  network: string;
   symbol: string;
+  balance: Big;
+  decimals: number;
+  price: number;
   name: string;
   icon: string;
+  balanceUSD: number;
   weight: number;
-  network: string;
-  blockchain?: string;
-  chain_name?: string;
 }
 
 export interface TreasuryAssets {
@@ -97,13 +99,15 @@ export interface TreasuryAssets {
 
 interface TreasuryAssetRaw {
   id: string;
-  decimals: number;
-  balance: string;
-  price: string;
+  contractId?: string;
+  residency: TokenResidency;
+  network: string;
   symbol: string;
+  balance: string;
+  decimals: number;
+  price: string;
   name: string;
   icon: string;
-  network: string;
 }
 
 /**
@@ -131,15 +135,17 @@ export async function getTreasuryAssets(
 
       return {
         id: token.id,
+        contractId: token.contractId,
+        residency: token.residency,
+        network: token.network,
+        symbol: token.symbol,
         decimals: token.decimals,
         balance: Big(token.balance),
         balanceUSD,
         price,
-        symbol: token.symbol,
         name: token.name,
         icon: token.icon,
         weight: 0,
-        network: token.network,
       };
     });
 

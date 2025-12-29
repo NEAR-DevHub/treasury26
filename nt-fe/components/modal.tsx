@@ -13,7 +13,7 @@ function DialogHeader({ className, children, ...props }: React.ComponentProps<ty
     return (
         <BaseDialogHeader
             {...props}
-            className="border-b border-border p-6 pb-4 flex flex-row items-center justify-between text-center gap-4"
+            className={cn("border-b border-border p-4 flex flex-row items-center justify-between text-center gap-4", className)}
         >
             <div className="flex-1">
                 {children}
@@ -30,7 +30,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof BaseDi
     return (
         <BaseDialogTitle
             {...props}
-            className="text-lg font-semibold text-center"
+            className={cn("text-lg font-semibold text-center", className)}
         />
     );
 }

@@ -1,6 +1,6 @@
 import { Amount } from "@/features/proposals/components/amount";
 import { useToken } from "@/hooks/use-treasury-queries";
-import { formatBalance } from "@/lib/utils";
+import { formatBalance, formatCurrency } from "@/lib/utils";
 import Big from "big.js";
 import { useMemo } from "react";
 
@@ -32,7 +32,7 @@ export function Rate({ tokenIn, networkIn, tokenOut, networkOut, amountIn, amoun
 
     return (
         <p className="text-sm text-primary">
-            1 {tokenInData?.symbol} (${tokenInData?.price?.toFixed(2)}) ≈ {cost} {tokenOutData?.symbol}
+            1 {tokenInData?.symbol} ({formatCurrency(tokenInData?.price || 0)}) ≈ {cost} {tokenOutData?.symbol}
         </p>
     );
 }

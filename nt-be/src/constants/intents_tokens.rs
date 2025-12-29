@@ -69,26 +69,11 @@ pub enum TokenDeployment {
     },
 }
 
-/// Flattened version of token information for easy use in the backend
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct LocalTokenInfo {
-    pub defuse_asset_id: String,
-    pub symbol: String,
-    pub name: String,
-    pub decimals: u8,
-    pub icon: String,
-    pub origin_chain_name: String,
-    pub address: String,
-    pub bridge: String,
-    pub tags: Vec<String>,
-    pub unified_asset_id: Option<String>,
-}
+/// Static map of unified tokens loaded from data/tokens.json for fast lookup
+static TOKENS_MAP_CELL: OnceLock<HashMap<String, UnifiedTokenInfo>> = OnceLock::new();
 
-/// Static map of tokens loaded from data/tokens.json for fast lookup
-static TOKENS_MAP_CELL: OnceLock<HashMap<String, LocalTokenInfo>> = OnceLock::new();
-
-/// Get the map of tokens, loading from JSON if not already loaded
-pub fn get_tokens_map() -> &'static HashMap<String, LocalTokenInfo> {
+/// Get the map of unified tokens, loading from JSON if not already loaded
+pub fn get_tokens_map() -> &'static HashMap<String, UnifiedTokenInfo> {
     TOKENS_MAP_CELL.get_or_init(|| {
         let tokens = load_tokens_from_json().unwrap_or_else(|e| {
             eprintln!("Failed to load tokens from JSON: {}", e);
@@ -96,20 +81,20 @@ pub fn get_tokens_map() -> &'static HashMap<String, LocalTokenInfo> {
         });
         tokens
             .into_iter()
-            .map(|t| (t.defuse_asset_id.to_lowercase(), t))
+            .map(|t| (t.unified_asset_id.to_lowercase(), t))
             .collect()
     })
 }
 
 /// Find a token by its defuse_asset_id
-pub fn find_token_by_defuse_asset_id(defuse_asset_id: &str) -> Option<LocalTokenInfo> {
+pub fn find_token_by_unified_asset_id(unified_asset_id: &str) -> Option<UnifiedTokenInfo> {
     get_tokens_map()
-        .get(&defuse_asset_id.to_lowercase())
+        .get(&unified_asset_id.to_lowercase())
         .cloned()
 }
 
-/// Load tokens from the JSON file and flatten them
-fn load_tokens_from_json() -> Result<Vec<LocalTokenInfo>, Box<dyn std::error::Error>> {
+/// Load tokens from the JSON file as unified tokens
+fn load_tokens_from_json() -> Result<Vec<UnifiedTokenInfo>, Box<dyn std::error::Error>> {
     let json_str = include_str!("../../data/tokens.json");
     let tokens_json: TokensJson = serde_json::from_str(json_str)?;
 
@@ -118,46 +103,23 @@ fn load_tokens_from_json() -> Result<Vec<LocalTokenInfo>, Box<dyn std::error::Er
     for token_info in tokens_json.tokens {
         match token_info {
             TokenInfo::Base(base) => {
-                result.push(convert_base_to_local(base, None));
+                // Create a single-entity unified token from a base token
+                let unified = UnifiedTokenInfo {
+                    unified_asset_id: base.symbol.to_lowercase(),
+                    symbol: base.symbol.clone(),
+                    name: base.name.clone(),
+                    icon: base.icon.clone(),
+                    grouped_tokens: vec![base],
+                    tags: None,
+                };
+                result.push(unified);
             }
             TokenInfo::Unified(unified) => {
-                for base in unified.grouped_tokens {
-                    result.push(convert_base_to_local(
-                        base,
-                        Some(unified.unified_asset_id.clone()),
-                    ));
-                }
+                // Use the existing unified token as-is
+                result.push(unified);
             }
         }
     }
 
     Ok(result)
-}
-
-/// Convert BaseTokenInfo to LocalTokenInfo
-fn convert_base_to_local(base: BaseTokenInfo, unified_asset_id: Option<String>) -> LocalTokenInfo {
-    // We take the first deployment as the primary one for the backend simplified view
-    let (address, bridge) = if let Some(deployment) = base.deployments.first() {
-        match deployment {
-            TokenDeployment::Native { .. } => ("native".to_string(), "poa".to_string()),
-            TokenDeployment::Fungible {
-                address, bridge, ..
-            } => (address.clone(), bridge.clone()),
-        }
-    } else {
-        ("native".to_string(), "direct".to_string())
-    };
-
-    LocalTokenInfo {
-        defuse_asset_id: base.defuse_asset_id,
-        symbol: base.symbol,
-        name: base.name,
-        decimals: base.decimals,
-        icon: base.icon,
-        origin_chain_name: base.origin_chain_name,
-        address,
-        bridge,
-        tags: base.tags.unwrap_or_default(),
-        unified_asset_id,
-    }
 }

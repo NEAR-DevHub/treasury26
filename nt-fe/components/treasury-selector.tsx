@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
 import { useUserTreasuries } from "@/hooks/use-treasury-queries";
+import { Button } from "./button";
 
 export function TreasurySelector() {
   const router = useRouter();
@@ -114,13 +115,15 @@ export function TreasurySelector() {
           </SelectItem>
         ))}
         <SelectSeparator />
-        <Link
-          href="/app/new"
-          className="w-full flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg"
+        <Button
+          variant="ghost"
+          type="button"
+          className="w-full justify-start gap-2"
+          onClick={() => router.push("/app/new")}
         >
           <span className="text-lg">+</span>
           <span>Create Treasury</span>
-        </Link>
+        </Button>
       </SelectContent>
     </Select>
   );

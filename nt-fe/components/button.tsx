@@ -9,26 +9,26 @@ interface ButtonProps extends React.ComponentProps<typeof ShadcnButton> {
 
 export function Button({ variant, className: classNameOverride, size, ...props }: ButtonProps) {
     let className = "";
-    switch (variant) {
+    switch (variant ?? "default") {
         case "link":
             className = "hover:no-underline font-semibold text-primary/80 hover:text-primary";
             break;
-        default:
-            className = "";
+        case "ghost":
+        case "outline":
+            className = "hover:bg-muted-foreground/5";
             break;
     }
 
+    let sizeClassName = "";
     switch (size) {
         case "sm":
-            className = cn(className, "py-0.5 px-2.5 h-5 text-xs");
+            sizeClassName = "py-0.5 px-2.5 h-5 text-xs";
             break;
-        case "default":
-            className = cn(className, "py-[5.5px] px-5 gap-1.5 rounded-[8px]");
+        case "lg":
+            sizeClassName = "h-13 font-semibold text-lg";
         default:
-            className = "";
-            break;
+            sizeClassName = "py-[5.5px] px-5 gap-1.5 rounded-[8px]";
     }
 
-
-    return <ShadcnButton variant={variant} className={cn(className, classNameOverride)} size={size} {...props} />;
+    return <ShadcnButton variant={variant} className={cn(className, sizeClassName, classNameOverride)} size={size} {...props} />;
 };

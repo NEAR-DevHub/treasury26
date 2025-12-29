@@ -11,6 +11,13 @@ export function toBase64(json: any) {
   return Buffer.from(JSON.stringify(json)).toString("base64");
 }
 
+export function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+  }).format(value);
+};
 
 export function formatTimestamp(date: Date) {
   const d = new Date(date);

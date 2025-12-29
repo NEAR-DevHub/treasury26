@@ -18,6 +18,7 @@ import { CircleCheck, Database, Info, UsersRound, Vote } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ROLES } from "@/components/role-selector";
 
 const treasuryFormSchema = z.object({
     details: z.object({
@@ -87,7 +88,7 @@ function Step1({ handleNext }: StepProps) {
             )} />
 
             <FormField control={form.control} name="details.accountName" render={({ field, fieldState }) => (
-                <InputBlock title="Account Name" invalid={!!fieldState.error}>
+                <InputBlock title="Account Name" info="This is your account’s unique name. It will be used in your Treasury URL and shown in transactions to identify who sent the payment. Choose a short, recognizable name for your account." invalid={!!fieldState.error}>
                     <LargeInput
                         borderless
                         placeholder="my-treasury"
@@ -229,7 +230,7 @@ export default function NewTreasuryPage() {
             members: [
                 {
                     accountId: "",
-                    roles: ["governance", "requestor", "financial"],
+                    roles: ROLES.map(r => r.id),
                 },
             ],
         },

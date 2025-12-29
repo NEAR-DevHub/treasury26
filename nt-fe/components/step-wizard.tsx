@@ -16,7 +16,6 @@ export interface StepProps {
 }
 
 interface Step {
-    nextButton?: React.ComponentType<{ handleNext: () => void }>;
     component: React.ComponentType<{ handleBack?: () => void; handleNext?: () => void }>;
 }
 
@@ -39,10 +38,10 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                             "whitespace-nowrap transition-all duration-300 ease-in-out",
                             "pb-2 relative border-none bg-transparent shadow-none",
                             "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0",
-                            "after:transition-all after:duration-300 after:ease-in-out",
+                            "after:transition-all after:duration-300 after:ease-in-out after:rounded-full",
                             index <= currentStep
-                                ? 'text-foreground after:bg-primary after:h-[3px]'
-                                : 'text-muted-foreground after:bg-border after:h-[2px]'
+                                ? 'text-foreground after:bg-foreground after:h-[3px]'
+                                : 'text-muted-foreground after:bg-muted-foreground/20 after:h-[3px]'
 
                         )}
                     >
@@ -120,7 +119,6 @@ export function StepWizard({
                     className="flex flex-col gap-4"
                 >
                     <CurrentStep.component handleBack={index > 0 ? handleBack : undefined} handleNext={handleNext} />
-                    {CurrentStep.nextButton && <CurrentStep.nextButton handleNext={handleNext} />}
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -146,19 +144,6 @@ export function StepperHeader({ title, description, handleBack }: HandleBackWith
         </div>
     );
 }
-
-export const StepperNextButton = ({ text, loading = false }: { text: string; loading?: boolean }) => {
-    return (handleNext?: () => void) => {
-        const { type, onClick } = handleNext ? { type: "button" as const, onClick: handleNext } : { type: "submit" as const, onClick: undefined };
-        return (
-            <Button className="w-full h-13 font-semibold text-lg" type={type} onClick={onClick} disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                {text}
-            </Button>
-        );
-    }
-};
-
 interface InlineNextButtonProps {
     handleNext?: () => void;
     text: string;
@@ -182,7 +167,8 @@ export function InlineNextButton({ handleNext, text, loading = false, onClick }:
     return (
         <div className="rounded-lg border bg-card p-0 overflow-hidden">
             <Button
-                className="w-full h-10 rounded-none"
+                className="w-full"
+                size="lg"
                 type={type}
                 onClick={onClickHandler}
                 disabled={loading}

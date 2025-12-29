@@ -8,9 +8,9 @@ import { useFieldArray, useForm, useFormContext, } from "react-hook-form";
 import { Form, FormField } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ReviewStep, StepperHeader, StepperNextButton, StepWizard } from "@/components/step-wizard";
+import { ReviewStep, StepperHeader, InlineNextButton, StepProps, StepWizard } from "@/components/step-wizard";
 import { useBatchStorageDepositIsRegistered, useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo } from "react";
 import { Textarea } from "@/components/textarea";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
@@ -48,14 +48,23 @@ const paymentFormSchema = z.object({
   }
 });
 
-function Step1() {
+function Step1({ handleNext }: StepProps) {
   const form = useFormContext<PaymentFormValues>();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "payments",
   });
+
+  const handleContinue = () => {
+    form.trigger().then((isValid) => {
+      if (isValid && handleNext) {
+        handleNext();
+      }
+    });
+  };
+
   return (
-    <>
+    <PageCard>
       <StepperHeader title="New Payment" />
       {fields.map((field, index) => (
         <Fragment key={field.id}>
@@ -71,11 +80,13 @@ function Step1() {
       <div className="flex justify-start">
         <Button variant={'link'} type="button" size={'sm'} onClick={() => append({ address: "", amount: "0", memo: "" })}><Plus className="size-3 text-primary" /> Add New Recipient</Button>
       </div>
-    </>
+
+      <InlineNextButton text="Review Payment" onClick={handleContinue} />
+    </PageCard>
   );
 }
 
-function Step2({ handleBack }: { handleBack?: () => void }) {
+function Step2({ handleBack }: StepProps) {
   const form = useFormContext<PaymentFormValues>();
   const { fields } = useFieldArray({
     control: form.control,
@@ -105,47 +116,51 @@ function Step2({ handleBack }: { handleBack?: () => void }) {
 
 
   return (
-    <ReviewStep control={form.control} reviewingTitle="Review Your Payment" approveWithMyVoteName="approveWithMyVote" proposalKind="transfer" handleBack={handleBack}>
-      <SendingTotal total={total} token={token}>
-        <p>to {fields.length} recipient{fields.length > 1 ? 's' : ''}</p>
-      </SendingTotal>
-      <div className="flex flex-col gap-2">
-        <p className="font-semibold">Recipient{fields.length > 1 ? 's' : ''}</p>
-        {fields.map((field, index) => {
-          const estimatedUSDValue = tokenPriceData?.price ? Number(field.amount) * tokenPriceData.price : 0;
+    <PageCard>
+      <ReviewStep control={form.control} reviewingTitle="Review Your Payment" approveWithMyVoteName="approveWithMyVote" proposalKind="transfer" handleBack={handleBack}>
+        <SendingTotal total={total} token={token}>
+          <p>to {fields.length} recipient{fields.length > 1 ? 's' : ''}</p>
+        </SendingTotal>
+        <div className="flex flex-col gap-2">
+          <p className="font-semibold">Recipient{fields.length > 1 ? 's' : ''}</p>
+          {fields.map((field, index) => {
+            const estimatedUSDValue = tokenPriceData?.price ? Number(field.amount) * tokenPriceData.price : 0;
 
-          return (
-            <div key={index} className="flex gap-2 items-baseline w-full">
-              <CircleNumber number={index + 1} />
-              <div className="flex flex-col gap-1 w-full">
-                <div className="flex justify-between items-center w-full text-xs ">
-                  <p className=" font-semibold">{field.address}</p>
-                  <div className="flex items-center gap-2">
-                    <img src={token.icon} alt={token.symbol} className="size-5 rounded-full" />
-                    <div className="flex flex-col gap-[3px] items-end">
-                      <p className="text-xs font-semibold">{field.amount} {token.symbol}</p>
-                      <p className="text-[10px] text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}</p>
+            return (
+              <div key={index} className="flex gap-2 items-baseline w-full">
+                <CircleNumber number={index + 1} />
+                <div className="flex flex-col gap-1 w-full">
+                  <div className="flex justify-between items-center w-full text-xs ">
+                    <p className=" font-semibold">{field.address}</p>
+                    <div className="flex items-center gap-2">
+                      <img src={token.icon} alt={token.symbol} className="size-5 rounded-full" />
+                      <div className="flex flex-col gap-[3px] items-end">
+                        <p className="text-xs font-semibold">{field.amount} {token.symbol}</p>
+                        <p className="text-[10px] text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}</p>
+                      </div>
                     </div>
                   </div>
+                  <FormField control={form.control} name={`payments.${index}.memo`} render={({ field }) => (
+                    <Textarea
+                      value={field.value}
+                      onChange={field.onChange}
+                      rows={2}
+                      placeholder="Add a comment (optional)..."
+                    />
+                  )} />
                 </div>
-                <FormField control={form.control} name={`payments.${index}.memo`} render={({ field }) => (
-                  <Textarea
-                    value={field.value}
-                    onChange={field.onChange}
-                    rows={2}
-                    placeholder="Add a comment (optional)..."
-                  />
-                )} />
               </div>
-            </div>
-          );
-        })}
-      </div>
-      <></>
-    </ReviewStep>
+            );
+          })}
+        </div>
+        <></>
+      </ReviewStep>
+
+      <InlineNextButton text="Confirm and Submit Request" loading={form.formState.isSubmitting} />
+    </PageCard>
   );
 }
 
@@ -155,7 +170,6 @@ export default function PaymentsPage() {
   const { selectedTreasury } = useTreasury();
   const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
@@ -171,7 +185,6 @@ export default function PaymentsPage() {
   });
 
   const onSubmit = async (data: PaymentFormValues) => {
-    setIsSubmitting(true);
     if (data.payments.length > 1) {
       alert("Batch payments are not supported yet");
       return;
@@ -232,8 +245,6 @@ export default function PaymentsPage() {
       form.reset(form.getValues());
     } catch (error) {
       console.error("Payments error", error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -241,26 +252,16 @@ export default function PaymentsPage() {
     <PageComponentLayout title="Payments" description="Send and receive funds securely">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 max-w-[600px] mx-auto">
-          <PageCard className="gap-3">
-            <StepWizard
-              steps={[
-                {
-                  nextButton: ({ handleNext }) => StepperNextButton({ text: "Review Payment" })(() => {
-                    form.trigger().then((isValid) => {
-                      if (isValid) {
-                        return handleNext();
-                      }
-                    });
-                  }),
-                  component: Step1,
-                },
-                {
-                  nextButton: ({ }) => StepperNextButton({ text: "Confirm and Submit Request", loading: isSubmitting })(),
-                  component: Step2,
-                }
-              ]}
-            />
-          </PageCard>
+          <StepWizard
+            steps={[
+              {
+                component: Step1,
+              },
+              {
+                component: Step2,
+              }
+            ]}
+          />
         </form>
       </Form>
     </PageComponentLayout >

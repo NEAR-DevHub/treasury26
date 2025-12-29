@@ -57,7 +57,6 @@ export function GeneralTab() {
   const { selectedTreasury } = useTreasury();
   const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -340,8 +339,8 @@ export function GeneralTab() {
                       type="button"
                       onClick={() => handleColorChange(color)}
                       className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${field.value === color
-                          ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
-                          : ""
+                        ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
+                        : ""
                         }`}
                       style={{ backgroundColor: color }}
                       aria-label={`Select color ${color}`}
@@ -356,7 +355,8 @@ export function GeneralTab() {
         <div className="rounded-lg border bg-card">
           <Button
             type="submit"
-            className="w-full h-10"
+            size="lg"
+            className="w-full"
             disabled={!form.formState.isDirty || isSubmitting}
           >
             {isSubmitting ? (

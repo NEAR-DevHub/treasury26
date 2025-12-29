@@ -46,7 +46,7 @@ export function PageComponentLayout({ title, description, backButton, children }
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden lg:block"
+                className="hidden lg:flex"
                 onClick={() => {
                   if (typeof backButton === 'string') {
                     // If there's history, go back; otherwise, navigate to the provided fallback URL
@@ -60,7 +60,7 @@ export function PageComponentLayout({ title, description, backButton, children }
                   }
                 }}
               >
-                <ArrowLeft className="h-5 w-5 stroke-3" />
+                <ArrowLeft className="size-5 stroke-3" />
               </Button>
             )}
             <div className="flex items-baseline gap-2">
@@ -84,10 +84,6 @@ export function PageComponentLayout({ title, description, backButton, children }
             ) : (
               <Moon className="h-5 w-5" />
             )}
-          </Button>
-
-          <Button variant="ghost" size="icon" className="relative h-9 w-9 hover:bg-muted text-muted-foreground hover:text-foreground">
-            <Bell className="h-5 w-5" />
           </Button>
 
           <SignIn />

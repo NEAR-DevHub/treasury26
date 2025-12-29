@@ -46,6 +46,7 @@ export function ThresholdSlider({
                     }}
                     min={array[0]}
                     max={array[array.length - 1]}
+
                     step={1}
                     className="w-full"
                     disabled={disabled}

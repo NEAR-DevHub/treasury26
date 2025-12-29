@@ -42,6 +42,7 @@ export function AccountIdInput<
                 borderless
                 placeholder="address.near"
                 value={field.value}
+                autoComplete="off"
                 onChange={(e) => {
                     const input = e.target.value
                         .toLowerCase()

@@ -301,7 +301,7 @@ export function PreferencesTab() {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <div 
+                        <div
                           className="flex items-center gap-2 px-2 pb-2 border-b sticky top-0 bg-popover z-10"
                           onPointerDown={(e) => e.stopPropagation()}
                         >
@@ -341,7 +341,8 @@ export function PreferencesTab() {
         <div className="rounded-lg border bg-card p-0 overflow-hidden">
           <Button
             type="submit"
-            className="w-full h-10 rounded-none"
+            className="w-full"
+            size="lg"
             disabled={!form.formState.isDirty}
           >
             Save

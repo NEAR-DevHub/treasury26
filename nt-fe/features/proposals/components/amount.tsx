@@ -1,5 +1,5 @@
 import { useToken, useTokenPrice } from "@/hooks/use-treasury-queries";
-import { cn, formatBalance } from "@/lib/utils";
+import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import { useMemo } from "react";
 
 interface AmountProps {
@@ -30,7 +30,7 @@ export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, 
         }
 
         const price = tokenPriceData?.price || tokenData?.price;
-        return `≈ $${(Number(amountValue) * price!).toFixed(2)}`;
+        return `≈ ${formatCurrency(Number(amountValue) * price!)}`;
     }, [tokenPriceData, tokenData, amountValue]);
     const iconClass = iconSizeClasses[iconSize];
     if (textOnly) {

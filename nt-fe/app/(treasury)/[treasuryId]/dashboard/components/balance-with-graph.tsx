@@ -8,7 +8,7 @@ import { useTokenBalanceHistory } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageCard } from "@/components/card";
-import { formatBalance } from "@/lib/utils";
+import { formatBalance, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
@@ -32,7 +32,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
     const balance = selectedTokenData ? selectedTokenData.balanceUSD : totalBalanceUSD;
 
     // Determine which token ID to fetch history for
-    const tokenIdForHistory = selectedToken === "all" ? "near" : (selectedTokenData?.id || null);
+    const tokenIdForHistory = selectedToken === "all" ? "near" : (selectedTokenData?.contractId || null);
 
     // Fetch balance history for the selected token
     const { data: balanceHistory, isLoading } = useTokenBalanceHistory(accountId, tokenIdForHistory);
@@ -54,7 +54,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
             <div className="flex justify-around gap-4 mb-6">
                 <div className="flex-1">
                     <h3 className="text-xs font-medium text-muted-foreground">Total Balance</h3>
-                    <p className="text-3xl font-bold mt-2">${balance.toFixed(2)}</p>
+                    <p className="text-3xl font-bold mt-2">{formatCurrency(Number(balance))}</p>
                 </div>
                 <div className="flex gap-2 items-center">
                     <Select value={selectedToken} onValueChange={setSelectedToken}>

@@ -16,7 +16,7 @@ type Role = {
     description: string
 }
 
-const ROLES: Role[] = [
+export const ROLES: readonly Role[] = [
     {
         id: "governance",
         title: "Governance",

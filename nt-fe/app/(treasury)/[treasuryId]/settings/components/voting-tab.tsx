@@ -406,7 +406,8 @@ export function VotingTab() {
 
           <div className="rounded-lg border bg-card p-0 overflow-hidden">
             <Button
-              className="w-full h-10 rounded-none"
+              className="w-full"
+              size="lg"
               onClick={handleThresholdChange}
               disabled={
                 !isAuthorized ||
@@ -470,7 +471,8 @@ export function VotingTab() {
 
           <div className="rounded-lg border bg-card p-0 overflow-hidden mt-4">
             <Button
-              className="w-full h-10 rounded-none"
+              className="w-full"
+              size="lg"
               onClick={handleDurationChange}
               disabled={
                 !isAuthorized ||
