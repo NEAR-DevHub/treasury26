@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { X, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/modal";
 
 interface SelectOption {
   id: string;
@@ -31,8 +33,6 @@ export function SelectModal({
 }: SelectModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  if (!isOpen) return null;
-
   const filteredOptions = options.filter((option) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -48,22 +48,13 @@ export function SelectModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4">
-      <div className="bg-card rounded-lg shadow-xl max-w-md w-full">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 pb-4 border-b">
-          <h2 className="text-xl font-semibold text-center flex-1">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
 
-        {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="space-y-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -93,10 +84,11 @@ export function SelectModal({
             ) : (
               <>
                 {filteredOptions.map((option) => (
-                  <button
+                  <Button
                     key={option.id}
                     onClick={() => handleSelect(option)}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left"
+                    variant="ghost"
+                    className="w-full flex items-center gap-3 p-3 rounded-lg h-auto justify-start"
                   >
                     {option.icon?.startsWith('http') || option.icon?.startsWith('data:') ? (
                       <img 
@@ -113,13 +105,13 @@ export function SelectModal({
                         <span>{option.icon}</span>
                       </div>
                     )}
-                    <div className="flex-1">
+                    <div className="flex-1 text-left">
                       <div className="font-semibold">{option.symbol || option.name}</div>
                       {option.symbol && (
                         <div className="text-sm text-muted-foreground">{option.name}</div>
                       )}
                     </div>
-                  </button>
+                  </Button>
                 ))}
                 {filteredOptions.length === 0 && !isLoading && (
                   <div className="text-center py-8 text-muted-foreground">
@@ -130,8 +122,7 @@ export function SelectModal({
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
-
