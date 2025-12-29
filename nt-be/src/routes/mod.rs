@@ -151,6 +151,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/intents/supported-tokens",
             get(handlers::intents::supported_tokens::get_supported_tokens),
         )
+        .route(
+            "/api/intents/deposit-address",
+            post(handlers::intents::deposit_address::get_deposit_address),
+        )
         // Proxy endpoints - catch-all for external API
         .route(
             "/api/proxy/{*path}",
