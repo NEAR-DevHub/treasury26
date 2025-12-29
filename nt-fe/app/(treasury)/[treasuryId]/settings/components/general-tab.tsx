@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/button";
 import { Database, Loader2 } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Separator } from "@/components/ui/separator";
 import { PageCard } from "@/components/card";
 import { useTreasury } from "@/stores/treasury-store";
@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import { useNear } from "@/stores/near-store";
 import { useRouter } from "next/navigation";
 import { encodeToMarkdown } from "@/lib/utils";
+import { hasPermission } from "@/lib/config-utils";
+import { CreateRequestButton } from "@/components/create-request-button";
 
 const COLOR_OPTIONS = [
   "#6B7280", // gray
@@ -55,7 +57,7 @@ type GeneralFormValues = z.infer<typeof generalSchema>;
 
 export function GeneralTab() {
   const { selectedTreasury } = useTreasury();
-  const { createProposal } = useNear();
+  const { accountId, createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -63,6 +65,12 @@ export function GeneralTab() {
 
   // Fetch the treasury config directly by treasuryId
   const { data: currentTreasury } = useTreasuryConfig(selectedTreasury);
+
+  // Check if user is authorized to make config changes
+  const isAuthorized = useMemo(() => {
+    if (!policy || !accountId) return false;
+    return hasPermission(policy, accountId, "config", "AddProposal");
+  }, [policy, accountId]);
 
   const form = useForm<GeneralFormValues>({
     resolver: zodResolver(generalSchema),
@@ -107,7 +115,7 @@ export function GeneralTab() {
         title: "Update Config - Theme & logo",
       };
 
-      await createProposal("Request to update settings submitted", {
+      await createProposal("Request to update configuration submitted", {
         treasuryId: selectedTreasury,
         proposal: {
           description: encodeToMarkdown(description),
@@ -264,21 +272,18 @@ export function GeneralTab() {
         <PageCard>
           <div>
             <h3 className="text-lg font-semibold">Logo</h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Upload a logo for your treasury. Recommended SVG, PNG, or JPG
               (256x256 px).
             </p>
           </div>
-
-          <Separator />
-
           <FormField
             control={form.control}
             name="logo"
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-muted">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-lg">
                     {field.value ? (
                       <img
                         src={field.value}
@@ -296,21 +301,36 @@ export function GeneralTab() {
                     onChange={handleImageChange}
                     className="hidden"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleUploadClick}
-                    disabled={uploadingImage}
-                  >
-                    {uploadingImage ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      "Upload Logo"
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleUploadClick}
+                      disabled={uploadingImage}
+                    >
+                      {uploadingImage ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        "Upload Logo"
+                      )}
+                    </Button>
+                    {field.value && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        onClick={() => {
+                          field.onChange("");
+                          form.setValue("logo", "", { shouldDirty: true });
+                        }}
+                        disabled={uploadingImage}
+                      >
+                        Remove Logo
+                      </Button>
                     )}
-                  </Button>
+                  </div>
                 </div>
               </FormItem>
             )}
@@ -353,21 +373,14 @@ export function GeneralTab() {
         </PageCard>
 
         <div className="rounded-lg border bg-card">
-          <Button
+          <CreateRequestButton
             type="submit"
-            size="lg"
-            className="w-full"
-            disabled={!form.formState.isDirty || isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Proposal...
-              </>
-            ) : (
-              "Create Request"
-            )}
-          </Button>
+            isSubmitting={isSubmitting}
+            isAuthorized={isAuthorized}
+            accountId={accountId}
+            disabled={!form.formState.isDirty}
+            permissionMessage="You don't have permission to change configuration"
+          />
         </div>
       </form>
     </Form>

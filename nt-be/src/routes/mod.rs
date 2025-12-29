@@ -58,6 +58,9 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/balance-changes",
             get(balance_changes::get_balance_changes),
         )
+        // NEAR RPC proxy
+        .route("/api/near/rpc", post(handlers::near::rpc::proxy_rpc))
+        // Token endpoints
         .route(
             "/api/balance-changes/fill-gaps",
             post(balance_changes::fill_gaps),

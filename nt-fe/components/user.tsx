@@ -14,6 +14,7 @@ interface UserProps {
     withName?: boolean;
     size?: "sm" | "md" | "lg";
     withLink?: boolean;
+    withHoverCard?: boolean;
 }
 
 const sizeClasses = {
@@ -35,19 +36,19 @@ export function TooltipUser({ accountId, children, triggerProps }: TooltipUserPr
     }
     return (
         <Tooltip content={<div className="flex flex-col gap-2">
-            <User accountId={accountId} />
-            <Separator />
-            <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={onCopy}>
-                <Copy className="w-5 h-5" />
-                Copy Wallet Address
-            </Button>
+            <User accountId={accountId} size="lg" />
+            <Separator className="h-0.5!" />
+            <div className="flex items-center gap-2 w-full justify-start cursor-pointer py-1" onClick={onCopy}>
+                <Copy className="w-5 h-5 shrink-0" />
+                <span className="break-all">Copy Wallet Address</span>
+            </div>
         </div>} triggerProps={triggerProps}>
             {children}
         </Tooltip>
     )
 }
 
-export function User({ accountId, iconOnly = false, size = "sm", withLink = true, withName = true }: UserProps) {
+export function User({ accountId, iconOnly = false, size = "sm", withLink = true, withName = true, withHoverCard = false }: UserProps) {
     const { data: profile } = useProfile(withName ? accountId : undefined);
     const name = profile?.name || accountId.split('.')[0];
     const image = `https://i.near.social/magic/large/https://near.social/magic/img/account/${accountId}`;
@@ -58,16 +59,15 @@ export function User({ accountId, iconOnly = false, size = "sm", withLink = true
                 <img src={image} alt="User Logo" className={cn("rounded-full shrink-0", sizeClasses[size])} />
             </div>
             {!iconOnly && (
-                <div className="flex flex-col items-start">
-                    {withName && <span className="font-medium">{name}</span>}
-                    <span className="text-xs text-muted-foreground">{accountId}</span>
+                <div className="flex flex-col items-start min-w-0">
+                    {withName && <span className="font-medium truncate max-w-full">{name}</span>}
+                    <span className="text-xs text-muted-foreground break-all">{accountId}</span>
                 </div>
             )}
         </>
     );
 
-    return (
-        withLink ? (
+    const userElement = withLink ? (
             <Link href={`https://nearblocks.io/address/${accountId}`} target="_blank" className="flex items-center gap-1.5">
                 {content}
             </Link>
@@ -75,6 +75,11 @@ export function User({ accountId, iconOnly = false, size = "sm", withLink = true
             <div className="flex items-center gap-1.5">
                 {content}
             </div>
-        )
-    )
+    );
+
+    if (withHoverCard) {
+        return <TooltipUser accountId={accountId}>{userElement}</TooltipUser>;
+    }
+
+    return userElement;
 }
