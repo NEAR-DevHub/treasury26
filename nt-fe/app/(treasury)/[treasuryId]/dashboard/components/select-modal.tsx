@@ -49,7 +49,7 @@ export function SelectModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+      <div className="bg-card rounded-lg shadow-xl max-w-md w-full">
         {/* Header */}
         <div className="flex items-center justify-between p-6 pb-4 border-b">
           <h2 className="text-xl font-semibold text-center flex-1">{title}</h2>
@@ -79,11 +79,16 @@ export function SelectModal({
           {/* Options List */}
           <div className="space-y-1 max-h-[400px] overflow-y-auto">
             {isLoading ? (
-              <div className="text-center py-12">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-8 h-8 border-4 border-muted border-t-foreground rounded-full animate-spin" />
-                  <p className="text-sm text-muted-foreground">Loading...</p>
-                </div>
+              <div className="space-y-1 animate-pulse">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="w-full flex items-center gap-3 py-3 rounded-lg">
+                    <div className="w-10 h-10 rounded-full bg-muted shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-24" />
+                      <div className="h-3 bg-muted rounded w-32" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <>

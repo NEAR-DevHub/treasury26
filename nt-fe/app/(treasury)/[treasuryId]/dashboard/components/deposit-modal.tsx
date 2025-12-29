@@ -4,6 +4,7 @@ import QRCode from "react-qr-code";
 import { SelectModal } from "./select-modal";
 import { getAggregatedBridgeAssets, fetchDepositAddress } from "@/lib/bridge-api";
 import { useTreasury } from "@/stores/treasury-store";
+import { useThemeStore } from "@/stores/theme-store";
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ interface NetworkOption {
 
 export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const { selectedTreasury } = useTreasury();
+  const { theme } = useThemeStore();
   
   const [modalType, setModalType] = useState<"asset" | "network" | null>(null);
   const [allAssets, setAllAssets] = useState<SelectOption[]>([]);
@@ -69,7 +71,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
     setError(null);
     
     try {
-      const assets = await getAggregatedBridgeAssets("light");
+      const assets = await getAggregatedBridgeAssets(theme);
       
       // Format assets
       const formattedAssets: SelectOption[] = assets.map((asset: any) => ({
@@ -244,9 +246,9 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full border">
+      <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full border">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 pb-4 border-b-2">
+        <div className="flex items-center justify-between p-4 pb-4 border-b">
           <h2 className="text-xl font-semibold">Deposit</h2>
           <button
             type="button"
@@ -265,9 +267,9 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
+            <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg p-3 flex gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
             </div>
           )}
 
@@ -277,7 +279,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
             <button
               type="button"
               onClick={() => setModalType("asset")}
-              className="space-y-2 border-b pb-3 border-gray-300 w-full text-left cursor-pointer hover:opacity-80 transition-opacity"
+              className="space-y-2 border-b pb-3 border-foreground/10 w-full text-left cursor-pointer hover:opacity-80 transition-opacity"
             >
               <label className="text-sm text-muted-foreground cursor-pointer">
                 Asset
@@ -397,7 +399,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                 <div className="flex gap-4">
                   {/* QR Code */}
                   <div className="shrink-0">
-                    <div className="w-32 h-32 rounded-lg flex items-center justify-center">
+                    <div className="w-32 h-32 rounded-lg bg-white flex items-center justify-center p-2">
                       <QRCode
                         value={depositAddress}
                         size={112}
@@ -411,16 +413,16 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                     <label className="text-sm text-muted-foreground">
                       Address
                     </label>
-                    <div className="bg-background rounded-lg flex items-center justify-between gap-2">
+                    <div className="rounded-lg flex justify-between gap-2 pt-1">
                       <code className="font-mono break-all">{depositAddress}</code>
                       <button
                         type="button"
                         onClick={handleCopyAddress}
-                        className="shrink-0 p-2 hover:bg-muted rounded transition-colors"
+                        className="shrink-0 px-2 hover:bg-muted rounded transition-colors"
                         title="Copy address"
                       >
                         {copied ? (
-                          <span className="text-lg text-green-600">✓</span>
+                          <span className="text-lg text-green-600 dark:text-green-400">✓</span>
                         ) : (
                           <Copy className="w-5 h-5 text-muted-foreground" />
                         )}
@@ -431,9 +433,9 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               </div>
 
               {/* Warning Message */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex gap-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
-                <p className="text-sm text-yellow-800">
+              <div className="bg-yellow-50 dark:bg-yellow-950/50 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 flex gap-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
                   Only deposit from the {selectedNetwork?.name} network. We recommend starting
                   with a small test transaction to ensure everything works correctly before
                   sending the full amount.
