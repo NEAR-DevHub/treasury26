@@ -87,7 +87,7 @@ function Step1({ handleNext }: StepProps) {
             )} />
 
             <FormField control={form.control} name="details.accountName" render={({ field, fieldState }) => (
-                <InputBlock title="Account Name" invalid={!!fieldState.error}>
+                <InputBlock title="Account Name" info="This is your account’s unique name. It will be used in your Treasury URL and shown in transactions to identify who sent the payment. Choose a short, recognizable name for your account." invalid={!!fieldState.error}>
                     <LargeInput
                         borderless
                         placeholder="my-treasury"
