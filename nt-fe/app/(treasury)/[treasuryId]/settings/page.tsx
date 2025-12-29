@@ -1,7 +1,7 @@
 "use client";
 
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { TabGroup } from "@/components/tab-group";
 import { GeneralTab } from "./components/general-tab";
 import { VotingTab } from "./components/voting-tab";
 import { PreferencesTab } from "./components/preferences-tab";
@@ -10,8 +10,12 @@ import { useState } from "react";
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
 
-  const toggleGroupItemStyle =
-    "h-8 !rounded-full px-3 text-sm font-medium transition-all data-[state=off]:bg-transparent data-[state=off]:text-foreground data-[state=off]:hover:text-foreground/80 data-[state=on]:!bg-foreground data-[state=on]:!text-background data-[state=on]:shadow-none data-[state=on]:!rounded-full";
+  const tabs = [
+    { value: "general", label: "General" },
+    { value: "voting", label: "Voting" },
+    { value: "preferences", label: "Preferences" },
+  ];
+
   return (
     <PageComponentLayout
       title="Settings"
@@ -19,27 +23,7 @@ export default function SettingsPage() {
     >
       <div className="w-full max-w-4xl mx-auto px-4">
         <div className="flex mb-6">
-          <div className="inline-flex items-center gap-1 rounded-full bg-card border shadow-sm p-1">
-            <ToggleGroup
-              type="single"
-              value={activeTab}
-              onValueChange={(value) => value && setActiveTab(value)}
-              className="flex gap-1"
-            >
-              <ToggleGroupItem value="general" className={toggleGroupItemStyle}>
-                General
-              </ToggleGroupItem>
-              <ToggleGroupItem value="voting" className={toggleGroupItemStyle}>
-                Voting
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="preferences"
-                className={toggleGroupItemStyle}
-              >
-                Preferences
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          <TabGroup tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
 
         {activeTab === "general" && <GeneralTab />}

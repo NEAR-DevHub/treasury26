@@ -1,6 +1,7 @@
 pub mod bulkpayment;
 pub mod intents;
 pub mod lookup;
+pub mod near;
 pub mod proposals;
 pub mod proxy;
 pub mod token;
