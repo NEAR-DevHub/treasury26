@@ -8,9 +8,6 @@ use near_api::{AccountId, NetworkConfig, Tokens};
 use sqlx::PgPool;
 use std::str::FromStr;
 
-// Re-export FungibleTokenMetadata as FtMetadata for backwards compatibility
-pub type FtMetadata = FungibleTokenMetadata;
-
 /// Query FT metadata from a contract using near-api's Tokens API
 ///
 /// Uses `Tokens::ft_metadata` which is the recommended approach from near-api-rs.
@@ -18,7 +15,7 @@ pub type FtMetadata = FungibleTokenMetadata;
 pub async fn query_ft_metadata(
     network: &NetworkConfig,
     token_contract: &str,
-) -> Result<FtMetadata, Box<dyn std::error::Error>> {
+) -> Result<FungibleTokenMetadata, Box<dyn std::error::Error>> {
     let account_id = AccountId::from_str(token_contract)?;
 
     // Use Tokens::ft_metadata for cleaner API and built-in FungibleTokenMetadata type
@@ -31,7 +28,7 @@ pub async fn query_ft_metadata(
 pub async fn upsert_ft_counterparty(
     pool: &PgPool,
     account_id: &str,
-    metadata: &FtMetadata,
+    metadata: &FungibleTokenMetadata,
 ) -> Result<(), Box<dyn std::error::Error>> {
     sqlx::query!(
         r#"
