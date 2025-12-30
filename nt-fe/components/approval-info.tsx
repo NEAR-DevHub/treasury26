@@ -12,6 +12,8 @@ interface ApprovalInfoProps {
     approverAccounts?: string[];
 }
 
+const infoText = "The number of votes required to approve payment-related requests. You can change this anytime in the Voting tab in the Settings.";
+
 export function ApprovalInfo({ variant, requiredVotes: requiredVotesProp, approverAccounts: approverAccountsProp }: ApprovalInfoProps) {
     const { selectedTreasury } = useTreasury();
     const { accountId } = useNear();
@@ -21,7 +23,7 @@ export function ApprovalInfo({ variant, requiredVotes: requiredVotesProp, approv
 
     if (variant === "pupil") {
         return (
-            <Pill title={`Threshold ${requiredVotes} out of ${approverAccounts?.length ?? 0}`} />
+            <Pill title={`Threshold ${requiredVotes} out of ${approverAccounts?.length ?? 0}`} info={infoText} />
         );
     }
 
