@@ -6,3 +6,4 @@ pub mod proxy;
 pub mod token;
 pub mod treasury;
 pub mod user;
+pub mod intents;

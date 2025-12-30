@@ -16,7 +16,9 @@ import {
   StorageDepositRequest,
   getBatchPayment,
   checkHandleUnused,
-  checkAccountExists
+  checkAccountExists,
+  searchIntentsTokens,
+  SearchTokensParams,
 } from "@/lib/api";
 
 /**
@@ -274,5 +276,27 @@ export function useCheckAccountExists(accountId: string | null | undefined) {
     enabled: !!accountId && accountId.length > 0,
     staleTime: 1000 * 60, // 1 minute (account existence can change)
     retry: false, // Don't retry on failure
+  });
+}
+
+/**
+ * Query hook to search for intents tokens by symbol or name with network information
+ * Matches tokens and their network deployments for cross-chain swap proposals
+ *
+ * @param params - Search parameters
+ * @param params.tokenIn - Token symbol or name for input token (e.g., "USDC")
+ * @param params.tokenOut - Token symbol or name for output token (e.g., "NEAR")
+ * @param params.intentsTokenContractId - Contract ID to match for tokenIn network deployment
+ * @param params.destinationNetwork - Chain ID to match for tokenOut network (e.g., "near", "eth")
+ * @returns Object with tokenIn and tokenOut metadata including defuse asset IDs and network info
+ */
+export function useSearchIntentsTokens(params: SearchTokensParams) {
+  const hasParams = !!(params.tokenIn || params.tokenOut);
+
+  return useQuery({
+    queryKey: ["searchIntentsTokens", params],
+    queryFn: () => searchIntentsTokens(params),
+    enabled: hasParams,
+    staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
   });
 }

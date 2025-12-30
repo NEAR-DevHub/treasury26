@@ -97,12 +97,17 @@ function recipientsDisplay({ batchData, tokenId }: { batchData?: BatchPaymentRes
 export function BatchPaymentRequestExpanded({ data }: BatchPaymentRequestExpandedProps) {
     const { data: batchData } = useBatchPayment(data.batchId);
 
+    let tokenId = data.tokenId;
+    if (batchData?.token_id?.toLowerCase() === "native") {
+        tokenId = "near";
+    }
+
     const items: InfoItem[] = [
         {
             label: "Total Amount",
-            value: <Amount showNetwork amount={data.totalAmount} tokenId={data.tokenId} network="near" />
+            value: <Amount showNetwork amount={data.totalAmount} tokenId={tokenId} network="near" />
         },
-        recipientsDisplay({ batchData, tokenId: data.tokenId })
+        recipientsDisplay({ batchData, tokenId: tokenId })
     ];
 
     return (

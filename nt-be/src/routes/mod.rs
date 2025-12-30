@@ -154,6 +154,11 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             patch(monitored_accounts::update_monitored_account)
                 .delete(monitored_accounts::delete_monitored_account),
         )
+        // Intents endpoints
+        .route(
+            "/api/intents/search-tokens",
+            get(handlers::intents::search_tokens::search_tokens),
+        )
         // Proxy endpoints - catch-all for external API
         .route(
             "/api/proxy/{*path}",

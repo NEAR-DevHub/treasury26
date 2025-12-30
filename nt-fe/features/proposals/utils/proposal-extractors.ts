@@ -326,14 +326,17 @@ export function extractSwapRequestData(proposal: Proposal): SwapRequestData {
   const slippage = decodeProposalDescription("slippage", proposal.description);
   const destinationNetwork = decodeProposalDescription("destinationNetwork", proposal.description);
   const depositAddress = args.receiver_id || "";
+  const intentsTokenContractId = args.token_id?.startsWith("nep141:")
+    ? args.token_id.replace("nep141:", "")
+    : args.token_id;
   const quoteDeadline = decodeProposalDescription("quoteDeadline", proposal.description);
   const quoteSignature = decodeProposalDescription("signature", proposal.description);
   const timeEstimate = decodeProposalDescription("timeEstimate", proposal.description);
 
-  console.log(proposal.description);
 
   return {
     tokenIn: args.token_id || "",
+    intentsTokenContractId,
     amountIn,
     tokenOut,
     amountOut,

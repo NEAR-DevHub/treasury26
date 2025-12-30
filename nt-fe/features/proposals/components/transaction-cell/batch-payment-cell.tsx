@@ -13,8 +13,13 @@ export function BatchPaymentCell({ data }: BatchPaymentCellProps) {
         `${batchData.payments.length} recipient${batchData.payments.length > 1 ? "s" : ""}`
         : "Loading...";
 
+    let tokenId = data.tokenId;
+    if (batchData?.token_id?.toLowerCase() === "native") {
+        tokenId = "near";
+    }
+
     const tokenData = {
-        tokenId: data.tokenId,
+        tokenId: tokenId,
         amount: data.totalAmount,
         network: "near",
         receiver: recipients

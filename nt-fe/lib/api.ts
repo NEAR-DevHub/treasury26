@@ -407,11 +407,16 @@ export async function getTokenMetadata(
 ): Promise<TokenMetadata | null> {
   if (!tokenId || !network) return null;
 
+  let token = tokenId;
+  if (!token.startsWith("nep141:") && token.toLowerCase() !== "near") {
+    token = `nep141:${token}`;
+  }
+
   try {
     const url = `${BACKEND_API_BASE}/token/metadata`;
 
     const response = await axios.get<TokenMetadata>(url, {
-      params: { tokenId, network },
+      params: { tokenId: token, network },
     });
 
     return response.data;
@@ -622,6 +627,77 @@ export async function createTreasury(
     return response.data;
   } catch (error) {
     console.error("Error creating treasury", error);
+    throw error;
+  }
+}
+
+export interface NetworkInfo {
+  chainId: string;
+  chainName: string;
+  contractAddress?: string;
+  decimals: number;
+  bridge: string;
+}
+
+export interface TokenSearchResult {
+  defuseAssetId: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  icon: string;
+  originChainName: string;
+  unifiedAssetId: string;
+  networkInfo?: NetworkInfo;
+}
+
+export interface SearchTokensParams {
+  tokenIn?: string;
+  tokenOut?: string;
+  intentsTokenContractId?: string;
+  destinationNetwork?: string;
+}
+
+export interface SearchTokensResponse {
+  tokenIn?: TokenSearchResult;
+  tokenOut?: TokenSearchResult;
+}
+
+/**
+ * Search for intents tokens by symbol or name with network information
+ * Matches tokens similar to frontend ProposalDetailsPage logic
+ *
+ * @param params - Search parameters
+ * @param params.tokenIn - Token symbol or name to search for (input token)
+ * @param params.tokenOut - Token symbol or name to search for (output token)
+ * @param params.intentsTokenContractId - Contract ID to match for tokenIn network
+ * @param params.destinationNetwork - Chain ID to match for tokenOut network
+ * @returns Object with tokenIn and tokenOut search results
+ */
+export async function searchIntentsTokens(
+  params: SearchTokensParams
+): Promise<SearchTokensResponse> {
+  try {
+    const queryParams = new URLSearchParams();
+
+    if (params.tokenIn) {
+      queryParams.append("tokenIn", params.tokenIn);
+    }
+    if (params.tokenOut) {
+      queryParams.append("tokenOut", params.tokenOut);
+    }
+    if (params.intentsTokenContractId) {
+      queryParams.append("intentsTokenContractId", params.intentsTokenContractId);
+    }
+    if (params.destinationNetwork) {
+      queryParams.append("destinationNetwork", params.destinationNetwork);
+    }
+
+    const url = `${BACKEND_API_BASE}/intents/search-tokens?${queryParams.toString()}`;
+    const response = await axios.get<SearchTokensResponse>(url);
+
+    return response.data;
+  } catch (error) {
+    console.error("Error searching intents tokens", error);
     throw error;
   }
 }
