@@ -1,15 +1,15 @@
 use axum::{
+    Json,
     extract::{Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::{
-    constants::intents_tokens::{get_tokens_map, TokenDeployment},
     AppState,
+    constants::intents_tokens::{TokenDeployment, get_tokens_map},
 };
 
 #[derive(Deserialize)]
@@ -61,7 +61,10 @@ pub struct SearchTokensResponse {
 }
 
 /// Search for tokenIn with intentsTokenContractId matching
-fn search_token_in(query: &str, intents_token_contract_id: Option<&str>) -> Option<TokenSearchResult> {
+fn search_token_in(
+    query: &str,
+    intents_token_contract_id: Option<&str>,
+) -> Option<TokenSearchResult> {
     let query_lower = query.to_lowercase();
     let tokens_map = get_tokens_map();
 
@@ -82,12 +85,14 @@ fn search_token_in(query: &str, intents_token_contract_id: Option<&str>) -> Opti
             // If contract ID is provided, try to match the deployment
             if let Some(ref contract_id) = contract_id_clean {
                 // Check if this base token has a deployment matching the contract ID
-                let has_matching_deployment = base_token.deployments.iter().any(|deployment| {
-                    match deployment {
-                        TokenDeployment::Native { chain_name, .. } => chain_name == contract_id,
-                        TokenDeployment::Fungible { address, .. } => address == contract_id,
-                    }
-                });
+                let has_matching_deployment =
+                    base_token
+                        .deployments
+                        .iter()
+                        .any(|deployment| match deployment {
+                            TokenDeployment::Native { chain_name, .. } => chain_name == contract_id,
+                            TokenDeployment::Fungible { address, .. } => address == contract_id,
+                        });
 
                 // If contract ID provided but this token doesn't have matching deployment, skip it
                 if !has_matching_deployment {
@@ -95,36 +100,49 @@ fn search_token_in(query: &str, intents_token_contract_id: Option<&str>) -> Opti
                 }
 
                 // Find the network info for the matching deployment
-                let network_info = base_token.deployments.iter().find_map(|deployment| {
-                    match deployment {
-                        TokenDeployment::Native { chain_name, decimals, bridge, .. } => {
-                            if chain_name == contract_id {
-                                Some(NetworkInfo {
-                                    chain_id: chain_name.clone(),
-                                    chain_name: chain_name.clone(),
-                                    contract_address: None,
-                                    decimals: *decimals,
-                                    bridge: bridge.clone(),
-                                })
-                            } else {
-                                None
+                let network_info =
+                    base_token
+                        .deployments
+                        .iter()
+                        .find_map(|deployment| match deployment {
+                            TokenDeployment::Native {
+                                chain_name,
+                                decimals,
+                                bridge,
+                                ..
+                            } => {
+                                if chain_name == contract_id {
+                                    Some(NetworkInfo {
+                                        chain_id: chain_name.clone(),
+                                        chain_name: chain_name.clone(),
+                                        contract_address: None,
+                                        decimals: *decimals,
+                                        bridge: bridge.clone(),
+                                    })
+                                } else {
+                                    None
+                                }
                             }
-                        }
-                        TokenDeployment::Fungible { address, chain_name, decimals, bridge, .. } => {
-                            if address == contract_id {
-                                Some(NetworkInfo {
-                                    chain_id: format!("nep141:{}", address),
-                                    chain_name: chain_name.clone(),
-                                    contract_address: Some(address.clone()),
-                                    decimals: *decimals,
-                                    bridge: bridge.clone(),
-                                })
-                            } else {
-                                None
+                            TokenDeployment::Fungible {
+                                address,
+                                chain_name,
+                                decimals,
+                                bridge,
+                                ..
+                            } => {
+                                if address == contract_id {
+                                    Some(NetworkInfo {
+                                        chain_id: format!("nep141:{}", address),
+                                        chain_name: chain_name.clone(),
+                                        contract_address: Some(address.clone()),
+                                        decimals: *decimals,
+                                        bridge: bridge.clone(),
+                                    })
+                                } else {
+                                    None
+                                }
                             }
-                        }
-                    }
-                });
+                        });
 
                 return Some(TokenSearchResult {
                     defuse_asset_id: base_token.defuse_asset_id.clone(),
@@ -172,7 +190,12 @@ fn search_token_out(query: &str, destination_network: Option<&str>) -> Option<To
                 let network_info = if let Some(chain_id) = destination_network {
                     base_token.deployments.iter().find_map(|deployment| {
                         match deployment {
-                            TokenDeployment::Native { chain_name, decimals, bridge, .. } => {
+                            TokenDeployment::Native {
+                                chain_name,
+                                decimals,
+                                bridge,
+                                ..
+                            } => {
                                 // For native tokens, chainId is the chain name
                                 if chain_name == chain_id {
                                     Some(NetworkInfo {
@@ -186,7 +209,13 @@ fn search_token_out(query: &str, destination_network: Option<&str>) -> Option<To
                                     None
                                 }
                             }
-                            TokenDeployment::Fungible { address, chain_name, decimals, bridge, .. } => {
+                            TokenDeployment::Fungible {
+                                address,
+                                chain_name,
+                                decimals,
+                                bridge,
+                                ..
+                            } => {
                                 // For fungible tokens, chainId could be the chain name
                                 if chain_name == chain_id {
                                     Some(NetworkInfo {
@@ -251,14 +280,16 @@ pub async fn search_tokens(
     }
 
     // Search for tokenIn if provided
-    let token_in_result = params.token_in.as_ref().and_then(|query| {
-        search_token_in(query, params.intents_token_contract_id.as_deref())
-    });
+    let token_in_result = params
+        .token_in
+        .as_ref()
+        .and_then(|query| search_token_in(query, params.intents_token_contract_id.as_deref()));
 
     // Search for tokenOut if provided
-    let token_out_result = params.token_out.as_ref().and_then(|query| {
-        search_token_out(query, params.destination_network.as_deref())
-    });
+    let token_out_result = params
+        .token_out
+        .as_ref()
+        .and_then(|query| search_token_out(query, params.destination_network.as_deref()));
 
     let response = SearchTokensResponse {
         token_in: token_in_result,
@@ -286,7 +317,10 @@ mod tests {
     #[test]
     fn test_search_token_in_by_symbol() {
         // Test searching for tokenIn by symbol
-        let result = search_token_in("USDC", Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"));
+        let result = search_token_in(
+            "USDC",
+            Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
+        );
 
         assert!(result.is_some(), "Should find USDC token by symbol");
 
@@ -294,8 +328,14 @@ mod tests {
         println!("Found token: {:?}", token);
 
         assert_eq!(token.symbol, "USDC", "Token symbol should be USDC");
-        assert!(!token.defuse_asset_id.is_empty(), "Should have defuse asset ID");
-        assert!(token.network_info.is_some(), "Should have network info when contract ID provided");
+        assert!(
+            !token.defuse_asset_id.is_empty(),
+            "Should have defuse asset ID"
+        );
+        assert!(
+            token.network_info.is_some(),
+            "Should have network info when contract ID provided"
+        );
 
         if let Some(network) = &token.network_info {
             assert!(!network.chain_name.is_empty(), "Should have chain name");
@@ -306,7 +346,10 @@ mod tests {
     #[test]
     fn test_search_token_in_by_name() {
         // Test searching for tokenIn by name
-        let result = search_token_in("USD Coin", Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"));
+        let result = search_token_in(
+            "USD Coin",
+            Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
+        );
 
         assert!(result.is_some(), "Should find USD Coin token by name");
 
@@ -347,7 +390,10 @@ mod tests {
         let token = result.unwrap();
         println!("Found token by name: {:?}", token);
 
-        assert!(token.name.to_lowercase().contains("near"), "Token name should contain 'near'");
+        assert!(
+            token.name.to_lowercase().contains("near"),
+            "Token name should contain 'near'"
+        );
         assert_eq!(token.symbol, "NEAR", "Token symbol should be NEAR");
     }
 
@@ -356,13 +402,19 @@ mod tests {
         // Test searching without network info
         let result = search_token_in("USDC", None);
 
-        assert!(result.is_some(), "Should find token even without network filter");
+        assert!(
+            result.is_some(),
+            "Should find token even without network filter"
+        );
 
         let token = result.unwrap();
         println!("Found token without network: {:?}", token);
 
         assert_eq!(token.symbol, "USDC", "Should still find USDC");
-        assert!(token.network_info.is_none(), "Network info should be None when not provided");
+        assert!(
+            token.network_info.is_none(),
+            "Network info should be None when not provided"
+        );
     }
 
     #[test]
@@ -376,9 +428,18 @@ mod tests {
     #[test]
     fn test_case_insensitive_search() {
         // Test that search is case-insensitive
-        let result1 = search_token_in("usdc", Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"));
-        let result2 = search_token_in("USDC", Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"));
-        let result3 = search_token_in("UsDc", Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"));
+        let result1 = search_token_in(
+            "usdc",
+            Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
+        );
+        let result2 = search_token_in(
+            "USDC",
+            Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
+        );
+        let result3 = search_token_in(
+            "UsDc",
+            Some("17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
+        );
 
         assert!(result1.is_some(), "Should find token with lowercase");
         assert!(result2.is_some(), "Should find token with uppercase");
@@ -389,11 +450,20 @@ mod tests {
         let t2 = result2.unwrap();
         let t3 = result3.unwrap();
 
-        assert_eq!(t1.defuse_asset_id, t2.defuse_asset_id, "Lowercase and uppercase should find same token");
-        assert_eq!(t2.defuse_asset_id, t3.defuse_asset_id, "All cases should find same token");
+        assert_eq!(
+            t1.defuse_asset_id, t2.defuse_asset_id,
+            "Lowercase and uppercase should find same token"
+        );
+        assert_eq!(
+            t2.defuse_asset_id, t3.defuse_asset_id,
+            "All cases should find same token"
+        );
         assert_eq!(t1.symbol, "USDC", "Symbol should be normalized to USDC");
 
-        println!("Case-insensitive search works correctly for: {}", t1.defuse_asset_id);
+        println!(
+            "Case-insensitive search works correctly for: {}",
+            t1.defuse_asset_id
+        );
     }
 
     #[test]
@@ -401,17 +471,21 @@ mod tests {
         // Test searching with nep141: prefix in contract ID
         let result = search_token_in(
             "USDC",
-            Some("nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1")
+            Some("nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
         );
 
-        assert!(result.is_some(), "Should handle nep141: prefix in contract ID");
+        assert!(
+            result.is_some(),
+            "Should handle nep141: prefix in contract ID"
+        );
 
         let token = result.unwrap();
         println!("Found token with nep141 prefix: {:?}", token);
 
         assert_eq!(token.symbol, "USDC", "Should find USDC with nep141 prefix");
-        assert!(token.network_info.is_some(), "Should have network info with nep141 prefix");
+        assert!(
+            token.network_info.is_some(),
+            "Should have network info with nep141 prefix"
+        );
     }
-
 }
-

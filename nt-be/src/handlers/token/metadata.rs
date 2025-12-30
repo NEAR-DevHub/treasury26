@@ -1,4 +1,4 @@
-use std::{sync::Arc, collections::HashMap};
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     Json,
@@ -8,7 +8,10 @@ use axum::{
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::{AppState, handlers::proxy::external::{fetch_proxy_api, REF_SDK_BASE_URL}};
+use crate::{
+    AppState,
+    handlers::proxy::external::{REF_SDK_BASE_URL, fetch_proxy_api},
+};
 
 #[derive(Deserialize)]
 pub struct TokenMetadataQuery {
@@ -78,7 +81,12 @@ pub async fn fetch_tokens_metadata(
         &query_params,
     )
     .await
-    .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Failed to fetch token metadata: {}", e)))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_GATEWAY,
+            format!("Failed to fetch token metadata: {}", e),
+        )
+    })?;
 
     // Parse the response as an array of tokens
     let tokens: Vec<RefSdkToken> = serde_json::from_value(response).map_err(|e| {

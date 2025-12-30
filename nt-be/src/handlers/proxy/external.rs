@@ -99,7 +99,15 @@ pub async fn proxy_external_api(
     Path(path): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
-    match fetch_proxy_api(&state.http_client, &state.cache, REF_SDK_BASE_URL, &path, &params).await {
+    match fetch_proxy_api(
+        &state.http_client,
+        &state.cache,
+        REF_SDK_BASE_URL,
+        &path,
+        &params,
+    )
+    .await
+    {
         Ok(data) => (StatusCode::OK, Json(data)),
         Err(error_msg) => {
             let status_code = if error_msg.starts_with("External API error") {
