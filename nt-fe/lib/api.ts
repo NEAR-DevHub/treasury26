@@ -138,7 +138,7 @@ export async function getTreasuryAssets(
         contractId: token.contractId,
         residency: token.residency,
         network: token.network,
-        symbol: token.symbol,
+        symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
         decimals: token.decimals,
         balance: Big(token.balance),
         balanceUSD,
@@ -210,62 +210,6 @@ export async function getTokenBalanceHistory(
   } catch (error) {
     console.error("Error getting token balance history", error);
     return null;
-  }
-}
-
-export interface TokenPrice {
-  token_id: string;
-  price: number;
-  source: string;
-}
-
-/**
- * Get price for a single token (supports both NEAR and FT tokens)
- * Fetches from backend which aggregates data from multiple price sources
- */
-export async function getTokenPrice(
-  tokenId: string,
-  network: string,
-): Promise<TokenPrice | null> {
-  if (!tokenId) return null;
-
-  try {
-    const url = `${BACKEND_API_BASE}/token/price`;
-
-    const response = await axios.get<TokenPrice>(url, {
-      params: { tokenId, network },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error(
-      `Error getting price for token ${tokenId} / ${network}`,
-      error,
-    );
-    return null;
-  }
-}
-
-/**
- * Get prices for multiple tokens in a single batch request
- * More efficient than making individual requests for each token
- */
-export async function getBatchTokenPrices(
-  tokenIds: string[],
-): Promise<TokenPrice[]> {
-  if (!tokenIds || tokenIds.length === 0) return [];
-
-  try {
-    const url = `${BACKEND_API_BASE}/token/price/batch`;
-
-    const response = await axios.get<TokenPrice[]>(url, {
-      params: { tokenIds: tokenIds.join(",") },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error("Error getting batch token prices", error);
-    return [];
   }
 }
 
@@ -463,11 +407,16 @@ export async function getTokenMetadata(
 ): Promise<TokenMetadata | null> {
   if (!tokenId || !network) return null;
 
+  let token = tokenId;
+  if (!token.startsWith("nep141:") && token.toLowerCase() !== "near") {
+    token = `nep141:${token}`;
+  }
+
   try {
     const url = `${BACKEND_API_BASE}/token/metadata`;
 
     const response = await axios.get<TokenMetadata>(url, {
-      params: { tokenId, network },
+      params: { tokenId: token, network },
     });
 
     return response.data;
@@ -678,6 +627,77 @@ export async function createTreasury(
     return response.data;
   } catch (error) {
     console.error("Error creating treasury", error);
+    throw error;
+  }
+}
+
+export interface NetworkInfo {
+  chainId: string;
+  chainName: string;
+  contractAddress?: string;
+  decimals: number;
+  bridge: string;
+}
+
+export interface TokenSearchResult {
+  defuseAssetId: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  icon: string;
+  originChainName: string;
+  unifiedAssetId: string;
+  networkInfo?: NetworkInfo;
+}
+
+export interface SearchTokensParams {
+  tokenIn?: string;
+  tokenOut?: string;
+  intentsTokenContractId?: string;
+  destinationNetwork?: string;
+}
+
+export interface SearchTokensResponse {
+  tokenIn?: TokenSearchResult;
+  tokenOut?: TokenSearchResult;
+}
+
+/**
+ * Search for intents tokens by symbol or name with network information
+ * Matches tokens similar to frontend ProposalDetailsPage logic
+ *
+ * @param params - Search parameters
+ * @param params.tokenIn - Token symbol or name to search for (input token)
+ * @param params.tokenOut - Token symbol or name to search for (output token)
+ * @param params.intentsTokenContractId - Contract ID to match for tokenIn network
+ * @param params.destinationNetwork - Chain ID to match for tokenOut network
+ * @returns Object with tokenIn and tokenOut search results
+ */
+export async function searchIntentsTokens(
+  params: SearchTokensParams
+): Promise<SearchTokensResponse> {
+  try {
+    const queryParams = new URLSearchParams();
+
+    if (params.tokenIn) {
+      queryParams.append("tokenIn", params.tokenIn);
+    }
+    if (params.tokenOut) {
+      queryParams.append("tokenOut", params.tokenOut);
+    }
+    if (params.intentsTokenContractId) {
+      queryParams.append("intentsTokenContractId", params.intentsTokenContractId);
+    }
+    if (params.destinationNetwork) {
+      queryParams.append("destinationNetwork", params.destinationNetwork);
+    }
+
+    const url = `${BACKEND_API_BASE}/intents/search-tokens?${queryParams.toString()}`;
+    const response = await axios.get<SearchTokensResponse>(url);
+
+    return response.data;
+  } catch (error) {
+    console.error("Error searching intents tokens", error);
     throw error;
   }
 }

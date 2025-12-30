@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT token_decimals\n        FROM counterparties\n        WHERE account_id = $1 AND account_type = 'ft_token'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_decimals",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "9c749e35f6a2765a350ec404a80a45bd8ee24873bd6c0f1d5900d252256458dc"
+}

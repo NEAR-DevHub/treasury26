@@ -130,6 +130,7 @@ export interface VestingData {
 
 export interface SwapRequestData {
     timeEstimate?: string;
+    intentsTokenContractId?: string;
     quoteSignature?: string;
     depositAddress: string;
     tokenIn: string;

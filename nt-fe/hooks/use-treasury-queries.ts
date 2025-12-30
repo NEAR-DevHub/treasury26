@@ -4,8 +4,6 @@ import {
   getTreasuryConfig,
   getTreasuryAssets,
   getTokenBalanceHistory,
-  getTokenPrice,
-  getBatchTokenPrices,
   getTokenBalance,
   getBatchTokenBalances,
   getTreasuryPolicy,
@@ -18,7 +16,9 @@ import {
   StorageDepositRequest,
   getBatchPayment,
   checkHandleUnused,
-  checkAccountExists
+  checkAccountExists,
+  searchIntentsTokens,
+  SearchTokensParams,
 } from "@/lib/api";
 
 /**
@@ -90,38 +90,6 @@ export function useTokenBalanceHistory(
     queryFn: () => getTokenBalanceHistory(accountId!, tokenId!),
     enabled: !!accountId && !!tokenId,
     staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-}
-
-/**
- * Query hook to get price for a single token
- * Fetches from backend which aggregates data from multiple price sources
- * Supports both NEAR and FT tokens
- */
-export function useTokenPrice(
-  tokenId: string | null | undefined,
-  network: string | null | undefined,
-) {
-  return useQuery({
-    queryKey: ["tokenPrice", tokenId, network],
-    queryFn: () => getTokenPrice(tokenId!, network!),
-    enabled: !!tokenId && !!network,
-    staleTime: 1000 * 60, // 1 minute (prices change frequently)
-    refetchInterval: 1000 * 60, // Refetch every minute
-  });
-}
-
-/**
- * Query hook to get prices for multiple tokens in a single batch request
- * More efficient than making individual requests for each token
- */
-export function useBatchTokenPrices(tokenIds: string[]) {
-  return useQuery({
-    queryKey: ["batchTokenPrices", tokenIds],
-    queryFn: () => getBatchTokenPrices(tokenIds),
-    enabled: tokenIds.length > 0,
-    staleTime: 1000 * 60, // 1 minute
-    refetchInterval: 1000 * 60, // Refetch every minute
   });
 }
 
@@ -308,5 +276,27 @@ export function useCheckAccountExists(accountId: string | null | undefined) {
     enabled: !!accountId && accountId.length > 0,
     staleTime: 1000 * 60, // 1 minute (account existence can change)
     retry: false, // Don't retry on failure
+  });
+}
+
+/**
+ * Query hook to search for intents tokens by symbol or name with network information
+ * Matches tokens and their network deployments for cross-chain swap proposals
+ *
+ * @param params - Search parameters
+ * @param params.tokenIn - Token symbol or name for input token (e.g., "USDC")
+ * @param params.tokenOut - Token symbol or name for output token (e.g., "NEAR")
+ * @param params.intentsTokenContractId - Contract ID to match for tokenIn network deployment
+ * @param params.destinationNetwork - Chain ID to match for tokenOut network (e.g., "near", "eth")
+ * @returns Object with tokenIn and tokenOut metadata including defuse asset IDs and network info
+ */
+export function useSearchIntentsTokens(params: SearchTokensParams) {
+  const hasParams = !!(params.tokenIn || params.tokenOut);
+
+  return useQuery({
+    queryKey: ["searchIntentsTokens", params],
+    queryFn: () => searchIntentsTokens(params),
+    enabled: hasParams,
+    staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
   });
 }

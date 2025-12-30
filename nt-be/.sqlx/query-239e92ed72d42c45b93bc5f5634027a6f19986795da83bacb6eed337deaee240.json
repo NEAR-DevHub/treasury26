@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT account_id, last_synced_at\n        FROM monitored_accounts\n        WHERE enabled = true\n        ORDER BY \n            CASE WHEN last_synced_at IS NULL THEN 0 ELSE 1 END,\n            last_synced_at ASC NULLS FIRST\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "account_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_synced_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "239e92ed72d42c45b93bc5f5634027a6f19986795da83bacb6eed337deaee240"
+}

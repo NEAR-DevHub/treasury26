@@ -48,24 +48,9 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
     const displayTokenData = locked && lockedTokenData ? lockedTokenData : selectedTokenData;
 
     const handleTokenClick = (aggregatedToken: AggregatedAsset) => {
-        if (aggregatedToken.isAggregated && aggregatedToken.networks.length > 1) {
-            // Multi-network token - go to step 2
-            setSelectedAggregatedToken(aggregatedToken);
-            setStep('network');
-        } else {
-            // Single network token - select directly
-            const tokenToSelect = aggregatedToken.isAggregated
-                ? aggregatedToken.networks[0]
-                : tokens.find(t => t.symbol === aggregatedToken.symbol);
-
-            if (tokenToSelect) {
-                setSelectedToken(tokenToSelect);
-                setOpen(false);
-                setSearch("");
-                setStep('token');
-                setSelectedAggregatedToken(null);
-            }
-        }
+        // Always go to step 2 to select network
+        setSelectedAggregatedToken(aggregatedToken);
+        setStep('network');
     };
 
     const handleNetworkClick = (network: TreasuryAsset) => {

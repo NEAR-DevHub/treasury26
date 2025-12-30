@@ -109,10 +109,6 @@ export function AssetsTable({ tokens }: Props) {
       columnHelper.display({
         id: "expand",
         cell: ({ row }) => {
-          const asset = row.original;
-          if (!asset.isAggregated) {
-            return null;
-          }
           return (
             <Button
               variant="ghost"
@@ -205,10 +201,9 @@ export function AssetsTable({ tokens }: Props) {
           <Fragment key={row.id}>
             <TableRow
               onClick={() => {
-                if (!row.original.isAggregated) return;
                 row.toggleExpanded();
               }}
-              className={row.original.isAggregated ? "cursor-pointer" : ""}
+              className="cursor-pointer"
             >
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id} className="p-4">
@@ -216,7 +211,7 @@ export function AssetsTable({ tokens }: Props) {
                 </TableCell>
               ))}
             </TableRow>
-            {row.getIsExpanded() && row.original.isAggregated && (
+            {row.getIsExpanded() && (
               <>
                 {row.original.networks.map((network, idx) => (
                   <TableRow key={`${row.id}-${idx}`} className="bg-muted/30">

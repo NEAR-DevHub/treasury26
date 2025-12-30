@@ -3,6 +3,7 @@ import { Separator } from "./ui/separator";
 import { Tooltip as TooltipPrimitive, TooltipContent as TooltipContentPrimitive, TooltipTrigger } from "./ui/tooltip";
 
 export interface TooltipProps {
+    disabled?: boolean;
     children: React.ReactNode;
     content: React.ReactNode;
     contentProps?: Omit<React.ComponentProps<typeof TooltipContent>, 'children'>;
@@ -19,10 +20,10 @@ export function TooltipContent({ children, className, ...props }: React.Componen
     );
 }
 
-export function Tooltip({ children, content, contentProps, triggerProps }: TooltipProps) {
+export function Tooltip({ children, content, contentProps, triggerProps, disabled }: TooltipProps) {
     const { className, ...contentPropsRest } = contentProps || {};
     return (
-        <TooltipPrimitive>
+        <TooltipPrimitive disableHoverableContent={disabled}>
             <TooltipTrigger asChild {...triggerProps}>
                 {children}
             </TooltipTrigger>

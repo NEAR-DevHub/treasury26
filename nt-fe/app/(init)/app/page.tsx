@@ -19,7 +19,8 @@ function GradientTitle() {
       }}
     >
       Cross-chain multisig security for managing digital assets
-    </p>);
+    </p>
+  );
 }
 
 export default function AppRedirect() {
@@ -38,9 +39,9 @@ export default function AppRedirect() {
   return (
     <div className="relative h-screen w-screen">
       <GradFlow config={{
-        color1: { r: 102, g: 237, b: 255 },
-        color2: { r: 0, g: 0, b: 0 },
-        color3: { r: 0, g: 255, b: 110 },
+        color1: { r: 102, g: 180, b: 255 },
+        color2: { r: 25, g: 25, b: 26 },
+        color3: { r: 0, g: 200, b: 110 },
         speed: 0.6,
         scale: 2,
         type: 'animated',

@@ -11,8 +11,8 @@ use std::sync::Arc;
 
 use crate::{
     AppState,
-    constants::{INTENTS_CONTRACT_ID, NEAR_ICON, REF_FINANCE_CONTRACT_ID, WRAP_NEAR_ICON},
-    handlers::intents::supported_tokens::{EnrichedTokenMetadata, fetch_enriched_tokens},
+    constants::{INTENTS_CONTRACT_ID, NEAR_ICON, REF_FINANCE_CONTRACT_ID},
+    handlers::token::{RefSdkToken, fetch_tokens_metadata},
 };
 
 #[derive(Deserialize)]
@@ -60,7 +60,7 @@ pub struct SimplifiedToken {
     pub decimals: u8,
     pub price: String,
     pub name: String,
-    pub icon: String,
+    pub icon: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -100,78 +100,30 @@ async fn fetch_whitelisted_tokens_from_rpc(
     Ok(whitelisted_tokens.data)
 }
 
-async fn fetch_ref_finance_tokens_from_api(
-    state: &Arc<AppState>,
-) -> Result<HashMap<String, TokenMetadata>, (StatusCode, String)> {
-    let ref_response = state
-        .http_client
-        .get("https://api.ref.finance/list-token")
-        .send()
-        .await
-        .map_err(|e| {
-            eprintln!("Error fetching ref finance tokens: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to fetch ref finance tokens".to_string(),
-            )
-        })?;
-
-    let all_ref_tokens: HashMap<String, TokenMetadata> =
-        ref_response.json().await.map_err(|e| {
-            eprintln!("Error parsing ref finance tokens: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to parse ref finance tokens".to_string(),
-            )
-        })?;
-
-    Ok(all_ref_tokens)
-}
-
 /// Fetches all Ref Finance tokens and filters them by whitelist
-async fn fetch_ref_finance_tokens(
+async fn fetch_whitelisted_tokens(
     state: &Arc<AppState>,
-) -> Result<HashMap<String, TokenMetadata>, (StatusCode, String)> {
-    let cache_key = "ref-finance-tokens";
+) -> Result<HashSet<String>, (StatusCode, String)> {
+    let cache_key = "ref-whitelisted-tokens";
 
     // Check cache first
     if let Some(cached_tokens) = state.cache.get(cache_key).await {
-        println!("🔁 Returning cached ref finance tokens");
-        let tokens: HashMap<String, TokenMetadata> = serde_json::from_value(cached_tokens)
-            .map_err(|e| {
-                eprintln!("Error deserializing cached tokens: {}", e);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to deserialize cached tokens".to_string(),
-                )
-            })?;
+        println!("🔁 Returning cached whitelisted tokens");
+        let tokens: HashSet<String> = serde_json::from_value(cached_tokens).map_err(|e| {
+            eprintln!("Error deserializing cached tokens: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to deserialize cached tokens".to_string(),
+            )
+        })?;
         return Ok(tokens);
     }
 
-    // Fetch whitelist and all tokens
-    let (whitelist_set, all_ref_tokens) = tokio::try_join!(
-        fetch_whitelisted_tokens_from_rpc(state),
-        fetch_ref_finance_tokens_from_api(state)
-    )
-    .map_err(|e| {
-        eprintln!("Error in concurrent requests: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to fetch data".to_string(),
-        )
-    })?;
-
-    // Filter tokens by whitelist
-    let mut filtered_tokens: HashMap<String, TokenMetadata> = all_ref_tokens
-        .into_iter()
-        .filter(|(token_id, _)| whitelist_set.contains(token_id.as_str()))
-        .collect();
-
-    // Add NEAR token
-    filtered_tokens.insert("near".to_string(), TokenMetadata::near());
+    // Fetch whitelist
+    let whitelist_set = fetch_whitelisted_tokens_from_rpc(state).await?;
 
     // Cache the result
-    let tokens_value = serde_json::to_value(&filtered_tokens).map_err(|e| {
+    let tokens_value = serde_json::to_value(&whitelist_set).map_err(|e| {
         eprintln!("Error serializing tokens: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -184,7 +136,7 @@ async fn fetch_ref_finance_tokens(
         .insert(cache_key.to_string(), tokens_value)
         .await;
 
-    Ok(filtered_tokens)
+    Ok(whitelist_set)
 }
 
 /// Fetches user balances from FastNear API
@@ -221,32 +173,6 @@ async fn fetch_user_balances(
     })
 }
 
-/// Fetches token prices from Ref Finance API
-async fn fetch_token_prices(
-    state: &Arc<AppState>,
-) -> Result<HashMap<String, serde_json::Value>, (StatusCode, String)> {
-    let response = state
-        .http_client
-        .get("https://api.ref.finance/list-token-price")
-        .send()
-        .await
-        .map_err(|e| {
-            eprintln!("Error fetching token prices: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to fetch token prices".to_string(),
-            )
-        })?;
-
-    response.json().await.map_err(|e| {
-        eprintln!("Error parsing prices: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to parse prices".to_string(),
-        )
-    })
-}
-
 /// Builds a map of token balances from FastNear response
 fn build_balance_map(user_balances: &FastNearResponse) -> HashMap<String, String> {
     let mut balance_map = HashMap::new();
@@ -264,7 +190,7 @@ fn get_token_balance(
     user_balances: &FastNearResponse,
     balance_map: &HashMap<String, String>,
 ) -> String {
-    if token_id == "near" {
+    if token_id == "nep141:wrap.near" {
         user_balances
             .state
             .as_ref()
@@ -275,27 +201,6 @@ fn get_token_balance(
             .get(token_id)
             .cloned()
             .unwrap_or_else(|| "0".to_string())
-    }
-}
-
-/// Gets the appropriate icon for a token
-fn get_token_icon(
-    token_id: &str,
-    metadata: &TokenMetadata,
-    metadata_icon: Option<&String>,
-) -> String {
-    // First check if we have metadata icon from enriched tokens
-    if let Some(icon) = metadata_icon {
-        return icon.clone();
-    }
-
-    // Fallback to hardcoded icons or contract metadata
-    if token_id == "near" {
-        NEAR_ICON.to_string()
-    } else if token_id == "wrap.near" {
-        WRAP_NEAR_ICON.to_string()
-    } else {
-        metadata.icon.clone()
     }
 }
 
@@ -362,120 +267,18 @@ async fn fetch_intents_balances(
     Ok(balances.data)
 }
 
-/// Builds the list of simplified tokens with balances and prices using enriched metadata
-fn build_simplified_tokens(
-    all_tokens: HashMap<String, TokenMetadata>,
-    user_balances: &FastNearResponse,
-    token_prices: &HashMap<String, serde_json::Value>,
-    enriched_tokens: &[EnrichedTokenMetadata],
-) -> Vec<SimplifiedToken> {
-    let balance_map = build_balance_map(user_balances);
-    let mut simplified_tokens = all_tokens
-        .into_iter()
-        .flat_map(|(token_id, token_metadata)| {
-            let price_key = if token_id == "near" {
-                "wrap.near"
-            } else {
-                &token_id
-            };
-
-            // Try to find enriched metadata by near_token_id
-            let enriched_meta = enriched_tokens.iter().find(|m| {
-                (m.near_token_id
-                    .as_ref()
-                    .map(|id| id == &token_id)
-                    .unwrap_or(false)
-                    || m.contract_address == token_id)
-                    && m.chain_name == "near"
-            });
-
-            // Use price from enriched metadata first, then fallback to ref finance prices
-            let price = enriched_meta
-                .and_then(|m| m.price.map(|p| p.to_string()))
-                .or_else(|| {
-                    token_prices
-                        .get(price_key)
-                        .and_then(|p| p.get("price"))
-                        .and_then(|p| p.as_str())
-                        .map(|p| p.to_string())
-                });
-
-            if let Some(price) = price {
-                let decimals = token_metadata.decimals;
-
-                // Use enriched metadata first, fallback to token_metadata
-                let symbol = enriched_meta
-                    .map(|m| m.symbol.clone())
-                    .unwrap_or_else(|| token_metadata.symbol.clone());
-                let name = enriched_meta.map(|m| m.name.clone()).unwrap_or_else(|| {
-                    if token_metadata.name.is_empty() {
-                        token_metadata.symbol.clone()
-                    } else {
-                        token_metadata.name.clone()
-                    }
-                });
-
-                let is_near = token_id == "near";
-                let id = if is_near {
-                    "near".to_string()
-                } else {
-                    format!("ft:{}", token_id)
-                };
-
-                Some(SimplifiedToken {
-                    id,
-                    contract_id: if is_near {
-                        None
-                    } else {
-                        Some(token_id.clone())
-                    },
-                    decimals,
-                    balance: get_token_balance(&token_id, user_balances, &balance_map),
-                    price,
-                    symbol,
-                    name,
-                    icon: get_token_icon(
-                        &token_id,
-                        &token_metadata,
-                        enriched_meta.and_then(|m| m.icon.as_ref()),
-                    ),
-                    network: "near".to_string(),
-                    residency: if is_near {
-                        TokenResidency::Near
-                    } else {
-                        TokenResidency::Ft
-                    },
-                })
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-
-    // Sort by parsed balance (highest first)
-    simplified_tokens.sort_by(|a, b| {
-        let a_val: u128 = a.balance.parse().unwrap_or(0);
-        let b_val: u128 = b.balance.parse().unwrap_or(0);
-        b_val
-            .partial_cmp(&a_val)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    simplified_tokens
-}
-
-/// Builds intents tokens from enriched metadata
+/// Builds intents tokens from token metadata
 fn build_intents_tokens(
     tokens_with_balances: Vec<(String, String)>,
-    enriched_tokens: &[EnrichedTokenMetadata],
+    tokens_metadata: &[RefSdkToken],
 ) -> Vec<SimplifiedToken> {
-    // Build simplified tokens with metadata
-    let mut simplified_tokens: Vec<SimplifiedToken> = tokens_with_balances
+    tokens_with_balances
         .into_iter()
         .filter_map(|(token_id, balance)| {
-            let metadata = enriched_tokens
+            // Find metadata by matching defuse_asset_id with the token_id
+            let metadata = tokens_metadata
                 .iter()
-                .find(|t| t.intents_token_id.as_ref() == Some(&token_id))?;
+                .find(|t| t.defuse_asset_id == token_id)?;
 
             // Extract contract_id (remove prefix like "nep141:" if present)
             let contract_id = if token_id.starts_with("nep141:") {
@@ -484,44 +287,23 @@ fn build_intents_tokens(
                 token_id.clone()
             };
 
-            // Use price from enriched metadata, or "0" as fallback
-            let price = metadata
-                .price
-                .map(|p| p.to_string())
-                .unwrap_or_else(|| "0".to_string());
-
-            let symbol = metadata.symbol.clone();
-            let name = metadata.name.clone();
-            let icon = metadata
-                .icon
-                .clone()
-                .unwrap_or_else(|| NEAR_ICON.to_string());
-
             Some(SimplifiedToken {
-                id: format!("intents:{}", metadata.defuse_asset_id),
+                id: metadata.defuse_asset_id.clone(),
                 contract_id: Some(contract_id),
                 decimals: metadata.decimals,
                 balance,
-                price,
-                symbol,
-                name,
-                icon,
+                price: metadata
+                    .price
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "0".to_string()),
+                symbol: metadata.symbol.clone(),
+                name: metadata.name.clone(),
+                icon: metadata.icon.clone(),
                 network: metadata.chain_name.clone(),
                 residency: TokenResidency::Intents,
             })
         })
-        .collect();
-
-    // Sort by parsed balance (highest first)
-    simplified_tokens.sort_by(|a, b| {
-        let a_val: u128 = a.balance.parse().unwrap_or(0);
-        let b_val: u128 = b.balance.parse().unwrap_or(0);
-        b_val
-            .partial_cmp(&a_val)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    simplified_tokens
+        .collect()
 }
 
 pub async fn get_user_assets(
@@ -542,16 +324,12 @@ pub async fn get_user_assets(
         return Ok((StatusCode::OK, Json(cached_tokens)));
     }
 
-    // Fetch enriched metadata once for all tokens
-    let enriched_tokens_future = fetch_enriched_tokens(&state);
-
     // Fetch REF Finance data
     let ref_data_future = async {
-        let tokens_future = fetch_ref_finance_tokens(&state);
+        let tokens_future = fetch_whitelisted_tokens(&state);
         let balances_future = fetch_user_balances(&state, account);
-        let prices_future = fetch_token_prices(&state);
 
-        tokio::try_join!(tokens_future, balances_future, prices_future)
+        tokio::try_join!(tokens_future, balances_future)
     };
 
     // Fetch intents balances
@@ -574,31 +352,94 @@ pub async fn get_user_assets(
     };
 
     // Fetch all data concurrently
-    let (enriched_tokens_result, ref_data_result, intents_data_result) =
-        tokio::join!(enriched_tokens_future, ref_data_future, intents_data_future);
+    let (ref_data_result, intents_data_result) = tokio::join!(ref_data_future, intents_data_future);
 
-    // Handle enriched tokens result
-    let enriched_tokens = enriched_tokens_result.map_err(|e| {
-        eprintln!("Error fetching enriched tokens: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to fetch enriched tokens: {}", e),
-        )
-    })?;
+    // Get whitelisted tokens and user balances
+    let (whitelist_set, user_balances) = ref_data_result?;
 
-    // Build REF Finance tokens with enriched metadata
-    let (all_tokens, user_balances, token_prices) = ref_data_result?;
-    let mut all_simplified_tokens =
-        build_simplified_tokens(all_tokens, &user_balances, &token_prices, &enriched_tokens);
-
-    // Build intents tokens with enriched metadata
+    // Get intents balances (already filtered to non-zero)
     let intents_balances = intents_data_result.unwrap_or_else(|e| {
         eprintln!("Warning: Failed to fetch intents tokens: {:?}", e);
         Vec::new()
     });
 
-    let intents_tokens = build_intents_tokens(intents_balances, &enriched_tokens);
+    // Build balance map and filter REF Finance tokens to only those with positive balances
+    let balance_map = build_balance_map(&user_balances);
+    let ref_tokens_with_balances: Vec<(String, String)> = whitelist_set
+        .into_iter()
+        .filter_map(|token_id| {
+            let balance = get_token_balance(&token_id, &user_balances, &balance_map);
+            if balance != "0" {
+                Some((token_id, balance))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Collect all unique token IDs that have positive balances
+    let mut token_ids_to_fetch: Vec<String> = ref_tokens_with_balances
+        .iter()
+        .map(|(id, _)| format!("nep141:{}", id.clone()))
+        .collect();
+    token_ids_to_fetch.extend(intents_balances.iter().map(|(id, _)| id.clone()));
+    token_ids_to_fetch.push("nep141:wrap.near".to_string());
+
+    // Fetch metadata for only tokens with positive balances in a single batch request
+    let tokens_metadata = if !token_ids_to_fetch.is_empty() {
+        fetch_tokens_metadata(&state, &token_ids_to_fetch).await?
+    } else {
+        Vec::new()
+    };
+
+    let near_token_meta = tokens_metadata.last().cloned().unwrap();
+
+    // Build simplified tokens for REF Finance tokens
+    let mut all_simplified_tokens: Vec<SimplifiedToken> = ref_tokens_with_balances
+        .into_iter()
+        .zip(token_ids_to_fetch.into_iter())
+        .filter_map(|((token_id, balance), token_id_to_fetch)| {
+            let token_meta = tokens_metadata
+                .iter()
+                .find(|m| m.defuse_asset_id == token_id_to_fetch)?;
+
+            let price = token_meta.price.unwrap_or(0.0).to_string();
+
+            Some(SimplifiedToken {
+                id: token_id.clone(),
+                contract_id: Some(token_id),
+                decimals: token_meta.decimals,
+                balance,
+                price,
+                symbol: token_meta.symbol.clone(),
+                name: token_meta.name.clone(),
+                icon: token_meta.icon.clone(),
+                network: "near".to_string(),
+                residency: TokenResidency::Ft,
+            })
+        })
+        .collect();
+
+    // Build intents tokens with metadata
+    let intents_tokens = build_intents_tokens(intents_balances, &tokens_metadata);
     all_simplified_tokens.extend(intents_tokens);
+
+    all_simplified_tokens.push(SimplifiedToken {
+        id: "near".to_string(),
+        contract_id: None,
+        decimals: near_token_meta.decimals,
+        balance: user_balances
+            .state
+            .as_ref()
+            .map(|s| s.balance.clone())
+            .unwrap_or_else(|| "0".to_string()),
+        price: near_token_meta.price.unwrap_or(0.0).to_string(),
+        symbol: near_token_meta.symbol.clone(),
+        name: near_token_meta.name.clone(),
+        icon: near_token_meta.icon.clone(),
+        network: near_token_meta.chain_name.clone(),
+        residency: TokenResidency::Near,
+    });
 
     // Sort combined list by balance (highest first)
     all_simplified_tokens = all_simplified_tokens

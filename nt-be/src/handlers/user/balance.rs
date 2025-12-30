@@ -4,11 +4,11 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use near_api::{AccountId, Tokens};
+use near_api::{AccountId, Contract, Tokens, types::json::U128};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::AppState;
+use crate::{AppState, constants::INTENTS_CONTRACT_ID};
 
 #[derive(Deserialize)]
 pub struct TokenBalanceQuery {
@@ -74,6 +74,55 @@ async fn fetch_ft_balance(
     })
 }
 
+pub async fn fetch_intents_balance(
+    state: &Arc<AppState>,
+    account_id: AccountId,
+    token_id: String,
+) -> Result<TokenBalanceResponse, String> {
+    let balance: U128 = Contract(INTENTS_CONTRACT_ID.into())
+        .call_function(
+            "mt_balance_of",
+            serde_json::json!({
+                "account_id": account_id,
+                "token_id": token_id
+            }),
+        )
+        .read_only()
+        .fetch_from(&state.network)
+        .await
+        .map_err(|e| {
+            eprintln!(
+                "Error fetching Intents balance for {} on {}: {}",
+                account_id, token_id, e
+            );
+            format!("Failed to fetch token balance: {}", e)
+        })?
+        .data;
+
+    let prefix_less_token_id = token_id
+        .strip_prefix("nep141:")
+        .unwrap_or(&token_id)
+        .parse::<AccountId>()
+        .map_err(|e| {
+            eprintln!("Invalid token ID '{}': {}", token_id, e);
+            format!("Invalid token ID: {}", e)
+        })?;
+    let metadata = Tokens::ft_metadata(prefix_less_token_id)
+        .fetch_from(&state.network)
+        .await
+        .map_err(|e| {
+            eprintln!("Error fetching Intents metadata for {}: {}", token_id, e);
+            format!("Failed to fetch metadata: {}", e)
+        })?;
+
+    Ok(TokenBalanceResponse {
+        account_id: account_id.to_string(),
+        token_id: token_id.to_string(),
+        balance: balance.0.to_string(),
+        decimals: metadata.data.decimals,
+    })
+}
+
 /// Main handler for token balance endpoint
 pub async fn get_token_balance(
     State(state): State<Arc<AppState>>,
@@ -100,6 +149,13 @@ pub async fn get_token_balance(
             eprintln!("Error fetching NEAR balance: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, e)
         })?
+    } else if token_id.starts_with("nep141:") {
+        fetch_intents_balance(&state, account_id, token_id.to_string())
+            .await
+            .map_err(|e| {
+                eprintln!("Error fetching Intents balance: {}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, e)
+            })?
     } else {
         // Parse token_id as AccountId
         let token_account_id: AccountId = token_id.parse().map_err(|e| {

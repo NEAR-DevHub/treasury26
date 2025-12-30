@@ -6,12 +6,19 @@ import { useMemo } from "react";
 import Big from "big.js";
 import { Address } from "@/components/address";
 import { Rate } from "@/components/rate";
+import { useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
 
 interface SwapExpandedProps {
   data: SwapRequestData;
 }
 
 export function SwapExpanded({ data }: SwapExpandedProps) {
+  const { data: tokensData } = useSearchIntentsTokens({
+    tokenIn: data.tokenIn,
+    tokenOut: data.tokenOut,
+    intentsTokenContractId: data.intentsTokenContractId,
+    destinationNetwork: data.destinationNetwork,
+  });
   const minimumReceived = useMemo(() => {
     return Big(data.amountOut).mul(Big(100 - Number(data.slippage || 0))).div(100);
   }, [data.amountOut, data.slippage]);
@@ -19,15 +26,15 @@ export function SwapExpanded({ data }: SwapExpandedProps) {
   const infoItems: InfoItem[] = [
     {
       label: "Send",
-      value: <Amount amount={data.amountIn} tokenId={data.tokenIn} network={data.sourceNetwork} showNetwork={true} />
+      value: <Amount amount={data.amountIn} tokenId={tokensData?.tokenIn?.defuseAssetId || data.tokenIn} network={data.sourceNetwork} showNetwork={true} />
     },
     {
       label: "Receive",
-      value: <Amount amountWithDecimals={data.amountOut} tokenId={data.tokenOut} network={data.destinationNetwork} showNetwork={true} />
+      value: <Amount amountWithDecimals={data.amountOut} tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} network={data.destinationNetwork} showNetwork={true} />
     },
     {
       label: "Rate",
-      value: <Rate tokenIn={data.tokenIn} networkIn={data.sourceNetwork} tokenOut={data.tokenOut} networkOut={data.destinationNetwork} amountIn={Big(data.amountIn)} amountOutWithDecimals={data.amountOut} />,
+      value: <Rate tokenIn={tokensData?.tokenIn?.unifiedAssetId || data.tokenIn} networkIn={data.sourceNetwork} tokenOut={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} networkOut={data.destinationNetwork} amountIn={Big(data.amountIn)} amountOutWithDecimals={data.amountOut} />,
     }
   ];
 

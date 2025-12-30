@@ -17,6 +17,7 @@ export function LargeInput({ className, search, borderless, suffix, ...props }: 
                 </div>
             )}
             <Input
+                autoComplete="off"
                 {...props}
                 className={cn("text-xl! h-12 shrink-0 p-0 bg-transparent!", search && "pl-10", suffix && "pr-2", borderless && "border-none focus-visible:ring-0 focus-visible:ring-offset-0", className)}
             />

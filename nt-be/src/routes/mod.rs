@@ -73,16 +73,8 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         )
         // Token endpoints
         .route(
-            "/api/token/price",
-            get(handlers::token::price::get_token_price),
-        )
-        .route(
             "/api/token/metadata",
             get(handlers::token::metadata::get_token_metadata),
-        )
-        .route(
-            "/api/token/price/batch",
-            get(handlers::token::price::get_batch_token_prices),
         )
         .route(
             "/api/token/storage-deposit/is-registered",
@@ -160,11 +152,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/bulkpayment/get",
             get(handlers::bulkpayment::get::get_batch_payment),
         )
-        // Intents endpoints
-        .route(
-            "/api/intents/supported-tokens",
-            get(handlers::intents::supported_tokens::get_supported_tokens),
-        )
         // Monitored accounts endpoints
         .route(
             "/api/monitored-accounts",
@@ -175,6 +162,11 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/monitored-accounts/{account_id}",
             patch(monitored_accounts::update_monitored_account)
                 .delete(monitored_accounts::delete_monitored_account),
+        )
+        // Intents endpoints
+        .route(
+            "/api/intents/search-tokens",
+            get(handlers::intents::search_tokens::search_tokens),
         )
         // Proxy endpoints - catch-all for external API
         .route(

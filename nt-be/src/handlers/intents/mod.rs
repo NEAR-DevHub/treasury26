@@ -1,1 +1,1 @@
-pub mod supported_tokens;
+pub mod search_tokens;
