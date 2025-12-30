@@ -1,13 +1,19 @@
 import { cn } from "@/lib/utils";
 import { Button as ShadcnButton, buttonVariants } from "./ui/button";
 import { VariantProps } from "class-variance-authority";
+import { Tooltip } from "./tooltip";
 
 interface ButtonProps extends React.ComponentProps<typeof ShadcnButton> {
     variant?: VariantProps<typeof buttonVariants>["variant"];
     size?: VariantProps<typeof buttonVariants>["size"];
 }
 
-export function Button({ variant, className: classNameOverride, size, ...props }: ButtonProps) {
+interface ButtonPropsWithTooltip extends ButtonProps {
+    tooltipContent?: React.ReactNode;
+}
+
+export function Button({ variant, className: classNameOverride, size, tooltipContent, ...props }: ButtonPropsWithTooltip) {
+    const { disabled } = props;
     let className = "";
     switch (variant ?? "default") {
         case "link":
@@ -29,6 +35,11 @@ export function Button({ variant, className: classNameOverride, size, ...props }
         default:
             sizeClassName = "py-[5.5px] px-5 gap-1.5 rounded-[8px]";
     }
+    const button = <ShadcnButton variant={variant} className={cn(className, sizeClassName, classNameOverride)} size={size} {...props} />;
 
-    return <ShadcnButton variant={variant} className={cn(className, sizeClassName, classNameOverride)} size={size} {...props} />;
+    if (tooltipContent) {
+        return <Tooltip content={tooltipContent} triggerProps={{ asChild: !disabled }}>{button}</Tooltip>;
+    }
+
+    return button;
 };

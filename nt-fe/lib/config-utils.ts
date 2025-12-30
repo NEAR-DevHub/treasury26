@@ -218,3 +218,23 @@ function checkRoleMembership(roleKind: RoleKind, accountId: string): boolean {
   // Member role requires token balance check - can't determine from policy alone
   return false;
 }
+
+/**
+ * Check if a user has permission to create proposals (requestor permissions)
+ *
+ * @param policy - The DAO's policy configuration
+ * @param accountId - The user's account ID
+ * @returns true if the user has either "call:AddProposal" or "transfer:AddProposal" permissions
+ */
+export function isRequestor(
+  policy: Policy | null | undefined,
+  accountId: string
+): boolean {
+  if (!policy || !accountId) return false;
+
+  // Check for call:AddProposal or transfer:AddProposal permissions
+  return (
+    hasPermission(policy, accountId, "call", "AddProposal") ||
+    hasPermission(policy, accountId, "transfer", "AddProposal")
+  );
+}
