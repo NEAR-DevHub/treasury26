@@ -13,7 +13,7 @@ import { Database } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
-import { useUserTreasuries } from "@/hooks/use-treasury-queries";
+import { useUserTreasuries, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { Button } from "./button";
 
 export function TreasurySelector() {
@@ -23,16 +23,38 @@ export function TreasurySelector() {
   const { setSelectedTreasury, treasury } = useTreasury();
   const { accountId } = useNear();
 
-  const { data: treasuries = [], isLoading } = useUserTreasuries(accountId);
-
   const treasuryId = params?.treasuryId as string | undefined;
+
+  const { data: treasuries = [], isLoading: isLoadingTreasuries } = useUserTreasuries(accountId);
   const currentTreasury = treasuries.find(t => t.daoId === treasuryId);
+
+  // Fetch config for treasury from URL if it's not in user's list
+  const { data: guestTreasuryConfig, isLoading: isLoadingGuestConfig } = useTreasuryConfig(
+    treasuryId && !currentTreasury ? treasuryId : null
+  );
+
+  const isLoading = isLoadingTreasuries || isLoadingGuestConfig;
+  const isGuestTreasury = treasuryId && !currentTreasury && guestTreasuryConfig;
 
   React.useEffect(() => {
     if (treasuryId) {
-      setSelectedTreasury({ daoId: treasuryId, name: currentTreasury?.config?.name || "", flagLogo: currentTreasury?.config?.metadata?.flagLogo || "" });
+      if (currentTreasury) {
+        // User owns this treasury
+        setSelectedTreasury({
+          daoId: treasuryId,
+          name: currentTreasury.config?.name || "",
+          flagLogo: currentTreasury.config?.metadata?.flagLogo || ""
+        });
+      } else if (guestTreasuryConfig) {
+        // Guest viewing a treasury
+        setSelectedTreasury({
+          daoId: treasuryId,
+          name: guestTreasuryConfig.config?.name || "",
+          flagLogo: guestTreasuryConfig.config?.metadata?.flagLogo || ""
+        });
+      }
     }
-  }, [treasuryId, setSelectedTreasury]);
+  }, [treasuryId, currentTreasury, guestTreasuryConfig, setSelectedTreasury]);
 
   React.useEffect(() => {
     if (treasuries.length > 0 && !treasuryId) {
@@ -79,6 +101,19 @@ export function TreasurySelector() {
       <Database className="size-5 text-muted-foreground" />
     </div>;
   }
+
+  const displayName = currentTreasury
+    ? getTreasuryName(currentTreasury)
+    : guestTreasuryConfig
+    ? guestTreasuryConfig.config?.name || guestTreasuryConfig.daoId
+    : "Select treasury";
+
+  const displaySubtext = currentTreasury
+    ? currentTreasury.daoId
+    : isGuestTreasury
+    ? "Guest view"
+    : undefined;
+
   return (
     <Select value={treasuryId} onValueChange={handleTreasuryChange} >
       <SelectTrigger className="w-full px-3 py-1.5 h-fit border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted!">
@@ -86,11 +121,11 @@ export function TreasurySelector() {
           <Logo logo={treasury?.flagLogo} />
           <div className="flex flex-col items-start min-w-0">
             <span className="text-xs font-medium truncate max-w-full ">
-              {currentTreasury ? getTreasuryName(currentTreasury) : "Select treasury"}
+              {displayName}
             </span>
-            {currentTreasury && (
+            {displaySubtext && (
               <span className="text-xs text-muted-foreground truncate max-w-full font-medium">
-                {currentTreasury.daoId}
+                {displaySubtext}
               </span>
             )}
           </div>
