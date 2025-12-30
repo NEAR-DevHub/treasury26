@@ -3,36 +3,26 @@
 //! Handles storage and retrieval of counterparty metadata, including FT token information
 //! for decimal conversion.
 
-use near_api::{AccountId, Contract, NetworkConfig};
-use serde::{Deserialize, Serialize};
+use near_api::types::ft::FungibleTokenMetadata;
+use near_api::{AccountId, NetworkConfig, Tokens};
 use sqlx::PgPool;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FtMetadata {
-    pub spec: String,
-    pub name: String,
-    pub symbol: String,
-    pub icon: Option<String>,
-    pub reference: Option<String>,
-    pub reference_hash: Option<String>,
-    pub decimals: u8,
-}
+// Re-export FungibleTokenMetadata as FtMetadata for backwards compatibility
+pub type FtMetadata = FungibleTokenMetadata;
 
-/// Query FT metadata from a contract
+/// Query FT metadata from a contract using near-api's Tokens API
+///
+/// Uses `Tokens::ft_metadata` which is the recommended approach from near-api-rs.
+/// See: https://github.com/NEAR-DevHub/treasury26/pull/17#discussion_r1900494695
 pub async fn query_ft_metadata(
     network: &NetworkConfig,
     token_contract: &str,
 ) -> Result<FtMetadata, Box<dyn std::error::Error>> {
     let account_id = AccountId::from_str(token_contract)?;
-    let contract = Contract(account_id);
 
-    // Call ft_metadata view function and get raw string response
-    let response: near_api::Data<FtMetadata> = contract
-        .call_function("ft_metadata", serde_json::json!({}))
-        .read_only()
-        .fetch_from(network)
-        .await?;
+    // Use Tokens::ft_metadata for cleaner API and built-in FungibleTokenMetadata type
+    let response = Tokens::ft_metadata(account_id).fetch_from(network).await?;
 
     Ok(response.data)
 }

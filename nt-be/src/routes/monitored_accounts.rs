@@ -45,6 +45,17 @@ pub async fn add_monitored_account(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<AddAccountRequest>,
 ) -> Result<Json<MonitoredAccount>, (StatusCode, Json<Value>)> {
+    // Validate that this is a sputnik-dao account to prevent abuse
+    if !payload.account_id.ends_with(".sputnik-dao.near") {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Only sputnik-dao accounts can be monitored",
+                "message": "Account ID must end with '.sputnik-dao.near'"
+            })),
+        ));
+    }
+
     let account = sqlx::query_as::<_, MonitoredAccount>(
         r#"
         INSERT INTO monitored_accounts (account_id, enabled)

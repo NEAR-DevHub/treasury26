@@ -7,7 +7,7 @@
 use sqlx::PgPool;
 
 #[cfg(test)]
-use super::gap_filler::block_timestamp_to_datetime;
+use super::utils::block_timestamp_to_datetime;
 
 /// Represents a gap in the balance change chain
 #[derive(Debug, Clone, sqlx::FromRow)]

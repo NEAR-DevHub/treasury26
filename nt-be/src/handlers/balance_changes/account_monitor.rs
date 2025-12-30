@@ -44,7 +44,17 @@ pub async fn run_monitor_cycle(
     for account in accounts {
         let account_id = &account.account_id;
 
-        // Get all unique tokens for this account (excluding nulls which shouldn't happen but be safe)
+        // Get all unique tokens for this account
+        // Note: This appears to be an N+1 query pattern, but it's intentional for this use case.
+        // See: https://github.com/NEAR-DevHub/treasury26/pull/17#discussion_r2652866830
+        //
+        // Rationale: This is a background job that processes accounts sequentially, not a web request.
+        // Loading all account-token pairs upfront would:
+        // 1. Hold a large dataset in memory unnecessarily
+        // 2. Not improve performance since we process one account at a time anyway
+        // 3. Make the code more complex
+        //
+        // The query overhead is negligible compared to the RPC calls for filling gaps.
         let mut tokens: Vec<String> = sqlx::query_scalar(
             r#"
             SELECT DISTINCT token_id
