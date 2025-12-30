@@ -5,5 +5,5 @@ export const NEAR_TOKEN = {
     address: "near",
     network: "near",
     decimals: 24,
-    icon: "https://img.rhea.finance/images/NEARIcon.png",
+    icon: "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
 } satisfies Token

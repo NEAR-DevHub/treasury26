@@ -180,37 +180,17 @@ export function InlineNextButton({ handleNext, text, loading = false, onClick }:
     );
 }
 
-interface ReviewStepProps<TFieldValues extends FieldValues = FieldValues> {
-    control: Control<TFieldValues>;
+interface ReviewStepProps {
     reviewingTitle: string;
     children: React.ReactNode;
-    approveWithMyVoteName?: Path<TFieldValues>;
-    proposalKind: ProposalPermissionKind;
     handleBack?: () => void;
 }
 
-export function ReviewStep<TFieldValues extends FieldValues = FieldValues>({ control, reviewingTitle, children, approveWithMyVoteName, proposalKind, handleBack }: ReviewStepProps<TFieldValues>) {
-    const { selectedTreasury } = useTreasury();
-    const { accountId } = useNear();
-    const { data: policy } = useTreasuryPolicy(selectedTreasury);
-
-    const { approverAccounts } = approveWithMyVoteName && policy ? getApproversAndThreshold(policy, accountId ?? "", proposalKind, false) : { approverAccounts: [] as string[] };
-
+export function ReviewStep({ reviewingTitle, children, handleBack }: ReviewStepProps) {
     return (
         <div className="flex flex-col gap-4">
             <StepperHeader title={reviewingTitle} handleBack={handleBack} />
             {children}
-            {approveWithMyVoteName && approverAccounts.includes(accountId ?? "") && (
-                <FormField control={control} name={approveWithMyVoteName} render={({ field }) => (
-                    <div className="flex items-center gap-4">
-                        <Switch id="approveWithMyVote" checked={field.value} onCheckedChange={field.onChange} />
-                        <div className="flex flex-col gap-1">
-                            <FormLabel htmlFor="approveWithMyVote" className="font-semibold">Approve with my vote</FormLabel>
-                            <FormDescription className="text-xs">This will count as the first approval for this payment request</FormDescription>
-                        </div>
-                    </div>
-                )} />
-            )}
         </div>
     );
 }

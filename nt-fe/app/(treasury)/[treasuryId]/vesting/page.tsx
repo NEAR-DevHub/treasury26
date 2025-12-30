@@ -41,7 +41,6 @@ const vestingFormSchema = z.object({
     allowEarn: z.boolean().optional(),
     allowCancel: z.boolean().optional(),
   }),
-  approveWithMyVote: z.boolean()
 }).superRefine((data, ctx) => {
   if (data.vesting.address === data.vesting.token.address) {
     ctx.addIssue({
@@ -197,7 +196,7 @@ function Step3({ handleBack }: StepProps) {
 
   return (
     <PageCard>
-      <ReviewStep control={form.control} reviewingTitle="Review Your Vesting Schedule" approveWithMyVoteName="approveWithMyVote" proposalKind="call" handleBack={handleBack}>
+      <ReviewStep reviewingTitle="Review Your Vesting Schedule" handleBack={handleBack}>
         <div className="flex flex-col gap-6">
           <SendingTotal total={Number(vesting.amount)} token={vesting.token}>
             <p>≈ ${estimatedUSDValue.toLocaleString('en-US', {
@@ -233,7 +232,6 @@ export default function VestingPage() {
         allowEarn: false,
         token: NEAR_TOKEN
       },
-      approveWithMyVote: false,
     },
   });
 

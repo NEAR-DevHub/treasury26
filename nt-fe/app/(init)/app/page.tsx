@@ -11,8 +11,6 @@ import Link from "next/link";
 
 function GradientTitle() {
   return (
-    // <div className="w-full h-fit bg-green-500 bg-blend-overlay backdrop-blur-[104px]"
-    // >
     <p
       className="text-[30px] lg:text-5xl tracking-[-1%] leading-[28px] lg:leading-[48px] text-center lg:text-left w-full h-fit font-medium text-white backdrop-blur-[10px] mix-blend-overlay"
       style={{
@@ -22,7 +20,6 @@ function GradientTitle() {
     >
       Cross-chain multisig security for managing digital assets
     </p>
-    // </div >);
   );
 }
 
