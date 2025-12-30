@@ -138,7 +138,7 @@ export async function getTreasuryAssets(
         contractId: token.contractId,
         residency: token.residency,
         network: token.network,
-        symbol: token.symbol,
+        symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
         decimals: token.decimals,
         balance: Big(token.balance),
         balanceUSD,

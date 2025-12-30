@@ -12,7 +12,7 @@ use std::sync::Arc;
 use crate::{
     AppState,
     constants::{INTENTS_CONTRACT_ID, NEAR_ICON, REF_FINANCE_CONTRACT_ID},
-    handlers::token::{fetch_tokens_metadata, RefSdkToken},
+    handlers::token::{RefSdkToken, fetch_tokens_metadata},
 };
 
 #[derive(Deserialize)]
@@ -288,11 +288,14 @@ fn build_intents_tokens(
             };
 
             Some(SimplifiedToken {
-                id: format!("intents.near.{}", metadata.defuse_asset_id),
+                id: metadata.defuse_asset_id.clone(),
                 contract_id: Some(contract_id),
                 decimals: metadata.decimals,
                 balance,
-                price: metadata.price.map(|p| p.to_string()).unwrap_or_else(|| "0".to_string()),
+                price: metadata
+                    .price
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "0".to_string()),
                 symbol: metadata.symbol.clone(),
                 name: metadata.name.clone(),
                 icon: metadata.icon.clone(),
@@ -349,8 +352,7 @@ pub async fn get_user_assets(
     };
 
     // Fetch all data concurrently
-    let (ref_data_result, intents_data_result) =
-        tokio::join!(ref_data_future, intents_data_future);
+    let (ref_data_result, intents_data_result) = tokio::join!(ref_data_future, intents_data_future);
 
     // Get whitelisted tokens and user balances
     let (whitelist_set, user_balances) = ref_data_result?;
@@ -426,7 +428,11 @@ pub async fn get_user_assets(
         id: "near".to_string(),
         contract_id: None,
         decimals: near_token_meta.decimals,
-        balance: user_balances.state.as_ref().map(|s| s.balance.clone()).unwrap_or_else(|| "0".to_string()),
+        balance: user_balances
+            .state
+            .as_ref()
+            .map(|s| s.balance.clone())
+            .unwrap_or_else(|| "0".to_string()),
         price: near_token_meta.price.unwrap_or(0.0).to_string(),
         symbol: near_token_meta.symbol.clone(),
         name: near_token_meta.name.clone(),

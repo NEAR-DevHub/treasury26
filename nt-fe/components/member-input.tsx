@@ -88,7 +88,6 @@ export function MemberInput<
                                         ) : (
                                             <div className="flex gap-1">
                                                 {ROLES.filter(r => field.value.includes(r.id)).map(r => {
-                                                    console.log(r);
                                                     return (
                                                         <Tooltip key={r.id} content={r.description} triggerProps={{ asChild: false }}>
                                                             <Pill title={r.title} variant="secondary" />

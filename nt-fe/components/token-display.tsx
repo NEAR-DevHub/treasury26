@@ -22,8 +22,8 @@ export const NetworkDisplay = ({ asset }: { asset: TreasuryAsset }) => {
     return (
         <div className="flex items-center gap-3">
             <img src={asset.icon} alt={asset.symbol} className="size-6 rounded-full" />
-            <div className="text-sm font-medium flex items-center gap-2">
-                <span className="uppercase">{network}</span>
+            <div className="flex flex-col text-left">
+                <span className="font-semibold capitalize">{network}</span>
                 <span className="text-xs text-muted-foreground">
                     {type}
                 </span>

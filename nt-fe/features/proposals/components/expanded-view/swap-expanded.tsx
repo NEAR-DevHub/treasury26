@@ -13,14 +13,12 @@ interface SwapExpandedProps {
 }
 
 export function SwapExpanded({ data }: SwapExpandedProps) {
-  console.log(data);
   const { data: tokensData } = useSearchIntentsTokens({
     tokenIn: data.tokenIn,
     tokenOut: data.tokenOut,
     intentsTokenContractId: data.intentsTokenContractId,
     destinationNetwork: data.destinationNetwork,
   });
-  console.log(tokensData);
   const minimumReceived = useMemo(() => {
     return Big(data.amountOut).mul(Big(100 - Number(data.slippage || 0))).div(100);
   }, [data.amountOut, data.slippage]);
