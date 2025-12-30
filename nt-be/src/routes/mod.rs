@@ -64,16 +64,8 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         )
         // Token endpoints
         .route(
-            "/api/token/price",
-            get(handlers::token::price::get_token_price),
-        )
-        .route(
             "/api/token/metadata",
             get(handlers::token::metadata::get_token_metadata),
-        )
-        .route(
-            "/api/token/price/batch",
-            get(handlers::token::price::get_batch_token_prices),
         )
         .route(
             "/api/token/storage-deposit/is-registered",

@@ -2,9 +2,9 @@
 
 import { useMemo } from "react";
 import { Button } from "./button";
-import { useTokenBalance, useTokenPrice } from "@/hooks/use-treasury-queries";
+import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
-import { cn, formatBalance } from "@/lib/utils";
+import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import TokenSelect from "./token-select";
 import { LargeInput } from "./large-input";
 import { InputBlock } from "./input-block";
@@ -50,14 +50,14 @@ export function TokenInput<
     const token = useWatch({ control, name: tokenName }) as Token;
 
     const { data: tokenBalanceData, isLoading: isBalanceLoading } = useTokenBalance(selectedTreasury, token.address, token.network);
-    const { data: tokenPriceData, isLoading: isPriceLoading } = useTokenPrice(token.address, token.network);
+    const { data: tokenData, isLoading: isTokenLoading } = useToken(token.address, token.network);
 
     const estimatedUSDValue = useMemo(() => {
-        if (!tokenPriceData?.price || !amount || isNaN(amount) || amount <= 0) {
+        if (!tokenData?.price || !amount || isNaN(amount) || amount <= 0) {
             return null;
         }
-        return amount * tokenPriceData.price;
-    }, [amount, tokenPriceData?.price]);
+        return amount * tokenData.price;
+    }, [amount, tokenData?.price]);
 
     return (
         <FormField
@@ -108,12 +108,9 @@ export function TokenInput<
                             />
                         </div>
                         <p className={cn("text-muted-foreground text-xs invisible", estimatedUSDValue !== null && estimatedUSDValue > 0 && "visible")}>
-                            {!isPriceLoading && estimatedUSDValue !== null && estimatedUSDValue > 0
-                                ? `≈ $${estimatedUSDValue.toLocaleString('en-US', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                })}`
-                                : isPriceLoading
+                            {!isTokenLoading && estimatedUSDValue !== null && estimatedUSDValue > 0
+                                ? `≈ ${formatCurrency(estimatedUSDValue)}`
+                                : isTokenLoading
                                     ? 'Loading price...'
                                     : 'Invisible'}
                         </p>

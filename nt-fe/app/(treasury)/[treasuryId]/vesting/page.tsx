@@ -12,7 +12,7 @@ import { TokenInput, tokenSchema } from "@/components/token-input";
 import { Form, FormField } from "@/components/ui/form";
 import { Textarea } from "@/components/textarea";
 import { NEAR_TOKEN } from "@/constants/token";
-import { useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { encodeToMarkdown, formatDate, formatTimestamp, toBase64 } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
@@ -154,15 +154,15 @@ function Step2({ handleBack, handleNext }: StepProps) {
 
 function Step3({ handleBack }: StepProps) {
   const form = useFormContext<VestingFormValues>();
-  const { vesting } = form.watch()
-  const { data: usdPrice } = useTokenPrice(vesting.token.address, vesting.token.network);
+  const { vesting } = form.watch();
+  const { data: token } = useToken(vesting.token.address, vesting.token.network);
 
   const estimatedUSDValue = useMemo(() => {
-    if (!usdPrice?.price || !vesting.amount || isNaN(Number(vesting.amount))) {
+    if (!token?.price || !vesting.amount || isNaN(Number(vesting.amount))) {
       return 0;
     }
-    return Number(vesting.amount) * usdPrice.price;
-  }, [usdPrice?.price, vesting.amount]);
+    return Number(vesting.amount) * token.price;
+  }, [token?.price, vesting.amount]);
 
   const infoItems = useMemo(() => {
     let items = [

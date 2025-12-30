@@ -4,8 +4,6 @@ import {
   getTreasuryConfig,
   getTreasuryAssets,
   getTokenBalanceHistory,
-  getTokenPrice,
-  getBatchTokenPrices,
   getTokenBalance,
   getBatchTokenBalances,
   getTreasuryPolicy,
@@ -90,38 +88,6 @@ export function useTokenBalanceHistory(
     queryFn: () => getTokenBalanceHistory(accountId!, tokenId!),
     enabled: !!accountId && !!tokenId,
     staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-}
-
-/**
- * Query hook to get price for a single token
- * Fetches from backend which aggregates data from multiple price sources
- * Supports both NEAR and FT tokens
- */
-export function useTokenPrice(
-  tokenId: string | null | undefined,
-  network: string | null | undefined,
-) {
-  return useQuery({
-    queryKey: ["tokenPrice", tokenId, network],
-    queryFn: () => getTokenPrice(tokenId!, network!),
-    enabled: !!tokenId && !!network,
-    staleTime: 1000 * 60, // 1 minute (prices change frequently)
-    refetchInterval: 1000 * 60, // Refetch every minute
-  });
-}
-
-/**
- * Query hook to get prices for multiple tokens in a single batch request
- * More efficient than making individual requests for each token
- */
-export function useBatchTokenPrices(tokenIds: string[]) {
-  return useQuery({
-    queryKey: ["batchTokenPrices", tokenIds],
-    queryFn: () => getBatchTokenPrices(tokenIds),
-    enabled: tokenIds.length > 0,
-    staleTime: 1000 * 60, // 1 minute
-    refetchInterval: 1000 * 60, // Refetch every minute
   });
 }
 

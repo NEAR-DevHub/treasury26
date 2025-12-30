@@ -213,62 +213,6 @@ export async function getTokenBalanceHistory(
   }
 }
 
-export interface TokenPrice {
-  token_id: string;
-  price: number;
-  source: string;
-}
-
-/**
- * Get price for a single token (supports both NEAR and FT tokens)
- * Fetches from backend which aggregates data from multiple price sources
- */
-export async function getTokenPrice(
-  tokenId: string,
-  network: string,
-): Promise<TokenPrice | null> {
-  if (!tokenId) return null;
-
-  try {
-    const url = `${BACKEND_API_BASE}/token/price`;
-
-    const response = await axios.get<TokenPrice>(url, {
-      params: { tokenId, network },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error(
-      `Error getting price for token ${tokenId} / ${network}`,
-      error,
-    );
-    return null;
-  }
-}
-
-/**
- * Get prices for multiple tokens in a single batch request
- * More efficient than making individual requests for each token
- */
-export async function getBatchTokenPrices(
-  tokenIds: string[],
-): Promise<TokenPrice[]> {
-  if (!tokenIds || tokenIds.length === 0) return [];
-
-  try {
-    const url = `${BACKEND_API_BASE}/token/price/batch`;
-
-    const response = await axios.get<TokenPrice[]>(url, {
-      params: { tokenIds: tokenIds.join(",") },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error("Error getting batch token prices", error);
-    return [];
-  }
-}
-
 export interface TokenBalance {
   account_id: string;
   token_id: string;

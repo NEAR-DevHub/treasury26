@@ -9,6 +9,7 @@ pub struct EnvVars {
     pub bridge_rpc_url: String,
     pub signer_key: SecretKey,
     pub signer_id: AccountId,
+    pub disable_balance_monitoring: bool,
 }
 
 impl Default for EnvVars {
@@ -30,6 +31,10 @@ impl Default for EnvVars {
                 .expect("SIGNER_ID is not set")
                 .parse()
                 .unwrap(),
+            disable_balance_monitoring: std::env::var("DISABLE_BALANCE_MONITORING")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
         }
     }
 }

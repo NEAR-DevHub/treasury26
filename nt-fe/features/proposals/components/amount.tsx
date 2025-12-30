@@ -1,4 +1,4 @@
-import { useToken, useTokenPrice } from "@/hooks/use-treasury-queries";
+import { useToken } from "@/hooks/use-treasury-queries";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import { useMemo } from "react";
 
@@ -21,17 +21,16 @@ const iconSizeClasses = {
 
 export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, network = "near", showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
     const { data: tokenData } = useToken(tokenId, network);
-    const { data: tokenPriceData } = useTokenPrice(showUSDValue ? null : tokenId, network);
     const amountValue = amount ? formatBalance(amount, tokenData?.decimals || 24) : Number(amountWithDecimals).toFixed(6);
     const estimatedUSDValue = useMemo(() => {
-        const isPriceAvailable = tokenPriceData?.price || tokenData?.price;
+        const isPriceAvailable = tokenData?.price;
         if (!isPriceAvailable || !amountValue || isNaN(Number(amountValue))) {
             return "N/A";
         }
 
-        const price = tokenPriceData?.price || tokenData?.price;
+        const price = tokenData?.price;
         return `≈ ${formatCurrency(Number(amountValue) * price!)}`;
-    }, [tokenPriceData, tokenData, amountValue]);
+    }, [tokenData, amountValue]);
     const iconClass = iconSizeClasses[iconSize];
     if (textOnly) {
         return (

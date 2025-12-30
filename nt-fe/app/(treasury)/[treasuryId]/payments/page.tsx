@@ -9,7 +9,7 @@ import { Form, FormField } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ReviewStep, StepperHeader, InlineNextButton, StepProps, StepWizard } from "@/components/step-wizard";
-import { useBatchStorageDepositIsRegistered, useTokenPrice, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useBatchStorageDepositIsRegistered, useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { Fragment, useEffect, useMemo } from "react";
 import { Textarea } from "@/components/textarea";
 import { useTreasury } from "@/stores/treasury-store";
@@ -94,7 +94,7 @@ function Step2({ handleBack }: StepProps) {
   });
   const token = form.watch("token");
   const { data: storageDepositData } = useBatchStorageDepositIsRegistered(fields.map((field) => ({ accountId: field.address, tokenId: token.address })));
-  const { data: tokenPriceData } = useTokenPrice(token.address, token.network);
+  const { data: tokenData } = useToken(token.address, token.network);
 
   useEffect(() => {
     if (!storageDepositData) return;
@@ -124,7 +124,7 @@ function Step2({ handleBack }: StepProps) {
         <div className="flex flex-col gap-2">
           <p className="font-semibold">Recipient{fields.length > 1 ? 's' : ''}</p>
           {fields.map((field, index) => {
-            const estimatedUSDValue = tokenPriceData?.price ? Number(field.amount) * tokenPriceData.price : 0;
+            const estimatedUSDValue = tokenData?.price ? Number(field.amount) * tokenData.price : 0;
 
             return (
               <div key={index} className="flex gap-2 items-baseline w-full">
