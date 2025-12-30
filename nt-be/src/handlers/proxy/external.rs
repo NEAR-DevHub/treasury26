@@ -4,38 +4,63 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
+use moka::future::Cache;
+use reqwest::Client;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 
 use crate::AppState;
 
-const REF_SDK_BASE_URL: &str = "https://ref-sdk-test-cold-haze-1300-2.fly.dev/api";
+pub const REF_SDK_BASE_URL: &str = "https://ref-sdk-test-cold-haze-1300-2.fly.dev/api";
 
-/// Generic proxy endpoint for external API calls
-/// Forwards requests to the external API with the given path and query parameters
-pub async fn proxy_external_api(
-    State(state): State<Arc<AppState>>,
-    Path(path): Path<String>,
-    Query(params): Query<HashMap<String, String>>,
-) -> impl IntoResponse {
-    // Construct the full URL
-    let mut url = format!("{}/{}", REF_SDK_BASE_URL, path);
+/// Fetches JSON data from an external API with caching
+///
+/// # Arguments
+/// * `client` - The HTTP client to use for the request
+/// * `cache` - The cache to store responses in
+/// * `base_url` - The base URL of the API
+/// * `path` - The path to append to the base URL
+/// * `params` - Query parameters to include in the request
+///
+/// # Returns
+/// * `Ok(Value)` - The parsed JSON response
+/// * `Err(String)` - An error message describing what went wrong
+pub async fn fetch_proxy_api(
+    client: &Client,
+    cache: &Cache<String, Value>,
+    base_url: &str,
+    path: &str,
+    params: &HashMap<String, String>,
+) -> Result<Value, String> {
+    // Construct the full URL for both fetching and cache key
+    let mut url = format!("{}/{}", base_url, path);
 
     // Add query parameters if any
-    if !params.is_empty() {
-        let query_string = params
+    let query_string = if !params.is_empty() {
+        let qs = params
             .iter()
             .map(|(k, v)| format!("{}={}", k, v))
             .collect::<Vec<_>>()
             .join("&");
-        url = format!("{}?{}", url, query_string);
+        url = format!("{}?{}", url, qs);
+        qs
+    } else {
+        String::new()
+    };
+
+    // Create cache key from base_url, path, and query params
+    let cache_key = format!("proxy:{}:{}:{}", base_url, path, query_string);
+
+    // Check cache first
+    if let Some(cached_data) = cache.get(&cache_key).await {
+        println!("Cache hit for: {}", url);
+        return Ok(cached_data);
     }
 
-    println!("Proxying request to: {}", url);
+    println!("Cache miss, proxying request to: {}", url);
 
     // Proxy the request to the external API
-    match state
-        .http_client
+    match client
         .get(&url)
         .header("accept", "application/json")
         .send()
@@ -45,33 +70,47 @@ pub async fn proxy_external_api(
             let status = response.status();
             if status.is_success() {
                 match response.json::<Value>().await {
-                    Ok(data) => (StatusCode::OK, Json(data)),
+                    Ok(data) => {
+                        // Store in cache
+                        cache.insert(cache_key, data.clone()).await;
+                        Ok(data)
+                    }
                     Err(e) => {
                         eprintln!("Failed to parse response from {}: {}", url, e);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(serde_json::json!({
-                                "error": "Failed to parse response"
-                            })),
-                        )
+                        Err("Failed to parse response".to_string())
                     }
                 }
             } else {
                 eprintln!("External API returned error {}: {}", status, url);
-                (
-                    StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
-                    Json(serde_json::json!({
-                        "error": "External API error"
-                    })),
-                )
+                Err(format!("External API error: {}", status))
             }
         }
         Err(e) => {
             eprintln!("Failed to fetch from {}: {}", url, e);
+            Err("Failed to fetch from external API".to_string())
+        }
+    }
+}
+
+/// Generic proxy endpoint for external API calls
+/// Forwards requests to the external API with the given path and query parameters
+pub async fn proxy_external_api(
+    State(state): State<Arc<AppState>>,
+    Path(path): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    match fetch_proxy_api(&state.http_client, &state.cache, REF_SDK_BASE_URL, &path, &params).await {
+        Ok(data) => (StatusCode::OK, Json(data)),
+        Err(error_msg) => {
+            let status_code = if error_msg.starts_with("External API error") {
+                StatusCode::BAD_GATEWAY
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
             (
-                StatusCode::INTERNAL_SERVER_ERROR,
+                status_code,
                 Json(serde_json::json!({
-                    "error": "Failed to fetch from external API"
+                    "error": error_msg
                 })),
             )
         }

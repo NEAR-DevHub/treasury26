@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, collections::HashMap};
 
 use axum::{
     Json,
@@ -8,7 +8,7 @@ use axum::{
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::{AppState, handlers::intents::supported_tokens::fetch_enriched_tokens};
+use crate::{AppState, handlers::proxy::external::{fetch_proxy_api, REF_SDK_BASE_URL}};
 
 #[derive(Deserialize)]
 pub struct TokenMetadataQuery {
@@ -32,6 +32,66 @@ pub struct TokenMetadataResponse {
     pub chain_name: Option<String>,
 }
 
+#[derive(Deserialize, Debug, Clone)]
+pub struct RefSdkToken {
+    pub defuse_asset_id: String,
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+    pub icon: Option<String>,
+    pub price: Option<f64>,
+    pub price_updated_at: Option<String>,
+    #[serde(rename = "chainName")]
+    pub chain_name: String,
+}
+
+/// Fetches token metadata from Ref SDK API by defuse asset IDs
+///
+/// # Arguments
+/// * `state` - Application state containing HTTP client and cache
+/// * `defuse_asset_ids` - List of defuse asset IDs to fetch (supports batch)
+///
+/// # Returns
+/// * `Ok(Vec<RefSdkToken>)` - List of token metadata
+/// * `Err((StatusCode, String))` - Error with status code and message
+pub async fn fetch_tokens_metadata(
+    state: &Arc<AppState>,
+    defuse_asset_ids: &[String],
+) -> Result<Vec<RefSdkToken>, (StatusCode, String)> {
+    if defuse_asset_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Join asset IDs with commas for batch request
+    let asset_ids_param = defuse_asset_ids.join(",");
+
+    // Prepare query parameters for the Ref SDK API
+    let mut query_params = HashMap::new();
+    query_params.insert("defuseAssetId".to_string(), asset_ids_param);
+
+    // Fetch token data from Ref SDK API
+    let response = fetch_proxy_api(
+        &state.http_client,
+        &state.cache,
+        REF_SDK_BASE_URL,
+        "token-by-defuse-asset-id",
+        &query_params,
+    )
+    .await
+    .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Failed to fetch token metadata: {}", e)))?;
+
+    // Parse the response as an array of tokens
+    let tokens: Vec<RefSdkToken> = serde_json::from_value(response).map_err(|e| {
+        eprintln!("Failed to parse token response: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to parse token metadata response".to_string(),
+        )
+    })?;
+
+    Ok(tokens)
+}
+
 pub async fn get_token_metadata(
     State(state): State<Arc<AppState>>,
     Query(mut params): Query<TokenMetadataQuery>,
@@ -40,50 +100,32 @@ pub async fn get_token_metadata(
     if let Some(cached_data) = state.cache.get(&cache_key).await {
         return Ok((StatusCode::OK, Json(cached_data)));
     }
+
     let is_near = params.token_id.to_lowercase() == "near" || params.token_id.is_empty();
     if is_near {
         params.token_id = "nep141:wrap.near".to_string();
     }
 
-    // Fetch supported tokens from the bridge (enriched version)
-    let supported_tokens = fetch_enriched_tokens(&state).await.map_err(|e| {
-        eprintln!("Error fetching supported tokens: {}", e);
+    // Fetch token metadata using the reusable function
+    let tokens = fetch_tokens_metadata(&state, &[params.token_id.clone()]).await?;
+
+    // Get the first token from the array
+    let token = tokens.first().ok_or_else(|| {
         (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to fetch supported tokens: {}", e),
+            StatusCode::NOT_FOUND,
+            format!("Token not found: {}", params.token_id),
         )
     })?;
 
-    let tokens: Vec<_> = supported_tokens
-        .into_iter()
-        .filter(|t| {
-            t.near_token_id.as_ref() == Some(&params.token_id)
-                || t.intents_token_id.as_ref() == Some(&params.token_id)
-                || t.asset_name.to_lowercase() == params.token_id.to_lowercase()
-                || t.contract_address == params.token_id
-        })
-        .collect();
-    let token = tokens
-        .iter()
-        .find(|t| t.defuse_asset_id.starts_with(&params.network))
-        .or_else(|| tokens.first())
-        .cloned()
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                format!("Token {} not found in supported tokens", params.token_id),
-            )
-        })?;
-
     let mut metadata = TokenMetadataResponse {
         token_id: params.token_id.clone(),
-        name: token.name,
-        symbol: token.symbol,
+        name: token.name.clone(),
+        symbol: token.symbol.clone(),
         decimals: token.decimals,
-        icon: token.icon,
+        icon: token.icon.clone(),
         price: token.price,
-        price_updated_at: token.price_updated_at,
-        chain_name: Some(token.chain_name),
+        price_updated_at: token.price_updated_at.clone(),
+        chain_name: Some(token.chain_name.clone()),
     };
 
     if is_near {

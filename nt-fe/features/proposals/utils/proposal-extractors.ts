@@ -330,6 +330,8 @@ export function extractSwapRequestData(proposal: Proposal): SwapRequestData {
   const quoteSignature = decodeProposalDescription("signature", proposal.description);
   const timeEstimate = decodeProposalDescription("timeEstimate", proposal.description);
 
+  console.log(proposal.description);
+
   return {
     tokenIn: args.token_id || "",
     amountIn,
