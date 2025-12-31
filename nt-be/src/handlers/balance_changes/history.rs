@@ -352,8 +352,7 @@ fn calculate_snapshots(
             // Find the most recent balance_after before or at current_time
             let balance = token_changes
                 .iter()
-                .filter(|c| c.block_time <= current_time)
-                .next_back()
+                .rfind(|c| c.block_time <= current_time)
                 .map(|c| c.balance_after.clone())
                 .unwrap_or_else(|| starting_balance.clone()); // Use starting balance if no changes yet
 
