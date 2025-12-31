@@ -71,7 +71,15 @@ async fn load_test_data() {
         // Execute the statement, adding ON CONFLICT to handle concurrent test runs
         let sql = if line.to_uppercase().starts_with("INSERT INTO") {
             // Add ON CONFLICT clause to INSERT statements for counterparties
-            line.replace(");", " ON CONFLICT (account_id) DO NOTHING;")
+            // Replace the final ); with ON CONFLICT clause
+            if line.trim_end().ends_with(");") {
+                format!(
+                    "{} ON CONFLICT (account_id) DO NOTHING;",
+                    &line[..line.len() - 2]
+                )
+            } else {
+                line.to_string()
+            }
         } else {
             line.to_string()
         };
