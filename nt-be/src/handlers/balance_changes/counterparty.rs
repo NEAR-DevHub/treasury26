@@ -81,8 +81,27 @@ pub async fn get_ft_decimals(
     Ok(result.and_then(|r| r.token_decimals.map(|d| d as u8)))
 }
 
+/// Extract the actual FT contract ID from a token identifier
+///
+/// For intents tokens (e.g., "intents.near:nep141:wrap.near"), extracts the contract after the prefix.
+/// For regular tokens, returns the token_id as-is.
+fn extract_ft_contract(token_id: &str) -> &str {
+    // Check for intents.near prefixes (NEP-141 and NEP-245)
+    if let Some(rest) = token_id.strip_prefix("intents.near:nep141:") {
+        rest
+    } else if let Some(rest) = token_id.strip_prefix("intents.near:nep245:") {
+        rest
+    } else {
+        token_id
+    }
+}
+
 /// Ensure FT token metadata exists in counterparties table
 /// If not found, queries the contract and stores it
+///
+/// Handles both regular FT tokens and intents tokens (e.g., "intents.near:nep141:wrap.near").
+/// For intents tokens, extracts the actual contract ID and queries it, but stores the metadata
+/// under the full token ID.
 pub async fn ensure_ft_metadata(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -93,16 +112,20 @@ pub async fn ensure_ft_metadata(
         return Ok(decimals);
     }
 
-    // Query from contract and store
-    let metadata = query_ft_metadata(network, token_contract).await?;
+    // Extract the actual FT contract ID (handles intents tokens)
+    let actual_contract = extract_ft_contract(token_contract);
+
+    // Query from the actual contract and store under the full token ID
+    let metadata = query_ft_metadata(network, actual_contract).await?;
     let decimals = metadata.decimals;
     upsert_ft_counterparty(pool, token_contract, &metadata).await?;
 
     log::info!(
-        "Discovered FT token: {} ({}) with {} decimals",
+        "Discovered FT token: {} ({}) with {} decimals (contract: {})",
         metadata.name,
         metadata.symbol,
-        decimals
+        decimals,
+        actual_contract
     );
 
     Ok(decimals)
@@ -139,6 +162,33 @@ pub fn convert_raw_to_decimal(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_extract_ft_contract() {
+        // Regular FT tokens - should return as-is
+        assert_eq!(extract_ft_contract("wrap.near"), "wrap.near");
+        assert_eq!(extract_ft_contract("arizcredits.near"), "arizcredits.near");
+
+        // NEP-141 intents tokens - should extract contract after prefix
+        assert_eq!(
+            extract_ft_contract("intents.near:nep141:wrap.near"),
+            "wrap.near"
+        );
+        assert_eq!(
+            extract_ft_contract("intents.near:nep141:eth.omft.near"),
+            "eth.omft.near"
+        );
+        assert_eq!(
+            extract_ft_contract("intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
+            "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+        );
+
+        // NEP-245 intents tokens
+        assert_eq!(
+            extract_ft_contract("intents.near:nep245:v2_1.omni.hot.tg:43114_11111111111111111111"),
+            "v2_1.omni.hot.tg:43114_11111111111111111111"
+        );
+    }
 
     #[test]
     fn test_convert_raw_to_decimal() {

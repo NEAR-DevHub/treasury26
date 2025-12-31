@@ -1,36 +1,12 @@
 #![allow(clippy::collapsible_if)]
 #![allow(clippy::io_other_error)]
 
-use near_api::{NetworkConfig, RPCEndpoint};
+mod common;
+
 use nt_be::handlers::balance_changes::gap_detector::find_gaps;
 use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
 use sqlx::{PgPool, types::BigDecimal};
 use std::str::FromStr;
-
-/// Integration tests for balance change collection system.
-/// These tests validate the core gap detection and filling functionality.
-/// Helper to create archival network config for tests
-fn create_archival_network() -> NetworkConfig {
-    // Load .env files to get FASTNEAR_API_KEY
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename(".env.test").ok();
-
-    let fastnear_api_key =
-        std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env");
-
-    // Use fastnear archival RPC which supports historical queries
-    NetworkConfig {
-        rpc_endpoints: vec![
-            RPCEndpoint::new(
-                "https://archival-rpc.mainnet.fastnear.com/"
-                    .parse()
-                    .unwrap(),
-            )
-            .with_api_key(fastnear_api_key),
-        ],
-        ..NetworkConfig::mainnet()
-    }
-}
 
 /// Test that gap filler can find and fill a gap with live RPC data
 #[sqlx::test]
@@ -38,7 +14,7 @@ async fn test_fill_gap_end_to_end(pool: PgPool) -> sqlx::Result<()> {
     // Use petersalomonsen.near which has real balance changes
     let account_id = "petersalomonsen.near";
     let token_id = "near";
-    let network = create_archival_network();
+    let network = common::create_archival_network();
 
     // Use block range from real data - we know there are multiple changes between 178142668 and 178148638
     // Start from a later block and let the system fill gaps backward
@@ -147,7 +123,7 @@ async fn test_seed_initial_balance(pool: PgPool) -> sqlx::Result<()> {
 
     assert_eq!(initial_count.0, 0, "Should start with no records");
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
 
     // Get current block height (use a known recent block)
     // Block ~177M is around late December 2025
@@ -239,7 +215,7 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
 
     assert_eq!(initial_count.0, 0, "Should start with no records");
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
 
     // Use a known valid block height
     let up_to_block: i64 = 177_000_000;
@@ -579,7 +555,7 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
 async fn test_get_block_receipt_data(_pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::block_info::get_block_data;
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
     let account_id = "testing-astradao.sputnik-dao.near";
     let block_height: u64 = 176927244;
 
@@ -643,7 +619,7 @@ async fn test_get_block_receipt_data(_pool: PgPool) -> sqlx::Result<()> {
 async fn test_query_unavailable_block_with_retry(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::balance;
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
     let account_id = "testing-astradao.sputnik-dao.near";
 
     // This block is known to return 422 error
@@ -694,7 +670,7 @@ async fn test_fill_gaps_loop_until_complete(pool: PgPool) -> sqlx::Result<()> {
     let account_id = "testing-astradao.sputnik-dao.near";
     let token_id = "near";
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
     let up_to_block: i64 = 177_000_000;
 
     let mut iteration = 0;
@@ -931,7 +907,7 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
 
     // Run one monitoring cycle
     println!("Running monitoring cycle...");
-    let network = create_archival_network();
+    let network = common::create_archival_network();
     let up_to_block = 177_000_000i64;
     run_monitor_cycle(&pool, &network, up_to_block)
         .await
@@ -1033,14 +1009,7 @@ async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sq
     println!("\n=== Testing Balance Change Record with Transaction Hash (Block 178148634) ===\n");
 
     // Setup network config
-    let network = NetworkConfig {
-        rpc_endpoints: vec![RPCEndpoint::new(
-            "https://archival-rpc.mainnet.fastnear.com/"
-                .parse()
-                .unwrap(),
-        )],
-        ..NetworkConfig::mainnet()
-    };
+    let network = common::create_archival_network();
 
     let account_id = "petersalomonsen.near";
     let token_id = "near";
@@ -1192,7 +1161,7 @@ async fn test_discover_ft_tokens_from_receipts(_pool: PgPool) -> sqlx::Result<()
     let block_height = 178148636;
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
 
     println!("\n📦 Testing FT token discovery from receipts");
     println!("Block: {}", block_height);
@@ -1273,7 +1242,7 @@ async fn test_ft_contract_as_counterparty(pool: PgPool) -> sqlx::Result<()> {
     .execute(&pool)
     .await?;
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
     let up_to_block = 178150000i64;
 
     // Run monitoring cycle to collect NEAR balance changes
@@ -1387,7 +1356,7 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     );
     println!("✓ Verified empty state (0 records)");
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
 
     // Run first monitoring cycle
     // This should:
@@ -1641,7 +1610,7 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
         "This block has a NEAR balance change with transaction hash 2CqhsWNuFEu29TefK2MCDNHtW4B1BioduGQ8rXSi18GR"
     );
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
 
     // Directly fill gaps for NEAR - use target_block + 1 to ensure we search down to include target_block
     // The gap filler will seed from 178086210 and search backwards, which should find 178086209
@@ -1832,7 +1801,7 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
 async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) -> sqlx::Result<()> {
     use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 
-    let network = create_archival_network();
+    let network = common::create_archival_network();
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
 
     // Block 165324279 has a btc.omft.near intents balance change of 0.0002 BTC

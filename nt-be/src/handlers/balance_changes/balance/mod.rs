@@ -49,7 +49,7 @@ pub async fn get_balance_at_block(
         near::get_balance_at_block(network, account_id, block_height).await
     } else if token_id.contains(':') {
         // NEAR Intents format: "contract:token_id"
-        intents::get_balance_at_block(network, account_id, token_id, block_height).await
+        intents::get_balance_at_block(pool, network, account_id, token_id, block_height).await
     } else {
         // Fungible token contract address
         ft::get_balance_at_block(pool, network, account_id, token_id, block_height).await
