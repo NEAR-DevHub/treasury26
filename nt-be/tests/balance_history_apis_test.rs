@@ -33,12 +33,21 @@ async fn load_test_data() {
     .expect("Failed to check existing data");
 
     if existing_count > 0 {
-        println!("✓ Test data already loaded ({} records)", existing_count);
+        println!(
+            "✓ Test data already loaded ({} records), skipping load",
+            existing_count
+        );
         pool.close().await;
         return;
     }
 
     println!("Loading webassemblymusic-treasury test data...");
+
+    // Clear any partial data from failed previous runs
+    sqlx::query("DELETE FROM balance_changes WHERE account_id = 'webassemblymusic-treasury.sputnik-dao.near'")
+        .execute(&pool)
+        .await
+        .expect("Failed to clear existing test data");
 
     // Read and execute counterparties SQL
     let counterparties_sql =
@@ -59,11 +68,21 @@ async fn load_test_data() {
             continue;
         }
 
-        // Execute the statement
-        sqlx::query(line)
-            .execute(&pool)
-            .await
-            .expect(&format!("Failed to execute: {}", line));
+        // Execute the statement, adding ON CONFLICT to handle concurrent test runs
+        let sql = if line.to_uppercase().starts_with("INSERT INTO") {
+            // Add ON CONFLICT clause to INSERT statements for counterparties
+            line.replace(");", " ON CONFLICT (account_id) DO NOTHING;")
+        } else {
+            line.to_string()
+        };
+
+        if let Err(e) = sqlx::query(&sql).execute(&pool).await {
+            panic!(
+                "Failed to execute SQL: {}\nError: {}",
+                &sql[..100.min(sql.len())],
+                e
+            );
+        }
     }
 
     // Read and execute balance changes SQL (line by line)
