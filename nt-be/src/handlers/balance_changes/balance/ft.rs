@@ -26,14 +26,14 @@ use crate::handlers::balance_changes::counterparty::{convert_raw_to_decimal, ens
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
-/// The decimal-adjusted balance as a string (e.g., "2.5" for 2.5 tokens with 6 decimals)
+/// The decimal-adjusted balance as a BigDecimal (e.g., "2.5" for 2.5 tokens with 6 decimals)
 pub async fn get_balance_at_block(
     pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
     token_contract: &str,
     block_height: u64,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<bigdecimal::BigDecimal, Box<dyn std::error::Error>> {
     // Ensure metadata is cached and get decimals for conversion
     let decimals = ensure_ft_metadata(pool, network, token_contract).await?;
 

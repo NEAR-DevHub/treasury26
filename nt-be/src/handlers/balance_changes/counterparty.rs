@@ -131,18 +131,18 @@ pub async fn ensure_ft_metadata(
     Ok(decimals)
 }
 
-/// Convert raw FT amount to human-readable decimal string
+/// Convert raw FT amount to decimal-adjusted BigDecimal
 ///
 /// # Arguments
 /// * `raw_amount` - The raw amount from ft_balance_of (smallest units)
 /// * `decimals` - Number of decimal places for this token
 ///
 /// # Returns
-/// A decimal string like "2.5" instead of "2500000"
+/// A BigDecimal with decimal adjustment applied
 pub fn convert_raw_to_decimal(
     raw_amount: &str,
     decimals: u8,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<bigdecimal::BigDecimal, Box<dyn std::error::Error>> {
     use bigdecimal::BigDecimal;
     use std::str::FromStr;
 
@@ -156,7 +156,7 @@ pub fn convert_raw_to_decimal(
     let decimal = raw / divisor;
 
     // Normalize to remove trailing zeros (e.g., "11.1000" -> "11.1")
-    Ok(decimal.normalized().to_string())
+    Ok(decimal.normalized())
 }
 
 #[cfg(test)]
@@ -192,21 +192,24 @@ mod tests {
 
     #[test]
     fn test_convert_raw_to_decimal() {
+        use bigdecimal::BigDecimal;
+        use std::str::FromStr;
+
         // arizcredits.near has 6 decimals
-        assert_eq!(convert_raw_to_decimal("2500000", 6).unwrap(), "2.5");
-        assert_eq!(convert_raw_to_decimal("3000000", 6).unwrap(), "3");
+        assert_eq!(convert_raw_to_decimal("2500000", 6).unwrap(), BigDecimal::from_str("2.5").unwrap());
+        assert_eq!(convert_raw_to_decimal("3000000", 6).unwrap(), BigDecimal::from_str("3").unwrap());
 
         // NEAR has 24 decimals
         assert_eq!(
             convert_raw_to_decimal("1000000000000000000000000", 24).unwrap(),
-            "1"
+            BigDecimal::from_str("1").unwrap()
         );
         assert_eq!(
             convert_raw_to_decimal("2500000000000000000000000", 24).unwrap(),
-            "2.5"
+            BigDecimal::from_str("2.5").unwrap()
         );
 
         // Zero decimals
-        assert_eq!(convert_raw_to_decimal("100", 0).unwrap(), "100");
+        assert_eq!(convert_raw_to_decimal("100", 0).unwrap(), BigDecimal::from_str("100").unwrap());
     }
 }

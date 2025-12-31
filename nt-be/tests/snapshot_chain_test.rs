@@ -146,7 +146,7 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
         "  ⚠️  ACTUAL balance at block 178085501: {}",
         actual_balance_at_178085501
     );
-    if actual_balance_at_178085501 != balance.to_string() {
+    if actual_balance_at_178085501.to_string() != balance.to_string() {
         println!(
             "      ERROR: SNAPSHOT says {}, but actual balance is {}",
             balance, actual_balance_at_178085501
@@ -205,12 +205,16 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
         gaps[0].end_block, 178085501,
         "Gap should end at block 178085501"
     );
+    use bigdecimal::BigDecimal;
+    use std::str::FromStr;
     assert_eq!(
-        gaps[0].actual_balance_after, "0",
+        gaps[0].actual_balance_after,
+        BigDecimal::from_str("0").unwrap(),
         "Gap start balance should be 0"
     );
     assert_eq!(
-        gaps[0].expected_balance_before, "41.414178022306048887375898",
+        gaps[0].expected_balance_before,
+        BigDecimal::from_str("41.414178022306048887375898").unwrap(),
         "Gap end balance should be 41.414178022306048887375898"
     );
 
@@ -232,11 +236,13 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
         .expect("Should have filled gap at block 177751529");
 
     assert_eq!(
-        balance_change.balance_before, "0",
+        balance_change.balance_before,
+        BigDecimal::from_str("0").unwrap(),
         "Balance before should be 0"
     );
     assert_eq!(
-        balance_change.balance_after, "41.414178022306048887375898",
+        balance_change.balance_after,
+        BigDecimal::from_str("41.414178022306048887375898").unwrap(),
         "Balance after should be 41.414178022306048887375898 (decimal-adjusted)"
     );
 

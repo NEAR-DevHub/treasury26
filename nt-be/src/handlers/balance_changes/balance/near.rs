@@ -22,12 +22,12 @@ use crate::handlers::balance_changes::counterparty::convert_raw_to_decimal;
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
-/// The balance as a human-readable NEAR string (e.g., "11.1002" for 11.1002 NEAR)
+/// The balance as a BigDecimal (e.g., "11.1002" for 11.1002 NEAR)
 pub async fn get_balance_at_block(
     network: &NetworkConfig,
     account_id: &str,
     block_height: u64,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<bigdecimal::BigDecimal, Box<dyn std::error::Error>> {
     let account_id = AccountId::from_str(account_id)?;
     let max_retries = 10;
 
