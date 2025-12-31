@@ -33,9 +33,12 @@ pub struct TestServer {
 
 impl TestServer {
     pub async fn start() -> Self {
-        // Use DATABASE_URL_TEST for integration tests
-        let db_url = std::env::var("DATABASE_URL_TEST")
-            .expect("DATABASE_URL_TEST must be set for integration tests");
+        // Load environment variables - .env.test overrides DATABASE_URL to test database
+        dotenvy::from_filename(".env").ok();
+        dotenvy::from_filename(".env.test").ok();
+
+        let db_url =
+            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
 
         // Start the server in the background
         let mut process = Command::new("cargo")

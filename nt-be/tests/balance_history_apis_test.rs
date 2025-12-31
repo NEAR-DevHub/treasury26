@@ -9,9 +9,12 @@ use serial_test::serial;
 
 /// Load webassemblymusic-treasury test data from SQL dump files
 async fn load_test_data() {
-    // Use DATABASE_URL_TEST for integration tests
-    let db_url = std::env::var("DATABASE_URL_TEST")
-        .expect("DATABASE_URL_TEST must be set for integration tests");
+    // Load environment variables - .env.test overrides DATABASE_URL to test database
+    dotenvy::from_filename(".env").ok();
+    dotenvy::from_filename(".env.test").ok();
+
+    let db_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
 
     // Connect to database
     let pool = sqlx::postgres::PgPoolOptions::new()

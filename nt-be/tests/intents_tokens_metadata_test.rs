@@ -5,19 +5,18 @@
 
 mod common;
 
-use dotenvy::dotenv;
 use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 
 /// Test that intents token metadata is discovered during monitoring
 #[tokio::test]
 async fn test_intents_tokens_metadata_discovery() {
-    // Load environment variables
-    dotenv().ok();
+    // Load environment variables - .env.test overrides DATABASE_URL to test database
+    dotenvy::from_filename(".env").ok();
+    dotenvy::from_filename(".env.test").ok();
 
     // Get test database URL
-    let db_url = std::env::var("DATABASE_URL")
-        .or_else(|_| std::env::var("DATABASE_URL_TEST"))
-        .expect("DATABASE_URL or DATABASE_URL_TEST must be set");
+    let db_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
 
     // Connect to database
     let pool = sqlx::postgres::PgPoolOptions::new()
