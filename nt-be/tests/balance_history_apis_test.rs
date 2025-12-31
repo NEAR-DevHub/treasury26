@@ -5,13 +5,13 @@
 mod common;
 
 use common::TestServer;
+use serial_test::serial;
 
 /// Load webassemblymusic-treasury test data from SQL dump files
 async fn load_test_data() {
-    // Get test database URL
-    let db_url = std::env::var("DATABASE_URL")
-        .or_else(|_| std::env::var("DATABASE_URL_TEST"))
-        .expect("DATABASE_URL or DATABASE_URL_TEST must be set");
+    // Use DATABASE_URL_TEST for integration tests
+    let db_url = std::env::var("DATABASE_URL_TEST")
+        .expect("DATABASE_URL_TEST must be set for integration tests");
 
     // Connect to database
     let pool = sqlx::postgres::PgPoolOptions::new()
@@ -41,10 +41,27 @@ async fn load_test_data() {
     let counterparties_sql =
         std::fs::read_to_string("tests/test_data/webassemblymusic_counterparties.sql")
             .expect("Failed to read counterparties SQL file");
-    sqlx::query(&counterparties_sql)
-        .execute(&pool)
-        .await
-        .expect("Failed to load counterparties");
+
+    // Execute SQL line by line (skipping comments, SET commands, and pg_dump v18 commands)
+    for line in counterparties_sql.lines() {
+        let trimmed = line.trim();
+        // Skip comments, empty lines, SET commands, SELECT commands, and pg_dump v18 security commands
+        if trimmed.is_empty()
+            || trimmed.starts_with("--")
+            || trimmed.to_uppercase().starts_with("SET ")
+            || trimmed.to_uppercase().starts_with("SELECT ")
+            || trimmed.starts_with("\\restrict")
+            || trimmed.starts_with("\\unrestrict")
+        {
+            continue;
+        }
+
+        // Execute the statement
+        sqlx::query(line)
+            .execute(&pool)
+            .await
+            .expect(&format!("Failed to execute: {}", line));
+    }
 
     // Read and execute balance changes SQL (line by line)
     let balance_changes_sql =
@@ -52,12 +69,22 @@ async fn load_test_data() {
             .expect("Failed to read balance changes SQL file");
 
     for statement in balance_changes_sql.lines() {
-        if !statement.trim().is_empty() {
-            sqlx::query(statement)
-                .execute(&pool)
-                .await
-                .expect("Failed to load balance change");
+        let trimmed = statement.trim();
+        // Skip comments, empty lines, SET commands, SELECT commands, and pg_dump v18 security commands
+        if trimmed.is_empty()
+            || trimmed.starts_with("--")
+            || trimmed.to_uppercase().starts_with("SET ")
+            || trimmed.to_uppercase().starts_with("SELECT ")
+            || trimmed.starts_with("\\restrict")
+            || trimmed.starts_with("\\unrestrict")
+        {
+            continue;
         }
+
+        sqlx::query(statement)
+            .execute(&pool)
+            .await
+            .expect("Failed to load balance change");
     }
 
     // Add monitored account
@@ -86,6 +113,7 @@ async fn load_test_data() {
 
 /// Test the chart API with webassemblymusic-treasury data
 #[tokio::test]
+#[serial]
 async fn test_balance_chart_with_real_data() {
     // Load environment variables
     dotenvy::dotenv().ok();
@@ -211,6 +239,7 @@ async fn test_balance_chart_with_real_data() {
 
 /// Test CSV export with webassemblymusic-treasury data
 #[tokio::test]
+#[serial]
 async fn test_csv_export_with_real_data() {
     // Load environment variables
     dotenvy::dotenv().ok();
@@ -308,6 +337,7 @@ async fn test_csv_export_with_real_data() {
 
 /// Test Chart API with different intervals
 #[tokio::test]
+#[serial]
 async fn test_chart_api_intervals() {
     // Load environment variables
     dotenvy::dotenv().ok();

@@ -33,12 +33,17 @@ pub struct TestServer {
 
 impl TestServer {
     pub async fn start() -> Self {
+        // Use DATABASE_URL_TEST for integration tests
+        let db_url = std::env::var("DATABASE_URL_TEST")
+            .expect("DATABASE_URL_TEST must be set for integration tests");
+
         // Start the server in the background
         let mut process = Command::new("cargo")
             .args(["run", "--bin", "nt-be"])
             .env("PORT", "3001")
             .env("RUST_LOG", "info")
             .env("MONITOR_INTERVAL_MINUTES", "0") // Disable background monitoring
+            .env("DATABASE_URL", &db_url) // Override with test database
             .env(
                 "SIGNER_KEY",
                 "ed25519:3tgdk2wPraJzT4nsTuf86UX41xgPNk3MHnq8epARMdBNs29AFEztAuaQ7iHddDfXG9F2RzV1XNQYgJyAyoW51UBB",
