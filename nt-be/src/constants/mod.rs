@@ -1,5 +1,6 @@
 use near_account_id::AccountIdRef;
 
+pub mod intents_chains;
 pub mod intents_tokens;
 
 pub const REF_FINANCE_CONTRACT_ID: &AccountIdRef =

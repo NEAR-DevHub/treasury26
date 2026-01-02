@@ -52,9 +52,9 @@ export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, 
                 )}
                 {showUSDValue && <span className="text-muted-foreground text-xs">({estimatedUSDValue})</span>}
             </div>
-            {showNetwork && tokenData?.chain_name && (
+            {showNetwork && tokenData?.network && (
                 <span className="text-muted-foreground text-xs">
-                    Network: {tokenData.chain_name.toUpperCase()}
+                    Network: {tokenData.network.toUpperCase()}
                 </span>
             )}
         </div>

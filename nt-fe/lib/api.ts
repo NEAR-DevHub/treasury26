@@ -82,6 +82,8 @@ export interface TreasuryAsset {
   contractId?: string;
   residency: TokenResidency;
   network: string;
+  chainName: string;
+  chainIcons?: ChainIcons;
   symbol: string;
   balance: Big;
   decimals: number;
@@ -102,6 +104,8 @@ interface TreasuryAssetRaw {
   contractId?: string;
   residency: TokenResidency;
   network: string;
+  chainName: string;
+  chainIcons?: ChainIcons;
   symbol: string;
   balance: string;
   decimals: number;
@@ -141,6 +145,8 @@ export async function getTreasuryAssets(
         symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
         decimals: token.decimals,
         balance: Big(token.balance),
+        chainName: token.chainName,
+        chainIcons: token.chainIcons,
         balanceUSD,
         price,
         name: token.name,
@@ -245,30 +251,6 @@ export async function getTokenBalance(
       error,
     );
     return null;
-  }
-}
-
-/**
- * Get balances for multiple tokens in a single batch request
- * More efficient than making individual requests for each token
- */
-export async function getBatchTokenBalances(
-  accountId: string,
-  tokenIds: string[],
-): Promise<TokenBalance[]> {
-  if (!accountId || !tokenIds || tokenIds.length === 0) return [];
-
-  try {
-    const url = `${BACKEND_API_BASE}/user/balance/batch`;
-
-    const response = await axios.get<TokenBalance[]>(url, {
-      params: { accountId, tokenIds: tokenIds.join(",") },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error("Error getting batch token balances", error);
-    return [];
   }
 }
 
@@ -385,16 +367,23 @@ export async function getBatchStorageDepositIsRegistered(
   }
 }
 
+export interface ChainIcons {
+  dark: string;
+  light: string;
+}
+
 export interface TokenMetadata {
-  token_id: string;
+  tokenId: string;
   name: string;
   symbol: string;
   decimals: number;
   icon?: string;
   price?: number;
-  price_updated_at?: string;
+  priceUpdatedAt?: string;
   blockchain?: string;
-  chain_name?: string;
+  network?: string;
+  chainName?: string;
+  chainIcons?: ChainIcons;
 }
 
 /**

@@ -5,7 +5,6 @@ import {
   getTreasuryAssets,
   getTokenBalanceHistory,
   getTokenBalance,
-  getBatchTokenBalances,
   getTreasuryPolicy,
   getStorageDepositIsRegistered,
   getBatchStorageDepositIsRegistered,
@@ -108,23 +107,6 @@ export function useTokenBalance(
     queryFn: () => getTokenBalance(accountId!, tokenId!, network!),
     enabled: !!accountId && !!tokenId && !!network,
     staleTime: 1000 * 30, // 30 seconds (balances change frequently)
-    refetchInterval: 1000 * 30, // Refetch every 30 seconds
-  });
-}
-
-/**
- * Query hook to get balances for multiple tokens in a single batch request
- * More efficient than making individual requests for each token
- */
-export function useBatchTokenBalances(
-  accountId: string | null | undefined,
-  tokenIds: string[],
-) {
-  return useQuery({
-    queryKey: ["batchTokenBalances", accountId, tokenIds],
-    queryFn: () => getBatchTokenBalances(accountId!, tokenIds),
-    enabled: !!accountId && tokenIds.length > 0,
-    staleTime: 1000 * 30, // 30 seconds
     refetchInterval: 1000 * 30, // Refetch every 30 seconds
   });
 }
