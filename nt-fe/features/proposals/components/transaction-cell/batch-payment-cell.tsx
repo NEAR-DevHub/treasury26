@@ -21,7 +21,6 @@ export function BatchPaymentCell({ data }: BatchPaymentCellProps) {
     const tokenData = {
         tokenId: tokenId,
         amount: data.totalAmount,
-        network: "near",
         receiver: recipients
     } as PaymentRequestData;
 

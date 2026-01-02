@@ -18,7 +18,6 @@ use crate::{
 pub struct TokenMetadataQuery {
     #[serde(rename = "tokenId")]
     pub token_id: String,
-    pub network: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -136,7 +135,7 @@ pub async fn get_token_metadata(
     State(state): State<Arc<AppState>>,
     Query(mut params): Query<TokenMetadataQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let cache_key = format!("token-metadata:{}:{}", params.token_id, params.network);
+    let cache_key = format!("token-metadata:{}", params.token_id);
     if let Some(cached_data) = state.cache.get(&cache_key).await {
         return Ok((StatusCode::OK, Json(cached_data)));
     }

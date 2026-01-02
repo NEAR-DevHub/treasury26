@@ -10,10 +10,9 @@ interface TokenCellProps {
 
 
 export function TokenCell({ data, prefix = "To:", isUser = true }: TokenCellProps) {
-  const network = (data as PaymentRequestData).network || "near";
   return (
     <div className="flex flex-col items-start gap-1">
-      <Amount amount={data.amount} tokenId={data.tokenId} network={network} showUSDValue={false} iconSize="sm" />
+      <Amount amount={data.amount} tokenId={data.tokenId} showUSDValue={false} iconSize="sm" />
       {data.receiver && <span className="text-xs text-muted-foreground">{prefix}
         {isUser ? <TooltipUser accountId={data.receiver}><span> {data.receiver}</span></TooltipUser > : data.receiver}
 

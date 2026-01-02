@@ -88,7 +88,7 @@ function FullPolicyView({ data }: { data: ChangePolicyData }) {
   const infoItems: InfoItem[] = [
     {
       label: "Proposal Bond",
-      value: <Amount amount={policy.proposal_bond} tokenId="near" network="near" />,
+      value: <Amount amount={policy.proposal_bond} tokenId="near" />,
       info: "Amount required to be locked when creating a proposal"
     },
     {
@@ -98,7 +98,7 @@ function FullPolicyView({ data }: { data: ChangePolicyData }) {
     },
     {
       label: "Bounty Bond",
-      value: policy.bounty_bond ? <Amount amount={policy.bounty_bond} tokenId="near" network="near" /> : <span>Not set</span>,
+      value: policy.bounty_bond ? <Amount amount={policy.bounty_bond} tokenId="near" /> : <span>Not set</span>,
       info: "Amount required to be locked when creating a bounty"
     },
     {
@@ -165,7 +165,7 @@ function UpdateParametersView({ data }: { data: ChangePolicyData }) {
   if (params.proposal_bond !== null) {
     infoItems.push({
       label: "Proposal Bond",
-      value: <Amount amount={params.proposal_bond} tokenId="near" network="near" />,
+      value: <Amount amount={params.proposal_bond} tokenId="near" />,
       info: "Amount required to be locked when creating a proposal"
     });
   }
@@ -181,7 +181,7 @@ function UpdateParametersView({ data }: { data: ChangePolicyData }) {
   if (params.bounty_bond !== null) {
     infoItems.push({
       label: "Bounty Bond",
-      value: <Amount amount={params.bounty_bond} tokenId="near" network="near" />,
+      value: <Amount amount={params.bounty_bond} tokenId="near" />,
       info: "Amount required to be locked when creating a bounty"
     });
   }

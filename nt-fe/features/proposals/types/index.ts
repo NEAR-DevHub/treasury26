@@ -48,7 +48,6 @@ export interface PaymentRequestData {
     amount: string;
     receiver: string;
     notes: string;
-    network: string;
 }
 
 /**

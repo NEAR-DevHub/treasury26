@@ -6,18 +6,16 @@ import { useMemo } from "react";
 
 interface RateProps {
     tokenIn: string;
-    networkIn: string;
     tokenOut: string;
-    networkOut: string;
     amountIn?: Big;
     amountInWithDecimals?: string;
     amountOut?: Big;
     amountOutWithDecimals?: string;
 }
 
-export function Rate({ tokenIn, networkIn, tokenOut, networkOut, amountIn, amountInWithDecimals, amountOut, amountOutWithDecimals }: RateProps) {
-    const { data: tokenInData } = useToken(tokenIn, networkIn);
-    const { data: tokenOutData } = useToken(tokenOut, networkOut);
+export function Rate({ tokenIn, tokenOut, amountIn, amountInWithDecimals, amountOut, amountOutWithDecimals }: RateProps) {
+    const { data: tokenInData } = useToken(tokenIn);
+    const { data: tokenOutData } = useToken(tokenOut);
     const amount1 = amountIn ? formatBalance(amountIn.toString(), tokenInData?.decimals || 24) : amountInWithDecimals;
     const amount2 = amountOut ? formatBalance(amountOut.toString(), tokenOutData?.decimals || 24) : amountOutWithDecimals;
 

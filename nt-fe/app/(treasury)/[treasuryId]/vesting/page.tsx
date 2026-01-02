@@ -154,7 +154,7 @@ function Step2({ handleBack, handleNext }: StepProps) {
 function Step3({ handleBack }: StepProps) {
   const form = useFormContext<VestingFormValues>();
   const { vesting } = form.watch();
-  const { data: token } = useToken(vesting.token.address, vesting.token.network);
+  const { data: token } = useToken(vesting.token.address);
 
   const estimatedUSDValue = useMemo(() => {
     if (!token?.price || !vesting.amount || isNaN(Number(vesting.amount))) {

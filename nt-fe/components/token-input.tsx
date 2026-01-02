@@ -50,7 +50,7 @@ export function TokenInput<
     const token = useWatch({ control, name: tokenName }) as Token;
 
     const { data: tokenBalanceData, isLoading: isBalanceLoading } = useTokenBalance(selectedTreasury, token.address, token.network);
-    const { data: tokenData, isLoading: isTokenLoading } = useToken(token.address, token.network);
+    const { data: tokenData, isLoading: isTokenLoading } = useToken(token.address);
 
     const estimatedUSDValue = useMemo(() => {
         if (!tokenData?.price || !amount || isNaN(amount) || amount <= 0) {

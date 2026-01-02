@@ -26,15 +26,15 @@ export function SwapExpanded({ data }: SwapExpandedProps) {
   const infoItems: InfoItem[] = [
     {
       label: "Send",
-      value: <Amount amount={data.amountIn} tokenId={tokensData?.tokenIn?.defuseAssetId || data.tokenIn} network={data.sourceNetwork} showNetwork={true} />
+      value: <Amount amount={data.amountIn} tokenId={tokensData?.tokenIn?.defuseAssetId || data.tokenIn} showNetwork={true} />
     },
     {
       label: "Receive",
-      value: <Amount amountWithDecimals={data.amountOut} tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} network={data.destinationNetwork} showNetwork={true} />
+      value: <Amount amountWithDecimals={data.amountOut} tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} showNetwork={true} />
     },
     {
       label: "Rate",
-      value: <Rate tokenIn={tokensData?.tokenIn?.unifiedAssetId || data.tokenIn} networkIn={data.sourceNetwork} tokenOut={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} networkOut={data.destinationNetwork} amountIn={Big(data.amountIn)} amountOutWithDecimals={data.amountOut} />,
+      value: <Rate tokenIn={tokensData?.tokenIn?.unifiedAssetId || data.tokenIn} tokenOut={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} amountIn={Big(data.amountIn)} amountOutWithDecimals={data.amountOut} />,
     }
   ];
 
@@ -58,7 +58,7 @@ export function SwapExpanded({ data }: SwapExpandedProps) {
 
   expandableItems.push({
     label: "Minimum Received",
-    value: <Amount amountWithDecimals={minimumReceived.toString()} tokenId={data.tokenOut} network={data.destinationNetwork} />,
+    value: <Amount amountWithDecimals={minimumReceived.toString()} tokenId={data.tokenOut} />,
     info: "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request."
   });
 

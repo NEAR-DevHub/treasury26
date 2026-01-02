@@ -6,7 +6,6 @@ interface AmountProps {
     amount?: string;
     amountWithDecimals?: string;
     tokenId: string;
-    network?: string;
     showUSDValue?: boolean;
     showNetwork?: boolean;
     textOnly?: boolean;
@@ -19,8 +18,8 @@ const iconSizeClasses = {
     lg: "size-6",
 }
 
-export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, network = "near", showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
-    const { data: tokenData } = useToken(tokenId, network);
+export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
+    const { data: tokenData } = useToken(tokenId);
     const amountValue = amount ? formatBalance(amount, tokenData?.decimals || 24) : Number(amountWithDecimals).toFixed(6);
     const estimatedUSDValue = useMemo(() => {
         const isPriceAvailable = tokenData?.price;
@@ -54,7 +53,7 @@ export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, 
             </div>
             {showNetwork && tokenData?.network && (
                 <span className="text-muted-foreground text-xs">
-                    Network: {tokenData.network.toUpperCase()}
+                    Network: {tokenData.network?.toUpperCase()}
                 </span>
             )}
         </div>

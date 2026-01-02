@@ -392,9 +392,8 @@ export interface TokenMetadata {
  */
 export async function getTokenMetadata(
   tokenId: string,
-  network: string,
 ): Promise<TokenMetadata | null> {
-  if (!tokenId || !network) return null;
+  if (!tokenId) return null;
 
   let token = tokenId;
   if (!token.startsWith("nep141:") && token.toLowerCase() !== "near") {
@@ -405,13 +404,13 @@ export async function getTokenMetadata(
     const url = `${BACKEND_API_BASE}/token/metadata`;
 
     const response = await axios.get<TokenMetadata>(url, {
-      params: { tokenId: token, network },
+      params: { tokenId: token },
     });
 
     return response.data;
   } catch (error) {
     console.error(
-      `Error getting metadata for token ${tokenId} / ${network}`,
+      `Error getting metadata for token ${tokenId}`,
       error,
     );
     return null;

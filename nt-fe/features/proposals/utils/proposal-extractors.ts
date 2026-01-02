@@ -31,6 +31,9 @@ function extractFTTransferData(functionCall: FunctionCallKind["FunctionCall"], a
   const action = actions.find(
     (a) => a.method_name === "ft_transfer" || a.method_name === "ft_transfer_call"
   );
+  const actionWithdraw = actions.find(
+    (a) => a.method_name === "ft_withdraw"
+  );
   if (action) {
     const args = decodeArgs(action.args);
     if (args) {
@@ -38,8 +41,20 @@ function extractFTTransferData(functionCall: FunctionCallKind["FunctionCall"], a
         tokenId: functionCall.receiver_id,
         amount: args.amount || "0",
         receiver: args.receiver_id || "",
-        network: "near",
       };
+    }
+  } else if (actionWithdraw) {
+    const args = decodeArgs(actionWithdraw.args);
+    if (!args) {
+      return undefined;
+    }
+    const isExternalWithdraw = args.receiver_id === functionCall.receiver_id;
+    const receiver = isExternalWithdraw ? args.memo.replace("WITHDRAW_TO:", "") : args.receiver_id;
+
+    return {
+      tokenId: `nep141:${args.token}`,
+      amount: args.amount || "0",
+      receiver,
     }
   }
   return undefined;
@@ -52,7 +67,6 @@ export function extractPaymentRequestData(proposal: Proposal): PaymentRequestDat
   let tokenId = "near";
   let amount = "0";
   let receiver = "";
-  let network = "near";
 
   if ("Transfer" in proposal.kind) {
     const transfer = proposal.kind.Transfer;
@@ -67,7 +81,6 @@ export function extractPaymentRequestData(proposal: Proposal): PaymentRequestDat
       tokenId = ftTransferData.tokenId;
       amount = ftTransferData.amount;
       receiver = ftTransferData.receiver;
-      network = ftTransferData.network;
     }
   } else {
     throw new Error("Proposal is not a Function Call or Transfer proposal");
@@ -80,7 +93,6 @@ export function extractPaymentRequestData(proposal: Proposal): PaymentRequestDat
     amount,
     receiver,
     notes: notes || "",
-    network,
   };
 }
 

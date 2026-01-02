@@ -19,7 +19,7 @@ export function StakingExpanded({ data }: StakingExpandedProps) {
         },
         {
             label: "Amount",
-            value: <Amount amount={data.amount} tokenId={data.tokenId} network="near" />
+            value: <Amount amount={data.amount} tokenId={data.tokenId} />
         },
         {
             label: "Validator",

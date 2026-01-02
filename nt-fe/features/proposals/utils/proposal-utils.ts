@@ -30,7 +30,9 @@ function isBatchPaymentProposal(proposal: Proposal): boolean {
 function processFTTransferProposal(proposal: Proposal): "Payment Request" | "Batch Payment Request" | undefined {
   if (!('FunctionCall' in proposal.kind)) return undefined;
   const functionCall = proposal.kind.FunctionCall;
-
+  if (isIntentWithdrawProposal(proposal)) {
+    return "Payment Request" as const;
+  }
   const action = functionCall.actions.find(action => action.method_name === 'ft_transfer' || action.method_name === 'ft_transfer_call');
   if (!action) return undefined;
   if (action.method_name === 'ft_transfer') {
@@ -50,9 +52,20 @@ function isMTTransferProposal(proposal: Proposal): boolean {
   return functionCall.actions.some(action => action.method_name === 'mt_transfer' || action.method_name === 'mt_transfer_call');
 }
 
+function isIntentWithdrawProposal(proposal: Proposal): boolean {
+  if (!('FunctionCall' in proposal.kind)) return false;
+  const functionCall = proposal.kind.FunctionCall;
+  return functionCall.receiver_id === 'intents.near' && functionCall.actions.some(action => action.method_name === 'ft_withdraw');
+}
+
 function stakingType(proposal: Proposal): "Earn NEAR" | "Withdraw Earnings" | "Unstake NEAR" | undefined {
   if (!('FunctionCall' in proposal.kind)) return undefined;
   const functionCall = proposal.kind.FunctionCall;
+
+  if (isIntentWithdrawProposal(proposal)) {
+    return "Withdraw Earnings";
+  }
+
   const isPool = functionCall.receiver_id.endsWith('poolv1.near') || functionCall.receiver_id.endsWith('lockup.near');
   if (!isPool) return undefined;
   if (functionCall.actions.some(action => action.method_name === 'stake' || action.method_name === 'deposit_and_stake' || action.method_name === 'deposit')) {

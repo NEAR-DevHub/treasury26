@@ -70,7 +70,7 @@ function Step2({ handleBack }: StepProps) {
   const address = form.watch("address");
   const amount = form.watch("amount");
   const { data: storageDepositData } = useStorageDepositIsRegistered(address, token.address);
-  const { data: tokenData } = useToken(token.address, token.network);
+  const { data: tokenData } = useToken(token.address);
 
   useEffect(() => {
     if (storageDepositData !== undefined) {

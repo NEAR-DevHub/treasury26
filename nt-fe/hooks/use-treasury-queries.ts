@@ -164,12 +164,11 @@ export function useBatchStorageDepositIsRegistered(
  */
 export function useToken(
   tokenId: string | null | undefined,
-  network: string | null | undefined,
 ) {
   return useQuery({
-    queryKey: ["tokenMetadata", tokenId, network],
-    queryFn: () => getTokenMetadata(tokenId!, network!),
-    enabled: !!tokenId && !!network,
+    queryKey: ["tokenMetadata", tokenId],
+    queryFn: () => getTokenMetadata(tokenId!),
+    enabled: !!tokenId,
     staleTime: 1000 * 60 * 5, // 5 minutes (token metadata and price)
     refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
   });
