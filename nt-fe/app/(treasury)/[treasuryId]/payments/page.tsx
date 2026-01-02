@@ -28,7 +28,6 @@ const paymentFormSchema = z.object({
     .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
       message: "Amount must be greater than 0",
     }),
-  network: z.string(),
   memo: z.string().optional(),
   isRegistered: z.boolean().optional(),
   token: tokenSchema,
@@ -131,13 +130,13 @@ const buildIntentProposal = (
   parsedAmount: string,
   gasForIntentAction: string
 ): FunctionCallKind => {
-  const isNetworkWithdrawal = data.network !== "near";
+  const isNetworkWithdrawal = data.token.network !== "near";
   const tokenContract = data.token.address.replace("nep141:", "");
 
   const ftWithdrawArgs = isNetworkWithdrawal
     ? {
       token: tokenContract,
-      receiver_id: data.token.address,
+      receiver_id: tokenContract,
       amount: parsedAmount,
       memo: `WITHDRAW_TO:${data.address}`,
     }
@@ -188,7 +187,6 @@ export default function PaymentsPage() {
       address: "",
       amount: "",
       memo: "",
-      network: "near",
       token: NEAR_TOKEN,
     },
   });
@@ -208,8 +206,9 @@ export default function PaymentsPage() {
         receiverId: string;
         actions: ConnectorAction[];
       }> = [];
+      const isSelectedTokenIntents = data.token.address.startsWith("nep141:");
 
-      const needsStorageDeposit = !data.isRegistered && !isNEAR;
+      const needsStorageDeposit = !data.isRegistered && !isNEAR && !isSelectedTokenIntents;
 
       if (needsStorageDeposit) {
         const depositInYocto = Big(0.125).mul(Big(10).pow(24)).toFixed();
@@ -236,7 +235,6 @@ export default function PaymentsPage() {
         .mul(Big(10).pow(data.token.decimals))
         .toFixed();
 
-      const isSelectedTokenIntents = data.token.address.startsWith("nep141:");
       const proposalKind = isSelectedTokenIntents
         ? buildIntentProposal(data, parsedAmount, gasForIntentAction)
         : buildTransferProposal(data, parsedAmount);
