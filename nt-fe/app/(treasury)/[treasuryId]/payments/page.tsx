@@ -19,6 +19,7 @@ import Big from "big.js";
 import { ConnectorAction } from "@hot-labs/near-connect";
 import { NEAR_TOKEN } from "@/constants/token";
 import { SendingTotal } from "@/components/sending-total";
+import { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
 
 const paymentFormSchema = z.object({
   address: z.string().min(2, "Recipient should be at least 2 characters").max(64, "Recipient must be less than 64 characters"),
@@ -27,6 +28,7 @@ const paymentFormSchema = z.object({
     .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
       message: "Amount must be greater than 0",
     }),
+  network: z.string(),
   memo: z.string().optional(),
   isRegistered: z.boolean().optional(),
   token: tokenSchema,
@@ -124,6 +126,57 @@ function Step2({ handleBack }: StepProps) {
 
 type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 
+const buildIntentProposal = (
+  data: PaymentFormValues,
+  parsedAmount: string,
+  gasForIntentAction: string
+): FunctionCallKind => {
+  const isNetworkWithdrawal = data.network !== "near";
+  const tokenContract = data.token.address.replace("nep141:", "");
+
+  const ftWithdrawArgs = isNetworkWithdrawal
+    ? {
+      token: tokenContract,
+      receiver_id: data.token.address,
+      amount: parsedAmount,
+      memo: `WITHDRAW_TO:${data.address}`,
+    }
+    : {
+      token: tokenContract,
+      receiver_id: data.address,
+      amount: parsedAmount,
+    };
+
+  return {
+    FunctionCall: {
+      receiver_id: "intents.near",
+      actions: [
+        {
+          method_name: "ft_withdraw",
+          args: Buffer.from(JSON.stringify(ftWithdrawArgs)).toString("base64"),
+          deposit: "1",
+          gas: gasForIntentAction,
+        },
+      ],
+    },
+  };
+};
+
+const buildTransferProposal = (
+  data: PaymentFormValues,
+  parsedAmount: string
+): TransferKind => {
+  const isNEAR = data.token.symbol === "NEAR";
+  return {
+    Transfer: {
+      token_id: isNEAR ? "" : data.token.address,
+      receiver_id: data.address,
+      amount: parsedAmount,
+      msg: null,
+    },
+  };
+};
+
 export default function PaymentsPage() {
   const { selectedTreasury } = useTreasury();
   const { createProposal } = useNear();
@@ -135,6 +188,7 @@ export default function PaymentsPage() {
       address: "",
       amount: "",
       memo: "",
+      network: "near",
       token: NEAR_TOKEN,
     },
   });
@@ -145,9 +199,10 @@ export default function PaymentsPage() {
       const description = {
         title: "Payment Request",
         notes: data.memo || "",
-      }
+      };
       const proposalBond = policy?.proposal_bond || "0";
       const gas = "270000000000000";
+      const gasForIntentAction = Big(30).mul(Big(10).pow(12)).toFixed(); // 30 Tgas for ft_withdraw
 
       const additionalTransactions: Array<{
         receiverId: string;
@@ -177,17 +232,20 @@ export default function PaymentsPage() {
         });
       }
 
+      const parsedAmount = Big(data.amount)
+        .mul(Big(10).pow(data.token.decimals))
+        .toFixed();
+
+      const isSelectedTokenIntents = data.token.address.startsWith("nep141:");
+      const proposalKind = isSelectedTokenIntents
+        ? buildIntentProposal(data, parsedAmount, gasForIntentAction)
+        : buildTransferProposal(data, parsedAmount);
+
       await createProposal("Request to send payment submitted", {
         treasuryId: selectedTreasury!,
         proposal: {
           description: encodeToMarkdown(description),
-          kind: {
-            Transfer: {
-              token_id: isNEAR ? "" : data.token.address,
-              receiver_id: data.address,
-              amount: Big(data.amount).mul(Big(10).pow(data.token.decimals)).toFixed(),
-            },
-          },
+          kind: proposalKind,
         },
         proposalBond,
         additionalTransactions,
