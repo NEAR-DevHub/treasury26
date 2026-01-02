@@ -58,9 +58,9 @@ export function User({ accountId, iconOnly = false, size = "sm", withLink = true
                 <img src={image} alt="User Logo" className={cn("rounded-full shrink-0", sizeClasses[size])} />
             </div>
             {!iconOnly && (
-                <div className="flex flex-col items-start">
-                    {withName && <span className="font-medium">{name}</span>}
-                    <span className="text-xs text-muted-foreground">{accountId}</span>
+                <div className="flex flex-col items-start min-w-0">
+                    {withName && <span className="font-medium truncate max-w-full">{name}</span>}
+                    <span className="text-xs text-muted-foreground truncate max-w-full">{accountId}</span>
                 </div>
             )}
         </>
