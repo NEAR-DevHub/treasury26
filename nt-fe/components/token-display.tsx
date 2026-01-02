@@ -1,29 +1,34 @@
 import { TreasuryAsset } from "@/lib/api";
+import { useThemeStore } from "@/stores/theme-store";
 import Big from "big.js";
 
 export const NetworkDisplay = ({ asset }: { asset: TreasuryAsset }) => {
-    let network;
+    const { theme } = useThemeStore();
+
     let type;
     switch (asset.residency) {
         case "Ft":
-            network = asset.network;
             type = "Fungible Token";
             break;
         case "Intents":
-            network = asset.network;
             type = "Intents Token";
             break;
         case "Near":
-            network = asset.network;
             type = "Native Token";
             break;
     }
 
+    const image = asset.chainIcons ?
+        theme === "light" ? asset.chainIcons.light
+            : asset.chainIcons.dark
+        : asset.icon;
+
+
     return (
         <div className="flex items-center gap-3">
-            <img src={asset.icon} alt={asset.symbol} className="size-6 rounded-full" />
+            <img src={image} alt={`${asset.chainName} network`} className="size-6" />
             <div className="flex flex-col text-left">
-                <span className="font-semibold capitalize">{network}</span>
+                <span className="font-semibold capitalize">{asset.chainName}</span>
                 <span className="text-xs text-muted-foreground">
                     {type}
                 </span>

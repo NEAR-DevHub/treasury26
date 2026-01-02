@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     AppState,
+    constants::intents_chains::{ChainIcons, get_chain_metadata_by_name},
     handlers::proxy::external::{REF_SDK_BASE_URL, fetch_proxy_api},
 };
 
@@ -21,7 +22,8 @@ pub struct TokenMetadataQuery {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TokenMetadataResponse {
+pub struct TokenMetadata {
+    #[serde(rename = "tokenId")]
     pub token_id: String,
     pub name: String,
     pub symbol: String,
@@ -30,13 +32,20 @@ pub struct TokenMetadataResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub price: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "priceUpdatedAt")]
     pub price_updated_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub network: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "chainName")]
     pub chain_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "chainIcons")]
+    pub chain_icons: Option<ChainIcons>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct RefSdkToken {
+struct RefSdkToken {
     pub defuse_asset_id: String,
     pub name: String,
     pub symbol: String,
@@ -55,12 +64,12 @@ pub struct RefSdkToken {
 /// * `defuse_asset_ids` - List of defuse asset IDs to fetch (supports batch)
 ///
 /// # Returns
-/// * `Ok(Vec<RefSdkToken>)` - List of token metadata
+/// * `Ok(Vec<TokenMetadata>)` - List of token metadata with chain information
 /// * `Err((StatusCode, String))` - Error with status code and message
 pub async fn fetch_tokens_metadata(
     state: &Arc<AppState>,
     defuse_asset_ids: &[String],
-) -> Result<Vec<RefSdkToken>, (StatusCode, String)> {
+) -> Result<Vec<TokenMetadata>, (StatusCode, String)> {
     if defuse_asset_ids.is_empty() {
         return Ok(Vec::new());
     }
@@ -97,7 +106,30 @@ pub async fn fetch_tokens_metadata(
         )
     })?;
 
-    Ok(tokens)
+    // Map RefSdkToken to TokenMetadata with chain metadata
+    let metadata_responses: Vec<TokenMetadata> = tokens
+        .iter()
+        .map(|token| {
+            let chain_metadata = get_chain_metadata_by_name(&token.chain_name);
+            let chain_name = chain_metadata.as_ref().map(|m| m.name.clone());
+            let chain_icons = chain_metadata.map(|m| m.icon);
+
+            TokenMetadata {
+                token_id: token.defuse_asset_id.clone(),
+                name: token.name.clone(),
+                symbol: token.symbol.clone(),
+                decimals: token.decimals,
+                icon: token.icon.clone(),
+                price: token.price,
+                price_updated_at: token.price_updated_at.clone(),
+                network: Some(token.chain_name.clone()),
+                chain_name,
+                chain_icons,
+            }
+        })
+        .collect();
+
+    Ok(metadata_responses)
 }
 
 pub async fn get_token_metadata(
@@ -118,23 +150,15 @@ pub async fn get_token_metadata(
     let tokens = fetch_tokens_metadata(&state, &[params.token_id.clone()]).await?;
 
     // Get the first token from the array
-    let token = tokens.first().ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            format!("Token not found: {}", params.token_id),
-        )
-    })?;
-
-    let mut metadata = TokenMetadataResponse {
-        token_id: params.token_id.clone(),
-        name: token.name.clone(),
-        symbol: token.symbol.clone(),
-        decimals: token.decimals,
-        icon: token.icon.clone(),
-        price: token.price,
-        price_updated_at: token.price_updated_at.clone(),
-        chain_name: Some(token.chain_name.clone()),
-    };
+    let mut metadata = tokens
+        .first()
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                format!("Token not found: {}", params.token_id),
+            )
+        })?
+        .clone();
 
     if is_near {
         metadata.name = "NEAR".to_string();

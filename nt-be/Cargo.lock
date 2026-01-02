@@ -2067,6 +2067,7 @@ dependencies = [
  "near-api",
  "near-jsonrpc-client",
  "near-primitives",
+ "once_cell",
  "reqwest",
  "serde",
  "serde_json",

@@ -11,8 +11,10 @@ use std::sync::Arc;
 
 use crate::{
     AppState,
-    constants::{INTENTS_CONTRACT_ID, NEAR_ICON, REF_FINANCE_CONTRACT_ID},
-    handlers::token::{RefSdkToken, fetch_tokens_metadata},
+    constants::{
+        INTENTS_CONTRACT_ID, NEAR_ICON, REF_FINANCE_CONTRACT_ID, intents_chains::ChainIcons,
+    },
+    handlers::token::{TokenMetadata as TokenMetadataResponse, fetch_tokens_metadata},
 };
 
 #[derive(Deserialize)]
@@ -54,6 +56,8 @@ pub struct SimplifiedToken {
     pub contract_id: Option<String>,
     pub residency: TokenResidency,
     pub network: String,
+    #[serde(rename = "chainName")]
+    pub chain_name: String,
     pub symbol: String,
 
     pub balance: String,
@@ -61,6 +65,8 @@ pub struct SimplifiedToken {
     pub price: String,
     pub name: String,
     pub icon: Option<String>,
+    #[serde(rename = "chainIcons")]
+    pub chain_icons: Option<ChainIcons>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -270,15 +276,13 @@ async fn fetch_intents_balances(
 /// Builds intents tokens from token metadata
 fn build_intents_tokens(
     tokens_with_balances: Vec<(String, String)>,
-    tokens_metadata: &[RefSdkToken],
+    tokens_metadata: &[TokenMetadataResponse],
 ) -> Vec<SimplifiedToken> {
     tokens_with_balances
         .into_iter()
         .filter_map(|(token_id, balance)| {
-            // Find metadata by matching defuse_asset_id with the token_id
-            let metadata = tokens_metadata
-                .iter()
-                .find(|t| t.defuse_asset_id == token_id)?;
+            // Find metadata by matching token_id
+            let metadata = tokens_metadata.iter().find(|t| t.token_id == token_id)?;
 
             // Extract contract_id (remove prefix like "nep141:" if present)
             let contract_id = if token_id.starts_with("nep141:") {
@@ -288,7 +292,7 @@ fn build_intents_tokens(
             };
 
             Some(SimplifiedToken {
-                id: metadata.defuse_asset_id.clone(),
+                id: metadata.token_id.clone(),
                 contract_id: Some(contract_id),
                 decimals: metadata.decimals,
                 balance,
@@ -299,8 +303,10 @@ fn build_intents_tokens(
                 symbol: metadata.symbol.clone(),
                 name: metadata.name.clone(),
                 icon: metadata.icon.clone(),
-                network: metadata.chain_name.clone(),
+                network: metadata.network.clone().unwrap_or_default(),
                 residency: TokenResidency::Intents,
+                chain_icons: metadata.chain_icons.clone(),
+                chain_name: metadata.chain_name.clone().unwrap_or(metadata.name.clone()),
             })
         })
         .collect()
@@ -401,7 +407,7 @@ pub async fn get_user_assets(
         .filter_map(|((token_id, balance), token_id_to_fetch)| {
             let token_meta = tokens_metadata
                 .iter()
-                .find(|m| m.defuse_asset_id == token_id_to_fetch)?;
+                .find(|m| m.token_id == token_id_to_fetch)?;
 
             let price = token_meta.price.unwrap_or(0.0).to_string();
 
@@ -416,6 +422,11 @@ pub async fn get_user_assets(
                 icon: token_meta.icon.clone(),
                 network: "near".to_string(),
                 residency: TokenResidency::Ft,
+                chain_icons: token_meta.chain_icons.clone(),
+                chain_name: token_meta
+                    .chain_name
+                    .clone()
+                    .unwrap_or_else(|| "Near Protocol".to_string()),
             })
         })
         .collect();
@@ -437,8 +448,13 @@ pub async fn get_user_assets(
         symbol: near_token_meta.symbol.clone(),
         name: near_token_meta.name.clone(),
         icon: near_token_meta.icon.clone(),
-        network: near_token_meta.chain_name.clone(),
+        network: near_token_meta.network.clone().unwrap_or_default(),
         residency: TokenResidency::Near,
+        chain_name: near_token_meta
+            .chain_name
+            .clone()
+            .unwrap_or(near_token_meta.name.clone()),
+        chain_icons: near_token_meta.chain_icons.clone(),
     });
 
     // Sort combined list by balance (highest first)
