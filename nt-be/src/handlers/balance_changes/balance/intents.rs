@@ -3,27 +3,37 @@
 //! Functions to query NEAR Intents multi-token balances at specific block heights via RPC.
 
 use near_api::{Contract, NetworkConfig, Reference};
+use sqlx::PgPool;
 use std::str::FromStr;
+
+use crate::handlers::balance_changes::counterparty::{convert_raw_to_decimal, ensure_ft_metadata};
 
 /// Query NEAR Intents multi-token balance at a specific block height
 ///
 /// If the RPC returns a 422 error (unprocessable entity), assumes the block doesn't exist
 /// and retries with previous blocks (up to 10 attempts).
 ///
+/// Also ensures FT metadata for the underlying token is cached in the counterparties table.
+///
 /// # Arguments
+/// * `pool` - Database connection pool for storing/retrieving token metadata
 /// * `network` - The NEAR network configuration (use archival network for historical queries)
 /// * `account_id` - The NEAR account to query
 /// * `token_id` - Full token identifier in format "contract:token_id"
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
-/// The balance as a string (to handle arbitrary precision)
+/// The balance as a BigDecimal (for arbitrary precision with proper decimal places)
 pub async fn get_balance_at_block(
+    pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
     token_id: &str,
     block_height: u64,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<bigdecimal::BigDecimal, Box<dyn std::error::Error>> {
+    // Ensure FT metadata is cached for this intents token
+    // This will extract the actual FT contract and query its metadata
+    let decimals = ensure_ft_metadata(pool, network, token_id).await?;
     // Parse token_id format: "contract:token_id" (split on first colon only)
     // Example: "intents.near:nep141:btc.omft.near" -> contract="intents.near", token="nep141:btc.omft.near"
     let parts: Vec<&str> = token_id.splitn(2, ':').collect();
@@ -61,7 +71,12 @@ pub async fn get_balance_at_block(
                         offset
                     );
                 }
-                return Ok(balance.data);
+
+                // Convert raw balance to decimal-adjusted value
+                let raw_balance: String = balance.data;
+                let decimal_balance = convert_raw_to_decimal(&raw_balance, decimals)?;
+
+                return Ok(decimal_balance);
             }
             Err(e) => {
                 let err_str = e.to_string();

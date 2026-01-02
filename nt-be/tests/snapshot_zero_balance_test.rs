@@ -102,7 +102,9 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
     // The actual withdrawal happened at block 178086210 (621,104 blocks before SNAPSHOT)
     // This is OUTSIDE the default 600k block lookback window
     let withdrawal_block: i64 = 178086210;
-    let balance_before_withdrawal = "3450"; // USDC (6 decimals)
+    use bigdecimal::BigDecimal;
+    use std::str::FromStr;
+    let balance_before_withdrawal = BigDecimal::from_str("3450").unwrap(); // USDC (6 decimals)
 
     println!(
         "\n  Checking balance at known withdrawal block {}...",
@@ -147,7 +149,8 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
         check_block_after, balance_after_withdrawal
     );
     assert_eq!(
-        balance_after_withdrawal, "0",
+        balance_after_withdrawal,
+        BigDecimal::from_str("0").unwrap(),
         "Balance after withdrawal should be 0"
     );
 
@@ -165,9 +168,9 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
         &archival_network,
         account_id,
         token_id,
-        check_block_before as u64, // Start from before withdrawal
-        check_block_after as u64,  // End after withdrawal
-        "0",                       // Target balance is 0
+        check_block_before as u64,           // Start from before withdrawal
+        check_block_after as u64,            // End after withdrawal
+        &BigDecimal::from_str("0").unwrap(), // Target balance is 0
     )
     .await
     .expect("Should find the balance change block");
@@ -242,11 +245,13 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
         "First run: should insert SNAPSHOT at lookback boundary (600k blocks before original)"
     );
     assert_eq!(
-        filled_record.balance_before, "0",
+        filled_record.balance_before,
+        BigDecimal::from_str("0").unwrap(),
         "First run: balance at lookback boundary was 0"
     );
     assert_eq!(
-        filled_record.balance_after, "0",
+        filled_record.balance_after,
+        BigDecimal::from_str("0").unwrap(),
         "First run: balance at lookback boundary was 0"
     );
 
@@ -315,7 +320,8 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
         "Second run: balance before withdrawal should be 3450"
     );
     assert_eq!(
-        withdrawal_gap.balance_after, "0",
+        withdrawal_gap.balance_after,
+        BigDecimal::from_str("0").unwrap(),
         "Second run: balance after withdrawal should be 0"
     );
 
@@ -363,7 +369,8 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
         .find(|r| r.block_height == withdrawal_block)
         .expect("Should have withdrawal record");
     assert_eq!(
-        withdrawal_record.balance_before, balance_before_withdrawal,
+        withdrawal_record.balance_before,
+        balance_before_withdrawal.to_string(),
         "Withdrawal: before"
     );
     assert_eq!(withdrawal_record.balance_after, "0", "Withdrawal: after");

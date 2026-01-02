@@ -67,6 +67,45 @@ Fungible token interactions leave traces in NEAR balance changes through gas fee
 - Parse receipt logs for token transfer events
 - Events reveal which fungible tokens changed balances
 
+### Optimization: Registration Status Check
+
+When working with fungible tokens (FT), check if the account was registered with the token contract at a specific block height. This avoids unnecessary historical lookback for periods when the account was not yet registered.
+
+**Detection at Specific Block Height:**
+
+1. Query balance via `ft_balance_of(account_id, token_contract)` at the target block height
+2. If balance is zero, call `storage_balance_of(account_id)` on the token contract **at the same block height**
+3. Check the registration status from the returned object:
+   - `{ total: '0', available: '0' }` → Account was **not registered at this block height**
+   - `{ total: '<non-zero>', available: '...' }` → Account **was registered at this block height**
+
+**Action Based on Registration Status:**
+
+- **Not registered at block height (total = '0'):** Insert a balance change record with `counterparty = "NOT_REGISTERED"` at this block height. This marks the boundary where the account was not yet registered, preventing further backward searches.
+- **Was registered (total > 0):** Continue normal gap filling to discover when balances changed.
+
+**When to Apply This Check:**
+
+1. **During Token Discovery:** When first discovering an FT token from NEAR transaction counterparties, check registration at the discovery block. If not registered, skip creating any records for this token.
+
+2. **During Backward Gap Filling:** When creating snapshots back in time (at lookback boundaries), check registration at that historical block height. If not registered, insert a "NOT_REGISTERED" record and stop - future gap filling will see this marker and not search further back.
+
+**NOT_REGISTERED Marker:**
+
+The "NOT_REGISTERED" counterparty value serves as a permanent marker indicating the account was not registered with the token contract at that point in time. When the gap-filling algorithm encounters a NOT_REGISTERED record, it knows the account has no earlier history with that token and stops searching backwards.
+
+**Why This Matters:** 
+
+Without this check, the system wastes resources searching hundreds of thousands of blocks back to times when the account wasn't registered with the token contract. Many discovered FT contracts may be tokens the account interacted with but never registered for (e.g., contracts called for other purposes, or tokens sent that bounced).
+
+**Note:** The `storage_balance_of` result shows storage deposit, which is non-zero once an account registers and remains non-zero even after the account withdraws all tokens. A zero `total` at a specific block height indicates the account was not registered at that point in time.
+
+**Implementation Locations:** 
+1. In `discover_ft_tokens_from_receipts()` after confirming a counterparty is an FT contract but before calling `insert_snapshot_record()`
+2. In backward gap filling logic when creating snapshots at lookback boundaries
+
+**Current Status:** The codebase does NOT yet check `storage_balance_of` at any point. The system currently continues searching backwards indefinitely, even when accounts were not registered. This optimization should be added.
+
 ### Discovering NEAR Intents Tokens
 
 **Standard Case:** Follow the same pattern as fungible tokens - look for NEAR gas fees and analyze receipts.
@@ -106,7 +145,9 @@ Snapshot records serve as boundary markers for the gap-filling algorithm:
 2. **Regular Polling:** Periodic balance checks (especially for NEAR Intents to catch solver-initiated changes)
 3. **Reference Points:** Strategic markers to ensure comprehensive gap detection
 
-### Counterparty Rules
+##Not registered marker:** `counterparty = "NOT_REGISTERED"` - Indicates the account was not registered with this token contract at this block height. Acts as a boundary marker to stop backward searches.
+
+**# Counterparty Rules
 
 **Snapshot records:** `counterparty = "SNAPSHOT"`
 

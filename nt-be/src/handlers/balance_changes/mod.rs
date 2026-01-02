@@ -5,4 +5,6 @@ pub mod block_info;
 pub mod counterparty;
 pub mod gap_detector;
 pub mod gap_filler;
+pub mod history;
 pub mod token_discovery;
+pub mod utils;

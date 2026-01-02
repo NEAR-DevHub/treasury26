@@ -13,7 +13,7 @@ async fn test_monitored_accounts_crud() {
 
     // Test 1: Add a monitored account
     let add_payload = serde_json::json!({
-        "account_id": "test-account.near",
+        "account_id": "test-treasury.sputnik-dao.near",
         "enabled": true
     });
 
@@ -26,7 +26,7 @@ async fn test_monitored_accounts_crud() {
 
     assert_eq!(response.status(), 200, "Add account should succeed");
     let added: serde_json::Value = response.json().await.expect("Failed to parse JSON");
-    assert_eq!(added["account_id"], "test-account.near");
+    assert_eq!(added["account_id"], "test-treasury.sputnik-dao.near");
     assert_eq!(added["enabled"], true);
     assert!(added["created_at"].is_string());
     assert!(added["updated_at"].is_string());
@@ -49,8 +49,8 @@ async fn test_monitored_accounts_crud() {
 
     let found = accounts_array
         .iter()
-        .any(|acc| acc["account_id"] == "test-account.near");
-    assert!(found, "Should find test-account.near in list");
+        .any(|acc| acc["account_id"] == "test-treasury.sputnik-dao.near");
+    assert!(found, "Should find test-treasury.sputnik-dao.near in list");
 
     // Test 3: List only enabled accounts
     let response = client
@@ -74,7 +74,7 @@ async fn test_monitored_accounts_crud() {
     });
 
     let response = client
-        .patch(server.url("/api/monitored-accounts/test-account.near"))
+        .patch(server.url("/api/monitored-accounts/test-treasury.sputnik-dao.near"))
         .json(&update_payload)
         .send()
         .await
@@ -82,7 +82,7 @@ async fn test_monitored_accounts_crud() {
 
     assert_eq!(response.status(), 200, "Update should succeed");
     let updated: serde_json::Value = response.json().await.expect("Failed to parse JSON");
-    assert_eq!(updated["account_id"], "test-account.near");
+    assert_eq!(updated["account_id"], "test-treasury.sputnik-dao.near");
     assert_eq!(updated["enabled"], false, "Account should be disabled");
 
     // Test 5: Verify account is disabled in list
@@ -98,15 +98,15 @@ async fn test_monitored_accounts_crud() {
 
     let found_disabled = disabled_array
         .iter()
-        .any(|acc| acc["account_id"] == "test-account.near");
+        .any(|acc| acc["account_id"] == "test-treasury.sputnik-dao.near");
     assert!(
         found_disabled,
-        "Should find test-account.near in disabled list"
+        "Should find test-treasury.sputnik-dao.near in disabled list"
     );
 
     // Test 6: Delete the monitored account
     let response = client
-        .delete(server.url("/api/monitored-accounts/test-account.near"))
+        .delete(server.url("/api/monitored-accounts/test-treasury.sputnik-dao.near"))
         .send()
         .await
         .expect("Failed to delete account");
@@ -130,7 +130,7 @@ async fn test_monitored_accounts_crud() {
 
     let still_found = accounts_after_array
         .iter()
-        .any(|acc| acc["account_id"] == "test-account.near");
+        .any(|acc| acc["account_id"] == "test-treasury.sputnik-dao.near");
     assert!(!still_found, "Account should be deleted");
 
     // Test 8: Try to update non-existent account (should fail)

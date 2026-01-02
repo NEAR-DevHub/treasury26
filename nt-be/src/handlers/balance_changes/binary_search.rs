@@ -4,6 +4,7 @@
 //! Uses the balance query service to efficiently locate transaction blocks.
 
 use crate::handlers::balance_changes::balance;
+use bigdecimal::BigDecimal;
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 
@@ -19,7 +20,7 @@ use sqlx::PgPool;
 /// * `token_id` - Token identifier (see balance::get_balance_at_block for format)
 /// * `start_block` - Starting block height (inclusive)
 /// * `end_block` - Ending block height (inclusive)
-/// * `expected_balance` - The balance we're looking for
+/// * `expected_balance` - The balance we're looking for (as BigDecimal)
 ///
 /// # Returns
 /// * `Some(block_height)` - The block where balance changed to expected_balance
@@ -31,7 +32,7 @@ pub async fn find_balance_change_block(
     token_id: &str,
     start_block: u64,
     end_block: u64,
-    expected_balance: &str,
+    expected_balance: &BigDecimal,
 ) -> Result<Option<u64>, Box<dyn std::error::Error>> {
     // Check if range is valid
     if start_block > end_block {
@@ -43,7 +44,7 @@ pub async fn find_balance_change_block(
         balance::get_balance_at_block(pool, network, account_id, token_id, end_block).await?;
 
     // If balance at end doesn't match, expected balance is not in this range
-    if end_balance != expected_balance {
+    if &end_balance != expected_balance {
         return Ok(None);
     }
 
@@ -52,7 +53,7 @@ pub async fn find_balance_change_block(
         balance::get_balance_at_block(pool, network, account_id, token_id, start_block).await?;
 
     // If balance at start already matches, return start_block
-    if start_balance == expected_balance {
+    if &start_balance == expected_balance {
         return Ok(Some(start_block));
     }
 
@@ -67,7 +68,7 @@ pub async fn find_balance_change_block(
         let mid_balance =
             balance::get_balance_at_block(pool, network, account_id, token_id, mid).await?;
 
-        if mid_balance == expected_balance {
+        if &mid_balance == expected_balance {
             // Found a match - check if there's an earlier one
             result = mid;
             if mid == left {
@@ -87,6 +88,7 @@ pub async fn find_balance_change_block(
 mod tests {
     use super::*;
     use crate::utils::test_utils::init_test_state;
+    use std::str::FromStr;
 
     #[tokio::test]
     async fn test_find_balance_change_mainnet() {
@@ -95,14 +97,15 @@ mod tests {
         // Test data: balance changed at block 151386339
         // Before (raw): "6100211126630537100000000" yoctoNEAR = 6.1002111266305371 NEAR (decimal)
         // After (raw): "11100211126630537100000000" yoctoNEAR = 11.1002111266305371 NEAR (decimal)
+        let expected_balance = BigDecimal::from_str("11.1002111266305371").unwrap();
         let result = find_balance_change_block(
             &state.db_pool,
             &state.archival_network,
             "webassemblymusic-treasury.sputnik-dao.near",
             "NEAR",
-            151386338,             // Block before the change
-            151386340,             // Block after the change
-            "11.1002111266305371", // Decimal-adjusted balance
+            151386338,         // Block before the change
+            151386340,         // Block after the change
+            &expected_balance, // Decimal-adjusted balance
         )
         .await
         .unwrap();
@@ -116,6 +119,7 @@ mod tests {
         let state = init_test_state().await;
 
         // Search for a balance that doesn't exist in this range
+        let expected_balance = BigDecimal::from_str("99999999999999999999999999").unwrap();
         let result = find_balance_change_block(
             &state.db_pool,
             &state.archival_network,
@@ -123,7 +127,7 @@ mod tests {
             "NEAR",
             151386338,
             151386340,
-            "99999999999999999999999999", // Non-existent balance
+            &expected_balance, // Non-existent balance
         )
         .await
         .unwrap();
@@ -136,6 +140,7 @@ mod tests {
         let state = init_test_state().await;
 
         // Single block range
+        let expected_balance = BigDecimal::from_str("11.1002111266305371").unwrap();
         let result = find_balance_change_block(
             &state.db_pool,
             &state.archival_network,
@@ -143,7 +148,7 @@ mod tests {
             "NEAR",
             151386339,
             151386339,
-            "11.1002111266305371",
+            &expected_balance,
         )
         .await
         .unwrap();
@@ -157,8 +162,9 @@ mod tests {
 
         // Test data: BTC intents balance changed at block 159487770
         // Before: "0"
-        // After: "32868"
+        // After: "0.00032868" (32868 raw with 8 decimals, decimal-adjusted)
         // Token format: "intents.near:nep141:btc.omft.near"
+        let expected_balance = BigDecimal::from_str("0.00032868").unwrap();
         let result = find_balance_change_block(
             &state.db_pool,
             &state.archival_network,
@@ -166,7 +172,7 @@ mod tests {
             "intents.near:nep141:btc.omft.near",
             159487760, // 10 blocks before the change
             159487780, // 10 blocks after the change
-            "32868",
+            &expected_balance,
         )
         .await
         .unwrap();
@@ -180,6 +186,7 @@ mod tests {
         let state = init_test_state().await;
 
         // Search for a balance that doesn't exist in this range
+        let expected_balance = BigDecimal::from_str("99999999999999999999999999").unwrap();
         let result = find_balance_change_block(
             &state.db_pool,
             &state.archival_network,
@@ -187,7 +194,7 @@ mod tests {
             "intents.near:nep141:btc.omft.near",
             159487769,
             159487771,
-            "99999999999999999999999999", // Non-existent balance
+            &expected_balance, // Non-existent balance
         )
         .await
         .unwrap();
@@ -230,21 +237,21 @@ mod tests {
         .expect("FT balance query should succeed");
 
         println!(
-            "arizcredits balance before (168568480): '{}' (length: {})",
-            balance_before,
-            balance_before.len()
+            "arizcredits balance before (168568480): '{}'",
+            balance_before
         );
-        println!(
-            "arizcredits balance after (168568485): '{}' (length: {})",
-            balance_after,
-            balance_after.len()
-        );
+        println!("arizcredits balance after (168568485): '{}'", balance_after);
 
         // Hard assertions on decimal-adjusted amounts
         // arizcredits.near has 6 decimals, so raw 3000000 = 3.0 ARIZ (decimal-adjusted)
-        assert_eq!(balance_before, "0", "Balance before should be 0");
         assert_eq!(
-            balance_after, "3",
+            balance_before,
+            BigDecimal::from(0),
+            "Balance before should be 0"
+        );
+        assert_eq!(
+            balance_after,
+            BigDecimal::from(3),
             "Balance after should be 3 (3.0 ARIZ with 6 decimals, decimal-adjusted)"
         );
     }
@@ -274,7 +281,8 @@ mod tests {
 
         // Hard assertion: decimal-adjusted value should be 2.5 (which is 2500000 raw with 6 decimals)
         assert_eq!(
-            balance, "2.5",
+            balance,
+            BigDecimal::from_str("2.5").unwrap(),
             "Decimal balance should be 2.5 (2500000 raw with 6 decimals)"
         );
     }
@@ -322,7 +330,8 @@ mod tests {
             "Balance change should be at block 168568482"
         );
         assert_eq!(
-            balance_after, "3",
+            balance_after,
+            BigDecimal::from(3),
             "Balance after should be 3 ARIZ (6 decimals, so 3000000 raw = 3)"
         );
     }

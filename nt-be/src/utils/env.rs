@@ -10,6 +10,7 @@ pub struct EnvVars {
     pub signer_key: SecretKey,
     pub signer_id: AccountId,
     pub disable_balance_monitoring: bool,
+    pub monitor_interval_minutes: u64,
 }
 
 impl Default for EnvVars {
@@ -35,6 +36,10 @@ impl Default for EnvVars {
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
+            monitor_interval_minutes: std::env::var("MONITOR_INTERVAL_MINUTES")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(5),
         }
     }
 }

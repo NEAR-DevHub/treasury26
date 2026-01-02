@@ -12,6 +12,7 @@ pub mod ft;
 pub mod intents;
 pub mod near;
 
+use bigdecimal::BigDecimal;
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 
@@ -31,14 +32,14 @@ use sqlx::PgPool;
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
-/// The balance as a string (to handle arbitrary precision)
+/// The balance as a BigDecimal (for arbitrary precision with proper decimal places)
 pub async fn get_balance_at_block(
     pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
     token_id: &str,
     block_height: u64,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<bigdecimal::BigDecimal, Box<dyn std::error::Error>> {
     log::info!(
         "Get balance at block {} {} {}",
         account_id,
@@ -49,7 +50,7 @@ pub async fn get_balance_at_block(
         near::get_balance_at_block(network, account_id, block_height).await
     } else if token_id.contains(':') {
         // NEAR Intents format: "contract:token_id"
-        intents::get_balance_at_block(network, account_id, token_id, block_height).await
+        intents::get_balance_at_block(pool, network, account_id, token_id, block_height).await
     } else {
         // Fungible token contract address
         ft::get_balance_at_block(pool, network, account_id, token_id, block_height).await
@@ -66,14 +67,14 @@ pub async fn get_balance_at_block(
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
-/// Tuple of (balance_before, balance_after)
+/// Tuple of (balance_before, balance_after) as BigDecimal values
 pub async fn get_balance_change_at_block(
     pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
     token_id: &str,
     block_height: u64,
-) -> Result<(String, String), Box<dyn std::error::Error>> {
+) -> Result<(BigDecimal, BigDecimal), Box<dyn std::error::Error>> {
     // For now, we query the block and the previous block
     // In the future, this should be optimized with transaction-specific queries
     let balance_after =
@@ -81,7 +82,7 @@ pub async fn get_balance_change_at_block(
     let balance_before = if block_height > 0 {
         get_balance_at_block(pool, network, account_id, token_id, block_height - 1).await?
     } else {
-        "0".to_string()
+        BigDecimal::from(0)
     };
 
     Ok((balance_before, balance_after))
@@ -108,7 +109,12 @@ mod tests {
         .unwrap();
 
         // Expected balance after from test data (converted to NEAR from yoctoNEAR)
-        assert_eq!(balance, "11.1002111266305371");
+        use bigdecimal::BigDecimal;
+        use std::str::FromStr;
+        assert_eq!(
+            balance,
+            BigDecimal::from_str("11.1002111266305371").unwrap()
+        );
     }
 
     #[tokio::test]
@@ -130,7 +136,9 @@ mod tests {
         .unwrap();
 
         // From test data: balanceBefore and balanceAfter at block 151386339 (converted to NEAR)
-        assert_eq!(before, "6.1002111266305371");
-        assert_eq!(after, "11.1002111266305371");
+        use bigdecimal::BigDecimal;
+        use std::str::FromStr;
+        assert_eq!(before, BigDecimal::from_str("6.1002111266305371").unwrap());
+        assert_eq!(after, BigDecimal::from_str("11.1002111266305371").unwrap());
     }
 }

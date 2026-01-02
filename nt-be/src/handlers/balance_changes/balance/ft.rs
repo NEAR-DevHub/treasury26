@@ -26,14 +26,14 @@ use crate::handlers::balance_changes::counterparty::{convert_raw_to_decimal, ens
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
-/// The decimal-adjusted balance as a string (e.g., "2.5" for 2.5 tokens with 6 decimals)
+/// The decimal-adjusted balance as a BigDecimal (e.g., "2.5" for 2.5 tokens with 6 decimals)
 pub async fn get_balance_at_block(
     pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,
     token_contract: &str,
     block_height: u64,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<bigdecimal::BigDecimal, Box<dyn std::error::Error>> {
     // Ensure metadata is cached and get decimals for conversion
     let decimals = ensure_ft_metadata(pool, network, token_contract).await?;
 
@@ -43,9 +43,10 @@ pub async fn get_balance_at_block(
     for offset in 0..=max_retries {
         let current_block = block_height.saturating_sub(offset);
 
-        // Call ft_balance_of directly to get raw U128 value without conversion
+        // Call ft_balance_of to get raw U128 value
+        // Use U128 directly in the type signature for automatic deserialization
         let contract = Contract(token_contract_obj.clone());
-        let result: Result<near_api::Data<serde_json::Value>, _> = contract
+        let result: Result<near_api::Data<U128>, _> = contract
             .call_function(
                 "ft_balance_of",
                 serde_json::json!({
@@ -69,11 +70,8 @@ pub async fn get_balance_at_block(
                     );
                 }
 
-                // Parse the raw U128 value from the contract response
-                // NEP-141 ft_balance_of returns a U128 which can be either a string or number in JSON
-                // Using near_api::types::json::U128 handles both formats automatically
-                let raw_balance: U128 = serde_json::from_value(data.data.clone())
-                    .map_err(|e| format!("Failed to deserialize U128 balance: {}", e))?;
+                // Extract U128 value - near_api::types::json::U128 handles both string and number formats
+                let raw_balance = data.data;
 
                 // Convert raw U128 to decimal-adjusted value for storage
                 let decimal_balance = convert_raw_to_decimal(&raw_balance.0.to_string(), decimals)?;

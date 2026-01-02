@@ -69,7 +69,7 @@ async fn test_fill_gap_to_past_with_insufficient_lookback(pool: PgPool) -> sqlx:
 
     println!("Balance at snapshot block: {}", balance_at_snapshot);
 
-    let balance_bd = BigDecimal::from_str(&balance_at_snapshot).expect("Failed to parse balance");
+    let balance_bd = &balance_at_snapshot; // Already a BigDecimal
 
     let block_timestamp = get_block_timestamp(&archival_network, snapshot_block as u64, None)
         .await

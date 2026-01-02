@@ -17,23 +17,15 @@
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 use sqlx::types::BigDecimal;
-use sqlx::types::chrono::{DateTime, Utc};
-use std::str::FromStr;
 
 use crate::handlers::balance_changes::{
     balance, binary_search, block_info,
     gap_detector::{self, BalanceGap},
+    utils::block_timestamp_to_datetime,
 };
 
 /// Error type for gap filler operations
 pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
-
-/// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
-pub(super) fn block_timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<Utc> {
-    let secs = timestamp_nanos / 1_000_000_000;
-    let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
-    DateTime::from_timestamp(secs, nsecs).unwrap_or_else(Utc::now)
-}
 
 /// Result of filling a single gap
 #[derive(Debug, Clone)]
@@ -42,8 +34,8 @@ pub struct FilledGap {
     pub token_id: String,
     pub block_height: i64,
     pub block_timestamp: i64,
-    pub balance_before: String,
-    pub balance_after: String,
+    pub balance_before: bigdecimal::BigDecimal,
+    pub balance_after: bigdecimal::BigDecimal,
 }
 
 /// Fill a single gap in the balance change chain
@@ -313,7 +305,7 @@ pub async fn seed_initial_balance(
     );
 
     // If balance is 0, nothing to seed
-    if current_balance == "0" {
+    if current_balance == BigDecimal::from(0) {
         log::info!("Balance is 0, nothing to seed");
         return Ok(None);
     }
@@ -392,7 +384,7 @@ async fn fill_gap_to_present(
     // Get the latest record
     let latest_record = sqlx::query!(
         r#"
-        SELECT block_height, balance_after::TEXT as "balance_after!"
+        SELECT block_height, balance_after
         FROM balance_changes
         WHERE account_id = $1 AND token_id = $2
         ORDER BY block_height DESC
@@ -661,9 +653,7 @@ pub async fn insert_snapshot_record(
         .await
         .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
-    let before_bd = BigDecimal::from_str(&balance_before)?;
-    let after_bd = BigDecimal::from_str(&balance_after)?;
-    let amount = &after_bd - &before_bd;
+    let amount = &balance_after - &balance_before;
 
     // Verify this is actually a snapshot (no balance change)
     if amount != BigDecimal::from(0) {
@@ -697,8 +687,8 @@ pub async fn insert_snapshot_record(
         block_timestamp,
         block_time,
         amount,           // amount = 0 for SNAPSHOT
-        before_bd,        // balance_before = balance at (block_height - 1)
-        after_bd,         // balance_after = balance at block_height
+        balance_before,   // balance_before = balance at (block_height - 1)
+        balance_after,    // balance_after = balance at block_height
         &Vec::<String>::new(),
         &Vec::<String>::new(),
         None::<String>,
@@ -724,8 +714,8 @@ pub async fn insert_snapshot_record(
         token_id: token_id.to_string(),
         block_height: block_height as i64,
         block_timestamp,
-        balance_before: balance_before.to_string(),
-        balance_after: balance_after.to_string(),
+        balance_before,
+        balance_after,
     }))
 }
 
@@ -749,9 +739,7 @@ pub async fn insert_unknown_counterparty_record(
             .await
             .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
-    let amount = BigDecimal::from_str(&balance_after)? - BigDecimal::from_str(&balance_before)?;
-    let before_bd = BigDecimal::from_str(&balance_before)?;
-    let after_bd = BigDecimal::from_str(&balance_after)?;
+    let amount = &balance_after - &balance_before;
 
     // Get block timestamp
     let block_timestamp = block_info::get_block_timestamp(network, block_height, None)
@@ -784,8 +772,8 @@ pub async fn insert_unknown_counterparty_record(
         block_timestamp,
         block_time,
         amount,
-        before_bd,
-        after_bd,
+        balance_before,
+        balance_after,
         &Vec::<String>::new(),  // No transaction hashes available
         &Vec::<String>::new(),  // No receipt IDs available
         None::<String>,         // No signer known
@@ -809,8 +797,8 @@ pub async fn insert_unknown_counterparty_record(
         token_id: token_id.to_string(),
         block_height: block_height as i64,
         block_timestamp,
-        balance_before: balance_before.to_string(),
-        balance_after: balance_after.to_string(),
+        balance_before,
+        balance_after,
     })
 }
 
@@ -837,9 +825,7 @@ pub async fn insert_balance_change_record(
         .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
     // Calculate amount
-    let before_bd = BigDecimal::from_str(&balance_before)?;
-    let after_bd = BigDecimal::from_str(&balance_after)?;
-    let amount = &after_bd - &before_bd;
+    let amount = &balance_after - &balance_before;
 
     // Get account changes to find the transaction hash that caused this balance change
     let account_changes = block_info::get_account_changes(network, account_id, block_height)
@@ -972,8 +958,8 @@ pub async fn insert_balance_change_record(
         block_timestamp,
         block_time,
         amount,
-        before_bd,
-        after_bd,
+        balance_before,
+        balance_after,
         &transaction_hashes[..],
         &receipt_ids[..],
         final_signer,
@@ -1017,13 +1003,14 @@ mod tests {
 
         // Create a simulated gap based on real test data
         // Block 151386339: balance changed from "6.1002111266305371" to "11.1002111266305371" NEAR
+        use std::str::FromStr;
         let gap = BalanceGap {
             account_id: "webassemblymusic-treasury.sputnik-dao.near".to_string(),
             token_id: "NEAR".to_string(),
             start_block: 151386300,
             end_block: 151386400,
-            actual_balance_after: "6.1002111266305371".to_string(),
-            expected_balance_before: "11.1002111266305371".to_string(),
+            actual_balance_after: BigDecimal::from_str("6.1002111266305371").unwrap(),
+            expected_balance_before: BigDecimal::from_str("11.1002111266305371").unwrap(),
         };
 
         // We can't actually insert without a real DB, but we can test the binary search part
@@ -1051,14 +1038,15 @@ mod tests {
         let state = init_test_state().await;
 
         // Test with intents BTC token
-        // Block 159487770: balance changed from "0" to "32868"
+        // Block 159487770: balance changed from "0" to "0.00032868" (32868 raw with 8 decimals)
+        use std::str::FromStr;
         let gap = BalanceGap {
             account_id: "webassemblymusic-treasury.sputnik-dao.near".to_string(),
             token_id: "intents.near:nep141:btc.omft.near".to_string(),
             start_block: 159487760,
             end_block: 159487780,
-            actual_balance_after: "0".to_string(),
-            expected_balance_before: "32868".to_string(),
+            actual_balance_after: BigDecimal::from_str("0").unwrap(),
+            expected_balance_before: BigDecimal::from_str("0.00032868").unwrap(),
         };
 
         let change_block = binary_search::find_balance_change_block(

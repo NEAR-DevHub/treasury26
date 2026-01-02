@@ -7,7 +7,7 @@
 use sqlx::PgPool;
 
 #[cfg(test)]
-use super::gap_filler::block_timestamp_to_datetime;
+use super::utils::block_timestamp_to_datetime;
 
 /// Represents a gap in the balance change chain
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -16,8 +16,8 @@ pub struct BalanceGap {
     pub token_id: String,
     pub start_block: i64,
     pub end_block: i64,
-    pub actual_balance_after: String,
-    pub expected_balance_before: String,
+    pub actual_balance_after: bigdecimal::BigDecimal,
+    pub expected_balance_before: bigdecimal::BigDecimal,
 }
 
 /// Find gaps in the balance change chain for a specific account and token.
@@ -56,13 +56,13 @@ pub async fn find_gaps(
               AND block_height <= $3
             WINDOW w AS (PARTITION BY account_id, token_id ORDER BY block_height)
         )
-        SELECT 
+        SELECT
             account_id,
             token_id,
             prev_block_height as start_block,
             block_height as end_block,
-            prev_balance_after::TEXT as actual_balance_after,
-            balance_before::TEXT as expected_balance_before
+            prev_balance_after as actual_balance_after,
+            balance_before as expected_balance_before
         FROM balance_chain
         WHERE prev_block_height IS NOT NULL 
           AND balance_before != prev_balance_after
@@ -137,8 +137,16 @@ mod tests {
         assert_eq!(gaps.len(), 1, "Should detect one gap");
         assert_eq!(gaps[0].start_block, 100);
         assert_eq!(gaps[0].end_block, 200);
-        assert_eq!(gaps[0].actual_balance_after, "900");
-        assert_eq!(gaps[0].expected_balance_before, "700");
+        use bigdecimal::BigDecimal;
+        use std::str::FromStr;
+        assert_eq!(
+            gaps[0].actual_balance_after,
+            BigDecimal::from_str("900").unwrap()
+        );
+        assert_eq!(
+            gaps[0].expected_balance_before,
+            BigDecimal::from_str("700").unwrap()
+        );
 
         Ok(())
     }

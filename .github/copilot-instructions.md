@@ -1,5 +1,15 @@
 # Copilot Instructions for Treasury26
 
+## Test-Driven Development Approach
+
+**Every phase follows TDD:**
+1. Write integration test first (can fail initially)
+2. Write unit tests for the component
+3. Implement the minimum code to pass tests
+4. Refactor while keeping tests green
+
+Integration tests are written early and updated as new functionality is added. They serve as living documentation and ensure components work together correctly.
+
 ## Testing Guidelines
 
 ### Hard Assertions in Tests
