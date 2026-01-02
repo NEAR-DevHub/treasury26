@@ -54,7 +54,9 @@ export function User({ accountId, iconOnly = false, size = "sm", withLink = true
 
     const content = (
         <>
-            <img src={image} alt="User Logo" className={cn("rounded-full shrink-0", sizeClasses[size])} />
+            <div className="rounded-full flex bg-muted border border-border">
+                <img src={image} alt="User Logo" className={cn("rounded-full shrink-0", sizeClasses[size])} />
+            </div>
             {!iconOnly && (
                 <div className="flex flex-col items-start">
                     {withName && <span className="font-medium">{name}</span>}
