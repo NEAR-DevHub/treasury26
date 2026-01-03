@@ -32,31 +32,19 @@ impl Interval {
     /// Increments the given DateTime by one interval period
     ///
     /// For monthly intervals, this properly handles month boundaries by advancing
-    /// to the same day of the next month (e.g., Feb 1 -> Mar 1, not Feb 1 -> Mar 3)
+    /// to the same day of the next month (e.g., Feb 1 -> Mar 1, not Feb 1 -> Mar 3).
+    /// If the day is invalid for the target month (e.g., Jan 31 -> Feb), it clamps
+    /// to the last valid day of the target month (e.g., Feb 28 or Feb 29).
     pub fn increment(&self, datetime: DateTime<Utc>) -> DateTime<Utc> {
-        use chrono::Datelike;
+        use chrono::Months;
 
         match self {
             Interval::Hourly => datetime + chrono::Duration::hours(1),
             Interval::Daily => datetime + chrono::Duration::days(1),
             Interval::Weekly => datetime + chrono::Duration::weeks(1),
-            Interval::Monthly => {
-                // Add one month, handling month/year boundaries properly
-                let month = datetime.month();
-                let year = datetime.year();
-
-                let (new_month, new_year) = if month == 12 {
-                    (1, year + 1)
-                } else {
-                    (month + 1, year)
-                };
-
-                // Keep the same day, time, and timezone
-                datetime
-                    .with_year(new_year)
-                    .and_then(|dt| dt.with_month(new_month))
-                    .expect("Failed to increment month")
-            }
+            Interval::Monthly => datetime
+                .checked_add_months(Months::new(1))
+                .expect("Failed to increment month"),
         }
     }
 }
@@ -436,4 +424,150 @@ async fn generate_csv(
     }
 
     Ok(csv)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    #[test]
+    fn test_interval_increment_hourly() {
+        let dt = Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap();
+        let result = Interval::Hourly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 1, 15, 11, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_daily() {
+        let dt = Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap();
+        let result = Interval::Daily.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 1, 16, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_weekly() {
+        let dt = Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap();
+        let result = Interval::Weekly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 1, 22, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_normal() {
+        // Normal case: Jan 15 -> Feb 15
+        let dt = Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 2, 15, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_year_boundary() {
+        // Dec -> Jan (year boundary)
+        let dt = Utc.with_ymd_and_hms(2024, 12, 15, 10, 30, 0).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2025, 1, 15, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_jan_31_to_feb() {
+        // Jan 31 -> Feb 29 (leap year - clamp to last valid day)
+        let dt = Utc.with_ymd_and_hms(2024, 1, 31, 10, 30, 0).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 2, 29, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_mar_31_to_apr() {
+        // Mar 31 -> Apr 30 (clamp to last valid day)
+        let dt = Utc.with_ymd_and_hms(2024, 3, 31, 10, 30, 0).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 4, 30, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_may_31_to_jun() {
+        // May 31 -> Jun 30 (clamp to last valid day)
+        let dt = Utc.with_ymd_and_hms(2024, 5, 31, 10, 30, 0).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 6, 30, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_jan_30_to_feb_non_leap() {
+        // Jan 30 -> Feb 28 in non-leap year (clamp to last valid day)
+        let dt = Utc.with_ymd_and_hms(2023, 1, 30, 10, 30, 0).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2023, 2, 28, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_jan_29_to_feb_non_leap() {
+        // Jan 29 -> Feb 28 in non-leap year (clamp to last valid day)
+        let dt = Utc.with_ymd_and_hms(2023, 1, 29, 10, 30, 0).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2023, 2, 28, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_jan_30_to_feb_leap_year() {
+        // Jan 30 -> Feb 29 in leap year (clamp to last valid day)
+        let dt = Utc.with_ymd_and_hms(2024, 1, 30, 10, 30, 0).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 2, 29, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_jan_29_to_feb_leap_year() {
+        // Jan 29 -> Feb 29 in leap year (should work)
+        let dt = Utc.with_ymd_and_hms(2024, 1, 29, 10, 30, 0).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 2, 29, 10, 30, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_interval_increment_monthly_preserves_time() {
+        // Verify time and timezone are preserved
+        let dt = Utc.with_ymd_and_hms(2024, 1, 15, 23, 59, 59).unwrap();
+        let result = Interval::Monthly.increment(dt);
+        assert_eq!(
+            result,
+            Utc.with_ymd_and_hms(2024, 2, 15, 23, 59, 59).unwrap()
+        );
+    }
 }
