@@ -2,12 +2,25 @@ import { useState } from "react";
 import { UseFormReturn, useFieldArray } from "react-hook-form";
 import { ChevronDown, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/modal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { RolePermission } from "@/types/policy";
 
 interface MemberFormData {
@@ -15,7 +28,6 @@ interface MemberFormData {
     accountId: string;
     selectedRoles: string[];
   }>;
-  approveWithVote: boolean;
 }
 
 interface MemberModalProps {
@@ -44,7 +56,9 @@ export function MemberModal({
   existingMember,
   validationError,
 }: MemberModalProps) {
-  const [expandedRoleDropdown, setExpandedRoleDropdown] = useState<number | null>(null);
+  const [expandedRoleDropdown, setExpandedRoleDropdown] = useState<
+    number | null
+  >(null);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -54,7 +68,7 @@ export function MemberModal({
   const handleRoleToggle = (memberIndex: number, roleName: string) => {
     const currentRoles = form.getValues(`members.${memberIndex}.selectedRoles`);
     const hasRole = currentRoles.includes(roleName);
-    
+
     form.setValue(
       `members.${memberIndex}.selectedRoles`,
       hasRole
@@ -74,13 +88,13 @@ export function MemberModal({
 
   const isEditMode = mode === "edit";
   const memberCount = fields.length;
-  const title = isEditMode 
-    ? memberCount > 1 
-      ? `Edit ${memberCount} Members` 
-      : "Edit Roles" 
+  const title = isEditMode
+    ? memberCount > 1
+      ? `Edit ${memberCount} Members`
+      : "Edit Roles"
     : "Add New Member";
-  const buttonText = isValidatingAddresses 
-    ? "Validating addresses..." 
+  const buttonText = isValidatingAddresses
+    ? "Validating addresses..."
     : "Review Request";
 
   return (
@@ -93,7 +107,10 @@ export function MemberModal({
         <div className="overflow-y-auto flex-1 px-4">
           <div className="bg-muted/50 rounded-lg p-4">
             {fields.map((field, index) => (
-              <div key={field.id} className={index !== 0 ? "pt-4 border-t border-border" : ""}>
+              <div
+                key={field.id}
+                className={index !== 0 ? "pt-4 border-t border-border" : ""}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-xs text-muted-foreground font-medium">
                     Member address
@@ -119,10 +136,11 @@ export function MemberModal({
                       </div>
                     ) : (
                       <>
-                        <div 
+                        <div
                           className="w-full px-4 py-2.5 rounded-lg cursor-text"
                           onClick={(e) => {
-                            const input = e.currentTarget.querySelector('input');
+                            const input =
+                              e.currentTarget.querySelector("input");
                             input?.focus();
                           }}
                         >
@@ -135,7 +153,10 @@ export function MemberModal({
                         </div>
                         {form.formState.errors.members?.[index]?.accountId && (
                           <p className="text-sm text-destructive">
-                            {form.formState.errors.members[index]?.accountId?.message}
+                            {
+                              form.formState.errors.members[index]?.accountId
+                                ?.message
+                            }
                           </p>
                         )}
                       </>
@@ -143,9 +164,11 @@ export function MemberModal({
                   </div>
 
                   <div className="flex-1">
-                    <Popover 
-                      open={expandedRoleDropdown === index} 
-                      onOpenChange={(open) => setExpandedRoleDropdown(open ? index : null)}
+                    <Popover
+                      open={expandedRoleDropdown === index}
+                      onOpenChange={(open) =>
+                        setExpandedRoleDropdown(open ? index : null)
+                      }
                     >
                       <PopoverTrigger asChild>
                         <Button
@@ -154,7 +177,9 @@ export function MemberModal({
                           className="w-full justify-between bg-card rounded-full"
                         >
                           <span className="text-xs font-medium">
-                            {getRoleDisplayText(form.watch(`members.${index}.selectedRoles`) || [])}
+                            {getRoleDisplayText(
+                              form.watch(`members.${index}.selectedRoles`) || []
+                            )}
                           </span>
                           <ChevronDown className="w-4 h-4 ml-2 shrink-0" />
                         </Button>
@@ -167,10 +192,18 @@ export function MemberModal({
                               className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/50 cursor-pointer"
                             >
                               <Checkbox
-                                checked={form.watch(`members.${index}.selectedRoles`)?.includes(role.name) || false}
-                                onCheckedChange={() => handleRoleToggle(index, role.name)}
+                                checked={
+                                  form
+                                    .watch(`members.${index}.selectedRoles`)
+                                    ?.includes(role.name) || false
+                                }
+                                onCheckedChange={() =>
+                                  handleRoleToggle(index, role.name)
+                                }
                               />
-                              <span className="text-sm font-medium">{role.name}</span>
+                              <span className="text-sm font-medium">
+                                {role.name}
+                              </span>
                             </label>
                           ))}
                         </div>
@@ -202,7 +235,11 @@ export function MemberModal({
                 <Button
                   type="button"
                   onClick={onReviewRequest}
-                  disabled={!form.formState.isValid || isValidatingAddresses || !!validationError}
+                  disabled={
+                    !form.formState.isValid ||
+                    isValidatingAddresses ||
+                    !!validationError
+                  }
                   className="w-full"
                 >
                   {buttonText}
@@ -220,4 +257,3 @@ export function MemberModal({
     </Dialog>
   );
 }
-

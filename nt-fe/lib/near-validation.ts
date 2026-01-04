@@ -2,6 +2,8 @@
  * NEAR Address Validation Utilities
  */
 
+import { checkAccountExists } from "./api";
+
 /**
  * Check if string is a valid 64-character hex string (implicit account)
  */
@@ -45,50 +47,6 @@ function validateNearAddressFormat(address: string): string | null {
 }
 
 /**
- * Call NEAR RPC to check if an account exists on the blockchain
- */
-async function checkAccountExistsOnChain(address: string): Promise<boolean> {
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api/near/rpc`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "query",
-          params: {
-            request_type: "view_account",
-            finality: "final",
-            account_id: address,
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      return false;
-    }
-
-    const data = await response.json();
-    
-    // If there's an error, account doesn't exist
-    if (data.error) {
-      return false;
-    }
-
-    // If we got a result, account exists
-    return !!data.result;
-  } catch (e) {
-    console.error("Error checking account on chain:", e);
-    return false;
-  }
-}
-
-/**
  * Validates a NEAR address and returns an error message if invalid, or null if valid.
  * Performs both format validation and blockchain existence check.
  * Note: Implicit accounts (64-char hex) skip blockchain check as they're always valid.
@@ -109,9 +67,15 @@ export async function validateNearAddress(address: string): Promise<string | nul
   }
 
   // For named accounts, check if they exist on blockchain
-  const exists = await checkAccountExistsOnChain(address);
-  if (!exists) {
-    return "Account does not exist on NEAR blockchain";
+  try {
+    const result = await checkAccountExists(address);
+    console.log("result", result);
+    if (!result || !result.exists) {
+      return "Account does not exist on NEAR blockchain";
+    }
+  } catch (error) {
+    console.error("Error checking account existence:", error);
+    return "Failed to verify account existence";
   }
 
   return null;

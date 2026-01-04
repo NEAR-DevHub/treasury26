@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { Button } from "@/components/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/modal";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/modal";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Member {
   accountId: string;
@@ -17,7 +26,14 @@ interface DeleteConfirmationModalProps {
   validationError?: string;
 }
 
-export function DeleteConfirmationModal({ isOpen, onClose, member, members, onConfirm, validationError }: DeleteConfirmationModalProps) {
+export function DeleteConfirmationModal({
+  isOpen,
+  onClose,
+  member,
+  members,
+  onConfirm,
+  validationError,
+}: DeleteConfirmationModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleConfirm = async () => {
@@ -30,27 +46,37 @@ export function DeleteConfirmationModal({ isOpen, onClose, member, members, onCo
   };
 
   // Determine if this is bulk delete
-  const membersToDelete = members && members.length > 0 ? members : (member ? [member] : []);
+  const membersToDelete =
+    members && members.length > 0 ? members : member ? [member] : [];
   const isBulk = membersToDelete.length > 1;
 
   return (
-    <Dialog open={isOpen && membersToDelete.length > 0} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={isOpen && membersToDelete.length > 0}
+      onOpenChange={(open) => !open && onClose()}
+    >
       <DialogContent className="max-w-md p-0 gap-4">
         <DialogHeader>
           <DialogTitle>
-            {isBulk ? `Remove ${membersToDelete.length} Members` : 'Remove Member'}
+            {isBulk
+              ? `Remove ${membersToDelete.length} Members`
+              : "Remove Member"}
           </DialogTitle>
         </DialogHeader>
 
         {isBulk ? (
           <div className="space-y-3 px-4">
             <p className="text-foreground">
-              Once approved, this action will permanently remove the following members
-              from the treasury and revoke all their assigned permissions:
+              Once approved, this action will permanently remove the following
+              members from the treasury and revoke all their assigned
+              permissions:
             </p>
             <div className="bg-muted/50 rounded-lg p-3 space-y-1 break-all">
               {membersToDelete.map((m) => (
-                <div key={m.accountId} className="font-semibold font-mono text-sm">
+                <div
+                  key={m.accountId}
+                  className="font-semibold font-mono text-sm"
+                >
                   • {m.accountId}
                 </div>
               ))}
@@ -59,7 +85,9 @@ export function DeleteConfirmationModal({ isOpen, onClose, member, members, onCo
         ) : (
           <p className="text-foreground px-4">
             Once approved, this action will permanently remove{" "}
-            <span className="font-semibold">{membersToDelete[0]?.accountId}</span>{" "}
+            <span className="font-semibold">
+              {membersToDelete[0]?.accountId}
+            </span>{" "}
             from the treasury and revoke all assigned permissions.
           </p>
         )}
@@ -90,4 +118,3 @@ export function DeleteConfirmationModal({ isOpen, onClose, member, members, onCo
     </Dialog>
   );
 }
-
