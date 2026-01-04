@@ -59,8 +59,6 @@ fn unwrap_array_value(value: &Value) -> &Value {
     }
 }
 
-/// Main handler for fetching deposit assets
-/// Mirrors the frontend logic in bridge-api.ts getAggregatedBridgeAssets
 pub async fn get_deposit_assets(
     State(state): State<Arc<AppState>>,
     Query(query): Query<DepositAssetsQuery>,
@@ -73,11 +71,6 @@ pub async fn get_deposit_assets(
 
     // Step 1: Fetch supported tokens using existing helper
     let supported = fetch_supported_tokens_data(&state).await?;
-    let supported_str = serde_json::to_string(&supported).unwrap_or_default();
-    eprintln!(
-        "📦 Supported tokens response (first 1000 chars): {}",
-        &supported_str.chars().take(1000).collect::<String>()
-    );
 
     // Step 2: Filter for nep141 tokens only
     let all_tokens = supported.get("tokens").and_then(|t| t.as_array()).ok_or((
@@ -116,11 +109,6 @@ pub async fn get_deposit_assets(
     // Step 4: Batch fetch token metadata using helper
     let defuse_ids_param = defuse_ids.join(",");
     let metadata_response = fetch_token_metadata_data(&state, &defuse_ids_param).await?;
-    let metadata_str = serde_json::to_string(&metadata_response).unwrap_or_default();
-    eprintln!(
-        "🏷️ Token metadata response (first 1000 chars): {}",
-        &metadata_str.chars().take(1000).collect::<String>()
-    );
 
     // Build metadata map
     let mut metadata_map: HashMap<String, Value> = HashMap::new();
@@ -195,12 +183,6 @@ pub async fn get_deposit_assets(
         if let Ok(network_data) =
             fetch_blockchain_metadata_data(&state, &network_names_param, &query.theme).await
         {
-            let network_str = serde_json::to_string(&network_data).unwrap_or_default();
-            eprintln!(
-                "🌐 Blockchain metadata response (first 1000 chars): {}",
-                &network_str.chars().take(1000).collect::<String>()
-            );
-
             if let Some(networks) = network_data.as_array() {
                 for network_value in networks {
                     let network = unwrap_array_value(network_value);
@@ -269,7 +251,7 @@ pub async fn get_deposit_assets(
             );
         }
 
-        // Derive chain_id from defuse_asset_identifier (matching old code)
+        // Derive chain_id from defuse_asset_identifier
         let defuse_id = token
             .get("defuse_asset_identifier")
             .and_then(|d| d.as_str())

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::AppState;
 use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
 
-/// Core logic for fetching supported tokens (reusable)
+/// Fetch supported tokens
 pub async fn fetch_supported_tokens_data(
     state: &Arc<AppState>,
 ) -> Result<Value, (StatusCode, String)> {

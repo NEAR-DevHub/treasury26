@@ -1,5 +1,5 @@
 import { AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/alert";
 
 interface WarningAlertProps {
   message: string | React.ReactNode;

@@ -80,7 +80,7 @@ pub async fn fetch_token_metadata_data(
     Ok(data)
 }
 
-/// Core logic for fetching blockchain metadata (reusable)
+/// Fetch blockchain metadata
 /// Supports comma-separated list of network names
 pub async fn fetch_blockchain_metadata_data(
     state: &Arc<AppState>,
