@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     AppState,
     constants::intents_chains::{ChainIcons, get_chain_metadata_by_name},
-    handlers::proxy::external::{REF_SDK_BASE_URL, fetch_proxy_api},
+    handlers::proxy::external::fetch_proxy_api,
 };
 
 #[derive(Deserialize)]
@@ -84,7 +84,7 @@ pub async fn fetch_tokens_metadata(
     let response = fetch_proxy_api(
         &state.http_client,
         &state.cache,
-        REF_SDK_BASE_URL,
+        &state.env_vars.ref_sdk_base_url,
         "token-by-defuse-asset-id",
         &query_params,
     )

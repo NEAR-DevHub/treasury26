@@ -10,8 +10,6 @@ use std::sync::Arc;
 
 use crate::AppState;
 
-const REF_SDK_BASE_URL: &str = "https://ref-sdk-test-cold-haze-1300-2.fly.dev/api";
-
 #[derive(Deserialize)]
 pub struct TokenMetadataQuery {
     #[serde(rename = "defuseAssetId")]
@@ -29,26 +27,22 @@ fn default_theme() -> String {
     "light".to_string()
 }
 
-/// Fetch token metadata by defuse asset ID(s)
+/// Core logic for fetching token metadata (reusable)
 /// Supports comma-separated list of IDs
-pub async fn get_token_metadata(
-    State(state): State<Arc<AppState>>,
-    Query(query): Query<TokenMetadataQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let cache_key = format!("ref-sdk:token-metadata:{}", query.defuse_asset_id);
+pub async fn fetch_token_metadata_data(
+    state: &Arc<AppState>,
+    defuse_asset_id: &str,
+) -> Result<Value, (StatusCode, String)> {
+    let cache_key = format!("ref-sdk:token-metadata:{}", defuse_asset_id);
 
     // Check cache first
     if let Some(cached_data) = state.cache.get(&cache_key).await {
-        println!(
-            "🔁 Returning cached token metadata for {}",
-            query.defuse_asset_id
-        );
-        return Ok((StatusCode::OK, Json(cached_data)));
+        return Ok(cached_data);
     }
 
     let url = format!(
         "{}/token-by-defuse-asset-id?defuseAssetId={}",
-        REF_SDK_BASE_URL, query.defuse_asset_id
+        state.env_vars.ref_sdk_base_url, defuse_asset_id
     );
 
     let response = state
@@ -83,29 +77,26 @@ pub async fn get_token_metadata(
     // Cache for 1 hour (token metadata doesn't change often)
     state.cache.insert(cache_key, data.clone()).await;
 
-    Ok((StatusCode::OK, Json(data)))
+    Ok(data)
 }
 
-/// Fetch blockchain/network metadata including icons
+/// Core logic for fetching blockchain metadata (reusable)
 /// Supports comma-separated list of network names
-pub async fn get_blockchain_metadata(
-    State(state): State<Arc<AppState>>,
-    Query(query): Query<BlockchainQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let cache_key = format!("ref-sdk:blockchain:{}:{}", query.network, query.theme);
+pub async fn fetch_blockchain_metadata_data(
+    state: &Arc<AppState>,
+    network: &str,
+    theme: &str,
+) -> Result<Value, (StatusCode, String)> {
+    let cache_key = format!("ref-sdk:blockchain:{}:{}", network, theme);
 
     // Check cache first
     if let Some(cached_data) = state.cache.get(&cache_key).await {
-        println!(
-            "🔁 Returning cached blockchain metadata for {} ({})",
-            query.network, query.theme
-        );
-        return Ok((StatusCode::OK, Json(cached_data)));
+        return Ok(cached_data);
     }
 
     let url = format!(
         "{}/blockchain-by-network?network={}&theme={}",
-        REF_SDK_BASE_URL, query.network, query.theme
+        state.env_vars.ref_sdk_base_url, network, theme
     );
 
     let response = state
@@ -140,5 +131,23 @@ pub async fn get_blockchain_metadata(
     // Cache for 24 hours (blockchain metadata rarely changes)
     state.cache.insert(cache_key, data.clone()).await;
 
+    Ok(data)
+}
+
+/// Handler: Fetch token metadata by defuse asset ID(s)
+pub async fn get_token_metadata(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<TokenMetadataQuery>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let data = fetch_token_metadata_data(&state, &query.defuse_asset_id).await?;
+    Ok((StatusCode::OK, Json(data)))
+}
+
+/// Handler: Fetch blockchain/network metadata including icons
+pub async fn get_blockchain_metadata(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<BlockchainQuery>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let data = fetch_blockchain_metadata_data(&state, &query.network, &query.theme).await?;
     Ok((StatusCode::OK, Json(data)))
 }

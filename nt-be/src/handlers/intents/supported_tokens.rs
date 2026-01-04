@@ -5,16 +5,14 @@ use std::sync::Arc;
 use crate::AppState;
 use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
 
-/// Get list of all supported bridge tokens from intents.near
-/// Fetches directly from the bridge RPC endpoint
-pub async fn get_supported_tokens(
-    State(state): State<Arc<AppState>>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+/// Core logic for fetching supported tokens (reusable)
+pub async fn fetch_supported_tokens_data(
+    state: &Arc<AppState>,
+) -> Result<Value, (StatusCode, String)> {
     // Check cache first
     let cache_key = "bridge:supported-tokens".to_string();
     if let Some(cached_data) = state.cache.get(&cache_key).await {
-        println!("🔁 Returning cached supported tokens");
-        return Ok((StatusCode::OK, Json(cached_data)));
+        return Ok(cached_data);
     }
 
     // Prepare JSON-RPC request
@@ -70,5 +68,13 @@ pub async fn get_supported_tokens(
     // Cache for 3600 seconds (1 hour) - supported tokens don't change frequently
     state.cache.insert(cache_key, result.clone()).await;
 
+    Ok(result)
+}
+
+/// Handler: Get list of all supported bridge tokens from intents.near
+pub async fn get_supported_tokens(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let result = fetch_supported_tokens_data(&state).await?;
     Ok((StatusCode::OK, Json(result)))
 }

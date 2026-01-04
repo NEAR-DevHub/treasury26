@@ -2,10 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ChevronDown, Copy } from "lucide-react";
 import QRCode from "react-qr-code";
 import { SelectModal } from "./select-modal";
-import {
-  getAggregatedBridgeAssets,
-  fetchDepositAddress,
-} from "@/lib/bridge-api";
+import { fetchDepositAssets, fetchDepositAddress } from "@/lib/bridge-api";
 import { useTreasury } from "@/stores/treasury-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { Button } from "@/components/button";
@@ -125,14 +122,14 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
     form.clearErrors("network");
 
     try {
-      const assets = await getAggregatedBridgeAssets(theme);
+      const assets = await fetchDepositAssets(theme);
 
       // Add "Other" asset that deposits directly to treasury
       const otherAsset = {
         id: "other",
         name: "Other",
         symbol: "OTHER",
-        icon: "❓", // Or use a question mark emoji/icon
+        icon: "O",
         networks: [
           {
             id: "near:mainnet",
@@ -143,11 +140,11 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         ],
       };
 
-      // Format assets and add "Other" at the end
+      // Format assets
       const formattedAssets: SelectOption[] = [
         ...assets.map((asset: any) => ({
           id: asset.id,
-          name: asset.name || asset.asset_name, // Use name (e.g., "Bitcoin") first
+          name: asset.name || asset.assetName,
           symbol: asset.symbol,
           icon: asset.icon || asset.symbol?.charAt(0) || "?",
           gradient: "bg-linear-to-br from-blue-500 to-purple-500",
@@ -155,12 +152,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         })),
       ];
 
-      // Sort assets alphabetically by symbol
-      formattedAssets.sort((a, b) =>
-        (a.symbol || "").localeCompare(b.symbol || "")
-      );
-
-      // Add "Other" at the end after sorting
+      // Add "Other" at the end
       formattedAssets.push(otherAsset);
 
       // Extract all unique networks
@@ -184,7 +176,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         assetToNetworks.set(asset.id, networkIds);
       });
 
-      // Format networks
+      // Format networks - backend already returns sorted data
       const formattedNetworks: SelectOption[] = Array.from(
         networkMap.values()
       ).map((network) => ({
@@ -194,9 +186,6 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         icon: network.icon || network.name.charAt(0),
         gradient: "bg-linear-to-br from-green-500 to-teal-500",
       }));
-
-      // Sort networks alphabetically by name
-      formattedNetworks.sort((a, b) => a.name.localeCompare(b.name));
 
       // Set all data
       setAllAssets(formattedAssets);
@@ -250,9 +239,6 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         supportedNetworkIds.includes(network.id)
       );
 
-      // Sort networks alphabetically
-      availableNetworks.sort((a, b) => a.name.localeCompare(b.name));
-
       setFilteredNetworks(availableNetworks);
 
       // Auto-select network if only one is available
@@ -298,8 +284,6 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
       form.clearErrors("network");
 
       try {
-        // Use the network's id directly (e.g., "nep141:btc.omft.near")
-        // This is the intents_token_id that the bridge expects
         const result = await fetchDepositAddress(
           selectedTreasury,
           selectedNetwork.id
