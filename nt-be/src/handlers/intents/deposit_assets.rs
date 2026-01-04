@@ -146,11 +146,11 @@ pub async fn get_deposit_assets(
             // Check if chainName exists
             if metadata.get("chainName")?.as_str().is_some() {
                 let mut enriched = (*token).clone();
-                if let Some(enriched_obj) = enriched.as_object_mut() {
-                    if let Some(metadata_obj) = metadata.as_object() {
-                        for (k, v) in metadata_obj {
-                            enriched_obj.insert(k.clone(), v.clone());
-                        }
+                if let Some(enriched_obj) = enriched.as_object_mut()
+                    && let Some(metadata_obj) = metadata.as_object()
+                {
+                    for (k, v) in metadata_obj {
+                        enriched_obj.insert(k.clone(), v.clone());
                     }
                 }
                 Some(enriched)
@@ -179,27 +179,25 @@ pub async fn get_deposit_assets(
 
     let mut network_icon_map: HashMap<String, (String, Option<String>)> = HashMap::new();
 
-    if !network_names_param.is_empty() {
-        if let Ok(network_data) =
+    if !network_names_param.is_empty()
+        && let Ok(network_data) =
             fetch_blockchain_metadata_data(&state, &network_names_param, &query.theme).await
-        {
-            if let Some(networks) = network_data.as_array() {
-                for network_value in networks {
-                    let network = unwrap_array_value(network_value);
+        && let Some(networks) = network_data.as_array()
+    {
+        for network_value in networks {
+            let network = unwrap_array_value(network_value);
 
-                    if let Some(network_key) = network.get("network").and_then(|n| n.as_str()) {
-                        let name = network
-                            .get("name")
-                            .and_then(|n| n.as_str())
-                            .unwrap_or(network_key)
-                            .to_string();
-                        let icon = network
-                            .get("icon")
-                            .and_then(|i| i.as_str())
-                            .map(String::from);
-                        network_icon_map.insert(network_key.to_string(), (name, icon));
-                    }
-                }
+            if let Some(network_key) = network.get("network").and_then(|n| n.as_str()) {
+                let name = network
+                    .get("name")
+                    .and_then(|n| n.as_str())
+                    .unwrap_or(network_key)
+                    .to_string();
+                let icon = network
+                    .get("icon")
+                    .and_then(|i| i.as_str())
+                    .map(String::from);
+                network_icon_map.insert(network_key.to_string(), (name, icon));
             }
         }
     }
