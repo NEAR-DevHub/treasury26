@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
-import { X } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/button";
-import { Switch } from "@/components/ui/switch";
-import { useNear } from "@/stores/near-store";
-import { getApproversAndThreshold } from "@/lib/config-utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/modal";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AddMemberFormData {
   members: Array<{
@@ -20,7 +19,7 @@ interface PreviewModalProps {
   onBack: () => void;
   form: UseFormReturn<AddMemberFormData>;
   onSubmit: () => Promise<void>;
-  policy: any;
+  validationError?: string;
 }
 
 export function PreviewModal({
@@ -29,23 +28,11 @@ export function PreviewModal({
   onBack,
   form,
   onSubmit,
-  policy,
+  validationError,
 }: PreviewModalProps) {
-  const { accountId } = useNear();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check if user can vote on add_member_to_role proposals
-  const { approverAccounts } = useMemo(() => {
-    if (!policy || !accountId) return { approverAccounts: [] as string[] };
-    return getApproversAndThreshold(policy, accountId, "add_member_to_role", false);
-  }, [policy, accountId]);
-
-  const canApprove = accountId && approverAccounts.includes(accountId);
-
-  if (!isOpen) return null;
-
   const members = form.watch("members");
-  const approveWithVote = form.watch("approveWithVote");
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -57,40 +44,24 @@ export function PreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 pb-3 border-b-2">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-4">
+        <DialogHeader>
           <div className="flex items-center gap-3">
-            <button
+            <Button
               type="button"
               onClick={onBack}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0"
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <h2 className="text-xl font-semibold">Review Your Payment</h2>
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <DialogTitle>Review Your Payment</DialogTitle>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        </DialogHeader>
 
-        {/* Content */}
-        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+        <div className="space-y-4 overflow-y-auto flex-1 px-4">
           {/* Summary Section with Background */}
           <div className="text-center py-8 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground mb-2">
@@ -132,43 +103,32 @@ export function PreviewModal({
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Approve with vote section */}
-          {canApprove && (
-            <div className="pt-2">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <Switch
-                  checked={form.watch("approveWithVote")}
-                  onCheckedChange={(checked) => form.setValue("approveWithVote", checked)}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="font-medium">
-                    Approve this request with my vote
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    This will count as the first approval for this member request.
-                  </div>
-                </div>
-              </label>
-            </div>
-          )}
+          </div>          
         </div>
 
-        {/* Footer */}
-        <div className="p-6 pt-0">
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            className="w-full"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Creating Proposal..." : "Confirm and Submit Request"}
-          </Button>
+        <div className="px-6 pb-4">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="block">
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="w-full"
+                  disabled={isSubmitting || !!validationError}
+                >
+                  {isSubmitting ? "Creating Proposal..." : "Confirm and Submit Request"}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {validationError && (
+              <TooltipContent className="max-w-[280px]">
+                <p>{validationError}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
