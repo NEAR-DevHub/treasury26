@@ -72,6 +72,9 @@ pub enum TokenDeployment {
 /// Static map of unified tokens loaded from data/tokens.json for fast lookup
 static TOKENS_MAP_CELL: OnceLock<HashMap<String, UnifiedTokenInfo>> = OnceLock::new();
 
+/// Static map of base tokens by defuseAssetId for fast lookup
+static DEFUSE_TOKENS_MAP_CELL: OnceLock<HashMap<String, BaseTokenInfo>> = OnceLock::new();
+
 /// Get the map of unified tokens, loading from JSON if not already loaded
 pub fn get_tokens_map() -> &'static HashMap<String, UnifiedTokenInfo> {
     TOKENS_MAP_CELL.get_or_init(|| {
@@ -86,11 +89,34 @@ pub fn get_tokens_map() -> &'static HashMap<String, UnifiedTokenInfo> {
     })
 }
 
+/// Get the map of base tokens by defuseAssetId, loading from JSON if not already loaded
+pub fn get_defuse_tokens_map() -> &'static HashMap<String, BaseTokenInfo> {
+    DEFUSE_TOKENS_MAP_CELL.get_or_init(|| {
+        let tokens = load_tokens_from_json().unwrap_or_else(|e| {
+            eprintln!("Failed to load tokens from JSON: {}", e);
+            vec![]
+        });
+        
+        let mut map = HashMap::new();
+        for unified_token in tokens {
+            for base_token in unified_token.grouped_tokens {
+                map.insert(base_token.defuse_asset_id.clone(), base_token);
+            }
+        }
+        map
+    })
+}
+
 /// Find a token by its defuse_asset_id
 pub fn find_token_by_unified_asset_id(unified_asset_id: &str) -> Option<UnifiedTokenInfo> {
     get_tokens_map()
         .get(&unified_asset_id.to_lowercase())
         .cloned()
+}
+
+/// Find a base token by its defuseAssetId (e.g., "nep141:wrap.near" or "nep245:v2_1.omni.hot.tg:137_...")
+pub fn find_token_by_defuse_asset_id(defuse_asset_id: &str) -> Option<&'static BaseTokenInfo> {
+    get_defuse_tokens_map().get(defuse_asset_id)
 }
 
 /// Load tokens from the JSON file as unified tokens
