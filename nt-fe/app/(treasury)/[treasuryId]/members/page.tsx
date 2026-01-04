@@ -63,7 +63,6 @@ interface PendingMember extends Member {
   createdAt: string;
   addedRoles?: string[];
   removedRoles?: string[];
-  isNewMember?: boolean;
 }
 
 interface AddMemberFormData {
@@ -92,6 +91,8 @@ export default function MembersPage() {
     statuses: ["InProgress"],
     proposal_types: ["ChangePolicy"],
     search: "members",
+    sort_direction: "desc",
+    sort_by: "CreationTime",
   });
 
   // Check if there are pending member-related proposals
@@ -177,7 +178,7 @@ export default function MembersPage() {
             } else {
               seenAccountIds.set(normalizedId, index);
 
-              // Check if member already exists in treasury (only once per unique ID)
+              // Check if member already exists in treasury
               if (existingMembersSet.has(normalizedId)) {
                 ctx.addIssue({
                   code: z.ZodIssueCode.custom,
@@ -191,7 +192,6 @@ export default function MembersPage() {
     });
   }, [existingMembers]);
 
-  // React Hook Form setup
   const form = useForm<AddMemberFormData>({
     resolver: zodResolver(addMemberSchemaWithContext),
     mode: "onChange",
@@ -227,23 +227,21 @@ export default function MembersPage() {
   });
 
   // Extract pending members from proposal descriptions
-  const pendingMembers = useMemo(() => {
+  const pendingProposalsData = useMemo(() => {
     if (!pendingProposals?.proposals) return [];
 
-    const pendingMembersList: PendingMember[] = [];
+    return pendingProposals.proposals.map((proposal) => {
+      const memberChanges = new Map<
+        string,
+        { addedRoles: Set<string>; removedRoles: Set<string> }
+      >();
 
-    for (const proposal of pendingProposals.proposals) {
       if (proposal.description) {
-        const memberChanges = new Map<
-          string,
-          { addedRoles: Set<string>; removedRoles: Set<string> }
-        >();
-
-        // Parse "add" operations - NEW FORMAT: add "accountId" to ["Role1", "Role2"]
-        const addPatternNew = /add "([^"]+)" to \[([^\]]+)\]/gi;
+        // Parse "add" operations: add "accountId" to ["Role1", "Role2"]
+        const addPattern = /add "([^"]+)" to \[([^\]]+)\]/gi;
         let match;
 
-        while ((match = addPatternNew.exec(proposal.description)) !== null) {
+        while ((match = addPattern.exec(proposal.description)) !== null) {
           const accountId = match[1];
           const rolesStr = match[2];
           const roles =
@@ -262,37 +260,10 @@ export default function MembersPage() {
           }
         }
 
-        // Parse "add" operations - OLD FORMAT: add "accountId" to "Role1" and "Role2" and "Role3"
-        const addPatternOld = /add "([^"]+)" to "([^"]+)"(?: and "([^"]+)")*/gi;
+        // Parse "remove" operations: remove "accountId" from ["Role1", "Role2"]
+        const removePattern = /remove "([^"]+)" from \[([^\]]+)\]/gi;
 
-        while ((match = addPatternOld.exec(proposal.description)) !== null) {
-          const accountId = match[1];
-
-          if (accountId) {
-            // Extract all roles from the match
-            const roles: string[] = [];
-            for (let i = 2; i < match.length; i++) {
-              if (match[i]) {
-                roles.push(match[i]);
-              }
-            }
-
-            if (!memberChanges.has(accountId)) {
-              memberChanges.set(accountId, {
-                addedRoles: new Set(),
-                removedRoles: new Set(),
-              });
-            }
-            roles.forEach((role) =>
-              memberChanges.get(accountId)?.addedRoles.add(role)
-            );
-          }
-        }
-
-        // Parse "remove" operations - NEW FORMAT: remove "accountId" from ["Role1", "Role2"]
-        const removePatternNew = /remove "([^"]+)" from \[([^\]]+)\]/gi;
-
-        while ((match = removePatternNew.exec(proposal.description)) !== null) {
+        while ((match = removePattern.exec(proposal.description)) !== null) {
           const accountId = match[1];
           const rolesStr = match[2];
           const roles =
@@ -311,29 +282,11 @@ export default function MembersPage() {
           }
         }
 
-        // Parse "remove" operations - OLD FORMAT: remove "accountId" from "Role1"
-        const removePatternOld = /remove "([^"]+)" from "([^"]+)"/gi;
-
-        while ((match = removePatternOld.exec(proposal.description)) !== null) {
-          const accountId = match[1];
-          const role = match[2];
-
-          if (accountId && role) {
-            if (!memberChanges.has(accountId)) {
-              memberChanges.set(accountId, {
-                addedRoles: new Set(),
-                removedRoles: new Set(),
-              });
-            }
-            memberChanges.get(accountId)?.removedRoles.add(role);
-          }
-        }
-
-        // Parse "edit" operations - NEW FORMAT: edit "accountId": removed from ["Role1"], added to ["Role2"]
-        const editPatternNew =
+        // Parse "edit" operations: edit "accountId": removed from ["Role1"], added to ["Role2"]
+        const editPattern =
           /edit "([^"]+)":\s*(?:removed from \[([^\]]+)\])?\s*,?\s*(?:added to \[([^\]]+)\])?/gi;
 
-        while ((match = editPatternNew.exec(proposal.description)) !== null) {
+        while ((match = editPattern.exec(proposal.description)) !== null) {
           const accountId = match[1];
           const removedRolesStr = match[2];
           const addedRolesStr = match[3];
@@ -369,100 +322,65 @@ export default function MembersPage() {
             }
           }
         }
+      }
 
-        // Parse "edit" operations - OLD FORMAT: edit "accountId" to ["Role1"] (for backwards compatibility)
-        const editPatternOld = /edit "([^"]+)" to \[([^\]]+)\]/gi;
+      // Convert member changes to array
+      const members: PendingMember[] = [];
+      for (const [accountId, changes] of memberChanges.entries()) {
+        const addedRoles = Array.from(changes.addedRoles);
+        const removedRoles = Array.from(changes.removedRoles);
 
-        while ((match = editPatternOld.exec(proposal.description)) !== null) {
-          const accountId = match[1];
-          const rolesStr = match[2];
-          const newRoles =
-            rolesStr.match(/"([^"]+)"/g)?.map((r) => r.replace(/"/g, "")) || [];
-
-          if (accountId) {
-            // For edit, we need to compare with current roles to determine what was added/removed
-            const currentMember = existingMembers.find(
-              (m) => m.accountId === accountId
-            );
-            if (currentMember) {
-              const currentRoles = new Set(currentMember.roles);
-              const newRolesSet = new Set(newRoles);
-
-              if (!memberChanges.has(accountId)) {
-                memberChanges.set(accountId, {
-                  addedRoles: new Set(),
-                  removedRoles: new Set(),
-                });
-              }
-
-              // Added roles = in new but not in current
-              newRoles.forEach((role) => {
-                if (!currentRoles.has(role)) {
-                  memberChanges.get(accountId)?.addedRoles.add(role);
-                }
-              });
-
-              // Removed roles = in current but not in new
-              currentMember.roles.forEach((role) => {
-                if (!newRolesSet.has(role)) {
-                  memberChanges.get(accountId)?.removedRoles.add(role);
-                }
-              });
-            }
-          }
-        }
-
-        // Convert map to array with proposal metadata
-        for (const [accountId, changes] of memberChanges.entries()) {
-          const currentMember = existingMembers.find(
-            (m) => m.accountId === accountId
-          );
-          const isNewMember = !currentMember;
-          const addedRoles = Array.from(changes.addedRoles);
-          const removedRoles = Array.from(changes.removedRoles);
-
-          // Only show if there are actual changes
-          if (addedRoles.length > 0 || removedRoles.length > 0) {
-            pendingMembersList.push({
-              accountId,
-              roles: addedRoles, // For display purposes, use added roles as primary
-              proposalId: proposal.id,
-              proposer: proposal.proposer,
-              createdAt: proposal.submission_time,
-              addedRoles,
-              removedRoles,
-              isNewMember,
-            });
-          }
+        // Only add if there are actual changes
+        if (addedRoles.length > 0 || removedRoles.length > 0) {
+          members.push({
+            accountId,
+            roles: addedRoles,
+            proposalId: proposal.id,
+            proposer: proposal.proposer,
+            createdAt: proposal.submission_time,
+            addedRoles,
+            removedRoles,
+          });
         }
       }
-    }
 
-    return pendingMembersList;
-  }, [pendingProposals, existingMembers]);
+      return {
+        proposalId: proposal.id,
+        proposer: proposal.proposer,
+        createdAt: proposal.submission_time,
+        members,
+      };
+    });
+  }, [pendingProposals]);
 
   const handleReviewRequest = async () => {
     const isValid = await form.trigger();
     if (!isValid) return;
 
-    // Validate all addresses exist on blockchain
+    // Validate all addresses exist on blockchain (in parallel)
     setIsValidatingAddresses(true);
     const members = form.getValues("members");
 
     try {
-      for (let i = 0; i < members.length; i++) {
-        const member = members[i];
-        const error = await validateNearAddress(member.accountId);
+      // Validate all addresses in parallel
+      const validationResults = await Promise.all(
+        members.map((member, index) =>
+          validateNearAddress(member.accountId).then((error) => ({
+            index,
+            error,
+          }))
+        )
+      );
 
-        if (error) {
-          // Set error on the specific field
-          form.setError(`members.${i}.accountId`, {
-            type: "manual",
-            message: error,
-          });
-          setIsValidatingAddresses(false);
-          return;
-        }
+      // Check if any validation failed
+      const failedValidation = validationResults.find((result) => result.error);
+      if (failedValidation) {
+        form.setError(`members.${failedValidation.index}.accountId`, {
+          type: "manual",
+          message: failedValidation.error || "Invalid address",
+        });
+        setIsValidatingAddresses(false);
+        return;
       }
 
       // All addresses are valid, proceed to preview
@@ -829,7 +747,7 @@ export default function MembersPage() {
       );
     }
 
-    if (pendingMembers.length === 0) {
+    if (pendingProposalsData.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
           <div className="relative w-20 h-14">
@@ -846,15 +764,6 @@ export default function MembersPage() {
         </div>
       );
     }
-
-    // Group members by proposal ID
-    const groupedByProposal = pendingMembers.reduce((acc, member) => {
-      if (!acc[member.proposalId]) {
-        acc[member.proposalId] = [];
-      }
-      acc[member.proposalId].push(member);
-      return acc;
-    }, {} as Record<number, PendingMember[]>);
 
     return (
       <Table>
@@ -881,28 +790,43 @@ export default function MembersPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {Object.entries(groupedByProposal).map(([proposalId, members]) => {
-            const firstMember = members[0];
-            const isAddNew = members.every((m) => m.isNewMember);
-            const isRemove = members.every(
-              (m) => !m.addedRoles || m.addedRoles.length === 0
-            );
+          {pendingProposalsData.map((proposalData) => {
+            const { proposalId, proposer, createdAt, members } = proposalData;
 
+            // Determine action text based on the proposal intent
             let actionText = "Update Member";
-            if (isAddNew) {
-              actionText = "Add New Member";
-            } else if (isRemove) {
-              actionText = "Remove Member";
+            if (members.length > 0) {
+              // Check if it's purely adding (only addedRoles, no removedRoles)
+              const isAdd = members.every(
+                (m) =>
+                  (m.addedRoles?.length || 0) > 0 &&
+                  (m.removedRoles?.length || 0) === 0
+              );
+              // Check if it's purely removing (only removedRoles, no addedRoles)
+              const isRemove = members.every(
+                (m) =>
+                  (m.removedRoles?.length || 0) > 0 &&
+                  (m.addedRoles?.length || 0) === 0
+              );
+
+              if (isAdd) {
+                actionText = "Add New Member";
+              } else if (isRemove) {
+                actionText = "Remove Member";
+              }
             }
 
+            // Only show member count if we successfully parsed members
             const memberText =
-              members.length === 1
-                ? `Member: ${members[0].accountId}`
-                : `${members.length} Members`;
+              members.length > 0
+                ? members.length === 1
+                  ? `Member: ${members[0].accountId}`
+                  : `${members.length} Members`
+                : null;
 
             // Format date from nanoseconds timestamp
             const formattedDate = formatDate(
-              new Date(parseInt(firstMember.createdAt) / 1000000)
+              new Date(parseInt(createdAt) / 1000000)
             );
 
             return (
@@ -923,17 +847,15 @@ export default function MembersPage() {
                 <TableCell>
                   <div className="flex flex-col gap-1">
                     <span className="text-sm font-medium">{actionText}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {memberText}
-                    </span>
+                    {memberText && (
+                      <span className="text-xs text-muted-foreground">
+                        {memberText}
+                      </span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
-                  <User
-                    accountId={firstMember.proposer}
-                    size="sm"
-                    withLink={false}
-                  />
+                  <User accountId={proposer} size="sm" withLink={false} />
                 </TableCell>
                 <TableCell className="text-right">
                   <Button
@@ -953,7 +875,7 @@ export default function MembersPage() {
         </TableBody>
       </Table>
     );
-  }, [isLoading, pendingMembers, selectedTreasury]);
+  }, [isLoading, pendingProposalsData, selectedTreasury]);
 
   // Render members table
   const renderMembersTable = (members: Member[]) => {
@@ -1160,7 +1082,7 @@ export default function MembersPage() {
               <TabsTrigger value="pending">
                 Pending
                 <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-1">
-                  {pendingMembers.length}
+                  {pendingProposalsData.length}
                 </span>
               </TabsTrigger>
             </TabsList>
