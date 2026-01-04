@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ChevronDown, Copy } from "lucide-react";
 import QRCode from "react-qr-code";
 import { SelectModal } from "./select-modal";
-import { getAggregatedBridgeAssets, fetchDepositAddress } from "@/lib/bridge-api";
+import {
+  getAggregatedBridgeAssets,
+  fetchDepositAddress,
+} from "@/lib/bridge-api";
 import { useTreasury } from "@/stores/treasury-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { Button } from "@/components/button";
@@ -10,7 +13,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/modal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/modal";
 import { InputBlock } from "@/components/input-block";
 import { WarningAlert } from "@/components/warning-alert";
 
@@ -36,24 +44,30 @@ interface NetworkOption {
 }
 
 const depositFormSchema = z.object({
-  asset: z.object({
-    id: z.string(),
-    name: z.string(),
-    symbol: z.string().optional(),
-    icon: z.string(),
-    gradient: z.string().optional(),
-    networks: z.array(z.any()).optional(),
-  }).nullable().refine((val) => val !== null, {
-    message: "Please select an asset",
-  }),
-  network: z.object({
-    id: z.string(),
-    name: z.string(),
-    icon: z.string(),
-    gradient: z.string().optional(),
-  }).nullable().refine((val) => val !== null, {
-    message: "Please select a network",
-  }),
+  asset: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      symbol: z.string().optional(),
+      icon: z.string(),
+      gradient: z.string().optional(),
+      networks: z.array(z.any()).optional(),
+    })
+    .nullable()
+    .refine((val) => val !== null, {
+      message: "Please select an asset",
+    }),
+  network: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      icon: z.string(),
+      gradient: z.string().optional(),
+    })
+    .nullable()
+    .refine((val) => val !== null, {
+      message: "Please select a network",
+    }),
 });
 
 type DepositFormValues = z.infer<typeof depositFormSchema>;
@@ -61,7 +75,7 @@ type DepositFormValues = z.infer<typeof depositFormSchema>;
 export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const { selectedTreasury } = useTreasury();
   const { theme } = useThemeStore();
-  
+
   const form = useForm<DepositFormValues>({
     resolver: zodResolver(depositFormSchema),
     defaultValues: {
@@ -69,19 +83,19 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
       network: null,
     },
   });
-  
+
   const [modalType, setModalType] = useState<"asset" | "network" | null>(null);
   const [allAssets, setAllAssets] = useState<SelectOption[]>([]);
   const [allNetworks, setAllNetworks] = useState<SelectOption[]>([]);
-  const [filteredAssets, setFilteredAssets] = useState<SelectOption[]>([]);
   const [filteredNetworks, setFilteredNetworks] = useState<SelectOption[]>([]);
   const [depositAddress, setDepositAddress] = useState<string | null>(null);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [assetNetworkMap, setAssetNetworkMap] = useState<Map<string, string[]>>(new Map());
-  const [networkAssetMap, setNetworkAssetMap] = useState<Map<string, string[]>>(new Map());
-  
+  const [assetNetworkMap, setAssetNetworkMap] = useState<Map<string, string[]>>(
+    new Map()
+  );
+
   const selectedAsset = form.watch("asset");
   const selectedNetwork = form.watch("network");
 
@@ -95,13 +109,13 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   // Handle escape key to close modal
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         handleClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen]);
 
   // Fetch all assets and networks once
@@ -109,65 +123,108 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
     setIsLoadingAssets(true);
     form.clearErrors("asset");
     form.clearErrors("network");
-    
+
     try {
       const assets = await getAggregatedBridgeAssets(theme);
-      
-      // Format assets
-      const formattedAssets: SelectOption[] = assets.map((asset: any) => ({
-        id: asset.id,
-        name: asset.name,
-        symbol: asset.symbol,
-        icon: asset.icon || asset.symbol?.charAt(0) || "?",
-        gradient: "bg-linear-to-br from-blue-500 to-purple-500",
-        networks: asset.networks,
-      }));
-      
+
+      // Add "Other" asset that deposits directly to treasury
+      const otherAsset = {
+        id: "other",
+        name: "Other",
+        symbol: "OTHER",
+        icon: "❓", // Or use a question mark emoji/icon
+        networks: [
+          {
+            id: "near:mainnet",
+            name: "Near",
+            icon: "https://img.rhea.finance/images/NEARIcon.png",
+            chainId: "near:mainnet",
+          },
+        ],
+      };
+
+      // Format assets and add "Other" at the end
+      const formattedAssets: SelectOption[] = [
+        ...assets.map((asset: any) => ({
+          id: asset.id,
+          name: asset.name || asset.asset_name, // Use name (e.g., "Bitcoin") first
+          symbol: asset.symbol,
+          icon: asset.icon || asset.symbol?.charAt(0) || "?",
+          gradient: "bg-linear-to-br from-blue-500 to-purple-500",
+          networks: asset.networks,
+        })),
+      ];
+
+      // Sort assets alphabetically by symbol
+      formattedAssets.sort((a, b) =>
+        (a.symbol || "").localeCompare(b.symbol || "")
+      );
+
+      // Add "Other" at the end after sorting
+      formattedAssets.push(otherAsset);
+
       // Extract all unique networks
       const networkMap = new Map<string, NetworkOption>();
       const assetToNetworks = new Map<string, string[]>();
-      const networkToAssets = new Map<string, string[]>();
-      
+
       formattedAssets.forEach((asset) => {
         const networkIds: string[] = [];
-        
+
         asset.networks?.forEach((network: NetworkOption) => {
           const networkKey = network.chainId;
           networkIds.push(networkKey);
-          
+
           // Add to network map
           if (!networkMap.has(networkKey)) {
             networkMap.set(networkKey, network);
           }
-          
-          // Add to network→assets map
-          if (!networkToAssets.has(networkKey)) {
-            networkToAssets.set(networkKey, []);
-          }
-          networkToAssets.get(networkKey)?.push(asset.id);
         });
-        
+
         // Add to asset→networks map
         assetToNetworks.set(asset.id, networkIds);
       });
-      
+
       // Format networks
-      const formattedNetworks: SelectOption[] = Array.from(networkMap.values()).map((network) => ({
+      const formattedNetworks: SelectOption[] = Array.from(
+        networkMap.values()
+      ).map((network) => ({
         id: network.chainId,
         name: network.name,
         symbol: undefined,
         icon: network.icon || network.name.charAt(0),
         gradient: "bg-linear-to-br from-green-500 to-teal-500",
       }));
-      
+
+      // Sort networks alphabetically by name
+      formattedNetworks.sort((a, b) => a.name.localeCompare(b.name));
+
       // Set all data
       setAllAssets(formattedAssets);
       setAllNetworks(formattedNetworks);
-      setFilteredAssets(formattedAssets);
-      setFilteredNetworks(formattedNetworks);
       setAssetNetworkMap(assetToNetworks);
-      setNetworkAssetMap(networkToAssets);
-      
+
+      // Auto-select USDT asset
+      const usdtAsset = formattedAssets.find(
+        (asset) =>
+          asset.symbol?.toLowerCase() === "usdt" ||
+          asset.name?.toLowerCase().includes("tether")
+      );
+
+      if (usdtAsset) {
+        form.setValue("asset", usdtAsset);
+
+        // Get networks for USDT
+        const networkIds = assetToNetworks.get(usdtAsset.id) || [];
+        const availableNetworks = formattedNetworks.filter((n) =>
+          networkIds.includes(n.id)
+        );
+        setFilteredNetworks(availableNetworks);
+
+        // Auto-select network if only one is available
+        if (availableNetworks.length === 1) {
+          form.setValue("network", availableNetworks[0]);
+        }
+      }
     } catch (err) {
       form.setError("asset", {
         type: "manual",
@@ -178,49 +235,50 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
     }
   };
 
-  // Handle asset selection - filter networks
-  const handleAssetSelect = (asset: SelectOption) => {
-    form.setValue("asset", asset);
-    form.clearErrors("asset");
-    
-    // Always reset deposit address when asset changes
-    setDepositAddress(null);
-    
-    // Filter networks that support this asset
-    const supportedNetworkIds = assetNetworkMap.get(asset.id) || [];
-    const filtered = allNetworks.filter((network) => 
-      supportedNetworkIds.includes(network.id)
-    );
-    
-    setFilteredNetworks(filtered);
-    
-    // Reset network if it's not available for this asset
-    if (selectedNetwork && !supportedNetworkIds.includes(selectedNetwork.id)) {
-      form.setValue("network", null);
-    }
-  };
-  
-  // Handle network selection - filter assets
-  const handleNetworkSelect = (network: SelectOption) => {
-    form.setValue("network", network);
-    form.clearErrors("network");
-    
-    // Always reset deposit address when network changes
-    setDepositAddress(null);
-    
-    // Filter assets that support this network
-    const supportedAssetIds = networkAssetMap.get(network.id) || [];
-    const filtered = allAssets.filter((asset) => 
-      supportedAssetIds.includes(asset.id)
-    );
-    
-    setFilteredAssets(filtered);
-    
-    // Reset asset if it's not available on this network
-    if (selectedAsset && !supportedAssetIds.includes(selectedAsset.id)) {
-      form.setValue("asset", null);
-    }
-  };
+  // Handle asset selection - show all assets but update network list
+  const handleAssetSelect = useCallback(
+    (asset: SelectOption) => {
+      form.setValue("asset", asset);
+      form.clearErrors("asset");
+      form.clearErrors("network");
+
+      setDepositAddress(null);
+
+      // Get networks that support this asset
+      const supportedNetworkIds = assetNetworkMap.get(asset.id) || [];
+      const availableNetworks = allNetworks.filter((network) =>
+        supportedNetworkIds.includes(network.id)
+      );
+
+      // Sort networks alphabetically
+      availableNetworks.sort((a, b) => a.name.localeCompare(b.name));
+
+      setFilteredNetworks(availableNetworks);
+
+      // Auto-select network if only one is available
+      if (availableNetworks.length === 1) {
+        form.setValue("network", availableNetworks[0]);
+      } else if (
+        selectedNetwork &&
+        !supportedNetworkIds.includes(selectedNetwork.id)
+      ) {
+        form.setValue("network", null);
+      }
+    },
+    [form, assetNetworkMap, allNetworks, selectedNetwork]
+  );
+
+  // Handle network selection
+  const handleNetworkSelect = useCallback(
+    (network: SelectOption) => {
+      form.setValue("network", network);
+      form.clearErrors("network");
+      form.clearErrors("asset");
+
+      setDepositAddress(null);
+    },
+    [form]
+  );
 
   // Fetch deposit address when both asset and network are selected
   useEffect(() => {
@@ -229,26 +287,24 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         setDepositAddress(null);
         return;
       }
-      
+
+      // Special case: "Other" asset deposits directly to treasury
+      if (selectedAsset.id === "other") {
+        setDepositAddress(selectedTreasury);
+        return;
+      }
+
       setIsLoadingAddress(true);
       form.clearErrors("network");
-      
+
       try {
-        // Find the specific network entry for this asset to get the correct intents_token_id
-        const assetData = allAssets.find(a => a.id === selectedAsset.id);
-        const networkData = assetData?.networks?.find((n: NetworkOption) => n.chainId === selectedNetwork.id);
-        
-        if (!networkData) {
-          form.setError("network", {
-            type: "manual",
-            message: "Network configuration not found for this asset.",
-          });
-          setIsLoadingAddress(false);
-          return;
-        }
-        
-        const result = await fetchDepositAddress(selectedTreasury, networkData.chainId);
-        
+        // Use the network's id directly (e.g., "nep141:btc.omft.near")
+        // This is the intents_token_id that the bridge expects
+        const result = await fetchDepositAddress(
+          selectedTreasury,
+          selectedNetwork.id
+        );
+
         if (result && result.address) {
           setDepositAddress(result.address);
           form.clearErrors("network");
@@ -256,13 +312,15 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
           setDepositAddress(null);
           form.setError("network", {
             type: "manual",
-            message: "Could not retrieve deposit address for the selected asset and network.",
+            message:
+              "Could not retrieve deposit address for the selected asset and network.",
           });
         }
       } catch (err: any) {
         form.setError("network", {
           type: "manual",
-          message: err.message || "Failed to fetch deposit address. Please try again.",
+          message:
+            err.message || "Failed to fetch deposit address. Please try again.",
         });
         setDepositAddress(null);
       } finally {
@@ -275,36 +333,35 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
     } else {
       setDepositAddress(null);
     }
-  }, [selectedAsset, selectedNetwork, selectedTreasury, allAssets]);
+  }, [selectedAsset, selectedNetwork, selectedTreasury]);
 
-  const handleCopyAddress = () => {
+  const handleCopyAddress = useCallback(() => {
     if (depositAddress) {
       navigator.clipboard.writeText(depositAddress);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  };
+  }, [depositAddress]);
 
   // Reset all state when modal closes
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     form.reset();
     setDepositAddress(null);
-    setFilteredAssets(allAssets);
     setFilteredNetworks(allNetworks);
     setCopied(false);
     onClose();
-  };
+  }, [form, allNetworks, onClose]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl p-0 gap-0">
         <DialogHeader>
           <DialogTitle>Deposit</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <div className="space-y-4">
-            <p className="text-sm font-semibold">
+          <div className="p-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
               Select asset and network to see deposit address
             </p>
 
@@ -324,16 +381,18 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                       <div className="w-full flex items-center justify-between py-1">
                         {selectedAsset ? (
                           <div className="flex items-center gap-2">
-                            {selectedAsset.icon?.startsWith('http') || selectedAsset.icon?.startsWith('data:') ? (
-                              <img 
-                                src={selectedAsset.icon} 
-                                alt={selectedAsset.symbol} 
-                                className="w-6 h-6 rounded-full object-cover" 
+                            {selectedAsset.icon?.startsWith("http") ||
+                            selectedAsset.icon?.startsWith("data:") ? (
+                              <img
+                                src={selectedAsset.icon}
+                                alt={selectedAsset.symbol}
+                                className="w-6 h-6 rounded-full object-contain"
                               />
                             ) : (
                               <div
                                 className={`w-6 h-6 rounded-full ${
-                                  selectedAsset.gradient || "bg-linear-to-br from-blue-500 to-purple-500"
+                                  selectedAsset.gradient ||
+                                  "bg-linear-to-br from-blue-500 to-purple-500"
                                 } flex items-center justify-center text-white text-xs font-bold`}
                               >
                                 <span>{selectedAsset.icon}</span>
@@ -344,7 +403,9 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">Select Asset</span>
+                          <span className="text-muted-foreground">
+                            Select Asset
+                          </span>
                         )}
                         <ChevronDown className="w-5 h-5" />
                       </div>
@@ -371,25 +432,31 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                       <div className="w-full flex items-center justify-between py-1">
                         {selectedNetwork ? (
                           <div className="flex items-center gap-2">
-                            {selectedNetwork.icon?.startsWith('http') || selectedNetwork.icon?.startsWith('data:') ? (
-                              <img 
-                                src={selectedNetwork.icon} 
-                                alt={selectedNetwork.name} 
-                                className="w-6 h-6 rounded-full object-cover" 
+                            {selectedNetwork.icon?.startsWith("http") ||
+                            selectedNetwork.icon?.startsWith("data:") ? (
+                              <img
+                                src={selectedNetwork.icon}
+                                alt={selectedNetwork.name}
+                                className="w-6 h-6 rounded-full object-contain"
                               />
                             ) : (
                               <div
                                 className={`w-6 h-6 rounded-full ${
-                                  selectedNetwork.gradient || "bg-linear-to-br from-green-500 to-teal-500"
+                                  selectedNetwork.gradient ||
+                                  "bg-linear-to-br from-green-500 to-teal-500"
                                 } flex items-center justify-center text-white text-xs font-bold`}
                               >
                                 <span>{selectedNetwork.icon}</span>
                               </div>
                             )}
-                            <span className="text-foreground font-medium">{selectedNetwork.name}</span>
+                            <span className="text-foreground font-medium">
+                              {selectedNetwork.name}
+                            </span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">Select Network</span>
+                          <span className="text-muted-foreground">
+                            Select Network
+                          </span>
                         )}
                         <ChevronDown className="w-5 h-5" />
                       </div>
@@ -400,131 +467,141 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               )}
             />
 
-          {/* Deposit Address Section */}
-          {isLoadingAddress && (
-            <div className="mt-6 space-y-4 animate-pulse">
-              <div>
-                <div className="h-6 bg-muted rounded w-48 mb-2" />
-                <div className="h-4 bg-muted rounded w-72" />
-              </div>
+            {/* Deposit Address Section */}
+            {isLoadingAddress && (
+              <div className="mt-6 space-y-4 animate-pulse">
+                <div>
+                  <div className="h-6 bg-muted rounded w-48 mb-2" />
+                  <div className="h-4 bg-muted rounded w-72" />
+                </div>
 
-              <div className="bg-muted rounded-lg p-4">
-                <div className="flex gap-4">
-                  {/* QR Code Skeleton */}
-                  <div className="shrink-0">
-                    <div className="w-32 h-32 bg-background rounded-lg" />
+                <div className="bg-muted rounded-lg p-4">
+                  <div className="flex gap-4">
+                    {/* QR Code Skeleton */}
+                    <div className="shrink-0">
+                      <div className="w-32 h-32 bg-background rounded-lg" />
+                    </div>
+
+                    {/* Address Skeleton */}
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-background rounded w-20" />
+                      <div className="bg-background rounded-lg p-3"></div>
+                    </div>
                   </div>
+                </div>
 
-                  {/* Address Skeleton */}
+                {/* Warning Skeleton */}
+                <div className="bg-muted rounded-lg p-4 flex gap-3">
+                  <div className="w-5 h-5 bg-background rounded shrink-0" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-background rounded w-20" />
-                    <div className="bg-background rounded-lg p-3">
-                    </div>
+                    <div className="h-4 bg-background rounded w-full" />
+                    <div className="h-4 bg-background rounded w-3/4" />
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Warning Skeleton */}
-              <div className="bg-muted rounded-lg p-4 flex gap-3">
-                <div className="w-5 h-5 bg-background rounded shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-background rounded w-full" />
-                  <div className="h-4 bg-background rounded w-3/4" />
+            {depositAddress && !isLoadingAddress && (
+              <div className="mt-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold mb-1">
+                    Deposit Address
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Always double-check your deposit address.
+                  </p>
                 </div>
-              </div>
-            </div>
-          )}
-          
-          {depositAddress && !isLoadingAddress && (
-            <div className="mt-6 space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Deposit Address</h3>
-                <p className="text-sm text-muted-foreground">
-                  Always double-check your deposit address.
-                </p>
-              </div>
 
-              <div className="bg-muted rounded-lg p-4">
-                <div className="flex gap-4">
-                  {/* QR Code */}
-                  <div className="shrink-0">
-                    <div className="w-32 h-32 rounded-lg bg-white flex items-center justify-center p-2">
-                      <QRCode
-                        value={depositAddress}
-                        size={112}
-                        style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                      />
+                <div className="bg-muted rounded-lg p-4">
+                  <div className="flex gap-4">
+                    {/* QR Code */}
+                    <div className="shrink-0">
+                      <div className="w-32 h-32 rounded-lg bg-white flex items-center justify-center p-2">
+                        <QRCode
+                          value={depositAddress}
+                          size={112}
+                          style={{
+                            height: "auto",
+                            maxWidth: "100%",
+                            width: "100%",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Address */}
+                    <div className="flex-1 space-y-2">
+                      <label className="text-sm text-muted-foreground">
+                        Address
+                      </label>
+                      <div className="rounded-lg flex justify-between gap-2 pt-1">
+                        <code className="font-mono break-all">
+                          {depositAddress}
+                        </code>
+                        <Button
+                          type="button"
+                          onClick={handleCopyAddress}
+                          variant="unstyled"
+                          size="icon-sm"
+                          className="shrink-0"
+                          title="Copy address"
+                        >
+                          {copied ? (
+                            <span className="text-lg text-green-600 dark:text-green-400">
+                              ✓
+                            </span>
+                          ) : (
+                            <Copy className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Address */}
-                  <div className="flex-1 space-y-2">
-                    <label className="text-sm text-muted-foreground">
-                      Address
-                    </label>
-                    <div className="rounded-lg flex justify-between gap-2 pt-1">
-                      <code className="font-mono break-all">{depositAddress}</code>
-                      <Button
-                        type="button"
-                        onClick={handleCopyAddress}
-                        variant="unstyled"
-                        size="icon-sm"
-                        className="shrink-0"
-                        title="Copy address"
-                      >
-                        {copied ? (
-                          <span className="text-lg text-green-600 dark:text-green-400">✓</span>
-                        ) : (
-                          <Copy className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
                 </div>
+
+                {/* Warning Message */}
+                <WarningAlert
+                  message={
+                    <span>
+                      Only deposit from the{" "}
+                      <strong>{selectedNetwork?.name}</strong> network. We
+                      recommend starting with a small test transaction to ensure
+                      everything works correctly before sending the full amount.
+                    </span>
+                  }
+                />
               </div>
+            )}
 
-              {/* Warning Message */}
-              <WarningAlert 
-                message={
-                  <span>
-                    Only deposit from the <strong>{selectedNetwork?.name}</strong> network. We recommend starting
-                    with a small test transaction to ensure everything works correctly before
-                    sending the full amount.
-                  </span>
-                }
-              />
-            </div>
-          )}
+            <SelectModal
+              isOpen={modalType === "asset"}
+              onClose={() => setModalType(null)}
+              onSelect={(option) => {
+                handleAssetSelect(option);
+                setModalType(null);
+              }}
+              title="Select Asset"
+              options={allAssets}
+              searchPlaceholder="Search by name"
+              isLoading={isLoadingAssets}
+              selectedId={selectedAsset?.id}
+            />
 
-          <SelectModal
-            isOpen={modalType === "asset"}
-            onClose={() => setModalType(null)}
-            onSelect={(option) => {
-              handleAssetSelect(option);
-              setModalType(null);
-            }}
-            title="Select Asset"
-            options={filteredAssets}
-            searchPlaceholder="Search by name"
-            isLoading={isLoadingAssets}
-          />
-          
-          <SelectModal
-            isOpen={modalType === "network"}
-            onClose={() => setModalType(null)}
-            onSelect={(option) => {
-              handleNetworkSelect(option);
-              setModalType(null);
-            }}
-            title="Select Network"
-            options={filteredNetworks}
-            searchPlaceholder="Search by name"
-            isLoading={isLoadingAssets}
-          />
+            <SelectModal
+              isOpen={modalType === "network"}
+              onClose={() => setModalType(null)}
+              onSelect={(option) => {
+                handleNetworkSelect(option);
+                setModalType(null);
+              }}
+              title="Select Network"
+              options={filteredNetworks}
+              searchPlaceholder="Search by name"
+              isLoading={isLoadingAssets}
+            />
           </div>
         </Form>
       </DialogContent>
     </Dialog>
   );
 }
-

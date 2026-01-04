@@ -22,7 +22,7 @@ export const fetchSupportedTokens = async () => {
 /**
  * Fetch deposit address for a specific account and chain via backend
  * @param {string} accountId - NEAR account ID
- * @param {string} chainId - Chain identifier (e.g., "eth:1")
+ * @param {string} chainId - Chain identifier (e.g., "nep141:btc.omft.near")
  * @returns {Promise<Object>} Result object containing deposit address
  */
 export const fetchDepositAddress = async (accountId: string, chainId: string) => {
@@ -47,6 +47,7 @@ export const fetchDepositAddress = async (accountId: string, chainId: string) =>
     const data = await response.json();
     return data || null;
   } catch (error) {
+    console.error("Error fetching deposit address from backend:", error);
     throw error;
   }
 };
@@ -64,7 +65,7 @@ export const fetchTokenMetadataByDefuseAssetId = async (defuseAssetIds: string |
       : defuseAssetIds;
 
     const response = await fetch(
-      `${BACKEND_API_BASE}/proxy/token-by-defuse-asset-id?defuseAssetId=${tokenIdsString}`
+      `${BACKEND_API_BASE}/intents/token-metadata?defuseAssetId=${tokenIdsString}`
     );
     const data = await response.json();
     
@@ -87,7 +88,7 @@ export const fetchBlockchainByNetwork = async (networks: string | string[], them
       : networks;
 
     const response = await fetch(
-      `${BACKEND_API_BASE}/proxy/blockchain-by-network?network=${networkString}&theme=${theme}`
+      `${BACKEND_API_BASE}/intents/blockchain-metadata?network=${networkString}&theme=${theme}`
     );
     const data = await response.json();
     
@@ -99,16 +100,62 @@ export const fetchBlockchainByNetwork = async (networks: string | string[], them
 
 /**
  * Fetch all bridgeable tokens and aggregate by asset with networks
- * The backend already returns enriched tokens with metadata
+ * Enriches tokens with metadata for icons and network information
  */
 export async function getAggregatedBridgeAssets(theme = "light") {
   try {
     const supported = await fetchSupportedTokens();
-    const allTokens = (supported?.tokens || []);
+    // Filter for nep141 tokens only, matching the old code
+    const allTokens = (supported?.tokens || []).filter(
+      (t: any) => t.standard === "nep141"
+    );
+    
+    // Deduplicate by intents_token_id to avoid double-counting balances
+    const tokenMap: Record<string, any> = {};
+    allTokens.forEach((t: any) => {
+      if (t.intents_token_id && !tokenMap[t.intents_token_id]) {
+        tokenMap[t.intents_token_id] = t;
+      }
+    });
+    const tokens = Object.values(tokenMap);
+
+    const defuseIds = tokens.map((t: any) => t.intents_token_id).filter(Boolean);
+    
+    const metadataList = defuseIds.length
+      ? await fetchTokenMetadataByDefuseAssetId(defuseIds)
+      : [];
+
+    // Build metadata map
+    const metadataMap: Record<string, any> = {};
+    (metadataList || []).forEach((m: any) => {
+      const key = m.defuseAssetId || m.defuse_asset_id || m.defuseAssetID;
+      if (key) metadataMap[key] = m;
+    });
+
+    // Enrich tokens with metadata
+    const enrichedTokens = allTokens
+      .map((token: any) => {
+        const tokenId = token.intents_token_id || token.defuse_asset_id;
+        const metadata = metadataMap[tokenId];
+        if (!metadata) {
+          return null;
+        }
+        return {
+          ...token,
+          ...metadata,
+        };
+      })
+      .filter((token: any) => token !== null && token.chainName);
+
+    // Create a map for O(1) lookup of enriched tokens
+    const enrichedTokenMap: Record<string, any> = {};
+    enrichedTokens.forEach((token: any) => {
+      enrichedTokenMap[token.intents_token_id] = token;
+    });
 
     // Fetch network icons
     const uniqueChainNames = new Set<string>();
-    allTokens.forEach((token: any) => {
+    enrichedTokens.forEach((token: any) => {
       if (token.chainName) {
         uniqueChainNames.add(token.chainName);
       }
@@ -132,42 +179,49 @@ export async function getAggregatedBridgeAssets(theme = "light") {
     // Group by canonical symbol
     const assetMap: Record<string, any> = {};
 
-    allTokens.forEach((token: any) => {
-      const canonicalSymbol = (token.symbol || token.asset_name || "").toUpperCase();
+    tokens.forEach((t: any) => {
+      const meta = metadataMap[t.intents_token_id];
+      if (!meta) return;
+
+      const canonicalSymbol = (meta.symbol || t.asset_name || "").toUpperCase();
 
       if (!assetMap[canonicalSymbol]) {
         assetMap[canonicalSymbol] = {
           id: canonicalSymbol.toLowerCase(),
-          asset_name: token.asset_name,
-          name: token.name,
-          symbol: token.symbol || token.asset_name,
-          icon: token.icon || null,
+          asset_name: meta.symbol || t.asset_name,
+          name: meta.name || t.name,
+          symbol: meta.symbol || t.asset_name,
+          icon: meta.icon || null,
           networks: [],
         };
       }
 
-      // Derive chain id from defuse_asset_id
-      const parts = (token.defuse_asset_id || "").split(":");
+      // Derive chainId from defuse_asset_identifier (matching old code exactly)
+      // For "nep141:btc.omft.near" this gives "nep141:btc.omft.near" (first 2 parts)
+      const parts = (t.defuse_asset_identifier || "").split(":");
       const chainId = parts.length >= 2 ? parts.slice(0, 2).join(":") : parts[0];
       
-      const chainName = token.chainName;
+      // Get chainName from enriched token using map for O(1) lookup
+      const enrichedToken = enrichedTokenMap[t.intents_token_id];
+      const chainName = enrichedToken?.chainName || "";
       const netInfo = networkIconMap[chainName] || {
         name: chainName || chainId,
         icon: null,
       };
 
-      const networkId = token.intents_token_id || token.defuse_asset_id;
+      // Use intents_token_id as the unique network identifier
+      const networkId = t.intents_token_id;
       const existingNetworkIndex = assetMap[canonicalSymbol].networks.findIndex(
-        (n: any) => n.id === networkId
+        (n: any) => n.id === chainId
       );
 
       if (existingNetworkIndex < 0) {
         assetMap[canonicalSymbol].networks.push({
-          id: networkId,
+          id: chainId, // Use chainId (shortened) as the network id
           name: netInfo.name,
           icon: netInfo.icon,
-          chainId,
-          decimals: token.decimals || 18,
+          chainId, // Same as id
+          decimals: meta.decimals || 18,
         });
       }
     });
@@ -175,6 +229,7 @@ export async function getAggregatedBridgeAssets(theme = "light") {
     const assets = Object.values(assetMap);
     return assets;
   } catch (e) {
+    console.error("❌ Error in getAggregatedBridgeAssets:", e);
     return [];
   }
 }
