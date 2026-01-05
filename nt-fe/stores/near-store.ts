@@ -234,7 +234,9 @@ export const useNear = () => {
     const createProposal = async (toastMessage: string, params: CreateProposalParams) => {
         const results = await storeCreateProposal(toastMessage, params);
         if (results.length > 0) {
-            // Invalidate both proposals list and individual proposal queries
+            // Delay to allow Sputnik DAO indexer to pick up the new proposal
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Invalidate and refetch proposals
             await queryClient.invalidateQueries({ queryKey: ["proposals", params.treasuryId] });
             await queryClient.invalidateQueries({ queryKey: ["proposal", params.treasuryId] });
         }
@@ -252,6 +254,12 @@ export const useNear = () => {
                     queryClient.invalidateQueries({ queryKey: ["proposal", treasuryId, vote.proposalId.toString()] })
                 )
             );
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Invalidate policy and config since voting can approve proposals that change them
+            await queryClient.invalidateQueries({ queryKey: ["treasuryPolicy", treasuryId] });
+            await queryClient.invalidateQueries({ queryKey: ["treasuryConfig", treasuryId] });
+            // Invalidate user treasuries to update sidebar name/logo
+            await queryClient.invalidateQueries({ queryKey: ["userTreasuries", accountId] });
         }
         return results;
     };

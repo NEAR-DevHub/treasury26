@@ -58,7 +58,8 @@ pub async fn get_treasury_config(
     let treasury_id = params.treasury_id;
 
     let cache_key = format!("treasury-config:{}", treasury_id);
-    if let Some(cached_config) = state.cache.get(&cache_key).await {
+    // Use short_term_cache with 1-minute TTL for governance data
+    if let Some(cached_config) = state.short_term_cache.get(&cache_key).await {
         println!("🔁 Returning cached config for {}", treasury_id);
         return Ok((StatusCode::OK, Json(cached_config)));
     }
@@ -94,7 +95,10 @@ pub async fn get_treasury_config(
         )
     })?;
 
-    state.cache.insert(cache_key, treasury_value.clone()).await;
+    state
+        .short_term_cache
+        .insert(cache_key, treasury_value.clone())
+        .await;
 
     Ok((StatusCode::OK, Json(treasury_value)))
 }

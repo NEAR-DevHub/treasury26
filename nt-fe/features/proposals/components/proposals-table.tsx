@@ -17,7 +17,7 @@ import { ExpandedView } from "./expanded-view";
 import { ProposalTypeIcon } from "./proposal-type-icon";
 import { VotingIndicator } from "./voting-indicator";
 import { Policy } from "@/types/policy";
-import { formatDate } from "@/lib/utils";
+import { useFormatDate } from "@/components/formatted-date";
 import { TooltipUser } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
@@ -62,6 +62,7 @@ export function ProposalsTable({
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const { accountId, voteProposals } = useNear();
   const { selectedTreasury } = useTreasury();
+  const formatDate = useFormatDate();
 
   const columns = useMemo<ColumnDef<Proposal, any>[]>(
     () => [
@@ -180,7 +181,7 @@ export function ProposalsTable({
         ),
       }),
     ],
-    [policy, accountId, selectedTreasury]
+    [policy, accountId, selectedTreasury, formatDate]
   );
 
   const table = useReactTable({

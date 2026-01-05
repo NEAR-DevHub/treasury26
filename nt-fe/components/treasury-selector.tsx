@@ -95,9 +95,9 @@ export function TreasurySelector() {
 
   const Logo = ({ logo }: { logo?: string }) => {
     if (logo) {
-      return <img src={logo} alt="Treasury Flag Logo" className="rounded-md size-7" />;
+      return <img src={logo} alt="Treasury Flag Logo" className="rounded-md size-7 object-cover" />;
     }
-    return <div className="flex items-center justify-center size-7 rounded shrink-0">
+    return <div className="flex items-center justify-center size-7 rounded bg-muted shrink-0">
       <Database className="size-5 text-muted-foreground" />
     </div>;
   }
@@ -118,7 +118,7 @@ export function TreasurySelector() {
     <Select value={treasuryId} onValueChange={handleTreasuryChange} >
       <SelectTrigger className="w-full px-3 py-1.5 h-fit border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted!">
         <div className="flex items-center gap-2 w-full max-w-52 truncate h-9">
-          <Logo logo={treasury?.flagLogo} />
+          <Logo logo={currentTreasury?.config?.metadata?.flagLogo} />
           <div className="flex flex-col items-start min-w-0">
             <span className="text-xs font-medium truncate max-w-full ">
               {displayName}

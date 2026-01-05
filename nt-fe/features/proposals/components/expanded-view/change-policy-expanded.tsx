@@ -2,7 +2,7 @@ import { ChangePolicyData } from "../../types/index";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { Amount } from "../amount";
 import { formatNanosecondDuration } from "@/lib/utils";
-import { TooltipUser, User } from "@/components/user";
+import { User } from "@/components/user";
 import { VotePolicy } from "@/types/policy";
 import { ApprovalInfo } from "@/components/approval-info";
 
@@ -127,11 +127,9 @@ function FullPolicyView({ data }: { data: ChangePolicyData }) {
                   <span className="text-xs text-muted-foreground">Members:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {[...role.kind.Group].sort().map((member, idx) => (
-                      <TooltipUser key={idx} accountId={member}>
-                        <div className="cursor-pointer">
-                          <User accountId={member} iconOnly size="md" withLink={false} />
-                        </div>
-                      </TooltipUser>
+                      <div className="cursor-pointer">
+                        <User accountId={member} iconOnly size="md" withLink={false} withHoverCard />
+                      </div>
                     ))}
                   </div>
                 </div>

@@ -11,8 +11,11 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  showFullTrack = false,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: React.ComponentProps<typeof SliderPrimitive.Root> & {
+  showFullTrack?: boolean
+}) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -39,7 +42,8 @@ function Slider({
       <SliderPrimitive.Track
         data-slot="slider-track"
         className={cn(
-          "bg-muted-foreground/20 relative grow overflow-hidden rounded-full data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5"
+          "relative grow overflow-hidden rounded-full data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5",
+          showFullTrack ? "bg-foreground/20" : "bg-muted"
         )}
       >
         <SliderPrimitive.Range

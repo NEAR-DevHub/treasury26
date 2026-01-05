@@ -2,8 +2,6 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/button";
-import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PageCard } from "@/components/card";
 import { useTreasury } from "@/stores/treasury-store";
@@ -26,12 +24,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useNear } from "@/stores/near-store";
-import { getApproversAndThreshold } from "@/lib/config-utils";
-import { TooltipUser, User } from "@/components/user";
+import { hasPermission } from "@/lib/config-utils";
+import { User } from "@/components/user";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { encodeToMarkdown } from "@/lib/utils";
 import { ThresholdSlider } from "@/components/threshold";
+import { CreateRequestButton } from "@/components/create-request-button";
+import { useProposals } from "@/hooks/use-proposals";
+import { AlertTriangle, ExternalLink } from "lucide-react";
+import { Button } from "@/components/button";
+import { useQueryClient } from "@tanstack/react-query";
 
 const votingFormSchema = z.object({
   voteDuration: z
@@ -69,11 +72,97 @@ const proposalKinds = [
   "set_vote_token",
 ];
 
+interface VotingRequestActionProps {
+  hasPendingRequest: boolean;
+  onCreateRequest: () => void;
+  isSubmitting: boolean;
+  isAuthorized: boolean;
+  accountId: string | null;
+  disabled: boolean;
+  permissionMessage: string;
+  treasuryId: string | null | undefined;
+}
+
+function VotingRequestAction({
+  hasPendingRequest,
+  onCreateRequest,
+  isSubmitting,
+  isAuthorized,
+  accountId,
+  disabled,
+  permissionMessage,
+  treasuryId,
+}: VotingRequestActionProps) {
+  const router = useRouter();
+
+  if (hasPendingRequest) {
+    return (
+      <>
+        <div className="flex items-start gap-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 p-4 border border-yellow-200 dark:border-yellow-900">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-1" />
+          <div className="flex-1">
+            <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+              Active Voting Change Request
+            </h4>
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              To avoid conflicts, you need to complete or resolve the existing pending requests before proceeding. These requests are currently active and must be approved or rejected first.
+            </p>
+          </div>
+        </div>
+
+        <Button
+          onClick={() => router.push(`/${treasuryId}/requests?tab=pending`)}
+          variant="default"
+          className="w-full"
+        >
+          View Request
+          <ExternalLink className="ml-2 h-4 w-4" />
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-0 overflow-hidden">
+      <CreateRequestButton
+        onClick={onCreateRequest}
+        isSubmitting={isSubmitting}
+        isAuthorized={isAuthorized}
+        accountId={accountId}
+        disabled={disabled}
+        permissionMessage={permissionMessage}
+        className="w-full h-10 rounded-none"
+      />
+    </div>
+  );
+}
+
 export function VotingTab() {
   const { selectedTreasury } = useTreasury();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const { accountId, createProposal } = useNear();
-  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // Fetch pending proposals to check for active voting change requests
+  const { data: pendingProposals } = useProposals(selectedTreasury, {
+    statuses: ["InProgress"],
+    proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
+  });
+
+  // Check for specific pending proposal types
+  const hasPendingThresholdRequest = useMemo(() => {
+    if (!pendingProposals?.proposals) return false;
+    return pendingProposals.proposals.some(
+      (p) => p.kind && "ChangePolicy" in p.kind
+    );
+  }, [pendingProposals]);
+
+  const hasPendingDurationRequest = useMemo(() => {
+    if (!pendingProposals?.proposals) return false;
+    return pendingProposals.proposals.some(
+      (p) => p.kind && "ChangePolicyUpdateParameters" in p.kind
+    );
+  }, [pendingProposals]);
 
   const form = useForm<VotingFormValues>({
     resolver: zodResolver(votingFormSchema),
@@ -93,12 +182,10 @@ export function VotingTab() {
   const [isSubmittingDuration, setIsSubmittingDuration] = useState(false);
 
   // Check if user is authorized to make policy changes
-  const { approverAccounts } = useMemo(() => {
-    if (!policy || !accountId) return { approverAccounts: [] as string[] };
-    return getApproversAndThreshold(policy, accountId, "policy", false);
+  const isAuthorized = useMemo(() => {
+    if (!policy || !accountId) return false;
+    return hasPermission(policy, accountId, "policy", "AddProposal");
   }, [policy, accountId]);
-
-  const isAuthorized = accountId && approverAccounts.includes(accountId);
 
   // Get roles with Group kind (filter out Everyone and Member)
   const groupRoles = useMemo(() => {
@@ -183,11 +270,9 @@ export function VotingTab() {
       setOriginalThresholds(initialThresholds);
 
       // Set initial active tab
-      if (!activeTab && groupRoles.length > 0) {
-        setActiveTab(groupRoles[0].name);
-      }
+      setActiveTab(groupRoles[0].name);
     }
-  }, [policy, groupRoles, form, activeTab]);
+  }, [policy, groupRoles, form]);
 
   // Check if we have specific roles for custom description
   const hasApproversAndGovernance = useMemo(() => {
@@ -252,6 +337,9 @@ export function VotingTab() {
         proposalBond: proposalBond,
       });
 
+      // Refetch proposals to show the newly created proposal
+      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
+
       // Update original thresholds
       setOriginalThresholds((prev) => ({
         ...prev,
@@ -290,7 +378,7 @@ export function VotingTab() {
 
       const proposalBond = policy?.proposal_bond || "0";
 
-      await createProposal("Request to update settings submitted", {
+      await createProposal("Request created successfully", {
         treasuryId: selectedTreasury,
         proposal: {
           description: encodeToMarkdown(description),
@@ -304,6 +392,9 @@ export function VotingTab() {
         },
         proposalBond: proposalBond,
       });
+
+      // Refetch proposals to show the newly created proposal
+      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
 
       // Mark as not dirty
       form.reset(form.getValues());
@@ -321,7 +412,7 @@ export function VotingTab() {
         <PageCard>
           <div>
             <h3 className="text-lg font-semibold">Voting Threshold</h3>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-muted-foreground">
               {thresholdDescription}
             </p>
           </div>
@@ -342,7 +433,7 @@ export function VotingTab() {
             <TabsContents>
               {groupRoles.map((role) => (
                 <TabsContent key={role.name} value={role.name}>
-                  <div className="space-y-4 mt-2">
+                  <div className="space-y-4">
                     {/* Members who can vote */}
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
@@ -356,17 +447,16 @@ export function VotingTab() {
                     {/* Member avatars */}
                     <div className="flex items-center">
                       {role.members
-                        .slice(0, 10)
+                        .slice(0, 15)
                         .map((member: string, index: number) => (
                           <div key={member} className="-ml-2 first:ml-0">
-                            <TooltipUser accountId={member} triggerProps={{ asChild: false }}>
-                              <User
-                                accountId={member}
-                                iconOnly={true}
-                                size="lg"
-                                withLink={true}
-                              />
-                            </TooltipUser>
+                            <User
+                              accountId={member}
+                              iconOnly={true}
+                              size="lg"
+                              withLink={true}
+                              withHoverCard={true}
+                            />
                           </div>
                         ))}
                       {role.memberCount > 10 && (
@@ -385,6 +475,7 @@ export function VotingTab() {
                       return (
                         <ThresholdSlider
                           currentThreshold={currentThreshold}
+                          originalThreshold={originalThresholds[role.name]}
                           memberCount={role.memberCount}
                           onValueChange={(value) => {
                             form.setValue(
@@ -396,7 +487,7 @@ export function VotingTab() {
                               { shouldDirty: true }
                             );
                           }}
-                          disabled={!isAuthorized}
+                          disabled={!isAuthorized || hasPendingThresholdRequest}
                         />
                       );
                     })()}
@@ -406,34 +497,20 @@ export function VotingTab() {
             </TabsContents>
           </Tabs>
 
-          <div className="rounded-lg border bg-card p-0 overflow-hidden">
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleThresholdChange}
-              disabled={
-                !isAuthorized ||
-                !activeTab ||
-                !form.watch("thresholds")?.[activeTab] ||
-                form.watch("thresholds")[activeTab] ===
-                originalThresholds[activeTab] ||
-                isSubmittingThreshold
-              }
-            >
-              {isSubmittingThreshold ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Proposal...
-                </>
-              ) : !accountId ? (
-                "Sign in required"
-              ) : !isAuthorized ? (
-                "You don't have permission to change the voting threshold"
-              ) : (
-                "Create Request"
-              )}
-            </Button>
-          </div>
+          <VotingRequestAction
+            hasPendingRequest={hasPendingThresholdRequest}
+            onCreateRequest={handleThresholdChange}
+            isSubmitting={isSubmittingThreshold}
+            isAuthorized={isAuthorized}
+            accountId={accountId}
+            disabled={
+              !activeTab ||
+              !form.watch("thresholds")?.[activeTab] ||
+              form.watch("thresholds")[activeTab] === originalThresholds[activeTab]
+            }
+            permissionMessage="You don't have permission to change the voting threshold"
+            treasuryId={selectedTreasury}
+          />
         </PageCard>
 
         <PageCard>
@@ -462,7 +539,7 @@ export function VotingTab() {
                     min="1"
                     max="999"
                     step="1"
-                    disabled={!isAuthorized}
+                    disabled={!isAuthorized || hasPendingDurationRequest}
                     {...field}
                   />
                 </FormControl>
@@ -471,32 +548,19 @@ export function VotingTab() {
             )}
           />
 
-          <div className="rounded-lg border bg-card p-0 overflow-hidden mt-4">
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleDurationChange}
-              disabled={
-                !isAuthorized ||
-                !form.formState.dirtyFields.voteDuration ||
-                !!form.formState.errors.voteDuration ||
-                isSubmittingDuration
-              }
-            >
-              {isSubmittingDuration ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Proposal...
-                </>
-              ) : !accountId ? (
-                "Sign in required"
-              ) : !isAuthorized ? (
-                "You don't have permission to change the vote duration"
-              ) : (
-                "Create Request"
-              )}
-            </Button>
-          </div>
+          <VotingRequestAction
+            hasPendingRequest={hasPendingDurationRequest}
+            onCreateRequest={handleDurationChange}
+            isSubmitting={isSubmittingDuration}
+            isAuthorized={isAuthorized}
+            accountId={accountId}
+            disabled={
+              !form.formState.dirtyFields.voteDuration ||
+              !!form.formState.errors.voteDuration
+            }
+            permissionMessage="You don't have permission to change the vote duration"
+            treasuryId={selectedTreasury}
+          />
         </PageCard>
       </div>
     </Form>
