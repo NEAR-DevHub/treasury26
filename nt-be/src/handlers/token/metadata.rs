@@ -60,9 +60,11 @@ struct RefSdkToken {
     pub price: Option<f64>,
     #[serde(rename = "priceUpdatedAt")]
     pub price_updated_at: Option<String>,
+    #[serde(rename = "price_updated_at")]
     pub price_updated_at_snake_case: Option<String>,
     #[serde(rename = "chainName")]
     pub chain_name: Option<String>,
+    #[serde(rename = "chain_name")]
     pub chain_name_snake_case: Option<String>,
     pub error: Option<String>,
 }
