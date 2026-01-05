@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT ON (token_id)\n                token_id as \"token_id!\",\n                balance_after as \"balance!\"\n            FROM balance_changes\n            WHERE account_id = $1\n              AND block_time < $2\n              AND token_id = ANY($3)\n            ORDER BY token_id, block_height DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_id!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "balance!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "aea96620161b28f7ca7d2ef23fea1e0dd8f7bf4d3f650f95cabeffb932a8cd6e"
+}
