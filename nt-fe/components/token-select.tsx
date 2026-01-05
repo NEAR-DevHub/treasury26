@@ -27,6 +27,45 @@ interface TokenSelectProps {
     };
 }
 
+export const LockedTokenDisplay = ({ lockedTokenData }: {
+    lockedTokenData: {
+        symbol: string;
+        icon: string;
+        network: string;
+        chainIcons?: ChainIcons;
+    }
+}) => {
+    const { theme } = useThemeStore();
+    const getNetworkIcon = (data: typeof lockedTokenData) => {
+        if (!data) return null;
+        if ('chainIcons' in data && data.chainIcons) {
+            return theme === 'light' ? data.chainIcons.light : data.chainIcons.dark;
+        }
+        return null;
+    };
+
+    return (
+        <>
+            <div className="relative">
+                <img src={lockedTokenData.icon} alt={lockedTokenData.symbol} className="size-5 rounded-full shrink-0" />
+                {getNetworkIcon(lockedTokenData) && (
+                    <div className="absolute -right-1 -bottom-1 flex items-center justify-center rounded-full bg-muted border-border">
+                        <img
+                            src={getNetworkIcon(lockedTokenData)!}
+                            alt="network"
+                            className="size-3 shrink-0 p-0.5"
+                        />
+                    </div>
+                )}
+            </div>
+            <div className="flex flex-col items-start">
+                <span className="font-semibold text-sm leading-none">{lockedTokenData.symbol}</span>
+                <span className="text-[10px] font-normal text-muted-foreground uppercase">{lockedTokenData.network}</span>
+            </div>
+        </>
+    );
+};
+
 export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData }: TokenSelectProps) {
     const { selectedTreasury } = useTreasury();
     const { data: { tokens = [] } = {} } = useTreasuryAssets(selectedTreasury, { onlyPositiveBalance: true });
@@ -91,8 +130,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
     if (locked && lockedTokenData) {
         return (
             <div className="flex gap-2 items-center h-9 px-4 py-2 has-[>svg]:px-3 bg-card rounded-full cursor-default hover:bg-card hover:border-border">
-                <img src={lockedTokenData.icon} alt={lockedTokenData.symbol} className="size-6 rounded-full shrink-0" />
-                <span className="font-medium">{lockedTokenData.symbol}</span>
+                <LockedTokenDisplay lockedTokenData={lockedTokenData} />
             </div>
         );
     }
@@ -102,24 +140,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
             <DialogTrigger asChild disabled={disabled}>
                 <Button variant="outline" className="bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3">
                     {displayTokenData ? (
-                        <>
-                            <div className="relative">
-                                <img src={displayTokenData.icon} alt={displayTokenData.symbol} className="size-5 rounded-full shrink-0" />
-                                {getNetworkIcon(displayTokenData) && (
-                                    <div className="absolute -right-1 -bottom-1 flex items-center justify-center rounded-full bg-muted border-border">
-                                        <img
-                                            src={getNetworkIcon(displayTokenData)!}
-                                            alt="network"
-                                            className="size-3 shrink-0 p-0.5"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex flex-col items-start">
-                                <span className="font-semibold text-sm leading-none">{displayTokenData.symbol}</span>
-                                <span className="text-[10px] font-normal text-muted-foreground uppercase">{displayTokenData.network}</span>
-                            </div>
-                        </>
+                        <LockedTokenDisplay lockedTokenData={displayTokenData} />
                     ) : (
                         <span className="text-muted-foreground">Select token</span>
                     )}
