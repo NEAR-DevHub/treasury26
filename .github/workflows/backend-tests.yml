@@ -64,10 +64,6 @@ jobs:
       working-directory: nt-be
       run: cargo fmt -- --check
 
-    - name: Run clippy
-      working-directory: nt-be
-      run: cargo clippy -- -D warnings
-
     - name: Start PostgreSQL with Docker Compose
       working-directory: nt-be
       run: |
@@ -90,6 +86,10 @@ jobs:
     - name: Run migrations
       working-directory: nt-be
       run: sqlx migrate run
+
+    - name: Run clippy
+      working-directory: nt-be
+      run: cargo clippy -- -D warnings
 
     - name: Run unit tests
       working-directory: nt-be
