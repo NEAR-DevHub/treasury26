@@ -93,7 +93,8 @@ export function TokenInput<
                                         locked={tokenSelect?.locked}
                                         lockedTokenData={tokenSelect?.locked ? {
                                             symbol: token.symbol,
-                                            icon: token.icon
+                                            icon: token.icon,
+                                            network: token.network
                                         } : undefined}
                                         selectedToken={field.value}
                                         setSelectedToken={(selectedToken) => {
