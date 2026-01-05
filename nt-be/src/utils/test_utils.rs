@@ -55,6 +55,10 @@ pub async fn init_test_state() -> AppState {
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
         signer_id: env_vars.signer_id.clone(),
+        short_term_cache: Cache::builder()
+            .max_capacity(1_000)
+            .time_to_live(Duration::from_secs(30)) // 30 seconds
+            .build(),
         network: NetworkConfig {
             rpc_endpoints: vec![
                 RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
