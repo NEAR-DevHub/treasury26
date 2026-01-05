@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/form";
 import { useNear } from "@/stores/near-store";
 import { getApproversAndThreshold } from "@/lib/config-utils";
-import { User } from "@/components/user";
+import { TooltipUser, User } from "@/components/user";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { encodeToMarkdown } from "@/lib/utils";
@@ -359,12 +359,14 @@ export function VotingTab() {
                         .slice(0, 10)
                         .map((member: string, index: number) => (
                           <div key={member} className="-ml-2 first:ml-0">
-                            <User
-                              accountId={member}
-                              iconOnly={true}
-                              size="lg"
-                              withLink={true}
-                            />
+                            <TooltipUser accountId={member} triggerProps={{ asChild: false }}>
+                              <User
+                                accountId={member}
+                                iconOnly={true}
+                                size="lg"
+                                withLink={true}
+                              />
+                            </TooltipUser>
                           </div>
                         ))}
                       {role.memberCount > 10 && (
