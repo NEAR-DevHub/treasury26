@@ -43,10 +43,16 @@ pub struct TokenMetadata {
     pub chain_icons: Option<ChainIcons>,
 }
 
+/// This is the response from the Ref SDK API.
+///
+/// Sometimes it contains both camelCase and snake_case fields or only one of them.
+/// We need to handle both cases. :)
 #[derive(Deserialize, Debug, Clone)]
 struct RefSdkToken {
     #[serde(rename = "defuseAssetId")]
     pub defuse_asset_id: Option<String>,
+    #[serde(rename = "defuse_asset_id")]
+    pub defuse_asset_id_snake_case: Option<String>,
     pub name: Option<String>,
     pub symbol: Option<String>,
     pub decimals: Option<u8>,
@@ -54,45 +60,11 @@ struct RefSdkToken {
     pub price: Option<f64>,
     #[serde(rename = "priceUpdatedAt")]
     pub price_updated_at: Option<String>,
+    pub price_updated_at_snake_case: Option<String>,
     #[serde(rename = "chainName")]
     pub chain_name: Option<String>,
+    pub chain_name_snake_case: Option<String>,
     pub error: Option<String>,
-}
-
-/// Helper to normalize token objects by removing duplicate fields
-/// Prefers camelCase over snake_case when duplicates exist
-fn normalize_token_object(
-    mut obj: serde_json::Map<String, serde_json::Value>,
-) -> serde_json::Value {
-    // Handle defuseAssetId / defuse_asset_id
-    if obj.contains_key("defuseAssetId") {
-        obj.remove("defuse_asset_id");
-    } else if let Some(val) = obj.remove("defuse_asset_id") {
-        obj.insert("defuseAssetId".to_string(), val);
-    }
-
-    // Handle priceUpdatedAt / price_updated_at
-    if obj.contains_key("priceUpdatedAt") {
-        obj.remove("price_updated_at");
-    } else if let Some(val) = obj.remove("price_updated_at") {
-        obj.insert("priceUpdatedAt".to_string(), val);
-    }
-
-    // Handle chainName / chain_name
-    if obj.contains_key("chainName") {
-        obj.remove("chain_name");
-    } else if let Some(val) = obj.remove("chain_name") {
-        obj.insert("chainName".to_string(), val);
-    }
-
-    // Handle name / asset_name
-    if obj.contains_key("name") {
-        obj.remove("asset_name");
-    } else if let Some(val) = obj.remove("asset_name") {
-        obj.insert("name".to_string(), val);
-    }
-
-    serde_json::Value::Object(obj)
 }
 
 /// Fetches token metadata from Ref SDK API by defuse asset IDs
@@ -136,23 +108,13 @@ pub async fn fetch_tokens_metadata(
     })?;
 
     // Parse as array of objects first
-    let tokens_array: Vec<serde_json::Value> = serde_json::from_value(response).map_err(|e| {
+    let tokens: Vec<RefSdkToken> = serde_json::from_value(response).map_err(|e| {
         eprintln!("Failed to parse token response: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to parse token metadata response".to_string(),
         )
     })?;
-
-    // Normalize each object (remove duplicate fields) then deserialize with serde
-    let tokens: Vec<RefSdkToken> = tokens_array
-        .into_iter()
-        .filter_map(|val| {
-            let obj = val.as_object()?.clone();
-            let normalized = normalize_token_object(obj);
-            serde_json::from_value(normalized).ok()
-        })
-        .collect();
 
     // Map RefSdkToken to TokenMetadata with chain metadata, filtering out errors/invalid entries
     let metadata_responses: Vec<TokenMetadata> = tokens
@@ -164,11 +126,17 @@ pub async fn fetch_tokens_metadata(
             }
 
             // Skip if missing required fields
-            let token_id = token.defuse_asset_id.as_ref()?;
+            let token_id = token
+                .defuse_asset_id
+                .as_ref()
+                .or(token.defuse_asset_id_snake_case.as_ref())?;
             let name = token.name.as_ref()?;
             let symbol = token.symbol.as_ref()?;
             let decimals = token.decimals?;
-            let chain_name_str = token.chain_name.as_ref()?;
+            let chain_name_str = token
+                .chain_name
+                .as_ref()
+                .or(token.chain_name_snake_case.as_ref())?;
 
             let chain_metadata = get_chain_metadata_by_name(chain_name_str);
             let chain_name = chain_metadata.as_ref().map(|m| m.name.clone());
@@ -181,7 +149,11 @@ pub async fn fetch_tokens_metadata(
                 decimals,
                 icon: token.icon.clone(),
                 price: token.price,
-                price_updated_at: token.price_updated_at.clone(),
+                price_updated_at: token
+                    .price_updated_at
+                    .as_ref()
+                    .or(token.price_updated_at_snake_case.as_ref())
+                    .cloned(),
                 network: Some(chain_name_str.clone()),
                 chain_name,
                 chain_icons,
