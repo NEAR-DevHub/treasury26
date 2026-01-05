@@ -15,13 +15,15 @@ import {
 } from "@/lib/near-validation";
 import { hasPermission } from "@/lib/config-utils";
 import { useProposals } from "@/hooks/use-proposals";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { formatDate, encodeToMarkdown } from "@/lib/utils";
+import { encodeToMarkdown } from "@/lib/utils";
+import { useFormatDate } from "@/components/formatted-date";
 import { MemberModal } from "./components/modals/member-modal";
 import { PreviewModal } from "./components/modals/preview-modal";
 import { DeleteConfirmationModal } from "./components/modals/delete-confirmation-modal";
@@ -76,12 +78,15 @@ export default function MembersPage() {
   const { selectedTreasury } = useTreasury();
   const { data: policy, isLoading } = useTreasuryPolicy(selectedTreasury);
   const { accountId } = useNear();
+  const queryClient = useQueryClient();
+  const formatDate = useFormatDate();
   const [activeTab, setActiveTab] = useState<"active" | "pending">("active");
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isEditRolesModalOpen, setIsEditRolesModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isValidatingAddresses, setIsValidatingAddresses] = useState(false);
+  const [isCreatingProposal, setIsCreatingProposal] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -130,19 +135,22 @@ export default function MembersPage() {
       }
     }
 
-    // Convert to array of Member objects
+    // Convert to array of Member objects and sort alphabetically
     return Array.from(memberMap, ([accountId, rolesSet]) => ({
       accountId,
       roles: Array.from(rolesSet),
-    }));
+    })).sort((a, b) => a.accountId.toLowerCase().localeCompare(b.accountId.toLowerCase()));
   }, [policy]);
 
-  // Create dynamic schema with access to existing members
+  // Track current modal mode for schema validation
+  const [currentModalMode, setCurrentModalMode] = useState<"add" | "edit">("add");
+  const [membersBeingEdited, setMembersBeingEdited] = useState<string[]>([]);
+
+  // Create dynamic schema with access to existing members and mode
   const addMemberSchemaWithContext = useMemo(() => {
     const existingMembersSet = new Set(
       existingMembers.map((m) => m.accountId.toLowerCase())
-    );
-
+    )
     return z.object({
       members: z
         .array(
@@ -178,8 +186,12 @@ export default function MembersPage() {
             } else {
               seenAccountIds.set(normalizedId, index);
 
-              // Check if member already exists in treasury
-              if (existingMembersSet.has(normalizedId)) {
+              // Check if member already exists in treasury (only for add mode)
+              // In edit mode, skip this check if the member is being edited
+              if (
+                currentModalMode === "add" &&
+                existingMembersSet.has(normalizedId)
+              ) {
                 ctx.addIssue({
                   code: z.ZodIssueCode.custom,
                   message: "This member already exists in the treasury",
@@ -190,7 +202,7 @@ export default function MembersPage() {
           });
         }),
     });
-  }, [existingMembers]);
+  }, [existingMembers, currentModalMode, membersBeingEdited]);
 
   const form = useForm<AddMemberFormData>({
     resolver: zodResolver(addMemberSchemaWithContext),
@@ -569,6 +581,9 @@ export default function MembersPage() {
           },
         },
       });
+
+      // Refetch proposals to show the newly created proposal
+      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
     } catch (error) {
       console.error("Failed to create proposal:", error);
       toast.error("Failed to create proposal");
@@ -576,41 +591,14 @@ export default function MembersPage() {
     }
   };
 
-  // Handle single member edit
-  const handleEditMemberSubmit = async (
-    memberAccountId: string,
-    newRoles: string[]
-  ) => {
-    if (!policy || !selectedTreasury) return;
-
-    try {
-      const { updatedPolicy, summary } = applyMemberRolesToPolicy(
-        [{ member: memberAccountId, roles: newRoles }],
-        true
-      );
-
-      await createPolicyChangeProposal(
-        updatedPolicy,
-        summary,
-        "Update Policy - Edit Member Permissions",
-        "Member roles update request created successfully"
-      );
-
-      setIsEditRolesModalOpen(false);
-      setSelectedMember(null);
-    } catch (error) {
-      // Error already handled in createPolicyChangeProposal
-      throw error;
-    }
-  };
-
-  // Handle bulk member edit
-  const handleBulkEditSubmit = async (
+  // Handle member edit (single or multiple)
+  const handleEditMembersSubmit = async (
     membersData: Array<{ accountId: string; selectedRoles: string[] }>
   ) => {
     if (!policy || !selectedTreasury) return;
 
     try {
+      setIsCreatingProposal(true);
       // Transform to the format expected by applyMemberRolesToPolicy
       const membersList = membersData.map((m) => ({
         member: m.accountId,
@@ -622,18 +610,32 @@ export default function MembersPage() {
         true
       );
 
+      const title =
+        membersData.length === 1
+          ? "Update Policy - Edit Member Permissions"
+          : "Update Policy - Edit Multiple Members";
+      const successMessage =
+        membersData.length === 1
+          ? "Member roles update request created successfully"
+          : "Bulk member roles update request created successfully";
+
       await createPolicyChangeProposal(
         updatedPolicy,
         summary,
-        "Update Policy - Edit Multiple Members",
-        "Bulk member roles update request created successfully"
+        title,
+        successMessage
       );
 
       setIsEditRolesModalOpen(false);
+      setSelectedMember(null);
       setSelectedMembers([]);
+      setCurrentModalMode("add");
+      setMembersBeingEdited([]);
     } catch (error) {
       // Error already handled in createPolicyChangeProposal
       throw error;
+    } finally {
+      setIsCreatingProposal(false);
     }
   };
 
@@ -676,6 +678,8 @@ export default function MembersPage() {
   };
 
   const handleOpenAddMemberModal = useCallback(() => {
+    setCurrentModalMode("add");
+    setMembersBeingEdited([]);
     form.reset({
       members: [{ accountId: "", selectedRoles: [] }],
     });
@@ -685,6 +689,8 @@ export default function MembersPage() {
   const handleEditMember = useCallback(
     (member: Member) => {
       setSelectedMember(member);
+      setCurrentModalMode("edit");
+      setMembersBeingEdited([member.accountId]);
       // Reset form with the selected member's data
       form.reset({
         members: [{ accountId: member.accountId, selectedRoles: member.roles }],
@@ -699,6 +705,8 @@ export default function MembersPage() {
     const membersToEdit = activeMembers.filter((m) =>
       selectedMembers.includes(m.accountId)
     );
+    setCurrentModalMode("edit");
+    setMembersBeingEdited(membersToEdit.map((m) => m.accountId));
     form.reset({
       members: membersToEdit.map((m) => ({
         accountId: m.accountId,
@@ -875,7 +883,7 @@ export default function MembersPage() {
         </TableBody>
       </Table>
     );
-  }, [isLoading, pendingProposalsData, selectedTreasury]);
+  }, [isLoading, pendingProposalsData, selectedTreasury, formatDate]);
 
   // Render members table
   const renderMembersTable = (members: Member[]) => {
@@ -1193,7 +1201,11 @@ export default function MembersPage() {
       {/* Add New Member Modal */}
       <MemberModal
         isOpen={isAddMemberModalOpen}
-        onClose={() => setIsAddMemberModalOpen(false)}
+        onClose={() => {
+          setIsAddMemberModalOpen(false);
+          setCurrentModalMode("add");
+          setMembersBeingEdited([]);
+        }}
         form={form}
         availableRoles={availableRoles}
         onReviewRequest={handleReviewRequest}
@@ -1219,23 +1231,16 @@ export default function MembersPage() {
         onClose={() => {
           setIsEditRolesModalOpen(false);
           setSelectedMember(null);
+          setCurrentModalMode("add");
+          setMembersBeingEdited([]);
         }}
         form={form}
         availableRoles={availableRoles}
         onReviewRequest={async () => {
           const membersData = form.getValues("members");
-
-          // Handle single or bulk edit
-          if (membersData.length === 1) {
-            await handleEditMemberSubmit(
-              membersData[0].accountId,
-              membersData[0].selectedRoles
-            );
-          } else {
-            await handleBulkEditSubmit(membersData);
-          }
+          await handleEditMembersSubmit(membersData);
         }}
-        isValidatingAddresses={false}
+        isValidatingAddresses={isCreatingProposal}
         mode="edit"
         existingMember={selectedMember}
         validationError={(() => {

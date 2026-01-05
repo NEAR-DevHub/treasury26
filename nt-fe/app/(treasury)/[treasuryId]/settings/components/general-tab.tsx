@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/button";
 import { Database, Loader2 } from "lucide-react";
 import { useEffect, useState, useRef, useMemo } from "react";
-import { Separator } from "@/components/ui/separator";
 import { PageCard } from "@/components/card";
 import { useTreasury } from "@/stores/treasury-store";
 import {
@@ -18,10 +17,10 @@ import { z } from "zod";
 import { Form, FormField, FormControl, FormItem } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useNear } from "@/stores/near-store";
-import { useRouter } from "next/navigation";
 import { encodeToMarkdown } from "@/lib/utils";
 import { hasPermission } from "@/lib/config-utils";
 import { CreateRequestButton } from "@/components/create-request-button";
+import { useQueryClient } from "@tanstack/react-query";
 
 const COLOR_OPTIONS = [
   "#6B7280", // gray
@@ -59,6 +58,7 @@ export function GeneralTab() {
   const { selectedTreasury } = useTreasury();
   const { accountId, createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,6 +133,10 @@ export function GeneralTab() {
         },
         proposalBond: proposalBond,
       });
+
+      // Refetch proposals to show the newly created proposal
+      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
+
       // Reset form to mark as not dirty
       form.reset(data);
     } catch (error) {

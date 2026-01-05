@@ -34,6 +34,7 @@ import { CreateRequestButton } from "@/components/create-request-button";
 import { useProposals } from "@/hooks/use-proposals";
 import { AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/button";
+import { useQueryClient } from "@tanstack/react-query";
 
 const votingFormSchema = z.object({
   voteDuration: z
@@ -140,7 +141,7 @@ export function VotingTab() {
   const { selectedTreasury } = useTreasury();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const { accountId, createProposal } = useNear();
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Fetch pending proposals to check for active voting change requests
   const { data: pendingProposals } = useProposals(selectedTreasury, {
@@ -162,9 +163,6 @@ export function VotingTab() {
       (p) => p.kind && "ChangePolicyUpdateParameters" in p.kind
     );
   }, [pendingProposals]);
-
-  // Check if there are any pending voting-related proposals
-  const hasPendingVotingRequest = hasPendingThresholdRequest || hasPendingDurationRequest;
 
   const form = useForm<VotingFormValues>({
     resolver: zodResolver(votingFormSchema),
@@ -339,6 +337,9 @@ export function VotingTab() {
         proposalBond: proposalBond,
       });
 
+      // Refetch proposals to show the newly created proposal
+      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
+
       // Update original thresholds
       setOriginalThresholds((prev) => ({
         ...prev,
@@ -392,6 +393,9 @@ export function VotingTab() {
         proposalBond: proposalBond,
       });
 
+      // Refetch proposals to show the newly created proposal
+      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
+
       // Mark as not dirty
       form.reset(form.getValues());
     } catch (error) {
@@ -443,7 +447,7 @@ export function VotingTab() {
                     {/* Member avatars */}
                     <div className="flex items-center">
                       {role.members
-                        .slice(0, 10)
+                        .slice(0, 15)
                         .map((member: string, index: number) => (
                           <div key={member} className="-ml-2 first:ml-0">
                             <User

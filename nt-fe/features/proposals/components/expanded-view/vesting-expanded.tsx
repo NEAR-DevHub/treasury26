@@ -1,5 +1,5 @@
 import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { formatDate } from "@/lib/utils";
+import { FormattedDate } from "@/components/formatted-date";
 import { Amount } from "../amount";
 import { User } from "@/components/user";
 import { VestingData } from "../../types/index";
@@ -19,9 +19,9 @@ export function VestingExpanded({ data }: VestingExpandedProps) {
 
   if (data.vestingSchedule) {
     infoItems.push(
-      { label: "Start Date", value: <span>{formatDate(parseInt(data.vestingSchedule.start_timestamp) / 1000000)}</span> },
-      { label: "End Date", value: <span>{formatDate(parseInt(data.vestingSchedule.end_timestamp) / 1000000)}</span> },
-      { label: "Cliff Date", value: <span>{formatDate(parseInt(data.vestingSchedule.cliff_timestamp) / 1000000)}</span> }
+      { label: "Start Date", value: <FormattedDate date={parseInt(data.vestingSchedule.start_timestamp) / 1000000} includeTime={false} /> },
+      { label: "End Date", value: <FormattedDate date={parseInt(data.vestingSchedule.end_timestamp) / 1000000} includeTime={false} /> },
+      { label: "Cliff Date", value: <FormattedDate date={parseInt(data.vestingSchedule.cliff_timestamp) / 1000000} includeTime={false} /> }
     );
   }
 

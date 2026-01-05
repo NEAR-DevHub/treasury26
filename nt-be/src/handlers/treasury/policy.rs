@@ -23,7 +23,7 @@ pub async fn get_treasury_policy(
     let treasury_id = params.treasury_id;
 
     let cache_key = format!("treasury-policy:{}", treasury_id);
-    if let Some(cached_policy) = state.cache.get(&cache_key).await {
+    if let Some(cached_policy) = state.short_term_cache.get(&cache_key).await {
         println!("🔁 Returning cached policy for {}", treasury_id);
         return Ok((StatusCode::OK, Json(cached_policy)));
     }
@@ -39,7 +39,10 @@ pub async fn get_treasury_policy(
         })?
         .data;
 
-    state.cache.insert(cache_key, policy.clone()).await;
+    state
+        .short_term_cache
+        .insert(cache_key, policy.clone())
+        .await;
 
     Ok((StatusCode::OK, Json(policy)))
 }

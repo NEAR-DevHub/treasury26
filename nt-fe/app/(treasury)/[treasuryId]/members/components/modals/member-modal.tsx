@@ -94,11 +94,18 @@ export function MemberModal({
       : "Edit Roles"
     : "Add New Member";
   const buttonText = isValidatingAddresses
-    ? "Validating addresses..."
+    ? isEditMode
+      ? "Creating proposal..."
+      : "Validating addresses..."
+    : isEditMode
+    ? "Confirm Changes"
     : "Review Request";
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => !open && !isValidatingAddresses && onClose()}
+    >
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-4">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

@@ -48,6 +48,104 @@ export function formatDate(date: Date | string | number) {
   return `${format(date, "MMM dd, yyyy HH:mm")} ${timezoneStr}`;
 }
 
+/**
+ * Format date according to user preferences (timezone and time format)
+ * @param date - Date to format
+ * @param options - Formatting options
+ * @returns Formatted date string
+ */
+export interface FormatUserDateOptions {
+  /** User's timezone (e.g., "America/New_York", "UTC") */
+  timezone?: string | null;
+  /** Time format: 12-hour or 24-hour */
+  timeFormat?: "12" | "24";
+  /** Whether to include time in the output */
+  includeTime?: boolean;
+  /** Whether to include timezone abbreviation */
+  includeTimezone?: boolean;
+  /** Custom date-fns format string (overrides other options) */
+  customFormat?: string;
+}
+
+export function formatUserDate(
+  date: Date | string | number,
+  options: FormatUserDateOptions = {}
+): string {
+  if (!date) return "";
+  
+  const {
+    timezone = null,
+    timeFormat = "12",
+    includeTime = true,
+    includeTimezone = true,
+    customFormat,
+  } = options;
+
+  // Convert to Date object
+  let dateObj: Date;
+  if (typeof date === "string" || typeof date === "number") {
+    dateObj = new Date(date);
+  } else {
+    dateObj = date;
+  }
+
+  // If custom format is provided, use date-fns format
+  if (customFormat) {
+    return format(dateObj, customFormat);
+  }
+
+  // Use Intl.DateTimeFormat for timezone-aware formatting
+  try {
+    const formatOptions: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      ...(timezone && { timeZone: timezone }),
+    };
+
+    // Add time formatting options if requested
+    if (includeTime) {
+      formatOptions.hour = "numeric";
+      formatOptions.minute = "2-digit";
+      formatOptions.hour12 = timeFormat === "12";
+    }
+
+    // Add timezone name if requested
+    if (includeTimezone) {
+      formatOptions.timeZoneName = "short";
+    }
+
+    const formatter = new Intl.DateTimeFormat("en-US", formatOptions);
+    return formatter.format(dateObj);
+  } catch (error) {
+    console.error("Error formatting date with Intl:", error);
+    
+    // Fallback to date-fns formatting
+    let formatString = "MMM dd, yyyy";
+    if (includeTime) {
+      formatString += timeFormat === "12" ? " hh:mm a" : " HH:mm";
+    }
+    
+    let formattedDate = format(dateObj, formatString);
+    
+    // Add timezone info as fallback
+    if (includeTimezone) {
+      const timezoneOffset = dateObj.getTimezoneOffset();
+      const offsetHours = Math.abs(Math.floor(timezoneOffset / 60));
+      const offsetMinutes = Math.abs(timezoneOffset % 60);
+      
+      let timezoneStr = "UTC";
+      if (timezoneOffset !== 0) {
+        const sign = timezoneOffset > 0 ? "-" : "+";
+        timezoneStr = `UTC${sign}${offsetHours}${offsetMinutes > 0 ? `:${offsetMinutes.toString().padStart(2, "0")}` : ""}`;
+      }
+      formattedDate += ` ${timezoneStr}`;
+    }
+    
+    return formattedDate;
+  }
+}
+
 export function formatGas(gas: string): string {
   return `${formatBalance(gas, 12, 2)}`;
 }

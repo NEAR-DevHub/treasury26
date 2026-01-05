@@ -13,7 +13,8 @@ import { Form, FormField } from "@/components/ui/form";
 import { Textarea } from "@/components/textarea";
 import { NEAR_TOKEN } from "@/constants/token";
 import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { encodeToMarkdown, formatDate, formatTimestamp, toBase64 } from "@/lib/utils";
+import { encodeToMarkdown, formatUserDate, formatTimestamp, toBase64 } from "@/lib/utils";
+import { useFormatDate } from "@/components/formatted-date";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -62,7 +63,7 @@ const vestingFormSchema = z.object({
       ctx.addIssue({
         code: "custom",
         path: [`vesting.cliffDate`],
-        message: `Cliff date must be between ${formatDate(data.vesting.startDate)} and ${formatDate(data.vesting.endDate)}`,
+        message: `Cliff date must be between ${formatUserDate(data.vesting.startDate, { includeTime: false })} and ${formatUserDate(data.vesting.endDate, { includeTime: false })}`,
       });
     }
 
@@ -155,6 +156,7 @@ function Step3({ handleBack }: StepProps) {
   const form = useFormContext<VestingFormValues>();
   const { vesting } = form.watch();
   const { data: token } = useToken(vesting.token.address);
+  const formatDate = useFormatDate();
 
   const estimatedUSDValue = useMemo(() => {
     if (!token?.price || !vesting.amount || isNaN(Number(vesting.amount))) {
@@ -171,15 +173,15 @@ function Step3({ handleBack }: StepProps) {
       },
       {
         label: "Start Date",
-        value: formatDate(vesting.startDate),
+        value: formatDate(vesting.startDate, { includeTime: false }),
       },
       {
         label: "End Date",
-        value: formatDate(vesting.endDate),
+        value: formatDate(vesting.endDate, { includeTime: false }),
       },
       {
         label: "Cliff Date",
-        value: vesting.cliffDate ? formatDate(vesting.cliffDate) : "N/A",
+        value: vesting.cliffDate ? formatDate(vesting.cliffDate, { includeTime: false }) : "N/A",
       },
       {
         label: 'Cancelable',
@@ -192,7 +194,7 @@ function Step3({ handleBack }: StepProps) {
     ];
 
     return items;
-  }, [vesting]);
+  }, [vesting, formatDate]);
 
   return (
     <PageCard>

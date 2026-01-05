@@ -1,12 +1,13 @@
 import { Amount } from "../amount";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { SwapRequestData } from "../../types/index";
-import { formatBalance, formatDate } from "@/lib/utils";
+import { formatBalance } from "@/lib/utils";
 import { useMemo } from "react";
 import Big from "big.js";
 import { Address } from "@/components/address";
 import { Rate } from "@/components/rate";
 import { useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
+import { FormattedDate } from "@/components/formatted-date";
 
 interface SwapExpandedProps {
   data: SwapRequestData;
@@ -79,7 +80,7 @@ export function SwapExpanded({ data }: SwapExpandedProps) {
   if (data.quoteDeadline) {
     expandableItems.push({
       label: "1-Click Quote Deadline",
-      value: <span>{formatDate(data.quoteDeadline)}</span>,
+      value: <FormattedDate date={data.quoteDeadline} />,
       info: "Time when the deposit address becomes inactive and funds may be lost."
     });
   }
