@@ -9,9 +9,9 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use super::metadata::{fetch_blockchain_metadata_data, fetch_token_metadata_data};
+use super::metadata::fetch_blockchain_metadata_data;
 use super::supported_tokens::fetch_supported_tokens_data;
-use crate::AppState;
+use crate::{AppState, handlers::token::metadata::fetch_tokens_metadata};
 
 #[derive(Deserialize)]
 pub struct DepositAssetsQuery {
@@ -106,32 +106,16 @@ pub async fn get_deposit_assets(
         })
         .collect();
 
-    // Step 4: Batch fetch token metadata using helper
-    let defuse_ids_param = defuse_ids.join(",");
-    let metadata_response = fetch_token_metadata_data(&state, &defuse_ids_param).await?;
+    // Step 4: Batch fetch token metadata using the enriched metadata function
+    let tokens_metadata = fetch_tokens_metadata(&state, &defuse_ids).await?;
 
-    // Build metadata map
+    // Build metadata map from the structured response
     let mut metadata_map: HashMap<String, Value> = HashMap::new();
 
-    // Handle both array and object responses
-    if let Some(arr) = metadata_response.as_array() {
-        // Response is an array of metadata objects
-        for item in arr {
-            let metadata_obj = unwrap_array_value(item);
-            // Try different possible key names for the token ID
-            if let Some(token_id) = metadata_obj
-                .get("defuseAssetId")
-                .or_else(|| metadata_obj.get("defuse_asset_id"))
-                .or_else(|| metadata_obj.get("defuseAssetID"))
-                .and_then(|id| id.as_str())
-            {
-                metadata_map.insert(token_id.to_string(), item.clone());
-            }
-        }
-    } else if let Some(obj) = metadata_response.as_object() {
-        // Response is an object with token IDs as keys
-        for (key, value) in obj {
-            metadata_map.insert(key.to_string(), value.clone());
+    for token_metadata in tokens_metadata {
+        // Convert TokenMetadata to JSON Value
+        if let Ok(metadata_value) = serde_json::to_value(&token_metadata) {
+            metadata_map.insert(token_metadata.token_id.clone(), metadata_value);
         }
     }
 
@@ -170,9 +154,10 @@ pub async fn get_deposit_assets(
         .collect();
 
     // Step 6: Fetch network icons using helper
+    // Use 'network' field (short codes like 'eth', 'near') not 'chainName' (full names)
     let unique_chain_names: HashSet<String> = enriched_tokens
         .iter()
-        .filter_map(|token| token.get("chainName")?.as_str().map(String::from))
+        .filter_map(|token| token.get("network")?.as_str().map(String::from))
         .collect();
 
     let network_names_param = unique_chain_names.into_iter().collect::<Vec<_>>().join(",");
@@ -261,15 +246,20 @@ pub async fn get_deposit_assets(
             parts.first().unwrap_or(&"").to_string()
         };
 
-        // Get chainName from enriched token
+        // Get network short code and chainName from enriched token
         let enriched = enriched_token_map.get(intents_id);
+        let network_code = enriched
+            .and_then(|t| t.get("network"))
+            .and_then(|c| c.as_str())
+            .unwrap_or("");
         let chain_name = enriched
             .and_then(|t| t.get("chainName"))
             .and_then(|c| c.as_str())
             .unwrap_or("");
 
+        // Use network code (e.g. "eth") for lookup, fallback to chainName for display
         let (net_name, net_icon) = network_icon_map
-            .get(chain_name)
+            .get(network_code)
             .cloned()
             .unwrap_or_else(|| (chain_name.to_string(), None));
 

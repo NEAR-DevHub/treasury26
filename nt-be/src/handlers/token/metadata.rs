@@ -7,6 +7,7 @@ use axum::{
 };
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{
     AppState,
@@ -43,17 +44,59 @@ pub struct TokenMetadata {
     pub chain_icons: Option<ChainIcons>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 struct RefSdkToken {
-    pub defuse_asset_id: String,
-    pub name: String,
-    pub symbol: String,
-    pub decimals: u8,
+    pub defuse_asset_id: Option<String>,
+    pub name: Option<String>,
+    pub symbol: Option<String>,
+    pub decimals: Option<u8>,
     pub icon: Option<String>,
     pub price: Option<f64>,
     pub price_updated_at: Option<String>,
-    #[serde(rename = "chainName")]
-    pub chain_name: String,
+    pub chain_name: Option<String>,
+    pub error: Option<String>,
+}
+
+/// Manual parser for RefSdkToken to handle duplicate keys in API response
+/// The REF SDK API returns both snake_case and camelCase versions of some fields
+fn parse_ref_sdk_token(value: &Value) -> Option<RefSdkToken> {
+    let obj = value.as_object()?;
+
+    // Check for error field first
+    if let Some(error) = obj.get("error") {
+        if !error.is_null() {
+            return None;
+        }
+    }
+
+    // Helper to get string value with fallback
+    let get_string = |primary: &str, fallback: &str| -> Option<String> {
+        obj.get(primary)
+            .and_then(|v: &Value| v.as_str())
+            .or_else(|| obj.get(fallback).and_then(|v: &Value| v.as_str()))
+            .map(String::from)
+    };
+
+    Some(RefSdkToken {
+        defuse_asset_id: get_string("defuseAssetId", "defuse_asset_id"),
+        name: get_string("name", "asset_name"),
+        symbol: obj
+            .get("symbol")
+            .and_then(|v: &Value| v.as_str())
+            .map(String::from),
+        decimals: obj
+            .get("decimals")
+            .and_then(|v: &Value| v.as_u64())
+            .map(|d| d as u8),
+        icon: obj
+            .get("icon")
+            .and_then(|v: &Value| v.as_str())
+            .map(String::from),
+        price: obj.get("price").and_then(|v: &Value| v.as_f64()),
+        price_updated_at: get_string("priceUpdatedAt", "price_updated_at"),
+        chain_name: get_string("chainName", "chain_name"),
+        error: None,
+    })
 }
 
 /// Fetches token metadata from Ref SDK API by defuse asset IDs
@@ -96,37 +139,80 @@ pub async fn fetch_tokens_metadata(
         )
     })?;
 
-    // Parse the response as an array of tokens
-    let tokens: Vec<RefSdkToken> = serde_json::from_value(response).map_err(|e| {
-        eprintln!("Failed to parse token response: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to parse token metadata response".to_string(),
-        )
-    })?;
+    // Parse manually to handle duplicate keys in API response
+    let tokens: Vec<RefSdkToken> = if let Some(arr) = response.as_array() {
+        // Direct array response - parse each item
+        arr.iter().filter_map(parse_ref_sdk_token).collect()
+    } else if let Some(data) = response.get("data") {
+        // Response wrapped in { "data": [...] }
+        if let Some(arr) = data.as_array() {
+            arr.iter().filter_map(parse_ref_sdk_token).collect()
+        } else {
+            // Single object in data field
+            parse_ref_sdk_token(data).into_iter().collect()
+        }
+    } else if let Some(tokens_field) = response.get("tokens") {
+        // Response wrapped in { "tokens": [...] }
+        if let Some(arr) = tokens_field.as_array() {
+            arr.iter().filter_map(parse_ref_sdk_token).collect()
+        } else {
+            // Single object in tokens field
+            parse_ref_sdk_token(tokens_field).into_iter().collect()
+        }
+    } else {
+        // Try as single object
+        parse_ref_sdk_token(&response).into_iter().collect()
+    };
 
-    // Map RefSdkToken to TokenMetadata with chain metadata
+    if tokens.is_empty() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            "No valid tokens found in API response".to_string(),
+        ));
+    }
+
+    // Map RefSdkToken to TokenMetadata with chain metadata, filtering out errors and invalid entries
     let metadata_responses: Vec<TokenMetadata> = tokens
         .iter()
-        .map(|token| {
-            let chain_metadata = get_chain_metadata_by_name(&token.chain_name);
+        .filter_map(|token| {
+            // Skip error entries
+            if token.error.is_some() {
+                eprintln!("Skipping token with error: {:?}", token.error);
+                return None;
+            }
+
+            // Skip if missing required fields
+            let token_id = token.defuse_asset_id.as_ref()?;
+            let name = token.name.as_ref()?;
+            let symbol = token.symbol.as_ref()?;
+            let decimals = token.decimals?;
+            let chain_name_str = token.chain_name.as_ref()?;
+
+            let chain_metadata = get_chain_metadata_by_name(chain_name_str);
             let chain_name = chain_metadata.as_ref().map(|m| m.name.clone());
             let chain_icons = chain_metadata.map(|m| m.icon);
 
-            TokenMetadata {
-                token_id: token.defuse_asset_id.clone(),
-                name: token.name.clone(),
-                symbol: token.symbol.clone(),
-                decimals: token.decimals,
+            Some(TokenMetadata {
+                token_id: token_id.clone(),
+                name: name.clone(),
+                symbol: symbol.clone(),
+                decimals,
                 icon: token.icon.clone(),
                 price: token.price,
                 price_updated_at: token.price_updated_at.clone(),
-                network: Some(token.chain_name.clone()),
+                network: Some(chain_name_str.clone()),
                 chain_name,
                 chain_icons,
-            }
+            })
         })
         .collect();
+
+    if metadata_responses.is_empty() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            "No valid tokens found in response".to_string(),
+        ));
+    }
 
     Ok(metadata_responses)
 }

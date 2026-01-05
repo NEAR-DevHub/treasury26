@@ -169,10 +169,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::intents::supported_tokens::get_supported_tokens),
         )
         .route(
-            "/api/intents/token-metadata",
-            get(handlers::intents::metadata::get_token_metadata),
-        )
-        .route(
             "/api/intents/blockchain-metadata",
             get(handlers::intents::metadata::get_blockchain_metadata),
         )
