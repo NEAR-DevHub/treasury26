@@ -11,8 +11,6 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::AppState;
 
-pub const REF_SDK_BASE_URL: &str = "https://ref-sdk-test-cold-haze-1300-2.fly.dev/api";
-
 /// Fetches JSON data from an external API with caching
 ///
 /// # Arguments
@@ -102,7 +100,7 @@ pub async fn proxy_external_api(
     match fetch_proxy_api(
         &state.http_client,
         &state.cache,
-        REF_SDK_BASE_URL,
+        &state.env_vars.ref_sdk_base_url,
         &path,
         &params,
     )

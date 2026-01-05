@@ -11,6 +11,7 @@ import { PageCard } from "@/components/card";
 import { formatBalance, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { DepositModal } from "./deposit-modal";
 
 interface Props {
     totalBalanceUSD: number | Big.Big;
@@ -27,6 +28,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
     const { selectedTreasury: accountId } = useTreasury();
     const [selectedToken, setSelectedToken] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1W");
+    const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
 
     const selectedTokenData = selectedToken === "all" ? null : tokens.find(token => token.symbol === selectedToken);
     const balance = selectedTokenData ? selectedTokenData.balanceUSD : totalBalanceUSD;
@@ -75,12 +77,24 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button><Download className="size-4" /> Deposit</Button>
-                <Link href={treasuryId ? `/${treasuryId}/payments` : "/payments"} className="flex"> <Button className="w-full"><ArrowUpRightIcon className="size-4" />Send</Button></Link>
+                <Button onClick={() => setIsDepositModalOpen(true)}>
+                    <Download className="size-4" /> Deposit
+                </Button>
+                <Link href={treasuryId ? `/${treasuryId}/payments` : "/payments"} className="flex"> 
+                    <Button className="w-full">
+                        <ArrowUpRightIcon className="size-4" />Send
+                    </Button>
+                </Link>
                 <Button><ArrowLeftRight className="size-4" /> Exchange</Button>
                 <Button><Database className="size-4" /> Earn</Button>
             </div>
             <BalanceChart data={chartData} />
+
+            {/* Deposit Modal */}
+            <DepositModal 
+                isOpen={isDepositModalOpen}
+                onClose={() => setIsDepositModalOpen(false)}
+            />
         </PageCard>
     )
 }

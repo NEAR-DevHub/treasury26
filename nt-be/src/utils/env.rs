@@ -7,6 +7,7 @@ pub struct EnvVars {
     pub fastnear_api_key: String,
     pub sputnik_dao_api_base: String,
     pub bridge_rpc_url: String,
+    pub ref_sdk_base_url: String,
     pub signer_key: SecretKey,
     pub signer_id: AccountId,
     pub disable_balance_monitoring: bool,
@@ -24,6 +25,9 @@ impl Default for EnvVars {
                 .unwrap_or_else(|_| "https://sputnik-indexer.fly.dev".to_string()),
             bridge_rpc_url: std::env::var("BRIDGE_RPC_URL")
                 .unwrap_or_else(|_| "https://bridge.chaindefuser.com/rpc".to_string()),
+            ref_sdk_base_url: std::env::var("REF_SDK_BASE_URL").unwrap_or_else(|_| {
+                "https://ref-sdk-test-cold-haze-1300-2.fly.dev/api".to_string()
+            }),
             signer_key: std::env::var("SIGNER_KEY")
                 .expect("SIGNER_KEY is not set")
                 .parse()

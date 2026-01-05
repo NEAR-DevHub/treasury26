@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     AppState,
     constants::intents_chains::{ChainIcons, get_chain_metadata_by_name},
-    handlers::proxy::external::{REF_SDK_BASE_URL, fetch_proxy_api},
+    handlers::proxy::external::fetch_proxy_api,
 };
 
 #[derive(Deserialize)]
@@ -43,17 +43,30 @@ pub struct TokenMetadata {
     pub chain_icons: Option<ChainIcons>,
 }
 
+/// This is the response from the Ref SDK API.
+///
+/// Sometimes it contains both camelCase and snake_case fields or only one of them.
+/// We need to handle both cases. :)
 #[derive(Deserialize, Debug, Clone)]
 struct RefSdkToken {
-    pub defuse_asset_id: String,
-    pub name: String,
-    pub symbol: String,
-    pub decimals: u8,
+    #[serde(rename = "defuseAssetId")]
+    pub defuse_asset_id: Option<String>,
+    #[serde(rename = "defuse_asset_id")]
+    pub defuse_asset_id_snake_case: Option<String>,
+    pub name: Option<String>,
+    pub symbol: Option<String>,
+    pub decimals: Option<u8>,
     pub icon: Option<String>,
     pub price: Option<f64>,
+    #[serde(rename = "priceUpdatedAt")]
     pub price_updated_at: Option<String>,
+    #[serde(rename = "price_updated_at")]
+    pub price_updated_at_snake_case: Option<String>,
     #[serde(rename = "chainName")]
-    pub chain_name: String,
+    pub chain_name: Option<String>,
+    #[serde(rename = "chain_name")]
+    pub chain_name_snake_case: Option<String>,
+    pub error: Option<String>,
 }
 
 /// Fetches token metadata from Ref SDK API by defuse asset IDs
@@ -84,7 +97,7 @@ pub async fn fetch_tokens_metadata(
     let response = fetch_proxy_api(
         &state.http_client,
         &state.cache,
-        REF_SDK_BASE_URL,
+        &state.env_vars.ref_sdk_base_url,
         "token-by-defuse-asset-id",
         &query_params,
     )
@@ -96,7 +109,7 @@ pub async fn fetch_tokens_metadata(
         )
     })?;
 
-    // Parse the response as an array of tokens
+    // Parse as array of objects first
     let tokens: Vec<RefSdkToken> = serde_json::from_value(response).map_err(|e| {
         eprintln!("Failed to parse token response: {}", e);
         (
@@ -105,26 +118,48 @@ pub async fn fetch_tokens_metadata(
         )
     })?;
 
-    // Map RefSdkToken to TokenMetadata with chain metadata
+    // Map RefSdkToken to TokenMetadata with chain metadata, filtering out errors/invalid entries
     let metadata_responses: Vec<TokenMetadata> = tokens
         .iter()
-        .map(|token| {
-            let chain_metadata = get_chain_metadata_by_name(&token.chain_name);
+        .filter_map(|token| {
+            // Skip error entries
+            if token.error.is_some() {
+                return None;
+            }
+
+            // Skip if missing required fields
+            let token_id = token
+                .defuse_asset_id
+                .as_ref()
+                .or(token.defuse_asset_id_snake_case.as_ref())?;
+            let name = token.name.as_ref()?;
+            let symbol = token.symbol.as_ref()?;
+            let decimals = token.decimals?;
+            let chain_name_str = token
+                .chain_name
+                .as_ref()
+                .or(token.chain_name_snake_case.as_ref())?;
+
+            let chain_metadata = get_chain_metadata_by_name(chain_name_str);
             let chain_name = chain_metadata.as_ref().map(|m| m.name.clone());
             let chain_icons = chain_metadata.map(|m| m.icon);
 
-            TokenMetadata {
-                token_id: token.defuse_asset_id.clone(),
-                name: token.name.clone(),
-                symbol: token.symbol.clone(),
-                decimals: token.decimals,
+            Some(TokenMetadata {
+                token_id: token_id.clone(),
+                name: name.clone(),
+                symbol: symbol.clone(),
+                decimals,
                 icon: token.icon.clone(),
                 price: token.price,
-                price_updated_at: token.price_updated_at.clone(),
-                network: Some(token.chain_name.clone()),
+                price_updated_at: token
+                    .price_updated_at
+                    .as_ref()
+                    .or(token.price_updated_at_snake_case.as_ref())
+                    .cloned(),
+                network: Some(chain_name_str.clone()),
                 chain_name,
                 chain_icons,
-            }
+            })
         })
         .collect();
 
