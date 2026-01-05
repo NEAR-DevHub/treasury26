@@ -5,9 +5,11 @@ name: Copilot Setup Steps
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - .github/workflows/copilot-setup-steps.yml
   pull_request:
+    branches: [main]
     paths:
       - .github/workflows/copilot-setup-steps.yml
 
@@ -74,3 +76,9 @@ jobs:
     - name: Run migrations
       working-directory: nt-be
       run: sqlx migrate run
+
+    # Validation steps - only run on PR/push, not when Copilot uses this workflow
+    - name: Run tests (validation only)
+      if: github.event_name != 'workflow_dispatch'
+      working-directory: nt-be
+      run: cargo test
