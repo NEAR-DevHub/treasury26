@@ -56,3 +56,35 @@ fill_gaps(&pool, &network, account_id, "discovered-token.near", up_to_block).awa
 ```
 
 This ensures tests drive implementation through TDD - they fail until the real functionality is complete.
+
+## Pull Request Guidelines
+
+### Conventional Commits
+
+All PR titles and descriptions must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+
+**PR Title Format:**
+```
+<type>: <description>
+```
+
+**Types:**
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation only changes
+- `style`: Changes that don't affect code meaning (formatting, etc.)
+- `refactor`: Code change that neither fixes a bug nor adds a feature
+- `perf`: Performance improvement
+- `test`: Adding or correcting tests
+- `chore`: Changes to build process or auxiliary tools
+
+**Examples:**
+```
+feat: add user authentication with OAuth2
+fix: resolve race condition in balance updates
+refactor: extract token lookup into separate module
+```
+
+**PR Description** should include:
+- Summary of changes (bulleted list)
+- Test plan or verification steps
