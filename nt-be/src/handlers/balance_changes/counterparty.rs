@@ -131,14 +131,14 @@ pub async fn ensure_ft_metadata(
                 reference_hash: None,
             };
             upsert_ft_counterparty(pool, token_contract, &metadata).await?;
-            
+
             log::info!(
                 "Discovered intents token from registry: {} ({}) with {} decimals",
                 metadata.name,
                 metadata.symbol,
                 token_data.decimals
             );
-            
+
             return Ok(token_data.decimals);
         }
 

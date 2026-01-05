@@ -96,7 +96,7 @@ pub fn get_defuse_tokens_map() -> &'static HashMap<String, BaseTokenInfo> {
             eprintln!("Failed to load tokens from JSON: {}", e);
             vec![]
         });
-        
+
         let mut map = HashMap::new();
         for unified_token in tokens {
             for base_token in unified_token.grouped_tokens {

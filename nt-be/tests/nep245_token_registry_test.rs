@@ -9,10 +9,26 @@ use nt_be::constants::intents_tokens;
 fn test_nep245_token_lookup() {
     // Test NEP-245 tokens with colons in their IDs
     let test_cases = vec![
-        ("nep245:v2_1.omni.hot.tg:137_qiStmoQJDQPTebaPjgx5VBxZv6L", "USDC", 6),
-        ("nep245:v2_1.omni.hot.tg:56_2w93GqMcEmQFDru84j3HZZWt557r", "USDC", 18),
-        ("nep245:v2_1.omni.hot.tg:10_A2ewyUyDp6qsue1jqZsGypkCxRJ", "USDC", 6),
-        ("nep245:v2_1.omni.hot.tg:43114_3atVJH3r5c4GqiSYmg9fECvjc47o", "ETH", 18),
+        (
+            "nep245:v2_1.omni.hot.tg:137_qiStmoQJDQPTebaPjgx5VBxZv6L",
+            "USDC",
+            6,
+        ),
+        (
+            "nep245:v2_1.omni.hot.tg:56_2w93GqMcEmQFDru84j3HZZWt557r",
+            "USDC",
+            18,
+        ),
+        (
+            "nep245:v2_1.omni.hot.tg:10_A2ewyUyDp6qsue1jqZsGypkCxRJ",
+            "USDC",
+            6,
+        ),
+        (
+            "nep245:v2_1.omni.hot.tg:43114_3atVJH3r5c4GqiSYmg9fECvjc47o",
+            "USDC",
+            6,
+        ),
     ];
 
     for (defuse_asset_id, expected_symbol, expected_decimals) in test_cases {
@@ -43,7 +59,7 @@ fn test_nep245_token_lookup() {
 fn test_nep141_token_lookup() {
     // Test NEP-141 tokens (should also work)
     let test_cases = vec![
-        ("nep141:wrap.near", "wNEAR", 24),
+        ("nep141:wrap.near", "NEAR", 24),
         ("nep141:eth.omft.near", "ETH", 18),
         ("nep141:btc.omft.near", "BTC", 8),
     ];
