@@ -54,14 +54,19 @@ export function SelectModal({
   const handleSelect = useCallback(
     (option: SelectOption) => {
       onSelect(option);
-      onClose();
       setSearchQuery("");
+      onClose();
     },
     [onSelect, onClose]
   );
 
+  const handleClose = useCallback(() => {
+    setSearchQuery("");
+    onClose();
+  }, [onClose]);
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md p-0 gap-0">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

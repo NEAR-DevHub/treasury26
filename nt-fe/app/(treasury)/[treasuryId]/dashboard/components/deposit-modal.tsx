@@ -103,18 +103,6 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
     }
   }, [isOpen, theme]);
 
-  // Handle escape key to close modal
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        handleClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen]);
-
   // Fetch all assets and networks once
   const fetchAssets = async () => {
     setIsLoadingAssets(true);
@@ -331,10 +319,11 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const handleClose = useCallback(() => {
     form.reset();
     setDepositAddress(null);
-    setFilteredNetworks(allNetworks);
+    setFilteredNetworks([]);
     setCopied(false);
+    setModalType(null);
     onClose();
-  }, [form, allNetworks, onClose]);
+  }, [form, onClose]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -344,8 +333,8 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         </DialogHeader>
 
         <Form {...form}>
-          <div className="p-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
+          <div className="p-4">
+            <p className="text-sm font-semibold pb-3">
               Select asset and network to see deposit address
             </p>
 
@@ -355,7 +344,11 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               name="asset"
               render={({ fieldState }) => (
                 <FormItem>
-                  <InputBlock title="Asset" invalid={!!fieldState.error}>
+                  <InputBlock
+                    title="Asset"
+                    invalid={!!fieldState.error}
+                    className="rounded-b-none border-b border-gray-200"
+                  >
                     <Button
                       type="button"
                       onClick={() => setModalType("asset")}
@@ -406,7 +399,11 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               name="network"
               render={({ fieldState }) => (
                 <FormItem>
-                  <InputBlock title="Network" invalid={!!fieldState.error}>
+                  <InputBlock
+                    title="Network"
+                    invalid={!!fieldState.error}
+                    className="rounded-t-none"
+                  >
                     <Button
                       type="button"
                       onClick={() => setModalType("network")}
