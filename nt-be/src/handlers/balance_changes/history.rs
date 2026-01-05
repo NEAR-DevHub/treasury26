@@ -42,9 +42,7 @@ impl Interval {
             Interval::Hourly => datetime + chrono::Duration::hours(1),
             Interval::Daily => datetime + chrono::Duration::days(1),
             Interval::Weekly => datetime + chrono::Duration::weeks(1),
-            Interval::Monthly => datetime
-                .checked_add_months(Months::new(1))
-                .expect("Failed to increment month"),
+            Interval::Monthly => datetime.checked_add_months(Months::new(1)).unwrap(),
         }
     }
 }
