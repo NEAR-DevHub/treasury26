@@ -1,7 +1,6 @@
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Button } from "./button";
 import { Copy } from "lucide-react";
 import { Tooltip } from "./tooltip";
 import { TooltipTrigger } from "./ui/tooltip";
@@ -61,24 +60,24 @@ export function User({ accountId, iconOnly = false, size = "sm", withLink = true
             {!iconOnly && (
                 <div className="flex flex-col items-start min-w-0">
                     {withName && <span className="font-medium truncate max-w-full">{name}</span>}
-                    <span className="text-xs text-muted-foreground break-all">{accountId}</span>
+                    <span className="text-xs text-muted-foreground truncate max-w-full">{accountId}</span>
                 </div>
             )}
         </>
     );
 
     const userElement = withLink ? (
-            <Link href={`https://nearblocks.io/address/${accountId}`} target="_blank" className="flex items-center gap-1.5">
-                {content}
-            </Link>
-        ) : (
-            <div className="flex items-center gap-1.5">
-                {content}
-            </div>
+        <Link href={`https://nearblocks.io/address/${accountId}`} target="_blank" className="flex items-center gap-1.5">
+            {content}
+        </Link>
+    ) : (
+        <div className="flex items-center gap-1.5">
+            {content}
+        </div>
     );
 
     if (withHoverCard) {
-        return <TooltipUser accountId={accountId}>{userElement}</TooltipUser>;
+        return <TooltipUser accountId={accountId} triggerProps={{ asChild: false }}>{userElement}</TooltipUser>;
     }
 
     return userElement;

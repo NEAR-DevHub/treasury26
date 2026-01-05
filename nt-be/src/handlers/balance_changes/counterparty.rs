@@ -3,6 +3,7 @@
 //! Handles storage and retrieval of counterparty metadata, including FT token information
 //! for decimal conversion.
 
+use crate::constants::intents_tokens;
 use near_api::types::ft::FungibleTokenMetadata;
 use near_api::{AccountId, NetworkConfig, Tokens};
 use sqlx::PgPool;
@@ -100,8 +101,8 @@ fn extract_ft_contract(token_id: &str) -> &str {
 /// If not found, queries the contract and stores it
 ///
 /// Handles both regular FT tokens and intents tokens (e.g., "intents.near:nep141:wrap.near").
-/// For intents tokens, extracts the actual contract ID and queries it, but stores the metadata
-/// under the full token ID.
+/// For intents tokens, uses the token registry from data/tokens.json instead of RPC queries.
+/// For regular FT tokens, extracts the actual contract ID and queries it.
 pub async fn ensure_ft_metadata(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -112,10 +113,42 @@ pub async fn ensure_ft_metadata(
         return Ok(decimals);
     }
 
-    // Extract the actual FT contract ID (handles intents tokens)
-    let actual_contract = extract_ft_contract(token_contract);
+    // For ALL intents tokens (NEP-141 and NEP-245), use token registry
+    if token_contract.starts_with("intents.near:") {
+        // Strip "intents.near:" prefix to get defuseAssetId format
+        let asset_id = token_contract.strip_prefix("intents.near:").unwrap();
 
-    // Query from the actual contract and store under the full token ID
+        // Look up in token registry (loaded from data/tokens.json)
+        if let Some(token_data) = intents_tokens::find_token_by_defuse_asset_id(asset_id) {
+            // Cache it in database
+            let metadata = FungibleTokenMetadata {
+                spec: "ft-1.0.0".to_string(),
+                name: token_data.name.clone(),
+                symbol: token_data.symbol.clone(),
+                decimals: token_data.decimals,
+                icon: Some(token_data.icon.clone()),
+                reference: None,
+                reference_hash: None,
+            };
+            upsert_ft_counterparty(pool, token_contract, &metadata).await?;
+
+            log::info!(
+                "Discovered intents token from registry: {} ({}) with {} decimals",
+                metadata.name,
+                metadata.symbol,
+                token_data.decimals
+            );
+
+            return Ok(token_data.decimals);
+        }
+
+        // Token not in registry - log warning and return error
+        log::warn!("Intents token not found in registry: {}", token_contract);
+        return Err(format!("Intents token not found in registry: {}", token_contract).into());
+    }
+
+    // Regular FT token (not intents) - use existing RPC query logic
+    let actual_contract = extract_ft_contract(token_contract);
     let metadata = query_ft_metadata(network, actual_contract).await?;
     let decimals = metadata.decimals;
     upsert_ft_counterparty(pool, token_contract, &metadata).await?;
