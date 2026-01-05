@@ -3,8 +3,20 @@ name: Frontend Build
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'nt-fe/**'
+      - '.github/workflows/frontend-build.yml'
+      - 'justfile'
+      - 'render.yaml'
+      - '.env.example'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'nt-fe/**'
+      - '.github/workflows/frontend-build.yml'
+      - 'justfile'
+      - 'render.yaml'
+      - '.env.example'
   workflow_dispatch:
 
 jobs:

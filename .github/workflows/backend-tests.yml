@@ -3,8 +3,20 @@ name: Backend Tests
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'nt-be/**'
+      - '.github/workflows/backend-tests.yml'
+      - 'justfile'
+      - 'render.yaml'
+      - '.env.example'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'nt-be/**'
+      - '.github/workflows/backend-tests.yml'
+      - 'justfile'
+      - 'render.yaml'
+      - '.env.example'
   workflow_dispatch:
 
 env:
