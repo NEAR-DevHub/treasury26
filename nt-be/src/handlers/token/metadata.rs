@@ -63,10 +63,10 @@ fn parse_ref_sdk_token(value: &Value) -> Option<RefSdkToken> {
     let obj = value.as_object()?;
 
     // Check for error field first
-    if let Some(error) = obj.get("error") {
-        if !error.is_null() {
-            return None;
-        }
+    if let Some(error) = obj.get("error")
+        && !error.is_null()
+    {
+        return None;
     }
 
     // Helper to get string value with fallback
