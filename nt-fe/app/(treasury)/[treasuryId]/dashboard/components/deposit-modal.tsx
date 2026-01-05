@@ -40,34 +40,38 @@ interface NetworkOption {
   chainId: string;
 }
 
-const depositFormSchema = z.object({
-  asset: z
-    .object({
-      id: z.string(),
-      name: z.string(),
-      symbol: z.string().optional(),
-      icon: z.string(),
-      gradient: z.string().optional(),
-      networks: z.array(z.any()).optional(),
-    })
-    .nullable()
-    .refine((val) => val !== null, {
-      message: "Please select an asset",
-    }),
-  network: z
-    .object({
-      id: z.string(),
-      name: z.string(),
-      icon: z.string(),
-      gradient: z.string().optional(),
-    })
-    .nullable()
-    .refine((val) => val !== null, {
-      message: "Please select a network",
-    }),
+const assetSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  symbol: z.string().optional(),
+  icon: z.string(),
+  gradient: z.string().optional(),
+  networks: z.array(z.any()).optional(),
 });
 
-type DepositFormValues = z.infer<typeof depositFormSchema>;
+const networkSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  icon: z.string(),
+  gradient: z.string().optional(),
+});
+
+const depositFormSchema = z.object({
+  asset: assetSchema.nullable().refine((val) => val !== null, {
+    message: "Please select an asset",
+  }),
+  network: networkSchema.nullable().refine((val) => val !== null, {
+    message: "Please select a network",
+  }),
+});
+
+type Asset = z.infer<typeof assetSchema>;
+type Network = z.infer<typeof networkSchema>;
+
+type DepositFormValues = {
+  asset: Asset | null;
+  network: Network | null;
+};
 
 export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const { selectedTreasury } = useTreasury();
@@ -75,6 +79,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
   const form = useForm<DepositFormValues>({
     resolver: zodResolver(depositFormSchema),
+    mode: "onChange",
     defaultValues: {
       asset: null,
       network: null,
