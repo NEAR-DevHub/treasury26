@@ -6,12 +6,14 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::metadata::fetch_blockchain_metadata_data;
 use super::supported_tokens::fetch_supported_tokens_data;
-use crate::{AppState, handlers::token::metadata::fetch_tokens_metadata};
+use crate::{
+    AppState,
+    handlers::token::metadata::{TokenMetadata, fetch_tokens_metadata},
+};
 
 #[derive(Deserialize)]
 pub struct DepositAssetsQuery {
@@ -47,16 +49,6 @@ pub struct AssetOption {
 #[derive(Serialize)]
 pub struct DepositAssetsResponse {
     pub assets: Vec<AssetOption>,
-}
-
-/// Helper to handle API responses that may be wrapped in arrays
-#[inline]
-fn unwrap_array_value(value: &Value) -> &Value {
-    if value.is_array() {
-        value.get(0).unwrap_or(value)
-    } else {
-        value
-    }
 }
 
 pub async fn get_deposit_assets(
@@ -109,85 +101,13 @@ pub async fn get_deposit_assets(
     // Step 4: Batch fetch token metadata using the enriched metadata function
     let tokens_metadata = fetch_tokens_metadata(&state, &defuse_ids).await?;
 
-    // Build metadata map from the structured response
-    let mut metadata_map: HashMap<String, Value> = HashMap::new();
-
-    for token_metadata in tokens_metadata {
-        // Convert TokenMetadata to JSON Value
-        if let Ok(metadata_value) = serde_json::to_value(&token_metadata) {
-            metadata_map.insert(token_metadata.token_id.clone(), metadata_value);
-        }
-    }
-
-    // Step 5: Enrich tokens with metadata
-    let enriched_tokens: Vec<Value> = tokens
+    // Build metadata map for fast lookup
+    let metadata_map: HashMap<String, &TokenMetadata> = tokens_metadata
         .iter()
-        .filter_map(|token| {
-            let token_id = token.get("intents_token_id")?.as_str()?;
-            let metadata_value = metadata_map.get(token_id)?;
-            let metadata = unwrap_array_value(metadata_value);
-
-            // Check if chainName exists
-            if metadata.get("chainName")?.as_str().is_some() {
-                let mut enriched = (*token).clone();
-                if let Some(enriched_obj) = enriched.as_object_mut()
-                    && let Some(metadata_obj) = metadata.as_object()
-                {
-                    for (k, v) in metadata_obj {
-                        enriched_obj.insert(k.clone(), v.clone());
-                    }
-                }
-                Some(enriched)
-            } else {
-                None
-            }
-        })
+        .map(|meta| (meta.token_id.clone(), meta))
         .collect();
 
-    // Create enriched token map for O(1) lookup
-    let enriched_token_map: HashMap<String, &Value> = enriched_tokens
-        .iter()
-        .filter_map(|t| {
-            let id = t.get("intents_token_id")?.as_str()?;
-            Some((id.to_string(), t))
-        })
-        .collect();
-
-    // Step 6: Fetch network icons using helper
-    // Use 'network' field (short codes like 'eth', 'near') not 'chainName' (full names)
-    let unique_chain_names: HashSet<String> = enriched_tokens
-        .iter()
-        .filter_map(|token| token.get("network")?.as_str().map(String::from))
-        .collect();
-
-    let network_names_param = unique_chain_names.into_iter().collect::<Vec<_>>().join(",");
-
-    let mut network_icon_map: HashMap<String, (String, Option<String>)> = HashMap::new();
-
-    if !network_names_param.is_empty()
-        && let Ok(network_data) =
-            fetch_blockchain_metadata_data(&state, &network_names_param, &query.theme).await
-        && let Some(networks) = network_data.as_array()
-    {
-        for network_value in networks {
-            let network = unwrap_array_value(network_value);
-
-            if let Some(network_key) = network.get("network").and_then(|n| n.as_str()) {
-                let name = network
-                    .get("name")
-                    .and_then(|n| n.as_str())
-                    .unwrap_or(network_key)
-                    .to_string();
-                let icon = network
-                    .get("icon")
-                    .and_then(|i| i.as_str())
-                    .map(String::from);
-                network_icon_map.insert(network_key.to_string(), (name, icon));
-            }
-        }
-    }
-
-    // Step 7: Group by canonical symbol
+    // Step 5: Group by canonical symbol
     let mut asset_map: HashMap<String, AssetOption> = HashMap::new();
 
     for token in tokens {
@@ -196,39 +116,27 @@ pub async fn get_deposit_assets(
             None => continue,
         };
 
-        let metadata_value = match metadata_map.get(intents_id) {
+        let meta = match metadata_map.get(intents_id) {
             Some(m) => m,
             None => continue,
         };
 
-        let meta = unwrap_array_value(metadata_value);
+        // Skip if chainName is missing (no valid chain metadata)
+        if meta.chain_name.is_none() {
+            continue;
+        }
 
-        let symbol = meta
-            .get("symbol")
-            .and_then(|s| s.as_str())
-            .or_else(|| token.get("asset_name").and_then(|a| a.as_str()))
-            .unwrap_or("UNKNOWN");
-
-        let canonical_symbol = symbol.to_uppercase();
+        let canonical_symbol = meta.symbol.to_uppercase();
 
         if !asset_map.contains_key(&canonical_symbol) {
-            let name = meta
-                .get("name")
-                .and_then(|n| n.as_str())
-                .or_else(|| token.get("name").and_then(|n| n.as_str()))
-                .unwrap_or(symbol)
-                .to_string();
-
-            let icon = meta.get("icon").and_then(|i| i.as_str()).map(String::from);
-
             asset_map.insert(
                 canonical_symbol.clone(),
                 AssetOption {
                     id: canonical_symbol.to_lowercase(),
-                    asset_name: symbol.to_string(),
-                    name,
-                    symbol: symbol.to_string(),
-                    icon,
+                    asset_name: meta.symbol.clone(),
+                    name: meta.name.clone(),
+                    symbol: meta.symbol.clone(),
+                    icon: meta.icon.clone(),
                     networks: Vec::new(),
                 },
             );
@@ -246,24 +154,19 @@ pub async fn get_deposit_assets(
             parts.first().unwrap_or(&"").to_string()
         };
 
-        // Get network short code and chainName from enriched token
-        let enriched = enriched_token_map.get(intents_id);
-        let network_code = enriched
-            .and_then(|t| t.get("network"))
-            .and_then(|c| c.as_str())
-            .unwrap_or("");
-        let chain_name = enriched
-            .and_then(|t| t.get("chainName"))
-            .and_then(|c| c.as_str())
-            .unwrap_or("");
+        // Get chain name from metadata
+        let net_name = meta.chain_name.as_ref().unwrap_or(&String::new()).clone();
 
-        // Use network code (e.g. "eth") for lookup, fallback to chainName for display
-        let (net_name, net_icon) = network_icon_map
-            .get(network_code)
-            .cloned()
-            .unwrap_or_else(|| (chain_name.to_string(), None));
+        // Select the appropriate icon based on theme
+        let net_icon = meta.chain_icons.as_ref().map(|icons| {
+            if query.theme == "dark" {
+                icons.dark.clone()
+            } else {
+                icons.light.clone()
+            }
+        });
 
-        let decimals = meta.get("decimals").and_then(|d| d.as_u64()).unwrap_or(18) as u8;
+        let decimals = meta.decimals;
 
         if let Some(asset) = asset_map.get_mut(&canonical_symbol) {
             // Check if network with this chain_id already exists

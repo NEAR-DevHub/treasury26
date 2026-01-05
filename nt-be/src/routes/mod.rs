@@ -169,10 +169,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::intents::supported_tokens::get_supported_tokens),
         )
         .route(
-            "/api/intents/blockchain-metadata",
-            get(handlers::intents::metadata::get_blockchain_metadata),
-        )
-        .route(
             "/api/intents/deposit-address",
             post(handlers::intents::deposit_address::get_deposit_address),
         )

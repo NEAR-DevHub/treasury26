@@ -7,7 +7,6 @@ use axum::{
 };
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{
     AppState,
@@ -44,59 +43,56 @@ pub struct TokenMetadata {
     pub chain_icons: Option<ChainIcons>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 struct RefSdkToken {
+    #[serde(rename = "defuseAssetId")]
     pub defuse_asset_id: Option<String>,
     pub name: Option<String>,
     pub symbol: Option<String>,
     pub decimals: Option<u8>,
     pub icon: Option<String>,
     pub price: Option<f64>,
+    #[serde(rename = "priceUpdatedAt")]
     pub price_updated_at: Option<String>,
+    #[serde(rename = "chainName")]
     pub chain_name: Option<String>,
     pub error: Option<String>,
 }
 
-/// Manual parser for RefSdkToken to handle duplicate keys in API response
-/// The REF SDK API returns both snake_case and camelCase versions of some fields
-fn parse_ref_sdk_token(value: &Value) -> Option<RefSdkToken> {
-    let obj = value.as_object()?;
-
-    // Check for error field first
-    if let Some(error) = obj.get("error")
-        && !error.is_null()
-    {
-        return None;
+/// Helper to normalize token objects by removing duplicate fields
+/// Prefers camelCase over snake_case when duplicates exist
+fn normalize_token_object(
+    mut obj: serde_json::Map<String, serde_json::Value>,
+) -> serde_json::Value {
+    // Handle defuseAssetId / defuse_asset_id
+    if obj.contains_key("defuseAssetId") {
+        obj.remove("defuse_asset_id");
+    } else if let Some(val) = obj.remove("defuse_asset_id") {
+        obj.insert("defuseAssetId".to_string(), val);
     }
 
-    // Helper to get string value with fallback
-    let get_string = |primary: &str, fallback: &str| -> Option<String> {
-        obj.get(primary)
-            .and_then(|v: &Value| v.as_str())
-            .or_else(|| obj.get(fallback).and_then(|v: &Value| v.as_str()))
-            .map(String::from)
-    };
+    // Handle priceUpdatedAt / price_updated_at
+    if obj.contains_key("priceUpdatedAt") {
+        obj.remove("price_updated_at");
+    } else if let Some(val) = obj.remove("price_updated_at") {
+        obj.insert("priceUpdatedAt".to_string(), val);
+    }
 
-    Some(RefSdkToken {
-        defuse_asset_id: get_string("defuseAssetId", "defuse_asset_id"),
-        name: get_string("name", "asset_name"),
-        symbol: obj
-            .get("symbol")
-            .and_then(|v: &Value| v.as_str())
-            .map(String::from),
-        decimals: obj
-            .get("decimals")
-            .and_then(|v: &Value| v.as_u64())
-            .map(|d| d as u8),
-        icon: obj
-            .get("icon")
-            .and_then(|v: &Value| v.as_str())
-            .map(String::from),
-        price: obj.get("price").and_then(|v: &Value| v.as_f64()),
-        price_updated_at: get_string("priceUpdatedAt", "price_updated_at"),
-        chain_name: get_string("chainName", "chain_name"),
-        error: None,
-    })
+    // Handle chainName / chain_name
+    if obj.contains_key("chainName") {
+        obj.remove("chain_name");
+    } else if let Some(val) = obj.remove("chain_name") {
+        obj.insert("chainName".to_string(), val);
+    }
+
+    // Handle name / asset_name
+    if obj.contains_key("name") {
+        obj.remove("asset_name");
+    } else if let Some(val) = obj.remove("asset_name") {
+        obj.insert("name".to_string(), val);
+    }
+
+    serde_json::Value::Object(obj)
 }
 
 /// Fetches token metadata from Ref SDK API by defuse asset IDs
@@ -139,45 +135,31 @@ pub async fn fetch_tokens_metadata(
         )
     })?;
 
-    // Parse manually to handle duplicate keys in API response
-    let tokens: Vec<RefSdkToken> = if let Some(arr) = response.as_array() {
-        // Direct array response - parse each item
-        arr.iter().filter_map(parse_ref_sdk_token).collect()
-    } else if let Some(data) = response.get("data") {
-        // Response wrapped in { "data": [...] }
-        if let Some(arr) = data.as_array() {
-            arr.iter().filter_map(parse_ref_sdk_token).collect()
-        } else {
-            // Single object in data field
-            parse_ref_sdk_token(data).into_iter().collect()
-        }
-    } else if let Some(tokens_field) = response.get("tokens") {
-        // Response wrapped in { "tokens": [...] }
-        if let Some(arr) = tokens_field.as_array() {
-            arr.iter().filter_map(parse_ref_sdk_token).collect()
-        } else {
-            // Single object in tokens field
-            parse_ref_sdk_token(tokens_field).into_iter().collect()
-        }
-    } else {
-        // Try as single object
-        parse_ref_sdk_token(&response).into_iter().collect()
-    };
+    // Parse as array of objects first
+    let tokens_array: Vec<serde_json::Value> = serde_json::from_value(response).map_err(|e| {
+        eprintln!("Failed to parse token response: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to parse token metadata response".to_string(),
+        )
+    })?;
 
-    if tokens.is_empty() {
-        return Err((
-            StatusCode::NOT_FOUND,
-            "No valid tokens found in API response".to_string(),
-        ));
-    }
+    // Normalize each object (remove duplicate fields) then deserialize with serde
+    let tokens: Vec<RefSdkToken> = tokens_array
+        .into_iter()
+        .filter_map(|val| {
+            let obj = val.as_object()?.clone();
+            let normalized = normalize_token_object(obj);
+            serde_json::from_value(normalized).ok()
+        })
+        .collect();
 
-    // Map RefSdkToken to TokenMetadata with chain metadata, filtering out errors and invalid entries
+    // Map RefSdkToken to TokenMetadata with chain metadata, filtering out errors/invalid entries
     let metadata_responses: Vec<TokenMetadata> = tokens
         .iter()
         .filter_map(|token| {
             // Skip error entries
             if token.error.is_some() {
-                eprintln!("Skipping token with error: {:?}", token.error);
                 return None;
             }
 
@@ -206,13 +188,6 @@ pub async fn fetch_tokens_metadata(
             })
         })
         .collect();
-
-    if metadata_responses.is_empty() {
-        return Err((
-            StatusCode::NOT_FOUND,
-            "No valid tokens found in response".to_string(),
-        ));
-    }
 
     Ok(metadata_responses)
 }
