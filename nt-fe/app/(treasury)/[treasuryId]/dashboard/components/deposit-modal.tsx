@@ -111,7 +111,6 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
     try {
       const assets = await fetchDepositAssets(theme);
-
       // Add "Other" asset that deposits directly to treasury
       const otherAsset = {
         id: "other",
@@ -130,14 +129,23 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
       // Format assets
       const formattedAssets: SelectOption[] = [
-        ...assets.map((asset: any) => ({
-          id: asset.id,
-          name: asset.name || asset.assetName,
-          symbol: asset.symbol,
-          icon: asset.icon || asset.symbol?.charAt(0) || "?",
-          gradient: "bg-linear-to-br from-blue-500 to-purple-500",
-          networks: asset.networks,
-        })),
+        ...assets.map((asset: any) => {
+          // Check if icon is a valid URL or data URI
+          const hasValidIcon =
+            asset.icon &&
+            (asset.icon.startsWith("http") ||
+              asset.icon.startsWith("data:") ||
+              asset.icon.startsWith("/"));
+
+          return {
+            id: asset.id,
+            name: asset.name || asset.assetName,
+            symbol: asset.symbol,
+            icon: hasValidIcon ? asset.icon : asset.symbol?.charAt(0) || "?",
+            gradient: "bg-linear-to-br from-blue-500 to-purple-500",
+            networks: asset.networks,
+          };
+        }),
       ];
 
       // Add "Other" at the end
@@ -380,7 +388,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">
+                          <span className="text-muted-foreground text-lg font-normal">
                             Select Asset
                           </span>
                         )}
@@ -435,7 +443,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">
+                          <span className="text-muted-foreground text-lg font-normal">
                             Select Network
                           </span>
                         )}
