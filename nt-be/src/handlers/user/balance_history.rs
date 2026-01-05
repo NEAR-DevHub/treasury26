@@ -2,14 +2,17 @@ use axum::{
     Json,
     extract::{Query, State},
     http::StatusCode,
-    response::IntoResponse,
 };
 use near_api::{AccountId, Chain, FTBalance, Reference, Tokens, W_NEAR_BALANCE};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::{AppState, constants::BLOCKS_PER_HOUR};
+use crate::{
+    AppState,
+    constants::BLOCKS_PER_HOUR,
+    utils::cache::{CacheKey, CacheTier},
+};
 
 #[derive(Deserialize)]
 pub struct TokenBalanceHistoryQuery {
@@ -244,67 +247,63 @@ async fn fetch_period_history(
 pub async fn get_token_balance_history(
     State(state): State<Arc<AppState>>,
     Query(params): Query<TokenBalanceHistoryQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let account_id = &params.account_id;
-    let token_id = &params.token_id;
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, String)> {
+    let account_id = params.account_id.clone();
+    let token_id = params.token_id.clone();
 
-    let cache_key = format!("balance-history:{}:{}", account_id, token_id);
+    let cache_key = CacheKey::new("balance-history")
+        .with(&account_id)
+        .with(&token_id)
+        .build();
 
-    // Check cache
-    if let Some(cached_data) = state.cache.get(&cache_key).await {
-        println!(
-            "🔁 Returning cached balance history for {} / {}",
-            account_id, token_id
-        );
-        return Ok((StatusCode::OK, Json(cached_data)));
-    }
+    state
+        .clone()
+        .cache
+        .cached_json(CacheTier::LongTerm, cache_key, async move {
+            // Fetch current block
+            let (current_block, _current_timestamp) =
+                fetch_current_block(&state).await.map_err(|e| e.1)?;
 
-    // Fetch current block
-    let (current_block, _current_timestamp) = fetch_current_block(&state).await?;
+            // Fetch balance history for all periods concurrently
+            let mut period_futures = Vec::new();
+            for period in Period::DEFAULT {
+                let state_clone = state.clone();
+                let account_id = account_id.clone();
+                let token_id = token_id.clone();
 
-    // Fetch balance history for all periods concurrently
-    let mut period_futures = Vec::new();
-    for period in Period::DEFAULT {
-        let state_clone = state.clone();
-        let account_id = account_id.clone();
-        let token_id = token_id.clone();
-
-        period_futures.push(async move {
-            let result =
-                fetch_period_history(&state_clone, account_id, token_id, period, current_block)
+                period_futures.push(async move {
+                    let result = fetch_period_history(
+                        &state_clone,
+                        account_id,
+                        token_id,
+                        period,
+                        current_block,
+                    )
                     .await;
-            (period.name, result)
-        });
-    }
-
-    // Await all futures
-    let period_results = futures::future::join_all(period_futures).await;
-
-    // Build response map
-    let mut response: HashMap<String, Vec<BalanceHistoryEntry>> = HashMap::new();
-
-    for (period_name, result) in period_results {
-        match result {
-            Ok(mut entries) => {
-                entries.sort_by_key(|e| e.timestamp);
-                response.insert(period_name.to_string(), entries);
+                    (period.name, result)
+                });
             }
-            Err(_) => {
-                // If a period fails, insert empty array
-                response.insert(period_name.to_string(), Vec::new());
+
+            // Await all futures
+            let period_results = futures::future::join_all(period_futures).await;
+
+            // Build response map
+            let mut response: HashMap<String, Vec<BalanceHistoryEntry>> = HashMap::new();
+
+            for (period_name, result) in period_results {
+                match result {
+                    Ok(mut entries) => {
+                        entries.sort_by_key(|e| e.timestamp);
+                        response.insert(period_name.to_string(), entries);
+                    }
+                    Err(_) => {
+                        // If a period fails, insert empty array
+                        response.insert(period_name.to_string(), Vec::new());
+                    }
+                }
             }
-        }
-    }
 
-    let result_value = serde_json::to_value(&response).map_err(|e| {
-        eprintln!("Error serializing balance history: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to serialize balance history".to_string(),
-        )
-    })?;
-
-    state.cache.insert(cache_key, result_value.clone()).await;
-
-    Ok((StatusCode::OK, Json(result_value)))
+            Ok::<_, String>(response)
+        })
+        .await
 }

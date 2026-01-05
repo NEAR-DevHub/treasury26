@@ -1,14 +1,16 @@
 use axum::{
-    Json,
     extract::{Query, State},
     http::StatusCode,
-    response::IntoResponse,
 };
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::{AppState, constants::BATCH_PAYMENT_ACCOUNT_ID};
+use crate::{
+    AppState,
+    constants::BATCH_PAYMENT_ACCOUNT_ID,
+    utils::cache::{CacheKey, CacheTier},
+};
 
 #[derive(Deserialize)]
 pub struct BatchPaymentQuery {
@@ -34,39 +36,27 @@ pub struct BatchPaymentResponse {
 pub async fn get_batch_payment(
     State(state): State<Arc<AppState>>,
     Query(params): Query<BatchPaymentQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let cache_key = format!("batch-payment:{}", params.batch_id);
-    if let Some(cached_data) = state.cache.get(&cache_key).await {
-        return Ok((StatusCode::OK, Json(cached_data)));
-    }
+) -> Result<axum::Json<BatchPaymentResponse>, (StatusCode, String)> {
+    let batch_id = params.batch_id.clone();
+    let cache_key = CacheKey::new("batch-payment").with(&batch_id).build();
 
-    let list: BatchPaymentResponse = near_api::Contract(BATCH_PAYMENT_ACCOUNT_ID.into())
-        .call_function(
-            "view_list",
-            serde_json::json!({
-                "list_id": params.batch_id,
-            }),
-        )
-        .read_only()
-        .fetch_from(&state.network)
-        .await
-        .map_err(|e| {
-            eprintln!("Error fetching batch payment: {}: {}", params.batch_id, e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to fetch batch payment: {}", e),
-            )
-        })?
-        .data;
+    let result = state
+        .cache
+        .clone()
+        .cached_contract_call(CacheTier::LongTerm, cache_key, async move {
+            near_api::Contract(BATCH_PAYMENT_ACCOUNT_ID.into())
+                .call_function(
+                    "view_list",
+                    serde_json::json!({
+                        "list_id": batch_id,
+                    }),
+                )
+                .read_only::<BatchPaymentResponse>()
+                .fetch_from(&state.network)
+                .await
+                .map(|r| r.data)
+        })
+        .await?;
 
-    let result_value = serde_json::to_value(&list).map_err(|e| {
-        eprintln!("Error serializing batch payment: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to serialize batch payment: {}", e),
-        )
-    })?;
-    state.cache.insert(cache_key, result_value.clone()).await;
-
-    Ok((StatusCode::OK, Json(result_value)))
+    Ok(axum::Json(result))
 }

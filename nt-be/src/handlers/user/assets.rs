@@ -1,8 +1,8 @@
+use crate::utils::cache::CacheTier;
 use axum::{
     Json,
     extract::{Query, State},
     http::StatusCode,
-    response::IntoResponse,
 };
 use near_api::Contract;
 use serde::{Deserialize, Serialize};
@@ -110,39 +110,15 @@ async fn fetch_whitelisted_tokens_from_rpc(
 async fn fetch_whitelisted_tokens(
     state: &Arc<AppState>,
 ) -> Result<HashSet<String>, (StatusCode, String)> {
-    let cache_key = "ref-whitelisted-tokens";
-
-    // Check cache first
-    if let Some(cached_tokens) = state.cache.get(cache_key).await {
-        println!("🔁 Returning cached whitelisted tokens");
-        let tokens: HashSet<String> = serde_json::from_value(cached_tokens).map_err(|e| {
-            eprintln!("Error deserializing cached tokens: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to deserialize cached tokens".to_string(),
-            )
-        })?;
-        return Ok(tokens);
-    }
-
-    // Fetch whitelist
-    let whitelist_set = fetch_whitelisted_tokens_from_rpc(state).await?;
-
-    // Cache the result
-    let tokens_value = serde_json::to_value(&whitelist_set).map_err(|e| {
-        eprintln!("Error serializing tokens: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to serialize tokens".to_string(),
-        )
-    })?;
+    let cache_key = "ref-whitelisted-tokens".to_string();
+    let state_clone = state.clone();
 
     state
         .cache
-        .insert(cache_key.to_string(), tokens_value)
-        .await;
-
-    Ok(whitelist_set)
+        .cached(CacheTier::LongTerm, cache_key, async move {
+            fetch_whitelisted_tokens_from_rpc(&state_clone).await
+        })
+        .await
 }
 
 /// Fetches user balances from FastNear API
@@ -315,8 +291,8 @@ fn build_intents_tokens(
 pub async fn get_user_assets(
     State(state): State<Arc<AppState>>,
     Query(params): Query<UserAssetsQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let account = &params.account_id;
+) -> Result<Json<Vec<SimplifiedToken>>, (StatusCode, String)> {
+    let account = params.account_id.clone();
 
     if account.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "account is required".to_string()));
@@ -324,161 +300,155 @@ pub async fn get_user_assets(
 
     let cache_key = format!("{}-user-assets", account);
 
-    // Check cache
-    if let Some(cached_tokens) = state.cache.get(&cache_key).await {
-        println!("🔁 Returning cached user assets for {}", account);
-        return Ok((StatusCode::OK, Json(cached_tokens)));
-    }
+    let state_clone = state.clone();
+    let all_simplified_tokens = state
+        .cache
+        .cached(CacheTier::LongTerm, cache_key, async move {
+            // Fetch REF Finance data
+            let ref_data_future = async {
+                let tokens_future = fetch_whitelisted_tokens(&state_clone);
+                let balances_future = fetch_user_balances(&state_clone, &account);
 
-    // Fetch REF Finance data
-    let ref_data_future = async {
-        let tokens_future = fetch_whitelisted_tokens(&state);
-        let balances_future = fetch_user_balances(&state, account);
+                tokio::try_join!(tokens_future, balances_future)
+            };
 
-        tokio::try_join!(tokens_future, balances_future)
-    };
+            // Fetch intents balances
+            let intents_data_future = async {
+                let owned_token_ids = fetch_intents_owned_tokens(&state_clone, &account).await?;
+                if owned_token_ids.is_empty() {
+                    return Ok::<_, (StatusCode, String)>(Vec::new());
+                }
 
-    // Fetch intents balances
-    let intents_data_future = async {
-        let owned_token_ids = fetch_intents_owned_tokens(&state, account).await?;
-        if owned_token_ids.is_empty() {
-            return Ok::<_, (StatusCode, String)>(Vec::new());
-        }
+                let balances =
+                    fetch_intents_balances(&state_clone, &account, &owned_token_ids).await?;
 
-        let balances = fetch_intents_balances(&state, account, &owned_token_ids).await?;
+                // Filter to only tokens with non-zero balances
+                let tokens_with_balances: Vec<(String, String)> = owned_token_ids
+                    .into_iter()
+                    .zip(balances.into_iter())
+                    .filter(|(_, balance)| balance.parse::<u128>().unwrap_or(0) > 0)
+                    .collect();
 
-        // Filter to only tokens with non-zero balances
-        let tokens_with_balances: Vec<(String, String)> = owned_token_ids
-            .into_iter()
-            .zip(balances.into_iter())
-            .filter(|(_, balance)| balance.parse::<u128>().unwrap_or(0) > 0)
-            .collect();
+                Ok(tokens_with_balances)
+            };
 
-        Ok(tokens_with_balances)
-    };
+            // Fetch all data concurrently
+            let (ref_data_result, intents_data_result) =
+                tokio::join!(ref_data_future, intents_data_future);
 
-    // Fetch all data concurrently
-    let (ref_data_result, intents_data_result) = tokio::join!(ref_data_future, intents_data_future);
+            // Get whitelisted tokens and user balances
+            let (whitelist_set, user_balances) = ref_data_result?;
 
-    // Get whitelisted tokens and user balances
-    let (whitelist_set, user_balances) = ref_data_result?;
+            // Get intents balances (already filtered to non-zero)
+            let intents_balances = intents_data_result.unwrap_or_else(|e| {
+                eprintln!("Warning: Failed to fetch intents tokens: {:?}", e);
+                Vec::new()
+            });
 
-    // Get intents balances (already filtered to non-zero)
-    let intents_balances = intents_data_result.unwrap_or_else(|e| {
-        eprintln!("Warning: Failed to fetch intents tokens: {:?}", e);
-        Vec::new()
-    });
+            // Build balance map and filter REF Finance tokens to only those with positive balances
+            let balance_map = build_balance_map(&user_balances);
+            let ref_tokens_with_balances: Vec<(String, String)> = whitelist_set
+                .into_iter()
+                .filter_map(|token_id| {
+                    let balance = get_token_balance(&token_id, &user_balances, &balance_map);
+                    if balance != "0" {
+                        Some((token_id, balance))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
-    // Build balance map and filter REF Finance tokens to only those with positive balances
-    let balance_map = build_balance_map(&user_balances);
-    let ref_tokens_with_balances: Vec<(String, String)> = whitelist_set
-        .into_iter()
-        .filter_map(|token_id| {
-            let balance = get_token_balance(&token_id, &user_balances, &balance_map);
-            if balance != "0" {
-                Some((token_id, balance))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    // Collect all unique token IDs that have positive balances
-    let mut token_ids_to_fetch: Vec<String> = ref_tokens_with_balances
-        .iter()
-        .map(|(id, _)| format!("nep141:{}", id.clone()))
-        .collect();
-    token_ids_to_fetch.extend(intents_balances.iter().map(|(id, _)| id.clone()));
-    token_ids_to_fetch.push("nep141:wrap.near".to_string());
-
-    // Fetch metadata for only tokens with positive balances in a single batch request
-    let tokens_metadata = if !token_ids_to_fetch.is_empty() {
-        fetch_tokens_metadata(&state, &token_ids_to_fetch).await?
-    } else {
-        Vec::new()
-    };
-
-    let near_token_meta = tokens_metadata.last().cloned().unwrap();
-
-    // Build simplified tokens for REF Finance tokens
-    let mut all_simplified_tokens: Vec<SimplifiedToken> = ref_tokens_with_balances
-        .into_iter()
-        .zip(token_ids_to_fetch.into_iter())
-        .filter_map(|((token_id, balance), token_id_to_fetch)| {
-            let token_meta = tokens_metadata
+            // Collect all unique token IDs that have positive balances
+            let mut token_ids_to_fetch: Vec<String> = ref_tokens_with_balances
                 .iter()
-                .find(|m| m.token_id == token_id_to_fetch)?;
+                .map(|(id, _)| format!("nep141:{}", id.clone()))
+                .collect();
+            token_ids_to_fetch.extend(intents_balances.iter().map(|(id, _)| id.clone()));
+            token_ids_to_fetch.push("nep141:wrap.near".to_string());
 
-            let price = token_meta.price.unwrap_or(0.0).to_string();
+            // Fetch metadata for only tokens with positive balances in a single batch request
+            let tokens_metadata = if !token_ids_to_fetch.is_empty() {
+                fetch_tokens_metadata(&state_clone, &token_ids_to_fetch).await?
+            } else {
+                Vec::new()
+            };
 
-            Some(SimplifiedToken {
-                id: token_id.clone(),
-                contract_id: Some(token_id),
-                decimals: token_meta.decimals,
-                balance,
-                price,
-                symbol: token_meta.symbol.clone(),
-                name: token_meta.name.clone(),
-                icon: token_meta.icon.clone(),
-                network: "near".to_string(),
-                residency: TokenResidency::Ft,
-                chain_icons: token_meta.chain_icons.clone(),
-                chain_name: token_meta
+            let near_token_meta = tokens_metadata.last().cloned().unwrap();
+
+            // Build simplified tokens for REF Finance tokens
+            let mut all_simplified_tokens: Vec<SimplifiedToken> = ref_tokens_with_balances
+                .into_iter()
+                .filter_map(|(token_id, balance)| {
+                    let intents_token_id = format!("nep141:{}", token_id.clone());
+                    let token_meta = tokens_metadata
+                        .iter()
+                        .find(|m| m.token_id == intents_token_id)?;
+
+                    let price = token_meta.price.unwrap_or(0.0).to_string();
+
+                    Some(SimplifiedToken {
+                        id: token_id.clone(),
+                        contract_id: Some(token_id),
+                        decimals: token_meta.decimals,
+                        balance,
+                        price,
+                        symbol: token_meta.symbol.clone(),
+                        name: token_meta.name.clone(),
+                        icon: token_meta.icon.clone(),
+                        network: "near".to_string(),
+                        residency: TokenResidency::Ft,
+                        chain_icons: token_meta.chain_icons.clone(),
+                        chain_name: token_meta
+                            .chain_name
+                            .clone()
+                            .unwrap_or_else(|| "Near Protocol".to_string()),
+                    })
+                })
+                .collect();
+
+            // Build intents tokens with metadata
+            let intents_tokens = build_intents_tokens(intents_balances, &tokens_metadata);
+            all_simplified_tokens.extend(intents_tokens);
+
+            all_simplified_tokens.push(SimplifiedToken {
+                id: "near".to_string(),
+                contract_id: None,
+                decimals: near_token_meta.decimals,
+                balance: user_balances
+                    .state
+                    .as_ref()
+                    .map(|s| s.balance.clone())
+                    .unwrap_or_else(|| "0".to_string()),
+                price: near_token_meta.price.unwrap_or(0.0).to_string(),
+                symbol: near_token_meta.symbol.clone(),
+                name: near_token_meta.name.clone(),
+                icon: near_token_meta.icon.clone(),
+                network: near_token_meta.network.clone().unwrap_or_default(),
+                residency: TokenResidency::Near,
+                chain_name: near_token_meta
                     .chain_name
                     .clone()
-                    .unwrap_or_else(|| "Near Protocol".to_string()),
-            })
+                    .unwrap_or(near_token_meta.name.clone()),
+                chain_icons: near_token_meta.chain_icons.clone(),
+            });
+
+            // Sort combined list by balance (highest first)
+            all_simplified_tokens = all_simplified_tokens
+                .into_iter()
+                .filter(|t| t.balance.parse::<u128>().unwrap_or(0) > 0)
+                .collect::<Vec<_>>();
+            all_simplified_tokens.sort_by(|a, b| {
+                let a_val: u128 = a.balance.parse().unwrap_or(0);
+                let b_val: u128 = b.balance.parse().unwrap_or(0);
+                b_val
+                    .partial_cmp(&a_val)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+
+            Ok::<_, (StatusCode, String)>(all_simplified_tokens)
         })
-        .collect();
+        .await?;
 
-    // Build intents tokens with metadata
-    let intents_tokens = build_intents_tokens(intents_balances, &tokens_metadata);
-    all_simplified_tokens.extend(intents_tokens);
-
-    all_simplified_tokens.push(SimplifiedToken {
-        id: "near".to_string(),
-        contract_id: None,
-        decimals: near_token_meta.decimals,
-        balance: user_balances
-            .state
-            .as_ref()
-            .map(|s| s.balance.clone())
-            .unwrap_or_else(|| "0".to_string()),
-        price: near_token_meta.price.unwrap_or(0.0).to_string(),
-        symbol: near_token_meta.symbol.clone(),
-        name: near_token_meta.name.clone(),
-        icon: near_token_meta.icon.clone(),
-        network: near_token_meta.network.clone().unwrap_or_default(),
-        residency: TokenResidency::Near,
-        chain_name: near_token_meta
-            .chain_name
-            .clone()
-            .unwrap_or(near_token_meta.name.clone()),
-        chain_icons: near_token_meta.chain_icons.clone(),
-    });
-
-    // Sort combined list by balance (highest first)
-    all_simplified_tokens = all_simplified_tokens
-        .into_iter()
-        .filter(|t| t.balance.parse::<u128>().unwrap_or(0) > 0)
-        .collect::<Vec<_>>();
-    all_simplified_tokens.sort_by(|a, b| {
-        let a_val: u128 = a.balance.parse().unwrap_or(0);
-        let b_val: u128 = b.balance.parse().unwrap_or(0);
-        b_val
-            .partial_cmp(&a_val)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    let result_value = serde_json::to_value(&all_simplified_tokens).map_err(|e| {
-        eprintln!("Error serializing result: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to serialize result".to_string(),
-        )
-    })?;
-
-    state.cache.insert(cache_key, result_value.clone()).await;
-
-    Ok((StatusCode::OK, Json(result_value)))
+    Ok(Json(all_simplified_tokens))
 }

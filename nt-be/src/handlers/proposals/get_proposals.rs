@@ -2,7 +2,6 @@ use axum::{
     Json,
     extract::{Path, RawQuery, State},
     http::StatusCode,
-    response::IntoResponse,
 };
 use std::sync::Arc;
 
@@ -12,7 +11,7 @@ pub async fn get_proposals(
     State(state): State<Arc<AppState>>,
     Path(dao_id): Path<String>,
     RawQuery(query): RawQuery,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, String)> {
     if dao_id.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "dao_id is required".to_string()));
     }
@@ -67,7 +66,7 @@ pub async fn get_proposals(
 pub async fn get_proposal(
     State(state): State<Arc<AppState>>,
     Path((dao_id, proposal_id)): Path<(String, String)>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, String)> {
     if dao_id.is_empty() || proposal_id.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,

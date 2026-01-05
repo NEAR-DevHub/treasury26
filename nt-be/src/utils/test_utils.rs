@@ -6,7 +6,7 @@
 use crate::AppState;
 
 #[cfg(test)]
-use moka::future::Cache;
+use crate::utils::cache::Cache;
 
 #[cfg(test)]
 use near_api::{NetworkConfig, RPCEndpoint, Signer};
@@ -35,12 +35,6 @@ pub async fn init_test_state() -> AppState {
     load_test_env();
 
     let env_vars = crate::utils::env::EnvVars::default();
-
-    let cache = Cache::builder()
-        .max_capacity(10_000)
-        .time_to_live(Duration::from_secs(600))
-        .build();
-
     // Create a dummy pool that won't be used in unit tests
     // Tests that need DB should use sqlx::test macro instead
     let db_pool = sqlx::postgres::PgPoolOptions::new()
@@ -51,14 +45,10 @@ pub async fn init_test_state() -> AppState {
 
     AppState {
         http_client: reqwest::Client::new(),
-        cache,
+        cache: Cache::new(),
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
         signer_id: env_vars.signer_id.clone(),
-        short_term_cache: Cache::builder()
-            .max_capacity(1_000)
-            .time_to_live(Duration::from_secs(30)) // 30 seconds
-            .build(),
         network: NetworkConfig {
             rpc_endpoints: vec![
                 RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())

@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                bc.block_height,\n                bc.block_time,\n                bc.token_id as \"token_id!\",\n                c.token_symbol,\n                bc.counterparty as \"counterparty!\",\n                bc.amount as \"amount!\",\n                bc.balance_before as \"balance_before!\",\n                bc.balance_after as \"balance_after!\",\n                bc.transaction_hashes as \"transaction_hashes!\",\n                bc.receipt_id as \"receipt_id!\"\n            FROM balance_changes bc\n            LEFT JOIN counterparties c ON bc.token_id = c.account_id\n            WHERE bc.account_id = $1\n              AND bc.block_time >= $2\n              AND bc.block_time < $3\n            ORDER BY bc.token_id, bc.block_height ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "block_height",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "block_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "token_id!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "token_symbol",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "counterparty!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "amount!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "balance_before!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "balance_after!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "transaction_hashes!",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 9,
+        "name": "receipt_id!",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "dbe6ecf4225162f1ecfd3cad5a3c6b566a94f26f3eb3ea521090c3331c7753e9"
+}

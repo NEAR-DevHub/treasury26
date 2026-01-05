@@ -3,15 +3,13 @@ pub mod handlers;
 pub mod routes;
 pub mod utils;
 
-use moka::future::Cache;
 use near_api::{AccountId, NetworkConfig, RPCEndpoint, Signer};
 use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
 
 pub struct AppState {
     pub http_client: reqwest::Client,
-    pub cache: Cache<String, serde_json::Value>,
-    pub short_term_cache: Cache<String, serde_json::Value>, // Shorter TTL cache for frequently changing data (policy, config, balances)
+    pub cache: utils::cache::Cache,
     pub signer: Arc<Signer>,
     pub signer_id: AccountId,
     pub network: NetworkConfig,
@@ -37,22 +35,9 @@ pub async fn init_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
 
     log::info!("Database connection established successfully");
 
-    // General cache for assets, profiles, metadata, etc. (longer TTL)
-    let cache = Cache::builder()
-        .max_capacity(10_000)
-        .time_to_live(Duration::from_secs(300)) // 5 minutes
-        .build();
-
-    // Short-term cache for frequently changing data (policy, config, balances, etc.)
-    let short_term_cache = Cache::builder()
-        .max_capacity(1_000)
-        .time_to_live(Duration::from_secs(30)) // 30 seconds
-        .build();
-
     Ok(AppState {
         http_client: reqwest::Client::new(),
-        cache,
-        short_term_cache,
+        cache: utils::cache::Cache::new(),
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
         signer_id: env_vars.signer_id.clone(),

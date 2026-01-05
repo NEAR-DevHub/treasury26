@@ -2,13 +2,15 @@ use axum::{
     Json,
     extract::{Query, State},
     http::StatusCode,
-    response::IntoResponse,
 };
 use near_api::{AccountId, Contract};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::AppState;
+use crate::{
+    AppState,
+    utils::cache::{CacheKey, CacheTier},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct GetStorageDepositQuery {
@@ -35,35 +37,32 @@ async fn check_storage_deposit(
         return Ok(true);
     }
 
-    let cache_key = format!("storage-deposit:{}:{}", account_id, token_id);
-    if let Some(cached_storage_deposit) = state.cache.get(&cache_key).await {
-        println!(
-            "🔁 Returning cached storage deposit for {} / {}",
-            account_id, token_id
-        );
-        return Ok(cached_storage_deposit == "true");
-    }
+    let cache_key = CacheKey::new("storage-deposit")
+        .with(&account_id)
+        .with(&token_id)
+        .build();
 
-    let storage_deposit = Contract(token_id.clone())
-        .storage_deposit()
-        .view_account_storage(account_id.clone())
-        .fetch_from(&state.network)
-        .await
-        .map_err(|e| {
-            eprintln!(
-                "Error fetching storage deposit with account_id: {} and token_id: {}: {e}",
-                account_id, token_id,
-            );
-            e.to_string()
-        })?
-        .data;
-
-    let is_registered = storage_deposit.is_some();
     state
         .cache
-        .insert(cache_key, serde_json::Value::Bool(is_registered))
-        .await;
-    Ok(is_registered)
+        .cached(CacheTier::LongTerm, cache_key, async {
+            let storage_deposit = Contract(token_id.clone())
+                .storage_deposit()
+                .view_account_storage(account_id.clone())
+                .fetch_from(&state.network)
+                .await
+                .map_err(|e| {
+                    eprintln!(
+                        "Error fetching storage deposit with account_id: {} and token_id: {}: {e}",
+                        account_id, token_id,
+                    );
+                    e.to_string()
+                })?
+                .data;
+
+            Ok::<_, String>(storage_deposit.is_some())
+        })
+        .await
+        .map_err(|(_, e)| e)
 }
 
 pub async fn is_storage_deposit_registered(
@@ -97,7 +96,7 @@ pub struct BatchStorageDepositRequest {
 pub async fn get_batch_storage_deposit_is_registered(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<BatchStorageDepositRequest>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<Json<Vec<StorageDepositResponse>>, (StatusCode, String)> {
     if payload.requests.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "No requests provided".to_string()));
     }
@@ -130,5 +129,5 @@ pub async fn get_batch_storage_deposit_is_registered(
     let results = futures::future::join_all(futures).await;
     let deposits: Vec<StorageDepositResponse> = results.into_iter().flatten().collect();
 
-    Ok((StatusCode::OK, Json(deposits)))
+    Ok(Json(deposits))
 }
