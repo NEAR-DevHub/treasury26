@@ -1,15 +1,8 @@
 import { useState, useRef } from "react";
-import { Control, FieldValues, Path, } from "react-hook-form";
 import { Button } from "./button";
 import { ArrowLeftIcon, Loader2 } from "lucide-react";
-import { FormDescription, FormField, FormLabel } from "./ui/form";
-import { Switch } from "./ui/switch";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
-import { getApproversAndThreshold, ProposalPermissionKind } from "@/lib/config-utils";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
-import { useNear } from "@/stores/near-store";
 export interface StepProps {
     handleBack?: () => void;
     handleNext?: () => void;

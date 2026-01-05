@@ -69,7 +69,6 @@ export async function validateNearAddress(address: string): Promise<string | nul
   // For named accounts, check if they exist on blockchain
   try {
     const result = await checkAccountExists(address);
-    console.log("result", result);
     if (!result || !result.exists) {
       return "Account does not exist on NEAR blockchain";
     }

@@ -44,7 +44,6 @@ const paymentFormSchema = z.object({
 function Step1({ handleNext }: StepProps) {
   const form = useFormContext<PaymentFormValues>();
 
-  console.log("form.formState.errors", form.formState.errors);
   const handleContinue = () => {
     form.trigger().then((isValid) => {
       if (isValid && handleNext) {
