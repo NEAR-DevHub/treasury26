@@ -1,0 +1,40 @@
+name: Frontend Build
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'nt-fe/**'
+      - '.github/workflows/frontend-build.yml'
+      - 'justfile'
+      - 'render.yaml'
+      - '.env.example'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'nt-fe/**'
+      - '.github/workflows/frontend-build.yml'
+      - 'justfile'
+      - 'render.yaml'
+      - '.env.example'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install dependencies
+      working-directory: nt-fe
+      run: bun install
+
+    - name: Build
+      working-directory: nt-fe
+      run: bun run build
