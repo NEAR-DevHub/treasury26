@@ -55,7 +55,7 @@ export function DeleteConfirmationModal({
       open={isOpen && membersToDelete.length > 0}
       onOpenChange={(open) => !open && onClose()}
     >
-      <DialogContent className="max-w-mdgap-4">
+      <DialogContent className="max-w-md gap-4">
         <DialogHeader>
           <DialogTitle>
             {isBulk
