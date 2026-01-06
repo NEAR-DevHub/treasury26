@@ -182,39 +182,45 @@ async fn test_balance_chart_with_real_data() {
 
     let token_map = chart_data.as_object().unwrap();
 
-    // Expected tokens and their balances on Dec 5 (last day of the test range)
+    // Expected tokens, their balances on Dec 5 (last day of the test range), and USD prices
     // Values are decimal-formatted strings from the API (BigDecimal includes trailing zeros)
-    let expected_tokens = vec![
-        ("near", "26.470207505625583899999977"),
+    // Prices are from CoinGecko mock data for Dec 5, 2025
+    let expected_tokens: Vec<(&str, &str, Option<f64>)> = vec![
+        ("near", "26.470207505625583899999977", Some(1.796074794371314)),
         (
             "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
             "9.99998000",
+            Some(0.9998048293821208), // USDC
         ),
-        ("intents.near:nep141:btc.omft.near", "0.00544253"),
-        ("intents.near:nep141:xrp.omft.near", "16.69236700"),
+        ("intents.near:nep141:btc.omft.near", "0.00544253", Some(92140.70419795792)),
+        ("intents.near:nep141:xrp.omft.near", "16.69236700", Some(2.0971829811461946)),
         (
             "intents.near:nep141:eth.omft.near",
             "0.03501508842977613200",
+            Some(3133.698235618616),
         ),
         (
             "intents.near:nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
             "22.54364600",
+            Some(0.9998048293821208), // USDC on Solana
         ),
         (
             "intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
             "124.83302000",
+            Some(0.9998048293821208), // USDC on Ethereum
         ),
         (
             "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
             "119",
+            Some(0.9998048293821208), // USDC on NEAR
         ),
-        ("intents.near:nep141:sol.omft.near", "0.08342401"),
-        ("intents.near:nep141:wrap.near", "0.8000"),
-        ("arizcredits.near", "3"),
+        ("intents.near:nep141:sol.omft.near", "0.08342401", Some(139.0035856702843)),
+        ("intents.near:nep141:wrap.near", "0.8000", Some(1.796074794371314)), // wNEAR = NEAR price
+        ("arizcredits.near", "3", None), // Unknown token - no price data
     ];
 
     // Check that all expected tokens are present
-    for (token_id, _) in &expected_tokens {
+    for (token_id, _, _) in &expected_tokens {
         assert!(
             token_map.contains_key(*token_id),
             "Missing expected token: {}",
@@ -222,8 +228,8 @@ async fn test_balance_chart_with_real_data() {
         );
     }
 
-    // Verify balance values on the last day (Dec 5)
-    for (token_id, expected_balance) in &expected_tokens {
+    // Verify balance and price values on the last day (Dec 5)
+    for (token_id, expected_balance, expected_price) in &expected_tokens {
         let token_data = token_map
             .get(*token_id)
             .expect(&format!("Token {} not found", token_id));
@@ -253,11 +259,36 @@ async fn test_balance_chart_with_real_data() {
             "Balance mismatch for token {} on Dec 5: expected {}, got {}",
             token_id, expected_balance, balance
         );
+
+        // Check the price_usd field
+        let actual_price = last_snapshot.get("price_usd").and_then(|p| p.as_f64());
+        match expected_price {
+            Some(expected) => {
+                assert!(
+                    actual_price.is_some(),
+                    "Expected price_usd for token {} but got null",
+                    token_id
+                );
+                let actual = actual_price.unwrap();
+                assert!(
+                    (actual - expected).abs() < 0.0001,
+                    "Price mismatch for token {} on Dec 5: expected {}, got {}",
+                    token_id, expected, actual
+                );
+            }
+            None => {
+                assert!(
+                    actual_price.is_none(),
+                    "Expected no price_usd for token {} but got {:?}",
+                    token_id, actual_price
+                );
+            }
+        }
     }
 
     println!("✓ Chart API works with webassemblymusic-treasury data");
     println!(
-        "✓ All {} expected tokens present with correct balances",
+        "✓ All {} expected tokens present with correct balances and prices",
         expected_tokens.len()
     );
 }
