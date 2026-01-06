@@ -267,10 +267,10 @@ pub fn token_id_to_asset_id(token_id: &str) -> Option<String> {
     // Look up in defuse tokens map
     if get_defuse_tokens_map().contains_key(&defuse_asset_id) {
         // Found the base token, now find its unified asset ID
-        if let Some(unified_id) = find_unified_asset_id_for_defuse_id(&defuse_asset_id) {
-            if let Some(asset_id) = get_unified_to_asset_id_map().get(unified_id.as_str()) {
-                return Some(asset_id.to_string());
-            }
+        if let Some(unified_id) = find_unified_asset_id_for_defuse_id(&defuse_asset_id)
+            && let Some(asset_id) = get_unified_to_asset_id_map().get(unified_id.as_str())
+        {
+            return Some(asset_id.to_string());
         }
     }
 
