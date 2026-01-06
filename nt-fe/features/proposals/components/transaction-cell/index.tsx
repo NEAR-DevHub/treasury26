@@ -18,16 +18,18 @@ import {
   UnknownData,
 } from "../../types/index";
 import { ChangeConfigCell } from "./change-config-cell";
+import { Policy } from "@/types/policy";
 
 interface TransactionCellProps {
   proposal: Proposal;
+  policy: Policy;
 }
 
 /**
  * Renders the transaction cell based on proposal type
  */
-export function TransactionCell({ proposal }: TransactionCellProps) {
-  const { type, data } = extractProposalData(proposal);
+export function TransactionCell({ proposal, policy }: TransactionCellProps) {
+  const { type, data } = extractProposalData(proposal, policy);
 
   switch (type) {
     case "Payment Request": {

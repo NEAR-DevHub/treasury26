@@ -34,8 +34,8 @@ interface ExpandedViewProps {
   hideOpenInNewTab?: boolean;
 }
 
-function ExpandedViewInternal({ proposal }: ExpandedViewProps) {
-  const { type, data } = extractProposalData(proposal);
+function ExpandedViewInternal({ proposal, policy }: ExpandedViewProps) {
+  const { type, data } = extractProposalData(proposal, policy);
 
   switch (type) {
     case "Payment Request": {

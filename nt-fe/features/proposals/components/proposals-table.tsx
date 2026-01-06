@@ -135,7 +135,7 @@ export function ProposalsTable({
         header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Transaction</span>,
         cell: ({ row }) => (
           <div className="max-w-[300px] truncate">
-            <TransactionCell proposal={row.original} />
+            <TransactionCell proposal={row.original} policy={policy} />
           </div>
         ),
       }),

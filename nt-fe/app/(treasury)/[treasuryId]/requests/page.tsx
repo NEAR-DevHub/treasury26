@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/compon
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
@@ -135,6 +135,12 @@ export default function RequestsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
+  const treasuryId = params?.treasuryId as string | undefined;
+  const { data: proposals } = useProposals(treasuryId, {
+    statuses: ["InProgress"],
+  })
+
 
   const currentTab = searchParams.get("tab") || "all";
 
@@ -152,7 +158,13 @@ export default function RequestsPage() {
           <div className="flex items-center justify-between mb-4">
             <TabsList className="w-fit border-none">
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
+              <TabsTrigger value="pending" className="flex gap-1">Pending
+                {proposals?.proposals && proposals.proposals.length > 0 &&
+                  < span className="flex size-5 items-center justify-center rounded-[8px] px-2 py-[3px] bg-orange-500 text-xs font-semibold text-white">
+                    {proposals?.proposals.length}
+                  </span>
+                }
+              </TabsTrigger>
               <TabsTrigger value="executed">Executed</TabsTrigger>
               <TabsTrigger value="rejected">Rejected</TabsTrigger>
               <TabsTrigger value="expired">Expired</TabsTrigger>
@@ -186,6 +198,6 @@ export default function RequestsPage() {
           </TabsContents>
         </Tabs>
       </PageCard>
-    </PageComponentLayout>
+    </PageComponentLayout >
   );
 }
