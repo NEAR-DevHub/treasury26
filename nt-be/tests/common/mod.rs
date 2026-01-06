@@ -133,7 +133,10 @@ async fn setup_coingecko_mocks(mock_server: &MockServer) {
     for (asset_id, json_data) in assets {
         // Mock the market_chart/range endpoint (bulk historical prices)
         Mock::given(method("GET"))
-            .and(path_regex(format!(r"^/coins/{}/market_chart/range", asset_id)))
+            .and(path_regex(format!(
+                r"^/coins/{}/market_chart/range",
+                asset_id
+            )))
             .respond_with(
                 ResponseTemplate::new(200)
                     .set_body_string(json_data)

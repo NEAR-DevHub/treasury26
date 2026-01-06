@@ -186,14 +186,26 @@ async fn test_balance_chart_with_real_data() {
     // Values are decimal-formatted strings from the API (BigDecimal includes trailing zeros)
     // Prices are from CoinGecko mock data for Dec 5, 2025
     let expected_tokens: Vec<(&str, &str, Option<f64>)> = vec![
-        ("near", "26.470207505625583899999977", Some(1.796074794371314)),
+        (
+            "near",
+            "26.470207505625583899999977",
+            Some(1.796074794371314),
+        ),
         (
             "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
             "9.99998000",
             Some(0.9998048293821208), // USDC
         ),
-        ("intents.near:nep141:btc.omft.near", "0.00544253", Some(92140.70419795792)),
-        ("intents.near:nep141:xrp.omft.near", "16.69236700", Some(2.0971829811461946)),
+        (
+            "intents.near:nep141:btc.omft.near",
+            "0.00544253",
+            Some(92140.70419795792),
+        ),
+        (
+            "intents.near:nep141:xrp.omft.near",
+            "16.69236700",
+            Some(2.0971829811461946),
+        ),
         (
             "intents.near:nep141:eth.omft.near",
             "0.03501508842977613200",
@@ -214,8 +226,16 @@ async fn test_balance_chart_with_real_data() {
             "119",
             Some(0.9998048293821208), // USDC on NEAR
         ),
-        ("intents.near:nep141:sol.omft.near", "0.08342401", Some(139.0035856702843)),
-        ("intents.near:nep141:wrap.near", "0.8000", Some(1.796074794371314)), // wNEAR = NEAR price
+        (
+            "intents.near:nep141:sol.omft.near",
+            "0.08342401",
+            Some(139.0035856702843),
+        ),
+        (
+            "intents.near:nep141:wrap.near",
+            "0.8000",
+            Some(1.796074794371314),
+        ), // wNEAR = NEAR price
         ("arizcredits.near", "3", None), // Unknown token - no price data
     ];
 
@@ -273,14 +293,17 @@ async fn test_balance_chart_with_real_data() {
                 assert!(
                     (actual - expected).abs() < 0.0001,
                     "Price mismatch for token {} on Dec 5: expected {}, got {}",
-                    token_id, expected, actual
+                    token_id,
+                    expected,
+                    actual
                 );
             }
             None => {
                 assert!(
                     actual_price.is_none(),
                     "Expected no price_usd for token {} but got {:?}",
-                    token_id, actual_price
+                    token_id,
+                    actual_price
                 );
             }
         }

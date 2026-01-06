@@ -82,17 +82,16 @@ impl<P: PriceProvider> PriceLookupService<P> {
 
         // Check cache first
         if let Some(cached_price) = self.get_cached_price(&asset_id, date).await? {
-            log::debug!(
-                "Cache hit for {} on {}: ${}",
-                asset_id,
-                date,
-                cached_price
-            );
+            log::debug!("Cache hit for {} on {}: ${}", asset_id, date, cached_price);
             return Ok(Some(cached_price));
         }
 
         // Fetch from provider
-        log::debug!("Cache miss for {} on {}, fetching from provider", asset_id, date);
+        log::debug!(
+            "Cache miss for {} on {}, fetching from provider",
+            asset_id,
+            date
+        );
         let price = self.provider.get_price_at_date(&asset_id, date).await?;
 
         // Cache the result if we got a price
@@ -160,11 +159,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
                 }
             }
             Err(e) => {
-                log::warn!(
-                    "Failed to fetch historical prices for {}: {}",
-                    asset_id,
-                    e
-                );
+                log::warn!("Failed to fetch historical prices for {}: {}", asset_id, e);
             }
         }
 
@@ -427,7 +422,9 @@ mod tests {
     fn test_token_id_to_asset_id_usdc_native() {
         // Native NEAR USDC contract
         assert_eq!(
-            token_id_to_asset_id("intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"),
+            token_id_to_asset_id(
+                "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+            ),
             Some("usd-coin".to_string())
         );
     }
@@ -436,7 +433,9 @@ mod tests {
     fn test_token_id_to_asset_id_usdc_base() {
         // Base chain USDC bridged
         assert_eq!(
-            token_id_to_asset_id("intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"),
+            token_id_to_asset_id(
+                "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+            ),
             Some("usd-coin".to_string())
         );
     }
@@ -454,10 +453,7 @@ mod tests {
             token_id_to_defuse_asset_id("intents.near:nep141:btc.omft.near"),
             "nep141:btc.omft.near"
         );
-        assert_eq!(
-            token_id_to_defuse_asset_id("wrap.near"),
-            "nep141:wrap.near"
-        );
+        assert_eq!(token_id_to_defuse_asset_id("wrap.near"), "nep141:wrap.near");
         assert_eq!(
             token_id_to_defuse_asset_id("nep141:btc.omft.near"),
             "nep141:btc.omft.near"
