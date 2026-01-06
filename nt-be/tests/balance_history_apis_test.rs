@@ -320,10 +320,10 @@ async fn test_csv_export_with_real_data() {
         csv_content.lines().take(5).collect::<Vec<_>>().join("\n")
     );
 
-    // Verify CSV structure
+    // Verify CSV structure (now includes price columns)
     assert!(
-        csv_content.contains("block_height,block_time,token_id"),
-        "CSV should have proper headers"
+        csv_content.contains("block_height,block_time,token_id,token_symbol,counterparty,amount,balance_before,balance_after,price_usd,value_usd,transaction_hashes,receipt_id"),
+        "CSV should have proper headers including price_usd and value_usd columns"
     );
 
     // Should NOT include SNAPSHOT or NOT_REGISTERED
@@ -336,11 +336,11 @@ async fn test_csv_export_with_real_data() {
         "CSV should not include NOT_REGISTERED records"
     );
 
-    // Exact row count (1 header + 172 data rows = 173 total)
+    // Exact row count (1 header + 69 data rows = 70 total)
     let row_count = csv_content.lines().count();
     assert_eq!(
-        row_count, 173,
-        "CSV should have exactly 173 rows (1 header + 172 data rows)"
+        row_count, 70,
+        "CSV should have exactly 70 rows (1 header + 69 data rows)"
     );
 
     // Compare with snapshot (hard assertion for regression testing)

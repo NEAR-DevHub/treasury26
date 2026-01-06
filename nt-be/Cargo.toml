@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-trait = "0.1"
 axum = { version = "0.8.7", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors"] }

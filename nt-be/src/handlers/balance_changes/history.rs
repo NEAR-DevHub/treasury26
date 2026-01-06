@@ -61,11 +61,15 @@ pub struct ChartRequest {
 pub struct BalanceSnapshot {
     pub timestamp: String,   // ISO 8601 format
     pub balance: BigDecimal, // Decimal-adjusted balance
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub price_usd: Option<f64>, // USD price at timestamp (null if unavailable)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value_usd: Option<f64>, // balance * price_usd (null if unavailable)
 }
 
 /// Chart API - returns balance snapshots at intervals
 ///
-/// Response format: { "token_id": [{"timestamp": "...", "balance": "..."}] }
+/// Response format: { "token_id": [{"timestamp": "...", "balance": "...", "price_usd": ..., "value_usd": ...}] }
 pub async fn get_balance_chart(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ChartRequest>,
@@ -92,13 +96,18 @@ pub async fn get_balance_chart(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Calculate snapshots at each interval
-    let snapshots = calculate_snapshots(
+    let mut snapshots = calculate_snapshots(
         changes,
         prior_balances,
         params.start_time,
         params.end_time,
         &params.interval,
     );
+
+    // Enrich snapshots with price data if price service is available
+    if let Some(price_service) = &state.price_service {
+        enrich_snapshots_with_prices(&mut snapshots, price_service).await;
+    }
 
     Ok(Json(snapshots))
 }
@@ -122,6 +131,7 @@ pub async fn export_balance_csv(
     // Query balance changes
     let csv_data = generate_csv(
         &state.db_pool,
+        state.price_service.as_ref(),
         &params.account_id,
         params.start_time,
         params.end_time,
@@ -235,7 +245,7 @@ async fn load_balance_changes(
     start_time: DateTime<Utc>,
     end_time: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
-) -> Result<Vec<BalanceChange>, Box<dyn std::error::Error>> {
+) -> Result<Vec<BalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
     let rows = if let Some(tokens) = token_ids {
         sqlx::query!(
             r#"
@@ -370,6 +380,8 @@ fn calculate_snapshots(
             snapshots.push(BalanceSnapshot {
                 timestamp: current_time.to_rfc3339(),
                 balance,
+                price_usd: None,
+                value_usd: None,
             });
 
             current_time = interval.increment(current_time);
@@ -381,20 +393,106 @@ fn calculate_snapshots(
     result
 }
 
+/// Enrich snapshots with USD price data
+async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
+    snapshots: &mut HashMap<String, Vec<BalanceSnapshot>>,
+    price_service: &crate::services::PriceLookupService<P>,
+) {
+    use bigdecimal::ToPrimitive;
+    use chrono::NaiveDate;
+
+    for (token_id, token_snapshots) in snapshots.iter_mut() {
+        // Collect all unique dates for this token
+        let dates: Vec<NaiveDate> = token_snapshots
+            .iter()
+            .filter_map(|s| {
+                DateTime::parse_from_rfc3339(&s.timestamp)
+                    .ok()
+                    .map(|dt| dt.date_naive())
+            })
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        if dates.is_empty() {
+            continue;
+        }
+
+        // Batch fetch prices for all dates
+        let prices = match price_service.get_prices_batch(token_id, &dates).await {
+            Ok(p) => p,
+            Err(e) => {
+                log::warn!("Failed to fetch prices for {}: {}", token_id, e);
+                continue;
+            }
+        };
+
+        // Enrich each snapshot with price data
+        for snapshot in token_snapshots.iter_mut() {
+            if let Ok(dt) = DateTime::parse_from_rfc3339(&snapshot.timestamp) {
+                let date = dt.date_naive();
+                if let Some(&price) = prices.get(&date) {
+                    snapshot.price_usd = Some(price);
+                    // Calculate value_usd = balance * price
+                    if let Some(balance_f64) = snapshot.balance.to_f64() {
+                        snapshot.value_usd = Some(balance_f64 * price);
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Generate CSV from balance changes
-async fn generate_csv(
+async fn generate_csv<P: crate::services::PriceProvider>(
     pool: &PgPool,
+    price_service: Option<&crate::services::PriceLookupService<P>>,
     account_id: &str,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    use bigdecimal::ToPrimitive;
+    use chrono::NaiveDate;
+    use std::collections::HashSet;
+
     let changes = load_balance_changes(pool, account_id, start_date, end_date, token_ids).await?;
+
+    // Pre-fetch prices for all token/date combinations to avoid per-row API calls
+    let mut prices_cache: HashMap<(String, NaiveDate), f64> = HashMap::new();
+    if let Some(ps) = price_service {
+        // Collect all unique (token_id, date) pairs
+        let mut token_dates: HashMap<String, HashSet<NaiveDate>> = HashMap::new();
+        for change in &changes {
+            if change.counterparty == "SNAPSHOT" || change.counterparty == "NOT_REGISTERED" {
+                continue;
+            }
+            token_dates
+                .entry(change.token_id.clone())
+                .or_default()
+                .insert(change.block_time.date_naive());
+        }
+
+        // Batch fetch prices for each token
+        for (token_id, dates) in token_dates {
+            let dates_vec: Vec<_> = dates.into_iter().collect();
+            match ps.get_prices_batch(&token_id, &dates_vec).await {
+                Ok(token_prices) => {
+                    for (date, price) in token_prices {
+                        prices_cache.insert((token_id.clone(), date), price);
+                    }
+                }
+                Err(e) => {
+                    log::debug!("Failed to batch fetch prices for {}: {}", token_id, e);
+                }
+            }
+        }
+    }
 
     let mut csv = String::new();
 
-    // Header
-    csv.push_str("block_height,block_time,token_id,token_symbol,counterparty,amount,balance_before,balance_after,transaction_hashes,receipt_id\n");
+    // Header (with price columns)
+    csv.push_str("block_height,block_time,token_id,token_symbol,counterparty,amount,balance_before,balance_after,price_usd,value_usd,transaction_hashes,receipt_id\n");
 
     // Rows (exclude SNAPSHOT and NOT_REGISTERED)
     for change in changes {
@@ -406,8 +504,21 @@ async fn generate_csv(
         let receipt_id = change.receipt_id.first().map(|s| s.as_str()).unwrap_or("");
         let token_symbol = change.token_symbol.as_deref().unwrap_or("");
 
+        // Look up price from pre-fetched cache
+        let date = change.block_time.date_naive();
+        let (price_usd, value_usd) = prices_cache
+            .get(&(change.token_id.clone(), date))
+            .map(|&price| {
+                let value = change.balance_after.to_f64().map(|b| b * price);
+                (Some(price), value)
+            })
+            .unwrap_or((None, None));
+
+        let price_str = price_usd.map(|p| format!("{}", p)).unwrap_or_default();
+        let value_str = value_usd.map(|v| format!("{}", v)).unwrap_or_default();
+
         csv.push_str(&format!(
-            "{},{},{},{},{},{},{},{},{},{}\n",
+            "{},{},{},{},{},{},{},{},{},{},{},{}\n",
             change.block_height,
             change.block_time.to_rfc3339(),
             change.token_id,
@@ -416,6 +527,8 @@ async fn generate_csv(
             change.amount,
             change.balance_before,
             change.balance_after,
+            price_str,
+            value_str,
             tx_hashes,
             receipt_id
         ));

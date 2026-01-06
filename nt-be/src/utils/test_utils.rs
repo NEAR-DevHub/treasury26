@@ -49,8 +49,17 @@ pub async fn init_test_state() -> AppState {
         .connect_lazy(&env_vars.database_url)
         .expect("Failed to create lazy pool");
 
+    let http_client = reqwest::Client::new();
+
+    // Initialize price service if CoinGecko API key is available
+    let price_service = env_vars.coingecko_api_key.as_ref().map(|api_key| {
+        let coingecko_client =
+            crate::services::CoinGeckoClient::new(http_client.clone(), api_key.clone());
+        crate::services::PriceLookupService::new(db_pool.clone(), coingecko_client)
+    });
+
     AppState {
-        http_client: reqwest::Client::new(),
+        http_client,
         cache,
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
@@ -79,5 +88,6 @@ pub async fn init_test_state() -> AppState {
         },
         env_vars,
         db_pool,
+        price_service,
     }
 }

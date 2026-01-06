@@ -52,6 +52,7 @@ impl TestServer {
                 "ed25519:3tgdk2wPraJzT4nsTuf86UX41xgPNk3MHnq8epARMdBNs29AFEztAuaQ7iHddDfXG9F2RzV1XNQYgJyAyoW51UBB",
             )
             .env("SIGNER_ID", "sandbox")
+            .env("COINGECKO_API_KEY", "") // Disable price service for consistent test results
             .spawn()
             .expect("Failed to start server");
 
