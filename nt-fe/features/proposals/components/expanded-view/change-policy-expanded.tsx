@@ -32,7 +32,7 @@ function formatFieldValue(field: PolicyChange["field"], value: string): React.Re
   const isDurationField = field === "proposal_period" || field === "bounty_forgiveness_period";
 
   if (isAmountField) {
-    return <Amount amount={value} tokenId="near" />;
+    return <Amount amount={value} showNetwork tokenId="near" />;
   }
   if (isDurationField) {
     return <span>{formatNanosecondDuration(value)}</span>;
@@ -65,7 +65,7 @@ function formatThreshold(threshold: any): React.ReactNode {
     return <span>{threshold}</span>;
   }
   if (Array.isArray(threshold) && threshold.length === 2) {
-    return <span>{threshold[0]} Votes (threshold)</span>;
+    return <span>{threshold[0]} Votes</span>;
   }
   return <span>{JSON.stringify(threshold)}</span>;
 }

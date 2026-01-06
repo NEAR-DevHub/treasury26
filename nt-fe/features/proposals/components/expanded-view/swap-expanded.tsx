@@ -27,11 +27,11 @@ export function SwapExpanded({ data }: SwapExpandedProps) {
   const infoItems: InfoItem[] = [
     {
       label: "Send",
-      value: <Amount amount={data.amountIn} tokenId={tokensData?.tokenIn?.defuseAssetId || data.tokenIn} showNetwork={true} />
+      value: <Amount amount={data.amountIn} showNetwork tokenId={tokensData?.tokenIn?.defuseAssetId || data.tokenIn} />
     },
     {
       label: "Receive",
-      value: <Amount amountWithDecimals={data.amountOut} tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} showNetwork={true} />
+      value: <Amount amountWithDecimals={data.amountOut} showNetwork tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} />
     },
     {
       label: "Rate",
@@ -59,7 +59,7 @@ export function SwapExpanded({ data }: SwapExpandedProps) {
 
   expandableItems.push({
     label: "Minimum Received",
-    value: <Amount amountWithDecimals={minimumReceived.toString()} tokenId={data.tokenOut} />,
+    value: <Amount amountWithDecimals={minimumReceived.toString()} showNetwork tokenId={data.tokenOut} />,
     info: "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request."
   });
 
