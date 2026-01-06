@@ -11,8 +11,8 @@ use std::collections::HashMap;
 
 use super::price_provider::PriceProvider;
 
-/// CoinGecko Pro API base URL
-const COINGECKO_API_BASE: &str = "https://pro-api.coingecko.com/api/v3";
+/// Default CoinGecko Pro API base URL
+const DEFAULT_COINGECKO_API_BASE: &str = "https://pro-api.coingecko.com/api/v3";
 
 /// How far back to fetch historical prices (in days)
 /// CoinGecko Pro allows up to 365 days for market_chart/range with daily granularity
@@ -51,10 +51,11 @@ struct MarketChartRangeResponse {
 pub struct CoinGeckoClient {
     http_client: Client,
     api_key: String,
+    base_url: String,
 }
 
 impl CoinGeckoClient {
-    /// Creates a new CoinGecko client
+    /// Creates a new CoinGecko client with the default API base URL
     ///
     /// # Arguments
     /// * `http_client` - Shared HTTP client for making requests
@@ -63,6 +64,18 @@ impl CoinGeckoClient {
         Self {
             http_client,
             api_key,
+            base_url: DEFAULT_COINGECKO_API_BASE.to_string(),
+        }
+    }
+
+    /// Creates a new CoinGecko client with a custom API base URL
+    ///
+    /// This is useful for testing with a mock server.
+    pub fn with_base_url(http_client: Client, api_key: String, base_url: String) -> Self {
+        Self {
+            http_client,
+            api_key,
+            base_url,
         }
     }
 }
@@ -83,7 +96,7 @@ impl PriceProvider for CoinGeckoClient {
 
         let url = format!(
             "{}/coins/{}/history?date={}&localization=false",
-            COINGECKO_API_BASE, asset_id, date_str
+            self.base_url, asset_id, date_str
         );
 
         log::debug!("Fetching price from CoinGecko: {} for {}", asset_id, date);
@@ -143,7 +156,7 @@ impl PriceProvider for CoinGeckoClient {
 
         let url = format!(
             "{}/coins/{}/market_chart/range?vs_currency=usd&from={}&to={}",
-            COINGECKO_API_BASE,
+            self.base_url,
             asset_id,
             from.timestamp(),
             now.timestamp()

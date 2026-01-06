@@ -57,8 +57,17 @@ pub async fn init_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
 
     // Initialize price service if CoinGecko API key is available
     let price_service = env_vars.coingecko_api_key.as_ref().map(|api_key| {
-        log::info!("CoinGecko API key found, initializing price service");
-        let coingecko_client = CoinGeckoClient::new(http_client.clone(), api_key.clone());
+        // Use custom base URL if provided (for testing with mock server)
+        let coingecko_client = if let Some(base_url) = &env_vars.coingecko_api_base_url {
+            log::info!(
+                "CoinGecko API key found, using custom base URL: {}",
+                base_url
+            );
+            CoinGeckoClient::with_base_url(http_client.clone(), api_key.clone(), base_url.clone())
+        } else {
+            log::info!("CoinGecko API key found, initializing price service");
+            CoinGeckoClient::new(http_client.clone(), api_key.clone())
+        };
         PriceLookupService::new(db_pool.clone(), coingecko_client)
     });
 
