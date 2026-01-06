@@ -144,7 +144,7 @@ export default function RequestsPage() {
   })
 
 
-  const currentTab = searchParams.get("tab") || "all";
+  const currentTab = searchParams.get("tab") || "pending";
 
   const handleTabChange = useCallback((value: string) => {
     const params = new URLSearchParams(searchParams.toString());
