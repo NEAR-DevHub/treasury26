@@ -28,6 +28,7 @@ import {
 import { getProposalUIKind } from "./proposal-utils";
 import { ProposalUIKind } from "../types/index";
 import { Policy } from "@/types/policy";
+import { TreasuryConfig } from "@/lib/api";
 import { Action } from "@hot-labs/near-connect/build/types";
 import { getKindFromProposal } from "@/lib/config-utils";
 
@@ -410,7 +411,7 @@ export function extractChangePolicyData(proposal: Proposal, currentPolicy: Polic
 /**
  * Extract Change Config data from proposal
  */
-export function extractChangeConfigData(proposal: Proposal): ChangeConfigData {
+export function extractChangeConfigData(proposal: Proposal, currentConfig?: TreasuryConfig | null): ChangeConfigData {
   if (!("ChangeConfig" in proposal.kind)) {
     throw new Error("Proposal is not a Change Config proposal");
   }
@@ -420,9 +421,16 @@ export function extractChangeConfigData(proposal: Proposal): ChangeConfigData {
   const metadataFromBase64 = decodeArgs(metadata) || {};
 
   return {
-    name,
-    purpose,
-    metadata: metadataFromBase64,
+    oldConfig: {
+      name: currentConfig?.name ?? null,
+      purpose: currentConfig?.purpose ?? null,
+      metadata: currentConfig?.metadata ? (typeof currentConfig.metadata === 'string' ? decodeArgs(currentConfig.metadata) : currentConfig.metadata) : null,
+    },
+    newConfig: {
+      name,
+      purpose,
+      metadata: metadataFromBase64,
+    },
   };
 }
 
@@ -763,7 +771,7 @@ export function extractUnknownData(proposal: Proposal): UnknownData {
 /**
  * Main extractor that routes to the appropriate extractor based on proposal type
  */
-export function extractProposalData(proposal: Proposal, policy: Policy): {
+export function extractProposalData(proposal: Proposal, policy: Policy, config?: TreasuryConfig | null): {
   type: ProposalUIKind;
   data: AnyProposalData;
 } {
@@ -785,7 +793,7 @@ export function extractProposalData(proposal: Proposal, policy: Policy): {
       data = extractChangePolicyData(proposal, policy);
       break;
     case "Update General Settings":
-      data = extractChangeConfigData(proposal);
+      data = extractChangeConfigData(proposal, config);
       break;
     case "Earn NEAR":
     case "Unstake NEAR":

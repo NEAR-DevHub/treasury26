@@ -4,7 +4,7 @@ import { use } from "react";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { ExpandedView } from "@/features/proposals";
 import { useProposal } from "@/hooks/use-proposals";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 
 interface RequestPageProps {
@@ -18,8 +18,9 @@ export default function RequestPage({ params }: RequestPageProps) {
     const { selectedTreasury } = useTreasury();
     const { data: proposal, isLoading: isLoadingProposal, error: errorProposal } = useProposal(selectedTreasury, id);
     const { data: policy, isLoading: isLoadingPolicy, error: errorPolicy } = useTreasuryPolicy(selectedTreasury);
+    const { data: config, isLoading: isLoadingConfig } = useTreasuryConfig(selectedTreasury);
 
-    if (isLoadingProposal || isLoadingPolicy) {
+    if (isLoadingProposal || isLoadingPolicy || isLoadingConfig) {
         return <div>Loading...</div>;
     }
 
@@ -28,8 +29,8 @@ export default function RequestPage({ params }: RequestPageProps) {
     }
 
     return (
-        <PageComponentLayout title={`Request #${proposal?.id}`} description="Details for  Request" backButton={`/${selectedTreasury}/requests`}>
-            <ExpandedView proposal={proposal!} policy={policy!} hideOpenInNewTab />
+        <PageComponentLayout title={`Request #${proposal?.id}`} description="Details for Request" backButton={`/${selectedTreasury}/requests`}>
+            <ExpandedView proposal={proposal!} policy={policy!} config={config?.config} hideOpenInNewTab />
         </PageComponentLayout>
     );
 }

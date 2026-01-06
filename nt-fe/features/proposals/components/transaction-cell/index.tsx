@@ -19,17 +19,19 @@ import {
 } from "../../types/index";
 import { ChangeConfigCell } from "./change-config-cell";
 import { Policy } from "@/types/policy";
+import { TreasuryConfig } from "@/lib/api";
 
 interface TransactionCellProps {
   proposal: Proposal;
   policy: Policy;
+  config?: TreasuryConfig | null;
 }
 
 /**
  * Renders the transaction cell based on proposal type
  */
-export function TransactionCell({ proposal, policy }: TransactionCellProps) {
-  const { type, data } = extractProposalData(proposal, policy);
+export function TransactionCell({ proposal, policy, config }: TransactionCellProps) {
+  const { type, data } = extractProposalData(proposal, policy, config);
 
   switch (type) {
     case "Payment Request": {

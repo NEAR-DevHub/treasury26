@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Pill } from "@/components/pill";
 import { ApprovalInfo } from "@/components/approval-info";
 import { Button } from "@/components/button";
+import { renderDiff, isNullValue } from "../../utils/diff-utils";
 
 interface ChangePolicyExpandedProps {
   data: ChangePolicyData;
@@ -26,6 +27,7 @@ function formatFieldLabel(field: PolicyChange["field"]): string {
 }
 
 function formatFieldValue(field: PolicyChange["field"], value: string): React.ReactNode {
+  if (isNullValue(value)) return <span className="text-muted-foreground/50">null</span>;
   const isAmountField = field === "proposal_bond" || field === "bounty_bond";
   const isDurationField = field === "proposal_period" || field === "bounty_forgiveness_period";
 
@@ -53,6 +55,7 @@ function formatVotePolicyFieldLabel(field: VotePolicyChange["field"], roleName?:
 }
 
 function formatThreshold(threshold: any): React.ReactNode {
+  if (isNullValue(threshold)) return <span className="text-muted-foreground/50">null</span>;
   if (typeof threshold === "string") {
     const parsed = parseInt(threshold);
     if (!isNaN(parsed)) {
@@ -70,7 +73,7 @@ function formatVotePolicyValue(field: VotePolicyChange["field"], value: any): Re
   if (field === "threshold") {
     return formatThreshold(value);
   }
-  return <span>{String(value)}</span>;
+  return isNullValue(value) ? <span className="text-muted-foreground/50">null</span> : <span>{String(value)}</span>;
 }
 
 interface MemberChangesDisplayProps {
@@ -245,25 +248,27 @@ export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
 
   // Add policy parameter changes
   data.policyChanges.forEach((change) => {
+    const isOldNull = change.oldValue === "null" || change.oldValue === null;
     items.push({
-      label: `Old ${formatFieldLabel(change.field)}`,
-      value: formatFieldValue(change.field, change.oldValue ?? "null")
-    });
-    items.push({
-      label: `New ${formatFieldLabel(change.field)}`,
-      value: formatFieldValue(change.field, change.newValue ?? "null")
+      label: formatFieldLabel(change.field),
+      value: renderDiff(
+        formatFieldValue(change.field, change.oldValue ?? "null"),
+        formatFieldValue(change.field, change.newValue ?? "null"),
+        isOldNull
+      )
     });
   });
 
   // Add default vote policy changes
   data.defaultVotePolicyChanges.forEach((change) => {
+    const isOldNull = change.oldValue === null || change.oldValue === undefined;
     items.push({
-      label: `Old ${formatVotePolicyFieldLabel(change.field)}`,
-      value: formatVotePolicyValue(change.field, change.oldValue)
-    });
-    items.push({
-      label: `New ${formatVotePolicyFieldLabel(change.field)}`,
-      value: formatVotePolicyValue(change.field, change.newValue)
+      label: formatVotePolicyFieldLabel(change.field),
+      value: renderDiff(
+        formatVotePolicyValue(change.field, change.oldValue),
+        formatVotePolicyValue(change.field, change.newValue),
+        isOldNull
+      )
     });
   });
 
@@ -312,57 +317,62 @@ export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
           // Add threshold changes (use first change since threshold is role-wide)
           if (firstChange.oldThreshold !== undefined && firstChange.newThreshold !== undefined &&
             JSON.stringify(firstChange.oldThreshold) !== JSON.stringify(firstChange.newThreshold)) {
+            const isOldNull = firstChange.oldThreshold === null;
             roleItems.push({
-              label: `Old ${formatVotePolicyFieldLabel("threshold", roleName)}`,
-              value: <span>{formatVotePolicyValue("threshold", firstChange.oldThreshold)}</span>
-            });
-            roleItems.push({
-              label: `New ${formatVotePolicyFieldLabel("threshold", roleName)}`,
-              value: <span>{formatVotePolicyValue("threshold", firstChange.newThreshold)}</span>
+              label: formatVotePolicyFieldLabel("threshold", roleName),
+              value: renderDiff(
+                formatVotePolicyValue("threshold", firstChange.oldThreshold),
+                formatVotePolicyValue("threshold", firstChange.newThreshold),
+                isOldNull
+              )
             });
           }
 
           // Add quorum changes
           if (firstChange.oldQuorum !== firstChange.newQuorum) {
+            const isOldNull = firstChange.oldQuorum === null || firstChange.oldQuorum === undefined;
             roleItems.push({
-              label: "Old Quorum",
-              value: <span>{firstChange.oldQuorum}</span>
-            });
-            roleItems.push({
-              label: "New Quorum",
-              value: <span>{firstChange.newQuorum}</span>
+              label: "Quorum",
+              value: renderDiff(
+                formatVotePolicyValue("quorum", firstChange.oldQuorum),
+                formatVotePolicyValue("quorum", firstChange.newQuorum),
+                isOldNull
+              )
             });
           }
 
           // Add weight kind changes
           if (firstChange.oldWeightKind !== firstChange.newWeightKind) {
+            const isOldNull = firstChange.oldWeightKind === null || firstChange.oldWeightKind === undefined;
             roleItems.push({
-              label: "Old Weight Kind",
-              value: <span>{firstChange.oldWeightKind}</span>
-            });
-            roleItems.push({
-              label: "New Weight Kind",
-              value: <span>{firstChange.newWeightKind}</span>
+              label: "Weight Kind",
+              value: renderDiff(
+                formatVotePolicyValue("weight_kind", firstChange.oldWeightKind),
+                formatVotePolicyValue("weight_kind", firstChange.newWeightKind),
+                isOldNull
+              )
             });
           }
 
           // Add permissions changes
-          if (firstChange.oldPermissions && firstChange.newPermissions) {
+          if (firstChange.oldPermissions && firstChange.newPermissions &&
+            JSON.stringify([...firstChange.oldPermissions].sort()) !== JSON.stringify([...firstChange.newPermissions].sort())) {
+            const isOldNull = firstChange.oldPermissions === null;
             roleItems.push({
-              label: "Old Permissions",
-              value: <div className="flex flex-wrap gap-1">
-                {firstChange.oldPermissions.map((permission) => (
-                  <Pill key={permission} title={permission} variant="secondary" />
-                ))}
-              </div>
-            });
-            roleItems.push({
-              label: "New Permissions",
-              value: <div className="flex flex-wrap gap-1">
-                {firstChange.newPermissions.map((permission) => (
-                  <Pill key={permission} title={permission} variant="secondary" />
-                ))}
-              </div>
+              label: "Permissions",
+              value: renderDiff(
+                <div className="flex flex-wrap gap-1">
+                  {firstChange.oldPermissions?.map((permission) => (
+                    <Pill key={permission} title={permission} variant="secondary" />
+                  )) || <span className="text-muted-foreground/50">null</span>}
+                </div>,
+                <div className="flex flex-wrap gap-1">
+                  {firstChange.newPermissions.map((permission) => (
+                    <Pill key={permission} title={permission} variant="secondary" />
+                  ))}
+                </div>,
+                isOldNull
+              )
             });
           }
 

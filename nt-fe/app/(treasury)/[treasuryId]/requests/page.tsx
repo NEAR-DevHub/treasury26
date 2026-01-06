@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
 import { Download } from "lucide-react";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
 import { addDays } from "date-fns";
@@ -19,6 +19,7 @@ import { addDays } from "date-fns";
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const { data: config } = useTreasuryConfig(selectedTreasury);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -121,6 +122,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
         <ProposalsTable
           proposals={data.proposals}
           policy={policy}
+          config={config?.config}
           pageIndex={page}
           pageSize={pageSize}
           total={data.total}

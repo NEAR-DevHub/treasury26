@@ -9,6 +9,7 @@ import { Button } from "@/components/button";
 import { Copy, ExternalLink } from "lucide-react";
 import { TxDetails } from "./common/tx-details";
 import { Policy } from "@/types/policy";
+import { TreasuryConfig } from "@/lib/api";
 import { StakingExpanded } from "./staking-expanded";
 import { ChangeConfigExpanded } from "./change-config-expanded";
 import { SwapExpanded } from "./swap-expanded";
@@ -31,11 +32,12 @@ import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
 interface ExpandedViewProps {
   proposal: Proposal;
   policy: Policy;
+  config?: TreasuryConfig | null;
   hideOpenInNewTab?: boolean;
 }
 
-function ExpandedViewInternal({ proposal, policy }: ExpandedViewProps) {
-  const { type, data } = extractProposalData(proposal, policy);
+function ExpandedViewInternal({ proposal, policy, config }: ExpandedViewProps) {
+  const { type, data } = extractProposalData(proposal, policy, config);
 
   switch (type) {
     case "Payment Request": {
@@ -79,9 +81,9 @@ function ExpandedViewInternal({ proposal, policy }: ExpandedViewProps) {
   }
 }
 
-export function ExpandedView({ proposal, policy, hideOpenInNewTab = false }: ExpandedViewProps) {
+export function ExpandedView({ proposal, policy, config, hideOpenInNewTab = false }: ExpandedViewProps) {
   const { selectedTreasury } = useTreasury();
-  const component = ExpandedViewInternal({ proposal, policy });
+  const component = ExpandedViewInternal({ proposal, policy, config });
   const requestUrl = `${window.location.origin}/${selectedTreasury}/requests/${proposal.id}`;
   const onCopy = async () => {
     try {

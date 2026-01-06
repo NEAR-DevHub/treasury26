@@ -17,7 +17,9 @@ import { ExpandedView } from "./expanded-view";
 import { ProposalTypeIcon } from "./proposal-type-icon";
 import { VotingIndicator } from "./voting-indicator";
 import { Policy } from "@/types/policy";
+import { TreasuryConfig } from "@/lib/api";
 import { useFormatDate } from "@/components/formatted-date";
+
 import { TooltipUser } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
@@ -44,6 +46,7 @@ const columnHelper = createColumnHelper<Proposal>();
 interface ProposalsTableProps {
   proposals: Proposal[];
   policy: Policy;
+  config?: TreasuryConfig | null;
   pageIndex?: number;
   pageSize?: number;
   total?: number;
@@ -53,6 +56,7 @@ interface ProposalsTableProps {
 export function ProposalsTable({
   proposals,
   policy,
+  config,
   pageIndex = 0,
   pageSize = 10,
   total = 0,
@@ -135,7 +139,7 @@ export function ProposalsTable({
         header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Transaction</span>,
         cell: ({ row }) => (
           <div className="max-w-[300px] truncate">
-            <TransactionCell proposal={row.original} policy={policy} />
+            <TransactionCell proposal={row.original} policy={policy} config={config} />
           </div>
         ),
       }),
@@ -308,7 +312,7 @@ export function ProposalsTable({
                 {row.getIsExpanded() && (
                   <TableRow>
                     <TableCell colSpan={row.getVisibleCells().length} className="p-4 bg-background">
-                      <ExpandedView proposal={row.original} policy={policy} />
+                      <ExpandedView proposal={row.original} policy={policy} config={config} />
                     </TableCell>
                   </TableRow>
                 )}

@@ -115,9 +115,16 @@ export interface ChangePolicyData {
  * Data structure for Change Config proposals
  */
 export interface ChangeConfigData {
-    name: string;
-    purpose: string;
-    metadata: Record<string, any>;
+    oldConfig: {
+        name: string | null;
+        purpose: string | null;
+        metadata: Record<string, any> | null;
+    };
+    newConfig: {
+        name: string;
+        purpose: string;
+        metadata: Record<string, any>;
+    };
 }
 
 /**
