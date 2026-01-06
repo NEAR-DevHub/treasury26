@@ -4,41 +4,85 @@ interface ChangePolicyCellProps {
   data: ChangePolicyData;
 }
 
-const POLICY_CONFIG: Record<
-  ChangePolicyData["type"],
-  { title: string; subtitle: string }
-> = {
-  full: {
-    title: "Full Policy Update",
-    subtitle: "Complete policy replacement with new configuration",
-  },
-  update_parameters: {
-    title: "Policy Parameters",
-    subtitle: "Updated bond amounts and voting periods",
-  },
-  add_or_update_role: {
-    title: "Role Configuration",
-    subtitle: "Added or updated role permissions",
-  },
-  remove_role: {
-    title: "Role Removal",
-    subtitle: "Removed role from DAO policy",
-  },
-  update_default_vote_policy: {
-    title: "Default Vote Policy",
-    subtitle: "Updated default voting rules and thresholds",
-  },
-};
+function getSummary(data: ChangePolicyData): { title: string; subtitle: string } {
+  const totalRoleChanges =
+    data.roleChanges.addedMembers.length +
+    data.roleChanges.removedMembers.length +
+    data.roleChanges.updatedMembers.length;
+
+  // Count unique roles in roleDefinitionChanges
+  const uniqueRoles = new Set(data.roleChanges.roleDefinitionChanges.map(c => c.roleName));
+  const uniqueRoleCount = uniqueRoles.size;
+
+  const totalChanges =
+    data.policyChanges.length +
+    totalRoleChanges +
+    uniqueRoleCount +
+    data.defaultVotePolicyChanges.length;
+
+  if (totalChanges === 0) {
+    return {
+      title: "Policy Update",
+      subtitle: "No changes detected",
+    };
+  }
+
+  // Determine primary change type
+  const hasRoleChanges = totalRoleChanges > 0;
+  const hasRoleDefinitionChanges = uniqueRoleCount > 0;
+  const hasPolicyChanges = data.policyChanges.length > 0;
+  const hasVotePolicyChanges = data.defaultVotePolicyChanges.length > 0;
+
+  // Build summary parts
+  const parts: string[] = [];
+
+  if (hasRoleChanges) {
+    const added = data.roleChanges.addedMembers.length;
+    const removed = data.roleChanges.removedMembers.length;
+    const modified = data.roleChanges.updatedMembers.length;
+
+    if (added > 0) parts.push(`${added} member${added !== 1 ? "s" : ""} added`);
+    if (removed > 0) parts.push(`${removed} member${removed !== 1 ? "s" : ""} removed`);
+    if (modified > 0) parts.push(`${modified} member${modified !== 1 ? "s" : ""} updated`);
+  }
+
+  if (hasRoleDefinitionChanges) {
+    parts.push(`${uniqueRoleCount} role${uniqueRoleCount !== 1 ? "s" : ""} modified`);
+  }
+
+  if (hasPolicyChanges) {
+    parts.push(`${data.policyChanges.length} parameter${data.policyChanges.length !== 1 ? "s" : ""}`);
+  }
+
+  if (hasVotePolicyChanges) {
+    parts.push("default vote policy");
+  }
+
+  const subtitle = parts.join(", ");
+
+  // Determine title based on primary change
+  let title = "Policy Update";
+  if (hasRoleChanges && !hasPolicyChanges && !hasVotePolicyChanges) {
+    title = "Role Changes";
+  } else if (hasPolicyChanges && !hasRoleChanges && !hasVotePolicyChanges) {
+    title = "Policy Parameters";
+  } else if (hasVotePolicyChanges && !hasRoleChanges && !hasPolicyChanges) {
+    title = "Default Vote Policy";
+  } else if (hasRoleChanges && hasPolicyChanges) {
+    title = "Policy & Role Changes";
+  }
+
+  return { title, subtitle };
+}
 
 export function ChangePolicyCell({ data }: ChangePolicyCellProps) {
-  const { type } = data;
-  const config = POLICY_CONFIG[type];
+  const { title, subtitle } = getSummary(data);
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="font-medium">{config.title}</span>
+      <span className="font-medium">{title}</span>
       <span className="text-xs text-muted-foreground">
-        {config.subtitle}
+        {subtitle}
       </span>
     </div>
   );

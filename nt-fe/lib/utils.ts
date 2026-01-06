@@ -72,7 +72,7 @@ export function formatUserDate(
   options: FormatUserDateOptions = {}
 ): string {
   if (!date) return "";
-  
+
   const {
     timezone = null,
     timeFormat = "12",
@@ -119,21 +119,21 @@ export function formatUserDate(
     return formatter.format(dateObj);
   } catch (error) {
     console.error("Error formatting date with Intl:", error);
-    
+
     // Fallback to date-fns formatting
     let formatString = "MMM dd, yyyy";
     if (includeTime) {
       formatString += timeFormat === "12" ? " hh:mm a" : " HH:mm";
     }
-    
+
     let formattedDate = format(dateObj, formatString);
-    
+
     // Add timezone info as fallback
     if (includeTimezone) {
       const timezoneOffset = dateObj.getTimezoneOffset();
       const offsetHours = Math.abs(Math.floor(timezoneOffset / 60));
       const offsetMinutes = Math.abs(timezoneOffset % 60);
-      
+
       let timezoneStr = "UTC";
       if (timezoneOffset !== 0) {
         const sign = timezoneOffset > 0 ? "-" : "+";
@@ -141,7 +141,7 @@ export function formatUserDate(
       }
       formattedDate += ` ${timezoneStr}`;
     }
-    
+
     return formattedDate;
   }
 }
@@ -262,16 +262,8 @@ export function formatNanosecondDuration(nanoseconds: string): string {
   const minutes = seconds / 60;
   const hours = minutes / 60;
   const days = hours / 24;
-  const weeks = days / 7;
 
-  if (weeks >= 1) {
-    const wholeWeeks = Math.floor(weeks);
-    const remainingDays = Math.floor(days % 7);
-    if (remainingDays > 0) {
-      return `${wholeWeeks} week${wholeWeeks !== 1 ? 's' : ''}, ${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
-    }
-    return `${wholeWeeks} week${wholeWeeks !== 1 ? 's' : ''}`;
-  } else if (days >= 1) {
+  if (days >= 1) {
     const wholeDays = Math.floor(days);
     const remainingHours = Math.floor(hours % 24);
     if (remainingHours > 0) {

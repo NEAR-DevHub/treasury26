@@ -17,7 +17,9 @@ import { ExpandedView } from "./expanded-view";
 import { ProposalTypeIcon } from "./proposal-type-icon";
 import { VotingIndicator } from "./voting-indicator";
 import { Policy } from "@/types/policy";
+import { TreasuryConfig } from "@/lib/api";
 import { useFormatDate } from "@/components/formatted-date";
+
 import { TooltipUser } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
@@ -26,7 +28,7 @@ import { Pagination } from "@/components/pagination";
 import { ProposalStatusPill } from "./proposal-status-pill";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
-import { getApproversAndThreshold, getKindFromProposal } from "@/lib/config-utils";
+import { getApproversAndThreshold, getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
 
 import {
   ColumnDef,
@@ -38,12 +40,14 @@ import {
   ExpandedState,
   getPaginationRowModel,
 } from "@tanstack/react-table"
+import { VoteModal } from "./vote-modal";
 
 const columnHelper = createColumnHelper<Proposal>();
 
 interface ProposalsTableProps {
   proposals: Proposal[];
   policy: Policy;
+  config?: TreasuryConfig | null;
   pageIndex?: number;
   pageSize?: number;
   total?: number;
@@ -53,6 +57,7 @@ interface ProposalsTableProps {
 export function ProposalsTable({
   proposals,
   policy,
+  config,
   pageIndex = 0,
   pageSize = 10,
   total = 0,
@@ -60,7 +65,7 @@ export function ProposalsTable({
 }: ProposalsTableProps) {
   const [rowSelection, setRowSelection] = useState({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
-  const { accountId, voteProposals } = useNear();
+  const { accountId } = useNear();
   const { selectedTreasury } = useTreasury();
   const formatDate = useFormatDate();
 
@@ -135,7 +140,7 @@ export function ProposalsTable({
         header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Transaction</span>,
         cell: ({ row }) => (
           <div className="max-w-[300px] truncate">
-            <TransactionCell proposal={row.original} />
+            <TransactionCell proposal={row.original} policy={policy} config={config} />
           </div>
         ),
       }),
@@ -211,6 +216,9 @@ export function ProposalsTable({
     },
   });
 
+  const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
+  const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
+
   if (proposals.length === 0 && pageIndex === 0) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -226,106 +234,110 @@ export function ProposalsTable({
   const handleBulkVote = async (vote: "Approve" | "Reject") => {
     if (!selectedTreasury || !accountId) return;
 
-    // All selected proposals are guaranteed to be votable due to enableRowSelection
-    await voteProposals(selectedTreasury, selectedProposals.map(proposal => ({
-      proposalId: proposal.id,
-      vote: vote,
-      proposalKind: getKindFromProposal(proposal.kind) ?? "call",
-    })));
-
-    // Clear selection after voting
-    table.resetRowSelection();
+    setVoteInfo({ vote, proposalIds: selectedProposals.map(proposal => ({ proposalId: proposal.id, kind: getKindFromProposal(proposal.kind) ?? "call" })) });
+    setIsVoteModalOpen(true);
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      {selectedCount > 0 && (
-        <div className="flex items-center justify-between pt-6 pb-4 px-5 border-b">
-          <span className="font-semibold">
-            {selectedCount} {selectedCount === 1 ? 'request' : 'requests'} selected
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => handleBulkVote("Reject")}
-            >
-              <X className="h-4 w-4" />
-              Reject
-            </Button>
-            <Button
-              variant="default"
-              onClick={() => handleBulkVote("Approve")}
-            >
-              <Check className="h-4 w-4" />
-              Approve
-            </Button>
+    <>
+      <div className="flex flex-col gap-4">
+        {selectedCount > 0 && (
+          <div className="flex items-center justify-between pt-6 pb-4 px-5 border-b">
+            <span className="font-semibold">
+              {selectedCount} {selectedCount === 1 ? 'request' : 'requests'} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => handleBulkVote("Reject")}
+              >
+                <X className="h-4 w-4" />
+                Reject
+              </Button>
+              <Button
+                variant="default"
+                onClick={() => handleBulkVote("Approve")}
+              >
+                <Check className="h-4 w-4" />
+                Approve
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-      <ScrollArea className="grid">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <Fragment key={row.id}>
-                <TableRow
-                  data-state={row.getIsSelected() && "selected"}
-                  onClick={(e) => {
-                    // Don't expand if clicking on checkbox or expand button
-                    const target = e.target as HTMLElement;
-                    if (
-                      target.closest('button') ||
-                      target.closest('[role="checkbox"]') ||
-                      target.tagName === 'INPUT'
-                    ) {
-                      return;
-                    }
-                    row.toggleExpanded();
-                  }}
-                  className="cursor-pointer"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+        )}
+        <ScrollArea className="grid">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                    </TableHead>
                   ))}
                 </TableRow>
-                {row.getIsExpanded() && (
-                  <TableRow>
-                    <TableCell colSpan={row.getVisibleCells().length} className="p-4 bg-background">
-                      <ExpandedView proposal={row.original} policy={policy} />
-                    </TableCell>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <Fragment key={row.id}>
+                  <TableRow
+                    data-state={row.getIsSelected() && "selected"}
+                    onClick={(e) => {
+                      // Don't expand if clicking on checkbox or expand button
+                      const target = e.target as HTMLElement;
+                      if (
+                        target.closest('button') ||
+                        target.closest('[role="checkbox"]') ||
+                        target.tagName === 'INPUT'
+                      ) {
+                        return;
+                      }
+                      row.toggleExpanded();
+                    }}
+                    className="cursor-pointer"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
                   </TableRow>
-                )}
-              </Fragment>
-            ))}
-          </TableBody>
-        </Table>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+                  {row.getIsExpanded() && (
+                    <TableRow>
+                      <TableCell colSpan={row.getVisibleCells().length} className="p-4 bg-background">
+                        <ExpandedView proposal={row.original} policy={policy} config={config} onVote={(vote) => {
+                          setVoteInfo({ vote, proposalIds: [{ proposalId: row.original.id, kind: getKindFromProposal(row.original.kind) ?? "call" }] });
+                          setIsVoteModalOpen(true);
+                        }} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
+              ))}
+            </TableBody>
+          </Table>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-      {onPageChange && (
-        <Pagination
-          pageIndex={pageIndex}
-          totalPages={totalPages}
-          onPageChange={onPageChange}
-        />
-      )}
-    </div>
+        {onPageChange && (
+          <Pagination
+            pageIndex={pageIndex}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+          />
+        )}
+      </div>
+      <VoteModal
+        isOpen={isVoteModalOpen}
+        onClose={() => setIsVoteModalOpen(false)}
+        proposalIds={voteInfo.proposalIds}
+        vote={voteInfo.vote}
+      />
+    </>
   );
 }

@@ -98,20 +98,20 @@ export function MemberModal({
       ? "Creating proposal..."
       : "Validating addresses..."
     : isEditMode
-    ? "Confirm Changes"
-    : "Review Request";
+      ? "Confirm Changes"
+      : "Review Request";
 
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => !open && !isValidatingAddresses && onClose()}
     >
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-4">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col gap-4">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 px-4">
+        <div className="overflow-y-auto flex-1">
           <div className="bg-muted/50 rounded-lg p-4">
             {fields.map((field, index) => (
               <div
@@ -235,7 +235,7 @@ export function MemberModal({
           </div>
         </div>
 
-        <div className="p-6 pt-4 pb-4 border-t border-border shrink-0">
+        <div className="pt-4 border-t border-border shrink-0">
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="block">

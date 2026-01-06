@@ -6,12 +6,12 @@ import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/compon
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
 import { Download } from "lucide-react";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
 import { addDays } from "date-fns";
@@ -19,6 +19,7 @@ import { addDays } from "date-fns";
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const { data: config } = useTreasuryConfig(selectedTreasury);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -121,6 +122,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
         <ProposalsTable
           proposals={data.proposals}
           policy={policy}
+          config={config?.config}
           pageIndex={page}
           pageSize={pageSize}
           total={data.total}
@@ -135,8 +137,14 @@ export default function RequestsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
+  const treasuryId = params?.treasuryId as string | undefined;
+  const { data: proposals } = useProposals(treasuryId, {
+    statuses: ["InProgress"],
+  })
 
-  const currentTab = searchParams.get("tab") || "all";
+
+  const currentTab = searchParams.get("tab") || "pending";
 
   const handleTabChange = useCallback((value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -152,7 +160,13 @@ export default function RequestsPage() {
           <div className="flex items-center justify-between mb-4">
             <TabsList className="w-fit border-none">
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
+              <TabsTrigger value="pending" className="flex gap-1">Pending
+                {proposals?.proposals && proposals.proposals.length > 0 &&
+                  < span className="flex size-5 items-center justify-center rounded-[8px] px-2 py-[3px] bg-orange-500 text-xs font-semibold text-white">
+                    {proposals?.proposals.length}
+                  </span>
+                }
+              </TabsTrigger>
               <TabsTrigger value="executed">Executed</TabsTrigger>
               <TabsTrigger value="rejected">Rejected</TabsTrigger>
               <TabsTrigger value="expired">Expired</TabsTrigger>
@@ -186,6 +200,6 @@ export default function RequestsPage() {
           </TabsContents>
         </Tabs>
       </PageCard>
-    </PageComponentLayout>
+    </PageComponentLayout >
   );
 }

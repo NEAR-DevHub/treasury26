@@ -62,39 +62,69 @@ export interface FunctionCallData {
     args: Record<string, any>;
 }
 
+export interface PolicyChange {
+    field: "proposal_bond" | "proposal_period" | "bounty_bond" | "bounty_forgiveness_period";
+    oldValue: string | null;
+    newValue: string | null;
+}
+
+export interface MemberRoleChange {
+    member: string;
+    oldRoles?: string[] | null;  // Previous roles (groups) the member was assigned to
+    newRoles?: string[] | null;  // New roles (groups) the member is assigned to
+}
+
+export interface RoleDefinitionChange {
+    roleName: string;
+    proposalKind: string;
+    oldThreshold?: any;
+    newThreshold?: any;
+    oldQuorum?: string | null;
+    newQuorum?: string | null;
+    oldWeightKind?: string | null;
+    newWeightKind?: string | null;
+    oldPermissions?: string[] | null;
+    newPermissions?: string[] | null;
+}
+
+export interface RoleChange {
+    addedMembers: MemberRoleChange[];
+    removedMembers: MemberRoleChange[];
+    updatedMembers: MemberRoleChange[];
+    roleDefinitionChanges: RoleDefinitionChange[];
+}
+
+export interface VotePolicyChange {
+    field: "weight_kind" | "quorum" | "threshold";
+    oldValue: any;
+    newValue: any;
+}
+
 /**
  * Data structure for Change Policy proposals
+ * Unified representation showing only what changed
  */
 export interface ChangePolicyData {
-    type: "full" | "update_parameters" | "add_or_update_role" | "remove_role" | "update_default_vote_policy";
-    policy?: Policy;
-    rolesCount?: number;
-    parameters?: {
-        bounty_bond: string | null;
-        bounty_forgiveness_period: string | null;
-        proposal_bond: string | null;
-        proposal_period: string | null;
-    };
-    role?: {
-        name: string;
-        permissions: string[];
-        vote_policy: Record<string, VotePolicy>;
-    };
-    roleName?: string;
-    votePolicy?: {
-        weight_kind: string;
-        quorum: string;
-        threshold: string | [number, number] | { Weight: string } | { Ratio: [number, number] };
-    };
+    policyChanges: PolicyChange[];
+    roleChanges: RoleChange;
+    defaultVotePolicyChanges: VotePolicyChange[];
+    originalProposalKind: any; // Store the original proposal kind for Transaction Details
 }
 
 /**
  * Data structure for Change Config proposals
  */
 export interface ChangeConfigData {
-    name: string;
-    purpose: string;
-    metadata: Record<string, any>;
+    oldConfig: {
+        name: string | null;
+        purpose: string | null;
+        metadata: Record<string, any> | null;
+    };
+    newConfig: {
+        name: string;
+        purpose: string;
+        metadata: Record<string, any>;
+    };
 }
 
 /**

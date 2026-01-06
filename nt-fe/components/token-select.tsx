@@ -148,7 +148,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                 </Button>
             </DialogTrigger>
             <DialogContent className="flex flex-col max-w-md p-0 gap-4">
-                <DialogHeader>
+                <DialogHeader className="p-4 w-full" centerTitle={true}>
                     <div className="flex items-center gap-2 w-full">
                         {step === 'network' && (
                             <Button

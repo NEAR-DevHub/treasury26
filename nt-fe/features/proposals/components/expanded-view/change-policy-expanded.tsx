@@ -1,271 +1,331 @@
-import { ChangePolicyData } from "../../types/index";
+import { ChangePolicyData, PolicyChange, MemberRoleChange, VotePolicyChange, RoleDefinitionChange } from "../../types/index";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { Amount } from "../amount";
 import { formatNanosecondDuration } from "@/lib/utils";
 import { User } from "@/components/user";
-import { VotePolicy } from "@/types/policy";
-import { ApprovalInfo } from "@/components/approval-info";
+import { useState } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Pill } from "@/components/pill";
+import { Button } from "@/components/button";
+import { renderDiff, isNullValue } from "../../utils/diff-utils";
+import { formatRoleName } from "@/components/role-name";
 
 interface ChangePolicyExpandedProps {
   data: ChangePolicyData;
 }
 
-function getThresholdFromPolicy(policy: VotePolicy): { requiredVotes: number; approverAccounts: number } {
-  if (typeof policy.threshold === "string") {
-    return { requiredVotes: parseInt(policy.threshold), approverAccounts: parseInt(policy.threshold) };
-  } else if (Array.isArray(policy.threshold) && policy.threshold.length === 2) {
-    return { requiredVotes: policy.threshold[0], approverAccounts: policy.threshold[1] };
+function formatFieldLabel(field: PolicyChange["field"]): string {
+  const labels: Record<PolicyChange["field"], string> = {
+    proposal_bond: "Proposal Bond",
+    proposal_period: "Proposal Period",
+    bounty_bond: "Bounty Bond",
+    bounty_forgiveness_period: "Bounty Forgiveness Period",
+  };
+  return labels[field];
+}
+
+function formatFieldValue(field: PolicyChange["field"], value: string): React.ReactNode {
+  if (isNullValue(value)) return <span className="text-muted-foreground/50">null</span>;
+  const isAmountField = field === "proposal_bond" || field === "bounty_bond";
+  const isDurationField = field === "proposal_period" || field === "bounty_forgiveness_period";
+
+  if (isAmountField) {
+    return <Amount amount={value} showNetwork tokenId="near" />;
   }
-  return { requiredVotes: 0, approverAccounts: 0 };
+  if (isDurationField) {
+    return <span>{formatNanosecondDuration(value)}</span>;
+  }
+  return <span>{value}</span>;
 }
 
-interface VotePolicyDisplayProps {
-  votePolicy: VotePolicy | Record<string, VotePolicy>;
+function formatVotePolicyFieldLabel(field: VotePolicyChange["field"], roleName?: string): string {
+  if (field === "threshold") {
+    if (roleName) {
+      return `${formatRoleName(roleName)} Threshold`;
+    }
+    return "Default Threshold";
+  }
+  const labels: Record<VotePolicyChange["field"], string> = {
+    weight_kind: "Weight Kind",
+    quorum: "Quorum",
+    threshold: "Threshold",
+  };
+  return labels[field];
 }
 
-function VotePolicyDisplay({ votePolicy }: VotePolicyDisplayProps) {
-  // Handle Record<string, VotePolicy> (multiple policies by proposal kind)
-  const isRecordType = !("weight_kind" in votePolicy);
+function formatThreshold(threshold: any): React.ReactNode {
+  if (isNullValue(threshold)) return <span className="text-muted-foreground/50">null</span>;
+  if (typeof threshold === "string") {
+    const parsed = parseInt(threshold);
+    if (!isNaN(parsed)) {
+      return <span>{parsed} Votes</span>;
+    }
+    return <span>{threshold}</span>;
+  }
+  if (Array.isArray(threshold) && threshold.length === 2) {
+    return <span>{threshold[0]} Votes</span>;
+  }
+  return <span>{JSON.stringify(threshold)}</span>;
+}
 
-  if (isRecordType) {
-    const policies = votePolicy as Record<string, VotePolicy>;
-    const policyEntries = Object.entries(policies);
+function formatVotePolicyValue(field: VotePolicyChange["field"], value: any): React.ReactNode {
+  if (field === "threshold") {
+    return formatThreshold(value);
+  }
+  return isNullValue(value) ? <span className="text-muted-foreground/50">null</span> : <span>{String(value)}</span>;
+}
 
+function getMemberItems(change: MemberRoleChange, type: "added" | "removed" | "updated"): InfoItem[] {
+  const items: InfoItem[] = [
+    {
+      label: "Member",
+      value: <User accountId={change.member} />
+    }
+  ];
+
+  if (type === "added" && change.newRoles) {
+    items.push({
+      label: "Permissions",
+      value: <div className="flex flex-wrap gap-1">
+        {change.newRoles.map((role) => (
+          <Pill key={role} title={formatRoleName(role)} variant="secondary" />
+        ))}
+      </div>
+    });
+  }
+
+  if (type === "removed" && change.oldRoles) {
+    items.push({
+      label: "Permissions",
+      value: <div className="flex flex-wrap gap-1">
+        {change.oldRoles.map((role) => (
+          <Pill key={role} title={formatRoleName(role)} variant="secondary" />
+        ))}
+      </div>
+    });
+  }
+
+  if (type === "updated") {
+    if (change.oldRoles) {
+      items.push({
+        label: "Old Permissions",
+        value: <div className="flex flex-wrap gap-1">
+          {change.oldRoles.map((role) => (
+            <Pill key={role} title={formatRoleName(role)} variant="secondary" />
+          ))}
+        </div>
+      });
+    }
+    if (change.newRoles) {
+      items.push({
+        label: "New Permissions",
+        value: <div className="flex flex-wrap gap-1">
+          {change.newRoles.map((role) => (
+            <Pill key={role} title={formatRoleName(role)} variant="secondary" />
+          ))}
+        </div>
+      });
+    }
+  }
+
+  return items;
+}
+
+function getCategoryLabel(type: "added" | "removed" | "updated", plural: boolean = false) {
+  if (type === "added") return plural ? "Add New Members" : "Add New Member";
+  if (type === "removed") return plural ? "Remove Members" : "Remove Member";
+  return plural ? "Update Members Permissions" : "Update Member Permissions";
+}
+
+export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
+  const [expandedAdded, setExpandedAdded] = useState<number[]>([]);
+  const [expandedRemoved, setExpandedRemoved] = useState<number[]>([]);
+  const [expandedUpdated, setExpandedUpdated] = useState<number[]>([]);
+
+  const hasNoChanges =
+    data.policyChanges.length === 0 &&
+    data.roleChanges.addedMembers.length === 0 &&
+    data.roleChanges.removedMembers.length === 0 &&
+    data.roleChanges.updatedMembers.length === 0 &&
+    data.roleChanges.roleDefinitionChanges.length === 0 &&
+    data.defaultVotePolicyChanges.length === 0;
+
+  if (hasNoChanges) {
     return (
-      <div className="flex flex-col gap-3 mt-2">
-        {policyEntries.map(([kind, policy]) => {
-          const { requiredVotes, approverAccounts } = getThresholdFromPolicy(policy);
-          return (
-            <div key={kind} className="bg-card p-3 rounded-lg border">
-              <div className="text-xs font-semibold text-muted-foreground mb-2">{kind}</div>
-              <div className="flex flex-col gap-1 text-sm">
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground min-w-[100px]">Weight Kind:</span>
-                  <span className="font-medium">{policy.weight_kind}</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground min-w-[100px]">Quorum:</span>
-                  <span className="font-medium">{policy.quorum}</span>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="text-muted-foreground min-w-[100px]">Threshold:</span>
-                  <ApprovalInfo variant="pupil" requiredVotes={requiredVotes} approverAccounts={Array(approverAccounts).fill("")} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="p-4 text-center text-muted-foreground">
+        No changes detected - the proposed policy is identical to the current policy.
       </div>
     );
   }
 
-  // Handle single VotePolicy
-  const singlePolicy = votePolicy as VotePolicy;
-  const { requiredVotes, approverAccounts } = getThresholdFromPolicy(singlePolicy);
+  const allItems: InfoItem[] = [];
 
-  return (
-    <div className="flex flex-col gap-1 text-sm mt-2">
-      <div className="flex gap-2">
-        <span className="text-muted-foreground min-w-[100px]">Weight Kind:</span>
-        <span className="font-medium">{singlePolicy.weight_kind}</span>
-      </div>
-      <div className="flex gap-2">
-        <span className="text-muted-foreground min-w-[100px]">Quorum:</span>
-        <span className="font-medium">{singlePolicy.quorum}</span>
-      </div>
-      <div className="flex gap-2 items-center">
-        <span className="text-muted-foreground min-w-[100px]">Threshold:</span>
-        <ApprovalInfo variant="pupil" requiredVotes={requiredVotes} approverAccounts={Array(approverAccounts).fill("")} />
-      </div>
-    </div>
-  );
-}
+  // 1. Policy parameter changes
+  data.policyChanges.forEach((change) => {
+    const isOldNull = isNullValue(change.oldValue);
+    allItems.push({
+      label: formatFieldLabel(change.field),
+      value: renderDiff(
+        formatFieldValue(change.field, change.oldValue ?? "null"),
+        formatFieldValue(change.field, change.newValue ?? "null"),
+        isOldNull
+      )
+    });
+  });
 
-function FullPolicyView({ data }: { data: ChangePolicyData }) {
-  const policy = data.policy!;
-  const roles = policy.roles;
+  // 2. Default vote policy changes
+  data.defaultVotePolicyChanges.forEach((change) => {
+    const isOldNull = isNullValue(change.oldValue);
+    allItems.push({
+      label: formatVotePolicyFieldLabel(change.field),
+      value: renderDiff(
+        formatVotePolicyValue(change.field, change.oldValue),
+        formatVotePolicyValue(change.field, change.newValue),
+        isOldNull
+      )
+    });
+  });
 
-  const infoItems: InfoItem[] = [
-    {
-      label: "Proposal Bond",
-      value: <Amount amount={policy.proposal_bond} tokenId="near" />,
-      info: "Amount required to be locked when creating a proposal"
-    },
-    {
-      label: "Proposal Period",
-      value: <span>{formatNanosecondDuration(policy.proposal_period)}</span>,
-      info: "Duration that a proposal remains active for voting"
-    },
-    {
-      label: "Bounty Bond",
-      value: policy.bounty_bond ? <Amount amount={policy.bounty_bond} tokenId="near" /> : <span>Not set</span>,
-      info: "Amount required to be locked when creating a bounty"
-    },
-    {
-      label: "Bounty Forgiveness Period",
-      value: <span>{policy.bounty_forgiveness_period ? formatNanosecondDuration(policy.bounty_forgiveness_period) : "Not set"}</span>,
-      info: "Grace period before bounty bond is forfeited"
-    },
-    {
-      label: "Roles",
-      value: <span>{roles.length} role{roles.length !== 1 ? "s" : ""}</span>,
-      afterValue: (
-        <div className="flex flex-col gap-2 mt-2">
-          {roles.map((role, index) => (
-            <div key={index} className="bg-card p-3 rounded-lg border flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">{role.name}</span>
-                {typeof role.kind === "object" && "Group" in role.kind && (
-                  <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded text-xs">
-                    {role.kind.Group.length} member{role.kind.Group.length !== 1 ? "s" : ""}
-                  </span>
-                )}
-              </div>
+  // 3. Member sections helper
+  const addMemberSection = (changes: MemberRoleChange[], type: "added" | "removed" | "updated", expanded: number[], setExpanded: (val: number[] | ((prev: number[]) => number[])) => void) => {
+    if (changes.length === 0) return;
 
-              {typeof role.kind === "object" && "Group" in role.kind && role.kind.Group.length > 0 && (
-                <div>
-                  <span className="text-xs text-muted-foreground">Members:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {[...role.kind.Group].sort().map((member, idx) => (
-                      <div className="cursor-pointer">
-                        <User accountId={member} iconOnly size="md" withLink={false} withHoverCard />
-                      </div>
-                    ))}
-                  </div>
+    if (changes.length === 1) {
+      allItems.push({
+        label: "Category",
+        value: <span>{getCategoryLabel(type)}</span>
+      });
+      allItems.push(...getMemberItems(changes[0], type));
+    } else {
+      const isAllExpanded = expanded.length === changes.length;
+      const toggleAll = () => {
+        if (isAllExpanded) setExpanded([]);
+        else setExpanded(changes.map((_, i) => i));
+      };
+
+      allItems.push({
+        label: "Category",
+        value: <span>{getCategoryLabel(type, true)}</span>
+      });
+
+      allItems.push({
+        label: "Members",
+        value: <div className="flex gap-3 items-baseline">
+          <p className="text-sm font-medium">{changes.length} members</p>
+          <Button variant="ghost" size="sm" onClick={toggleAll}>
+            {isAllExpanded ? "Collapse all" : "Expand all"}
+          </Button>
+        </div>,
+        afterValue: <div className="flex flex-col gap-1">
+          {changes.map((change, index) => (
+            <Collapsible
+              key={`${change.member}-${index}`}
+              open={expanded.includes(index)}
+              onOpenChange={() => {
+                setExpanded(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]);
+              }}
+            >
+              <CollapsibleTrigger className={cn("w-full flex justify-between items-center p-3 border rounded-lg", expanded.includes(index) && "rounded-b-none")}>
+                <div className="flex gap-2 items-center">
+                  <ChevronDown className={cn("w-4 h-4", expanded.includes(index) && "rotate-180")} />
+                  Member {index + 1}
                 </div>
-              )}
-
-              <div>
-                <span className="text-xs text-muted-foreground">Permissions:</span>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {role.permissions.map((permission, idx) => (
-                    <span key={idx} className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">
-                      {permission}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <InfoDisplay style="secondary" className="p-3 rounded-b-lg" items={getMemberItems(change, type)} />
+              </CollapsibleContent>
+            </Collapsible>
           ))}
         </div>
-      )
+      });
     }
-  ];
+  };
 
-  return <InfoDisplay items={infoItems} />;
-}
+  addMemberSection(data.roleChanges.addedMembers, "added", expandedAdded, setExpandedAdded);
+  addMemberSection(data.roleChanges.updatedMembers, "updated", expandedUpdated, setExpandedUpdated);
+  addMemberSection(data.roleChanges.removedMembers, "removed", expandedRemoved, setExpandedRemoved);
 
-function UpdateParametersView({ data }: { data: ChangePolicyData }) {
-  const params = data.parameters!;
+  // 4. Role Definition Changes
+  const roleGroups = new Map<string, RoleDefinitionChange[]>();
+  data.roleChanges.roleDefinitionChanges.forEach((change) => {
+    const existing = roleGroups.get(change.roleName) || [];
+    roleGroups.set(change.roleName, [...existing, change]);
+  });
 
-  const infoItems: InfoItem[] = [];
+  Array.from(roleGroups.entries()).forEach(([roleName, changes]) => {
+    const firstChange = changes[0];
 
-  if (params.proposal_bond !== null) {
-    infoItems.push({
-      label: "Proposal Bond",
-      value: <Amount amount={params.proposal_bond} tokenId="near" />,
-      info: "Amount required to be locked when creating a proposal"
-    });
-  }
-
-  if (params.proposal_period !== null) {
-    infoItems.push({
-      label: "Proposal Period",
-      value: <span>{formatNanosecondDuration(params.proposal_period)}</span>,
-      info: "Duration that a proposal remains active for voting"
-    });
-  }
-
-  if (params.bounty_bond !== null) {
-    infoItems.push({
-      label: "Bounty Bond",
-      value: <Amount amount={params.bounty_bond} tokenId="near" />,
-      info: "Amount required to be locked when creating a bounty"
-    });
-  }
-
-  if (params.bounty_forgiveness_period !== null) {
-    infoItems.push({
-      label: "Bounty Forgiveness Period",
-      value: <span>{formatNanosecondDuration(params.bounty_forgiveness_period)}</span>,
-      info: "Grace period before bounty bond is forfeited"
-    });
-  }
-
-  return <InfoDisplay items={infoItems} />;
-}
-
-function AddOrUpdateRoleView({ data }: { data: ChangePolicyData }) {
-  const role = data.role!;
-
-  const infoItems: InfoItem[] = [
-    {
-      label: "Role Name",
-      value: <span className="font-semibold">{role.name}</span>
-    },
-    {
-      label: "Permissions",
-      value: <span>{role.permissions.length} permission{role.permissions.length !== 1 ? "s" : ""}</span>,
-      afterValue: (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {role.permissions.map((permission, idx) => (
-            <span key={idx} className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">
-              {permission}
-            </span>
-          ))}
-        </div>
-      )
-    },
-    {
-      label: "Vote Policy",
-      value: <span>{Object.keys(role.vote_policy).length} proposal kind{Object.keys(role.vote_policy).length !== 1 ? "s" : ""}</span>,
-      afterValue: <VotePolicyDisplay votePolicy={role.vote_policy} />
+    if (firstChange.oldThreshold !== undefined && firstChange.newThreshold !== undefined &&
+      JSON.stringify(firstChange.oldThreshold) !== JSON.stringify(firstChange.newThreshold)) {
+      const isOldNull = isNullValue(firstChange.oldThreshold);
+      allItems.push({
+        label: formatVotePolicyFieldLabel("threshold", roleName),
+        value: renderDiff(
+          formatVotePolicyValue("threshold", firstChange.oldThreshold),
+          formatVotePolicyValue("threshold", firstChange.newThreshold),
+          isOldNull
+        )
+      });
     }
-  ];
 
-  return <InfoDisplay items={infoItems} />;
-}
-
-function RemoveRoleView({ data }: { data: ChangePolicyData }) {
-  const infoItems: InfoItem[] = [
-    {
-      label: "Role Name",
-      value: <span className="font-semibold">{data.roleName}</span>,
-      info: "This role will be removed from the DAO policy"
+    if (firstChange.oldQuorum !== firstChange.newQuorum) {
+      const isOldNull = isNullValue(firstChange.oldQuorum);
+      allItems.push({
+        label: "Quorum",
+        value: renderDiff(
+          formatVotePolicyValue("quorum", firstChange.oldQuorum),
+          formatVotePolicyValue("quorum", firstChange.newQuorum),
+          isOldNull
+        )
+      });
     }
-  ];
 
-  return <InfoDisplay items={infoItems} />;
-}
-
-function UpdateDefaultVotePolicyView({ data }: { data: ChangePolicyData }) {
-  const votePolicy = data.votePolicy!;
-
-  const infoItems: InfoItem[] = [
-    {
-      label: "Default Vote Policy",
-      value: <span>Updated policy configuration</span>,
-      info: "This will be used as the default voting policy for all proposal types that don't have a specific policy",
-      afterValue: <VotePolicyDisplay votePolicy={votePolicy as VotePolicy} />
+    if (firstChange.oldWeightKind !== firstChange.newWeightKind) {
+      const isOldNull = isNullValue(firstChange.oldWeightKind);
+      allItems.push({
+        label: "Weight Kind",
+        value: renderDiff(
+          formatVotePolicyValue("weight_kind", firstChange.oldWeightKind),
+          formatVotePolicyValue("weight_kind", firstChange.newWeightKind),
+          isOldNull
+        )
+      });
     }
-  ];
 
-  return <InfoDisplay items={infoItems} />;
-}
+    if (firstChange.oldPermissions && firstChange.newPermissions &&
+      JSON.stringify([...firstChange.oldPermissions].sort()) !== JSON.stringify([...firstChange.newPermissions].sort())) {
+      const isOldNull = isNullValue(firstChange.oldPermissions);
+      allItems.push({
+        label: "Permissions",
+        value: renderDiff(
+          <div className="flex flex-wrap gap-1">
+            {firstChange.oldPermissions?.map((permission) => (
+              <Pill key={permission} title={permission} variant="secondary" />
+            )) || <span className="text-muted-foreground/50">null</span>}
+          </div>,
+          <div className="flex flex-wrap gap-1">
+            {firstChange.newPermissions.map((permission) => (
+              <Pill key={permission} title={permission} variant="secondary" />
+            ))}
+          </div>,
+          isOldNull
+        )
+      });
+    }
+  });
 
-export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
-  switch (data.type) {
-    case "full":
-      return <FullPolicyView data={data} />;
-    case "update_parameters":
-      return <UpdateParametersView data={data} />;
-    case "add_or_update_role":
-      return <AddOrUpdateRoleView data={data} />;
-    case "remove_role":
-      return <RemoveRoleView data={data} />;
-    case "update_default_vote_policy":
-      return <UpdateDefaultVotePolicyView data={data} />;
-    default:
-      return <InfoDisplay items={[{ label: "Error", value: <span>Unknown policy change type</span> }]} />;
-  }
+  // 5. Transaction Details
+  allItems.push({
+    label: "Transaction Details",
+    differentLine: true,
+    value: <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs">
+      <code className="text-foreground/90">
+        {JSON.stringify(data.originalProposalKind, null, 2)}
+      </code>
+    </pre>
+  });
+
+  return <InfoDisplay items={allItems} />;
 }

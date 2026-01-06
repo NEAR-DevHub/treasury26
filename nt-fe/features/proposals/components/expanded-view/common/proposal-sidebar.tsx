@@ -6,13 +6,13 @@ import { Policy } from "@/types/policy";
 import { getApproversAndThreshold, getKindFromProposal } from "@/lib/config-utils";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
-import { User } from "@/components/user";
 import { getProposalStatus } from "@/features/proposals/utils/proposal-utils";
 import { UserVote } from "../../user-vote";
 
 interface ProposalSidebarProps {
   proposal: Proposal;
   policy: Policy;
+  onVote: (vote: "Approve" | "Reject" | "Remove") => void;
 }
 
 function StepIcon({ status }: { status: "Success" | "Pending" | "Failed" }) {
@@ -117,27 +117,14 @@ function ExecutedSection({ status }: { status: ProposalStatus }) {
   );
 }
 
-export function ProposalSidebar({ proposal, policy }: ProposalSidebarProps) {
-  const { accountId, voteProposals } = useNear();
+export function ProposalSidebar({ proposal, policy, onVote }: ProposalSidebarProps) {
+  const { accountId } = useNear();
   const { selectedTreasury } = useTreasury();
   const isPending = proposal.status === "InProgress";
   const proposalKind = getKindFromProposal(proposal.kind) ?? "call";
   const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposalKind, false);
 
   const canVote = approverAccounts.includes(accountId ?? "") && accountId && selectedTreasury;
-
-  const handleVote = async (vote: "Approve" | "Reject") => {
-    if (!canVote) return;
-    try {
-      await voteProposals(selectedTreasury ?? "", [{
-        proposalId: proposal.id,
-        vote: vote,
-        proposalKind,
-      }]);
-    } catch (error) {
-      console.error(`Failed to ${vote.toLowerCase()} proposal:`, error);
-    }
-  };
 
   return (
     <PageCard className="w-full">
@@ -154,14 +141,14 @@ export function ProposalSidebar({ proposal, policy }: ProposalSidebarProps) {
           <Button
             variant="secondary"
             className="flex-1"
-            onClick={() => handleVote("Reject")}
+            onClick={() => onVote("Reject")}
           >
             <X className="h-4 w-4 mr-2" />
             Reject
           </Button>
           <Button
             className="flex-1"
-            onClick={() => handleVote("Approve")}
+            onClick={() => onVote("Approve")}
           >
             <Check className="h-4 w-4 mr-2" />
             Approve
