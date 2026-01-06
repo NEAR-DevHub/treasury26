@@ -230,12 +230,7 @@ export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
               <CollapsibleTrigger className={cn("w-full flex justify-between items-center p-3 border rounded-lg", expanded.includes(index) && "rounded-b-none")}>
                 <div className="flex gap-2 items-center">
                   <ChevronDown className={cn("w-4 h-4", expanded.includes(index) && "rotate-180")} />
-                  {change.member}
-                </div>
-                <div className="flex gap-1">
-                  {(type === "added" ? change.newRoles : type === "removed" ? change.oldRoles : change.newRoles)?.map((role) => (
-                    <Pill key={role} title={formatRoleName(role)} variant="secondary" />
-                  ))}
+                  Member {index + 1}
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
