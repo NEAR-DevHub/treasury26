@@ -32,7 +32,7 @@ interface NavLinkProps {
   onClick: () => void;
 }
 
-const DISABLED_TOOLTIP_CONTENT = "You are not authorized to access this page. Please contact admin to provide you with Requestor role.";
+const DISABLED_TOOLTIP_CONTENT = "You are not authorized to access this page. Please contact governance to provide you with Requestor role.";
 
 function NavLink({
   isActive,

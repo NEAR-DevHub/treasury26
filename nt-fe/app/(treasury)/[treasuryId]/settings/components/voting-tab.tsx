@@ -35,6 +35,7 @@ import { useProposals } from "@/hooks/use-proposals";
 import { AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/button";
 import { useQueryClient } from "@tanstack/react-query";
+import { RoleName } from "@/components/role-name";
 
 const votingFormSchema = z.object({
   voteDuration: z
@@ -425,7 +426,7 @@ export function VotingTab() {
             <TabsList>
               {groupRoles.map((role) => (
                 <TabsTrigger key={role.name} value={role.name}>
-                  {role.name}
+                  <RoleName name={role.name} />
                 </TabsTrigger>
               ))}
             </TabsList>
