@@ -5,17 +5,23 @@ import {
     DialogTitle as BaseDialogTitle,
     DialogTrigger,
     DialogClose as BaseDialogClose,
+    DialogDescription,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 
-function DialogHeader({ className, children, ...props }: React.ComponentProps<typeof BaseDialogHeader>) {
+interface DialogHeaderProps extends React.ComponentProps<typeof BaseDialogHeader> {
+    centerTitle?: boolean;
+}
+
+function DialogHeader({ className, children, centerTitle = false, ...props }: DialogHeaderProps) {
     return (
         <BaseDialogHeader
             {...props}
-            className={cn("border-b border-border p-4 flex flex-row items-center justify-between text-center gap-4", className)}
+            className={cn("border-b border-border pb-3.5 flex flex-row items-center justify-between text-center gap-4", className)}
         >
-            <div className="flex-1">
+            <div className={cn(centerTitle && "flex-1")}>
                 {children}
             </div>
             <BaseDialogClose className="rounded-xs opacity-70 transition-opacity hover:opacity-100 ">
@@ -40,7 +46,7 @@ function DialogContent({ className, children, ...props }: React.ComponentProps<t
         <BaseDialogContent
             {...props}
             showCloseButton={false}
-            className={cn("bg-card", className)}
+            className={cn("bg-card p-3.5", className)}
         >
             {children}
         </BaseDialogContent>
@@ -52,5 +58,7 @@ export {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogFooter,
     DialogTrigger,
+    DialogDescription,
 };

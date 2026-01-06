@@ -6,7 +6,7 @@ import { VestingExpanded } from "./vesting-expanded";
 import { ProposalSidebar } from "./common/proposal-sidebar";
 import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, Trash } from "lucide-react";
 import { TxDetails } from "./common/tx-details";
 import { Policy } from "@/types/policy";
 import { TreasuryConfig } from "@/lib/api";
@@ -28,12 +28,14 @@ import {
   BatchPaymentRequestData,
 } from "../../types/index";
 import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
+import { useNear } from "@/stores/near-store";
 
 interface ExpandedViewProps {
   proposal: Proposal;
   policy: Policy;
   config?: TreasuryConfig | null;
   hideOpenInNewTab?: boolean;
+  onVote: (vote: "Approve" | "Reject" | "Remove") => void;
 }
 
 function ExpandedViewInternal({ proposal, policy, config }: ExpandedViewProps) {
@@ -81,9 +83,11 @@ function ExpandedViewInternal({ proposal, policy, config }: ExpandedViewProps) {
   }
 }
 
-export function ExpandedView({ proposal, policy, config, hideOpenInNewTab = false }: ExpandedViewProps) {
+export function ExpandedView({ proposal, policy, config, hideOpenInNewTab = false, onVote }: ExpandedViewProps) {
   const { selectedTreasury } = useTreasury();
-  const component = ExpandedViewInternal({ proposal, policy, config });
+  const { accountId } = useNear();
+  // const { removeProposal } = useNear();
+  const component = ExpandedViewInternal({ proposal, policy, config, onVote });
   const requestUrl = `${window.location.origin}/${selectedTreasury}/requests/${proposal.id}`;
   const onCopy = async () => {
     try {
@@ -93,6 +97,8 @@ export function ExpandedView({ proposal, policy, config, hideOpenInNewTab = fals
       toast.error("Failed to copy link");
     }
   }
+
+  const ownProposal = proposal.proposer === accountId;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full">
@@ -111,6 +117,11 @@ export function ExpandedView({ proposal, policy, config, hideOpenInNewTab = fals
                   </Button>
                 </Link>
               )}
+              {ownProposal && (
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onVote("Remove")}>
+                  <Trash className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
           {component}
@@ -119,7 +130,7 @@ export function ExpandedView({ proposal, policy, config, hideOpenInNewTab = fals
         <TxDetails proposal={proposal} policy={policy} />
       </div>
       <div className="w-full">
-        <ProposalSidebar proposal={proposal} policy={policy} />
+        <ProposalSidebar proposal={proposal} policy={policy} onVote={onVote} />
       </div>
 
     </div>

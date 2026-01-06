@@ -246,6 +246,8 @@ export const useNear = () => {
     const voteProposals = async (treasuryId: string, votes: Vote[]) => {
         const results = await storeVoteProposals(treasuryId, votes);
         if (results.length > 0) {
+            // Delay to allow Sputnik DAO indexer to pick up the vote
+            await new Promise(resolve => setTimeout(resolve, 2000));
             // Invalidate proposals list
             await queryClient.invalidateQueries({ queryKey: ["proposals", treasuryId] });
             // Invalidate individual proposal queries for the voted proposals

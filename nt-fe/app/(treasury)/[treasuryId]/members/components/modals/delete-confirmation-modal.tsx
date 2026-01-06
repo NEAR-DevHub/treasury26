@@ -55,7 +55,7 @@ export function DeleteConfirmationModal({
       open={isOpen && membersToDelete.length > 0}
       onOpenChange={(open) => !open && onClose()}
     >
-      <DialogContent className="max-w-md p-0 gap-4">
+      <DialogContent className="max-w-mdgap-4">
         <DialogHeader>
           <DialogTitle>
             {isBulk
@@ -65,7 +65,7 @@ export function DeleteConfirmationModal({
         </DialogHeader>
 
         {isBulk ? (
-          <div className="space-y-3 px-4">
+          <div>
             <p className="text-foreground">
               Once approved, this action will permanently remove the following
               members from the treasury and revoke all their assigned
@@ -83,7 +83,7 @@ export function DeleteConfirmationModal({
             </div>
           </div>
         ) : (
-          <p className="text-foreground px-4">
+          <p className="text-foreground">
             Once approved, this action will permanently remove{" "}
             <span className="font-semibold">
               {membersToDelete[0]?.accountId}
@@ -92,7 +92,7 @@ export function DeleteConfirmationModal({
           </p>
         )}
 
-        <div className="px-6 pb-4">
+        <div>
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="block">

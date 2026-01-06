@@ -67,12 +67,12 @@ export function SelectModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-md p-0 gap-0">
+      <DialogContent className="max-w-md gap-0">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <div className="p-4 space-y-4">
+        <div className="space-y-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -109,12 +109,11 @@ export function SelectModal({
                     key={option.id}
                     onClick={() => handleSelect(option)}
                     variant="ghost"
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg h-auto justify-start ${
-                      selectedId === option.id ? "bg-muted" : ""
-                    }`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg h-auto justify-start ${selectedId === option.id ? "bg-muted" : ""
+                      }`}
                   >
                     {option.icon?.startsWith("http") ||
-                    option.icon?.startsWith("data:") ? (
+                      option.icon?.startsWith("data:") ? (
                       <img
                         src={option.icon}
                         alt={option.symbol || option.name}
@@ -122,10 +121,9 @@ export function SelectModal({
                       />
                     ) : (
                       <div
-                        className={`w-10 h-10 rounded-full ${
-                          option.gradient ||
+                        className={`w-10 h-10 rounded-full ${option.gradient ||
                           "bg-linear-to-br from-blue-500 to-purple-500"
-                        } flex items-center justify-center text-white font-bold`}
+                          } flex items-center justify-center text-white font-bold`}
                       >
                         <span>{option.icon}</span>
                       </div>
