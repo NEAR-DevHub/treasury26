@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { RolePermission } from "@/types/policy";
+import { EXISTING_ROLES, ROLES } from "@/components/role-selector";
 
 interface MemberFormData {
   members: Array<{
@@ -43,16 +44,14 @@ export function MemberModal({
   validationError,
 }: MemberModalProps) {
   const isEditMode = mode === "edit";
-  const title = isEditMode
-    ? "Edit Roles"
-    : "Add New Member";
+  const title = isEditMode ? "Edit Roles" : "Add New Member";
   const buttonText = isValidatingAddresses
     ? isEditMode
       ? "Creating proposal..."
       : "Validating addresses..."
     : isEditMode
-      ? "Confirm Changes"
-      : "Review Request";
+    ? "Confirm Changes"
+    : "Review Request";
 
   return (
     <Dialog
@@ -60,19 +59,22 @@ export function MemberModal({
       onOpenChange={(open) => !open && !isValidatingAddresses && onClose()}
     >
       <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-0 gap-4">
-        <DialogHeader>
+        <DialogHeader className="p-4">
           <DialogTitle className="text-left">{title}</DialogTitle>
         </DialogHeader>
 
         <div className="overflow-y-auto flex-1 px-6">
           <FormProvider {...form}>
-            <MemberInput 
-              control={form.control} 
+            <MemberInput
+              control={form.control}
               name="members"
               mode={mode}
-              availableRoles={availableRoles.map(r => ({
+              availableRoles={availableRoles.map((r) => ({
                 id: r.name,
                 title: r.name,
+                description: EXISTING_ROLES.concat(ROLES).find(
+                  (role) => role.id === r.name?.toLowerCase()
+                )?.description,
               }))}
             />
           </FormProvider>

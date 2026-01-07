@@ -55,7 +55,7 @@ export function PreviewModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] p-0 gap-4">
-        <DialogHeader>
+        <DialogHeader className="p-4">
           <div className="flex items-center gap-3">
             <Button
               type="button"

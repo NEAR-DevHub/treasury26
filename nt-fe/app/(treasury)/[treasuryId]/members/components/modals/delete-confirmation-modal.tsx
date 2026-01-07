@@ -56,7 +56,7 @@ export function DeleteConfirmationModal({
       onOpenChange={(open) => !open && onClose()}
     >
       <DialogContent className="max-w-md gap-4">
-        <DialogHeader>
+        <DialogHeader className="p-4">
           <DialogTitle className="text-left">
             {isBulk
               ? `Remove ${membersToDelete.length} Members`
@@ -64,7 +64,7 @@ export function DeleteConfirmationModal({
           </DialogTitle>
         </DialogHeader>
 
-        <p className="text-foreground px-6">
+        <p className="text-foreground">
           Once approved, this action will permanently remove{" "}
           <span className="font-semibold break-all overflow-wrap-anywhere text-wrap">
             {membersToDelete.map((m) => m.accountId).join(", ")}

@@ -25,7 +25,7 @@ export function Alert({
       break;
     case "warning":
       className =
-        "bg-general-warning-background-faded border-general-warning-border text-general-warning-foreground [&>svg]:text-general-warning-foreground";
+        "bg-general-warning-background-faded border border-general-warning-border text-general-warning-foreground [&>svg]:text-general-warning-foreground";
       break;
     case "destructive":
       className =

@@ -343,7 +343,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-xl p-0 gap-0">
-        <DialogHeader>
+        <DialogHeader className="p-4">
           <DialogTitle className="text-left">Deposit</DialogTitle>
         </DialogHeader>
 
@@ -353,31 +353,27 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               Select asset and network to see deposit address
             </p>
 
-          <p className="text-sm font-semibold py-3">
-            Select asset and network to see deposit address
-          </p>
-
-          {/* Asset Select */}
-          <FormField
-            control={form.control}
-            name="asset"
-            render={({ fieldState }) => (
-              <FormItem>
-                <InputBlock
-                  title="Asset"
-                  invalid={!!fieldState.error}
-                  className="rounded-b-none border-b border-gray-200"
-                >
-                  <Button
-                    type="button"
-                    onClick={() => setModalType("asset")}
-                    variant="unstyled"
-                    className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0 mt-1"
+            {/* Asset Select */}
+            <FormField
+              control={form.control}
+              name="asset"
+              render={({ fieldState }) => (
+                <FormItem>
+                  <InputBlock
+                    title="Asset"
+                    invalid={!!fieldState.error}
+                    className="rounded-b-none border-b border-gray-200"
                   >
-                    <div className="w-full flex items-center justify-between py-1">
-                      {selectedAsset ? (
-                        <div className="flex items-center gap-2">
-                          {selectedAsset.icon?.startsWith("http") ||
+                    <Button
+                      type="button"
+                      onClick={() => setModalType("asset")}
+                      variant="unstyled"
+                      className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0 mt-1"
+                    >
+                      <div className="w-full flex items-center justify-between py-1">
+                        {selectedAsset ? (
+                          <div className="flex items-center gap-2">
+                            {selectedAsset.icon?.startsWith("http") ||
                             selectedAsset.icon?.startsWith("data:") ? (
                               <img
                                 src={selectedAsset.icon}
@@ -553,218 +549,55 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                               ✓
                             </span>
                           ) : (
-                            <div
-                              className={`w-6 h-6 rounded-full ${selectedAsset.gradient ||
-                                "bg-linear-to-br from-blue-500 to-purple-500"
-                                } flex items-center justify-center text-white text-xs font-bold`}
-                            >
-                              <span>{selectedAsset.icon}</span>
-                            </div>
+                            <Copy className="w-5 h-5 text-muted-foreground" />
                           )}
-                          <span className="text-foreground font-medium">
-                            {selectedAsset.symbol} ({selectedAsset.name})
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-lg font-normal">
-                          Select Asset
-                        </span>
-                      )}
-                      <ChevronDown className="w-5 h-5" />
+                        </Button>
+                      </div>
                     </div>
-                  </Button>
-                </InputBlock>
-                <FormMessage />
-              </FormItem>
+                  </div>
+                </div>
+
+                {/* Warning Message */}
+                <WarningAlert
+                  message={
+                    <span>
+                      Only deposit from the{" "}
+                      <strong>{selectedNetwork?.name}</strong> network. We
+                      recommend starting with a small test transaction to ensure
+                      everything works correctly before sending the full amount.
+                    </span>
+                  }
+                />
+              </div>
             )}
-          />
 
-          {/* Network Select */}
-          <FormField
-            control={form.control}
-            name="network"
-            render={({ fieldState }) => (
-              <FormItem>
-                <InputBlock
-                  title="Network"
-                  invalid={!!fieldState.error}
-                  className="rounded-t-none"
-                >
-                  <Button
-                    type="button"
-                    onClick={() => setModalType("network")}
-                    variant="unstyled"
-                    className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0 mt-1"
-                  >
-                    <div className="w-full flex items-center justify-between py-1">
-                      {selectedNetwork ? (
-                        <div className="flex items-center gap-2">
-                          {selectedNetwork.icon?.startsWith("http") ||
-                            selectedNetwork.icon?.startsWith("data:") ? (
-                            <img
-                              src={selectedNetwork.icon}
-                              alt={selectedNetwork.name}
-                              className="w-6 h-6 rounded-full object-contain"
-                            />
-                          ) : (
-                            <div
-                              className={`w-6 h-6 rounded-full ${selectedNetwork.gradient ||
-                                "bg-linear-to-br from-green-500 to-teal-500"
-                                } flex items-center justify-center text-white text-xs font-bold`}
-                            >
-                              <span>{selectedNetwork.icon}</span>
-                            </div>
-                          )}
-                          <span className="text-foreground font-medium">
-                            {selectedNetwork.name}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-lg font-normal">
-                          Select Network
-                        </span>
-                      )}
-                      <ChevronDown className="w-5 h-5" />
-                    </div>
-                  </Button>
-                </InputBlock>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <SelectModal
+              isOpen={modalType === "asset"}
+              onClose={() => setModalType(null)}
+              onSelect={(option) => {
+                handleAssetSelect(option);
+                setModalType(null);
+              }}
+              title="Select Asset"
+              options={allAssets}
+              searchPlaceholder="Search by name"
+              isLoading={isLoadingAssets}
+              selectedId={selectedAsset?.id}
+            />
 
-          {/* Deposit Address Section */}
-          {isLoadingAddress && (
-            <div className="mt-6 space-y-4 animate-pulse">
-              <div>
-                <div className="h-6 bg-muted rounded w-48 mb-2" />
-                <div className="h-4 bg-muted rounded w-72" />
-              </div>
-
-              <div className="bg-muted rounded-lg p-4">
-                <div className="flex gap-4">
-                  {/* QR Code Skeleton */}
-                  <div className="shrink-0">
-                    <div className="w-32 h-32 bg-background rounded-lg" />
-                  </div>
-
-                  {/* Address Skeleton */}
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-background rounded w-20" />
-                    <div className="bg-background rounded-lg p-3"></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Warning Skeleton */}
-              <div className="bg-muted rounded-lg p-4 flex gap-3">
-                <div className="w-5 h-5 bg-background rounded shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-background rounded w-full" />
-                  <div className="h-4 bg-background rounded w-3/4" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {depositAddress && !isLoadingAddress && (
-            <div className="mt-6 space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold mb-1">
-                  Deposit Address
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Always double-check your deposit address.
-                </p>
-              </div>
-
-              <div className="bg-muted rounded-lg p-4">
-                <div className="flex gap-4">
-                  {/* QR Code */}
-                  <div className="shrink-0">
-                    <div className="w-32 h-32 rounded-lg bg-white flex items-center justify-center p-2">
-                      <QRCode
-                        value={depositAddress}
-                        size={112}
-                        style={{
-                          height: "auto",
-                          maxWidth: "100%",
-                          width: "100%",
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Address */}
-                  <div className="flex-1 space-y-2">
-                    <label className="text-sm text-muted-foreground">
-                      Address
-                    </label>
-                    <div className="rounded-lg flex justify-between gap-2 pt-1">
-                      <code className="font-mono break-all">
-                        {depositAddress}
-                      </code>
-                      <Button
-                        type="button"
-                        onClick={handleCopyAddress}
-                        variant="unstyled"
-                        size="icon-sm"
-                        className="shrink-0"
-                        title="Copy address"
-                      >
-                        {copied ? (
-                          <span className="text-lg text-green-600 dark:text-green-400">
-                            ✓
-                          </span>
-                        ) : (
-                          <Copy className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Warning Message */}
-              <WarningAlert
-                message={
-                  <span>
-                    Only deposit from the{" "}
-                    <strong>{selectedNetwork?.name}</strong> network. We
-                    recommend starting with a small test transaction to ensure
-                    everything works correctly before sending the full amount.
-                  </span>
-                }
-              />
-            </div>
-          )}
-
-          <SelectModal
-            isOpen={modalType === "asset"}
-            onClose={() => setModalType(null)}
-            onSelect={(option) => {
-              handleAssetSelect(option);
-              setModalType(null);
-            }}
-            title="Select Asset"
-            options={allAssets}
-            searchPlaceholder="Search by name"
-            isLoading={isLoadingAssets}
-            selectedId={selectedAsset?.id}
-          />
-
-          <SelectModal
-            isOpen={modalType === "network"}
-            onClose={() => setModalType(null)}
-            onSelect={(option) => {
-              handleNetworkSelect(option);
-              setModalType(null);
-            }}
-            title="Select Network"
-            options={filteredNetworks}
-            searchPlaceholder="Search by name"
-            isLoading={isLoadingAssets}
-          />
+            <SelectModal
+              isOpen={modalType === "network"}
+              onClose={() => setModalType(null)}
+              onSelect={(option) => {
+                handleNetworkSelect(option);
+                setModalType(null);
+              }}
+              title="Select Network"
+              options={filteredNetworks}
+              searchPlaceholder="Search by name"
+              isLoading={isLoadingAssets}
+            />
+          </div>
         </Form>
       </DialogContent>
     </Dialog>
