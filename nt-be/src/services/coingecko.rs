@@ -288,7 +288,10 @@ mod tests {
         let client = CoinGeckoClient::new(Client::new(), "test-key".to_string());
 
         // Major cryptocurrencies
-        assert_eq!(client.translate_asset_id("btc"), Some("bitcoin".to_string()));
+        assert_eq!(
+            client.translate_asset_id("btc"),
+            Some("bitcoin".to_string())
+        );
         assert_eq!(
             client.translate_asset_id("eth"),
             Some("ethereum".to_string())
@@ -340,8 +343,14 @@ mod tests {
             client.translate_asset_id("zcash"),
             Some("zcash".to_string())
         );
-        assert_eq!(client.translate_asset_id("turbo"), Some("turbo".to_string()));
-        assert_eq!(client.translate_asset_id("spx"), Some("spx6900".to_string()));
+        assert_eq!(
+            client.translate_asset_id("turbo"),
+            Some("turbo".to_string())
+        );
+        assert_eq!(
+            client.translate_asset_id("spx"),
+            Some("spx6900".to_string())
+        );
         assert_eq!(
             client.translate_asset_id("cfi"),
             Some("consumerfi-protocol".to_string())
