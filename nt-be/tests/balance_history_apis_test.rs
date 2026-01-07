@@ -390,11 +390,11 @@ async fn test_csv_export_with_real_data() {
         "CSV should not include NOT_REGISTERED records"
     );
 
-    // Exact row count (1 header + 69 data rows = 70 total)
+    // Exact row count (1 header + 172 data rows = 173 total)
     let row_count = csv_content.lines().count();
     assert_eq!(
-        row_count, 70,
-        "CSV should have exactly 70 rows (1 header + 69 data rows)"
+        row_count, 173,
+        "CSV should have exactly 173 rows (1 header + 172 data rows)"
     );
 
     // Compare with snapshot (hard assertion for regression testing)

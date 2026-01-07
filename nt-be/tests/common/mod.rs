@@ -117,6 +117,10 @@ async fn setup_coingecko_mocks(mock_server: &MockServer) {
             include_str!("../test_data/price_data/bitcoin.json"),
         ),
         (
+            "ethereum",
+            include_str!("../test_data/price_data/ethereum.json"),
+        ),
+        (
             "solana",
             include_str!("../test_data/price_data/solana.json"),
         ),
