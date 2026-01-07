@@ -125,7 +125,7 @@ export function GeneralTab() {
                 name: data.displayName,
                 purpose: currentTreasury.config.purpose,
                 metadata: Buffer.from(JSON.stringify(metadata)).toString(
-                  "base64",
+                  "base64"
                 ),
               },
             },
@@ -135,7 +135,9 @@ export function GeneralTab() {
       });
 
       // Refetch proposals to show the newly created proposal
-      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
+      queryClient.invalidateQueries({
+        queryKey: ["proposals", selectedTreasury],
+      });
 
       // Reset form to mark as not dirty
       form.reset(data);
@@ -193,7 +195,7 @@ export function GeneralTab() {
           uploadImageToServer(file);
         } else {
           toast.error(
-            "Invalid logo. Please upload a PNG, JPG, or SVG file that is exactly 256x256 px",
+            "Invalid logo. Please upload a PNG, JPG, or SVG file that is exactly 256x256 px"
           );
         }
       };
@@ -295,7 +297,9 @@ export function GeneralTab() {
                         className="h-full w-full rounded-lg object-cover"
                       />
                     ) : (
-                      <Database className="h-8 w-8 shrink-0 text-muted-foreground" />
+                      <div className="bg-muted rounded-full p-2.5">
+                        <Database className="h-8 w-8 shrink-0 text-muted-foreground " />
+                      </div>
                     )}
                   </div>
                   <input
@@ -362,10 +366,11 @@ export function GeneralTab() {
                       key={color}
                       type="button"
                       onClick={() => handleColorChange(color)}
-                      className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${field.value === color
-                        ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
-                        : ""
-                        }`}
+                      className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${
+                        field.value === color
+                          ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
+                          : ""
+                      }`}
                       style={{ backgroundColor: color }}
                       aria-label={`Select color ${color}`}
                     />

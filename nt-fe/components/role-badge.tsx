@@ -1,0 +1,43 @@
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { EXISTING_ROLES, ROLES } from "@/components/role-selector";
+
+interface RoleBadgeProps {
+  role: string;
+  variant?: "pill" | "rounded";
+}
+
+export function RoleBadge({ role, variant = "pill" }: RoleBadgeProps) {
+  const roleInfo = EXISTING_ROLES.concat(ROLES).find((r) => r.id === role.toLowerCase());
+
+  const badge = (
+    <span
+      className={`px-3 py-1 bg-muted text-foreground text-sm font-medium ${
+        variant === "pill" ? "rounded-full" : "rounded-md"
+      }`}
+    >
+      {role}
+    </span>
+  );
+
+  // If we have description, wrap in tooltip
+  if (roleInfo?.description) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-help">{badge}</span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[280px]">
+          <p className="text-sm">{roleInfo.description}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // No description, just return the badge
+  return badge;
+}
+

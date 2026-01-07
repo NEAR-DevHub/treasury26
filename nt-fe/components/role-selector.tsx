@@ -13,7 +13,7 @@ import { Button } from "./button"
 type Role = {
     id: string
     title: string
-    description: string
+    description?: string
 }
 
 export const ROLES: readonly Role[] = [
@@ -37,15 +37,31 @@ export const ROLES: readonly Role[] = [
     },
 ] as const;
 
+export const EXISTING_ROLES: readonly Role[] = [
+    {
+        id: "admin",
+        title: "Admin",
+        description:'Admin can configure the treasury\'s settings and member configuration.'
+    },
+    {
+        id: "approver",
+        title: "Approver",
+        description:'Approver can review and vote on treasury transaction requests.'
+    },
+    
+] as const;
+
 interface RoleSelectorProps {
     selectedRoles?: string[]
     onRolesChange?: (roles: string[]) => void
     className?: string
+    availableRoles?: readonly Role[]
 }
 
 export function RoleSelector({
     selectedRoles = [],
     onRolesChange,
+    availableRoles = ROLES,
 }: RoleSelectorProps) {
     const [open, setOpen] = React.useState(false)
 
@@ -59,12 +75,12 @@ export function RoleSelector({
     const getButtonText = () => {
         if (selectedRoles.length === 0) {
             return "Set Role"
-        } else if (selectedRoles.length === 3) {
+        } else if (selectedRoles.length === availableRoles.length) {
             return "Full Access"
         }
         const selectedRoleTitles = selectedRoles
             .sort((a, b) => a.localeCompare(b))
-            .map((id) => ROLES.find((r) => r.id === id)?.title)
+            .map((id) => availableRoles.find((r) => r.id === id)?.title)
             .filter(Boolean)
         return selectedRoleTitles.join(", ")
     }
@@ -78,7 +94,7 @@ export function RoleSelector({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-1 gap-1 flex flex-col" align="end">
-                {ROLES.map((role) => (
+                {availableRoles.map((role) => (
                     <label
                         key={role.id}
                         className="flex cursor-pointer items-start space-x-3 rounded-md p-3 transition-colors hover:bg-accent"
@@ -89,10 +105,12 @@ export function RoleSelector({
                             className="mt-0.5"
                         />
                         <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium leading-none">{role.title}</p>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                                {role.description}
-                            </p>
+                            <p className="text-sm font-medium leading-none mt-0.5">{role.title}</p>
+                            {role.description && (
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {role.description}
+                                </p>
+                            )}
                         </div>
                     </label>
                 ))}
