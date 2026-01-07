@@ -8,6 +8,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use super::price_provider::PriceProvider;
 
@@ -17,6 +18,54 @@ const DEFAULT_COINGECKO_API_BASE: &str = "https://pro-api.coingecko.com/api/v3";
 /// How far back to fetch historical prices (in days)
 /// CoinGecko Pro allows up to 365 days for market_chart/range with daily granularity
 const HISTORICAL_DAYS: i64 = 365;
+
+/// Static mapping from unified asset IDs to CoinGecko-specific asset IDs
+static UNIFIED_TO_COINGECKO_ID: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+
+/// Get the mapping from unified asset IDs to CoinGecko IDs
+///
+/// This mapping translates from tokens.json `unifiedAssetId` values to CoinGecko's
+/// coin IDs. CoinGecko IDs are unique identifiers used in their API endpoints.
+///
+/// Note: CoinGecko has many coins with the same symbol (e.g., multiple "BTC" coins),
+/// so we must map to the specific CoinGecko ID for the correct asset.
+fn get_coingecko_id_map() -> &'static HashMap<&'static str, &'static str> {
+    UNIFIED_TO_COINGECKO_ID.get_or_init(|| {
+        let mut map = HashMap::new();
+
+        // Major cryptocurrencies
+        map.insert("btc", "bitcoin");
+        map.insert("eth", "ethereum");
+        map.insert("sol", "solana");
+        map.insert("xrp", "ripple");
+        map.insert("near", "near");
+
+        // Stablecoins
+        map.insert("usdc", "usd-coin");
+        map.insert("usdt", "tether");
+        map.insert("dai", "dai");
+
+        // Wrapped/bridged variants
+        map.insert("cbbtc", "coinbase-wrapped-btc");
+
+        // NEAR ecosystem tokens
+        map.insert("aurora", "aurora-near");
+        map.insert("sweat", "sweatcoin");
+        map.insert("hapi", "hapi");
+
+        // Other tokens
+        map.insert("zcash", "zcash");
+        map.insert("turbo", "turbo");
+        map.insert("rhea", "rhea");
+        map.insert("safe", "safe");
+        map.insert("spx", "spx6900");
+        map.insert("adi", "adi-token");
+        map.insert("cfi", "consumerfi-protocol"); // ConsumerFi Protocol (not CyberFi or Coinbet)
+        map.insert("public", "publicai");
+
+        map
+    })
+}
 
 /// Response from /coins/{id}/history endpoint
 #[derive(Debug, Deserialize)]
@@ -84,6 +133,12 @@ impl CoinGeckoClient {
 impl PriceProvider for CoinGeckoClient {
     fn source_name(&self) -> &'static str {
         "coingecko"
+    }
+
+    fn translate_asset_id(&self, unified_asset_id: &str) -> Option<String> {
+        get_coingecko_id_map()
+            .get(unified_asset_id)
+            .map(|s| s.to_string())
     }
 
     async fn get_price_at_date(
@@ -226,5 +281,82 @@ mod tests {
     fn test_source_name() {
         let client = CoinGeckoClient::new(Client::new(), "test-key".to_string());
         assert_eq!(client.source_name(), "coingecko");
+    }
+
+    #[test]
+    fn test_translate_asset_id_major_coins() {
+        let client = CoinGeckoClient::new(Client::new(), "test-key".to_string());
+
+        // Major cryptocurrencies
+        assert_eq!(client.translate_asset_id("btc"), Some("bitcoin".to_string()));
+        assert_eq!(
+            client.translate_asset_id("eth"),
+            Some("ethereum".to_string())
+        );
+        assert_eq!(client.translate_asset_id("sol"), Some("solana".to_string()));
+        assert_eq!(client.translate_asset_id("xrp"), Some("ripple".to_string()));
+        assert_eq!(client.translate_asset_id("near"), Some("near".to_string()));
+    }
+
+    #[test]
+    fn test_translate_asset_id_stablecoins() {
+        let client = CoinGeckoClient::new(Client::new(), "test-key".to_string());
+
+        assert_eq!(
+            client.translate_asset_id("usdc"),
+            Some("usd-coin".to_string())
+        );
+        assert_eq!(
+            client.translate_asset_id("usdt"),
+            Some("tether".to_string())
+        );
+        assert_eq!(client.translate_asset_id("dai"), Some("dai".to_string()));
+    }
+
+    #[test]
+    fn test_translate_asset_id_near_ecosystem() {
+        let client = CoinGeckoClient::new(Client::new(), "test-key".to_string());
+
+        assert_eq!(
+            client.translate_asset_id("aurora"),
+            Some("aurora-near".to_string())
+        );
+        assert_eq!(
+            client.translate_asset_id("sweat"),
+            Some("sweatcoin".to_string())
+        );
+        assert_eq!(client.translate_asset_id("hapi"), Some("hapi".to_string()));
+    }
+
+    #[test]
+    fn test_translate_asset_id_other_tokens() {
+        let client = CoinGeckoClient::new(Client::new(), "test-key".to_string());
+
+        assert_eq!(
+            client.translate_asset_id("cbbtc"),
+            Some("coinbase-wrapped-btc".to_string())
+        );
+        assert_eq!(
+            client.translate_asset_id("zcash"),
+            Some("zcash".to_string())
+        );
+        assert_eq!(client.translate_asset_id("turbo"), Some("turbo".to_string()));
+        assert_eq!(client.translate_asset_id("spx"), Some("spx6900".to_string()));
+        assert_eq!(
+            client.translate_asset_id("cfi"),
+            Some("consumerfi-protocol".to_string())
+        );
+        assert_eq!(
+            client.translate_asset_id("public"),
+            Some("publicai".to_string())
+        );
+    }
+
+    #[test]
+    fn test_translate_asset_id_unknown() {
+        let client = CoinGeckoClient::new(Client::new(), "test-key".to_string());
+
+        assert_eq!(client.translate_asset_id("unknown-token"), None);
+        assert_eq!(client.translate_asset_id("random"), None);
     }
 }
