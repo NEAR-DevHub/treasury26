@@ -602,12 +602,12 @@ export default function MembersPage() {
           <TableRow className="hover:bg-transparent">
               <TableHead className="w-12"></TableHead>
               <TableHead>
-                <span className="text-xs font-medium uppercase text-muted-foreground">
+                <span className="text-xs font-medium uppercase">
                   Member
                 </span>
               </TableHead>
               <TableHead>
-                <span className="text-xs font-medium uppercase text-muted-foreground">
+                <span className="text-xs font-medium uppercase">
                   Permissions
                 </span>
               </TableHead>
@@ -674,12 +674,12 @@ export default function MembersPage() {
               />
             </TableHead>
             <TableHead>
-              <span className="text-xs font-medium uppercase text-muted-foreground">
+              <span className="text-xs font-medium uppercase">
                 Member
               </span>
             </TableHead>
             <TableHead>
-              <span className="text-xs font-medium uppercase text-muted-foreground">
+              <span className="text-xs font-medium uppercase">
                 Permissions
               </span>
             </TableHead>

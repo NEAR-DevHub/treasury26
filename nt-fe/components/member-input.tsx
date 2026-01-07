@@ -74,7 +74,7 @@ export function MemberInput<
         <InputBlock invalid={false}>
             <div className="flex flex-col gap-4">
                 {fields.map((field, index) => (
-                    <div key={field.id} className="flex  flex-col gap-0 border-b border-muted-foreground/10">
+                    <div key={field.id} className={`flex flex-col gap-0 ${!hideAddButton || index < fields.length - 1 ? 'border-b border-muted-foreground/10' : ''}`}>
                         <div className="flex justify-between items-center">
                             <p className="text-xs text-muted-foreground">
                                 {showCreatorLabel && index === 0 ? "Creator" : "Member Address"}
