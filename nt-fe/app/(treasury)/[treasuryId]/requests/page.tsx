@@ -7,10 +7,11 @@ import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
 import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
-import { Download } from "lucide-react";
+import { ArrowRightLeft, ArrowUpRight, Download, SearchX } from "lucide-react";
+import Link from "next/link";
 import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
@@ -111,8 +112,11 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
 
   if (!data || (data.proposals.length === 0 && page === 0)) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <p className="text-muted-foreground">No proposals found.</p>
+      <div className="flex flex-col items-center justify-center py-8 gap-4">
+        <div className="size-8 p-2 bg-muted rounded-full flex items-center justify-center">
+          <SearchX className="size-5 text-muted-foreground shrink-0" />
+        </div>
+        <p className="text-muted-foreground text-xs">No requests found matching your filters.</p>
       </div>
     );
   }
@@ -134,6 +138,33 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   );
 }
 
+function NoRequestsFound() {
+  const { selectedTreasury: treasuryId } = useTreasury();
+  return (
+    <PageCard className="py-[100px] flex flex-col items-center justify-center w-full h-fit gap-4">
+      <div>
+
+      </div>
+      <div className="flex flex-col items-center justify-center gap-0.5">
+        <h1 className="font-semibold">Create your first request</h1>
+        <p className="text-xs text-muted-foreground max-w-[300px] text-center">Requests for payments, exchanges, and other actions will appear here once created.</p>
+      </div>
+      <div className="flex gap-4 w-[300px]">
+        <Link href={`/${treasuryId}/payments`} className="w-1/2">
+          <Button className="gap-1 w-full">
+            <ArrowUpRight className="size-3.5" /> Send
+          </Button>
+        </Link>
+        <Link href={`/${treasuryId}/exchange`} className="w-1/2">
+          <Button className="gap-1 w-full">
+            <ArrowRightLeft className="size-3.5" /> Exchange
+          </Button>
+        </Link>
+      </div>
+    </PageCard>
+  );
+}
+
 export default function RequestsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -143,6 +174,7 @@ export default function RequestsPage() {
   const { data: proposals } = useProposals(treasuryId, {
     statuses: ["InProgress"],
   })
+  const { data: allProposals } = useProposals(treasuryId, {});
 
 
   const currentTab = searchParams.get("tab") || "pending";
@@ -153,6 +185,20 @@ export default function RequestsPage() {
     params.delete("page"); // Reset page when changing tabs
     router.push(`${pathname}?${params.toString()}`);
   }, [searchParams, router, pathname]);
+
+  useEffect(() => {
+    if (currentTab === "pending" && proposals?.proposals?.length === 0) {
+      router.push(`${pathname}?tab=all`);
+    }
+  }, [currentTab, proposals?.proposals?.length, router, pathname]);
+
+  if (allProposals?.proposals?.length === 0) {
+    return (
+      <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
+        <NoRequestsFound />
+      </PageComponentLayout>
+    )
+  }
 
   return (
     <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
