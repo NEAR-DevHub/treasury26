@@ -216,12 +216,6 @@ export default function RequestsPage() {
               <TabsTrigger value="rejected">Rejected</TabsTrigger>
               <TabsTrigger value="expired">Expired</TabsTrigger>
             </TabsList>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="h-9">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-            </div>
           </div>
           <div className="mb-4">
             <ProposalFiltersComponent />
