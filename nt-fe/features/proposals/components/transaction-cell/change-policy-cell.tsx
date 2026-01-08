@@ -1,7 +1,10 @@
 import { ChangePolicyData } from "../../types/index";
+import { TitleSubtitleCell } from "./title-subtitle-cell";
 
 interface ChangePolicyCellProps {
   data: ChangePolicyData;
+  timestamp?: string;
+  textOnly?: boolean;
 }
 
 function getSummary(data: ChangePolicyData): { title: string; subtitle: string } {
@@ -75,15 +78,14 @@ function getSummary(data: ChangePolicyData): { title: string; subtitle: string }
   return { title, subtitle };
 }
 
-export function ChangePolicyCell({ data }: ChangePolicyCellProps) {
+export function ChangePolicyCell({ data, timestamp }: ChangePolicyCellProps) {
   const { title, subtitle } = getSummary(data);
 
   return (
-    <div className="flex flex-col gap-1">
-      <span className="font-medium">{title}</span>
-      <span className="text-xs text-muted-foreground">
-        {subtitle}
-      </span>
-    </div>
+    <TitleSubtitleCell
+      title={title}
+      subtitle={subtitle}
+      timestamp={timestamp}
+    />
   );
 }

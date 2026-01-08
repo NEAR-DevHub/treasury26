@@ -25,10 +25,12 @@ export function formatTimestamp(date: Date) {
   return d.getTime() * 1000000;
 }
 
-export function formatDate(date: Date | string | number) {
+export function formatDate(date: Date | string | number | Big) {
   if (!date) return "";
   if (typeof date === "string" || typeof date === "number") {
     date = new Date(date);
+  } else if (date instanceof Big) {
+    date = new Date(date.div(1000000).toNumber());
   }
 
   // Get timezone offset in minutes
