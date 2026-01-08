@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/button";
-import { ChevronDown, ChevronRight, X, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, X, Check, SearchX } from "lucide-react";
 import { TransactionCell } from "./transaction-cell";
 import { ExpandedView } from "./expanded-view";
 import { ProposalTypeIcon } from "./proposal-type-icon";
@@ -221,8 +221,11 @@ export function ProposalsTable({
 
   if (proposals.length === 0 && pageIndex === 0) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <p className="text-muted-foreground">No proposals found.</p>
+      <div className="flex flex-col items-center justify-center py-8 gap-4">
+        <div className="size-8 p-2 bg-muted rounded-full flex items-center justify-center">
+          <SearchX className="size-5 text-muted-foreground shrink-0" />
+        </div>
+        <p className="text-muted-foreground text-xs">No requests found matching your filters.</p>
       </div>
     );
   }

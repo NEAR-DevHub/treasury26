@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
 import { addDays } from "date-fns";
 import { NumberBadge } from "@/components/number-badge";
+import { TableSkeleton } from "@/components/table-skeleton";
 
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
@@ -95,11 +96,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   }, [data, page, selectedTreasury, filters, queryClient, pageSize]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <p className="text-muted-foreground">Loading proposals...</p>
-      </div>
-    );
+    return <TableSkeleton rows={12} columns={7} />;
   }
 
   if (error) {
@@ -110,27 +107,16 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
     );
   }
 
-  if (!data || (data.proposals.length === 0 && page === 0)) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 gap-4">
-        <div className="size-8 p-2 bg-muted rounded-full flex items-center justify-center">
-          <SearchX className="size-5 text-muted-foreground shrink-0" />
-        </div>
-        <p className="text-muted-foreground text-xs">No requests found matching your filters.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {policy && (
         <ProposalsTable
-          proposals={data.proposals}
+          proposals={data?.proposals ?? []}
           policy={policy}
           config={config?.config}
           pageIndex={page}
           pageSize={pageSize}
-          total={data.total}
+          total={data?.total ?? 0}
           onPageChange={updatePage}
         />
       )}
