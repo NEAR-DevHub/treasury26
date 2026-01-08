@@ -37,7 +37,7 @@
     "date-fns": "^4.1.0",
     "gradflow": "^0.1.0",
     "lucide-react": "^0.559.0",
-    "motion": "^12.23.26",
+    "motion": "^12.24.12",
     "next": "16.0.7",
     "radix-ui": "^1.4.3",
     "react": "19.2.0",
