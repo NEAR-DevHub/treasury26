@@ -106,7 +106,7 @@ export function PendingRequests() {
 
     return (
         <>
-            <div className={cn("bg-general-tertiary rounded-lg p-5 gap-3 flex flex-col w-full h-fit lg:max-w-lg", !hasPendingRequests ? "min-h-[300px]" : "min-h-[100px]")}>
+            <div className={cn("bg-general-tertiary rounded-lg p-5 gap-3 flex flex-col w-full h-fit", !hasPendingRequests ? "min-h-[300px]" : "min-h-[100px]")}>
                 <div className="flex justify-between">
                     <div className="flex items-center gap-1">
                         <h1 className="font-semibold text-nowrap">Pending Requests</h1>
