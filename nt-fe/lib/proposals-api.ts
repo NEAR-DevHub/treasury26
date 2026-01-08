@@ -227,6 +227,7 @@ export interface Proposal {
   votes: {
     [account: string]: Vote;
   };
+  custom_kind?: string;
 }
 
 export interface ProposalsResponse {

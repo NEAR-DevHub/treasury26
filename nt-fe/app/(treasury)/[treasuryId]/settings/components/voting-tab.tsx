@@ -147,7 +147,7 @@ export function VotingTab() {
   // Fetch pending proposals to check for active voting change requests
   const { data: pendingProposals } = useProposals(selectedTreasury, {
     statuses: ["InProgress"],
-    proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
+    proposal_types: ["Change Policy"],
   });
 
   // Check for specific pending proposal types

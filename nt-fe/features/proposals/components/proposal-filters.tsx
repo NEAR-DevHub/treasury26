@@ -22,16 +22,22 @@ const FILTER_OPTIONS = [
 
 
 const PROPOSAL_TYPE_OPTIONS = [
-    "Transfer",
-    "FunctionCall",
-    "AddMemberToRole",
-    "RemoveMemberFromRole",
-    "ChangeConfig",
-    "ChangePolicy",
-    "AddBounty",
-    "BountyDone",
+    "Payment Request",
+    "Batch Payment Request",
+    "Exchange",
+    "Function Call",
+    "Change Policy",
+    "Update General Settings",
+    "Earn NEAR",
+    "Unstake NEAR",
+    "Vesting",
+    "Withdraw Earnings",
+    "Members",
+    "Upgrade",
+    "Set Staking Contract",
+    "Bounty",
     "Vote",
-    "FactoryUpdateSelf",
+    "Factory Info Update",
 ];
 
 const MY_VOTE_OPTIONS = ["Approve", "Reject", "Remove", "None"];

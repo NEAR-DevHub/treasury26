@@ -775,7 +775,7 @@ export function extractProposalData(proposal: Proposal, policy: Policy, config?:
   type: ProposalUIKind;
   data: AnyProposalData;
 } {
-  const type = getProposalUIKind(proposal);
+  const type = (proposal.custom_kind as ProposalUIKind) || getProposalUIKind(proposal);
 
   let data: AnyProposalData;
 

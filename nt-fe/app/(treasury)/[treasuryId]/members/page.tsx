@@ -94,7 +94,7 @@ export default function MembersPage() {
   // Fetch pending proposals to check for active member requests
   const { data: pendingProposals } = useProposals(selectedTreasury, {
     statuses: ["InProgress"],
-    proposal_types: ["ChangePolicy"],
+    proposal_types: ["Change Policy"],
     search: "members",
     sort_direction: "desc",
     sort_by: "CreationTime",
