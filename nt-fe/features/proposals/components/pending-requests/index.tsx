@@ -76,7 +76,7 @@ export function PendingRequests() {
     const hasPendingRequests = (pendingRequests?.proposals?.length ?? 0) > 0;
 
     return (
-        <div className="border bg-general-tertiary border-border rounded-lg p-5 gap-3 flex flex-col w-full h-fit min-h-[300px]">
+        <div className="bg-general-tertiary rounded-lg p-5 gap-3 flex flex-col w-full h-fit min-h-[300px]">
             <div className="flex justify-between">
                 <div className="flex items-center gap-1">
                     <h1 className="font-semibold text-nowrap">Pending Requests</h1>
