@@ -21,6 +21,7 @@ import { isRequestor } from "@/lib/config-utils";
 import { useNear } from "@/stores/near-store";
 import { Button } from "./button";
 import { useProposals } from "@/hooks/use-proposals";
+import { NumberBadge } from "./number-badge";
 
 interface NavLinkProps {
   isActive: boolean;
@@ -61,9 +62,7 @@ function NavLink({
         {label}
       </div>
       {showBadge && (
-        <span className="flex size-5 items-center justify-center rounded-[8px] px-2 py-[3px] bg-orange-500 text-xs font-semibold text-white">
-          {badgeCount}
-        </span>
+        <NumberBadge number={badgeCount} />
       )}
     </Button>
   );

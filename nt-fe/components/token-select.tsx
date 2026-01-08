@@ -12,7 +12,7 @@ import { TreasuryAsset, ChainIcons } from "@/lib/api";
 import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-aggregated-tokens";
 import Big from "big.js";
 import { NetworkDisplay } from "./token-display";
-import { useThemeStore } from "@/stores/theme-store";
+import { TokenDisplay } from "./token-display-with-network";
 
 interface TokenSelectProps {
     selectedToken: string | null;
@@ -27,50 +27,11 @@ interface TokenSelectProps {
     };
 }
 
-export const LockedTokenDisplay = ({ lockedTokenData }: {
-    lockedTokenData: {
-        symbol: string;
-        icon: string;
-        network: string;
-        chainIcons?: ChainIcons;
-    }
-}) => {
-    const { theme } = useThemeStore();
-    const getNetworkIcon = (data: typeof lockedTokenData) => {
-        if (!data) return null;
-        if ('chainIcons' in data && data.chainIcons) {
-            return theme === 'light' ? data.chainIcons.light : data.chainIcons.dark;
-        }
-        return null;
-    };
-
-    return (
-        <>
-            <div className="relative">
-                <img src={lockedTokenData.icon} alt={lockedTokenData.symbol} className="size-5 rounded-full shrink-0" />
-                {getNetworkIcon(lockedTokenData) && (
-                    <div className="absolute -right-1 -bottom-1 flex items-center justify-center rounded-full bg-muted border-border">
-                        <img
-                            src={getNetworkIcon(lockedTokenData)!}
-                            alt="network"
-                            className="size-3 shrink-0 p-0.5"
-                        />
-                    </div>
-                )}
-            </div>
-            <div className="flex flex-col items-start">
-                <span className="font-semibold text-sm leading-none">{lockedTokenData.symbol}</span>
-                <span className="text-[10px] font-normal text-muted-foreground uppercase">{lockedTokenData.network}</span>
-            </div>
-        </>
-    );
-};
 
 export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData }: TokenSelectProps) {
     const { selectedTreasury } = useTreasury();
     const { data: { tokens = [] } = {} } = useTreasuryAssets(selectedTreasury, { onlyPositiveBalance: true });
     const aggregatedTokens = useAggregatedTokens(tokens);
-    const { theme } = useThemeStore();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [selectedAggregatedToken, setSelectedAggregatedToken] = useState<AggregatedAsset | null>(null);
@@ -89,14 +50,6 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
 
     const selectedTokenData = tokens.find(t => t.symbol === selectedToken);
     const displayTokenData = locked && lockedTokenData ? lockedTokenData : selectedTokenData;
-
-    const getNetworkIcon = (data: typeof displayTokenData) => {
-        if (!data) return null;
-        if ('chainIcons' in data && data.chainIcons) {
-            return theme === 'light' ? data.chainIcons.light : data.chainIcons.dark;
-        }
-        return null;
-    };
 
     const handleTokenClick = (aggregatedToken: AggregatedAsset) => {
         // Always go to step 2 to select network
@@ -130,7 +83,15 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
     if (locked && lockedTokenData) {
         return (
             <div className="flex gap-2 items-center h-9 px-4 py-2 has-[>svg]:px-3 bg-card rounded-full cursor-default hover:bg-card hover:border-border">
-                <LockedTokenDisplay lockedTokenData={lockedTokenData} />
+                <TokenDisplay
+                    symbol={lockedTokenData.symbol}
+                    icon={lockedTokenData.icon}
+                    chainIcons={lockedTokenData.chainIcons}
+                />
+                <div className="flex flex-col items-start">
+                    <span className="font-semibold text-sm leading-none">{lockedTokenData.symbol}</span>
+                    <span className="text-[10px] font-normal text-muted-foreground uppercase">{lockedTokenData.network}</span>
+                </div>
             </div>
         );
     }
@@ -140,7 +101,17 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
             <DialogTrigger asChild disabled={disabled}>
                 <Button variant="outline" className="bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3">
                     {displayTokenData ? (
-                        <LockedTokenDisplay lockedTokenData={displayTokenData} />
+                        <>
+                            <TokenDisplay
+                                symbol={displayTokenData.symbol}
+                                icon={displayTokenData.icon}
+                                chainIcons={displayTokenData.chainIcons}
+                            />
+                            <div className="flex flex-col items-start">
+                                <span className="font-semibold text-sm leading-none">{displayTokenData.symbol}</span>
+                                <span className="text-[10px] font-normal text-muted-foreground uppercase">{displayTokenData.network}</span>
+                            </div>
+                        </>
                     ) : (
                         <span className="text-muted-foreground">Select token</span>
                     )}

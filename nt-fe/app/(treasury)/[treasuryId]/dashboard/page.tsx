@@ -6,6 +6,7 @@ import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
 
 import Assets from "./components/assets";
 import BalanceWithGraph from "./components/balance-with-graph";
+import { PendingRequests } from "@/features/proposals/components/pending-requests";
 
 export default function AppPage() {
   const { selectedTreasury: accountId } = useTreasury();
@@ -17,10 +18,18 @@ export default function AppPage() {
       title="Dashboard"
       description="Overview of your treasury assets and activity"
     >
-      <div className="flex flex-col gap-8">
-        <BalanceWithGraph totalBalanceUSD={totalBalanceUSD} tokens={tokens} />
+      <div className="flex gap-5">
+        <div className="flex flex-col gap-5 lg:w-3/5 w-full">
+          <BalanceWithGraph totalBalanceUSD={totalBalanceUSD} tokens={tokens} />
+          <div className="lg:hidden flex">
+            <PendingRequests />
+          </div>
 
-        <Assets tokens={tokens} />
+          <Assets tokens={tokens} />
+        </div>
+        <div className="w-2/5 hidden lg:flex">
+          <PendingRequests />
+        </div>
       </div>
     </PageComponentLayout>
   );
