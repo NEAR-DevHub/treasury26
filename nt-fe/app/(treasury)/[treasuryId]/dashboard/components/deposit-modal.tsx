@@ -374,7 +374,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                         {selectedAsset ? (
                           <div className="flex items-center gap-2">
                             {selectedAsset.icon?.startsWith("http") ||
-                            selectedAsset.icon?.startsWith("data:") ? (
+                              selectedAsset.icon?.startsWith("data:") ? (
                               <img
                                 src={selectedAsset.icon}
                                 alt={selectedAsset.symbol}
@@ -425,18 +425,19 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                           <div>
                             <div className="flex items-center gap-2">
                               {selectedNetwork.icon?.startsWith("http") ||
-                              selectedNetwork.icon?.startsWith("data:") ? (
-                                <img
-                                  src={selectedNetwork.icon}
-                                  alt={selectedNetwork.name}
-                                  className="w-6 h-6 rounded-full object-contain"
-                                />
+                                selectedNetwork.icon?.startsWith("data:") ? (
+                                <div className="w-6 h-6 rounded-full object-cover">
+                                  <img
+                                    src={selectedNetwork.icon}
+                                    alt={selectedNetwork.name}
+                                    className="w-full h-full"
+                                  />
+                                </div>
                               ) : (
                                 <div
-                                  className={`w-6 h-6 rounded-full ${
-                                    selectedNetwork.gradient ||
+                                  className={`w-6 h-6 rounded-full ${selectedNetwork.gradient ||
                                     "bg-linear-to-br from-green-500 to-teal-500"
-                                  } flex items-center justify-center text-white text-xs font-bold`}
+                                    } flex items-center justify-center text-white text-xs font-bold`}
                                 >
                                   <span>{selectedNetwork.icon}</span>
                                 </div>

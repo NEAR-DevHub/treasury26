@@ -114,11 +114,9 @@ export function SelectModal({
                   >
                     {option.icon?.startsWith("http") ||
                       option.icon?.startsWith("data:") ? (
-                      <img
-                        src={option.icon}
-                        alt={option.symbol || option.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
+                      <div className="w-10 h-10 rounded-full object-cover">
+                        <img src={option.icon} alt={option.symbol || option.name} className="w-full h-full p-2" />
+                      </div>
                     ) : (
                       <div
                         className={`w-10 h-10 rounded-full ${option.gradient ||
