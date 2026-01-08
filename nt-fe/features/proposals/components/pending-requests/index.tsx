@@ -41,9 +41,11 @@ export function PendingRequests() {
         return <div>Loading...</div>;
     }
 
+    const hasPendingRequests = !!pendingRequests?.proposals?.length && pendingRequests?.proposals?.length > 0;
+
     return (
-        <div className="border bg-general-tertiary border-border rounded-lg p-3 flex flex-col w-full h-fit">
-            <div className="flex justify-between py-1.5">
+        <div className="border bg-general-tertiary border-border rounded-lg p-5 flex flex-col w-full h-fit min-h-[300px]">
+            <div className="flex justify-between">
                 <div className="flex items-center gap-1">
                     <h1 className="font-semibold text-nowrap">Pending Requests</h1>
                     {!!pendingRequests?.proposals?.length && pendingRequests?.proposals?.length > 0 && (
@@ -51,19 +53,28 @@ export function PendingRequests() {
                     )}
                 </div>
 
-                <Link href={`/${accountId}/requests`}>
-                    <Button variant="ghost" className="flex gap-2">
-                        View All
-                        <ArrowRight className="size-4" />
-                    </Button>
-                </Link>
+                {hasPendingRequests && (
+                    <Link href={`/${accountId}/requests`}>
+                        <Button variant="ghost" className="flex gap-2">
+                            View All
+                            <ArrowRight className="size-4" />
+                        </Button>
+                    </Link>
+                )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
-                {pendingRequests?.proposals?.slice(0, 4).map((proposal) => (
-                    <PendingRequestItem key={proposal.id} proposal={proposal} policy={policy} config={treasury.config} accountId={accountId} />
-                ))}
-            </div>
+            {hasPendingRequests ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+                    {pendingRequests?.proposals?.slice(0, 4).map((proposal) => (
+                        <PendingRequestItem key={proposal.id} proposal={proposal} policy={policy} config={treasury.config} accountId={accountId} />
+                    ))}
+                </div>
+            ) : (
+                <div className="flex flex-col gap-0.5 w-full h-full items-center justify-center my-auto">
+                    <h1 className="font-semibold">All caught up!</h1>
+                    <p className="text-xs text-muted-foreground">There are no pending requests.</p>
+                </div>
+            )}
         </div>
     );
 }

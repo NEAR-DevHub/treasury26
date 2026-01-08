@@ -15,6 +15,7 @@ import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queri
 import { useQueryClient } from "@tanstack/react-query";
 import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
 import { addDays } from "date-fns";
+import { NumberBadge } from "@/components/number-badge";
 
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
@@ -160,12 +161,10 @@ export default function RequestsPage() {
           <div className="flex items-center justify-between mb-4">
             <TabsList className="w-fit border-none">
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending" className="flex gap-1">Pending
-                {proposals?.proposals && proposals.proposals.length > 0 &&
-                  < span className="flex size-5 items-center justify-center rounded-[8px] px-2 py-[3px] bg-orange-500 text-xs font-semibold text-white">
-                    {proposals?.proposals.length}
-                  </span>
-                }
+              <TabsTrigger value="pending" className="flex gap-2.5">Pending
+                {!!proposals?.proposals?.length && proposals?.proposals?.length > 0 && (
+                  <NumberBadge number={proposals?.proposals?.length} variant="secondary" />
+                )}
               </TabsTrigger>
               <TabsTrigger value="executed">Executed</TabsTrigger>
               <TabsTrigger value="rejected">Rejected</TabsTrigger>
