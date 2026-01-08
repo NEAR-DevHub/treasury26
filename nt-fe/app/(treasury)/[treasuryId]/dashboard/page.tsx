@@ -18,16 +18,12 @@ export default function AppPage() {
       title="Dashboard"
       description="Overview of your treasury assets and activity"
     >
-      <div className="flex gap-5">
+      <div className="flex flex-col lg:flex-row gap-5">
         <div className="flex flex-col gap-5 lg:w-3/5 w-full">
           <BalanceWithGraph totalBalanceUSD={totalBalanceUSD} tokens={tokens} />
-          <div className="lg:hidden flex">
-            <PendingRequests />
-          </div>
-
           <Assets tokens={tokens} />
         </div>
-        <div className="w-2/5 hidden lg:flex">
+        <div className="w-full lg:w-2/5">
           <PendingRequests />
         </div>
       </div>

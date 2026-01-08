@@ -6,7 +6,7 @@ export function NumberBadge({ number, variant = "default" }: { number: number, v
         secondary: "bg-muted text-muted-foreground",
     }
     return (
-        <span className={cn("flex size-5 items-center justify-center rounded-[8px] px-2 py-[3px] text-xs font-semibold", variants[variant])}>
+        <span aria-label={`${number} pending requests`} className={cn("flex size-5 items-center justify-center rounded-[8px] px-2 py-[3px] text-xs font-semibold", variants[variant])}>
             {number}
         </span>
     );

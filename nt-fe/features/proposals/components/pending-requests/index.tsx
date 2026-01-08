@@ -1,6 +1,7 @@
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { NumberBadge } from "@/components/number-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
 import { useTreasury } from "@/stores/treasury-store";
@@ -12,6 +13,35 @@ import { Policy } from "@/types/policy";
 import { TreasuryConfig } from "@/lib/api";
 import { useTreasuryConfig, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { getProposalUIKind } from "../../utils/proposal-utils";
+
+const MAX_DISPLAYED_REQUESTS = 4;
+
+function PendingRequestItemSkeleton() {
+    return (
+        <Skeleton className="h-20 w-full rounded-lg" />
+    );
+}
+
+function PendingRequestsSkeleton() {
+    return (
+        <div className="border bg-general-tertiary border-border rounded-lg p-5 gap-3 flex flex-col w-full h-fit min-h-[300px]">
+            <div className="flex justify-between">
+                <div className="flex items-center gap-1">
+                    <h1 className="font-semibold text-nowrap">Pending Requests</h1>
+                </div>
+                <Button variant="ghost" className="flex gap-2" disabled>
+                    View All
+                    <ArrowRight className="size-4" />
+                </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+                {Array.from({ length: MAX_DISPLAYED_REQUESTS }).map((_, index) => (
+                    <PendingRequestItemSkeleton key={index} />
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export function PendingRequestItem({ proposal, policy, config, accountId }: { proposal: Proposal, policy: Policy, config: TreasuryConfig, accountId: string }) {
     const type = getProposalUIKind(proposal);
@@ -31,25 +61,27 @@ export function PendingRequestItem({ proposal, policy, config, accountId }: { pr
 
 export function PendingRequests() {
     const { selectedTreasury: accountId } = useTreasury();
-    const { data: treasury } = useTreasuryConfig(accountId);
-    const { data: policy } = useTreasuryPolicy(accountId);
-    const { data: pendingRequests } = useProposals(accountId, {
+    const { data: treasury, isLoading: isTreasuryLoading } = useTreasuryConfig(accountId);
+    const { data: policy, isLoading: isPolicyLoading } = useTreasuryPolicy(accountId);
+    const { data: pendingRequests, isLoading: isRequestsLoading } = useProposals(accountId, {
         statuses: ["InProgress"],
     });
 
-    if (!treasury || !policy || !accountId) {
-        return <div>Loading...</div>;
+    const isLoading = isTreasuryLoading || isPolicyLoading || isRequestsLoading;
+
+    if (isLoading || !treasury || !policy || !accountId) {
+        return <PendingRequestsSkeleton />;
     }
 
-    const hasPendingRequests = !!pendingRequests?.proposals?.length && pendingRequests?.proposals?.length > 0;
+    const hasPendingRequests = (pendingRequests?.proposals?.length ?? 0) > 0;
 
     return (
         <div className="border bg-general-tertiary border-border rounded-lg p-5 gap-3 flex flex-col w-full h-fit min-h-[300px]">
             <div className="flex justify-between">
                 <div className="flex items-center gap-1">
                     <h1 className="font-semibold text-nowrap">Pending Requests</h1>
-                    {!!pendingRequests?.proposals?.length && pendingRequests?.proposals?.length > 0 && (
-                        <NumberBadge number={pendingRequests?.proposals?.length} />
+                    {hasPendingRequests && (
+                        <NumberBadge number={pendingRequests?.proposals?.length ?? 0} />
                     )}
                 </div>
 
@@ -65,7 +97,7 @@ export function PendingRequests() {
 
             {hasPendingRequests ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
-                    {pendingRequests?.proposals?.slice(0, 4).map((proposal) => (
+                    {pendingRequests?.proposals?.slice(0, MAX_DISPLAYED_REQUESTS).map((proposal) => (
                         <PendingRequestItem key={proposal.id} proposal={proposal} policy={policy} config={treasury.config} accountId={accountId} />
                     ))}
                 </div>

@@ -142,9 +142,6 @@ function NoRequestsFound() {
   const { selectedTreasury: treasuryId } = useTreasury();
   return (
     <PageCard className="py-[100px] flex flex-col items-center justify-center w-full h-fit gap-4">
-      <div>
-
-      </div>
       <div className="flex flex-col items-center justify-center gap-0.5">
         <h1 className="font-semibold">Create your first request</h1>
         <p className="text-xs text-muted-foreground max-w-[300px] text-center">Requests for payments, exchanges, and other actions will appear here once created.</p>
@@ -185,12 +182,6 @@ export default function RequestsPage() {
     params.delete("page"); // Reset page when changing tabs
     router.push(`${pathname}?${params.toString()}`);
   }, [searchParams, router, pathname]);
-
-  useEffect(() => {
-    if (currentTab === "pending" && proposals?.proposals?.length === 0) {
-      router.push(`${pathname}?tab=all`);
-    }
-  }, [currentTab, proposals?.proposals?.length, router, pathname]);
 
   if (allProposals?.proposals?.length === 0) {
     return (
