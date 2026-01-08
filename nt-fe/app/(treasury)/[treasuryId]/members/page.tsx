@@ -74,7 +74,7 @@ export default function MembersPage() {
   // Fetch pending proposals to check for active member requests
   const { data: pendingProposals } = useProposals(selectedTreasury, {
     statuses: ["InProgress"],
-    proposal_types: ["ChangePolicy"],
+    proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
     sort_direction: "desc",
     sort_by: "CreationTime",
   });
@@ -723,8 +723,8 @@ export default function MembersPage() {
                           onClick={() => handleEditMember(member)}
                           disabled={!validation.canModify}
                           className={`p-2 rounded transition-colors ${!validation.canModify
-                              ? "text-muted-foreground/40 cursor-not-allowed"
-                              : "text-foreground hover:bg-muted"
+                            ? "text-muted-foreground/40 cursor-not-allowed"
+                            : "text-foreground hover:bg-muted"
                             }`}
                         >
                           <Pencil className="w-4 h-4" />
@@ -746,8 +746,8 @@ export default function MembersPage() {
                           }}
                           disabled={!validation.canModify}
                           className={`p-2 rounded transition-colors ${!validation.canModify
-                              ? "text-destructive/40 cursor-not-allowed"
-                              : "text-destructive hover:bg-destructive/10"
+                            ? "text-destructive/40 cursor-not-allowed"
+                            : "text-destructive hover:bg-destructive/10"
                             }`}
                         >
                           <Trash2 className="w-4 h-4" />
