@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
 import { useTreasury } from "@/stores/treasury-store";
-import { ArrowRight, Check, X } from "lucide-react";
+import { ChevronRight, Check, X } from "lucide-react";
 import Link from "next/link";
 import { ProposalTypeIcon } from "../proposal-type-icon";
 import { TransactionCell } from "../transaction-cell";
@@ -35,7 +35,7 @@ function PendingRequestsSkeleton() {
                 </div>
                 <Button variant="ghost" className="flex gap-2" disabled>
                     View All
-                    <ArrowRight className="size-4" />
+                    <ChevronRight className="size-4" />
                 </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
@@ -60,29 +60,27 @@ export function PendingRequestItem({ proposal, policy, config, accountId, onVote
 
     return (
         <Link href={`/${accountId}/requests/${proposal.id}`}>
-            <PageCard className="flex flex-row justify-between w-full group">
-                <div className="flex w-full gap-3.5">
-                    <ProposalTypeIcon proposal={proposal} />
-                    <div className="flex flex-col w-full gap-px">
-                        <span className="leading-none font-semibold">{type}</span>
-                        <TransactionCell proposal={proposal} policy={policy} config={config} withDate={true} textOnly />
-                        <div className="gap-3 pt-4 grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
-                            <div className="overflow-hidden">
-                                <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                                    <Button variant="secondary" className="flex gap-1" onClick={(e) => { e.preventDefault(); onVote("Reject") }}>
-                                        <X className="size-3.5" />
-                                        Reject
-                                    </Button>
-                                    <Button variant="default" className="flex gap-1" onClick={(e) => { e.preventDefault(); onVote("Approve") }}>
-                                        <Check className="size-3.5" />
-                                        Approve
-                                    </Button>
-                                </div>
+            <PageCard className="flex relative flex-row gap-3.5 justify-between w-full group">
+                <ProposalTypeIcon proposal={proposal} />
+                <div className="flex flex-col w-full gap-px">
+                    <span className="leading-none font-semibold">{type}</span>
+                    <TransactionCell proposal={proposal} policy={policy} config={config} withDate={true} textOnly />
+                    <div className="gap-3 pt-4 grid grid-rows-[0fr] w-full group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
+                        <div className="overflow-hidden w-full">
+                            <div className="flex gap-3 opacity-0 w-full group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
+                                <Button variant="secondary" className="flex gap-1 flex-1" onClick={(e) => { e.preventDefault(); onVote("Reject") }}>
+                                    <X className="size-3.5" />
+                                    Reject
+                                </Button>
+                                <Button variant="default" className="flex gap-1 flex-1" onClick={(e) => { e.preventDefault(); onVote("Approve") }}>
+                                    <Check className="size-3.5" />
+                                    Approve
+                                </Button>
                             </div>
                         </div>
                     </div>
                 </div>
-                <ArrowRight className="size-4 text-card group-hover:text-card-foreground transition-colors" />
+                <ChevronRight className="size-4 shrink-0 text-card group-hover:text-card-foreground transition-colors absolute right-4 top-4" />
             </PageCard>
         </Link>
     );
@@ -121,7 +119,7 @@ export function PendingRequests() {
                         <Link href={`/${accountId}/requests`}>
                             <Button variant="ghost" className="flex gap-2">
                                 View All
-                                <ArrowRight className="size-4" />
+                                <ChevronRight className="size-4" />
                             </Button>
                         </Link>
                     )}
