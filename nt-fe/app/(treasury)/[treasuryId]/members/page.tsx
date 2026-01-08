@@ -41,6 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useMemberValidation } from "./hooks/use-member-validation";
+import { formatRoleName } from "@/components/role-name";
 
 interface Member {
   accountId: string;
@@ -501,14 +502,14 @@ export default function MembersPage() {
       const membersToRemove =
         selectedMembers.length > 0
           ? selectedMembers.map((accountId) => {
-              const member = activeMembers.find(
-                (m) => m.accountId === accountId
-              );
-              return { member: accountId, roles: member?.roles || [] };
-            })
+            const member = activeMembers.find(
+              (m) => m.accountId === accountId
+            );
+            return { member: accountId, roles: member?.roles || [] };
+          })
           : memberToDelete
-          ? [{ member: memberToDelete.accountId, roles: memberToDelete.roles }]
-          : [];
+            ? [{ member: memberToDelete.accountId, roles: memberToDelete.roles }]
+            : [];
 
       if (membersToRemove.length === 0) return;
 
@@ -519,7 +520,7 @@ export default function MembersPage() {
         updatedPolicy,
         summary,
         "Update Policy - Remove Member" +
-          (membersToRemove.length > 1 ? "s" : ""),
+        (membersToRemove.length > 1 ? "s" : ""),
         `Member removal request created successfully`
       );
 
@@ -597,9 +598,9 @@ export default function MembersPage() {
   const renderMembersTable = (members: Member[]) => {
     if (isLoading) {
       return (
-      <Table>
-        <TableHeader className="bg-general-tertiary">
-          <TableRow className="hover:bg-transparent">
+        <Table>
+          <TableHeader className="bg-general-tertiary">
+            <TableRow className="hover:bg-transparent">
               <TableHead className="w-12"></TableHead>
               <TableHead>
                 <span className="text-xs font-medium uppercase">
@@ -664,11 +665,11 @@ export default function MembersPage() {
               <Checkbox
                 checked={
                   selectedMembers.length === activeMembers.length &&
-                  activeMembers.length > 0
+                    activeMembers.length > 0
                     ? true
                     : selectedMembers.length > 0
-                    ? "indeterminate"
-                    : false
+                      ? "indeterminate"
+                      : false
                 }
                 onCheckedChange={handleToggleAll}
               />
@@ -709,7 +710,7 @@ export default function MembersPage() {
                 <TableCell>
                   <div className="flex flex-wrap gap-2">
                     {member.roles.map((role) => (
-                      <RoleBadge key={role} role={role} variant="pill" />
+                      <RoleBadge key={role} role={formatRoleName(role)} variant="pill" />
                     ))}
                   </div>
                 </TableCell>
@@ -721,11 +722,10 @@ export default function MembersPage() {
                           type="button"
                           onClick={() => handleEditMember(member)}
                           disabled={!validation.canModify}
-                          className={`p-2 rounded transition-colors ${
-                            !validation.canModify
+                          className={`p-2 rounded transition-colors ${!validation.canModify
                               ? "text-muted-foreground/40 cursor-not-allowed"
                               : "text-foreground hover:bg-muted"
-                          }`}
+                            }`}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -745,11 +745,10 @@ export default function MembersPage() {
                             setIsDeleteModalOpen(true);
                           }}
                           disabled={!validation.canModify}
-                          className={`p-2 rounded transition-colors ${
-                            !validation.canModify
+                          className={`p-2 rounded transition-colors ${!validation.canModify
                               ? "text-destructive/40 cursor-not-allowed"
                               : "text-destructive hover:bg-destructive/10"
-                          }`}
+                            }`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -986,11 +985,11 @@ export default function MembersPage() {
           const membersToDelete =
             selectedMembers.length > 0
               ? activeMembers.filter((m) =>
-                  selectedMembers.includes(m.accountId)
-                )
+                selectedMembers.includes(m.accountId)
+              )
               : memberToDelete
-              ? [memberToDelete]
-              : [];
+                ? [memberToDelete]
+                : [];
 
           if (membersToDelete.length === 0) return undefined;
 

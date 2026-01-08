@@ -13,7 +13,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { RolePermission } from "@/types/policy";
-import { EXISTING_ROLES, ROLES } from "@/components/role-selector";
+import { ROLES } from "@/components/role-selector";
+import { formatRoleName } from "@/components/role-name";
 
 interface MemberFormData {
   members: Array<{
@@ -50,8 +51,8 @@ export function MemberModal({
       ? "Creating proposal..."
       : "Validating addresses..."
     : isEditMode
-    ? "Confirm Changes"
-    : "Review Request";
+      ? "Confirm Changes"
+      : "Review Request";
 
   return (
     <Dialog
@@ -69,13 +70,16 @@ export function MemberModal({
               control={form.control}
               name="members"
               mode={mode}
-              availableRoles={availableRoles.map((r) => ({
-                id: r.name,
-                title: r.name,
-                description: EXISTING_ROLES.concat(ROLES).find(
-                  (role) => role.id === r.name?.toLowerCase()
-                )?.description,
-              }))}
+              availableRoles={availableRoles.map((r) => {
+                const formattedRole = formatRoleName(r.name);
+                return {
+                  id: r.name,
+                  title: formattedRole,
+                  description: ROLES.find(
+                    (role) => role.id === formattedRole?.toLowerCase()
+                  )?.description,
+                }
+              })}
             />
           </FormProvider>
         </div>

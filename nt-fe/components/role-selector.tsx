@@ -37,20 +37,6 @@ export const ROLES: readonly Role[] = [
     },
 ] as const;
 
-export const EXISTING_ROLES: readonly Role[] = [
-    {
-        id: "admin",
-        title: "Admin",
-        description:'Admin can configure the treasury\'s settings and member configuration.'
-    },
-    {
-        id: "approver",
-        title: "Approver",
-        description:'Approver can review and vote on treasury transaction requests.'
-    },
-    
-] as const;
-
 interface RoleSelectorProps {
     selectedRoles?: string[]
     onRolesChange?: (roles: string[]) => void

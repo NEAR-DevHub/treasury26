@@ -3,7 +3,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { EXISTING_ROLES, ROLES } from "@/components/role-selector";
+import { ROLES } from "@/components/role-selector";
 
 interface RoleBadgeProps {
   role: string;
@@ -11,13 +11,12 @@ interface RoleBadgeProps {
 }
 
 export function RoleBadge({ role, variant = "pill" }: RoleBadgeProps) {
-  const roleInfo = EXISTING_ROLES.concat(ROLES).find((r) => r.id === role.toLowerCase());
+  const roleInfo = ROLES.find((r) => r.id === role.toLowerCase());
 
   const badge = (
     <span
-      className={`px-3 py-1 bg-muted text-foreground text-sm font-medium ${
-        variant === "pill" ? "rounded-full" : "rounded-md"
-      }`}
+      className={`px-3 py-1 bg-muted text-foreground text-sm font-medium ${variant === "pill" ? "rounded-full" : "rounded-md"
+        }`}
     >
       {role}
     </span>
