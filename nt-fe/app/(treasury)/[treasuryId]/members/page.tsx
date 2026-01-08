@@ -16,6 +16,7 @@ import {
 import { hasPermission } from "@/lib/config-utils";
 import { useProposals } from "@/hooks/use-proposals";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import {
   Tooltip,
   TooltipContent,
@@ -23,27 +24,14 @@ import {
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { encodeToMarkdown } from "@/lib/utils";
-import { useFormatDate } from "@/components/formatted-date";
 import { MemberModal } from "./components/modals/member-modal";
 import { PreviewModal } from "./components/modals/preview-modal";
 import { DeleteConfirmationModal } from "./components/modals/delete-confirmation-modal";
 import { User } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Pencil,
-  Trash2,
-  UsersRound,
-  UserRoundPlus,
-  UserRoundPen,
-} from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { PageCard } from "@/components/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsContents,
-  TabsList,
-  TabsTrigger,
-} from "@/components/underline-tabs";
+import { RoleBadge } from "@/components/role-badge";
 import {
   Table,
   TableBody,
@@ -53,24 +41,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useMemberValidation } from "./hooks/use-member-validation";
+import { formatRoleName } from "@/components/role-name";
 
 interface Member {
   accountId: string;
   roles: string[];
 }
 
-interface PendingMember extends Member {
-  proposalId: number;
-  proposer: string;
-  createdAt: string;
-  addedRoles?: string[];
-  removedRoles?: string[];
-}
-
 interface AddMemberFormData {
   members: Array<{
     accountId: string;
-    selectedRoles: string[];
+    roles: string[];
   }>;
 }
 
@@ -79,8 +60,7 @@ export default function MembersPage() {
   const { data: policy, isLoading } = useTreasuryPolicy(selectedTreasury);
   const { accountId } = useNear();
   const queryClient = useQueryClient();
-  const formatDate = useFormatDate();
-  const [activeTab, setActiveTab] = useState<"active" | "pending">("active");
+  const router = useRouter();
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isEditRolesModalOpen, setIsEditRolesModalOpen] = useState(false);
@@ -95,7 +75,6 @@ export default function MembersPage() {
   const { data: pendingProposals } = useProposals(selectedTreasury, {
     statuses: ["InProgress"],
     proposal_types: ["ChangePolicy"],
-    search: "members",
     sort_direction: "desc",
     sort_by: "CreationTime",
   });
@@ -139,18 +118,22 @@ export default function MembersPage() {
     return Array.from(memberMap, ([accountId, rolesSet]) => ({
       accountId,
       roles: Array.from(rolesSet),
-    })).sort((a, b) => a.accountId.toLowerCase().localeCompare(b.accountId.toLowerCase()));
+    })).sort((a, b) =>
+      a.accountId.toLowerCase().localeCompare(b.accountId.toLowerCase())
+    );
   }, [policy]);
 
   // Track current modal mode for schema validation
-  const [currentModalMode, setCurrentModalMode] = useState<"add" | "edit">("add");
+  const [currentModalMode, setCurrentModalMode] = useState<"add" | "edit">(
+    "add"
+  );
   const [membersBeingEdited, setMembersBeingEdited] = useState<string[]>([]);
 
   // Create dynamic schema with access to existing members and mode
   const addMemberSchemaWithContext = useMemo(() => {
     const existingMembersSet = new Set(
       existingMembers.map((m) => m.accountId.toLowerCase())
-    )
+    );
     return z.object({
       members: z
         .array(
@@ -161,7 +144,7 @@ export default function MembersPage() {
               .refine(isValidNearAddressFormat, {
                 message: "Invalid NEAR address.",
               }),
-            selectedRoles: z
+            roles: z
               .array(z.string())
               .min(1, "At least one role must be selected"),
           })
@@ -208,7 +191,7 @@ export default function MembersPage() {
     resolver: zodResolver(addMemberSchemaWithContext),
     mode: "onChange",
     defaultValues: {
-      members: [{ accountId: "", selectedRoles: [] }],
+      members: [{ accountId: "", roles: [] }],
     },
   });
 
@@ -237,133 +220,6 @@ export default function MembersPage() {
     canAddMember,
     hasPendingMemberRequest,
   });
-
-  // Extract pending members from proposal descriptions
-  const pendingProposalsData = useMemo(() => {
-    if (!pendingProposals?.proposals) return [];
-
-    return pendingProposals.proposals.map((proposal) => {
-      const memberChanges = new Map<
-        string,
-        { addedRoles: Set<string>; removedRoles: Set<string> }
-      >();
-
-      if (proposal.description) {
-        // Parse "add" operations: add "accountId" to ["Role1", "Role2"]
-        const addPattern = /add "([^"]+)" to \[([^\]]+)\]/gi;
-        let match;
-
-        while ((match = addPattern.exec(proposal.description)) !== null) {
-          const accountId = match[1];
-          const rolesStr = match[2];
-          const roles =
-            rolesStr.match(/"([^"]+)"/g)?.map((r) => r.replace(/"/g, "")) || [];
-
-          if (accountId) {
-            if (!memberChanges.has(accountId)) {
-              memberChanges.set(accountId, {
-                addedRoles: new Set(),
-                removedRoles: new Set(),
-              });
-            }
-            roles.forEach((role) =>
-              memberChanges.get(accountId)?.addedRoles.add(role)
-            );
-          }
-        }
-
-        // Parse "remove" operations: remove "accountId" from ["Role1", "Role2"]
-        const removePattern = /remove "([^"]+)" from \[([^\]]+)\]/gi;
-
-        while ((match = removePattern.exec(proposal.description)) !== null) {
-          const accountId = match[1];
-          const rolesStr = match[2];
-          const roles =
-            rolesStr.match(/"([^"]+)"/g)?.map((r) => r.replace(/"/g, "")) || [];
-
-          if (accountId) {
-            if (!memberChanges.has(accountId)) {
-              memberChanges.set(accountId, {
-                addedRoles: new Set(),
-                removedRoles: new Set(),
-              });
-            }
-            roles.forEach((role) =>
-              memberChanges.get(accountId)?.removedRoles.add(role)
-            );
-          }
-        }
-
-        // Parse "edit" operations: edit "accountId": removed from ["Role1"], added to ["Role2"]
-        const editPattern =
-          /edit "([^"]+)":\s*(?:removed from \[([^\]]+)\])?\s*,?\s*(?:added to \[([^\]]+)\])?/gi;
-
-        while ((match = editPattern.exec(proposal.description)) !== null) {
-          const accountId = match[1];
-          const removedRolesStr = match[2];
-          const addedRolesStr = match[3];
-
-          if (accountId) {
-            if (!memberChanges.has(accountId)) {
-              memberChanges.set(accountId, {
-                addedRoles: new Set(),
-                removedRoles: new Set(),
-              });
-            }
-
-            // Parse removed roles
-            if (removedRolesStr) {
-              const removedRoles =
-                removedRolesStr
-                  .match(/"([^"]+)"/g)
-                  ?.map((r) => r.replace(/"/g, "")) || [];
-              removedRoles.forEach((role) =>
-                memberChanges.get(accountId)?.removedRoles.add(role)
-              );
-            }
-
-            // Parse added roles
-            if (addedRolesStr) {
-              const addedRoles =
-                addedRolesStr
-                  .match(/"([^"]+)"/g)
-                  ?.map((r) => r.replace(/"/g, "")) || [];
-              addedRoles.forEach((role) =>
-                memberChanges.get(accountId)?.addedRoles.add(role)
-              );
-            }
-          }
-        }
-      }
-
-      // Convert member changes to array
-      const members: PendingMember[] = [];
-      for (const [accountId, changes] of memberChanges.entries()) {
-        const addedRoles = Array.from(changes.addedRoles);
-        const removedRoles = Array.from(changes.removedRoles);
-
-        // Only add if there are actual changes
-        if (addedRoles.length > 0 || removedRoles.length > 0) {
-          members.push({
-            accountId,
-            roles: addedRoles,
-            proposalId: proposal.id,
-            proposer: proposal.proposer,
-            createdAt: proposal.submission_time,
-            addedRoles,
-            removedRoles,
-          });
-        }
-      }
-
-      return {
-        proposalId: proposal.id,
-        proposer: proposal.proposer,
-        createdAt: proposal.submission_time,
-        members,
-      };
-    });
-  }, [pendingProposals]);
 
   const handleReviewRequest = async () => {
     const isValid = await form.trigger();
@@ -413,15 +269,9 @@ export default function MembersPage() {
     try {
       // Transform form data to the format expected by applyMemberRolesToPolicy
       const membersList = data.members.map(
-        ({
-          accountId,
-          selectedRoles,
-        }: {
-          accountId: string;
-          selectedRoles: string[];
-        }) => ({
+        ({ accountId, roles }: { accountId: string; roles: string[] }) => ({
           member: accountId,
-          roles: selectedRoles,
+          roles: roles,
         })
       );
 
@@ -439,7 +289,7 @@ export default function MembersPage() {
 
       setIsPreviewModalOpen(false);
       form.reset({
-        members: [{ accountId: "", selectedRoles: [] }],
+        members: [{ accountId: "", roles: [] }],
       });
     } catch (error) {
       // Error already handled in createPolicyChangeProposal
@@ -483,14 +333,18 @@ export default function MembersPage() {
             );
           }
 
-          return `- edit "${member}": ${parts.join(", ")}`;
+          // Only include if there are actual changes
+          if (parts.length > 0) {
+            return `- edit "${member}": ${parts.join(", ")}`;
+          }
+          return null; // No changes, skip this member
         }
         return `- edit "${member}" to [${roles
           .map((r) => `"${r}"`)
           .join(", ")}]`;
       }
       return `- add "${member}" to [${roles.map((r) => `"${r}"`).join(", ")}]`;
-    });
+    }).filter(Boolean); // Filter out null entries
 
     const updatedPolicy = structuredClone(policy);
 
@@ -583,7 +437,9 @@ export default function MembersPage() {
       });
 
       // Refetch proposals to show the newly created proposal
-      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
+      queryClient.invalidateQueries({
+        queryKey: ["proposals", selectedTreasury],
+      });
     } catch (error) {
       console.error("Failed to create proposal:", error);
       toast.error("Failed to create proposal");
@@ -593,16 +449,15 @@ export default function MembersPage() {
 
   // Handle member edit (single or multiple)
   const handleEditMembersSubmit = async (
-    membersData: Array<{ accountId: string; selectedRoles: string[] }>
+    membersData: Array<{ accountId: string; roles: string[] }>
   ) => {
     if (!policy || !selectedTreasury) return;
 
     try {
       setIsCreatingProposal(true);
-      // Transform to the format expected by applyMemberRolesToPolicy
       const membersList = membersData.map((m) => ({
         member: m.accountId,
-        roles: m.selectedRoles,
+        roles: m.roles,
       }));
 
       const { updatedPolicy, summary } = applyMemberRolesToPolicy(
@@ -647,14 +502,14 @@ export default function MembersPage() {
       const membersToRemove =
         selectedMembers.length > 0
           ? selectedMembers.map((accountId) => {
-              const member = activeMembers.find(
-                (m) => m.accountId === accountId
-              );
-              return { member: accountId, roles: member?.roles || [] };
-            })
+            const member = activeMembers.find(
+              (m) => m.accountId === accountId
+            );
+            return { member: accountId, roles: member?.roles || [] };
+          })
           : memberToDelete
-          ? [{ member: memberToDelete.accountId, roles: memberToDelete.roles }]
-          : [];
+            ? [{ member: memberToDelete.accountId, roles: memberToDelete.roles }]
+            : [];
 
       if (membersToRemove.length === 0) return;
 
@@ -665,7 +520,7 @@ export default function MembersPage() {
         updatedPolicy,
         summary,
         "Update Policy - Remove Member" +
-          (membersToRemove.length > 1 ? "s" : ""),
+        (membersToRemove.length > 1 ? "s" : ""),
         `Member removal request created successfully`
       );
 
@@ -681,7 +536,7 @@ export default function MembersPage() {
     setCurrentModalMode("add");
     setMembersBeingEdited([]);
     form.reset({
-      members: [{ accountId: "", selectedRoles: [] }],
+      members: [{ accountId: "", roles: [] }],
     });
     setIsAddMemberModalOpen(true);
   }, [form]);
@@ -693,7 +548,7 @@ export default function MembersPage() {
       setMembersBeingEdited([member.accountId]);
       // Reset form with the selected member's data
       form.reset({
-        members: [{ accountId: member.accountId, selectedRoles: member.roles }],
+        members: [{ accountId: member.accountId, roles: member.roles }],
       });
       setIsEditRolesModalOpen(true);
     },
@@ -710,7 +565,7 @@ export default function MembersPage() {
     form.reset({
       members: membersToEdit.map((m) => ({
         accountId: m.accountId,
-        selectedRoles: m.roles,
+        roles: m.roles,
       })),
     });
     setIsEditRolesModalOpen(true);
@@ -739,177 +594,31 @@ export default function MembersPage() {
     }
   }, [selectedMembers.length, activeMembers]);
 
-  // Clear selection when changing tabs
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value as "active" | "pending");
-    setSelectedMembers([]);
-  }, []);
-
-  // Render pending members table (similar to requests page)
-  const renderPendingMembersTable = useCallback(() => {
-    if (isLoading) {
-      return (
-        <div className="flex items-center justify-center py-8">
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      );
-    }
-
-    if (pendingProposalsData.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <div className="relative w-20 h-14">
-            <div className="absolute left-0 top-0 w-12 h-12 rounded-full border-4 border-background bg-muted flex items-center justify-center">
-              <UserRoundPlus className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div className="absolute right-0 top-5 w-12 h-12 rounded-full border-4 border-background bg-muted flex items-center justify-center">
-              <UserRoundPen className="w-6 h-6 text-muted-foreground" />
-            </div>
-          </div>
-          <p className="text-foreground font-medium mt-2">
-            No pending requests.
-          </p>
-        </div>
-      );
-    }
-
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead>
-              <span className="text-xs font-medium uppercase text-muted-foreground">
-                Request
-              </span>
-            </TableHead>
-            <TableHead>
-              <span className="text-xs font-medium uppercase text-muted-foreground">
-                Transaction
-              </span>
-            </TableHead>
-            <TableHead>
-              <span className="text-xs font-medium uppercase text-muted-foreground">
-                Requester
-              </span>
-            </TableHead>
-            <TableHead className="text-right">
-              <span className="text-xs font-medium uppercase text-muted-foreground"></span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pendingProposalsData.map((proposalData) => {
-            const { proposalId, proposer, createdAt, members } = proposalData;
-
-            // Determine action text based on the proposal intent
-            let actionText = "Update Member";
-            if (members.length > 0) {
-              // Check if it's purely adding (only addedRoles, no removedRoles)
-              const isAdd = members.every(
-                (m) =>
-                  (m.addedRoles?.length || 0) > 0 &&
-                  (m.removedRoles?.length || 0) === 0
-              );
-              // Check if it's purely removing (only removedRoles, no addedRoles)
-              const isRemove = members.every(
-                (m) =>
-                  (m.removedRoles?.length || 0) > 0 &&
-                  (m.addedRoles?.length || 0) === 0
-              );
-
-              if (isAdd) {
-                actionText = "Add New Member";
-              } else if (isRemove) {
-                actionText = "Remove Member";
-              }
-            }
-
-            // Only show member count if we successfully parsed members
-            const memberText =
-              members.length > 0
-                ? members.length === 1
-                  ? `Member: ${members[0].accountId}`
-                  : `${members.length} Members`
-                : null;
-
-            // Format date from nanoseconds timestamp
-            const formattedDate = formatDate(
-              new Date(parseInt(createdAt) / 1000000)
-            );
-
-            return (
-              <TableRow key={proposalId}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 shrink-0 bg-muted rounded-sm p-2">
-                      <UsersRound className="w-6 h-6" />
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-medium">{actionText}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formattedDate}
-                      </span>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">{actionText}</span>
-                    {memberText && (
-                      <span className="text-xs text-muted-foreground">
-                        {memberText}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <User accountId={proposer} size="sm" withLink={false} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      if (typeof window !== "undefined") {
-                        window.location.href = `/${selectedTreasury}/requests/${proposalId}`;
-                      }
-                    }}
-                  >
-                    View Request
-                  </Button>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    );
-  }, [isLoading, pendingProposalsData, selectedTreasury, formatDate]);
-
   // Render members table
   const renderMembersTable = (members: Member[]) => {
     if (isLoading) {
       return (
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-general-tertiary">
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-12"></TableHead>
               <TableHead>
-                <span className="text-xs font-medium uppercase text-muted-foreground">
+                <span className="text-xs font-medium uppercase">
                   Member
                 </span>
               </TableHead>
               <TableHead>
-                <span className="text-xs font-medium uppercase text-muted-foreground">
+                <span className="text-xs font-medium uppercase">
                   Permissions
                 </span>
               </TableHead>
-              <TableHead className="w-24"></TableHead>
+              <TableHead className="w-24 pr-6"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {[...Array(5)].map((_, i) => (
               <TableRow key={i}>
-                <TableCell>
+                <TableCell className="pl-6">
                   <div className="w-4 h-4 bg-muted rounded animate-pulse" />
                 </TableCell>
                 <TableCell>
@@ -927,7 +636,7 @@ export default function MembersPage() {
                     <div className="h-7 bg-muted rounded w-24 animate-pulse" />
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="pr-6">
                   <div className="flex justify-end gap-2">
                     <div className="w-8 h-8 bg-muted rounded animate-pulse" />
                     <div className="w-8 h-8 bg-muted rounded animate-pulse" />
@@ -950,32 +659,32 @@ export default function MembersPage() {
 
     return (
       <Table>
-        <TableHeader>
+        <TableHeader className="bg-general-tertiary">
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-12">
+            <TableHead className="w-12 pl-6">
               <Checkbox
                 checked={
                   selectedMembers.length === activeMembers.length &&
-                  activeMembers.length > 0
+                    activeMembers.length > 0
                     ? true
                     : selectedMembers.length > 0
-                    ? "indeterminate"
-                    : false
+                      ? "indeterminate"
+                      : false
                 }
                 onCheckedChange={handleToggleAll}
               />
             </TableHead>
             <TableHead>
-              <span className="text-xs font-medium uppercase text-muted-foreground">
+              <span className="text-xs font-medium uppercase">
                 Member
               </span>
             </TableHead>
             <TableHead>
-              <span className="text-xs font-medium uppercase text-muted-foreground">
+              <span className="text-xs font-medium uppercase">
                 Permissions
               </span>
             </TableHead>
-            <TableHead className="w-24"></TableHead>
+            <TableHead className="w-24 pr-6"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -984,7 +693,7 @@ export default function MembersPage() {
 
             return (
               <TableRow key={member.accountId} className="group">
-                <TableCell>
+                <TableCell className="pl-6">
                   <Checkbox
                     checked={selectedMembers.includes(member.accountId)}
                     onCheckedChange={() => handleToggleMember(member.accountId)}
@@ -1001,16 +710,11 @@ export default function MembersPage() {
                 <TableCell>
                   <div className="flex flex-wrap gap-2">
                     {member.roles.map((role) => (
-                      <span
-                        key={role}
-                        className="px-3 py-1 rounded-md bg-muted text-foreground text-sm font-medium"
-                      >
-                        {role}
-                      </span>
+                      <RoleBadge key={role} role={formatRoleName(role)} variant="pill" />
                     ))}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="pr-6">
                   <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1018,11 +722,10 @@ export default function MembersPage() {
                           type="button"
                           onClick={() => handleEditMember(member)}
                           disabled={!validation.canModify}
-                          className={`p-2 rounded transition-colors ${
-                            !validation.canModify
+                          className={`p-2 rounded transition-colors ${!validation.canModify
                               ? "text-muted-foreground/40 cursor-not-allowed"
                               : "text-foreground hover:bg-muted"
-                          }`}
+                            }`}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -1042,11 +745,10 @@ export default function MembersPage() {
                             setIsDeleteModalOpen(true);
                           }}
                           disabled={!validation.canModify}
-                          className={`p-2 rounded transition-colors ${
-                            !validation.canModify
+                          className={`p-2 rounded transition-colors ${!validation.canModify
                               ? "text-destructive/40 cursor-not-allowed"
                               : "text-destructive hover:bg-destructive/10"
-                          }`}
+                            }`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1072,130 +774,129 @@ export default function MembersPage() {
       title="Members"
       description="Manage team members and permissions"
     >
-      <PageCard>
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) =>
-            handleTabChange(value as "active" | "pending")
-          }
-        >
-          <div className="flex items-center justify-between">
-            <TabsList className="w-fit border-none">
-              <TabsTrigger value="active">
-                Active Members
-                <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-1">
-                  {activeMembers.length}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger value="pending">
-                Pending
-                <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-1">
-                  {pendingProposalsData.length}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-
-            {isLoading ? (
-              <div className="h-10 w-44 bg-muted rounded-lg animate-pulse" />
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Button
-                      type="button"
-                      onClick={handleOpenAddMemberModal}
-                      className="flex items-center gap-2 text-md"
-                      disabled={!canAddNewMember().canModify}
-                    >
-                      <span className="text-lg">+</span>
-                      Add New Member
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!canAddNewMember().canModify && (
-                  <TooltipContent className="max-w-[280px]">
-                    <p>{canAddNewMember().reason}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            )}
-          </div>
-
-          {/* Bulk Actions Bar */}
-          {selectedMembers.length > 0 && activeTab === "active" && (
-            <div className="flex items-center justify-between pt-2 pb-2 px-2 border-b">
-              <span className="font-semibold">
-                {selectedMembers.length} member
-                {selectedMembers.length !== 1 ? "s" : ""} selected
+      <PageCard className="gap-0 p-0">
+        {/* Hide header when members are selected */}
+        {!(selectedMembers.length > 0) && (
+          <div className="flex items-center justify-between pt-2 pb-2 px-6 border-b">
+            <div className="flex items-center gap-3">
+              <h2 className="font-semibold text-lg">Add New Member</h2>
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-sm">
+                {activeMembers.length}
               </span>
-              <div className="flex items-center gap-2">
-                {(() => {
-                  const membersToModify = activeMembers.filter((m) =>
-                    selectedMembers.includes(m.accountId)
-                  );
-                  const deleteValidation = canDeleteBulk(membersToModify);
-                  const editValidation = canEditBulk();
-
-                  return (
-                    <>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleBulkDelete}
-                              disabled={!deleteValidation.canModify}
-                              className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              Remove
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        {!deleteValidation.canModify && (
-                          <TooltipContent className="max-w-[280px]">
-                            <p>{deleteValidation.reason}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleBulkEdit}
-                              disabled={!editValidation.canModify}
-                              className="h-9"
-                            >
-                              <Pencil className="w-4 h-4 mr-1" />
-                              Edit
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        {!editValidation.canModify && (
-                          <TooltipContent className="max-w-[280px]">
-                            <p>{editValidation.reason}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </>
-                  );
-                })()}
-              </div>
             </div>
-          )}
+            <div className="flex items-center gap-3">
+              {/* Pending Button - navigates to requests page */}
+              <Button
+                type="button"
+                onClick={() =>
+                  router.push(`/${selectedTreasury}/requests?tab=pending`)
+                }
+                variant="ghost"
+                className="flex items-center gap-2 border-2"
+              >
+                Pending
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs">
+                  {pendingProposals?.proposals?.length || 0}
+                </span>
+              </Button>
 
-          <TabsContents>
-            <TabsContent value="active">
-              {renderMembersTable(activeMembers)}
-            </TabsContent>
-            <TabsContent value="pending">
-              {renderPendingMembersTable()}
-            </TabsContent>
-          </TabsContents>
-        </Tabs>
+              {/* Add New Member Button */}
+              {isLoading ? (
+                <div className="h-10 w-44 bg-muted rounded-lg animate-pulse" />
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button
+                        type="button"
+                        onClick={handleOpenAddMemberModal}
+                        className="flex items-center gap-2 text-md"
+                        disabled={!canAddNewMember().canModify}
+                      >
+                        <span className="text-lg">+</span>
+                        Add New Member
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canAddNewMember().canModify && (
+                    <TooltipContent className="max-w-[280px]">
+                      <p>{canAddNewMember().reason}</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Bulk Actions Bar */}
+        {selectedMembers.length > 0 && (
+          <div className="flex items-center justify-between pt-2 pb-2 px-6 border-b">
+            <span className="font-semibold text-lg">
+              {selectedMembers.length} member
+              {selectedMembers.length !== 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              {(() => {
+                const membersToModify = activeMembers.filter((m) =>
+                  selectedMembers.includes(m.accountId)
+                );
+                const deleteValidation = canDeleteBulk(membersToModify);
+                const editValidation = canEditBulk();
+
+                return (
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleBulkDelete}
+                            disabled={!deleteValidation.canModify}
+                            className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Remove
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!deleteValidation.canModify && (
+                        <TooltipContent className="max-w-[280px]">
+                          <p>{deleteValidation.reason}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleBulkEdit}
+                            disabled={!editValidation.canModify}
+                            className="h-9"
+                          >
+                            <Pencil className="w-4 h-4 mr-1" />
+                            Edit
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!editValidation.canModify && (
+                        <TooltipContent className="max-w-[280px]">
+                          <p>{editValidation.reason}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Members Table */}
+        {renderMembersTable(activeMembers)}
       </PageCard>
 
       {/* Add New Member Modal */}
@@ -1242,20 +943,19 @@ export default function MembersPage() {
         }}
         isValidatingAddresses={isCreatingProposal}
         mode="edit"
-        existingMember={selectedMember}
         validationError={(() => {
           const membersData = form.watch("members");
 
           // Build edits array for validation
           const edits = membersData.map(
-            (m: { accountId: string; selectedRoles: string[] }) => {
+            (m: { accountId: string; roles: string[] }) => {
               const existingMember = activeMembers.find(
                 (am) => am.accountId === m.accountId
               );
               return {
                 accountId: m.accountId,
                 oldRoles: existingMember?.roles || [],
-                newRoles: m.selectedRoles,
+                newRoles: m.roles,
               };
             }
           );
@@ -1285,11 +985,11 @@ export default function MembersPage() {
           const membersToDelete =
             selectedMembers.length > 0
               ? activeMembers.filter((m) =>
-                  selectedMembers.includes(m.accountId)
-                )
+                selectedMembers.includes(m.accountId)
+              )
               : memberToDelete
-              ? [memberToDelete]
-              : [];
+                ? [memberToDelete]
+                : [];
 
           if (membersToDelete.length === 0) return undefined;
 

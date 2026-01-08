@@ -15,7 +15,7 @@ import { Member, MemberInput, memberSchema } from "@/components/member-input";
 import { useNear } from "@/stores/near-store";
 import { ThresholdSlider } from "@/components/threshold";
 import { CircleCheck, Database, Info, UsersRound, Vote } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoAlert } from "@/components/info-alert";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ROLES } from "@/components/role-selector";
@@ -129,7 +129,7 @@ function Step2({ handleBack, handleNext }: StepProps) {
             <StepperHeader title="Add Members" description="You can add or update members now and edit this later at any time." handleBack={handleBack} />
 
             <div className="flex flex-col gap-8">
-                <MemberInput control={form.control} lockedFirstMember={true} name={`members` as ArrayPath<TreasuryFormValues>} />
+                <MemberInput control={form.control} mode="onboarding" name={`members` as ArrayPath<TreasuryFormValues>} />
 
                 <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
@@ -204,12 +204,11 @@ function Step3({ handleBack }: StepProps) {
 
             </div>
 
-            <Alert variant="info">
-                <Info />
-                <AlertDescription className="inline-block text-general-info-foreground">
+            <InfoAlert message={
+                <>
                     To support new projects, <span className="font-semibold">TREASURY</span> is sponsoring the one-time platform and network storage fees for your Treasury deployment on the NEAR protocol.
-                </AlertDescription>
-            </Alert>
+                </>
+            } />
 
             <InlineNextButton text="Create Treasury" loading={form.formState.isSubmitting} />
         </PageCard>

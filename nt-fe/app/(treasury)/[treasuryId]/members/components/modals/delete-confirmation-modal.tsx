@@ -56,43 +56,23 @@ export function DeleteConfirmationModal({
       onOpenChange={(open) => !open && onClose()}
     >
       <DialogContent className="max-w-md gap-4">
-        <DialogHeader>
-          <DialogTitle>
+        <DialogHeader className="p-2">
+          <DialogTitle className="text-left">
             {isBulk
               ? `Remove ${membersToDelete.length} Members`
               : "Remove Member"}
           </DialogTitle>
         </DialogHeader>
 
-        {isBulk ? (
-          <div>
-            <p className="text-foreground">
-              Once approved, this action will permanently remove the following
-              members from the treasury and revoke all their assigned
-              permissions:
-            </p>
-            <div className="bg-muted/50 rounded-lg p-3 space-y-1 break-all">
-              {membersToDelete.map((m) => (
-                <div
-                  key={m.accountId}
-                  className="font-semibold font-mono text-sm"
-                >
-                  • {m.accountId}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p className="text-foreground">
-            Once approved, this action will permanently remove{" "}
-            <span className="font-semibold">
-              {membersToDelete[0]?.accountId}
-            </span>{" "}
-            from the treasury and revoke all assigned permissions.
-          </p>
-        )}
+        <p className="text-foreground px-2">
+          Once approved, this action will permanently remove{" "}
+          <span className="font-semibold break-all overflow-wrap-anywhere text-wrap">
+            {membersToDelete.map((m) => m.accountId).join(", ")}
+          </span>{" "}
+          from the treasury and revoke all assigned permissions.
+        </p>
 
-        <div>
+        <div className="px-2 mt-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="block">
