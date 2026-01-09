@@ -109,7 +109,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
       if (accountId) {
         set({ accountId });
       }
-    } catch {} // No existing wallet connection found
+    } catch { } // No existing wallet connection found
 
     set({ isInitializing: false });
     return newConnector;
@@ -187,8 +187,8 @@ export const useNearStore = create<NearStore>((set, get) => ({
     try {
       const wallet = await connector.wallet();
       const results = await wallet.signAndSendTransactions({
-          transactions,
-          network: "mainnet",
+        transactions,
+        network: "mainnet",
       });
       toast.success(toastMessage, {
         duration: 10000, // 10 seconds
@@ -239,14 +239,12 @@ export const useNearStore = create<NearStore>((set, get) => ({
         ],
       });
       toast.success(
-        `Successfully voted on ${votes.length} proposal${
-          votes.length > 1 ? "s" : ""
-        }`
+        `Your vote${votes.length > 1 ? "s" : ""} have been submitted`
       );
       return results;
     } catch (error) {
       console.error("Failed to vote proposals:", error);
-      toast.error(`Failed to vote proposal${votes.length > 1 ? "s" : ""}`);
+      toast.error(`Failed to submit vote${votes.length > 1 ? "s" : ""}`);
       return [];
     }
   },

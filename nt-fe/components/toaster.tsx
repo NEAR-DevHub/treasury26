@@ -2,7 +2,7 @@
 
 import { Toaster as SonnerToaster } from "sonner";
 import { useThemeStore } from "@/stores/theme-store";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CircleAlert, CircleCheck, } from "lucide-react";
 
 export function Toaster() {
   const { theme } = useThemeStore();
@@ -16,15 +16,15 @@ export function Toaster() {
         unstyled: false,
         classNames: {
           toast: "bg-white dark:bg-white border border-border shadow-lg",
-          title: "text-foreground",
-          description: "text-muted-foreground",
+          title: "text-foreground font-medium text-sm",
+          description: " text-muted-foreground",
           success: "bg-white dark:bg-white",
           error: "bg-white dark:bg-white",
         },
       }}
       icons={{
-        success: <CheckCircle2 className="w-5 h-5 text-green-600" />,
-        error: <XCircle className="w-5 h-5 text-red-600" />,
+        success: <CircleCheck className="size-4 fill-general-success-foreground text-white shrink-0" />,
+        error: <CircleAlert className="size-4 fill-destructive text-white shrink-0" />,
       }}
     />
   );
