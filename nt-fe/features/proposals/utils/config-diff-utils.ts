@@ -29,7 +29,21 @@ export function computeConfigDiff(
     let changesCount = 0;
     if (nameChanged) changesCount++;
     if (purposeChanged) changesCount++;
-    if (metadataChanged) changesCount++;
+
+    if (metadataChanged) {
+        const oldMetadata = oldConfig?.metadata ?? {};
+        const newMetadata = newConfig.metadata ?? {};
+
+        // Get all unique keys from both old and new metadata
+        const allKeys = new Set([...Object.keys(oldMetadata), ...Object.keys(newMetadata)]);
+
+        // Count how many keys have different values
+        for (const key of allKeys) {
+            if (JSON.stringify(oldMetadata[key]) !== JSON.stringify(newMetadata[key])) {
+                changesCount++;
+            }
+        }
+    }
 
     return {
         nameChanged,

@@ -142,7 +142,7 @@ impl AppStateBuilder {
     /// - price_service: None
     pub async fn build(self) -> Result<AppState, Box<dyn std::error::Error>> {
         // Load env vars for defaults
-        let env_vars = self.env_vars.unwrap_or_else(EnvVars::default);
+        let env_vars = self.env_vars.unwrap_or_default();
 
         // Database pool is required
         let db_pool = self.db_pool.ok_or("db_pool is required")?;
@@ -182,7 +182,7 @@ impl AppStateBuilder {
         });
 
         Ok(AppState {
-            http_client: self.http_client.unwrap_or_else(reqwest::Client::new),
+            http_client: self.http_client.unwrap_or_default(),
             cache: self.cache.unwrap_or_default(),
             signer,
             signer_id,
@@ -387,8 +387,7 @@ impl AppState {
             })
             .await
             .map_err(|(status, msg)| -> Box<dyn std::error::Error> {
-                Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                Box::new(std::io::Error::other(
                     format!("Status {}: {}", status, msg),
                 ))
             })
