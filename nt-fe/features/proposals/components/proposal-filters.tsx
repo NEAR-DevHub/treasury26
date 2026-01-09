@@ -11,6 +11,7 @@ import { DateTimePicker } from "@/components/ui/datepicker";
 import { format } from "date-fns";
 import { OperationSelect } from "@/components/operation-select";
 import { TokenSelectPopover } from "@/components/token-select-popover";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const FILTER_OPTIONS = [
     { id: "proposal_types", label: "Requests Type" },
@@ -36,7 +37,8 @@ const PROPOSAL_TYPE_OPTIONS = [
     "FactoryUpdateSelf",
 ];
 
-const MY_VOTE_OPTIONS = ["Approve", "Reject", "Remove", "None"];
+const MY_VOTE_OPTIONS = ["Approved", "Rejected", "No Voted"];
+const MY_VOTE_OPERATIONS = ["Is", "Is Not"];
 
 const TOKEN_OPERATIONS = ["Is", "Is Not"];
 const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
@@ -200,6 +202,22 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         return null;
     }, [id, value]);
 
+    const myVoteFilterData = useMemo(() => {
+        if (id === "my_vote" && value) {
+            try {
+                const parsed = JSON.parse(value);
+                return parsed;
+            } catch {
+                // Fallback for old format
+                return {
+                    operation: "Is",
+                    votes: [value],
+                };
+            }
+        }
+        return null;
+    }, [id, value]);
+
     const displayValue = useMemo(() => {
         if (!value) return "All";
         if (id === "created_date") {
@@ -212,8 +230,11 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         if (id === "tokens" && tokenFilterData) {
             return null; // We'll render custom UI for tokens
         }
+        if (id === "my_vote" && myVoteFilterData) {
+            return null; // We'll render custom UI for my_vote
+        }
         return value;
-    }, [id, value, tokenFilterData]);
+    }, [id, value, tokenFilterData, myVoteFilterData]);
 
     const renderFilterContent = () => {
         switch (id) {
@@ -257,27 +278,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
             case "tokens":
                 return <TokenFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             case "my_vote":
-                return (
-                    <div className="flex flex-col gap-1">
-                        {MY_VOTE_OPTIONS.map((opt) => (
-                            <Button
-                                key={opt}
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                    "justify-start font-normal h-8",
-                                    value === opt && "bg-muted"
-                                )}
-                                onClick={() => {
-                                    onUpdate(opt);
-                                    setIsOpen(false);
-                                }}
-                            >
-                                {opt}
-                            </Button>
-                        ))}
-                    </div>
-                );
+                return <MyVoteFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             default:
                 return (
                     <div className="p-2">
@@ -336,6 +337,17 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         );
     };
 
+    const renderMyVoteDisplay = () => {
+        if (!myVoteFilterData || !myVoteFilterData.votes?.length) return null;
+
+        const { votes } = myVoteFilterData;
+        return (
+            <span className="font-medium text-sm">
+                {votes.join(", ")}
+            </span>
+        );
+    };
+
     return (
         <div className="flex items-center">
             <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -357,9 +369,16 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
                             size="sm"
                             className="h-9 bg-secondary hover:bg-secondary px-3 font-normal gap-1.5"
                         >
-                            <span className="text-muted-foreground">{label}{tokenFilterData && tokenFilterData.operation === "Is Not" ? " is not" : ""}:</span>
+                            <span className="text-muted-foreground">
+                                {label}
+                                {tokenFilterData && tokenFilterData.operation === "Is Not" ? " is not" : ""}
+                                {myVoteFilterData && myVoteFilterData.operation === "Is Not" ? " is not" : ""}
+                                :
+                            </span>
                             {tokenFilterData ? (
                                 renderTokenDisplay()
+                            ) : myVoteFilterData ? (
+                                renderMyVoteDisplay()
                             ) : (
                                 <span className="font-medium">{displayValue}</span>
                             )}
@@ -367,7 +386,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
                         </Button>
                     )}
                 </PopoverTrigger>
-                <PopoverContent className="w-56 p-1" align="start">
+                <PopoverContent className="p-1 max-w-80 w-fit" align="start">
                     {renderFilterContent()}
                 </PopoverContent>
             </Popover>
@@ -510,6 +529,116 @@ function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilte
                     </p>
                 </div>
             )}
+        </div>
+    );
+}
+
+interface MyVoteFilterContentProps {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+}
+
+function MyVoteFilterContent({ value, onUpdate, setIsOpen, onRemove }: MyVoteFilterContentProps) {
+    const [operation, setOperation] = useState<string>("Is");
+    const [selectedVotes, setSelectedVotes] = useState<string[]>([]);
+
+    // Parse the value from URL params on mount
+    useEffect(() => {
+        if (value) {
+            try {
+                const parsed = JSON.parse(value);
+                setOperation(parsed.operation || "Is");
+                setSelectedVotes(parsed.votes || []);
+            } catch {
+                // Fallback for old format
+                setSelectedVotes([value]);
+            }
+        } else {
+            setSelectedVotes([]);
+        }
+    }, [value]);
+
+    // Update the filter value whenever any field changes
+    useEffect(() => {
+        if (selectedVotes.length > 0) {
+            const filterValue = JSON.stringify({
+                operation,
+                votes: selectedVotes,
+            });
+            onUpdate(filterValue);
+        } else if (value) {
+            // Clear the value if no votes are selected
+            onUpdate("");
+        }
+    }, [operation, selectedVotes, onUpdate, value]);
+
+    const handleClear = () => {
+        setSelectedVotes([]);
+        onUpdate("");
+    };
+
+    const handleDelete = () => {
+        onRemove();
+        setIsOpen(false);
+    };
+
+    const handleToggleVote = (vote: string) => {
+        setSelectedVotes(prev => {
+            if (prev.includes(vote)) {
+                return prev.filter(v => v !== vote);
+            } else {
+                return [...prev, vote];
+            }
+        });
+    };
+
+    return (
+        <div className="p-3 space-y-3 w-full flex flex-col">
+            <div className="flex justify-between items-center  ">
+                <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">My Vote Status</span>
+                    <OperationSelect
+                        operations={MY_VOTE_OPERATIONS}
+                        selectedOperation={operation}
+                        onOperationChange={setOperation}
+                    />
+                </div>
+                <div className="flex w-full items-center gap-0 flex-1 ml-auto">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClear}
+                        className="ml-auto text-muted-foreground hover:text-foreground h-7 px-2"
+                    >
+                        Clear
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleDelete}
+                        className="text-muted-foreground hover:text-foreground h-7 w-7"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                {MY_VOTE_OPTIONS.map((vote) => (
+                    <label
+                        key={vote}
+                        className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md"
+                    >
+                        <Checkbox
+                            checked={selectedVotes.includes(vote)}
+                            onCheckedChange={() => handleToggleVote(vote)}
+                        />
+                        <span className="text-sm">{vote}</span>
+                    </label>
+                ))}
+            </div>
         </div>
     );
 }
