@@ -260,6 +260,7 @@ export async function getTokenBalance(
  */
 export async function getTreasuryConfig(
   treasuryId: string,
+  at: string | null = null,
 ): Promise<Treasury | null> {
   if (!treasuryId) return null;
 
@@ -267,7 +268,7 @@ export async function getTreasuryConfig(
     const url = `${BACKEND_API_BASE}/treasury/config`;
 
     const response = await axios.get<Treasury>(url, {
-      params: { treasuryId },
+      params: { treasuryId, at },
     });
 
     return response.data;
@@ -283,6 +284,7 @@ export async function getTreasuryConfig(
  */
 export async function getTreasuryPolicy(
   treasuryId: string,
+  at: string | null = null,
 ): Promise<Policy | null> {
   if (!treasuryId) return null;
 
@@ -290,7 +292,7 @@ export async function getTreasuryPolicy(
     const url = `${BACKEND_API_BASE}/treasury/policy`;
 
     const response = await axios.get<Policy>(url, {
-      params: { treasuryId },
+      params: { treasuryId, at },
     });
 
     return response.data;

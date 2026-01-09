@@ -20,8 +20,8 @@ export default function RequestPage({ params }: RequestPageProps) {
     const { id } = use(params);
     const { selectedTreasury } = useTreasury();
     const { data: proposal, isLoading: isLoadingProposal, error: errorProposal } = useProposal(selectedTreasury, id);
-    const { data: policy, isLoading: isLoadingPolicy, error: errorPolicy } = useTreasuryPolicy(selectedTreasury);
-    const { data: config, isLoading: isLoadingConfig } = useTreasuryConfig(selectedTreasury);
+    const { data: policy, isLoading: isLoadingPolicy, error: errorPolicy } = useTreasuryPolicy(selectedTreasury, proposal?.submission_time);
+    const { data: config, isLoading: isLoadingConfig } = useTreasuryConfig(selectedTreasury, proposal?.submission_time);
 
 
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
