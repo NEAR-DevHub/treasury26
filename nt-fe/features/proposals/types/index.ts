@@ -105,9 +105,7 @@ export interface VotePolicyChange {
  * Unified representation showing only what changed
  */
 export interface ChangePolicyData {
-    policyChanges: PolicyChange[];
-    roleChanges: RoleChange;
-    defaultVotePolicyChanges: VotePolicyChange[];
+    newPolicy: Policy | null;
     originalProposalKind: any; // Store the original proposal kind for Transaction Details
 }
 
@@ -115,11 +113,6 @@ export interface ChangePolicyData {
  * Data structure for Change Config proposals
  */
 export interface ChangeConfigData {
-    oldConfig: {
-        name: string | null;
-        purpose: string | null;
-        metadata: Record<string, any> | null;
-    };
     newConfig: {
         name: string;
         purpose: string;

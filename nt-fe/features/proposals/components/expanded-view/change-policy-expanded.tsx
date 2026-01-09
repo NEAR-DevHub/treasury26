@@ -3,17 +3,24 @@ import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { Amount } from "../amount";
 import { formatNanosecondDuration } from "@/lib/utils";
 import { User } from "@/components/user";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/pill";
 import { Button } from "@/components/button";
 import { renderDiff, isNullValue } from "../../utils/diff-utils";
 import { formatRoleName } from "@/components/role-name";
+import { Proposal } from "@/lib/proposals-api";
+import { Policy } from "@/types/policy";
+import { getProposalStatus } from "../../utils/proposal-utils";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useTreasury } from "@/stores/treasury-store";
+import { computePolicyDiff } from "../../utils/policy-diff-utils";
 
 interface ChangePolicyExpandedProps {
   data: ChangePolicyData;
+  proposal: Proposal;
 }
 
 function formatFieldLabel(field: PolicyChange["field"]): string {
@@ -139,23 +146,56 @@ function getCategoryLabel(type: "added" | "removed" | "updated", plural: boolean
   return plural ? "Update Members Permissions" : "Update Member Permissions";
 }
 
-export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
+export function ChangePolicyExpanded({ data, proposal }: ChangePolicyExpandedProps) {
   const [expandedAdded, setExpandedAdded] = useState<number[]>([]);
   const [expandedRemoved, setExpandedRemoved] = useState<number[]>([]);
   const [expandedUpdated, setExpandedUpdated] = useState<number[]>([]);
+  const { selectedTreasury } = useTreasury();
+
+  const isPending = proposal.status === "InProgress";
+
+  // If not pending, fetch the policy at the time of submission
+  const { data: oldPolicy, isLoading: isLoadingTimestamped } = useTreasuryPolicy(
+    selectedTreasury,
+    !isPending ? proposal.submission_time : null
+  );
+
+  const diff = useMemo(() => {
+    if (!oldPolicy) return null;
+    return computePolicyDiff(oldPolicy, data.newPolicy, data.originalProposalKind);
+  }, [oldPolicy, data.newPolicy, data.originalProposalKind]);
+
+  if (isLoadingTimestamped) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground text-sm">Loading historical policy...</span>
+      </div>
+    );
+  }
+
+  if (!diff) {
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        Unable to compute differences for this proposal.
+      </div>
+    );
+  }
+
+  const { policyChanges, roleChanges, defaultVotePolicyChanges } = diff;
 
   const hasNoChanges =
-    data.policyChanges.length === 0 &&
-    data.roleChanges.addedMembers.length === 0 &&
-    data.roleChanges.removedMembers.length === 0 &&
-    data.roleChanges.updatedMembers.length === 0 &&
-    data.roleChanges.roleDefinitionChanges.length === 0 &&
-    data.defaultVotePolicyChanges.length === 0;
+    policyChanges.length === 0 &&
+    roleChanges.addedMembers.length === 0 &&
+    roleChanges.removedMembers.length === 0 &&
+    roleChanges.updatedMembers.length === 0 &&
+    roleChanges.roleDefinitionChanges.length === 0 &&
+    defaultVotePolicyChanges.length === 0;
 
   if (hasNoChanges) {
     return (
       <div className="p-4 text-center text-muted-foreground">
-        No changes detected - the proposed policy is identical to the current policy.
+        No changes detected - the proposed policy is identical to the {isPending ? "current" : "historical"} policy.
       </div>
     );
   }
@@ -163,7 +203,7 @@ export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
   const allItems: InfoItem[] = [];
 
   // 1. Policy parameter changes
-  data.policyChanges.forEach((change) => {
+  policyChanges.forEach((change) => {
     const isOldNull = isNullValue(change.oldValue);
     allItems.push({
       label: formatFieldLabel(change.field),
@@ -176,7 +216,7 @@ export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
   });
 
   // 2. Default vote policy changes
-  data.defaultVotePolicyChanges.forEach((change) => {
+  defaultVotePolicyChanges.forEach((change) => {
     const isOldNull = isNullValue(change.oldValue);
     allItems.push({
       label: formatVotePolicyFieldLabel(change.field),
@@ -243,13 +283,13 @@ export function ChangePolicyExpanded({ data }: ChangePolicyExpandedProps) {
     }
   };
 
-  addMemberSection(data.roleChanges.addedMembers, "added", expandedAdded, setExpandedAdded);
-  addMemberSection(data.roleChanges.updatedMembers, "updated", expandedUpdated, setExpandedUpdated);
-  addMemberSection(data.roleChanges.removedMembers, "removed", expandedRemoved, setExpandedRemoved);
+  addMemberSection(roleChanges.addedMembers, "added", expandedAdded, setExpandedAdded);
+  addMemberSection(roleChanges.updatedMembers, "updated", expandedUpdated, setExpandedUpdated);
+  addMemberSection(roleChanges.removedMembers, "removed", expandedRemoved, setExpandedRemoved);
 
   // 4. Role Definition Changes
   const roleGroups = new Map<string, RoleDefinitionChange[]>();
-  data.roleChanges.roleDefinitionChanges.forEach((change) => {
+  roleChanges.roleDefinitionChanges.forEach((change) => {
     const existing = roleGroups.get(change.roleName) || [];
     roleGroups.set(change.roleName, [...existing, change]);
   });

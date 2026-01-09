@@ -15,8 +15,8 @@ use crate::{AppState, utils::cache::CacheTier};
 pub struct GetTreasuryConfigQuery {
     #[serde(rename = "treasuryId")]
     pub treasury_id: AccountId,
-    #[serde(rename = "at")]
-    pub at: Option<U64>,
+    #[serde(rename = "atBefore")]
+    pub at_before: Option<U64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -57,30 +57,38 @@ pub async fn get_treasury_config(
     Query(params): Query<GetTreasuryConfigQuery>,
 ) -> Result<axum::Json<TreasuryConfig>, (StatusCode, String)> {
     let treasury_id = params.treasury_id.clone();
-    let cache_key = CacheKey::new("treasury-config").with(&treasury_id).build();
+    let at_before = params.at_before.map(|at| at.0).unwrap_or(0);
+    let cache_key = CacheKey::new("treasury-config")
+        .with(&treasury_id)
+        .with(at_before)
+        .build();
 
-    let at = if let Some(at) = params.at {
-        state
-            .find_block_height(chrono::DateTime::<chrono::Utc>::from_timestamp_nanos(
-                at.0 as i64,
-            ))
-            .await
-            .map(Reference::AtBlock)
-            .unwrap_or(Reference::Optimistic)
+    let network = if at_before > 0 {
+        &state.archival_network
     } else {
-        Reference::Optimistic
+        &state.network
     };
-
     let state_clone = state.clone();
+
     let result = state
-        .clone()
         .cache
         .cached_contract_call(CacheTier::ShortTerm, cache_key, async move {
+            let at = if at_before > 0 {
+                state_clone
+                    .find_block_height(chrono::DateTime::<chrono::Utc>::from_timestamp_nanos(
+                        at_before as i64,
+                    ))
+                    .await
+                    .map(|at| Reference::AtBlock(at - 1))
+                    .unwrap_or(Reference::Optimistic)
+            } else {
+                Reference::Optimistic
+            };
             Contract(treasury_id.clone())
                 .call_function("get_config", ())
                 .read_only::<TreasuryConfigFromContract>()
                 .at(at)
-                .fetch_from(&state_clone.network)
+                .fetch_from(network)
                 .await
                 .map(|r| r.data)
         })

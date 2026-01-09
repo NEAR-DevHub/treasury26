@@ -64,7 +64,7 @@ export function PendingRequestItem({ proposal, policy, config, accountId, onVote
                 <ProposalTypeIcon proposal={proposal} />
                 <div className="flex flex-col w-full gap-px">
                     <span className="leading-none font-semibold">{type}</span>
-                    <TransactionCell proposal={proposal} policy={policy} config={config} withDate={true} textOnly />
+                    <TransactionCell proposal={proposal} withDate={true} textOnly />
                     <div className="gap-3 pt-4 grid grid-rows-[0fr] w-full group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
                         <div className="overflow-hidden w-full">
                             <div className="flex gap-3 opacity-0 w-full group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
@@ -132,7 +132,7 @@ export function PendingRequests() {
                                 key={proposal.id}
                                 proposal={proposal}
                                 policy={policy}
-                                config={treasury.config}
+                                config={treasury}
                                 accountId={accountId}
                                 onVote={(vote) => {
                                     setVoteInfo({ vote, proposalIds: [{ proposalId: proposal.id, kind: getKindFromProposal(proposal.kind) ?? "call" }] });

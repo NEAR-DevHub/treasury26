@@ -140,7 +140,7 @@ export function ProposalsTable({
         header: () => <span className="text-xs font-medium uppercase text-muted-foreground">Transaction</span>,
         cell: ({ row }) => (
           <div className="max-w-[300px] truncate">
-            <TransactionCell proposal={row.original} policy={policy} config={config} />
+            <TransactionCell proposal={row.original} />
           </div>
         ),
       }),
@@ -313,7 +313,7 @@ export function ProposalsTable({
                   {row.getIsExpanded() && (
                     <TableRow>
                       <TableCell colSpan={row.getVisibleCells().length} className="p-4 bg-background">
-                        <ExpandedView proposal={row.original} policy={policy} config={config} onVote={(vote) => {
+                        <ExpandedView proposal={row.original} policy={policy} onVote={(vote) => {
                           setVoteInfo({ vote, proposalIds: [{ proposalId: row.original.id, kind: getKindFromProposal(row.original.kind) ?? "call" }] });
                           setIsVoteModalOpen(true);
                         }} />

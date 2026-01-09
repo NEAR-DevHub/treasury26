@@ -1,12 +1,15 @@
+use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
 use near_api::{AccountId, NetworkConfig, RPCEndpoint, Signer};
 use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
-use axum::http::StatusCode;
 
 use crate::{
     services::{CoinGeckoClient, PriceLookupService},
-    utils::{cache::{Cache, CacheKey, CacheTier}, env::EnvVars},
+    utils::{
+        cache::{Cache, CacheKey, CacheTier},
+        env::EnvVars,
+    },
 };
 
 pub struct AppState {
@@ -327,66 +330,61 @@ impl AppState {
             .build();
 
         // Try to get from cache first (using LongTerm tier since block timestamps are immutable)
-        self
-            .cache
-            .cached(
-                CacheTier::LongTerm,
-                cache_key.clone(),
-                async {
-                    // Step 1: Try to find a block in the database with a timestamp close to the target
-                    let db_result = sqlx::query!(
-                        r#"
+        self.cache
+            .cached(CacheTier::LongTerm, cache_key.clone(), async {
+                // Step 1: Try to find a block in the database with a timestamp close to the target
+                let db_result = sqlx::query!(
+                    r#"
                         SELECT block_height, block_timestamp
                         FROM balance_changes
                         WHERE block_timestamp >= $1
                         ORDER BY block_timestamp ASC
                         LIMIT 1
                         "#,
-                        target_timestamp_ns
+                    target_timestamp_ns
+                )
+                .fetch_optional(&self.db_pool)
+                .await
+                .map_err(|e| {
+                    (
+                        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Database query error: {}", e),
                     )
-                    .fetch_optional(&self.db_pool)
+                })?;
+
+                if let Some(record) = db_result {
+                    log::info!(
+                        "Found block {} in database for timestamp {}",
+                        record.block_height,
+                        date
+                    );
+                    return Ok::<u64, (StatusCode, String)>(record.block_height as u64);
+                }
+
+                log::info!(
+                    "Block not found in database for timestamp {}, using binary search via RPC",
+                    date
+                );
+
+                // Step 2: Use binary search to find the block via RPC
+                let block_height = self
+                    .binary_search_block_by_timestamp(target_timestamp_ns)
                     .await
                     .map_err(|e| {
                         (
                             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Database query error: {}", e),
+                            format!("Binary search error: {}", e),
                         )
                     })?;
 
-                    if let Some(record) = db_result {
-                        log::info!(
-                            "Found block {} in database for timestamp {}",
-                            record.block_height,
-                            date
-                        );
-                        return Ok::<u64, (StatusCode, String)>(record.block_height as u64);
-                    }
+                log::info!(
+                    "Found block {} via binary search for timestamp {}, caching result",
+                    block_height,
+                    date
+                );
 
-                    log::info!(
-                        "Block not found in database for timestamp {}, using binary search via RPC",
-                        date
-                    );
-
-                    // Step 2: Use binary search to find the block via RPC
-                    let block_height = self
-                        .binary_search_block_by_timestamp(target_timestamp_ns)
-                        .await
-                        .map_err(|e| {
-                            (
-                                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                                format!("Binary search error: {}", e),
-                            )
-                        })?;
-
-                    log::info!(
-                        "Found block {} via binary search for timestamp {}, caching result",
-                        block_height,
-                        date
-                    );
-
-                    Ok::<u64, _>(block_height)
-                },
-            )
+                Ok::<u64, _>(block_height)
+            })
             .await
             .map_err(|(status, msg)| -> Box<dyn std::error::Error> {
                 Box::new(std::io::Error::new(
@@ -489,10 +487,10 @@ impl AppState {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::utils::test_utils::init_test_state;
     use chrono::{DateTime, Utc};
     use sqlx::PgPool;
-    use super::*;
 
     /// Test finding block height from database when data exists
     #[sqlx::test]
@@ -572,8 +570,7 @@ mod tests {
         let app_state = init_test_state().await;
 
         // Use a timestamp far in the future
-        let future_date =
-            DateTime::<Utc>::MAX_UTC;
+        let future_date = DateTime::<Utc>::MAX_UTC;
 
         // Try to find block height - should fail with error about future timestamp
         let result = app_state.find_block_height(future_date).await;
@@ -615,11 +612,17 @@ mod tests {
         println!("Found block: {}", result2);
 
         // Both calls should return the same block height
-        assert_eq!(result1, result2, "Both lookups should return the same block height");
+        assert_eq!(
+            result1, result2,
+            "Both lookups should return the same block height"
+        );
 
         // Second call should be significantly faster (cached)
         // Cache lookup should be at least 10x faster than binary search
-        println!("\nSpeed improvement: {}x faster", duration1.as_micros() / duration2.as_micros().max(1));
+        println!(
+            "\nSpeed improvement: {}x faster",
+            duration1.as_micros() / duration2.as_micros().max(1)
+        );
         assert!(
             duration2 < duration1 / 5,
             "Cached lookup should be significantly faster (was {:?} vs {:?})",

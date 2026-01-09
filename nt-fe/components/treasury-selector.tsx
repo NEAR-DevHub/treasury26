@@ -49,8 +49,8 @@ export function TreasurySelector() {
         // Guest viewing a treasury
         setSelectedTreasury({
           daoId: treasuryId,
-          name: guestTreasuryConfig.config?.name || "",
-          flagLogo: guestTreasuryConfig.config?.metadata?.flagLogo || ""
+          name: guestTreasuryConfig.name || "",
+          flagLogo: guestTreasuryConfig.metadata?.flagLogo || ""
         });
       }
     }
@@ -105,7 +105,7 @@ export function TreasurySelector() {
   const displayName = currentTreasury
     ? getTreasuryName(currentTreasury)
     : guestTreasuryConfig
-      ? guestTreasuryConfig.config?.name || guestTreasuryConfig.daoId
+      ? guestTreasuryConfig.name || treasuryId
       : "Select treasury";
 
   const displaySubtext = currentTreasury

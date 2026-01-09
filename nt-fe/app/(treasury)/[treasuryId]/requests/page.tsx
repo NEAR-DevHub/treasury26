@@ -113,7 +113,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
         <ProposalsTable
           proposals={data?.proposals ?? []}
           policy={policy}
-          config={config?.config}
+          config={config}
           pageIndex={page}
           pageSize={pageSize}
           total={data?.total ?? 0}
