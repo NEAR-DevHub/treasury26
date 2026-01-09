@@ -20,7 +20,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/table";
 import { Button } from "@/components/button";
 import { TreasuryAsset } from "@/lib/api";
 import { formatBalance, formatCurrency } from "@/lib/utils";

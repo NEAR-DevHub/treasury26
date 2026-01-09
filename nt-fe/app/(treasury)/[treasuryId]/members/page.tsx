@@ -39,7 +39,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/table";
 import { useMemberValidation } from "./hooks/use-member-validation";
 import { formatRoleName } from "@/components/role-name";
 

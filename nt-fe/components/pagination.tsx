@@ -49,7 +49,7 @@ export function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className={cn("flex items-center justify-end space-x-1 py-4", className)}>
+    <div className={cn("flex items-center justify-end space-x-1", className)}>
       <Button
         variant="ghost"
         size="sm"

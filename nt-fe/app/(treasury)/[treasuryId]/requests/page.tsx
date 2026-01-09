@@ -7,10 +7,10 @@ import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
 import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, } from "react";
+import { useCallback, useEffect, useMemo, useState, } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
-import { ArrowRightLeft, ArrowUpRight } from "lucide-react";
+import { ArrowRightLeft, ArrowUpRight, ListFilter } from "lucide-react";
 import Link from "next/link";
 import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,6 +18,7 @@ import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposal
 import { addDays } from "date-fns";
 import { NumberBadge } from "@/components/number-badge";
 import { TableSkeleton } from "@/components/table-skeleton";
+import { Input } from "@/components/ui/input";
 
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
@@ -157,6 +158,7 @@ export default function RequestsPage() {
   const { data: proposals } = useProposals(treasuryId, {
     statuses: ["InProgress"],
   })
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const { data: allProposals } = useProposals(treasuryId, {});
 
 
@@ -179,9 +181,9 @@ export default function RequestsPage() {
 
   return (
     <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
-      <PageCard>
-        <Tabs value={currentTab} onValueChange={handleTabChange}>
-          <div className="flex items-center justify-between mb-4">
+      <PageCard className="p-0">
+        <Tabs value={currentTab} onValueChange={handleTabChange} className="gap-0">
+          <div className="flex items-center justify-between border-b p-5 pb-3.5">
             <TabsList className="w-fit border-none">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="pending" className="flex gap-2.5">Pending
@@ -193,10 +195,20 @@ export default function RequestsPage() {
               <TabsTrigger value="rejected">Rejected</TabsTrigger>
               <TabsTrigger value="expired">Expired</TabsTrigger>
             </TabsList>
+            <div className="flex items-center gap-2">
+              <Input type="text" placeholder="Search request by name or ID" className="w-64" />
+              <Button variant="secondary" className="flex gap-1.5" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
+                <ListFilter className="size-4" />
+                Filter
+              </Button>
+            </div>
           </div>
-          <div className="mb-4">
-            <ProposalFiltersComponent />
-          </div>
+
+          {isFiltersOpen && (
+            <div className="py-3 px-4">
+              <ProposalFiltersComponent />
+            </div>
+          )}
           <TabsContents>
             <TabsContent value="all">
               <ProposalsList />

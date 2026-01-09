@@ -9,7 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/table";
 import { Button } from "@/components/button";
 import { ChevronDown, ChevronRight, X, Check, SearchX } from "lucide-react";
 import { TransactionCell } from "./transaction-cell";
@@ -243,7 +243,7 @@ export function ProposalsTable({
 
   return (
     <>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 pb-3">
         {selectedCount > 0 && (
           <div className="flex items-center justify-between pt-6 pb-4 px-5 border-b">
             <span className="font-semibold">
