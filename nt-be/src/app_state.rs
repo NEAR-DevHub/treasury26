@@ -20,8 +20,208 @@ pub struct AppState {
     pub price_service: Option<PriceLookupService<CoinGeckoClient>>,
 }
 
+/// Builder for constructing AppState instances
+///
+/// This builder makes it easy to construct AppState for tests by allowing
+/// you to specify only the fields you need, with sensible defaults for the rest.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use nt_be::AppState;
+/// use sqlx::PgPool;
+///
+/// # async fn example(pool: PgPool) {
+/// let state = AppState::builder()
+///     .db_pool(pool)
+///     .build()
+///     .await
+///     .expect("Failed to build AppState");
+/// # }
+/// ```
+pub struct AppStateBuilder {
+    http_client: Option<reqwest::Client>,
+    cache: Option<Cache>,
+    signer: Option<Arc<Signer>>,
+    signer_id: Option<AccountId>,
+    network: Option<NetworkConfig>,
+    archival_network: Option<NetworkConfig>,
+    env_vars: Option<EnvVars>,
+    db_pool: Option<PgPool>,
+    price_service: Option<Option<PriceLookupService<CoinGeckoClient>>>,
+}
+
+impl AppStateBuilder {
+    /// Create a new AppStateBuilder with all fields unset
+    pub fn new() -> Self {
+        Self {
+            http_client: None,
+            cache: None,
+            signer: None,
+            signer_id: None,
+            network: None,
+            archival_network: None,
+            env_vars: None,
+            db_pool: None,
+            price_service: None,
+        }
+    }
+
+    /// Set the HTTP client
+    pub fn http_client(mut self, client: reqwest::Client) -> Self {
+        self.http_client = Some(client);
+        self
+    }
+
+    /// Set the cache
+    pub fn cache(mut self, cache: Cache) -> Self {
+        self.cache = Some(cache);
+        self
+    }
+
+    /// Set the signer
+    pub fn signer(mut self, signer: Arc<Signer>) -> Self {
+        self.signer = Some(signer);
+        self
+    }
+
+    /// Set the signer ID
+    pub fn signer_id(mut self, signer_id: AccountId) -> Self {
+        self.signer_id = Some(signer_id);
+        self
+    }
+
+    /// Set the network configuration
+    pub fn network(mut self, network: NetworkConfig) -> Self {
+        self.network = Some(network);
+        self
+    }
+
+    /// Set the archival network configuration
+    pub fn archival_network(mut self, archival_network: NetworkConfig) -> Self {
+        self.archival_network = Some(archival_network);
+        self
+    }
+
+    /// Set the environment variables
+    pub fn env_vars(mut self, env_vars: EnvVars) -> Self {
+        self.env_vars = Some(env_vars);
+        self
+    }
+
+    /// Set the database pool
+    pub fn db_pool(mut self, db_pool: PgPool) -> Self {
+        self.db_pool = Some(db_pool);
+        self
+    }
+
+    /// Set the price service
+    pub fn price_service(
+        mut self,
+        price_service: Option<PriceLookupService<CoinGeckoClient>>,
+    ) -> Self {
+        self.price_service = Some(price_service);
+        self
+    }
+
+    /// Build the AppState with the configured values or defaults
+    ///
+    /// Fields not explicitly set will use defaults:
+    /// - http_client: reqwest::Client::new()
+    /// - cache: Cache::new()
+    /// - signer: Test signer from env or default test key
+    /// - signer_id: "test.near"
+    /// - network: Mainnet with fastnear API (from env)
+    /// - archival_network: Archival mainnet with fastnear API (from env)
+    /// - env_vars: EnvVars::default()
+    /// - db_pool: REQUIRED - must be provided
+    /// - price_service: None
+    pub async fn build(self) -> Result<AppState, Box<dyn std::error::Error>> {
+        // Load env vars for defaults
+        let env_vars = self.env_vars.unwrap_or_else(EnvVars::default);
+
+        // Database pool is required
+        let db_pool = self.db_pool.ok_or("db_pool is required")?;
+
+        // Create default signer if not provided
+        let signer = if let Some(s) = self.signer {
+            s
+        } else {
+            // Use test key or key from env
+            let test_key = env_vars.signer_key.clone();
+            Signer::from_secret_key(test_key).expect("Failed to create default signer")
+        };
+
+        let signer_id = self.signer_id.unwrap_or_else(|| env_vars.signer_id.clone());
+
+        // Create default networks if not provided
+        let fastnear_api_key = env_vars.fastnear_api_key.clone();
+
+        let network = self.network.unwrap_or_else(|| NetworkConfig {
+            rpc_endpoints: vec![
+                RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
+                    .with_api_key(fastnear_api_key.clone()),
+            ],
+            ..NetworkConfig::mainnet()
+        });
+
+        let archival_network = self.archival_network.unwrap_or_else(|| NetworkConfig {
+            rpc_endpoints: vec![
+                RPCEndpoint::new(
+                    "https://archival-rpc.mainnet.fastnear.com/"
+                        .parse()
+                        .unwrap(),
+                )
+                .with_api_key(fastnear_api_key),
+            ],
+            ..NetworkConfig::mainnet()
+        });
+
+        Ok(AppState {
+            http_client: self.http_client.unwrap_or_else(reqwest::Client::new),
+            cache: self.cache.unwrap_or_default(),
+            signer,
+            signer_id,
+            network,
+            archival_network,
+            env_vars,
+            db_pool,
+            price_service: self.price_service.flatten(),
+        })
+    }
+}
+
+impl Default for AppStateBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AppState {
+    /// Create a new builder for constructing AppState
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use nt_be::AppState;
+    /// use sqlx::PgPool;
+    ///
+    /// # async fn example(pool: PgPool) {
+    /// let state = AppState::builder()
+    ///     .db_pool(pool)
+    ///     .build()
+    ///     .await
+    ///     .expect("Failed to build AppState");
+    /// # }
+    /// ```
+    pub fn builder() -> AppStateBuilder {
+        AppStateBuilder::new()
+    }
+
     /// Initialize the application state with database connection and migrations
+    ///
+    /// This is the main entry point for production use. For tests, use `AppState::builder()`
+    /// to construct instances with only the required fields.
     pub async fn new() -> Result<AppState, Box<dyn std::error::Error>> {
         let env_vars = EnvVars::default();
 
@@ -64,20 +264,23 @@ impl AppState {
             log::info!("No CoinGecko API key found, price enrichment will be disabled");
         }
 
-        Ok(AppState {
-            http_client,
-            cache: Cache::new(),
-            signer: Signer::from_secret_key(env_vars.signer_key.clone())
-                .expect("Failed to create signer."),
-            signer_id: env_vars.signer_id.clone(),
-            network: NetworkConfig {
+        // Use the builder pattern internally for consistency
+        AppStateBuilder::new()
+            .http_client(http_client)
+            .cache(Cache::new())
+            .signer(
+                Signer::from_secret_key(env_vars.signer_key.clone())
+                    .expect("Failed to create signer."),
+            )
+            .signer_id(env_vars.signer_id.clone())
+            .network(NetworkConfig {
                 rpc_endpoints: vec![
                     RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
                         .with_api_key(env_vars.fastnear_api_key.clone()),
                 ],
                 ..NetworkConfig::mainnet()
-            },
-            archival_network: NetworkConfig {
+            })
+            .archival_network(NetworkConfig {
                 rpc_endpoints: vec![
                     RPCEndpoint::new(
                         "https://archival-rpc.mainnet.fastnear.com/"
@@ -87,11 +290,12 @@ impl AppState {
                     .with_api_key(env_vars.fastnear_api_key.clone()),
                 ],
                 ..NetworkConfig::mainnet()
-            },
-            env_vars,
-            db_pool,
-            price_service,
-        })
+            })
+            .env_vars(env_vars)
+            .db_pool(db_pool)
+            .price_service(price_service)
+            .build()
+            .await
     }
 
     /// Find the block height for a given timestamp
@@ -238,5 +442,118 @@ impl AppState {
         );
 
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::test_utils::init_test_state;
+    use chrono::{DateTime, Utc};
+    use sqlx::PgPool;
+    use std::str::FromStr;
+
+    /// Test finding block height from database when data exists
+    #[sqlx::test]
+    async fn test_find_block_height_from_database(pool: PgPool) -> sqlx::Result<()> {
+        // Insert a test balance change record
+        let account_id = "test.near";
+        let block_height: i64 = 151386339;
+        let block_timestamp: i64 = 1750097144159145697; // nanoseconds since Unix epoch
+
+        // Calculate block_time from block_timestamp (nanoseconds to timestamptz)
+        let block_time = DateTime::<Utc>::from_timestamp_nanos(block_timestamp);
+
+        sqlx::query!(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, block_height, block_timestamp, block_time, transaction_hashes, counterparty, amount, balance_before, balance_after)
+            VALUES ($1, $2, $3, $4, '{}', 'test_counterparty', 1000, 0, 1000)
+            "#,
+            account_id,
+            block_height,
+            block_timestamp,
+            block_time,
+        )
+        .execute(&pool)
+        .await?;
+
+        // Create AppState using builder pattern with test database
+        let app_state = super::AppState::builder()
+            .db_pool(pool)
+            .build()
+            .await
+            .expect("Failed to build AppState");
+
+        // Convert the block timestamp to DateTime
+        let target_date = DateTime::<Utc>::from_timestamp_nanos(block_timestamp);
+
+        // Try to find the block height
+        let result = app_state
+            .find_block_height(target_date)
+            .await
+            .expect("Should find block in database");
+
+        assert_eq!(
+            result, block_height as u64,
+            "Should return the correct block height from database"
+        );
+
+        Ok(())
+    }
+
+    /// Test finding block height using binary search when not in database
+    #[tokio::test]
+    async fn test_find_block_height_with_binary_search() {
+        let app_state = init_test_state().await;
+
+        // Use a known block timestamp - Block 151386339 from the binary_search tests
+        // Timestamp: 1750097144159145697 nanoseconds = ~2025-12-16
+        let target_timestamp_ns = 1767606003313746552;
+        let target_date = DateTime::<Utc>::from_timestamp_nanos(target_timestamp_ns);
+
+        // Try to find the block height using binary search
+        let result = app_state
+            .find_block_height(target_date)
+            .await
+            .expect("Should find block via binary search");
+
+        println!("Found block {} for timestamp {}", result, target_date);
+
+        // The result should be close to the expected block (151386339)
+        // Allow some margin since we're searching by timestamp
+        assert_eq!(result, 179819880)
+    }
+
+    /// Test error handling for future timestamps
+    #[tokio::test]
+    async fn test_find_block_height_future_timestamp() {
+        let app_state = init_test_state().await;
+
+        // Use a timestamp far in the future
+        let future_date =
+            DateTime::<Utc>::MAX_UTC;
+
+        // Try to find block height - should fail with error about future timestamp
+        let result = app_state.find_block_height(future_date).await;
+
+        assert!(result.is_err(), "Should return error for future timestamp");
+
+        let error_msg = result.unwrap_err();
+    }
+
+    /// Helper: Create a test database pool
+    async fn create_test_pool() -> PgPool {
+        dotenvy::from_filename(".env").ok();
+        dotenvy::from_filename(".env.test").ok();
+
+        let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+            "postgresql://treasury_test:test_password@localhost:5433/treasury_test_db".to_string()
+        });
+
+        sqlx::postgres::PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&db_url)
+            .await
+            .expect("Failed to create test pool")
     }
 }
