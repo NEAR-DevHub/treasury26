@@ -12,7 +12,7 @@ use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 async fn test_intents_tokens_metadata_discovery() {
     // Load environment variables - .env.test overrides DATABASE_URL to test database
     dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename(".env.test").ok();
+    dotenvy::from_filename_override(".env.test").ok();
 
     // Get test database URL
     let db_url =

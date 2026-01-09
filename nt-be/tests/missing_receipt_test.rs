@@ -9,7 +9,7 @@ use std::str::FromStr;
 /// Helper to create archival network config for tests
 fn create_archival_network() -> NetworkConfig {
     dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename(".env.test").ok();
+    dotenvy::from_filename_override(".env.test").ok();
 
     let fastnear_api_key =
         std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env");

@@ -9,7 +9,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 pub fn create_archival_network() -> NetworkConfig {
     // Load .env files to get FASTNEAR_API_KEY
     dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename(".env.test").ok();
+    dotenvy::from_filename_override(".env.test").ok();
 
     let fastnear_api_key =
         std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env");
@@ -38,7 +38,7 @@ impl TestServer {
     pub async fn start() -> Self {
         // Load environment variables - .env.test overrides DATABASE_URL to test database
         dotenvy::from_filename(".env").ok();
-        dotenvy::from_filename(".env.test").ok();
+        dotenvy::from_filename_override(".env.test").ok();
 
         let db_url =
             std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
