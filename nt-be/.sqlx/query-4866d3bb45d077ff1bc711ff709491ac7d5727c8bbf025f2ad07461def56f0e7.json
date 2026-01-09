@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT price_usd\n            FROM historical_prices\n            WHERE asset_id = $1 AND price_date = $2\n            ORDER BY fetched_at DESC\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "price_usd",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4866d3bb45d077ff1bc711ff709491ac7d5727c8bbf025f2ad07461def56f0e7"
+}

@@ -2,6 +2,8 @@ use near_api::{NetworkConfig, RPCEndpoint};
 use std::process::{Child, Command};
 use std::time::Duration;
 use tokio::time::sleep;
+use wiremock::matchers::{method, path_regex};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 /// Create archival network config for tests with fastnear API key
 pub fn create_archival_network() -> NetworkConfig {
@@ -29,6 +31,7 @@ pub fn create_archival_network() -> NetworkConfig {
 pub struct TestServer {
     process: Child,
     port: u16,
+    _mock_server: MockServer, // Keep mock server alive
 }
 
 impl TestServer {
@@ -40,7 +43,13 @@ impl TestServer {
         let db_url =
             std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
 
-        // Start the server in the background
+        // Start mock CoinGecko server
+        let mock_server = MockServer::start().await;
+
+        // Load price data from files and setup mock responses
+        setup_coingecko_mocks(&mock_server).await;
+
+        // Start the server in the background with mock CoinGecko URL
         let mut process = Command::new("cargo")
             .args(["run", "--bin", "nt-be"])
             .env("PORT", "3001")
@@ -52,6 +61,8 @@ impl TestServer {
                 "ed25519:3tgdk2wPraJzT4nsTuf86UX41xgPNk3MHnq8epARMdBNs29AFEztAuaQ7iHddDfXG9F2RzV1XNQYgJyAyoW51UBB",
             )
             .env("SIGNER_ID", "sandbox")
+            .env("COINGECKO_API_KEY", "test-api-key") // Enable price service
+            .env("COINGECKO_API_BASE_URL", mock_server.uri()) // Point to mock server
             .spawn()
             .expect("Failed to start server");
 
@@ -71,7 +82,11 @@ impl TestServer {
                 && response.status().is_success()
             {
                 println!("Server ready after {} attempts", attempt + 1);
-                return TestServer { process, port };
+                return TestServer {
+                    process,
+                    port,
+                    _mock_server: mock_server,
+                };
             }
         }
 
@@ -90,4 +105,55 @@ impl Drop for TestServer {
     fn drop(&mut self) {
         let _ = self.process.kill();
     }
+}
+
+/// Setup mock responses for CoinGecko API endpoints
+async fn setup_coingecko_mocks(mock_server: &MockServer) {
+    // Load price data from test files
+    let assets = [
+        ("near", include_str!("../test_data/price_data/near.json")),
+        (
+            "bitcoin",
+            include_str!("../test_data/price_data/bitcoin.json"),
+        ),
+        (
+            "ethereum",
+            include_str!("../test_data/price_data/ethereum.json"),
+        ),
+        (
+            "solana",
+            include_str!("../test_data/price_data/solana.json"),
+        ),
+        (
+            "ripple",
+            include_str!("../test_data/price_data/ripple.json"),
+        ),
+        (
+            "usd-coin",
+            include_str!("../test_data/price_data/usd-coin.json"),
+        ),
+    ];
+
+    for (asset_id, json_data) in assets {
+        // Mock the market_chart/range endpoint (bulk historical prices)
+        Mock::given(method("GET"))
+            .and(path_regex(format!(
+                r"^/coins/{}/market_chart/range",
+                asset_id
+            )))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_string(json_data)
+                    .insert_header("content-type", "application/json"),
+            )
+            .mount(mock_server)
+            .await;
+    }
+
+    // Return 404 for unknown assets
+    Mock::given(method("GET"))
+        .and(path_regex(r"^/coins/[^/]+/market_chart/range"))
+        .respond_with(ResponseTemplate::new(404))
+        .mount(mock_server)
+        .await;
 }
