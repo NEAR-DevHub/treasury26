@@ -10,7 +10,7 @@ use axum::{
     http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -398,28 +398,35 @@ async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
     snapshots: &mut HashMap<String, Vec<BalanceSnapshot>>,
     price_service: &crate::services::PriceLookupService<P>,
 ) {
-    use bigdecimal::ToPrimitive;
     use chrono::NaiveDate;
 
     for (token_id, token_snapshots) in snapshots.iter_mut() {
-        // Collect all unique dates for this token
-        let dates: Vec<NaiveDate> = token_snapshots
+        // Parse timestamps once and collect unique dates
+        let parsed_dates: Vec<Option<NaiveDate>> = token_snapshots
             .iter()
-            .filter_map(|s| {
+            .map(|s| {
                 DateTime::parse_from_rfc3339(&s.timestamp)
                     .ok()
                     .map(|dt| dt.date_naive())
             })
+            .collect();
+
+        let unique_dates: Vec<NaiveDate> = parsed_dates
+            .iter()
+            .filter_map(|d| *d)
             .collect::<std::collections::HashSet<_>>()
             .into_iter()
             .collect();
 
-        if dates.is_empty() {
+        if unique_dates.is_empty() {
             continue;
         }
 
         // Batch fetch prices for all dates
-        let prices = match price_service.get_prices_batch(token_id, &dates).await {
+        let prices = match price_service
+            .get_prices_batch(token_id, &unique_dates)
+            .await
+        {
             Ok(p) => p,
             Err(e) => {
                 log::warn!("Failed to fetch prices for {}: {}", token_id, e);
@@ -427,16 +434,15 @@ async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
             }
         };
 
-        // Enrich each snapshot with price data
-        for snapshot in token_snapshots.iter_mut() {
-            if let Ok(dt) = DateTime::parse_from_rfc3339(&snapshot.timestamp) {
-                let date = dt.date_naive();
-                if let Some(&price) = prices.get(&date) {
-                    snapshot.price_usd = Some(price);
-                    // Calculate value_usd = balance * price
-                    if let Some(balance_f64) = snapshot.balance.to_f64() {
-                        snapshot.value_usd = Some(balance_f64 * price);
-                    }
+        // Enrich each snapshot with price data (reusing parsed dates)
+        for (snapshot, parsed_date) in token_snapshots.iter_mut().zip(parsed_dates.iter()) {
+            if let Some(date) = parsed_date
+                && let Some(&price) = prices.get(date)
+            {
+                snapshot.price_usd = Some(price);
+                // Calculate value_usd = balance * price
+                if let Some(balance_f64) = snapshot.balance.to_f64() {
+                    snapshot.value_usd = Some(balance_f64 * price);
                 }
             }
         }

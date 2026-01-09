@@ -49,9 +49,10 @@ impl Default for EnvVars {
             coingecko_api_key: std::env::var("COINGECKO_API_KEY")
                 .ok()
                 .filter(|s| !s.is_empty()),
-            coingecko_api_base_url: std::env::var("COINGECKO_API_BASE_URL")
-                .ok()
-                .filter(|s| !s.is_empty()),
+            coingecko_api_base_url: Some(
+                std::env::var("COINGECKO_API_BASE_URL")
+                    .unwrap_or_else(|_| "https://pro-api.coingecko.com/api/v3".to_string()),
+            ),
         }
     }
 }

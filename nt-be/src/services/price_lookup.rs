@@ -148,16 +148,12 @@ impl<P: PriceProvider> PriceLookupService<P> {
             .await
         {
             Ok(all_prices) => {
-                // Cache all fetched prices
-                for (&date, &price) in &all_prices {
-                    if let Err(e) = self.cache_price(&provider_asset_id, date, price).await {
-                        log::warn!(
-                            "Failed to cache price for {} on {}: {}",
-                            provider_asset_id,
-                            date,
-                            e
-                        );
-                    }
+                // Cache all fetched prices in a single batch insert
+                if let Err(e) = self
+                    .cache_prices_batch(&provider_asset_id, &all_prices)
+                    .await
+                {
+                    log::warn!("Failed to cache prices for {}: {}", provider_asset_id, e);
                 }
 
                 // Add the prices we need to our result
@@ -227,7 +223,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
             .collect())
     }
 
-    /// Cache a price in the database
+    /// Cache a single price in the database
     async fn cache_price(
         &self,
         asset_id: &str,
@@ -247,6 +243,41 @@ impl<P: PriceProvider> PriceLookupService<P> {
             price_decimal,
             self.provider.source_name()
         )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Cache multiple prices in the database using a batch insert
+    async fn cache_prices_batch(
+        &self,
+        asset_id: &str,
+        prices: &HashMap<NaiveDate, f64>,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if prices.is_empty() {
+            return Ok(());
+        }
+
+        // Build batch insert using UNNEST for efficiency
+        let dates: Vec<NaiveDate> = prices.keys().cloned().collect();
+        let price_values: Vec<BigDecimal> = prices
+            .values()
+            .map(|&p| BigDecimal::try_from(p))
+            .collect::<Result<Vec<_>, _>>()?;
+        let source = self.provider.source_name();
+
+        sqlx::query(
+            r#"
+            INSERT INTO historical_prices (asset_id, price_date, price_usd, source)
+            SELECT $1, unnest($2::date[]), unnest($3::numeric[]), $4
+            ON CONFLICT (asset_id, price_date, source) DO NOTHING
+            "#,
+        )
+        .bind(asset_id)
+        .bind(&dates)
+        .bind(&price_values)
+        .bind(source)
         .execute(&self.pool)
         .await?;
 
@@ -299,7 +330,8 @@ fn token_id_to_defuse_asset_id(token_id: &str) -> String {
 
     // Handle direct NEAR token contracts
     // "wrap.near" -> "nep141:wrap.near"
-    if !token_id.contains(':') && token_id.ends_with(".near") {
+    // "token.tg" -> "nep141:token.tg"
+    if !token_id.contains(':') && (token_id.ends_with(".near") || token_id.ends_with(".tg")) {
         return format!("nep141:{}", token_id);
     }
 

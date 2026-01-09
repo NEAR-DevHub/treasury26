@@ -368,4 +368,50 @@ mod tests {
         assert_eq!(client.translate_asset_id("unknown-token"), None);
         assert_eq!(client.translate_asset_id("random"), None);
     }
+
+    /// Verify that all tokens from tokens.json have a corresponding CoinGecko mapping.
+    /// This test documents which tokens are missing CoinGecko mappings.
+    ///
+    /// Note: Not all tokens may have CoinGecko listings. Some tokens are:
+    /// - Too new to be listed
+    /// - Bridge-wrapped variants of existing tokens (e.g., "hapi (omni)")
+    /// - NEAR ecosystem tokens without CoinGecko listings
+    ///
+    /// This test is advisory and prints warnings rather than failing.
+    /// Consider requesting CoinGecko token IDs from the intents team.
+    #[test]
+    fn test_all_intents_tokens_have_coingecko_mapping() {
+        use crate::constants::intents_tokens::get_tokens_map;
+
+        let client = CoinGeckoClient::new(Client::new(), "test-key".to_string());
+        let tokens_map = get_tokens_map();
+
+        let mut missing_mappings = Vec::new();
+
+        for unified_id in tokens_map.keys() {
+            if client.translate_asset_id(unified_id).is_none() {
+                missing_mappings.push(unified_id.clone());
+            }
+        }
+
+        // Log missing mappings for visibility but don't fail the test
+        // Not all tokens have CoinGecko listings (some are bridge variants, too new, etc.)
+        if !missing_mappings.is_empty() {
+            println!(
+                "INFO: {} tokens from tokens.json lack CoinGecko mappings: {:?}",
+                missing_mappings.len(),
+                missing_mappings
+            );
+        }
+
+        // Assert that we have at least the core tokens mapped
+        let core_tokens = ["btc", "eth", "sol", "near", "usdc", "usdt"];
+        for token in core_tokens {
+            assert!(
+                client.translate_asset_id(token).is_some(),
+                "Core token '{}' must have a CoinGecko mapping",
+                token
+            );
+        }
+    }
 }
