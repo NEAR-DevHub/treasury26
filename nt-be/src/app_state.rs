@@ -387,9 +387,7 @@ impl AppState {
             })
             .await
             .map_err(|(status, msg)| -> Box<dyn std::error::Error> {
-                Box::new(std::io::Error::other(
-                    format!("Status {}: {}", status, msg),
-                ))
+                Box::new(std::io::Error::other(format!("Status {}: {}", status, msg)))
             })
     }
 
