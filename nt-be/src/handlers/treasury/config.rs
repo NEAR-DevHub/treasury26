@@ -2,7 +2,7 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
-use near_api::{AccountId, Contract};
+use near_api::{AccountId, Contract, Reference, types::json::U64};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -15,6 +15,8 @@ use crate::{AppState, utils::cache::CacheTier};
 pub struct GetTreasuryConfigQuery {
     #[serde(rename = "treasuryId")]
     pub treasury_id: AccountId,
+    #[serde(rename = "at")]
+    pub at: Option<U64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -57,6 +59,18 @@ pub async fn get_treasury_config(
     let treasury_id = params.treasury_id.clone();
     let cache_key = CacheKey::new("treasury-config").with(&treasury_id).build();
 
+    let at = if let Some(at) = params.at {
+        state
+            .find_block_height(chrono::DateTime::<chrono::Utc>::from_timestamp_nanos(
+                at.0 as i64,
+            ))
+            .await
+            .map(Reference::AtBlock)
+            .unwrap_or(Reference::Optimistic)
+    } else {
+        Reference::Optimistic
+    };
+
     let state_clone = state.clone();
     let result = state
         .clone()
@@ -65,6 +79,7 @@ pub async fn get_treasury_config(
             Contract(treasury_id.clone())
                 .call_function("get_config", ())
                 .read_only::<TreasuryConfigFromContract>()
+                .at(at)
                 .fetch_from(&state_clone.network)
                 .await
                 .map(|r| r.data)
