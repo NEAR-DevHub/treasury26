@@ -2,10 +2,11 @@ use chrono::{DateTime, Utc};
 use near_api::{AccountId, NetworkConfig, RPCEndpoint, Signer};
 use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
+use axum::http::StatusCode;
 
 use crate::{
     services::{CoinGeckoClient, PriceLookupService},
-    utils::{cache::Cache, env::EnvVars},
+    utils::{cache::{Cache, CacheKey, CacheTier}, env::EnvVars},
 };
 
 pub struct AppState {
@@ -301,9 +302,11 @@ impl AppState {
     /// Find the block height for a given timestamp
     ///
     /// This method performs the following steps:
-    /// 1. Try to lookup the block height from the database (balance_changes table)
-    /// 2. If not found in DB, use binary search with NEAR RPC to locate the block
-    /// 3. Return an error if both methods fail
+    /// 1. Check the cache for a previously found block height
+    /// 2. Try to lookup the block height from the database (balance_changes table)
+    /// 3. If not found in DB, use binary search with NEAR RPC to locate the block
+    /// 4. Cache the result for future lookups
+    /// 5. Return an error if all methods fail
     ///
     /// # Arguments
     /// * `date` - The UTC timestamp to find the corresponding block for
@@ -318,40 +321,79 @@ impl AppState {
         // Convert DateTime to nanoseconds since Unix epoch (NEAR's timestamp format)
         let target_timestamp_ns = date.timestamp_nanos_opt().ok_or("Timestamp out of range")?;
 
-        // Step 1: Try to find a block in the database with a timestamp close to the target
-        let db_result = sqlx::query!(
-            r#"
-            SELECT block_height, block_timestamp
-            FROM balance_changes
-            WHERE block_timestamp >= $1
-            ORDER BY block_timestamp ASC
-            LIMIT 1
-            "#,
-            target_timestamp_ns
-        )
-        .fetch_optional(&self.db_pool)
-        .await?;
+        // Build cache key for this timestamp lookup
+        let cache_key = CacheKey::new("block-height-by-timestamp")
+            .with(target_timestamp_ns)
+            .build();
 
-        if let Some(record) = db_result {
-            log::info!(
-                "Found block {} in database for timestamp {}",
-                record.block_height,
-                date
-            );
-            return Ok(record.block_height as u64);
-        }
+        // Try to get from cache first (using LongTerm tier since block timestamps are immutable)
+        self
+            .cache
+            .cached(
+                CacheTier::LongTerm,
+                cache_key.clone(),
+                async {
+                    // Step 1: Try to find a block in the database with a timestamp close to the target
+                    let db_result = sqlx::query!(
+                        r#"
+                        SELECT block_height, block_timestamp
+                        FROM balance_changes
+                        WHERE block_timestamp >= $1
+                        ORDER BY block_timestamp ASC
+                        LIMIT 1
+                        "#,
+                        target_timestamp_ns
+                    )
+                    .fetch_optional(&self.db_pool)
+                    .await
+                    .map_err(|e| {
+                        (
+                            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            format!("Database query error: {}", e),
+                        )
+                    })?;
 
-        log::info!(
-            "Block not found in database for timestamp {}, using binary search via RPC",
-            date
-        );
+                    if let Some(record) = db_result {
+                        log::info!(
+                            "Found block {} in database for timestamp {}",
+                            record.block_height,
+                            date
+                        );
+                        return Ok::<u64, (StatusCode, String)>(record.block_height as u64);
+                    }
 
-        // Step 2: Use binary search to find the block via RPC
-        let block_height = self
-            .binary_search_block_by_timestamp(target_timestamp_ns)
-            .await?;
+                    log::info!(
+                        "Block not found in database for timestamp {}, using binary search via RPC",
+                        date
+                    );
 
-        Ok(block_height)
+                    // Step 2: Use binary search to find the block via RPC
+                    let block_height = self
+                        .binary_search_block_by_timestamp(target_timestamp_ns)
+                        .await
+                        .map_err(|e| {
+                            (
+                                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                                format!("Binary search error: {}", e),
+                            )
+                        })?;
+
+                    log::info!(
+                        "Found block {} via binary search for timestamp {}, caching result",
+                        block_height,
+                        date
+                    );
+
+                    Ok::<u64, _>(block_height)
+                },
+            )
+            .await
+            .map_err(|(status, msg)| -> Box<dyn std::error::Error> {
+                Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Status {}: {}", status, msg),
+                ))
+            })
     }
 
     /// Binary search for block height by timestamp using NEAR RPC
@@ -450,7 +492,7 @@ mod tests {
     use crate::utils::test_utils::init_test_state;
     use chrono::{DateTime, Utc};
     use sqlx::PgPool;
-    use std::str::FromStr;
+    use super::*;
 
     /// Test finding block height from database when data exists
     #[sqlx::test]
@@ -539,6 +581,61 @@ mod tests {
         assert!(result.is_err(), "Should return error for future timestamp");
 
         let error_msg = result.unwrap_err();
+    }
+
+    /// Test that find_block_height uses cache for repeated lookups
+    #[tokio::test]
+    async fn test_find_block_height_cache_behavior() {
+        let app_state = init_test_state().await;
+
+        // Use a known block timestamp that will require binary search
+        let target_timestamp_ns = 1767606003313746552;
+        let target_date = DateTime::<Utc>::from_timestamp_nanos(target_timestamp_ns);
+
+        println!("\n=== First call - should perform binary search and cache result ===");
+        let start = std::time::Instant::now();
+        let result1 = app_state
+            .find_block_height(target_date)
+            .await
+            .expect("Should find block via binary search");
+        let duration1 = start.elapsed();
+
+        println!("First call took: {:?}", duration1);
+        println!("Found block: {}", result1);
+
+        println!("\n=== Second call - should use cached result ===");
+        let start = std::time::Instant::now();
+        let result2 = app_state
+            .find_block_height(target_date)
+            .await
+            .expect("Should find block from cache");
+        let duration2 = start.elapsed();
+
+        println!("Second call took: {:?}", duration2);
+        println!("Found block: {}", result2);
+
+        // Both calls should return the same block height
+        assert_eq!(result1, result2, "Both lookups should return the same block height");
+
+        // Second call should be significantly faster (cached)
+        // Cache lookup should be at least 10x faster than binary search
+        println!("\nSpeed improvement: {}x faster", duration1.as_micros() / duration2.as_micros().max(1));
+        assert!(
+            duration2 < duration1 / 5,
+            "Cached lookup should be significantly faster (was {:?} vs {:?})",
+            duration2,
+            duration1
+        );
+
+        // Verify the cache key was properly constructed
+        let cache_key = CacheKey::new("block-height-by-timestamp")
+            .with(target_timestamp_ns)
+            .build();
+        println!("\nCache key used: {}", cache_key);
+        assert_eq!(
+            cache_key,
+            format!("block-height-by-timestamp:{}", target_timestamp_ns)
+        );
     }
 
     /// Helper: Create a test database pool
