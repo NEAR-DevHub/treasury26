@@ -1,16 +1,15 @@
 use axum::{
-    Json,
     extract::{Query, State},
     http::StatusCode,
-    response::IntoResponse,
 };
 use near_api::{AccountId, Contract};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
 
-use crate::AppState;
 use crate::utils::base64json::Base64Json;
+use crate::utils::cache::CacheKey;
+use crate::{AppState, utils::cache::CacheTier};
 
 #[derive(Deserialize)]
 pub struct GetTreasuryConfigQuery {
@@ -54,51 +53,27 @@ pub struct Treasury {
 pub async fn get_treasury_config(
     State(state): State<Arc<AppState>>,
     Query(params): Query<GetTreasuryConfigQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let treasury_id = params.treasury_id;
+) -> Result<axum::Json<TreasuryConfig>, (StatusCode, String)> {
+    let treasury_id = params.treasury_id.clone();
+    let cache_key = CacheKey::new("treasury-config").with(&treasury_id).build();
 
-    let cache_key = format!("treasury-config:{}", treasury_id);
-    // Use short_term_cache with 1-minute TTL for governance data
-    if let Some(cached_config) = state.short_term_cache.get(&cache_key).await {
-        println!("🔁 Returning cached config for {}", treasury_id);
-        return Ok((StatusCode::OK, Json(cached_config)));
-    }
+    let state_clone = state.clone();
+    let result = state
+        .clone()
+        .cache
+        .cached_contract_call(CacheTier::ShortTerm, cache_key, async move {
+            Contract(treasury_id.clone())
+                .call_function("get_config", ())
+                .read_only::<TreasuryConfigFromContract>()
+                .fetch_from(&state_clone.network)
+                .await
+                .map(|r| r.data)
+        })
+        .await?;
 
-    let result = Contract(treasury_id.clone())
-        .call_function("get_config", ())
-        .read_only::<TreasuryConfigFromContract>()
-        .fetch_from(&state.network)
-        .await
-        .map_err(|e| {
-            eprintln!("Error fetching treasury config for {}: {}", treasury_id, e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to fetch treasury config: {}", e),
-            )
-        })?
-        .data;
-
-    let treasury = Treasury {
-        dao_id: treasury_id.to_string(),
-        config: TreasuryConfig {
-            metadata: result.metadata,
-            name: result.name,
-            purpose: result.purpose,
-        },
-    };
-
-    let treasury_value = serde_json::to_value(&treasury).map_err(|e| {
-        eprintln!("Error serializing treasury: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to serialize treasury".to_string(),
-        )
-    })?;
-
-    state
-        .short_term_cache
-        .insert(cache_key, treasury_value.clone())
-        .await;
-
-    Ok((StatusCode::OK, Json(treasury_value)))
+    Ok(axum::Json(TreasuryConfig {
+        metadata: result.metadata,
+        name: result.name,
+        purpose: result.purpose,
+    }))
 }

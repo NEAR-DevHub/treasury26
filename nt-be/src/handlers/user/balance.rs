@@ -2,13 +2,16 @@ use axum::{
     Json,
     extract::{Query, State},
     http::StatusCode,
-    response::IntoResponse,
 };
 use near_api::{AccountId, Contract, Tokens, types::json::U128};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::{AppState, constants::INTENTS_CONTRACT_ID};
+use crate::{
+    AppState,
+    constants::INTENTS_CONTRACT_ID,
+    utils::cache::{CacheKey, cached_json},
+};
 
 #[derive(Deserialize)]
 pub struct TokenBalanceQuery {
@@ -127,60 +130,33 @@ pub async fn fetch_intents_balance(
 pub async fn get_token_balance(
     State(state): State<Arc<AppState>>,
     Query(params): Query<TokenBalanceQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let account_id = params.account_id;
-    let token_id = params.token_id.trim();
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, String)> {
+    let account_id = params.account_id.clone();
+    let token_id = params.token_id.trim().to_string();
 
-    // Check cache first (short cache for balances as they change frequently)
-    let cache_key = format!("token-balance:{}:{}", account_id, token_id);
-    if let Some(cached_data) = state.cache.get(&cache_key).await {
-        println!(
-            "🔁 Returning cached balance for {} / {}",
-            account_id, token_id
-        );
-        return Ok((StatusCode::OK, Json(cached_data)));
-    }
+    let cache_key = CacheKey::new("token-balance")
+        .with(&account_id)
+        .with(&token_id)
+        .build();
 
-    // Determine if it's NEAR or FT token
-    let is_near = token_id == "near" || token_id == "NEAR";
+    let state_clone = state.clone();
+    cached_json(&state.cache.short_term, cache_key, async move {
+        // Determine if it's NEAR or FT token
+        let is_near = token_id == "near" || token_id == "NEAR";
 
-    let response = if is_near {
-        fetch_near_balance(&state, account_id).await.map_err(|e| {
-            eprintln!("Error fetching NEAR balance: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, e)
-        })?
-    } else if token_id.starts_with("nep141:") {
-        fetch_intents_balance(&state, account_id, token_id.to_string())
-            .await
-            .map_err(|e| {
-                eprintln!("Error fetching Intents balance: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, e)
-            })?
-    } else {
-        // Parse token_id as AccountId
-        let token_account_id: AccountId = token_id.parse().map_err(|e| {
-            eprintln!("Invalid token ID '{}': {}", token_id, e);
-            (StatusCode::BAD_REQUEST, format!("Invalid token ID: {}", e))
-        })?;
+        if is_near {
+            fetch_near_balance(&state_clone, account_id).await
+        } else if token_id.starts_with("nep141:") {
+            fetch_intents_balance(&state_clone, account_id, token_id.to_string()).await
+        } else {
+            // Parse token_id as AccountId
+            let token_account_id: AccountId = token_id.parse().map_err(|e| {
+                eprintln!("Invalid token ID '{}': {}", token_id, e);
+                format!("Invalid token ID: {}", e)
+            })?;
 
-        fetch_ft_balance(&state, account_id, token_account_id)
-            .await
-            .map_err(|e| {
-                eprintln!("Error fetching token balance: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, e)
-            })?
-    };
-
-    let result_value = serde_json::to_value(&response).map_err(|e| {
-        eprintln!("Error serializing token balance: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to serialize token balance".to_string(),
-        )
-    })?;
-
-    // Cache for 30 seconds (balances change frequently)
-    state.cache.insert(cache_key, result_value.clone()).await;
-
-    Ok((StatusCode::OK, Json(result_value)))
+            fetch_ft_balance(&state_clone, account_id, token_account_id).await
+        }
+    })
+    .await
 }

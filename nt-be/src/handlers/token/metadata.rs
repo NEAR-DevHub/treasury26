@@ -3,7 +3,6 @@ use std::{collections::HashMap, sync::Arc};
 use axum::{
     Json,
     extract::{Query, State},
-    response::IntoResponse,
 };
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -12,6 +11,7 @@ use crate::{
     AppState,
     constants::intents_chains::{ChainIcons, get_chain_metadata_by_name},
     handlers::proxy::external::fetch_proxy_api,
+    utils::cache::{CacheKey, CacheTier},
 };
 
 #[derive(Deserialize)]
@@ -87,27 +87,32 @@ pub async fn fetch_tokens_metadata(
     }
 
     // Join asset IDs with commas for batch request
-    let asset_ids_param = defuse_asset_ids.join(",");
+    let mut sorted_ids = defuse_asset_ids.to_vec();
+    sorted_ids.sort();
+    let asset_ids_param = sorted_ids.join(",");
 
     // Prepare query parameters for the Ref SDK API
     let mut query_params = HashMap::new();
-    query_params.insert("defuseAssetId".to_string(), asset_ids_param);
+    query_params.insert("defuseAssetId".to_string(), asset_ids_param.clone());
 
-    // Fetch token data from Ref SDK API
-    let response = fetch_proxy_api(
-        &state.http_client,
-        &state.cache,
-        &state.env_vars.ref_sdk_base_url,
-        "token-by-defuse-asset-id",
-        &query_params,
-    )
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::BAD_GATEWAY,
-            format!("Failed to fetch token metadata: {}", e),
-        )
-    })?;
+    let cache_key = CacheKey::new("ref-tokens-metadata")
+        .with(&asset_ids_param)
+        .build();
+
+    let state_clone = state.clone();
+    let response = state
+        .cache
+        .cached(CacheTier::LongTerm, cache_key, async move {
+            // Fetch token data from Ref SDK API
+            fetch_proxy_api(
+                &state_clone.http_client,
+                &state_clone.env_vars.ref_sdk_base_url,
+                "token-by-defuse-asset-id",
+                &query_params,
+            )
+            .await
+        })
+        .await?;
 
     // Parse as array of objects first
     let tokens: Vec<RefSdkToken> = serde_json::from_value(response).map_err(|e| {
@@ -169,45 +174,38 @@ pub async fn fetch_tokens_metadata(
 pub async fn get_token_metadata(
     State(state): State<Arc<AppState>>,
     Query(mut params): Query<TokenMetadataQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, String)> {
     let cache_key = format!("token-metadata:{}", params.token_id);
-    if let Some(cached_data) = state.cache.get(&cache_key).await {
-        return Ok((StatusCode::OK, Json(cached_data)));
-    }
+    let state_clone = state.clone();
 
-    let is_near = params.token_id.to_lowercase() == "near" || params.token_id.is_empty();
-    if is_near {
-        params.token_id = "nep141:wrap.near".to_string();
-    }
+    state
+        .cache
+        .cached_json(CacheTier::LongTerm, cache_key, async move {
+            let is_near = params.token_id.to_lowercase() == "near" || params.token_id.is_empty();
+            if is_near {
+                params.token_id = "nep141:wrap.near".to_string();
+            }
 
-    // Fetch token metadata using the reusable function
-    let tokens = fetch_tokens_metadata(&state, &[params.token_id.clone()]).await?;
+            // Fetch token metadata using the reusable function
+            let tokens = fetch_tokens_metadata(&state_clone, &[params.token_id.clone()]).await?;
 
-    // Get the first token from the array
-    let mut metadata = tokens
-        .first()
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                format!("Token not found: {}", params.token_id),
-            )
-        })?
-        .clone();
+            // Get the first token from the array
+            let mut metadata = tokens
+                .first()
+                .ok_or_else(|| {
+                    (
+                        StatusCode::NOT_FOUND,
+                        format!("Token not found: {}", params.token_id),
+                    )
+                })?
+                .clone();
 
-    if is_near {
-        metadata.name = "NEAR".to_string();
-        metadata.symbol = "NEAR".to_string();
-    }
+            if is_near {
+                metadata.name = "NEAR".to_string();
+                metadata.symbol = "NEAR".to_string();
+            }
 
-    let result_value = serde_json::to_value(&metadata).map_err(|e| {
-        eprintln!("Error serializing token metadata: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to serialize token metadata: {}", e),
-        )
-    })?;
-
-    state.cache.insert(cache_key, result_value.clone()).await;
-
-    Ok((StatusCode::OK, Json(result_value)))
+            Ok::<_, (StatusCode, String)>(metadata)
+        })
+        .await
 }

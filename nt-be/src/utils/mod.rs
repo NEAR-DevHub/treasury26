@@ -1,4 +1,5 @@
 pub mod base64json;
+pub mod cache;
 pub mod env;
 pub mod jsonrpc;
 

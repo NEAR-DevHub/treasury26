@@ -2,13 +2,12 @@ use axum::{
     Json,
     extract::{Query, State},
     http::StatusCode,
-    response::IntoResponse,
 };
 use near_api::Contract;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 
-use crate::AppState;
+use crate::{AppState, utils::cache::CacheTier};
 
 #[derive(Deserialize)]
 pub struct ProfileQuery {
@@ -82,8 +81,8 @@ async fn fetch_profile(state: &Arc<AppState>, account_id: &str) -> Result<Profil
 pub async fn get_profile(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ProfileQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let account_id = params.account_id.trim();
+) -> Result<Json<ProfileData>, (StatusCode, String)> {
+    let account_id = params.account_id.trim().to_string();
 
     if account_id.is_empty() {
         return Err((
@@ -93,38 +92,26 @@ pub async fn get_profile(
     }
 
     let cache_key = format!("profile:{}", account_id);
+    let state_clone = state.clone();
 
-    // Check cache first
-    if let Some(cached_data) = state.cache.get(&cache_key).await {
-        println!("🔁 Returning cached profile for {}", account_id);
-        return Ok((StatusCode::OK, Json(cached_data)));
-    }
+    let profile = state
+        .cache
+        .cached(CacheTier::LongTerm, cache_key, async move {
+            fetch_profile(&state_clone, &account_id).await.map_err(|e| {
+                eprintln!("Error fetching profile: {}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, e)
+            })
+        })
+        .await?;
 
-    println!("🚨 Fetching profile from Social DB for: {}", account_id);
-
-    let profile = fetch_profile(&state, account_id).await.map_err(|e| {
-        eprintln!("Error fetching profile: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, e)
-    })?;
-
-    let result_value = serde_json::to_value(&profile).map_err(|e| {
-        eprintln!("Error serializing profile: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to serialize profile".to_string(),
-        )
-    })?;
-
-    state.cache.insert(cache_key, result_value.clone()).await;
-
-    Ok((StatusCode::OK, Json(result_value)))
+    Ok(Json(profile))
 }
 
 /// Batch handler for multiple profiles endpoint
 pub async fn get_batch_profiles(
     State(state): State<Arc<AppState>>,
     Query(params): Query<BatchProfileQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<Json<HashMap<String, ProfileData>>, (StatusCode, String)> {
     let account_ids: Vec<&str> = params.account_ids.split(',').map(|s| s.trim()).collect();
 
     if account_ids.is_empty() {
@@ -140,7 +127,7 @@ pub async fn get_batch_profiles(
 
     for account_id in &account_ids {
         let cache_key = format!("profile:{}", account_id);
-        if let Some(cached_data) = state.cache.get(&cache_key).await {
+        if let Some(cached_data) = state.cache.long_term.get(&cache_key).await {
             if let Ok(profile) = serde_json::from_value::<ProfileData>(cached_data) {
                 cached_profiles.insert(account_id.to_string(), profile);
             }
@@ -151,7 +138,7 @@ pub async fn get_batch_profiles(
 
     if uncached_accounts.is_empty() {
         println!("✅ All profiles in cache, returning cached data");
-        return Ok((StatusCode::OK, Json(cached_profiles)));
+        return Ok(Json(cached_profiles));
     }
 
     println!(
@@ -171,7 +158,7 @@ pub async fn get_batch_profiles(
                 Ok(profile) => {
                     let cache_key = format!("profile:{}", account_id_owned);
                     if let Ok(value) = serde_json::to_value(&profile) {
-                        state_clone.cache.insert(cache_key, value).await;
+                        state_clone.cache.long_term.insert(cache_key, value).await;
                     }
                     Some((account_id_owned, profile))
                 }
@@ -188,7 +175,7 @@ pub async fn get_batch_profiles(
                         tags: None,
                     };
                     if let Ok(value) = serde_json::to_value(&empty_profile) {
-                        state_clone.cache.insert(cache_key, value).await;
+                        state_clone.cache.long_term.insert(cache_key, value).await;
                     }
                     Some((account_id_owned, empty_profile))
                 }
@@ -203,5 +190,5 @@ pub async fn get_batch_profiles(
         cached_profiles.insert(result.0, result.1);
     }
 
-    Ok((StatusCode::OK, Json(cached_profiles)))
+    Ok(Json(cached_profiles))
 }

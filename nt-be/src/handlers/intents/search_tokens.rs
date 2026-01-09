@@ -2,7 +2,6 @@ use axum::{
     Json,
     extract::{Query, State},
     http::StatusCode,
-    response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -10,6 +9,7 @@ use std::sync::Arc;
 use crate::{
     AppState,
     constants::intents_tokens::{TokenDeployment, get_tokens_map},
+    utils::cache::CacheTier,
 };
 
 #[derive(Deserialize)]
@@ -24,7 +24,7 @@ pub struct SearchTokensQuery {
     pub destination_network: Option<String>,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NetworkInfo {
     #[serde(rename = "chainId")]
     pub chain_id: String,
@@ -36,7 +36,7 @@ pub struct NetworkInfo {
     pub bridge: String,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TokenSearchResult {
     #[serde(rename = "defuseAssetId")]
     pub defuse_asset_id: String,
@@ -52,7 +52,7 @@ pub struct TokenSearchResult {
     pub network_info: Option<NetworkInfo>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SearchTokensResponse {
     #[serde(rename = "tokenIn", skip_serializing_if = "Option::is_none")]
     pub token_in: Option<TokenSearchResult>,
@@ -264,7 +264,7 @@ fn search_token_out(query: &str, destination_network: Option<&str>) -> Option<To
 pub async fn search_tokens(
     State(state): State<Arc<AppState>>,
     Query(params): Query<SearchTokensQuery>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<Json<SearchTokensResponse>, (StatusCode, String)> {
     // Build cache key from search params
     let cache_key = format!(
         "token-search:{}:{}:{}:{}",
@@ -274,40 +274,28 @@ pub async fn search_tokens(
         params.destination_network.as_deref().unwrap_or("")
     );
 
-    // Check cache
-    if let Some(cached_result) = state.cache.get(&cache_key).await {
-        return Ok((StatusCode::OK, Json(cached_result)));
-    }
+    let result = state
+        .cache
+        .cached(CacheTier::LongTerm, cache_key, async move {
+            // Search for tokenIn if provided
+            let token_in_result = params.token_in.as_ref().and_then(|query| {
+                search_token_in(query, params.intents_token_contract_id.as_deref())
+            });
 
-    // Search for tokenIn if provided
-    let token_in_result = params
-        .token_in
-        .as_ref()
-        .and_then(|query| search_token_in(query, params.intents_token_contract_id.as_deref()));
+            // Search for tokenOut if provided
+            let token_out_result = params
+                .token_out
+                .as_ref()
+                .and_then(|query| search_token_out(query, params.destination_network.as_deref()));
 
-    // Search for tokenOut if provided
-    let token_out_result = params
-        .token_out
-        .as_ref()
-        .and_then(|query| search_token_out(query, params.destination_network.as_deref()));
+            Ok::<_, (StatusCode, String)>(SearchTokensResponse {
+                token_in: token_in_result,
+                token_out: token_out_result,
+            })
+        })
+        .await?;
 
-    let response = SearchTokensResponse {
-        token_in: token_in_result,
-        token_out: token_out_result,
-    };
-
-    let result_value = serde_json::to_value(&response).map_err(|e| {
-        eprintln!("Error serializing search result: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to serialize result".to_string(),
-        )
-    })?;
-
-    // Cache the result
-    state.cache.insert(cache_key, result_value.clone()).await;
-
-    Ok((StatusCode::OK, Json(result_value)))
+    Ok(Json(result))
 }
 
 #[cfg(test)]
