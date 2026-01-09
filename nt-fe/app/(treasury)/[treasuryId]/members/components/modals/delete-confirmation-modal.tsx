@@ -55,44 +55,24 @@ export function DeleteConfirmationModal({
       open={isOpen && membersToDelete.length > 0}
       onOpenChange={(open) => !open && onClose()}
     >
-      <DialogContent className="max-w-md p-0 gap-4">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="max-w-md gap-4">
+        <DialogHeader className="p-2">
+          <DialogTitle className="text-left">
             {isBulk
               ? `Remove ${membersToDelete.length} Members`
               : "Remove Member"}
           </DialogTitle>
         </DialogHeader>
 
-        {isBulk ? (
-          <div className="space-y-3 px-4">
-            <p className="text-foreground">
-              Once approved, this action will permanently remove the following
-              members from the treasury and revoke all their assigned
-              permissions:
-            </p>
-            <div className="bg-muted/50 rounded-lg p-3 space-y-1 break-all">
-              {membersToDelete.map((m) => (
-                <div
-                  key={m.accountId}
-                  className="font-semibold font-mono text-sm"
-                >
-                  • {m.accountId}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p className="text-foreground px-4">
-            Once approved, this action will permanently remove{" "}
-            <span className="font-semibold">
-              {membersToDelete[0]?.accountId}
-            </span>{" "}
-            from the treasury and revoke all assigned permissions.
-          </p>
-        )}
+        <p className="text-foreground px-2">
+          Once approved, this action will permanently remove{" "}
+          <span className="font-semibold break-all overflow-wrap-anywhere text-wrap">
+            {membersToDelete.map((m) => m.accountId).join(", ")}
+          </span>{" "}
+          from the treasury and revoke all assigned permissions.
+        </p>
 
-        <div className="px-6 pb-4">
+        <div className="px-2 mt-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="block">

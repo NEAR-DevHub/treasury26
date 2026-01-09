@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT ON (price_date) price_date, price_usd\n            FROM historical_prices\n            WHERE asset_id = $1 AND price_date = ANY($2)\n            ORDER BY price_date, fetched_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "price_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 1,
+        "name": "price_usd",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "DateArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "8532117c7180904bcd00a38b5c7f4a8ca87e3599dee34007c7dcb7b78baa910c"
+}

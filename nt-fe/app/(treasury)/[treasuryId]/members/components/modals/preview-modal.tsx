@@ -13,11 +13,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { RoleBadge } from "@/components/role-badge";
 
 interface AddMemberFormData {
   members: Array<{
     accountId: string;
-    selectedRoles: string[];
+    roles: string[];
   }>;
 }
 
@@ -53,8 +54,8 @@ export function PreviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-4">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-xl max-h-[90vh] p-0 gap-4">
+        <DialogHeader className="p-4">
           <div className="flex items-center gap-3">
             <Button
               type="button"
@@ -97,13 +98,8 @@ export function PreviewModal({
                     <span className="font-medium">{member.accountId}</span>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {member.selectedRoles.map((role) => (
-                      <span
-                        key={role}
-                        className="px-3 py-1 rounded-md bg-muted text-foreground text-sm font-medium"
-                      >
-                        {role}
-                      </span>
+                    {member.roles.map((role) => (
+                      <RoleBadge key={role} role={role} variant="rounded" />
                     ))}
                   </div>
                 </div>

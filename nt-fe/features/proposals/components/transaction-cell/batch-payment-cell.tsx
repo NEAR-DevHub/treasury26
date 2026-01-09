@@ -4,9 +4,11 @@ import { TokenCell } from "./token-cell";
 
 interface BatchPaymentCellProps {
     data: BatchPaymentRequestData;
+    timestamp?: string;
+    textOnly?: boolean;
 }
 
-export function BatchPaymentCell({ data }: BatchPaymentCellProps) {
+export function BatchPaymentCell({ data, timestamp, textOnly = false }: BatchPaymentCellProps) {
     const { data: batchData } = useBatchPayment(data.batchId);
 
     const recipients = batchData?.payments ?
@@ -25,6 +27,6 @@ export function BatchPaymentCell({ data }: BatchPaymentCellProps) {
     } as PaymentRequestData;
 
     return (
-        <TokenCell data={tokenData} isUser={false} />
+        <TokenCell data={tokenData} isUser={false} timestamp={timestamp} textOnly={textOnly} />
     );
 }

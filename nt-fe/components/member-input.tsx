@@ -30,12 +30,21 @@ export const memberSchema = z.array(z.object({
 export type MembersArray = z.infer<typeof memberSchema>;
 export type Member = z.infer<typeof memberSchema>[number];
 
+type Role = {
+    id: string
+    title: string
+    description?: string
+}
+
+type MemberInputMode = "onboarding" | "add" | "edit";
+
 interface MemberInputProps<
     TFieldValues extends FieldValues = FieldValues,
     TMemberPath extends Path<TFieldValues> = Path<TFieldValues>
 > {
     control: Control<TFieldValues>;
-    lockedFirstMember?: boolean;
+    mode?: MemberInputMode;
+    availableRoles?: readonly Role[];
     name: TMemberPath extends ArrayPath<TFieldValues>
     ? PathValue<TFieldValues, TMemberPath> extends MembersArray
     ? TMemberPath
@@ -46,29 +55,39 @@ interface MemberInputProps<
 export function MemberInput<
     TFieldValues extends FieldValues = FieldValues,
     TMemberPath extends Path<TFieldValues> = Path<TFieldValues>
->({ control, lockedFirstMember, name }: MemberInputProps<TFieldValues, TMemberPath>) {
+>({ control, mode = "add", availableRoles = ROLES, name }: MemberInputProps<TFieldValues, TMemberPath>) {
     const { fields, append, remove } = useFieldArray({
         control,
         name: name,
     });
 
+    // Derive behavior from mode
+    const isOnboarding = mode === "onboarding";
+    const isEditMode = mode === "edit";
+    const lockedFirstMember = isOnboarding;
+    const showCreatorLabel = isOnboarding;
+    const hideAddButton = isEditMode;
+    const disableAllInputs = isEditMode;
+    const defaultRoles = isOnboarding ? ["requestor"] : [];
+
     return (
         <InputBlock invalid={false}>
             <div className="flex flex-col gap-4">
                 {fields.map((field, index) => (
-                    <div key={field.id} className="flex  flex-col gap-0 border-b border-muted-foreground/10">
+                    <div key={field.id} className={`flex flex-col gap-0 ${!hideAddButton || index < fields.length - 1 ? 'border-b border-muted-foreground/10' : ''}`}>
                         <div className="flex justify-between items-center">
                             <p className="text-xs text-muted-foreground">
-                                {index === 0 ? "Creator" : "Member Address"}
+                                {showCreatorLabel && index === 0 ? "Creator" : "Member Address"}
                             </p>
-                            {index > 0 && <Button variant={"ghost"} className="size-6 p-0! group hover:text-destructive" onClick={() => remove(index)}>
+
+                            {index > 0 && !disableAllInputs && <Button variant={"ghost"} className="size-6 p-0! group hover:text-destructive" onClick={() => remove(index)}>
                                 <Trash2 className="size-4 text-primary group-hover:text-destructive" />
                             </Button>}
                         </div>
-                        <div className="flex md:flex-row flex-col items-start justify-between md:items-center">
-                            <div className="flex-1">
+                        <div className="flex md:flex-row flex-col items-start justify-between md:items-center gap-3">
+                            <div className="flex-1 wrap-break-word overflow-wrap-anywhere min-w-0">
                                 <AccountIdInput
-                                    disabled={lockedFirstMember && index === 0}
+                                    disabled={disableAllInputs || (lockedFirstMember && index === 0)}
                                     control={control}
                                     name={`${name}.${index}.accountId`! as any}
                                 />
@@ -78,16 +97,25 @@ export function MemberInput<
                                 name={`${name}.${index}.roles` as Path<TFieldValues>}
                                 render={({ field }) => (
                                     <>
-                                        {index > 0 || !lockedFirstMember ? (
+                                        {disableAllInputs ? (
                                             <RoleSelector
                                                 selectedRoles={field.value}
                                                 onRolesChange={(roles) => {
                                                     field.onChange(roles);
                                                 }}
+                                                availableRoles={availableRoles}
+                                            />
+                                        ) : (index > 0 || !lockedFirstMember) ? (
+                                            <RoleSelector
+                                                selectedRoles={field.value}
+                                                onRolesChange={(roles) => {
+                                                    field.onChange(roles);
+                                                }}
+                                                availableRoles={availableRoles}
                                             />
                                         ) : (
                                             <div className="flex gap-1">
-                                                {ROLES.filter(r => field.value.includes(r.id)).map(r => {
+                                                {availableRoles.filter(r => field.value.includes(r.id)).map(r => {
                                                     return (
                                                         <Tooltip key={r.id} content={r.description} triggerProps={{ asChild: false }}>
                                                             <Pill title={r.title} variant="secondary" />
@@ -118,14 +146,16 @@ export function MemberInput<
                         </div>
                     </div>
                 ))}
-                <Button variant={"ghost"} type="button" className="w-fit" onClick={() => append({ accountId: "", roles: ["requestor"] } as TMemberPath extends ArrayPath<TFieldValues>
+                {!hideAddButton && (
+                <Button variant={"ghost"} type="button" className="w-fit" onClick={() => append({ accountId: "", roles: defaultRoles } as TMemberPath extends ArrayPath<TFieldValues>
                     ? PathValue<TFieldValues, TMemberPath> extends Member
                     ? PathValue<TFieldValues, TMemberPath>[number]
                     : never
                     : never)}>
                     <Plus className="size-4 text-primary" />
-                    Add New Member
+                    <span className="text-primary">Add New Member</span>
                 </Button>
+                )}
             </div>
         </InputBlock >
     )

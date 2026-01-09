@@ -20,7 +20,7 @@ export function TreasurySelector() {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
-  const { setSelectedTreasury, treasury } = useTreasury();
+  const { setSelectedTreasury } = useTreasury();
   const { accountId } = useNear();
 
   const treasuryId = params?.treasuryId as string | undefined;
@@ -105,14 +105,14 @@ export function TreasurySelector() {
   const displayName = currentTreasury
     ? getTreasuryName(currentTreasury)
     : guestTreasuryConfig
-    ? guestTreasuryConfig.config?.name || guestTreasuryConfig.daoId
-    : "Select treasury";
+      ? guestTreasuryConfig.config?.name || guestTreasuryConfig.daoId
+      : "Select treasury";
 
   const displaySubtext = currentTreasury
     ? currentTreasury.daoId
     : isGuestTreasury
-    ? "Guest view"
-    : undefined;
+      ? "Guest view"
+      : undefined;
 
   return (
     <Select value={treasuryId} onValueChange={handleTreasuryChange} >

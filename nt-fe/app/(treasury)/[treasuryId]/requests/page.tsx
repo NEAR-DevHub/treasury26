@@ -6,19 +6,23 @@ import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/compon
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
-import { Download } from "lucide-react";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { ArrowRightLeft, ArrowUpRight, Download, SearchX } from "lucide-react";
+import Link from "next/link";
+import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
 import { addDays } from "date-fns";
+import { NumberBadge } from "@/components/number-badge";
+import { TableSkeleton } from "@/components/table-skeleton";
 
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const { data: config } = useTreasuryConfig(selectedTreasury);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -92,11 +96,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   }, [data, page, selectedTreasury, filters, queryClient, pageSize]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <p className="text-muted-foreground">Loading proposals...</p>
-      </div>
-    );
+    return <TableSkeleton rows={12} columns={7} />;
   }
 
   if (error) {
@@ -107,23 +107,16 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
     );
   }
 
-  if (!data || (data.proposals.length === 0 && page === 0)) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <p className="text-muted-foreground">No proposals found.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {policy && (
         <ProposalsTable
-          proposals={data.proposals}
+          proposals={data?.proposals ?? []}
           policy={policy}
+          config={config?.config}
           pageIndex={page}
           pageSize={pageSize}
-          total={data.total}
+          total={data?.total ?? 0}
           onPageChange={updatePage}
         />
       )}
@@ -131,12 +124,43 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   );
 }
 
+function NoRequestsFound() {
+  const { selectedTreasury: treasuryId } = useTreasury();
+  return (
+    <PageCard className="py-[100px] flex flex-col items-center justify-center w-full h-fit gap-4">
+      <div className="flex flex-col items-center justify-center gap-0.5">
+        <h1 className="font-semibold">Create your first request</h1>
+        <p className="text-xs text-muted-foreground max-w-[300px] text-center">Requests for payments, exchanges, and other actions will appear here once created.</p>
+      </div>
+      <div className="flex gap-4 w-[300px]">
+        <Link href={`/${treasuryId}/payments`} className="w-1/2">
+          <Button className="gap-1 w-full">
+            <ArrowUpRight className="size-3.5" /> Send
+          </Button>
+        </Link>
+        <Link href={`/${treasuryId}/exchange`} className="w-1/2">
+          <Button className="gap-1 w-full">
+            <ArrowRightLeft className="size-3.5" /> Exchange
+          </Button>
+        </Link>
+      </div>
+    </PageCard>
+  );
+}
+
 export default function RequestsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
+  const treasuryId = params?.treasuryId as string | undefined;
+  const { data: proposals } = useProposals(treasuryId, {
+    statuses: ["InProgress"],
+  })
+  const { data: allProposals } = useProposals(treasuryId, {});
 
-  const currentTab = searchParams.get("tab") || "all";
+
+  const currentTab = searchParams.get("tab") || "pending";
 
   const handleTabChange = useCallback((value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -145,6 +169,14 @@ export default function RequestsPage() {
     router.push(`${pathname}?${params.toString()}`);
   }, [searchParams, router, pathname]);
 
+  if (allProposals?.proposals?.length === 0) {
+    return (
+      <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
+        <NoRequestsFound />
+      </PageComponentLayout>
+    )
+  }
+
   return (
     <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
       <PageCard>
@@ -152,17 +184,15 @@ export default function RequestsPage() {
           <div className="flex items-center justify-between mb-4">
             <TabsList className="w-fit border-none">
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
+              <TabsTrigger value="pending" className="flex gap-2.5">Pending
+                {!!proposals?.proposals?.length && proposals?.proposals?.length > 0 && (
+                  <NumberBadge number={proposals?.proposals?.length} variant="secondary" />
+                )}
+              </TabsTrigger>
               <TabsTrigger value="executed">Executed</TabsTrigger>
               <TabsTrigger value="rejected">Rejected</TabsTrigger>
               <TabsTrigger value="expired">Expired</TabsTrigger>
             </TabsList>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="h-9">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-            </div>
           </div>
           <div className="mb-4">
             <ProposalFiltersComponent />
@@ -186,6 +216,6 @@ export default function RequestsPage() {
           </TabsContents>
         </Tabs>
       </PageCard>
-    </PageComponentLayout>
+    </PageComponentLayout >
   );
 }

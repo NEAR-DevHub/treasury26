@@ -30,7 +30,7 @@ function PaymentDisplay({ number, payment, expanded, onExpandedClick, tokenId }:
             </div>
             <div className="flex gap-3 items-baseline text-sm text-muted-foreground">
                 <Address address={payment.recipient} />
-                <Amount amount={payment.amount.toString()} textOnly tokenId={tokenId} showUSDValue={false} />
+                <Amount amount={payment.amount.toString()} textOnly showNetwork tokenId={tokenId} showUSDValue={false} />
             </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -41,7 +41,7 @@ function PaymentDisplay({ number, payment, expanded, onExpandedClick, tokenId }:
                 },
                 {
                     label: "Amount",
-                    value: <Amount amount={payment.amount.toString()} tokenId={tokenId} />
+                    value: <Amount amount={payment.amount.toString()} showNetwork tokenId={tokenId} />
                 }
             ]} />
 

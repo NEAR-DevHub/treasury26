@@ -9,8 +9,8 @@ interface WarningAlertProps {
 export function WarningAlert({ message, className }: WarningAlertProps) {
   return (
     <Alert variant="warning" className={className}>
-      <AlertTriangle className="shrink-0 mt-0.5" />
-      <AlertDescription className="text-general-warning-foreground">{message}</AlertDescription>
+      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+      <AlertDescription>{message}</AlertDescription>
     </Alert>
   );
 }

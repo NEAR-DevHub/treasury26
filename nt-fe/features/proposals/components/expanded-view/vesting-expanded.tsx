@@ -13,7 +13,7 @@ export function VestingExpanded({ data }: VestingExpandedProps) {
     { label: "Recipient", value: <User accountId={data.receiver} /> },
     {
       label: "Amount",
-      value: <Amount amount={data.amount} tokenId={data.tokenId} />
+      value: <Amount amount={data.amount} showNetwork tokenId={data.tokenId} />
     },
   ];
 

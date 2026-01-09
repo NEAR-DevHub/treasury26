@@ -1,3 +1,4 @@
+import { TokenDisplay } from "@/components/token-display-with-network";
 import { useToken } from "@/hooks/use-treasury-queries";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import { useMemo } from "react";
@@ -12,11 +13,6 @@ interface AmountProps {
     iconSize?: "sm" | "md" | "lg";
 }
 
-const iconSizeClasses = {
-    sm: "size-4",
-    md: "size-5",
-    lg: "size-6",
-}
 
 export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
     const { data: tokenData } = useToken(tokenId);
@@ -30,10 +26,9 @@ export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, 
         const price = tokenData?.price;
         return `≈ ${formatCurrency(Number(amountValue) * price!)}`;
     }, [tokenData, amountValue]);
-    const iconClass = iconSizeClasses[iconSize];
     if (textOnly) {
         return (
-            <p className="text-sm font-medium">
+            <p className="text-sm font-semibold">
                 {amountValue} {tokenData?.symbol}
                 {showUSDValue && (
                     <span className="text-muted-foreground text-xs">({estimatedUSDValue})</span>
@@ -44,7 +39,12 @@ export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, 
         <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2">
                 {tokenData && (
-                    <img src={tokenData?.icon} className={cn("rounded-full shrink-0", iconClass)} alt={tokenData?.name} />
+                    <TokenDisplay
+                        symbol={tokenData.symbol}
+                        icon={tokenData.icon ?? ""}
+                        chainIcons={tokenData.chainIcons}
+                        iconSize={iconSize}
+                    />
                 )}
                 {tokenData && (
                     <span className="font-medium">{amountValue} {tokenData?.symbol}</span>

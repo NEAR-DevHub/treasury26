@@ -32,9 +32,11 @@ import { encodeToMarkdown } from "@/lib/utils";
 import { ThresholdSlider } from "@/components/threshold";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { useProposals } from "@/hooks/use-proposals";
-import { AlertTriangle, ExternalLink } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/button";
 import { useQueryClient } from "@tanstack/react-query";
+import { RoleName } from "@/components/role-name";
+import { WarningAlert } from "@/components/warning-alert";
 
 const votingFormSchema = z.object({
   voteDuration: z
@@ -80,7 +82,6 @@ interface VotingRequestActionProps {
   accountId: string | null;
   disabled: boolean;
   permissionMessage: string;
-  treasuryId: string | null | undefined;
 }
 
 function VotingRequestAction({
@@ -91,37 +92,7 @@ function VotingRequestAction({
   accountId,
   disabled,
   permissionMessage,
-  treasuryId,
 }: VotingRequestActionProps) {
-  const router = useRouter();
-
-  if (hasPendingRequest) {
-    return (
-      <>
-        <div className="flex items-start gap-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 p-4 border border-yellow-200 dark:border-yellow-900">
-          <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-1" />
-          <div className="flex-1">
-            <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
-              Active Voting Change Request
-            </h4>
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              To avoid conflicts, you need to complete or resolve the existing pending requests before proceeding. These requests are currently active and must be approved or rejected first.
-            </p>
-          </div>
-        </div>
-
-        <Button
-          onClick={() => router.push(`/${treasuryId}/requests?tab=pending`)}
-          variant="default"
-          className="w-full"
-        >
-          View Request
-          <ExternalLink className="ml-2 h-4 w-4" />
-        </Button>
-      </>
-    );
-  }
-
   return (
     <div className="rounded-lg border bg-card p-0 overflow-hidden">
       <CreateRequestButton
@@ -129,7 +100,7 @@ function VotingRequestAction({
         isSubmitting={isSubmitting}
         isAuthorized={isAuthorized}
         accountId={accountId}
-        disabled={disabled}
+        disabled={disabled || hasPendingRequest}
         permissionMessage={permissionMessage}
         className="w-full h-10 rounded-none"
       />
@@ -142,6 +113,7 @@ export function VotingTab() {
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const { accountId, createProposal } = useNear();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   // Fetch pending proposals to check for active voting change requests
   const { data: pendingProposals } = useProposals(selectedTreasury, {
@@ -150,17 +122,12 @@ export function VotingTab() {
   });
 
   // Check for specific pending proposal types
-  const hasPendingThresholdRequest = useMemo(() => {
+  const hasPendingVotingRequest = useMemo(() => {
     if (!pendingProposals?.proposals) return false;
     return pendingProposals.proposals.some(
-      (p) => p.kind && "ChangePolicy" in p.kind
-    );
-  }, [pendingProposals]);
-
-  const hasPendingDurationRequest = useMemo(() => {
-    if (!pendingProposals?.proposals) return false;
-    return pendingProposals.proposals.some(
-      (p) => p.kind && "ChangePolicyUpdateParameters" in p.kind
+      (p) =>
+        p.kind &&
+        ("ChangePolicy" in p.kind || "ChangePolicyUpdateParameters" in p.kind)
     );
   }, [pendingProposals]);
 
@@ -338,7 +305,9 @@ export function VotingTab() {
       });
 
       // Refetch proposals to show the newly created proposal
-      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
+      queryClient.invalidateQueries({
+        queryKey: ["proposals", selectedTreasury],
+      });
 
       // Update original thresholds
       setOriginalThresholds((prev) => ({
@@ -394,7 +363,9 @@ export function VotingTab() {
       });
 
       // Refetch proposals to show the newly created proposal
-      queryClient.invalidateQueries({ queryKey: ["proposals", selectedTreasury] });
+      queryClient.invalidateQueries({
+        queryKey: ["proposals", selectedTreasury],
+      });
 
       // Mark as not dirty
       form.reset(form.getValues());
@@ -409,6 +380,36 @@ export function VotingTab() {
   return (
     <Form {...form}>
       <div className="space-y-6">
+        {hasPendingVotingRequest && (
+          <PageCard className="space-y-2">
+            <WarningAlert
+              message={
+                <>
+                  <h4 className="font-semibold mb-1">
+                    Active Voting Threshold Request
+                  </h4>
+                  <p className="text-sm">
+                    To avoid conflicts, you need to complete or resolve the
+                    existing pending requests before proceeding. These requests
+                    are currently active and must be approved or rejected first.
+                  </p>
+                </>
+              }
+            />
+
+            <Button
+              onClick={() =>
+                router.push(`/${selectedTreasury}/requests?tab=pending`)
+              }
+              variant="default"
+              className="w-full"
+            >
+              View Request
+              <ArrowUpRight className="h-4 w-4" />
+            </Button>
+          </PageCard>
+        )}
+
         <PageCard>
           <div>
             <h3 className="text-lg font-semibold">Voting Threshold</h3>
@@ -425,7 +426,7 @@ export function VotingTab() {
             <TabsList>
               {groupRoles.map((role) => (
                 <TabsTrigger key={role.name} value={role.name}>
-                  {role.name}
+                  <RoleName name={role.name} />
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -487,7 +488,7 @@ export function VotingTab() {
                               { shouldDirty: true }
                             );
                           }}
-                          disabled={!isAuthorized || hasPendingThresholdRequest}
+                          disabled={!isAuthorized || hasPendingVotingRequest}
                         />
                       );
                     })()}
@@ -498,7 +499,7 @@ export function VotingTab() {
           </Tabs>
 
           <VotingRequestAction
-            hasPendingRequest={hasPendingThresholdRequest}
+            hasPendingRequest={hasPendingVotingRequest}
             onCreateRequest={handleThresholdChange}
             isSubmitting={isSubmittingThreshold}
             isAuthorized={isAuthorized}
@@ -506,10 +507,10 @@ export function VotingTab() {
             disabled={
               !activeTab ||
               !form.watch("thresholds")?.[activeTab] ||
-              form.watch("thresholds")[activeTab] === originalThresholds[activeTab]
+              form.watch("thresholds")[activeTab] ===
+                originalThresholds[activeTab]
             }
             permissionMessage="You don't have permission to change the voting threshold"
-            treasuryId={selectedTreasury}
           />
         </PageCard>
 
@@ -539,7 +540,7 @@ export function VotingTab() {
                     min="1"
                     max="999"
                     step="1"
-                    disabled={!isAuthorized || hasPendingDurationRequest}
+                    disabled={!isAuthorized || hasPendingVotingRequest}
                     {...field}
                   />
                 </FormControl>
@@ -549,7 +550,7 @@ export function VotingTab() {
           />
 
           <VotingRequestAction
-            hasPendingRequest={hasPendingDurationRequest}
+            hasPendingRequest={hasPendingVotingRequest}
             onCreateRequest={handleDurationChange}
             isSubmitting={isSubmittingDuration}
             isAuthorized={isAuthorized}
@@ -559,7 +560,6 @@ export function VotingTab() {
               !!form.formState.errors.voteDuration
             }
             permissionMessage="You don't have permission to change the vote duration"
-            treasuryId={selectedTreasury}
           />
         </PageCard>
       </div>

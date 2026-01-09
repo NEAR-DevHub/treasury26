@@ -122,6 +122,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         name: "Other",
         symbol: "OTHER",
         icon: "O",
+        gradient: "bg-gradient-cyan-blue",
         networks: [
           {
             id: "near:mainnet",
@@ -147,7 +148,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
             name: asset.name || asset.assetName,
             symbol: asset.symbol,
             icon: hasValidIcon ? asset.icon : asset.symbol?.charAt(0) || "?",
-            gradient: "bg-linear-to-br from-blue-500 to-purple-500",
+            gradient: "bg-gradient-cyan-blue",
             networks: asset.networks,
           };
         }),
@@ -275,8 +276,9 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         return;
       }
 
-      // Special case: "Other" asset deposits directly to treasury
-      if (selectedAsset.id === "other") {
+      // All NEAR networks deposit directly to treasury account ID
+      const isNearNetwork = selectedNetwork.id.toLowerCase().includes("near");
+      if (isNearNetwork) {
         setDepositAddress(selectedTreasury);
         return;
       }
@@ -340,14 +342,14 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl p-0 gap-0">
-        <DialogHeader>
-          <DialogTitle>Deposit</DialogTitle>
+      <DialogContent className="sm:max-w-xl p-0 gap-0">
+        <DialogHeader className="p-4">
+          <DialogTitle className="text-left">Deposit</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <div className="p-4">
-            <p className="text-sm font-semibold pb-3">
+            <p className="font-semibold pb-2">
               Select asset and network to see deposit address
             </p>
 
@@ -372,19 +374,14 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                         {selectedAsset ? (
                           <div className="flex items-center gap-2">
                             {selectedAsset.icon?.startsWith("http") ||
-                            selectedAsset.icon?.startsWith("data:") ? (
+                              selectedAsset.icon?.startsWith("data:") ? (
                               <img
                                 src={selectedAsset.icon}
                                 alt={selectedAsset.symbol}
                                 className="w-6 h-6 rounded-full object-contain"
                               />
                             ) : (
-                              <div
-                                className={`w-6 h-6 rounded-full ${
-                                  selectedAsset.gradient ||
-                                  "bg-linear-to-br from-blue-500 to-purple-500"
-                                } flex items-center justify-center text-white text-xs font-bold`}
-                              >
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold bg-gradient-cyan-blue">
                                 <span>{selectedAsset.icon}</span>
                               </div>
                             )}
@@ -425,27 +422,37 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                     >
                       <div className="w-full flex items-center justify-between py-1">
                         {selectedNetwork ? (
-                          <div className="flex items-center gap-2">
-                            {selectedNetwork.icon?.startsWith("http") ||
-                            selectedNetwork.icon?.startsWith("data:") ? (
-                              <img
-                                src={selectedNetwork.icon}
-                                alt={selectedNetwork.name}
-                                className="w-6 h-6 rounded-full object-contain"
-                              />
-                            ) : (
-                              <div
-                                className={`w-6 h-6 rounded-full ${
-                                  selectedNetwork.gradient ||
-                                  "bg-linear-to-br from-green-500 to-teal-500"
-                                } flex items-center justify-center text-white text-xs font-bold`}
-                              >
-                                <span>{selectedNetwork.icon}</span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              {selectedNetwork.icon?.startsWith("http") ||
+                                selectedNetwork.icon?.startsWith("data:") ? (
+                                <div className="w-6 h-6 rounded-full object-cover">
+                                  <img
+                                    src={selectedNetwork.icon}
+                                    alt={selectedNetwork.name}
+                                    className="w-full h-full"
+                                  />
+                                </div>
+                              ) : (
+                                <div
+                                  className={`w-6 h-6 rounded-full ${selectedNetwork.gradient ||
+                                    "bg-linear-to-br from-green-500 to-teal-500"
+                                    } flex items-center justify-center text-white text-xs font-bold`}
+                                >
+                                  <span>{selectedNetwork.icon}</span>
+                                </div>
+                              )}
+                              <span className="text-foreground font-medium">
+                                {selectedNetwork.name}
+                              </span>
+                            </div>
+                            {/* Info message for "Other" asset */}
+                            {selectedAsset?.id === "other" && (
+                              <div className="break-all overflow-wrap-anywhere text-wrap mt-2 text-sm text-general-info-foreground">
+                                You can deposit any token not listed in the
+                                assets, but only via the NEAR network.
                               </div>
                             )}
-                            <span className="text-foreground font-medium">
-                              {selectedNetwork.name}
-                            </span>
                           </div>
                         ) : (
                           <span className="text-muted-foreground text-lg font-normal">
@@ -469,7 +476,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                   <div className="h-4 bg-muted rounded w-72" />
                 </div>
 
-                <div className="bg-muted rounded-lg p-4">
+                <div className="bg-muted rounded-lg p-2">
                   <div className="flex gap-4">
                     {/* QR Code Skeleton */}
                     <div className="shrink-0">
@@ -485,7 +492,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                 </div>
 
                 {/* Warning Skeleton */}
-                <div className="bg-muted rounded-lg p-4 flex gap-3">
+                <div className="bg-muted rounded-lg p-3 flex gap-3">
                   <div className="w-5 h-5 bg-background rounded shrink-0" />
                   <div className="flex-1 space-y-2">
                     <div className="h-4 bg-background rounded w-full" />
@@ -496,21 +503,19 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
             )}
 
             {depositAddress && !isLoadingAddress && (
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 space-y-3">
                 <div>
-                  <h3 className="text-lg font-semibold mb-1">
-                    Deposit Address
-                  </h3>
+                  <h3 className="font-semibold mb-1">Deposit Address</h3>
                   <p className="text-sm text-muted-foreground">
                     Always double-check your deposit address.
                   </p>
                 </div>
 
-                <div className="bg-muted rounded-lg p-4">
-                  <div className="flex gap-4">
+                <div className="bg-muted rounded-lg p-2">
+                  <div className="flex gap-3">
                     {/* QR Code */}
                     <div className="shrink-0">
-                      <div className="w-32 h-32 rounded-lg bg-white flex items-center justify-center p-2">
+                      <div className="w-40 h-40 rounded-lg flex items-center justify-center p-2">
                         <QRCode
                           value={depositAddress}
                           size={112}
@@ -524,11 +529,11 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                     </div>
 
                     {/* Address */}
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-2 pt-1">
                       <label className="text-sm text-muted-foreground">
                         Address
                       </label>
-                      <div className="rounded-lg flex justify-between gap-2 pt-1">
+                      <div className="rounded-lg flex justify-between gap-2">
                         <code className="font-mono break-all">
                           {depositAddress}
                         </code>

@@ -19,9 +19,13 @@ export function Alert({
 
   // Add custom styling overrides per variant
   switch (variant) {
+    case "info":
+      className =
+        "bg-general-info-background-faded border-general-info-border text-general-info-foreground [&>svg]:text-general-info-foreground";
+      break;
     case "warning":
       className =
-        "bg-yellow-50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-800 text-yellow-900 dark:text-yellow-100 [&>svg]:text-yellow-600 dark:[&>svg]:text-yellow-400";
+        "bg-general-warning-background-faded border border-general-warning-border text-general-warning-foreground [&>svg]:text-general-warning-foreground";
       break;
     case "destructive":
       className =
@@ -31,7 +35,7 @@ export function Alert({
 
   return (
     <ShadcnAlert
-      variant={variant === "warning" ? "default" : variant}
+      variant={variant === "warning" || variant === "info" ? "default" : variant}
       className={cn(className, classNameOverride)}
       {...props}
     />
@@ -50,6 +54,6 @@ export function AlertDescription({
   ...props
 }: React.ComponentProps<typeof ShadcnAlertDescription>) {
   return (
-    <ShadcnAlertDescription className={cn(classNameOverride)} {...props} />
+    <ShadcnAlertDescription className={cn("text-current!", classNameOverride)} {...props} />
   );
 }
