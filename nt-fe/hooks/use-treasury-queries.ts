@@ -37,10 +37,10 @@ export function useUserTreasuries(accountId: string | null | undefined) {
  * Query hook to get a single treasury's config data
  * Fetches directly from the treasury contract via backend
  */
-export function useTreasuryConfig(treasuryId: string | null | undefined) {
+export function useTreasuryConfig(treasuryId: string | null | undefined, before: string | null | undefined = null) {
   return useQuery({
-    queryKey: ["treasuryConfig", treasuryId],
-    queryFn: () => getTreasuryConfig(treasuryId!),
+    queryKey: ["treasuryConfig", treasuryId, before],
+    queryFn: () => getTreasuryConfig(treasuryId!, before),
     enabled: !!treasuryId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -115,10 +115,10 @@ export function useTokenBalance(
  * Query hook to get treasury policy including roles, permissions, and approval settings
  * Fetches from backend which queries the treasury contract and caches the result
  */
-export function useTreasuryPolicy(treasuryId: string | null | undefined) {
+export function useTreasuryPolicy(treasuryId: string | null | undefined, before: string | null | undefined = null) {
   return useQuery({
-    queryKey: ["treasuryPolicy", treasuryId],
-    queryFn: () => getTreasuryPolicy(treasuryId!),
+    queryKey: ["treasuryPolicy", treasuryId, before],
+    queryFn: () => getTreasuryPolicy(treasuryId!, before),
     enabled: !!treasuryId,
     staleTime: 1000 * 60 * 10, // 10 minutes (policies don't change frequently)
   });

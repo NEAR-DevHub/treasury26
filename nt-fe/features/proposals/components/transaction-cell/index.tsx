@@ -10,11 +10,9 @@ import {
   PaymentRequestData,
   BatchPaymentRequestData,
   FunctionCallData,
-  ChangePolicyData,
   StakingData,
   VestingData,
   SwapRequestData,
-  ChangeConfigData,
   UnknownData,
 } from "../../types/index";
 import { ChangeConfigCell } from "./change-config-cell";
@@ -23,8 +21,6 @@ import { TreasuryConfig } from "@/lib/api";
 
 interface TransactionCellProps {
   proposal: Proposal;
-  policy: Policy;
-  config?: TreasuryConfig | null;
   textOnly?: boolean;
   withDate?: boolean;
 }
@@ -32,8 +28,8 @@ interface TransactionCellProps {
 /**
  * Renders the transaction cell based on proposal type
  */
-export function TransactionCell({ proposal, policy, config, withDate, textOnly = false }: TransactionCellProps) {
-  const { type, data } = extractProposalData(proposal, policy, config);
+export function TransactionCell({ proposal, withDate, textOnly = false }: TransactionCellProps) {
+  const { type, data } = extractProposalData(proposal);
   const timestamp = withDate ? proposal.submission_time : undefined;
 
   switch (type) {
@@ -50,12 +46,10 @@ export function TransactionCell({ proposal, policy, config, withDate, textOnly =
       return <FunctionCallCell data={functionCallData} timestamp={timestamp} textOnly={textOnly} />;
     }
     case "Change Policy": {
-      const policyData = data as ChangePolicyData;
-      return <ChangePolicyCell data={policyData} timestamp={timestamp} textOnly={textOnly} />;
+      return <ChangePolicyCell proposal={proposal} timestamp={timestamp} textOnly={textOnly} />;
     }
     case "Update General Settings":
-      const configData = data as ChangeConfigData;
-      return <ChangeConfigCell data={configData} timestamp={timestamp} textOnly={textOnly} />;
+      return <ChangeConfigCell proposal={proposal} timestamp={timestamp} textOnly={textOnly} />;
     case "Earn NEAR":
     case "Unstake NEAR":
     case "Withdraw Earnings": {

@@ -30,16 +30,12 @@ import {
 import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
 import { useNear } from "@/stores/near-store";
 
-interface ExpandedViewProps {
+interface InternalExpandedViewProps {
   proposal: Proposal;
-  policy: Policy;
-  config?: TreasuryConfig | null;
-  hideOpenInNewTab?: boolean;
-  onVote: (vote: "Approve" | "Reject" | "Remove") => void;
 }
 
-function ExpandedViewInternal({ proposal, policy, config }: ExpandedViewProps) {
-  const { type, data } = extractProposalData(proposal, policy, config);
+function ExpandedViewInternal({ proposal }: InternalExpandedViewProps) {
+  const { type, data } = extractProposalData(proposal);
 
   switch (type) {
     case "Payment Request": {
@@ -52,7 +48,7 @@ function ExpandedViewInternal({ proposal, policy, config }: ExpandedViewProps) {
     }
     case "Change Policy": {
       const policyData = data as ChangePolicyData;
-      return <ChangePolicyExpanded data={policyData} />;
+      return <ChangePolicyExpanded data={policyData} proposal={proposal} />;
     }
     case "Vesting": {
       const vestingData = data as VestingData;
@@ -66,7 +62,7 @@ function ExpandedViewInternal({ proposal, policy, config }: ExpandedViewProps) {
     }
     case "Update General Settings": {
       const configData = data as ChangeConfigData;
-      return <ChangeConfigExpanded data={configData} />;
+      return <ChangeConfigExpanded data={configData} proposal={proposal} />;
     }
     case "Batch Payment Request": {
       const batchPaymentRequestData = data as BatchPaymentRequestData;
@@ -83,11 +79,17 @@ function ExpandedViewInternal({ proposal, policy, config }: ExpandedViewProps) {
   }
 }
 
-export function ExpandedView({ proposal, policy, config, hideOpenInNewTab = false, onVote }: ExpandedViewProps) {
+interface ExpandedViewProps {
+  proposal: Proposal;
+  policy: Policy;
+  hideOpenInNewTab?: boolean;
+  onVote: (vote: "Approve" | "Reject" | "Remove") => void;
+}
+
+export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVote }: ExpandedViewProps) {
   const { selectedTreasury } = useTreasury();
   const { accountId } = useNear();
-  // const { removeProposal } = useNear();
-  const component = ExpandedViewInternal({ proposal, policy, config, onVote });
+  const component = ExpandedViewInternal({ proposal });
   const requestUrl = `${window.location.origin}/${selectedTreasury}/requests/${proposal.id}`;
   const onCopy = async () => {
     try {

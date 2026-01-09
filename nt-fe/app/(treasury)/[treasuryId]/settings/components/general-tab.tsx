@@ -86,11 +86,11 @@ export function GeneralTab() {
   useEffect(() => {
     if (currentTreasury) {
       const treasuryData = {
-        displayName: currentTreasury.config.name || "",
-        accountName: currentTreasury.daoId || selectedTreasury || "",
+        displayName: currentTreasury.name || "",
+        accountName: selectedTreasury || "",
         primaryColor:
-          currentTreasury.config.metadata?.primaryColor || "#3B82F6",
-        logo: currentTreasury.config.metadata?.flagLogo || null,
+          currentTreasury.metadata?.primaryColor || "#3B82F6",
+        logo: currentTreasury.metadata?.flagLogo || null,
       };
       form.reset(treasuryData);
     }
@@ -123,7 +123,7 @@ export function GeneralTab() {
             ChangeConfig: {
               config: {
                 name: data.displayName,
-                purpose: currentTreasury.config.purpose,
+                purpose: currentTreasury.purpose,
                 metadata: Buffer.from(JSON.stringify(metadata)).toString(
                   "base64"
                 ),
@@ -366,11 +366,10 @@ export function GeneralTab() {
                       key={color}
                       type="button"
                       onClick={() => handleColorChange(color)}
-                      className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${
-                        field.value === color
-                          ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
-                          : ""
-                      }`}
+                      className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${field.value === color
+                        ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
+                        : ""
+                        }`}
                       style={{ backgroundColor: color }}
                       aria-label={`Select color ${color}`}
                     />

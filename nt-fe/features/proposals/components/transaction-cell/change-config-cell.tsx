@@ -1,21 +1,68 @@
-import { ChangeConfigData } from "../../types/index";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
+import { Proposal } from "@/lib/proposals-api";
+import { getProposalStatus } from "../../utils/proposal-utils";
+import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
+import { useTreasury } from "@/stores/treasury-store";
+import { extractChangeConfigData } from "../../utils/proposal-extractors";
+import { computeConfigDiff } from "../../utils/config-diff-utils";
+import { useMemo } from "react";
 
 interface ChangeConfigCellProps {
-    data: ChangeConfigData;
+    proposal: Proposal;
     timestamp?: string;
     textOnly?: boolean;
 }
 
-export function ChangeConfigCell({ data, timestamp }: ChangeConfigCellProps) {
-    const changesCount = [
-        data.oldConfig.name !== data.newConfig.name,
-        data.oldConfig.purpose !== data.newConfig.purpose,
-        ...Object.keys({ ...data.oldConfig.metadata, ...data.newConfig.metadata }).map(
-            key => (data.oldConfig.metadata?.[key] ?? null) !== (data.newConfig.metadata?.[key] ?? null)
-        )
-    ].filter(Boolean).length;
+export function ChangeConfigCell({ proposal, timestamp }: ChangeConfigCellProps) {
+    const { selectedTreasury } = useTreasury();
 
+    const isPending = proposal.status === "InProgress";
+
+    // If not pending, fetch the config at the time of submission
+    const { data: oldConfig, isLoading: isLoadingTimestamped } = useTreasuryConfig(
+        selectedTreasury,
+        !isPending ? proposal.submission_time : null
+    );
+
+    const summary = useMemo(() => {
+        if (!oldConfig) return null;
+
+        const { newConfig } = extractChangeConfigData(proposal);
+
+        // Prepare the old config format expected by computeConfigDiff
+        const formattedOldConfig = {
+            name: oldConfig.name ?? null,
+            purpose: oldConfig.purpose ?? null,
+            metadata: (oldConfig.metadata as any) || {}
+        };
+
+        const diff = computeConfigDiff(formattedOldConfig, newConfig);
+        return {
+            changesCount: diff.changesCount
+        };
+    }, [oldConfig, proposal]);
+
+    if (isLoadingTimestamped) {
+        return (
+            <TitleSubtitleCell
+                title="Loading config..."
+                subtitle="Historical data..."
+                timestamp={timestamp}
+            />
+        );
+    }
+
+    if (!summary) {
+        return (
+            <TitleSubtitleCell
+                title="General Update"
+                subtitle="Details unavailable"
+                timestamp={timestamp}
+            />
+        );
+    }
+
+    const { changesCount } = summary;
     const subtitle = `${changesCount} ${changesCount === 1 ? 'Change' : 'Changes'}`;
 
     return (

@@ -20,14 +20,12 @@ export default function RequestPage({ params }: RequestPageProps) {
     const { id } = use(params);
     const { selectedTreasury } = useTreasury();
     const { data: proposal, isLoading: isLoadingProposal, error: errorProposal } = useProposal(selectedTreasury, id);
-    const { data: policy, isLoading: isLoadingPolicy, error: errorPolicy } = useTreasuryPolicy(selectedTreasury);
-    const { data: config, isLoading: isLoadingConfig } = useTreasuryConfig(selectedTreasury);
-
+    const { data: policy, isLoading: isLoadingPolicy, error: errorPolicy } = useTreasuryPolicy(selectedTreasury, proposal?.submission_time);
 
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
     const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
 
-    if (isLoadingProposal || isLoadingPolicy || isLoadingConfig) {
+    if (isLoadingProposal || isLoadingPolicy) {
         return <div>Loading...</div>;
     }
 
@@ -37,7 +35,7 @@ export default function RequestPage({ params }: RequestPageProps) {
 
     return (
         <PageComponentLayout title={`Request #${proposal?.id}`} description="Details for Request" backButton={`/${selectedTreasury}/requests`}>
-            <ExpandedView proposal={proposal!} policy={policy!} config={config?.config} hideOpenInNewTab onVote={(vote) => {
+            <ExpandedView proposal={proposal!} policy={policy!} hideOpenInNewTab onVote={(vote) => {
                 setVoteInfo({ vote, proposalIds: [{ proposalId: proposal?.id ?? 0, kind: getKindFromProposal(proposal?.kind as ProposalKind) ?? "call" }] });
                 setIsVoteModalOpen(true);
             }} />

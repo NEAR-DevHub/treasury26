@@ -15,18 +15,18 @@ export function PrimaryColorProvider({ treasuryId }: PrimaryColorProviderProps) 
   const { data: treasury } = useTreasuryConfig(treasuryId);
 
   useEffect(() => {
-    if (treasury?.config?.metadata?.primaryColor) {
-      const primaryColor = treasury.config.metadata.primaryColor;
-      
+    if (treasury?.metadata?.primaryColor) {
+      const primaryColor = treasury.metadata.primaryColor;
+
       // Convert hex to RGB
       const hexToRgb = (hex: string) => {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result
           ? {
-              r: parseInt(result[1], 16),
-              g: parseInt(result[2], 16),
-              b: parseInt(result[3], 16),
-            }
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16),
+          }
           : null;
       };
 
@@ -41,7 +41,7 @@ export function PrimaryColorProvider({ treasuryId }: PrimaryColorProviderProps) 
         // Calculate foreground color (white or black based on luminance)
         const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
         const foregroundColor = luminance > 0.5 ? "rgb(25, 25, 26)" : "rgb(250, 250, 250)";
-        
+
         document.documentElement.style.setProperty(
           "--primary-foreground",
           foregroundColor

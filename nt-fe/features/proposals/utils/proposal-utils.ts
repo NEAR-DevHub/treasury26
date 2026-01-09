@@ -124,8 +124,7 @@ export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
 }
 
 export function getProposalStatus(proposal: Proposal, policy: Policy): string {
-  const { proposal_period } = policy;
-  const proposalPeriod = parseInt(proposal_period);
+  const proposalPeriod = parseInt(policy.proposal_period);
   const submissionTime = parseInt(proposal.submission_time);
 
   switch (proposal.status) {

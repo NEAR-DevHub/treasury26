@@ -17,7 +17,7 @@ async fn main() {
 
     // Initialize application state
     let state = Arc::new(
-        nt_be::init_app_state()
+        nt_be::AppState::new()
             .await
             .expect("Failed to initialize application state"),
     );

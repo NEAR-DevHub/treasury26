@@ -10,7 +10,7 @@ import { useSearchParams, useRouter, usePathname, useParams } from "next/navigat
 import { useCallback, useEffect, useMemo, } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
-import { ArrowRightLeft, ArrowUpRight, Download, SearchX } from "lucide-react";
+import { ArrowRightLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
@@ -113,7 +113,7 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
         <ProposalsTable
           proposals={data?.proposals ?? []}
           policy={policy}
-          config={config?.config}
+          config={config}
           pageIndex={page}
           pageSize={pageSize}
           total={data?.total ?? 0}

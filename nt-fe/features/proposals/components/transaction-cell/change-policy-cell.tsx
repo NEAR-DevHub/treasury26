@@ -1,27 +1,41 @@
-import { ChangePolicyData } from "../../types/index";
+import { PolicyChange, RoleChange, VotePolicyChange } from "../../types/index";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
+import { Proposal } from "@/lib/proposals-api";
+import { Policy } from "@/types/policy";
+import { getProposalStatus } from "../../utils/proposal-utils";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useTreasury } from "@/stores/treasury-store";
+import { extractChangePolicyData } from "../../utils/proposal-extractors";
+import { computePolicyDiff } from "../../utils/policy-diff-utils";
+import { useMemo } from "react";
 
 interface ChangePolicyCellProps {
-  data: ChangePolicyData;
+  proposal: Proposal;
   timestamp?: string;
   textOnly?: boolean;
 }
 
-function getSummary(data: ChangePolicyData): { title: string; subtitle: string } {
+function getSummary(diff: {
+  policyChanges: PolicyChange[];
+  roleChanges: RoleChange;
+  defaultVotePolicyChanges: VotePolicyChange[];
+}): { title: string; subtitle: string } {
+  const { policyChanges, roleChanges, defaultVotePolicyChanges } = diff;
+
   const totalRoleChanges =
-    data.roleChanges.addedMembers.length +
-    data.roleChanges.removedMembers.length +
-    data.roleChanges.updatedMembers.length;
+    roleChanges.addedMembers.length +
+    roleChanges.removedMembers.length +
+    roleChanges.updatedMembers.length;
 
   // Count unique roles in roleDefinitionChanges
-  const uniqueRoles = new Set(data.roleChanges.roleDefinitionChanges.map(c => c.roleName));
+  const uniqueRoles = new Set(roleChanges.roleDefinitionChanges.map(c => c.roleName));
   const uniqueRoleCount = uniqueRoles.size;
 
   const totalChanges =
-    data.policyChanges.length +
+    policyChanges.length +
     totalRoleChanges +
     uniqueRoleCount +
-    data.defaultVotePolicyChanges.length;
+    defaultVotePolicyChanges.length;
 
   if (totalChanges === 0) {
     return {
@@ -33,16 +47,16 @@ function getSummary(data: ChangePolicyData): { title: string; subtitle: string }
   // Determine primary change type
   const hasRoleChanges = totalRoleChanges > 0;
   const hasRoleDefinitionChanges = uniqueRoleCount > 0;
-  const hasPolicyChanges = data.policyChanges.length > 0;
-  const hasVotePolicyChanges = data.defaultVotePolicyChanges.length > 0;
+  const hasPolicyChanges = policyChanges.length > 0;
+  const hasVotePolicyChanges = defaultVotePolicyChanges.length > 0;
 
   // Build summary parts
   const parts: string[] = [];
 
   if (hasRoleChanges) {
-    const added = data.roleChanges.addedMembers.length;
-    const removed = data.roleChanges.removedMembers.length;
-    const modified = data.roleChanges.updatedMembers.length;
+    const added = roleChanges.addedMembers.length;
+    const removed = roleChanges.removedMembers.length;
+    const modified = roleChanges.updatedMembers.length;
 
     if (added > 0) parts.push(`${added} member${added !== 1 ? "s" : ""} added`);
     if (removed > 0) parts.push(`${removed} member${removed !== 1 ? "s" : ""} removed`);
@@ -54,7 +68,7 @@ function getSummary(data: ChangePolicyData): { title: string; subtitle: string }
   }
 
   if (hasPolicyChanges) {
-    parts.push(`${data.policyChanges.length} parameter${data.policyChanges.length !== 1 ? "s" : ""}`);
+    parts.push(`${policyChanges.length} parameter${policyChanges.length !== 1 ? "s" : ""} changed`);
   }
 
   if (hasVotePolicyChanges) {
@@ -78,13 +92,50 @@ function getSummary(data: ChangePolicyData): { title: string; subtitle: string }
   return { title, subtitle };
 }
 
-export function ChangePolicyCell({ data, timestamp }: ChangePolicyCellProps) {
-  const { title, subtitle } = getSummary(data);
+export function ChangePolicyCell({ proposal, timestamp }: ChangePolicyCellProps) {
+  const { selectedTreasury } = useTreasury();
+
+  const isPending = proposal.status === "InProgress";
+
+  // If not pending, fetch the policy at the time of submission
+  const { data: oldPolicy, isLoading: isLoadingTimestamped } = useTreasuryPolicy(
+    selectedTreasury,
+    !isPending ? proposal.submission_time : null
+  );
+
+  const summary = useMemo(() => {
+    if (!oldPolicy) return null;
+
+    const { newPolicy, originalProposalKind } = extractChangePolicyData(proposal);
+    const diff = computePolicyDiff(oldPolicy, newPolicy, originalProposalKind);
+
+    return getSummary(diff);
+  }, [oldPolicy, proposal]);
+
+  if (!isPending && isLoadingTimestamped) {
+    return (
+      <TitleSubtitleCell
+        title="Loading policy..."
+        subtitle="Historical data..."
+        timestamp={timestamp}
+      />
+    );
+  }
+
+  if (!summary) {
+    return (
+      <TitleSubtitleCell
+        title="Policy Update"
+        subtitle="Details unavailable"
+        timestamp={timestamp}
+      />
+    );
+  }
 
   return (
     <TitleSubtitleCell
-      title={title}
-      subtitle={subtitle}
+      title={summary.title}
+      subtitle={summary.subtitle}
       timestamp={timestamp}
     />
   );
