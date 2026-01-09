@@ -1,14 +1,16 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/button";
-import { Plus, X, Search, ChevronDown } from "lucide-react";
+import { Plus, X, Search, ChevronDown, Trash } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/datepicker";
 import { format } from "date-fns";
+import { OperationSelect } from "@/components/operation-select";
+import { TokenSelectPopover } from "@/components/token-select-popover";
 
 const FILTER_OPTIONS = [
     { id: "proposal_types", label: "Requests Type" },
@@ -35,6 +37,16 @@ const PROPOSAL_TYPE_OPTIONS = [
 ];
 
 const MY_VOTE_OPTIONS = ["Approve", "Reject", "Remove", "None"];
+
+const TOKEN_OPERATIONS = ["Is", "Is Not"];
+const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
+
+interface TokenOption {
+    id: string;
+    name: string;
+    symbol: string;
+    icon: string;
+}
 
 interface ProposalFiltersProps {
     className?: string;
@@ -121,20 +133,19 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-9 gap-1.5 text-muted-foreground hover:text-foreground font-medium"
+                                className="h-8 gap-1.5 text-muted-foreground hover:text-foreground font-medium"
                             >
                                 <Plus className="h-4 w-4" />
                                 Add Filter
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-56 p-1" align="start">
+                        <PopoverContent className="w-fit p-0 min-w-36" align="start">
                             <div className="flex flex-col">
                                 {availableFilters.map((filter) => (
                                     <Button
                                         key={filter.id}
                                         variant="ghost"
-                                        size="sm"
-                                        className="justify-start font-normal h-9"
+                                        className="justify-start px-2 font-normal not-first:rounded-t-none not-last:rounded-b-none"
                                         onClick={() => {
                                             updateFilters({ [filter.id]: "" });
                                             setIsAddFilterOpen(false);
@@ -173,6 +184,22 @@ interface FilterPillProps {
 function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
     const [isOpen, setIsOpen] = useState(false);
 
+    const tokenFilterData = useMemo(() => {
+        if (id === "tokens" && value) {
+            try {
+                const parsed = JSON.parse(value);
+                return parsed;
+            } catch {
+                // Fallback for old format
+                return {
+                    operation: "Is",
+                    token: { id: value, name: value, symbol: value, icon: value.charAt(0) },
+                };
+            }
+        }
+        return null;
+    }, [id, value]);
+
     const displayValue = useMemo(() => {
         if (!value) return "All";
         if (id === "created_date") {
@@ -182,8 +209,11 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
                 return value;
             }
         }
+        if (id === "tokens" && tokenFilterData) {
+            return null; // We'll render custom UI for tokens
+        }
         return value;
-    }, [id, value]);
+    }, [id, value, tokenFilterData]);
 
     const renderFilterContent = () => {
         switch (id) {
@@ -224,6 +254,8 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
                         />
                     </div>
                 );
+            case "tokens":
+                return <TokenFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             case "my_vote":
                 return (
                     <div className="flex flex-col gap-1">
@@ -266,14 +298,52 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         }
     };
 
+    const renderTokenDisplay = () => {
+        if (!tokenFilterData || !tokenFilterData.token) return null;
+
+        const { operation, token, amountOperation, minAmount, maxAmount } = tokenFilterData;
+
+        // Build amount display
+        let amountDisplay = "";
+        if (operation === "Is" && (minAmount || maxAmount)) {
+            if (amountOperation === "Between" && minAmount && maxAmount) {
+                amountDisplay = ` ${minAmount}-${maxAmount}`;
+            } else if (amountOperation === "Equal" && minAmount) {
+                amountDisplay = ` = ${minAmount}`;
+            } else if (amountOperation === "More Than" && minAmount) {
+                amountDisplay = ` > ${minAmount}`;
+            } else if (amountOperation === "Less Than" && minAmount) {
+                amountDisplay = ` < ${minAmount}`;
+            }
+        }
+
+        return (
+            <div className="flex items-center gap-1.5">
+                {token.icon?.startsWith("http") || token.icon?.startsWith("data:") ? (
+                    <img
+                        src={token.icon}
+                        alt={token.symbol}
+                        className="w-4 h-4 rounded-full object-contain"
+                    />
+                ) : (
+                    <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold bg-gradient-cyan-blue">
+                        <span>{token.icon}</span>
+                    </div>
+                )}
+                {amountDisplay && <span className="text-sm text-foreground">{amountDisplay}</span>}
+                <span className="text-sm text-foreground">{token.symbol}</span>
+            </div>
+        );
+    };
+
     return (
         <div className="flex items-center">
             <Popover open={isOpen} onOpenChange={setIsOpen}>
-                <PopoverTrigger asChild>
+                <PopoverTrigger asChild className="[&_button]:bg-secondary">
                     {label === "Created Date" ? (
                         <DateTimePicker
                             value={value ? new Date(value) : undefined}
-                            classNames={{ trigger: "border-r-0 rounded-r-none border-border" }}
+                            classNames={{ trigger: "border-border" }}
                             onChange={(date) => {
                                 if (date) {
                                     onUpdate(date.toISOString());
@@ -285,25 +355,161 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 rounded-l-md rounded-r-none border-r-0 bg-card hover:bg-card px-3 font-normal gap-1"
+                            className="h-9 bg-secondary hover:bg-secondary px-3 font-normal gap-1.5"
                         >
-                            <span className="text-muted-foreground">{label}:</span>
-                            <span className="font-medium">{displayValue}</span>
+                            <span className="text-muted-foreground">{label}{tokenFilterData && tokenFilterData.operation === "Is Not" ? " is not" : ""}:</span>
+                            {tokenFilterData ? (
+                                renderTokenDisplay()
+                            ) : (
+                                <span className="font-medium">{displayValue}</span>
+                            )}
                             <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
-                        </Button>)}
+                        </Button>
+                    )}
                 </PopoverTrigger>
                 <PopoverContent className="w-56 p-1" align="start">
                     {renderFilterContent()}
                 </PopoverContent>
             </Popover>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={onRemove}
-                className="h-9 w-8 rounded-l-none rounded-r-md bg-card hover:bg-card border-l-0 px-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
-            >
-                <X className="h-3.5 w-3.5" />
-            </Button>
+        </div>
+    );
+}
+
+interface TokenFilterContentProps {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+}
+
+function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilterContentProps) {
+    const [operation, setOperation] = useState<string>("Is");
+    const [selectedToken, setSelectedToken] = useState<TokenOption | null>(null);
+    const [amountOperation, setAmountOperation] = useState<string>("Between");
+    const [minAmount, setMinAmount] = useState<string>("");
+    const [maxAmount, setMaxAmount] = useState<string>("");
+
+    // Parse the value from URL params on mount
+    useEffect(() => {
+        if (value) {
+            try {
+                const parsed = JSON.parse(value);
+                setOperation(parsed.operation || "Is");
+                setSelectedToken(parsed.token || null);
+                setAmountOperation(parsed.amountOperation || "Equal");
+                setMinAmount(parsed.minAmount || "");
+                setMaxAmount(parsed.maxAmount || "");
+            } catch {
+                // If parsing fails, treat it as old format (just token symbol)
+                setSelectedToken({ id: value, name: value, symbol: value, icon: value.charAt(0) });
+            }
+        }
+    }, [value]);
+
+    // Update the filter value whenever any field changes
+    useEffect(() => {
+        if (selectedToken) {
+            const filterValue = JSON.stringify({
+                operation,
+                token: selectedToken,
+                amountOperation: operation === "Is" ? amountOperation : undefined,
+                minAmount: operation === "Is" ? minAmount : undefined,
+                maxAmount: operation === "Is" ? maxAmount : undefined,
+            });
+            onUpdate(filterValue);
+        }
+    }, [operation, selectedToken, amountOperation, minAmount, maxAmount, onUpdate]);
+
+    const handleClear = () => {
+        setSelectedToken(null);
+        setMinAmount("");
+        setMaxAmount("");
+        onUpdate("");
+    };
+
+    const handleDelete = () => {
+        onRemove();
+        setIsOpen(false);
+    };
+
+    return (
+        <div className="p-3 space-y-3 max-w-80">
+            <div className="flex items-center gap-2">
+                <span className="text-xs font-medium">Token</span>
+                <OperationSelect
+                    operations={TOKEN_OPERATIONS}
+                    selectedOperation={operation}
+                    onOperationChange={setOperation}
+                />
+                <div className="flex items-center gap-0 flex-1 ml-auto">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClear}
+                        className="ml-auto text-muted-foreground hover:text-foreground h-7 px-2"
+                    >
+                        Clear
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleDelete}
+                        className="text-muted-foreground hover:text-foreground h-7 w-7"
+                    >
+                        <Trash className="size-3.5" />
+                    </Button>
+                </div>
+            </div>
+
+            <TokenSelectPopover
+                selectedToken={selectedToken}
+                onTokenChange={setSelectedToken}
+                className="w-full"
+            />
+
+            {operation === "Is" && selectedToken && (
+                <div className="space-y-3 pt-2 border-t">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Amount</span>
+                        <OperationSelect
+                            operations={AMOUNT_OPERATIONS}
+                            selectedOperation={amountOperation}
+                            onOperationChange={setAmountOperation}
+                        />
+                    </div>
+
+                    {amountOperation === "Between" ? (
+                        <div className="flex-col flex items-center gap-2">
+                            <Input
+                                type="number"
+                                placeholder="Min"
+                                value={minAmount}
+                                onChange={(e) => setMinAmount(e.target.value)}
+                                className="h-8 text-sm"
+                            />
+                            <span className="text-sm text-muted-foreground">to</span>
+                            <Input
+                                type="number"
+                                placeholder="Max"
+                                value={maxAmount}
+                                onChange={(e) => setMaxAmount(e.target.value)}
+                                className="h-8 text-sm"
+                            />
+                        </div>
+                    ) : (
+                        <Input
+                            type="number"
+                            placeholder="Amount"
+                            value={minAmount}
+                            onChange={(e) => setMinAmount(e.target.value)}
+                            className="h-8 text-sm"
+                        />
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                        Empty amount means any
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

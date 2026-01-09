@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { Button } from "./button";
 import { LargeInput } from "./large-input";
-import { formatBalance } from "@/lib/utils";
+import { cn, formatBalance } from "@/lib/utils";
 import { TreasuryAsset, ChainIcons } from "@/lib/api";
 import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-aggregated-tokens";
 import Big from "big.js";
@@ -19,6 +19,9 @@ interface TokenSelectProps {
     setSelectedToken: (token: TreasuryAsset) => void;
     disabled?: boolean;
     locked?: boolean;
+    classNames?: {
+        trigger?: string;
+    };
     lockedTokenData?: {
         symbol: string;
         icon: string;
@@ -28,7 +31,7 @@ interface TokenSelectProps {
 }
 
 
-export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData }: TokenSelectProps) {
+export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData, classNames }: TokenSelectProps) {
     const { selectedTreasury } = useTreasury();
     const { data: { tokens = [] } = {} } = useTreasuryAssets(selectedTreasury, { onlyPositiveBalance: true });
     const aggregatedTokens = useAggregatedTokens(tokens);
@@ -99,7 +102,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild disabled={disabled}>
-                <Button variant="outline" className="bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3">
+                <Button variant="outline" className={cn("bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3", classNames?.trigger)}>
                     {displayTokenData ? (
                         <>
                             <TokenDisplay
