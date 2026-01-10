@@ -12,17 +12,28 @@ use crate::utils::cache::Cache;
 use near_api::{NetworkConfig, RPCEndpoint, Signer};
 
 #[cfg(test)]
+use std::sync::Once;
+
+#[cfg(test)]
 use std::time::Duration;
+
+#[cfg(test)]
+static INIT: Once = Once::new();
 
 /// Load environment files in the correct order for tests
 ///
-/// Loads .env files from multiple locations to ensure all required
-/// environment variables are available for integration tests.
+/// Loads .env files to ensure required environment variables are available.
+/// Uses plain `from_filename` (not `override`) to avoid changing DATABASE_URL
+/// when sqlx::test macro has already read it at compile time.
+///
+/// NOTE: Integration tests in `tests/` use `tests/common/mod.rs::load_test_env()`
+/// which does override DATABASE_URL for the test database.
 #[cfg(test)]
 pub fn load_test_env() {
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename(".env.test").ok();
-    dotenvy::from_filename("../.env").ok();
+    INIT.call_once(|| {
+        dotenvy::from_filename(".env").ok();
+        dotenvy::from_filename(".env.test").ok();
+    });
 }
 
 /// Initialize app state with loaded environment variables
@@ -45,19 +56,18 @@ pub async fn init_test_state() -> AppState {
 
     let http_client = reqwest::Client::new();
 
-    // Initialize price service if CoinGecko API key is available
-    let price_service = env_vars.coingecko_api_key.as_ref().map(|api_key| {
-        let coingecko_client = if let Some(base_url) = &env_vars.coingecko_api_base_url {
-            crate::services::CoinGeckoClient::with_base_url(
-                http_client.clone(),
-                api_key.clone(),
-                base_url.clone(),
-            )
-        } else {
-            crate::services::CoinGeckoClient::new(http_client.clone(), api_key.clone())
-        };
+    // Initialize price service - with CoinGecko provider if API key is available
+    let price_service = if let Some(api_key) = env_vars.coingecko_api_key.as_ref() {
+        let base_url = &env_vars.coingecko_api_base_url;
+        let coingecko_client = crate::services::CoinGeckoClient::with_base_url(
+            http_client.clone(),
+            api_key.clone(),
+            base_url.clone(),
+        );
         crate::services::PriceLookupService::new(db_pool.clone(), coingecko_client)
-    });
+    } else {
+        crate::services::PriceLookupService::without_provider(db_pool.clone())
+    };
 
     AppState {
         cache: Cache::new(),

@@ -13,7 +13,7 @@ pub struct EnvVars {
     pub disable_balance_monitoring: bool,
     pub monitor_interval_minutes: u64,
     pub coingecko_api_key: Option<String>,
-    pub coingecko_api_base_url: Option<String>, // Override for testing
+    pub coingecko_api_base_url: String, // Override for testing
 }
 
 impl Default for EnvVars {
@@ -50,8 +50,7 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty()),
             coingecko_api_base_url: std::env::var("COINGECKO_API_BASE_URL")
-                .ok()
-                .filter(|s| !s.is_empty()),
+                .unwrap_or_else(|_| "https://pro-api.coingecko.com/api/v3".to_string()),
         }
     }
 }

@@ -4,8 +4,7 @@ use common::TestServer;
 
 #[tokio::test]
 async fn test_health_endpoint() {
-    // Load environment variables
-    dotenvy::dotenv().ok();
+    common::load_test_env();
 
     // Start the actual server
     let server = TestServer::start().await;

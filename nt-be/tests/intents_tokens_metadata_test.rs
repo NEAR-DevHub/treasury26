@@ -10,9 +10,7 @@ use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 /// Test that intents token metadata is discovered during monitoring
 #[tokio::test]
 async fn test_intents_tokens_metadata_discovery() {
-    // Load environment variables - .env.test overrides DATABASE_URL to test database
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename(".env.test").ok();
+    common::load_test_env();
 
     // Get test database URL
     let db_url =

@@ -1,7 +1,7 @@
-use near_api::{NetworkConfig, RPCEndpoint};
+mod common;
+
 use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
 use sqlx::PgPool;
-use sqlx::types::BigDecimal;
 use sqlx::types::chrono::{DateTime, Utc};
 
 /// Helper to convert nanosecond timestamp to DateTime<Utc>
@@ -9,27 +9,6 @@ fn timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<Utc> {
     let secs = timestamp_nanos / 1_000_000_000;
     let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
     DateTime::from_timestamp(secs, nsecs).expect("Failed to convert timestamp")
-}
-
-/// Helper to create archival network config for tests
-fn create_archival_network() -> NetworkConfig {
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename(".env.test").ok();
-
-    let fastnear_api_key =
-        std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env");
-
-    NetworkConfig {
-        rpc_endpoints: vec![
-            RPCEndpoint::new(
-                "https://archival-rpc.mainnet.fastnear.com/"
-                    .parse()
-                    .unwrap(),
-            )
-            .with_api_key(fastnear_api_key),
-        ],
-        ..NetworkConfig::mainnet()
-    }
 }
 
 /// Test gap detection when SNAPSHOT has balance 0 but history shows non-zero balance
@@ -60,7 +39,7 @@ async fn test_fill_gap_before_zero_snapshot(pool: PgPool) -> sqlx::Result<()> {
     let account_id = "petersalomonsen.near";
     let token_id = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"; // USDC
 
-    let archival_network = create_archival_network();
+    let archival_network = common::create_archival_network();
 
     println!("\n=== Testing gap detection before SNAPSHOT with zero balance ===");
     println!("Account: {}", account_id);

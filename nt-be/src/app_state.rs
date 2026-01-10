@@ -21,7 +21,7 @@ pub struct AppState {
     pub archival_network: NetworkConfig,
     pub env_vars: EnvVars,
     pub db_pool: PgPool,
-    pub price_service: Option<PriceLookupService<CoinGeckoClient>>,
+    pub price_service: PriceLookupService<CoinGeckoClient>,
 }
 
 /// Builder for constructing AppState instances
@@ -52,7 +52,7 @@ pub struct AppStateBuilder {
     archival_network: Option<NetworkConfig>,
     env_vars: Option<EnvVars>,
     db_pool: Option<PgPool>,
-    price_service: Option<Option<PriceLookupService<CoinGeckoClient>>>,
+    price_service: Option<PriceLookupService<CoinGeckoClient>>,
 }
 
 impl AppStateBuilder {
@@ -120,10 +120,7 @@ impl AppStateBuilder {
     }
 
     /// Set the price service
-    pub fn price_service(
-        mut self,
-        price_service: Option<PriceLookupService<CoinGeckoClient>>,
-    ) -> Self {
+    pub fn price_service(mut self, price_service: PriceLookupService<CoinGeckoClient>) -> Self {
         self.price_service = Some(price_service);
         self
     }
@@ -139,7 +136,7 @@ impl AppStateBuilder {
     /// - archival_network: Archival mainnet with fastnear API (from env)
     /// - env_vars: EnvVars::default()
     /// - db_pool: REQUIRED - must be provided
-    /// - price_service: None
+    /// - price_service: Cache-only service (no provider)
     pub async fn build(self) -> Result<AppState, Box<dyn std::error::Error>> {
         // Load env vars for defaults
         let env_vars = self.env_vars.unwrap_or_default();
@@ -181,6 +178,11 @@ impl AppStateBuilder {
             ..NetworkConfig::mainnet()
         });
 
+        // Create default price service (cache-only) if not provided
+        let price_service = self
+            .price_service
+            .unwrap_or_else(|| PriceLookupService::without_provider(db_pool.clone()));
+
         Ok(AppState {
             http_client: self.http_client.unwrap_or_default(),
             cache: self.cache.unwrap_or_default(),
@@ -190,7 +192,7 @@ impl AppStateBuilder {
             archival_network,
             env_vars,
             db_pool,
-            price_service: self.price_service.flatten(),
+            price_service,
         })
     }
 }
@@ -244,29 +246,20 @@ impl AppState {
 
         let http_client = reqwest::Client::new();
 
-        // Initialize price service if CoinGecko API key is available
-        let price_service = env_vars.coingecko_api_key.as_ref().map(|api_key| {
-            // Use custom base URL if provided (for testing with mock server)
-            let coingecko_client = if let Some(base_url) = &env_vars.coingecko_api_base_url {
-                log::info!(
-                    "CoinGecko API key found, using custom base URL: {}",
-                    base_url
-                );
-                CoinGeckoClient::with_base_url(
-                    http_client.clone(),
-                    api_key.clone(),
-                    base_url.clone(),
-                )
-            } else {
-                log::info!("CoinGecko API key found, initializing price service");
-                CoinGeckoClient::new(http_client.clone(), api_key.clone())
-            };
+        // Initialize price service - with CoinGecko provider if API key is available
+        let price_service = if let Some(api_key) = env_vars.coingecko_api_key.as_ref() {
+            let base_url = &env_vars.coingecko_api_base_url;
+            log::info!("CoinGecko API key found, using base URL: {}", base_url);
+            let coingecko_client = CoinGeckoClient::with_base_url(
+                http_client.clone(),
+                api_key.clone(),
+                base_url.clone(),
+            );
             PriceLookupService::new(db_pool.clone(), coingecko_client)
-        });
-
-        if price_service.is_none() {
-            log::info!("No CoinGecko API key found, price enrichment will be disabled");
-        }
+        } else {
+            log::info!("No CoinGecko API key found, price enrichment will use cache only");
+            PriceLookupService::without_provider(db_pool.clone())
+        };
 
         // Use the builder pattern internally for consistency
         AppStateBuilder::new()

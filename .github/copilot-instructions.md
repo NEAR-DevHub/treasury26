@@ -88,3 +88,149 @@ refactor: extract token lookup into separate module
 **PR Description** should include:
 - Summary of changes (bulleted list)
 - Test plan or verification steps
+
+## Rust Code Guidelines
+
+### Import Organization
+Move `use` statements to the top of the file or module, not inside functions.
+
+**Do:**
+```rust
+use bigdecimal::ToPrimitive;
+use chrono::NaiveDate;
+
+async fn enrich_snapshots_with_prices(...) {
+    // function body
+}
+```
+
+**Don't:**
+```rust
+async fn enrich_snapshots_with_prices(...) {
+    use bigdecimal::ToPrimitive;  // Move to top of file
+    use chrono::NaiveDate;        // Move to top of file
+    // function body
+}
+```
+
+### Avoid Code Duplication
+When the same logic (like parsing timestamps) is done multiple times, extract it to avoid repetition.
+
+**Do:**
+```rust
+// Parse once and reuse
+let parsed_dates: Vec<_> = token_snapshots
+    .iter()
+    .filter_map(|s| DateTime::parse_from_rfc3339(&s.timestamp).ok())
+    .map(|dt| dt.date_naive())
+    .collect();
+
+// Use parsed_dates for both collecting unique dates AND enriching snapshots
+```
+
+**Don't:**
+```rust
+// First loop: parse timestamps
+for s in token_snapshots.iter() {
+    if let Ok(dt) = DateTime::parse_from_rfc3339(&s.timestamp) { ... }
+}
+
+// Second loop: parse same timestamps again
+for snapshot in token_snapshots.iter_mut() {
+    if let Ok(dt) = DateTime::parse_from_rfc3339(&snapshot.timestamp) { ... }
+}
+```
+
+### Use Batch Operations for Database Inserts
+When inserting multiple rows, prefer batch insert operations over individual inserts in a loop.
+
+**Do:**
+```rust
+// Single batch insert for all prices
+sqlx::query!(
+    "INSERT INTO prices (asset_id, date, price) SELECT * FROM UNNEST($1, $2, $3)",
+    &asset_ids,
+    &dates,
+    &prices
+).execute(&pool).await?;
+```
+
+**Don't:**
+```rust
+// Individual inserts in a loop - inefficient
+for (&date, &price) in &all_prices {
+    sqlx::query!(
+        "INSERT INTO prices (asset_id, date, price) VALUES ($1, $2, $3)",
+        asset_id, date, price
+    ).execute(&pool).await?;
+}
+```
+
+### Prefer Simple Reference Passing
+Use `&` references instead of `Option<&T>.as_ref()` when possible.
+
+**Do:**
+```rust
+fn generate_csv(pool: &PgPool, price_service: Option<&PriceLookupService<P>>, ...) { ... }
+
+// Call with direct reference
+generate_csv(&state.db_pool, state.price_service.as_deref(), ...)
+```
+
+**Don't:**
+```rust
+fn generate_csv(pool: &PgPool, price_service: Option<&PriceLookupService<P>>, ...) { ... }
+
+// Unnecessary .as_ref() that could be simplified
+generate_csv(&state.db_pool, state.price_service.as_ref(), ...)
+```
+
+### Use Defaults at Configuration Level
+When configuration values have sensible defaults, set them at the environment/config level rather than checking everywhere they're used.
+
+**Do:**
+```rust
+// In env.rs - set default at source
+coingecko_api_base_url: std::env::var("COINGECKO_API_BASE_URL")
+    .ok()
+    .filter(|s| !s.is_empty())
+    .unwrap_or_else(|| "https://pro-api.coingecko.com/api/v3".to_string()),
+
+// In usage - always use the value directly
+CoinGeckoClient::new(http_client, api_key, env_vars.coingecko_api_base_url)
+```
+
+**Don't:**
+```rust
+// In env.rs - optional with no default
+coingecko_api_base_url: std::env::var("COINGECKO_API_BASE_URL").ok(),
+
+// In usage - check and provide default every time
+let client = if let Some(base_url) = &env_vars.coingecko_api_base_url {
+    CoinGeckoClient::with_base_url(http_client, api_key, base_url)
+} else {
+    CoinGeckoClient::new(http_client, api_key)  // Has hardcoded default
+};
+```
+
+### Plan for Future Extensibility
+When creating mappings or configurations that may grow, consider:
+- Adding tests to verify all supported items have corresponding mappings
+- Documenting where mappings come from and how to maintain them
+- Consider if upstream sources (like token registries) could provide the data
+
+**Example - Test for mapping completeness:**
+```rust
+#[test]
+fn test_all_tokens_have_price_provider_mapping() {
+    let tokens = get_tokens_map();
+    let provider = CoinGeckoClient::new(...);
+    
+    for (unified_id, _) in tokens.iter() {
+        assert!(
+            provider.translate_asset_id(unified_id).is_some(),
+            "Missing CoinGecko mapping for token: {}", unified_id
+        );
+    }
+}
+```
