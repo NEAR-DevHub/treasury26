@@ -45,8 +45,8 @@ pub async fn init_test_state() -> AppState {
 
     let http_client = reqwest::Client::new();
 
-    // Initialize price service if CoinGecko API key is available
-    let price_service = env_vars.coingecko_api_key.as_ref().map(|api_key| {
+    // Initialize price service - with CoinGecko provider if API key is available
+    let price_service = if let Some(api_key) = env_vars.coingecko_api_key.as_ref() {
         let base_url = env_vars
             .coingecko_api_base_url
             .as_ref()
@@ -57,7 +57,9 @@ pub async fn init_test_state() -> AppState {
             base_url.clone(),
         );
         crate::services::PriceLookupService::new(db_pool.clone(), coingecko_client)
-    });
+    } else {
+        crate::services::PriceLookupService::without_provider(db_pool.clone())
+    };
 
     AppState {
         cache: Cache::new(),

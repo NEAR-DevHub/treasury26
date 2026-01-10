@@ -15,15 +15,35 @@ use super::price_provider::PriceProvider;
 use crate::constants::intents_tokens::{get_defuse_tokens_map, get_tokens_map};
 
 /// Price lookup service that combines caching with price providers
+///
+/// The provider is optional - when None, the service will only return cached prices
+/// from the database and won't fetch new prices. This allows the application to
+/// run without a configured price provider (e.g., no CoinGecko API key).
 pub struct PriceLookupService<P: PriceProvider> {
     pool: PgPool,
-    provider: P,
+    provider: Option<P>,
 }
 
 impl<P: PriceProvider> PriceLookupService<P> {
-    /// Creates a new price lookup service
+    /// Creates a new price lookup service with a provider
     pub fn new(pool: PgPool, provider: P) -> Self {
-        Self { pool, provider }
+        Self {
+            pool,
+            provider: Some(provider),
+        }
+    }
+
+    /// Creates a new price lookup service without a provider (cache-only mode)
+    pub fn without_provider(pool: PgPool) -> Self {
+        Self {
+            pool,
+            provider: None,
+        }
+    }
+
+    /// Returns true if this service has a configured price provider
+    pub fn has_provider(&self) -> bool {
+        self.provider.is_some()
     }
 
     /// Get the price for a token at a specific date
@@ -41,6 +61,12 @@ impl<P: PriceProvider> PriceLookupService<P> {
         token_id: &str,
         date: NaiveDate,
     ) -> Result<Option<f64>, Box<dyn std::error::Error + Send + Sync>> {
+        // If no provider, we can't look up prices
+        let provider = match &self.provider {
+            Some(p) => p,
+            None => return Ok(None),
+        };
+
         // Map token_id to unified asset ID first
         let unified_id = match token_id_to_unified_asset_id(token_id) {
             Some(id) => id,
@@ -51,12 +77,12 @@ impl<P: PriceProvider> PriceLookupService<P> {
         };
 
         // Ask the provider to translate to its specific asset ID
-        let provider_asset_id = match self.provider.translate_asset_id(&unified_id) {
+        let provider_asset_id = match provider.translate_asset_id(&unified_id) {
             Some(id) => id,
             None => {
                 log::debug!(
                     "Provider {} does not support asset: {}",
-                    self.provider.source_name(),
+                    provider.source_name(),
                     unified_id
                 );
                 return Ok(None);
@@ -80,14 +106,12 @@ impl<P: PriceProvider> PriceLookupService<P> {
             provider_asset_id,
             date
         );
-        let price = self
-            .provider
-            .get_price_at_date(&provider_asset_id, date)
-            .await?;
+        let price = provider.get_price_at_date(&provider_asset_id, date).await?;
 
         // Cache the result if we got a price
         if let Some(p) = price {
-            self.cache_price(&provider_asset_id, date, p).await?;
+            self.cache_price(&provider_asset_id, date, p, provider.source_name())
+                .await?;
         }
 
         Ok(price)
@@ -105,6 +129,12 @@ impl<P: PriceProvider> PriceLookupService<P> {
     ) -> Result<HashMap<NaiveDate, f64>, Box<dyn std::error::Error + Send + Sync>> {
         let mut result = HashMap::new();
 
+        // If no provider, we can't look up prices
+        let provider = match &self.provider {
+            Some(p) => p,
+            None => return Ok(result),
+        };
+
         // Map token_id to unified asset ID first
         let unified_id = match token_id_to_unified_asset_id(token_id) {
             Some(id) => id,
@@ -112,7 +142,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
         };
 
         // Ask the provider to translate to its specific asset ID
-        let provider_asset_id = match self.provider.translate_asset_id(&unified_id) {
+        let provider_asset_id = match provider.translate_asset_id(&unified_id) {
             Some(id) => id,
             None => return Ok(result),
         };
@@ -142,15 +172,14 @@ impl<P: PriceProvider> PriceLookupService<P> {
             missing_dates.len()
         );
 
-        match self
-            .provider
+        match provider
             .get_all_historical_prices(&provider_asset_id)
             .await
         {
             Ok(all_prices) => {
                 // Cache all fetched prices in a single batch insert
                 if let Err(e) = self
-                    .cache_prices_batch(&provider_asset_id, &all_prices)
+                    .cache_prices_batch(&provider_asset_id, &all_prices, provider.source_name())
                     .await
                 {
                     log::warn!("Failed to cache prices for {}: {}", provider_asset_id, e);
@@ -229,6 +258,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
         asset_id: &str,
         date: NaiveDate,
         price: f64,
+        source: &str,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let price_decimal = BigDecimal::try_from(price)?;
 
@@ -241,7 +271,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
             asset_id,
             date,
             price_decimal,
-            self.provider.source_name()
+            source
         )
         .execute(&self.pool)
         .await?;
@@ -254,6 +284,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
         &self,
         asset_id: &str,
         prices: &HashMap<NaiveDate, f64>,
+        source: &str,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         if prices.is_empty() {
             return Ok(());
@@ -265,7 +296,6 @@ impl<P: PriceProvider> PriceLookupService<P> {
             .values()
             .map(|&p| BigDecimal::try_from(p))
             .collect::<Result<Vec<_>, _>>()?;
-        let source = self.provider.source_name();
 
         sqlx::query(
             r#"
