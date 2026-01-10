@@ -248,10 +248,7 @@ impl AppState {
 
         // Initialize price service - with CoinGecko provider if API key is available
         let price_service = if let Some(api_key) = env_vars.coingecko_api_key.as_ref() {
-            let base_url = env_vars
-                .coingecko_api_base_url
-                .as_ref()
-                .expect("coingecko_api_base_url should have a default");
+            let base_url = &env_vars.coingecko_api_base_url;
             log::info!("CoinGecko API key found, using base URL: {}", base_url);
             let coingecko_client = CoinGeckoClient::with_base_url(
                 http_client.clone(),

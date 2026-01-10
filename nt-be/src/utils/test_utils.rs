@@ -58,10 +58,7 @@ pub async fn init_test_state() -> AppState {
 
     // Initialize price service - with CoinGecko provider if API key is available
     let price_service = if let Some(api_key) = env_vars.coingecko_api_key.as_ref() {
-        let base_url = env_vars
-            .coingecko_api_base_url
-            .as_ref()
-            .expect("coingecko_api_base_url should have a default");
+        let base_url = &env_vars.coingecko_api_base_url;
         let coingecko_client = crate::services::CoinGeckoClient::with_base_url(
             http_client.clone(),
             api_key.clone(),
