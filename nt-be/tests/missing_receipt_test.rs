@@ -1,31 +1,10 @@
-use near_api::{NetworkConfig, RPCEndpoint};
+mod common;
+
 use nt_be::handlers::balance_changes::balance::ft::get_balance_at_block as get_ft_balance;
 use nt_be::handlers::balance_changes::block_info::get_block_timestamp;
 use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
 use sqlx::PgPool;
 use sqlx::types::BigDecimal;
-use std::str::FromStr;
-
-/// Helper to create archival network config for tests
-fn create_archival_network() -> NetworkConfig {
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename_override(".env.test").ok();
-
-    let fastnear_api_key =
-        std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env");
-
-    NetworkConfig {
-        rpc_endpoints: vec![
-            RPCEndpoint::new(
-                "https://archival-rpc.mainnet.fastnear.com/"
-                    .parse()
-                    .unwrap(),
-            )
-            .with_api_key(fastnear_api_key),
-        ],
-        ..NetworkConfig::mainnet()
-    }
-}
 
 /// Test reproducing the exact "No receipt found" error from production monitoring
 ///
@@ -45,7 +24,7 @@ async fn test_fill_gap_to_past_with_insufficient_lookback(pool: PgPool) -> sqlx:
     let token_contract = "npro.nearmobile.near";
     let snapshot_block = 178685501_i64;
 
-    let archival_network = create_archival_network();
+    let archival_network = common::create_archival_network();
 
     println!("\n=== Reproducing 'No receipt found' error from monitoring ===");
     println!("Scenario: SNAPSHOT exists but balance originated before 7-day lookback window");

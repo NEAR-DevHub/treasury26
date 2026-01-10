@@ -4,9 +4,7 @@ use common::TestServer;
 
 #[tokio::test]
 async fn test_health_endpoint() {
-    // Load environment variables - .env.test overrides DATABASE_URL
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename_override(".env.test").ok();
+    common::load_test_env();
 
     // Start the actual server
     let server = TestServer::start().await;

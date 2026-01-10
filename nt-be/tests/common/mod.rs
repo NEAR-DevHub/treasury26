@@ -1,15 +1,25 @@
 use near_api::{NetworkConfig, RPCEndpoint};
 use std::process::{Child, Command};
+use std::sync::Once;
 use std::time::Duration;
 use tokio::time::sleep;
 use wiremock::matchers::{method, path_regex};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+static INIT: Once = Once::new();
+
+/// Load test environment variables. Safe to call multiple times - only runs once.
+/// Loads .env first, then .env.test which overrides (e.g., DATABASE_URL for test database).
+pub fn load_test_env() {
+    INIT.call_once(|| {
+        dotenvy::from_filename(".env").ok();
+        dotenvy::from_filename_override(".env.test").ok();
+    });
+}
+
 /// Create archival network config for tests with fastnear API key
 pub fn create_archival_network() -> NetworkConfig {
-    // Load .env files to get FASTNEAR_API_KEY
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename_override(".env.test").ok();
+    load_test_env();
 
     let fastnear_api_key =
         std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env");
@@ -36,9 +46,7 @@ pub struct TestServer {
 
 impl TestServer {
     pub async fn start() -> Self {
-        // Load environment variables - .env.test overrides DATABASE_URL to test database
-        dotenvy::from_filename(".env").ok();
-        dotenvy::from_filename_override(".env.test").ok();
+        load_test_env();
 
         let db_url =
             std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");

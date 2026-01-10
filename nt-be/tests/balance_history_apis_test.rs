@@ -9,9 +9,7 @@ use serial_test::serial;
 
 /// Load webassemblymusic-treasury test data from SQL dump files
 async fn load_test_data() {
-    // Load environment variables - .env.test overrides DATABASE_URL to test database
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename_override(".env.test").ok();
+    common::load_test_env();
 
     let db_url =
         std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
@@ -137,9 +135,7 @@ async fn load_test_data() {
 #[tokio::test]
 #[serial]
 async fn test_balance_chart_with_real_data() {
-    // Load environment variables - .env.test overrides DATABASE_URL
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename_override(".env.test").ok();
+    common::load_test_env();
 
     // Load test data
     load_test_data().await;
@@ -321,9 +317,7 @@ async fn test_balance_chart_with_real_data() {
 #[tokio::test]
 #[serial]
 async fn test_csv_export_with_real_data() {
-    // Load environment variables - .env.test overrides DATABASE_URL
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename_override(".env.test").ok();
+    common::load_test_env();
 
     // Load test data
     load_test_data().await;
@@ -420,9 +414,7 @@ async fn test_csv_export_with_real_data() {
 #[tokio::test]
 #[serial]
 async fn test_chart_api_intervals() {
-    // Load environment variables - .env.test overrides DATABASE_URL
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename_override(".env.test").ok();
+    common::load_test_env();
 
     // Load test data
     load_test_data().await;
