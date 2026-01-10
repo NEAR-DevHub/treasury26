@@ -12,17 +12,28 @@ use crate::utils::cache::Cache;
 use near_api::{NetworkConfig, RPCEndpoint, Signer};
 
 #[cfg(test)]
+use std::sync::Once;
+
+#[cfg(test)]
 use std::time::Duration;
+
+#[cfg(test)]
+static INIT: Once = Once::new();
 
 /// Load environment files in the correct order for tests
 ///
-/// Loads .env files from multiple locations to ensure all required
-/// environment variables are available for integration tests.
+/// Loads .env files to ensure required environment variables are available.
+/// Uses plain `from_filename` (not `override`) to avoid changing DATABASE_URL
+/// when sqlx::test macro has already read it at compile time.
+///
+/// NOTE: Integration tests in `tests/` use `tests/common/mod.rs::load_test_env()`
+/// which does override DATABASE_URL for the test database.
 #[cfg(test)]
 pub fn load_test_env() {
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename(".env.test").ok();
-    dotenvy::from_filename("../.env").ok();
+    INIT.call_once(|| {
+        dotenvy::from_filename(".env").ok();
+        dotenvy::from_filename(".env.test").ok();
+    });
 }
 
 /// Initialize app state with loaded environment variables

@@ -135,9 +135,7 @@ async fn load_test_data() {
 #[tokio::test]
 #[serial]
 async fn test_balance_chart_with_real_data() {
-    common::load_test_env();
-
-    // Load test data
+    // Load test data (also loads test env)
     load_test_data().await;
 
     // Start the server
@@ -317,9 +315,7 @@ async fn test_balance_chart_with_real_data() {
 #[tokio::test]
 #[serial]
 async fn test_csv_export_with_real_data() {
-    common::load_test_env();
-
-    // Load test data
+    // Load test data (also loads test env)
     load_test_data().await;
 
     // Start the server
@@ -414,9 +410,7 @@ async fn test_csv_export_with_real_data() {
 #[tokio::test]
 #[serial]
 async fn test_chart_api_intervals() {
-    common::load_test_env();
-
-    // Load test data
+    // Load test data (also loads test env)
     load_test_data().await;
 
     // Start the server
