@@ -2,7 +2,6 @@ mod common;
 
 use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
 use sqlx::PgPool;
-use sqlx::types::BigDecimal;
 use sqlx::types::chrono::{DateTime, Utc};
 
 /// Helper to convert nanosecond timestamp to DateTime<Utc>

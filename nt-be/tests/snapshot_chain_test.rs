@@ -4,7 +4,6 @@ use nt_be::handlers::balance_changes::gap_detector::find_gaps;
 use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
 use sqlx::PgPool;
 use sqlx::types::chrono::DateTime;
-use std::str::FromStr;
 
 /// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
 fn timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<sqlx::types::chrono::Utc> {
