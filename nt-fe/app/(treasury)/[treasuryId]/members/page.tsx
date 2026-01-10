@@ -42,6 +42,7 @@ import {
 } from "@/components/table";
 import { useMemberValidation } from "./hooks/use-member-validation";
 import { formatRoleName } from "@/components/role-name";
+import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 
 interface Member {
   accountId: string;
@@ -92,36 +93,7 @@ export default function MembersPage() {
   }, [policy, accountId]);
 
   // Extract unique members from policy roles first (needed for schema validation)
-  const existingMembers = useMemo(() => {
-    if (!policy?.roles) return [];
-
-    const memberMap = new Map<string, Set<string>>();
-
-    // Iterate through each role and extract members
-    for (const role of policy.roles) {
-      if (typeof role.kind === "object" && "Group" in role.kind) {
-        const accountIds = role.kind.Group;
-        const roleName = role.name;
-
-        for (const accountId of accountIds) {
-          let roles = memberMap.get(accountId);
-          if (!roles) {
-            roles = new Set();
-            memberMap.set(accountId, roles);
-          }
-          roles.add(roleName);
-        }
-      }
-    }
-
-    // Convert to array of Member objects and sort alphabetically
-    return Array.from(memberMap, ([accountId, rolesSet]) => ({
-      accountId,
-      roles: Array.from(rolesSet),
-    })).sort((a, b) =>
-      a.accountId.toLowerCase().localeCompare(b.accountId.toLowerCase())
-    );
-  }, [policy]);
+  const { members: existingMembers } = useTreasuryMembers(selectedTreasury);
 
   // Track current modal mode for schema validation
   const [currentModalMode, setCurrentModalMode] = useState<"add" | "edit">(

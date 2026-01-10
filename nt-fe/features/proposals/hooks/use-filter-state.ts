@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { parseFilterData } from "../types/filter-types";
 
 interface UseFilterStateOptions<T> {
@@ -20,6 +20,7 @@ export function useFilterState<T>({
 }: UseFilterStateOptions<T>) {
     const [operation, setOperation] = useState<string>(defaultOperation);
     const [data, setData] = useState<T | null>(null);
+    const isInitialMount = useRef(true);
 
     // Parse on mount - NO FALLBACK for old format
     useEffect(() => {
@@ -34,15 +35,18 @@ export function useFilterState<T>({
             setData(null);
             setOperation(defaultOperation);
         }
-    }, [value, defaultOperation, parseData]);
+        isInitialMount.current = false;
+    }, [value]);
 
-    // Update when state changes
+    // Update when state changes (but skip initial mount to avoid loop)
     useEffect(() => {
-        if (data) {
+        if (!isInitialMount.current && data) {
             const filterValue = JSON.stringify(serializeData(operation, data));
-            onUpdate(filterValue);
+            if (filterValue !== value) {
+                onUpdate(filterValue);
+            }
         }
-    }, [operation, data, onUpdate, serializeData]);
+    }, [operation, data]);
 
     const handleClear = () => {
         setData(null);

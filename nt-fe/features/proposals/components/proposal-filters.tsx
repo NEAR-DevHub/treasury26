@@ -15,6 +15,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BaseFilterPopover } from "./base-filter-popover";
 import { useFilterState } from "../hooks/use-filter-state";
 import { parseFilterData } from "../types/filter-types";
+import { TooltipUser, User } from "@/components/user";
+import { useTreasuryMembers } from "@/hooks/use-treasury-members";
+import { useRecentAddresses } from "@/hooks/use-recent-addresses";
+import { useTreasury } from "@/stores/treasury-store";
 
 const FILTER_OPTIONS = [
     { id: "proposal_types", label: "Requests Type" },
@@ -49,6 +53,7 @@ const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
 const PROPOSAL_TYPE_OPERATIONS = ["Is", "Is Not"];
 const DATE_OPERATIONS = ["Is", "Is Not", "Before", "After"];
 const TEXT_OPERATIONS = ["Is", "Is Not", "Contains"];
+const USER_OPERATIONS = ["Is", "Is Not"];
 
 interface TokenOption {
     id: string;
@@ -190,7 +195,12 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
 
     const renderFilterContent = () => {
         switch (id) {
-
+            case "recipients":
+                return <UserFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} label={label} />;
+            case "proposers":
+                return <UserFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} label={label} />;
+            case "approvers":
+                return <UserFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} label={label} />;
             case "proposal_types":
                 return <ProposalTypeFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             case "created_date":
@@ -270,6 +280,27 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         // Text filter display
         if ((filterData as any).text) {
             return <span className="font-medium text-sm">{(filterData as any).text}</span>;
+        }
+
+        // User filter display (recipients, proposers, approvers)
+        if ((id === "recipients" || id === "proposers" || id === "approvers") && (filterData as any).users) {
+            const users = (filterData as any).users as string[];
+            if (users.length === 0) return null;
+
+            return (
+                <div className="flex items-center">
+                    {users.map((accountId, index) => (
+                        <TooltipUser key={accountId} accountId={accountId}>
+                            <div className="cursor-pointer" style={{ marginLeft: index > 0 ? '-6px' : '0' }}>
+                                <User accountId={accountId} iconOnly withName={false} />
+                            </div>
+                        </TooltipUser>
+                    ))}
+                    {users.length > 3 && (
+                        <span className="text-xs text-muted-foreground ml-1">+{users.length - 3}</span>
+                    )}
+                </div>
+            );
         }
 
         return <span className="font-medium">{displayValue}</span>;
@@ -640,6 +671,165 @@ function TextFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: Text
                 onKeyDown={handleKeyDown}
                 className="h-8 text-sm"
             />
+        </BaseFilterPopover>
+    );
+}
+
+interface UserFilterContentProps {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+    label: string;
+}
+
+interface UserData {
+    users: string[];
+}
+
+function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: UserFilterContentProps) {
+    const { selectedTreasury } = useTreasury();
+    const { members: daoMembers, isLoading: isLoadingMembers } = useTreasuryMembers(selectedTreasury);
+    const { recentAddresses, addRecentAddress } = useRecentAddresses();
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const { operation, setOperation, data, setData, handleClear } = useFilterState<UserData>({
+        value,
+        onUpdate,
+        parseData: (parsed) => ({
+            users: parsed.users || []
+        }),
+        serializeData: (op, d) => ({
+            operation: op,
+            users: d.users
+        })
+    });
+
+    // Extract unique member account IDs
+    const memberSuggestions = useMemo(() => {
+        return daoMembers.map(m => m.accountId);
+    }, [daoMembers]);
+
+    // Combine DAO members with custom addresses and recent addresses, then filter and sort
+    const filteredMembers = useMemo(() => {
+        const query = searchQuery.toLowerCase();
+        const selectedUsers = data?.users || [];
+
+        // Combine DAO members with selected users and recent addresses that aren't already in DAO members
+        const allUsers = new Set([
+            ...memberSuggestions,
+            ...selectedUsers.filter(user => !memberSuggestions.includes(user)),
+            ...recentAddresses.filter(addr => !memberSuggestions.includes(addr))
+        ]);
+
+        // Filter based on search query, then sort with checked users at top
+        return Array.from(allUsers)
+            .filter(accountId => accountId.toLowerCase().includes(query))
+            .sort((a, b) => {
+                const aSelected = selectedUsers.includes(a);
+                const bSelected = selectedUsers.includes(b);
+
+                // 1. Checked users always at the top
+                if (aSelected && !bSelected) return -1;
+                if (!aSelected && bSelected) return 1;
+
+                // 2. All unchecked users sorted alphabetically together
+                return a.toLowerCase().localeCompare(b.toLowerCase());
+            });
+    }, [memberSuggestions, searchQuery, data?.users, recentAddresses]);
+
+    const handleDelete = () => {
+        onRemove();
+        setIsOpen(false);
+    };
+
+    const handleToggleUser = (accountId: string) => {
+        const currentUsers = data?.users || [];
+        if (currentUsers.includes(accountId)) {
+            setData({ users: currentUsers.filter(u => u !== accountId) });
+        } else {
+            setData({ users: [...currentUsers, accountId] });
+            addRecentAddress(accountId);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter" && searchQuery.trim()) {
+            e.preventDefault();
+            const accountId = searchQuery.trim();
+            if (!data?.users.includes(accountId)) {
+                setData({ users: [...(data?.users || []), accountId] });
+                // Save to recent addresses
+                addRecentAddress(accountId);
+            }
+            setSearchQuery("");
+        }
+    };
+
+    return (
+        <BaseFilterPopover
+            filterLabel={label}
+            operation={operation}
+            operations={USER_OPERATIONS}
+            onOperationChange={setOperation}
+            onClear={handleClear}
+            onDelete={handleDelete}
+            className="w-64"
+        >
+            <div className="space-y-2">
+                <Input
+                    autoFocus
+                    placeholder="Search by address"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="h-8 text-sm"
+                />
+
+                {/* Loading state */}
+                {isLoadingMembers ? (
+                    <div className="text-xs text-muted-foreground text-center py-2">
+                        Loading members...
+                    </div>
+                ) : (
+                    <>
+                        {/* Single unified list of all members */}
+                        {filteredMembers.length > 0 && (
+                            <div className="space-y-1 max-w-full truncate overflow-y-auto">
+                                {filteredMembers.map((accountId) => {
+                                    const isSelected = data?.users?.includes(accountId) || false;
+                                    return (
+                                        <label
+                                            key={accountId}
+                                            className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md"
+                                        >
+                                            <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={() => handleToggleUser(accountId)}
+                                            />
+                                            <User accountId={accountId} iconOnly={false} withLink={false} size="sm" />
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* No results with search query */}
+                        {searchQuery && filteredMembers.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                                No members found. Press Enter to add "{searchQuery}"
+                            </p>
+                        )}
+
+                        {/* Empty state */}
+                        {!searchQuery && filteredMembers.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                                No members available
+                            </p>
+                        )}
+                    </>
+                )}
+            </div>
         </BaseFilterPopover>
     );
 }
