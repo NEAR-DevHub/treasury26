@@ -19,6 +19,7 @@ import { TooltipUser, User } from "@/components/user";
 import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 import { useRecentAddresses } from "@/hooks/use-recent-addresses";
 import { useTreasury } from "@/stores/treasury-store";
+import { CheckboxFilterContent } from "./checkbox-filter-content";
 
 const FILTER_OPTIONS = [
     { id: "proposal_types", label: "Requests Type" },
@@ -32,16 +33,11 @@ const FILTER_OPTIONS = [
 
 
 const PROPOSAL_TYPE_OPTIONS = [
-    "Transfer",
-    "FunctionCall",
-    "AddMemberToRole",
-    "RemoveMemberFromRole",
-    "ChangeConfig",
-    "ChangePolicy",
-    "AddBounty",
-    "BountyDone",
-    "Vote",
-    "FactoryUpdateSelf",
+    "Payments",
+    "Exchange",
+    "Earn",
+    "Change Policy",
+    "Settings",
 ];
 
 const MY_VOTE_OPTIONS = ["Approved", "Rejected", "No Voted"];
@@ -257,13 +253,17 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         }
 
         // My Vote filter display
-        if (id === "my_vote" && (filterData as any).votes) {
-            return <span className="font-medium text-sm">{(filterData as any).votes.join(", ")}</span>;
+        if (id === "my_vote" && (filterData as any).selected) {
+            const selected = (filterData as any).selected as string[];
+            if (selected.length === 0) return null;
+            return <span className="font-medium text-sm">{selected.join(", ")}</span>;
         }
 
         // Proposal Type filter display
-        if (id === "proposal_types" && (filterData as any).type) {
-            return <span className="font-medium text-sm">{(filterData as any).type}</span>;
+        if (id === "proposal_types" && (filterData as any).selected) {
+            const selected = (filterData as any).selected as string[];
+            if (selected.length === 0) return null;
+            return <span className="font-medium text-sm">{selected.join(", ")}</span>;
         }
 
         // Date filter display
@@ -305,7 +305,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
     };
 
     return (
-        <div className="flex items-center">
+        <div className="flex items-center shrink-0">
             <Popover open={isOpen} onOpenChange={setIsOpen}>
                 <PopoverTrigger asChild className="[&_button]:bg-secondary">
                     <Button
@@ -369,9 +369,12 @@ function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilte
     };
 
     const updateData = (updates: Partial<TokenData>) => {
-        if (data) {
-            setData({ ...data, ...updates });
-        }
+        setData({
+            token: updates.token ?? data?.token as any,
+            amountOperation: updates.amountOperation ?? data?.amountOperation ?? "Between",
+            minAmount: updates.minAmount ?? data?.minAmount ?? "",
+            maxAmount: updates.maxAmount ?? data?.maxAmount ?? ""
+        });
     };
 
     return (
@@ -382,18 +385,20 @@ function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilte
             onOperationChange={setOperation}
             onClear={handleClear}
             onDelete={handleDelete}
-            className="max-w-80"
+            className="max-w-80 pb-1"
         >
-            <TokenSelectPopover
-                selectedToken={data?.token || null}
-                onTokenChange={(token) => updateData({ token })}
-                className="w-full"
-            />
+            <div className="px-2">
+                <TokenSelectPopover
+                    selectedToken={data?.token || null}
+                    onTokenChange={(token) => updateData({ token })}
+                    className="w-full"
+                />
+            </div>
 
-            {operation === "Is" && data?.token && (
-                <div className="space-y-3 pt-2 border-t">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Amount</span>
+            {data?.token && operation === "Is" && (
+                <>
+                    <div className="py-2 px-2 flex items-baseline gap-1">
+                        <span className="text-xs  text-muted-foreground">Amount</span>
                         <OperationSelect
                             operations={AMOUNT_OPERATIONS}
                             selectedOperation={data.amountOperation || "Between"}
@@ -401,167 +406,85 @@ function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilte
                         />
                     </div>
 
-                    {data.amountOperation === "Between" ? (
-                        <div className="flex-col flex items-center gap-2">
+
+                    <div className="px-2 py-1">
+                        {data.amountOperation === "Between" ? (
+                            <div className="flex-col flex gap-2">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-sm text-foreground font-medium">From</span>
+                                    <Input
+                                        type="number"
+                                        placeholder="Min"
+                                        value={data.minAmount || ""}
+                                        onChange={(e) => updateData({ minAmount: e.target.value })}
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-sm text-foreground font-medium">To</span>
+                                    <Input
+                                        type="number"
+                                        placeholder="Max"
+                                        value={data.maxAmount || ""}
+                                        onChange={(e) => updateData({ maxAmount: e.target.value })}
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
                             <Input
                                 type="number"
-                                placeholder="Min"
+                                placeholder="Amount"
                                 value={data.minAmount || ""}
                                 onChange={(e) => updateData({ minAmount: e.target.value })}
                                 className="h-8 text-sm"
                             />
-                            <span className="text-sm text-muted-foreground">to</span>
-                            <Input
-                                type="number"
-                                placeholder="Max"
-                                value={data.maxAmount || ""}
-                                onChange={(e) => updateData({ maxAmount: e.target.value })}
-                                className="h-8 text-sm"
-                            />
-                        </div>
-                    ) : (
-                        <Input
-                            type="number"
-                            placeholder="Amount"
-                            value={data.minAmount || ""}
-                            onChange={(e) => updateData({ minAmount: e.target.value })}
-                            className="h-8 text-sm"
-                        />
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                        Empty amount means any
-                    </p>
-                </div>
-            )}
-        </BaseFilterPopover>
-    );
-}
-
-interface MyVoteFilterContentProps {
-    value: string;
-    onUpdate: (value: string) => void;
-    setIsOpen: (isOpen: boolean) => void;
-    onRemove: () => void;
-}
-
-interface MyVoteData {
-    votes: string[];
-}
-
-function MyVoteFilterContent({ value, onUpdate, setIsOpen, onRemove }: MyVoteFilterContentProps) {
-    const { operation, setOperation, data, setData, handleClear } = useFilterState<MyVoteData>({
-        value,
-        onUpdate,
-        parseData: (parsed) => ({
-            votes: parsed.votes || []
-        }),
-        serializeData: (op, d) => ({
-            operation: op,
-            votes: d.votes
-        })
-    });
-
-    const handleDelete = () => {
-        onRemove();
-        setIsOpen(false);
-    };
-
-    const handleToggleVote = (vote: string) => {
-        const currentVotes = data?.votes || [];
-        if (currentVotes.includes(vote)) {
-            setData({ votes: currentVotes.filter(v => v !== vote) });
-        } else {
-            setData({ votes: [...currentVotes, vote] });
-        }
-    };
-
-    return (
-        <BaseFilterPopover
-            filterLabel="My Vote Status"
-            operation={operation}
-            operations={MY_VOTE_OPERATIONS}
-            onOperationChange={setOperation}
-            onClear={handleClear}
-            onDelete={handleDelete}
-        >
-            <div className="space-y-2">
-                {MY_VOTE_OPTIONS.map((vote) => (
-                    <label
-                        key={vote}
-                        className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md"
-                    >
-                        <Checkbox
-                            checked={data?.votes.includes(vote) || false}
-                            onCheckedChange={() => handleToggleVote(vote)}
-                        />
-                        <span className="text-sm">{vote}</span>
-                    </label>
-                ))}
-            </div>
-        </BaseFilterPopover>
-    );
-}
-
-interface ProposalTypeFilterContentProps {
-    value: string;
-    onUpdate: (value: string) => void;
-    setIsOpen: (isOpen: boolean) => void;
-    onRemove: () => void;
-}
-
-interface ProposalTypeData {
-    type: string;
-}
-
-function ProposalTypeFilterContent({ value, onUpdate, setIsOpen, onRemove }: ProposalTypeFilterContentProps) {
-    const { operation, setOperation, data, setData, handleClear } = useFilterState<ProposalTypeData>({
-        value,
-        onUpdate,
-        parseData: (parsed) => ({
-            type: parsed.type || ""
-        }),
-        serializeData: (op, d) => ({
-            operation: op,
-            type: d.type
-        })
-    });
-
-    const handleDelete = () => {
-        onRemove();
-        setIsOpen(false);
-    };
-
-    const handleSelectType = (type: string) => {
-        setData({ type });
-        setIsOpen(false);
-    };
-
-    return (
-        <BaseFilterPopover
-            filterLabel="Request Type"
-            operation={operation}
-            operations={PROPOSAL_TYPE_OPERATIONS}
-            onOperationChange={setOperation}
-            onClear={handleClear}
-            onDelete={handleDelete}
-        >
-            <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-                {PROPOSAL_TYPE_OPTIONS.map((opt) => (
-                    <Button
-                        key={opt}
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                            "justify-start font-normal h-8",
-                            data?.type === opt && "bg-muted"
                         )}
-                        onClick={() => handleSelectType(opt)}
-                    >
-                        {opt}
-                    </Button>
-                ))}
-            </div>
-        </BaseFilterPopover>
+                    </div>
+                </>
+            )
+            }
+        </BaseFilterPopover >
+    );
+}
+
+// My Vote filter using unified CheckboxFilterContent
+function MyVoteFilterContent({ value, onUpdate, setIsOpen, onRemove }: {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+}) {
+    return (
+        <CheckboxFilterContent
+            value={value}
+            onUpdate={onUpdate}
+            setIsOpen={setIsOpen}
+            onRemove={onRemove}
+            filterLabel="My Vote Status"
+            operations={MY_VOTE_OPERATIONS}
+            options={MY_VOTE_OPTIONS.map(vote => ({ value: vote, label: vote }))}
+        />
+    );
+}
+
+// Proposal Type filter using unified CheckboxFilterContent
+function ProposalTypeFilterContent({ value, onUpdate, setIsOpen, onRemove }: {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+}) {
+    return (
+        <CheckboxFilterContent
+            value={value}
+            onUpdate={onUpdate}
+            setIsOpen={setIsOpen}
+            onRemove={onRemove}
+            filterLabel="Request Type"
+            operations={PROPOSAL_TYPE_OPERATIONS}
+            options={PROPOSAL_TYPE_OPTIONS.map(type => ({ value: type, label: type }))}
+        />
     );
 }
 
@@ -606,12 +529,15 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: Crea
             onOperationChange={setOperation}
             onClear={handleClear}
             onDelete={handleDelete}
+            className="pb-1"
         >
-            <DateTimePicker
-                value={data?.date}
-                onChange={handleDateChange}
-                hideTime
-            />
+            <div className="px-2">
+                <DateTimePicker
+                    value={data?.date}
+                    onChange={handleDateChange}
+                    hideTime
+                />
+            </div>
         </BaseFilterPopover>
     );
 }
@@ -744,7 +670,7 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
                                     return (
                                         <label
                                             key={accountId}
-                                            className="flex px-2 items-center gap-2 cursor-pointer hover:bg-muted/50 px-0 py-1.5 rounded-md"
+                                            className="flex px-2 items-center gap-2 cursor-pointer hover:bg-muted/50 py-1.5 rounded-md"
                                         >
                                             <Checkbox
                                                 checked={isSelected}

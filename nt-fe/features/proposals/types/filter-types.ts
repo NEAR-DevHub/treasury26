@@ -20,11 +20,11 @@ export interface TokenFilterData extends BaseFilterData {
 }
 
 export interface MyVoteFilterData extends BaseFilterData {
-    votes: string[];
+    selected: string[];
 }
 
 export interface ProposalTypeFilterData extends BaseFilterData {
-    type: string;
+    selected: string[];
 }
 
 export interface DateFilterData extends BaseFilterData {
