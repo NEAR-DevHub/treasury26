@@ -325,41 +325,43 @@ fn bigdecimal_to_f64(bd: &BigDecimal) -> Option<f64> {
 ///
 /// # Strategy
 /// 1. Handle special cases (native NEAR)
-/// 2. Convert token_id to defuseAssetId format
-/// 3. Look up in tokens.json to find the unifiedAssetId
+/// 2. Normalize token_id (strip intents.near: prefix if present)
+/// 3. Look up in tokens.json - either exact match or search for containing match
 pub fn token_id_to_unified_asset_id(token_id: &str) -> Option<String> {
     // Special case: native NEAR
     if token_id == "near" {
         return Some("near".to_string());
     }
 
-    // Try to find via tokens.json lookup
-    let defuse_asset_id = token_id_to_defuse_asset_id(token_id);
+    let normalized = normalize_token_id(token_id);
+    let defuse_map = get_defuse_tokens_map();
 
-    // Look up in defuse tokens map
-    if get_defuse_tokens_map().contains_key(&defuse_asset_id) {
-        // Found the base token, now find its unified asset ID
-        if let Some(unified_id) = find_unified_asset_id_for_defuse_id(&defuse_asset_id) {
-            return Some(unified_id);
+    // Try exact match first (for intents tokens with full defuse_asset_id)
+    if defuse_map.contains_key(&normalized) {
+        return find_unified_asset_id_for_defuse_id(&normalized);
+    }
+
+    // Search for a defuse_asset_id that contains this token contract
+    // e.g., "wrap.near" matches "nep141:wrap.near"
+    for defuse_asset_id in defuse_map.keys() {
+        if defuse_asset_id.ends_with(&format!(":{}", normalized)) {
+            return find_unified_asset_id_for_defuse_id(defuse_asset_id);
         }
     }
 
     None
 }
 
-/// Convert token_id format to defuseAssetId format
-fn token_id_to_defuse_asset_id(token_id: &str) -> String {
-    // Handle intents.near: prefix
+/// Normalize token_id to the lookup key format used in tokens.json
+///
+/// For intents tokens, strips the "intents.near:" prefix.
+/// For direct token contracts, returns as-is (will be searched in the map).
+fn normalize_token_id(token_id: &str) -> String {
+    // Handle intents.near: prefix (works for both nep141 and nep245)
     // "intents.near:nep141:btc.omft.near" -> "nep141:btc.omft.near"
+    // "intents.near:nep245:v2_1.omni.hot.tg:..." -> "nep245:v2_1.omni.hot.tg:..."
     if let Some(stripped) = token_id.strip_prefix("intents.near:") {
         return stripped.to_string();
-    }
-
-    // Handle direct NEAR token contracts
-    // "wrap.near" -> "nep141:wrap.near"
-    // "token.tg" -> "nep141:token.tg"
-    if !token_id.contains(':') && (token_id.ends_with(".near") || token_id.ends_with(".tg")) {
-        return format!("nep141:{}", token_id);
     }
 
     token_id.to_string()
@@ -461,15 +463,104 @@ mod tests {
     }
 
     #[test]
-    fn test_token_id_to_defuse_asset_id() {
+    fn test_normalize_token_id() {
+        // NEP-141 tokens via intents - strips prefix
         assert_eq!(
-            token_id_to_defuse_asset_id("intents.near:nep141:btc.omft.near"),
+            normalize_token_id("intents.near:nep141:btc.omft.near"),
             "nep141:btc.omft.near"
         );
-        assert_eq!(token_id_to_defuse_asset_id("wrap.near"), "nep141:wrap.near");
+        // NEP-245 tokens via intents (HOT omni bridge) - strips prefix
         assert_eq!(
-            token_id_to_defuse_asset_id("nep141:btc.omft.near"),
+            normalize_token_id(
+                "intents.near:nep245:v2_1.omni.hot.tg:137_qiStmoQJDQPTebaPjgx5VBxZv6L"
+            ),
+            "nep245:v2_1.omni.hot.tg:137_qiStmoQJDQPTebaPjgx5VBxZv6L"
+        );
+        // Direct NEAR token contracts - pass through unchanged
+        assert_eq!(normalize_token_id("wrap.near"), "wrap.near");
+        // Already normalized tokens pass through
+        assert_eq!(
+            normalize_token_id("nep141:btc.omft.near"),
             "nep141:btc.omft.near"
+        );
+    }
+
+    /// Verify that all tokens from tokens.json can be mapped to a unified asset ID
+    /// when using the intents.near: prefix format that balance changes use.
+    ///
+    /// Note: Some tokens appear in multiple unified groups (e.g., "turbo" and "turbo (omni)").
+    /// This test verifies the mapping works, not that it matches the exact parent group.
+    #[test]
+    fn test_all_tokens_json_can_be_mapped() {
+        let defuse_map = get_defuse_tokens_map();
+
+        let mut success_count = 0;
+        let mut failed_tokens = Vec::new();
+
+        // Test all unique defuseAssetIds
+        for (defuse_asset_id, _base_token) in defuse_map.iter() {
+            // Construct token_id as it would appear in balance_changes
+            // e.g., "intents.near:nep141:btc.omft.near"
+            let token_id = format!("intents.near:{}", defuse_asset_id);
+
+            match token_id_to_unified_asset_id(&token_id) {
+                Some(_unified_id) => {
+                    success_count += 1;
+                }
+                None => {
+                    failed_tokens.push(format!("{} -> None", token_id));
+                }
+            }
+        }
+
+        println!(
+            "Token mapping: {} succeeded, {} failed out of {} unique defuseAssetIds",
+            success_count,
+            failed_tokens.len(),
+            defuse_map.len()
+        );
+
+        if !failed_tokens.is_empty() {
+            println!("Failed mappings:");
+            for failed in &failed_tokens {
+                println!("  {}", failed);
+            }
+        }
+
+        assert!(
+            failed_tokens.is_empty(),
+            "All tokens from tokens.json should map to a unified asset ID. {} failed.",
+            failed_tokens.len()
+        );
+
+        // Also verify we have a reasonable number of tokens
+        assert!(
+            success_count > 100,
+            "Expected at least 100 tokens, got {}",
+            success_count
+        );
+    }
+
+    /// Test that direct FT token contracts (without intents.near: prefix) can also be mapped.
+    /// These come from `discover_ft_tokens_from_receipts` when FT contracts are discovered
+    /// from NEAR transfer counterparties.
+    #[test]
+    fn test_direct_ft_tokens_can_be_mapped() {
+        // These are stored as just the contract address, not prefixed with intents.near:
+        // The function should add nep141: prefix and find them
+
+        // wrap.near should map to "near" unified ID
+        assert_eq!(
+            token_id_to_unified_asset_id("wrap.near"),
+            Some("near".to_string()),
+            "wrap.near should map to 'near' unified asset ID"
+        );
+
+        // token.sweat should map to "sweat"
+        assert_eq!(
+            token_id_to_unified_asset_id("token.sweat"),
+            Some("sweat".to_string()),
+            "token.sweat should map to 'sweat' unified asset ID"
         );
     }
 }
