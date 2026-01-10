@@ -172,10 +172,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
             missing_dates.len()
         );
 
-        match provider
-            .get_all_historical_prices(&provider_asset_id)
-            .await
-        {
+        match provider.get_all_historical_prices(&provider_asset_id).await {
             Ok(all_prices) => {
                 // Cache all fetched prices in a single batch insert
                 if let Err(e) = self
