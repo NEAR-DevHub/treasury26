@@ -201,6 +201,15 @@
   .bg-gradient-cyan-blue {
     background: linear-gradient(134deg, #0FFD9E 19.78%, #1F9CF0 85.42%);
   }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 input::-webkit-outer-spin-button,

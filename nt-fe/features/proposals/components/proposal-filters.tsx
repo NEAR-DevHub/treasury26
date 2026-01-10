@@ -3,12 +3,23 @@
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
-import { Plus, X, Search, ChevronDown } from "lucide-react";
+import { Plus, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/datepicker";
 import { format } from "date-fns";
+import { OperationSelect } from "@/components/operation-select";
+import { TokenSelectPopover } from "@/components/token-select-popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BaseFilterPopover } from "./base-filter-popover";
+import { useFilterState } from "../hooks/use-filter-state";
+import { parseFilterData } from "../types/filter-types";
+import { TooltipUser, User } from "@/components/user";
+import { useTreasuryMembers } from "@/hooks/use-treasury-members";
+import { useRecentAddresses } from "@/hooks/use-recent-addresses";
+import { useTreasury } from "@/stores/treasury-store";
+import { CheckboxFilterContent } from "./checkbox-filter-content";
 
 const FILTER_OPTIONS = [
     { id: "proposal_types", label: "Requests Type" },
@@ -22,19 +33,30 @@ const FILTER_OPTIONS = [
 
 
 const PROPOSAL_TYPE_OPTIONS = [
-    "Transfer",
-    "FunctionCall",
-    "AddMemberToRole",
-    "RemoveMemberFromRole",
-    "ChangeConfig",
-    "ChangePolicy",
-    "AddBounty",
-    "BountyDone",
-    "Vote",
-    "FactoryUpdateSelf",
+    "Payments",
+    "Exchange",
+    "Earn",
+    "Change Policy",
+    "Settings",
 ];
 
-const MY_VOTE_OPTIONS = ["Approve", "Reject", "Remove", "None"];
+const MY_VOTE_OPTIONS = ["Approved", "Rejected", "No Voted"];
+const MY_VOTE_OPERATIONS = ["Is", "Is Not"];
+
+const TOKEN_OPERATIONS = ["Is", "Is Not"];
+const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
+
+const PROPOSAL_TYPE_OPERATIONS = ["Is", "Is Not"];
+const DATE_OPERATIONS = ["Is", "Is Not", "Before", "After"];
+const TEXT_OPERATIONS = ["Is", "Is Not", "Contains"];
+const USER_OPERATIONS = ["Is", "Is Not"];
+
+interface TokenOption {
+    id: string;
+    name: string;
+    symbol: string;
+    icon: string;
+}
 
 interface ProposalFiltersProps {
     className?: string;
@@ -83,17 +105,12 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
         updateFilters({ [id]: null });
     };
 
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        updateFilters({ search: value || null });
-    };
-
     const availableFilters = FILTER_OPTIONS.filter(
         (opt) => !activeFilters.includes(opt.id)
     );
 
     return (
-        <div className={cn("flex flex-wrap items-center gap-3", className)}>
+        <div className={cn("flex items-center gap-3", className)}>
             <Button
                 variant="outline"
                 size="sm"
@@ -103,7 +120,7 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
                 Reset
             </Button>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
                 {activeFilters.map((filterId) => (
                     <FilterPill
                         key={filterId}
@@ -121,20 +138,19 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-9 gap-1.5 text-muted-foreground hover:text-foreground font-medium"
+                                className="h-8 gap-1.5 text-muted-foreground hover:text-foreground font-medium shrink-0"
                             >
                                 <Plus className="h-4 w-4" />
                                 Add Filter
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-56 p-1" align="start">
+                        <PopoverContent className="w-fit p-0 min-w-36" align="start">
                             <div className="flex flex-col">
                                 {availableFilters.map((filter) => (
                                     <Button
                                         key={filter.id}
                                         variant="ghost"
-                                        size="sm"
-                                        className="justify-start font-normal h-9"
+                                        className="justify-start px-2 font-normal not-first:rounded-t-none not-last:rounded-b-none"
                                         onClick={() => {
                                             updateFilters({ [filter.id]: "" });
                                             setIsAddFilterOpen(false);
@@ -147,16 +163,6 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
                         </PopoverContent>
                     </Popover>
                 )}
-            </div>
-
-            <div className="relative ml-auto w-64">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                    placeholder="Search requests..."
-                    className="pl-9 h-9 bg-card border-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-                    value={searchParams.get("search") || ""}
-                    onChange={handleSearchChange}
-                />
             </div>
         </div>
     );
@@ -173,138 +179,527 @@ interface FilterPillProps {
 function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
     const [isOpen, setIsOpen] = useState(false);
 
+    // Single unified parsing - no backward compatibility
+    const filterData = useMemo(() => {
+        return parseFilterData(value);
+    }, [value]);
+
     const displayValue = useMemo(() => {
-        if (!value) return "All";
-        if (id === "created_date") {
-            try {
-                return format(new Date(value), "MMM d, yyyy");
-            } catch {
-                return value;
-            }
-        }
+        if (!value || filterData) return null; // Use custom rendering for all filter types
         return value;
-    }, [id, value]);
+    }, [value, filterData]);
 
     const renderFilterContent = () => {
         switch (id) {
-
+            case "recipients":
+                return <UserFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} label={label} />;
+            case "proposers":
+                return <UserFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} label={label} />;
+            case "approvers":
+                return <UserFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} label={label} />;
             case "proposal_types":
-                return (
-                    <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-                        {PROPOSAL_TYPE_OPTIONS.map((opt) => (
-                            <Button
-                                key={opt}
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                    "justify-start font-normal h-8",
-                                    value === opt && "bg-muted"
-                                )}
-                                onClick={() => {
-                                    onUpdate(opt);
-                                    setIsOpen(false);
-                                }}
-                            >
-                                {opt}
-                            </Button>
-                        ))}
-                    </div>
-                );
+                return <ProposalTypeFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             case "created_date":
-                return (
-                    <div className="p-2">
-                        <DateTimePicker
-                            value={value ? new Date(value) : undefined}
-                            onChange={(date) => {
-                                if (date) {
-                                    onUpdate(date.toISOString());
-                                }
-                            }}
-                            hideTime
-                        />
-                    </div>
-                );
+                return <CreatedDateFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
+            case "tokens":
+                return <TokenFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             case "my_vote":
-                return (
-                    <div className="flex flex-col gap-1">
-                        {MY_VOTE_OPTIONS.map((opt) => (
-                            <Button
-                                key={opt}
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                    "justify-start font-normal h-8",
-                                    value === opt && "bg-muted"
-                                )}
-                                onClick={() => {
-                                    onUpdate(opt);
-                                    setIsOpen(false);
-                                }}
-                            >
-                                {opt}
-                            </Button>
-                        ))}
-                    </div>
-                );
-            default:
-                return (
-                    <div className="p-2">
-                        <Input
-                            autoFocus
-                            placeholder={`Enter ${label.toLowerCase()}...`}
-                            defaultValue={value}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    onUpdate(e.currentTarget.value);
-                                    setIsOpen(false);
-                                }
-                            }}
-                            className="h-8 text-sm"
+                return <MyVoteFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
+        }
+    };
+
+    const getOperationSuffix = () => {
+        if (!filterData?.operation) return "";
+        const op = filterData.operation;
+        if (op === "Is Not") return " is not";
+        if (op === "Before") return " before";
+        if (op === "After") return " after";
+        if (op === "Contains") return " contains";
+        return "";
+    };
+
+    const renderFilterDisplay = () => {
+        if (!filterData) return <span className="font-medium">{displayValue}</span>;
+
+        // Token filter display
+        if (id === "tokens" && (filterData as any).token) {
+            const { operation, token, amountOperation, minAmount, maxAmount } = filterData as any;
+            let amountDisplay = "";
+            if (operation === "Is" && (minAmount || maxAmount)) {
+                if (amountOperation === "Between" && minAmount && maxAmount) {
+                    amountDisplay = ` ${minAmount}-${maxAmount}`;
+                } else if (amountOperation === "Equal" && minAmount) {
+                    amountDisplay = ` = ${minAmount}`;
+                } else if (amountOperation === "More Than" && minAmount) {
+                    amountDisplay = ` > ${minAmount}`;
+                } else if (amountOperation === "Less Than" && minAmount) {
+                    amountDisplay = ` < ${minAmount}`;
+                }
+            }
+
+            return (
+                <div className="flex items-center gap-1.5">
+                    {token.icon?.startsWith("http") || token.icon?.startsWith("data:") ? (
+                        <img src={token.icon} alt={token.symbol} className="w-4 h-4 rounded-full object-contain" />
+                    ) : (
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold bg-gradient-cyan-blue">
+                            <span>{token.icon}</span>
+                        </div>
+                    )}
+                    {amountDisplay && <span className="text-sm text-foreground">{amountDisplay}</span>}
+                    <span className="text-sm text-foreground">{token.symbol}</span>
+                </div>
+            );
+        }
+
+        // My Vote filter display
+        if (id === "my_vote" && (filterData as any).selected) {
+            const selected = (filterData as any).selected as string[];
+            if (selected.length === 0) return null;
+            return <span className="font-medium text-sm">{selected.join(", ")}</span>;
+        }
+
+        // Proposal Type filter display
+        if (id === "proposal_types" && (filterData as any).selected) {
+            const selected = (filterData as any).selected as string[];
+            if (selected.length === 0) return null;
+            return <span className="font-medium text-sm">{selected.join(", ")}</span>;
+        }
+
+        // Date filter display
+        if (id === "created_date" && (filterData as any).date) {
+            try {
+                return <span className="font-medium text-sm">{format(new Date((filterData as any).date), "MMM d, yyyy")}</span>;
+            } catch {
+                return <span className="font-medium text-sm">{(filterData as any).date}</span>;
+            }
+        }
+
+        // Text filter display
+        if ((filterData as any).text) {
+            return <span className="font-medium text-sm">{(filterData as any).text}</span>;
+        }
+
+        // User filter display (recipients, proposers, approvers)
+        if ((id === "recipients" || id === "proposers" || id === "approvers") && (filterData as any).users) {
+            const users = (filterData as any).users as string[];
+            if (users.length === 0) return null;
+
+            return (
+                <div className="flex items-center">
+                    {users.map((accountId, index) => (
+                        <TooltipUser key={accountId} accountId={accountId}>
+                            <div className="cursor-pointer" style={{ marginLeft: index > 0 ? '-6px' : '0' }}>
+                                <User accountId={accountId} iconOnly withName={false} />
+                            </div>
+                        </TooltipUser>
+                    ))}
+                    {users.length > 3 && (
+                        <span className="text-xs text-muted-foreground ml-1">+{users.length - 3}</span>
+                    )}
+                </div>
+            );
+        }
+
+        return <span className="font-medium">{displayValue}</span>;
+    };
+
+    return (
+        <div className="flex items-center shrink-0">
+            <Popover open={isOpen} onOpenChange={setIsOpen}>
+                <PopoverTrigger asChild className="[&_button]:bg-secondary">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 bg-secondary hover:bg-secondary px-3 font-normal gap-1.5"
+                    >
+                        <span className="text-muted-foreground">
+                            {label}{getOperationSuffix()}:
+                        </span>
+                        {renderFilterDisplay()}
+                        <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 max-w-80 w-fit" align="start">
+                    {renderFilterContent()}
+                </PopoverContent>
+            </Popover>
+        </div>
+    );
+}
+
+interface TokenFilterContentProps {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+}
+
+interface TokenData {
+    token: TokenOption;
+    amountOperation?: string;
+    minAmount?: string;
+    maxAmount?: string;
+}
+
+function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilterContentProps) {
+    const { operation, setOperation, data, setData, handleClear } = useFilterState<TokenData>({
+        value,
+        onUpdate,
+        parseData: (parsed) => ({
+            token: parsed.token,
+            amountOperation: parsed.amountOperation || "Between",
+            minAmount: parsed.minAmount || "",
+            maxAmount: parsed.maxAmount || ""
+        }),
+        serializeData: (op, d) => ({
+            operation: op,
+            token: d.token,
+            ...(op === "Is" && {
+                amountOperation: d.amountOperation,
+                minAmount: d.minAmount,
+                maxAmount: d.maxAmount
+            })
+        })
+    });
+
+    const handleDelete = () => {
+        onRemove();
+        setIsOpen(false);
+    };
+
+    const updateData = (updates: Partial<TokenData>) => {
+        setData({
+            token: updates.token ?? data?.token as any,
+            amountOperation: updates.amountOperation ?? data?.amountOperation ?? "Between",
+            minAmount: updates.minAmount ?? data?.minAmount ?? "",
+            maxAmount: updates.maxAmount ?? data?.maxAmount ?? ""
+        });
+    };
+
+    return (
+        <BaseFilterPopover
+            filterLabel="Token"
+            operation={operation}
+            operations={TOKEN_OPERATIONS}
+            onOperationChange={setOperation}
+            onClear={handleClear}
+            onDelete={handleDelete}
+            className="max-w-80 pb-1"
+        >
+            <div className="px-2">
+                <TokenSelectPopover
+                    selectedToken={data?.token || null}
+                    onTokenChange={(token) => updateData({ token })}
+                    className="w-full"
+                />
+            </div>
+
+            {data?.token && operation === "Is" && (
+                <>
+                    <div className="py-2 px-2 flex items-baseline gap-1">
+                        <span className="text-xs  text-muted-foreground">Amount</span>
+                        <OperationSelect
+                            operations={AMOUNT_OPERATIONS}
+                            selectedOperation={data.amountOperation || "Between"}
+                            onOperationChange={(op) => updateData({ amountOperation: op })}
                         />
                     </div>
-                );
+
+
+                    <div className="px-2 py-1">
+                        {data.amountOperation === "Between" ? (
+                            <div className="flex-col flex gap-2">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-sm text-foreground font-medium">From</span>
+                                    <Input
+                                        type="number"
+                                        placeholder="Min"
+                                        value={data.minAmount || ""}
+                                        onChange={(e) => updateData({ minAmount: e.target.value })}
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-sm text-foreground font-medium">To</span>
+                                    <Input
+                                        type="number"
+                                        placeholder="Max"
+                                        value={data.maxAmount || ""}
+                                        onChange={(e) => updateData({ maxAmount: e.target.value })}
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <Input
+                                type="number"
+                                placeholder="Amount"
+                                value={data.minAmount || ""}
+                                onChange={(e) => updateData({ minAmount: e.target.value })}
+                                className="h-8 text-sm"
+                            />
+                        )}
+                    </div>
+                </>
+            )
+            }
+        </BaseFilterPopover >
+    );
+}
+
+// My Vote filter using unified CheckboxFilterContent
+function MyVoteFilterContent({ value, onUpdate, setIsOpen, onRemove }: {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+}) {
+    return (
+        <CheckboxFilterContent
+            value={value}
+            onUpdate={onUpdate}
+            setIsOpen={setIsOpen}
+            onRemove={onRemove}
+            filterLabel="My Vote Status"
+            operations={MY_VOTE_OPERATIONS}
+            options={MY_VOTE_OPTIONS.map(vote => ({ value: vote, label: vote }))}
+        />
+    );
+}
+
+// Proposal Type filter using unified CheckboxFilterContent
+function ProposalTypeFilterContent({ value, onUpdate, setIsOpen, onRemove }: {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+}) {
+    return (
+        <CheckboxFilterContent
+            value={value}
+            onUpdate={onUpdate}
+            setIsOpen={setIsOpen}
+            onRemove={onRemove}
+            filterLabel="Request Type"
+            operations={PROPOSAL_TYPE_OPERATIONS}
+            options={PROPOSAL_TYPE_OPTIONS.map(type => ({ value: type, label: type }))}
+        />
+    );
+}
+
+interface CreatedDateFilterContentProps {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+}
+
+interface DateData {
+    date: Date | undefined;
+}
+
+function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: CreatedDateFilterContentProps) {
+    const { operation, setOperation, data, setData, handleClear } = useFilterState<DateData>({
+        value,
+        onUpdate,
+        parseData: (parsed) => ({
+            date: parsed.date ? new Date(parsed.date) : undefined
+        }),
+        serializeData: (op, d) => ({
+            operation: op,
+            date: d.date?.toISOString()
+        })
+    });
+
+    const handleDelete = () => {
+        onRemove();
+        setIsOpen(false);
+    };
+
+    const handleDateChange = (date: Date | undefined) => {
+        setData({ date });
+    };
+
+    return (
+        <BaseFilterPopover
+            filterLabel="Created Date"
+            operation={operation}
+            operations={DATE_OPERATIONS}
+            onOperationChange={setOperation}
+            onClear={handleClear}
+            onDelete={handleDelete}
+            className="pb-1"
+        >
+            <div className="px-2">
+                <DateTimePicker
+                    value={data?.date}
+                    onChange={handleDateChange}
+                    hideTime
+                />
+            </div>
+        </BaseFilterPopover>
+    );
+}
+
+interface UserFilterContentProps {
+    value: string;
+    onUpdate: (value: string) => void;
+    setIsOpen: (isOpen: boolean) => void;
+    onRemove: () => void;
+    label: string;
+}
+
+interface UserData {
+    users: string[];
+}
+
+function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: UserFilterContentProps) {
+    const { selectedTreasury } = useTreasury();
+    const { members: daoMembers, isLoading: isLoadingMembers } = useTreasuryMembers(selectedTreasury);
+    const { recentAddresses, addRecentAddress } = useRecentAddresses();
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const { operation, setOperation, data, setData, handleClear } = useFilterState<UserData>({
+        value,
+        onUpdate,
+        parseData: (parsed) => ({
+            users: parsed.users || []
+        }),
+        serializeData: (op, d) => ({
+            operation: op,
+            users: d.users
+        })
+    });
+
+    // Extract unique member account IDs
+    const memberSuggestions = useMemo(() => {
+        return daoMembers.map(m => m.accountId);
+    }, [daoMembers]);
+
+    // Combine DAO members with custom addresses and recent addresses, then filter and sort
+    const filteredMembers = useMemo(() => {
+        const query = searchQuery.toLowerCase();
+        const selectedUsers = data?.users || [];
+
+        // Combine DAO members with selected users and recent addresses that aren't already in DAO members
+        const allUsers = new Set([
+            ...memberSuggestions,
+            ...selectedUsers.filter(user => !memberSuggestions.includes(user)),
+            ...recentAddresses.filter(addr => !memberSuggestions.includes(addr))
+        ]);
+
+        // Filter based on search query, then sort with checked users at top
+        return Array.from(allUsers)
+            .filter(accountId => accountId.toLowerCase().includes(query))
+            .sort((a, b) => {
+                const aSelected = selectedUsers.includes(a);
+                const bSelected = selectedUsers.includes(b);
+
+                // 1. Checked users always at the top
+                if (aSelected && !bSelected) return -1;
+                if (!aSelected && bSelected) return 1;
+
+                // 2. All unchecked users sorted alphabetically together
+                return a.toLowerCase().localeCompare(b.toLowerCase());
+            });
+    }, [memberSuggestions, searchQuery, data?.users, recentAddresses]);
+
+    const handleDelete = () => {
+        onRemove();
+        setIsOpen(false);
+    };
+
+    const handleToggleUser = (accountId: string) => {
+        const currentUsers = data?.users || [];
+        if (currentUsers.includes(accountId)) {
+            setData({ users: currentUsers.filter(u => u !== accountId) });
+        } else {
+            setData({ users: [...currentUsers, accountId] });
+            addRecentAddress(accountId);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter" && searchQuery.trim()) {
+            e.preventDefault();
+            const accountId = searchQuery.trim();
+            if (!data?.users.includes(accountId)) {
+                setData({ users: [...(data?.users || []), accountId] });
+                // Save to recent addresses
+                addRecentAddress(accountId);
+            }
+            setSearchQuery("");
         }
     };
 
     return (
-        <div className="flex items-center">
-            <Popover open={isOpen} onOpenChange={setIsOpen}>
-                <PopoverTrigger asChild>
-                    {label === "Created Date" ? (
-                        <DateTimePicker
-                            value={value ? new Date(value) : undefined}
-                            classNames={{ trigger: "border-r-0 rounded-r-none border-border" }}
-                            onChange={(date) => {
-                                if (date) {
-                                    onUpdate(date.toISOString());
-                                }
-                            }}
-                            hideTime
-                        />
-                    ) : (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-9 rounded-l-md rounded-r-none border-r-0 bg-card hover:bg-card px-3 font-normal gap-1"
-                        >
-                            <span className="text-muted-foreground">{label}:</span>
-                            <span className="font-medium">{displayValue}</span>
-                            <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
-                        </Button>)}
-                </PopoverTrigger>
-                <PopoverContent className="w-56 p-1" align="start">
-                    {renderFilterContent()}
-                </PopoverContent>
-            </Popover>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={onRemove}
-                className="h-9 w-8 rounded-l-none rounded-r-md bg-card hover:bg-card border-l-0 px-0 flex items-center justify-center text-muted-foreground hover:text-foreground"
-            >
-                <X className="h-3.5 w-3.5" />
-            </Button>
-        </div>
+        <BaseFilterPopover
+            filterLabel={label}
+            operation={operation}
+            operations={USER_OPERATIONS}
+            onOperationChange={setOperation}
+            onClear={handleClear}
+            onDelete={handleDelete}
+            className="w-64"
+        >
+            <div>
+                <div className="px-2 py-1.5">
+                    <Input
+                        autoFocus
+                        placeholder="Search by address"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="h-8 text-sm"
+                    />
+                </div>
+
+                {/* Loading state */}
+                {isLoadingMembers ? (
+                    <div className="text-xs text-muted-foreground text-center py-2">
+                        Loading members...
+                    </div>
+                ) : (
+                    <>
+                        {/* Single unified list of all members */}
+                        {filteredMembers.length > 0 && (
+                            <div className="max-w-full truncate overflow-y-auto">
+                                {filteredMembers.map((accountId) => {
+                                    const isSelected = data?.users?.includes(accountId) || false;
+                                    return (
+                                        <label
+                                            key={accountId}
+                                            className="flex px-2 items-center gap-2 cursor-pointer hover:bg-muted/50 py-1.5 rounded-md"
+                                        >
+                                            <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={() => handleToggleUser(accountId)}
+                                            />
+                                            <User accountId={accountId} iconOnly={false} withLink={false} size="sm" />
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* No results with search query */}
+                        {searchQuery && filteredMembers.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                                No members found. Press Enter to add "{searchQuery}"
+                            </p>
+                        )}
+
+                        {/* Empty state */}
+                        {!searchQuery && filteredMembers.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                                No members available
+                            </p>
+                        )}
+                    </>
+                )}
+            </div>
+        </BaseFilterPopover>
     );
 }
 
