@@ -11,10 +11,10 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use bigdecimal::{BigDecimal, ToPrimitive};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Months, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::AppState;
@@ -36,8 +36,6 @@ impl Interval {
     /// If the day is invalid for the target month (e.g., Jan 31 -> Feb), it clamps
     /// to the last valid day of the target month (e.g., Feb 28 or Feb 29).
     pub fn increment(&self, datetime: DateTime<Utc>) -> DateTime<Utc> {
-        use chrono::Months;
-
         match self {
             Interval::Hourly => datetime + chrono::Duration::hours(1),
             Interval::Daily => datetime + chrono::Duration::days(1),
@@ -398,8 +396,6 @@ async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
     snapshots: &mut HashMap<String, Vec<BalanceSnapshot>>,
     price_service: &crate::services::PriceLookupService<P>,
 ) {
-    use chrono::NaiveDate;
-
     for (token_id, token_snapshots) in snapshots.iter_mut() {
         // Parse timestamps once and collect unique dates
         let parsed_dates: Vec<Option<NaiveDate>> = token_snapshots
@@ -458,10 +454,6 @@ async fn generate_csv<P: crate::services::PriceProvider>(
     end_date: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    use bigdecimal::ToPrimitive;
-    use chrono::NaiveDate;
-    use std::collections::HashSet;
-
     let changes = load_balance_changes(pool, account_id, start_date, end_date, token_ids).await?;
 
     // Pre-fetch prices for all token/date combinations to avoid per-row API calls
