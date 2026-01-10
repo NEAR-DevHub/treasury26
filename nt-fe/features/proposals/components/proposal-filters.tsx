@@ -209,8 +209,6 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
                 return <TokenFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             case "my_vote":
                 return <MyVoteFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
-            default:
-                return <TextFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} label={label} />;
         }
     };
 
@@ -322,7 +320,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
                         <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-1 max-w-80 w-fit" align="start">
+                <PopoverContent className="p-0 max-w-80 w-fit" align="start">
                     {renderFilterContent()}
                 </PopoverContent>
             </Popover>
@@ -618,63 +616,6 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: Crea
     );
 }
 
-interface TextFilterContentProps {
-    value: string;
-    onUpdate: (value: string) => void;
-    setIsOpen: (isOpen: boolean) => void;
-    onRemove: () => void;
-    label: string;
-}
-
-interface TextData {
-    text: string;
-}
-
-function TextFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: TextFilterContentProps) {
-    const { operation, setOperation, data, setData, handleClear } = useFilterState<TextData>({
-        value,
-        onUpdate,
-        parseData: (parsed) => ({
-            text: parsed.text || ""
-        }),
-        serializeData: (op, d) => ({
-            operation: op,
-            text: d.text
-        })
-    });
-
-    const handleDelete = () => {
-        onRemove();
-        setIsOpen(false);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Enter") {
-            setIsOpen(false);
-        }
-    };
-
-    return (
-        <BaseFilterPopover
-            filterLabel={label}
-            operation={operation}
-            operations={TEXT_OPERATIONS}
-            onOperationChange={setOperation}
-            onClear={handleClear}
-            onDelete={handleDelete}
-        >
-            <Input
-                autoFocus
-                placeholder={`Enter ${label.toLowerCase()}...`}
-                value={data?.text || ""}
-                onChange={(e) => setData({ text: e.target.value })}
-                onKeyDown={handleKeyDown}
-                className="h-8 text-sm"
-            />
-        </BaseFilterPopover>
-    );
-}
-
 interface UserFilterContentProps {
     value: string;
     onUpdate: (value: string) => void;
@@ -776,15 +717,17 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
             onDelete={handleDelete}
             className="w-64"
         >
-            <div className="space-y-2">
-                <Input
-                    autoFocus
-                    placeholder="Search by address"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="h-8 text-sm"
-                />
+            <div>
+                <div className="px-2 py-1.5">
+                    <Input
+                        autoFocus
+                        placeholder="Search by address"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="h-8 text-sm"
+                    />
+                </div>
 
                 {/* Loading state */}
                 {isLoadingMembers ? (
@@ -795,13 +738,13 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
                     <>
                         {/* Single unified list of all members */}
                         {filteredMembers.length > 0 && (
-                            <div className="space-y-1 max-w-full truncate overflow-y-auto">
+                            <div className="max-w-full truncate overflow-y-auto">
                                 {filteredMembers.map((accountId) => {
                                     const isSelected = data?.users?.includes(accountId) || false;
                                     return (
                                         <label
                                             key={accountId}
-                                            className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-md"
+                                            className="flex px-2 items-center gap-2 cursor-pointer hover:bg-muted/50 px-0 py-1.5 rounded-md"
                                         >
                                             <Checkbox
                                                 checked={isSelected}

@@ -30,7 +30,7 @@ export function OperationSelect({
                     variant="outline"
                     size="sm"
                     className={cn(
-                        "h-9 gap-1.5 bg-card hover:bg-card border-0 text-[10px]",
+                        "gap-1 px-1.5! w-fit h-5 items-center bg-card hover:bg-card border-0 text-[10px]",
                         className
                     )}
                 >

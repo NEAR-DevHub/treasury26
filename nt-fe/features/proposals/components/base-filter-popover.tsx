@@ -27,10 +27,10 @@ export function BaseFilterPopover({
     className,
 }: BaseFilterPopoverProps) {
     return (
-        <div className={`p-3 space-y-3 w-full flex flex-col ${className || ""}`}>
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">{filterLabel}</span>
+        <div className={`w-full pb-1.5 flex flex-col ${className || ""}`}>
+            <div className="flex px-2 pt-1 h-[35px] justify-between items-baseline">
+                <div className="flex items-baseline gap-1">
+                    <span className="text-xs  text-muted-foreground">{filterLabel}</span>
                     <OperationSelect
                         operations={operations}
                         selectedOperation={operation}
