@@ -1,15 +1,15 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::{
+    AppState,
     constants::BATCH_PAYMENT_ACCOUNT_ID,
     utils::cache::{CacheKey, CacheTier},
-    AppState,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -72,16 +72,26 @@ struct PaymentListResponse {
 #[serde(untagged)]
 enum PaymentListStatus {
     Simple(String),
-    Enum { Pending: Option<()>, Approved: Option<()>, Rejected: Option<()> },
+    Enum {
+        Pending: Option<()>,
+        Approved: Option<()>,
+        Rejected: Option<()>,
+    },
 }
 
 impl PaymentListStatus {
     fn as_str(&self) -> &str {
         match self {
             PaymentListStatus::Simple(s) => s.as_str(),
-            PaymentListStatus::Enum { Pending: Some(_), .. } => "Pending",
-            PaymentListStatus::Enum { Approved: Some(_), .. } => "Approved",
-            PaymentListStatus::Enum { Rejected: Some(_), .. } => "Rejected",
+            PaymentListStatus::Enum {
+                Pending: Some(_), ..
+            } => "Pending",
+            PaymentListStatus::Enum {
+                Approved: Some(_), ..
+            } => "Approved",
+            PaymentListStatus::Enum {
+                Rejected: Some(_), ..
+            } => "Rejected",
             PaymentListStatus::Enum { .. } => "Unknown",
         }
     }
@@ -254,7 +264,7 @@ pub async fn get_transaction_hash(
                     block_height: None,
                     error: Some(msg),
                 }),
-            ))
+            ));
         }
     };
 
@@ -270,9 +280,12 @@ pub async fn get_transaction_hash(
                     success: false,
                     transaction_hash: None,
                     block_height: None,
-                    error: Some(format!("Recipient {} not found in list {}", recipient, list_id)),
+                    error: Some(format!(
+                        "Recipient {} not found in list {}",
+                        recipient, list_id
+                    )),
                 }),
-            ))
+            ));
         }
     };
 
@@ -290,7 +303,7 @@ pub async fn get_transaction_hash(
                         recipient
                     )),
                 }),
-            ))
+            ));
         }
     };
 

@@ -1,13 +1,9 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
-use crate::{constants::BATCH_PAYMENT_ACCOUNT_ID, AppState};
+use crate::{AppState, constants::BATCH_PAYMENT_ACCOUNT_ID};
 
 #[derive(Debug, Deserialize)]
 pub struct PaymentInput {
@@ -147,10 +143,9 @@ async fn verify_dao_proposal(
                 }
 
                 // Decode the base64 args
-                if let Ok(decoded) = base64::Engine::decode(
-                    &base64::engine::general_purpose::STANDARD,
-                    &action.args,
-                ) {
+                if let Ok(decoded) =
+                    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &action.args)
+                {
                     if let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded) {
                         if let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
                         {
@@ -184,7 +179,8 @@ pub async fn submit_list(
     Json(request): Json<SubmitListRequest>,
 ) -> Result<Json<SubmitListResponse>, (StatusCode, Json<SubmitListResponse>)> {
     // Step 1: Verify the list_id matches the computed hash
-    let computed_hash = compute_list_hash(&request.submitter_id, &request.token_id, &request.payments);
+    let computed_hash =
+        compute_list_hash(&request.submitter_id, &request.token_id, &request.payments);
 
     if request.list_id != computed_hash {
         return Err((

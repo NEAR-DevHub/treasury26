@@ -45,7 +45,9 @@ pub enum PaymentStatus {
     Pending,
     /// Payment was executed at the specified block height.
     /// This can be used to find the transaction on-chain.
-    Paid { block_height: u64 },
+    Paid {
+        block_height: u64,
+    },
 }
 
 #[near(serializers = [json, borsh])]

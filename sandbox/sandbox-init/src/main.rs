@@ -141,7 +141,10 @@ async fn deploy_bulk_payment_contract(
     let wasm_path = Path::new(contract_dir).join("bulk_payment.wasm");
     let wasm = fs::read(&wasm_path).context("Failed to read bulk payment contract WASM")?;
 
-    info!("Deploying bulk payment contract to {}", BULK_PAYMENT_CONTRACT_ID);
+    info!(
+        "Deploying bulk payment contract to {}",
+        BULK_PAYMENT_CONTRACT_ID
+    );
 
     let contract_id: AccountId = BULK_PAYMENT_CONTRACT_ID.parse().unwrap();
     let genesis_id: AccountId = GENESIS_ACCOUNT_ID.parse().unwrap();
@@ -311,9 +314,7 @@ async fn deploy_dao_factory(
 
         info!("Sputnik DAO factory deployed");
     } else {
-        warn!(
-            "sputnik_dao_factory.wasm not found, skipping DAO factory deployment"
-        );
+        warn!("sputnik_dao_factory.wasm not found, skipping DAO factory deployment");
     }
 
     Ok(())
