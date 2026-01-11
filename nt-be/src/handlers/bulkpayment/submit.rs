@@ -249,8 +249,7 @@ pub async fn submit_list(
             }),
         )
         .transaction()
-        .with_signer_account(state.signer_id.clone())
-        .with_signer((*state.signer).clone())
+        .with_signer(state.signer_id.clone(), state.signer.clone())
         .send_to(&state.network)
         .await;
 

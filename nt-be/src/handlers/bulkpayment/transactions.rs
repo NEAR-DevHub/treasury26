@@ -58,7 +58,7 @@ pub struct TransactionHashResponse {
 }
 
 /// Contract response types
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct PaymentListResponse {
     token_id: String,
     submitter: String,
@@ -68,8 +68,9 @@ struct PaymentListResponse {
     created_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
+#[allow(non_snake_case)]
 enum PaymentListStatus {
     Simple(String),
     Enum {
@@ -97,21 +98,22 @@ impl PaymentListStatus {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct ContractPaymentRecord {
     recipient: String,
     amount: String,
     status: ContractPaymentStatus,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
+#[allow(non_snake_case)]
 enum ContractPaymentStatus {
     Pending(String),
     Paid { Paid: PaidStatus },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct PaidStatus {
     block_height: u64,
 }
@@ -307,81 +309,13 @@ pub async fn get_transaction_hash(
         }
     };
 
-    // Look up the transaction hash using the block height
-    let tx_hash = lookup_transaction_hash(&state, block_height, &recipient).await?;
-
+    // Return the block height - transaction hash lookup requires additional RPC calls
+    // that are not yet supported. Users can look up transactions by block height
+    // on a block explorer.
     Ok(Json(TransactionHashResponse {
         success: true,
-        transaction_hash: Some(tx_hash),
+        transaction_hash: None,
         block_height: Some(block_height),
         error: None,
     }))
-}
-
-/// Look up the transaction hash by searching the block for transactions to the bulk payment contract
-async fn lookup_transaction_hash(
-    state: &AppState,
-    block_height: u64,
-    recipient: &str,
-) -> Result<String, (StatusCode, Json<TransactionHashResponse>)> {
-    use near_api::{Chain, Reference};
-
-    // Fetch the block
-    let block = Chain::block()
-        .at(Reference::AtBlock(block_height))
-        .fetch_from(&state.archival_network)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(TransactionHashResponse {
-                    success: false,
-                    transaction_hash: None,
-                    block_height: Some(block_height),
-                    error: Some(format!("Failed to fetch block {}: {}", block_height, e)),
-                }),
-            )
-        })?;
-
-    // Search through chunks for transactions to the bulk payment contract
-    for chunk_header in &block.chunks {
-        let chunk = Chain::chunk()
-            .at_chunk(&chunk_header.chunk_hash)
-            .fetch_from(&state.archival_network)
-            .await
-            .map_err(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(TransactionHashResponse {
-                        success: false,
-                        transaction_hash: None,
-                        block_height: Some(block_height),
-                        error: Some(format!("Failed to fetch chunk: {}", e)),
-                    }),
-                )
-            })?;
-
-        // Look for transactions to the bulk payment contract
-        for tx in &chunk.transactions {
-            if tx.receiver_id.to_string() == BATCH_PAYMENT_ACCOUNT_ID.to_string() {
-                // This transaction is to the bulk payment contract
-                // For now, return this hash - in production you might want to verify
-                // this is the specific transaction for this recipient
-                return Ok(tx.hash.to_string());
-            }
-        }
-    }
-
-    Err((
-        StatusCode::NOT_FOUND,
-        Json(TransactionHashResponse {
-            success: false,
-            transaction_hash: None,
-            block_height: Some(block_height),
-            error: Some(format!(
-                "Transaction for recipient {} not found in block {}",
-                recipient, block_height
-            )),
-        }),
-    ))
 }
