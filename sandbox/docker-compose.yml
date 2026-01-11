@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  # NEAR Sandbox - local blockchain for testing
+  near-sandbox:
+    image: nearprotocol/nearcore:latest
+    command: ["neard", "--home", "/root/.near", "run", "--rpc-addr", "0.0.0.0:3030"]
+    ports:
+      - "3030:3030"
+    volumes:
+      - near-sandbox-data:/root/.near
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3030/status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  # Initialize sandbox with contracts and accounts
+  sandbox-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.init
+    depends_on:
+      near-sandbox:
+        condition: service_healthy
+    environment:
+      - NEAR_RPC_URL=http://near-sandbox:3030
+    volumes:
+      - ./contracts:/contracts:ro
+    networks:
+      - default
+
+  # Treasury backend
+  treasury-backend:
+    build:
+      context: ../nt-be
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - NEAR_RPC_URL=http://near-sandbox:3030
+      - BULK_PAYMENT_CONTRACT_ID=bulk-payment.near
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/treasury
+      - API_PORT=8080
+    depends_on:
+      sandbox-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=treasury
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  near-sandbox-data:
+  postgres-data:
+
+networks:
+  default:
+    driver: bridge
