@@ -30,7 +30,13 @@ if [ ! -d /data/postgres ]; then
     echo "Initializing PostgreSQL..."
     mkdir -p /data/postgres
     chown postgres:postgres /data/postgres
-    su postgres -c "/usr/lib/postgresql/16/bin/initdb -D /data/postgres"
+    su postgres -c "/usr/lib/postgresql/15/bin/initdb -D /data/postgres"
+
+    # Create database and user
+    su postgres -c "/usr/lib/postgresql/15/bin/pg_ctl -D /data/postgres -l /var/log/postgres-init.log start"
+    sleep 2
+    su postgres -c "createdb treasury"
+    su postgres -c "/usr/lib/postgresql/15/bin/pg_ctl -D /data/postgres stop"
 fi
 
 # Run sandbox initialization
