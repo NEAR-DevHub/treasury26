@@ -1,78 +1,107 @@
 # NEAR Treasury Sandbox
 
-Local development environment for testing the bulk payment contract and API.
+Local development environment for testing the bulk payment contract and treasury API.
 
 ## Overview
 
 This sandbox provides a complete local testing environment with:
 
-- NEAR Sandbox (local blockchain)
-- Treasury Backend API
-- PostgreSQL database
-- Pre-deployed contracts:
+- **NEAR Sandbox**: Local NEAR blockchain with instant finality
+- **Treasury Backend (nt-be)**: REST API for bulk payment operations
+- **Sputnik DAO Indexer**: Proposal caching service
+- **PostgreSQL**: Database for the treasury backend
+- **Pre-deployed contracts**:
   - `bulk-payment.near` - Bulk payment contract
   - `sputnik-dao.near` - Sputnik DAO factory
+  - `wrap.near` - Wrapped NEAR token
+  - `intents.near` - NEAR Intents multi-token
 
 ## Quick Start
 
-### Using Docker Compose
+### Using Docker (Recommended)
 
 ```bash
-# Start all services
-docker-compose up -d
+# Build the sandbox image
+docker build -t near-treasury-sandbox .
 
-# View logs
-docker-compose logs -f
+# Run the sandbox
+docker run -d \
+  --name sandbox \
+  -p 3030:3030 \
+  -p 8080:8080 \
+  -p 5001:5001 \
+  near-treasury-sandbox
 
-# Stop services
-docker-compose down
+# Check health
+curl http://localhost:8080/health
 ```
 
-### Manual Setup
+### Using Docker Compose (Development)
 
-1. **Start NEAR Sandbox**:
-   ```bash
-   # Using near-sandbox
-   near-sandbox --root ~/.near-sandbox init
-   near-sandbox --root ~/.near-sandbox run
-   ```
+```bash
+docker-compose up -d
+```
 
-2. **Deploy Contracts**:
-   ```bash
-   # Build bulk payment contract
-   cd ../contracts/bulk-payment
-   cargo near build
+## Architecture
 
-   # Deploy to sandbox
-   near deploy bulk-payment.near ./target/near/bulk_payment_contract.wasm \
-     --networkId sandbox --nodeUrl http://localhost:3030
-   ```
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Docker Container                          │
+│                                                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │ NEAR        │  │ Treasury    │  │ Sputnik Indexer     │ │
+│  │ Sandbox     │  │ Backend     │  │ (proposal cache)    │ │
+│  │ :3031→3030  │  │ :8080       │  │ :5001               │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
+│         │                │                    │             │
+│         └────────────────┼────────────────────┘             │
+│                          │                                   │
+│                   ┌──────┴──────┐                           │
+│                   │ PostgreSQL  │                           │
+│                   │ :5432       │                           │
+│                   └─────────────┘                           │
+└─────────────────────────────────────────────────────────────┘
+```
 
-3. **Start Backend**:
-   ```bash
-   cd ../nt-be
-   NEAR_RPC_URL=http://localhost:3030 cargo run
-   ```
+## Ports
 
-## Configuration
+| Port | Service | Description |
+|------|---------|-------------|
+| 3030 | NEAR RPC | NEAR blockchain JSON-RPC |
+| 8080 | Treasury API | REST API for bulk payments |
+| 5001 | Sputnik Indexer | DAO proposal caching |
+| 5432 | PostgreSQL | Database (internal) |
 
-### Environment Variables
+## API Endpoints
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NEAR_RPC_URL` | `http://localhost:3030` | NEAR RPC endpoint |
-| `BULK_PAYMENT_CONTRACT_ID` | `bulk-payment.near` | Bulk payment contract |
-| `DATABASE_URL` | (required) | PostgreSQL connection string |
-| `API_PORT` | `8080` | API server port |
+### Health Check
+```bash
+curl http://localhost:8080/health
+```
 
-### Genesis Accounts
+### Bulk Payment Endpoints
+```bash
+# Submit a payment list
+curl -X POST http://localhost:8080/api/bulk-payment/submit-list \
+  -H "Content-Type: application/json" \
+  -d '{"list_id": "...", "submitter_id": "...", ...}'
+
+# Get list status
+curl http://localhost:8080/api/bulk-payment/list/{list_id}
+
+# Get transactions
+curl http://localhost:8080/api/bulk-payment/list/{list_id}/transactions
+```
+
+## Genesis Accounts
 
 The sandbox comes with pre-configured test accounts:
 
-- `test.near` - Genesis account with funds
-- `sputnik-dao.near` - DAO factory contract
+| Account | Description |
+|---------|-------------|
+| `test.near` | Genesis account with ~1B NEAR |
 
-Default genesis key (for test.near):
+**Genesis Private Key** (for test.near):
 ```
 ed25519:3tgdk2wPraJzT4nsTuf86UX41xgPNk3MHnq8epARMdBNs29AFEztAuaQ7iHddDfXG9F2RzV1XNQYgJyAyoW51UBB
 ```
@@ -87,38 +116,43 @@ npm install
 npm test
 ```
 
-## Services
+## Adding Contract WASM Files
 
-### NEAR Sandbox (Port 3030)
+Place the following WASM files in `sandbox/contracts/`:
 
-Local NEAR blockchain with instant finality.
+- `bulk_payment.wasm` - Built from `contracts/bulk-payment/`
+- `wrap_near.wasm` - NEP-141 wrapped NEAR
+- `intents.wasm` - NEAR Intents multi-token
+- `sputnik_dao_factory.wasm` - Sputnik DAO factory
 
-### Treasury API (Port 8080)
-
-REST API endpoints:
-- `GET /health` - Health check
-- `POST /api/bulk-payment/submit-list` - Submit payment list
-- `GET /api/bulk-payment/list/:id` - Get list status
-- `GET /api/bulk-payment/list/:id/transactions` - Get transactions
-
-### PostgreSQL (Port 5432)
-
-Database for the treasury backend.
+The bulk payment contract is built automatically during the Docker build.
 
 ## Troubleshooting
 
-### Sandbox won't start
+### Container won't start
 ```bash
-# Reset sandbox state
-rm -rf ~/.near-sandbox
-near-sandbox --root ~/.near-sandbox init
+# Check logs
+docker logs sandbox
+
+# Restart fresh
+docker rm -f sandbox
+docker run -d --name sandbox -p 3030:3030 -p 8080:8080 near-treasury-sandbox
 ```
 
-### Contract deployment fails
-Ensure the sandbox is fully initialized before deploying contracts.
+### API returns 500 errors
+Wait for all services to initialize (30-60 seconds after container start).
 
-### API connection refused
-Wait for all services to be healthy:
+### Contract deployment fails
+Ensure the WASM files exist in `sandbox/contracts/`.
+
+## Building from Source
+
 ```bash
-docker-compose ps
+# Build the sandbox-init tool
+cd sandbox/sandbox-init
+cargo build --release
+
+# Build the bulk payment contract
+cd ../../contracts/bulk-payment
+cargo near build non-reproducible-wasm
 ```
