@@ -132,7 +132,7 @@ async fn verify_dao_proposal(
         // Check if this is a FunctionCall proposal
         if let ProposalKind::FunctionCall { function_call } = &proposal.kind {
             // Check if it targets the bulk payment contract
-            if function_call.receiver_id != BATCH_PAYMENT_ACCOUNT_ID.to_string() {
+            if function_call.receiver_id != *BATCH_PAYMENT_ACCOUNT_ID {
                 continue;
             }
 
@@ -142,18 +142,14 @@ async fn verify_dao_proposal(
                     continue;
                 }
 
-                // Decode the base64 args
+                // Decode the base64 args and check for matching list_id
                 if let Ok(decoded) =
                     base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &action.args)
+                    && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                    && let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
+                    && proposal_list_id == list_id
                 {
-                    if let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded) {
-                        if let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
-                        {
-                            if proposal_list_id == list_id {
-                                return Ok(true);
-                            }
-                        }
-                    }
+                    return Ok(true);
                 }
             }
         }
