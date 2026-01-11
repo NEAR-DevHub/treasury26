@@ -29,7 +29,7 @@ RUN cargo near build non-reproducible-wasm
 # ============================================================================
 # Stage 2: Build the Sandbox Initializer
 # ============================================================================
-FROM rust:1.86 AS sandbox-builder
+FROM rust:latest AS sandbox-builder
 
 WORKDIR /build
 
@@ -46,7 +46,7 @@ RUN cargo build --release
 # ============================================================================
 # Stage 3: Build the Treasury Backend (nt-be)
 # ============================================================================
-FROM rust:1.86 AS api-builder
+FROM rust:latest AS api-builder
 
 WORKDIR /build
 
@@ -60,12 +60,13 @@ COPY nt-be/src ./src
 COPY nt-be/migrations ./migrations
 COPY nt-be/.sqlx ./.sqlx
 
+ENV SQLX_OFFLINE=true
 RUN cargo build --release
 
 # ============================================================================
 # Stage 4: Build the Sputnik Indexer
 # ============================================================================
-FROM rust:1.86 AS indexer-builder
+FROM rust:latest AS indexer-builder
 
 WORKDIR /app
 
