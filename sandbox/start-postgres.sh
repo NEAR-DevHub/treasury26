@@ -5,4 +5,4 @@ while [ ! -f /data/postgres/PG_VERSION ]; do
     sleep 1
 done
 echo "PostgreSQL data directory ready, starting server..."
-exec /usr/lib/postgresql/15/bin/postgres -D /data/postgres -c listen_addresses='*'
+exec /usr/lib/postgresql/16/bin/postgres -D /data/postgres -c listen_addresses='*'

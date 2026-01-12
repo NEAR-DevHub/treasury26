@@ -84,7 +84,7 @@ RUN cargo build --release --bin sputnik-indexer
 # ============================================================================
 # Stage 5: Runtime environment
 # ============================================================================
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 
 RUN apt-get update && apt-get install -y \
     curl \
