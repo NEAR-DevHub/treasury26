@@ -32,9 +32,14 @@ if [ ! -d /data/postgres ]; then
     chown postgres:postgres /data/postgres
     su postgres -c "/usr/lib/postgresql/15/bin/initdb -D /data/postgres"
 
-    # Create database and user
+    # Configure PostgreSQL for password authentication
+    echo "host all all 127.0.0.1/32 md5" >> /data/postgres/pg_hba.conf
+    echo "host all all ::1/128 md5" >> /data/postgres/pg_hba.conf
+
+    # Create database and set password
     su postgres -c "/usr/lib/postgresql/15/bin/pg_ctl -D /data/postgres -l /var/log/postgres-init.log start"
     sleep 2
+    su postgres -c "psql -c \"ALTER USER postgres PASSWORD 'postgres';\""
     su postgres -c "createdb treasury"
     su postgres -c "/usr/lib/postgresql/15/bin/pg_ctl -D /data/postgres stop"
 fi
