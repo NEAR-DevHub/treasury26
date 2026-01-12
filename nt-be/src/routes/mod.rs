@@ -59,6 +59,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(balance_changes::get_balance_changes),
         )
         .route(
+            "/api/recent-activity",
+            get(balance_changes::get_recent_activity),
+        )
+        .route(
             "/api/balance-changes/fill-gaps",
             post(balance_changes::fill_gaps),
         )
