@@ -30,7 +30,7 @@ export function PendingRequests() {
 
   const { data, isLoading } = useProposals(selectedTreasury, {
     page: 0,
-    statuses: ["Approved"],
+    statuses: ["InProgress"],
     sort_by: "CreationTime",
     sort_direction: "desc",
   });
