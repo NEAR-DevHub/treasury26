@@ -256,6 +256,8 @@ export interface ProposalFilters {
   types?: string[];
   types_not?: string[];
 
+  proposal_types?: string[];
+
   // User filters
   proposers?: string[];
   proposers_not?: string[];
@@ -317,6 +319,7 @@ export async function getProposals(
       if (filters.statuses) params.statuses = filters.statuses.join(',');
       if (filters.types) params.types = filters.types.join(',');
       if (filters.types_not) params.types_not = filters.types_not.join(',');
+      if (filters.proposal_types) params.proposal_types = filters.proposal_types.join(',');
       if (filters.proposers) params.proposers = filters.proposers.join(',');
       if (filters.proposers_not) params.proposers_not = filters.proposers_not.join(',');
       if (filters.approvers) params.approvers = filters.approvers.join(',');
