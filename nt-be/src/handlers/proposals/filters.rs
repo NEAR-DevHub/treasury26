@@ -4,8 +4,8 @@ use serde::Deserialize;
 
 use crate::constants::intents_tokens::find_token_by_symbol;
 use crate::handlers::proposals::scraper::{
-    LockupInfo, PaymentInfo, Policy, Proposal, ProposalType, StakeDelegationInfo, Vote,
-    fetch_ft_metadata, get_status_display,
+    AssetExchangeInfo, LockupInfo, PaymentInfo, Policy, Proposal, ProposalType,
+    StakeDelegationInfo, Vote, fetch_ft_metadata, get_status_display,
 };
 use crate::utils::cache::{Cache, CacheKey, CacheTier};
 
@@ -158,9 +158,6 @@ fn token_matches_filter(
     tokens_set: &Option<HashSet<&str>>,
     tokens_not_set: &Option<HashSet<&str>>,
 ) -> bool {
-    println!("token_to_check: {:#?}", token_to_check);
-    println!("tokens_set: {:#?}", tokens_set);
-    println!("tokens_not_set: {:#?}", tokens_not_set);
     if let Some(tokens) = tokens_set {
         for token in tokens {
             let token_addresses = get_token_addresses(token);
@@ -206,20 +203,40 @@ fn matches_tokens_filter(
         return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
     }
 
-    // Check stake delegation (though typically NEAR only)
     if StakeDelegationInfo::from_proposal(proposal).is_some() {
-        // Stake delegation is typically NEAR only
-        let token_to_check = "near"; // Stake delegation is usually NEAR
+        let token_to_check = "wrap.near"; // Stake delegation is usually NEAR
         return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
     }
 
-    // Check lockup
     if LockupInfo::from_proposal(proposal).is_some() {
-        let token_to_check = "near"; // Lockup is typically NEAR
+        let token_to_check = "wrap.near"; // Lockup is typically NEAR
         return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
     }
 
-    // If no relevant proposal type found and tokens filter is specified, exclude
+    if let Some(asset_exchange_info) = AssetExchangeInfo::from_proposal(proposal) {
+        let token_in = asset_exchange_info
+            .token_in_address
+            .as_str()
+            .split(':')
+            .nth(1)
+            .unwrap_or(&asset_exchange_info.token_in_address);
+        if token_matches_filter(token_in, tokens_set, tokens_not_set) {
+            return true;
+        }
+
+        if let Some(tokens) = tokens_set
+            && tokens.contains(&asset_exchange_info.token_out_symbol.as_str())
+        {
+            return true;
+        }
+        if let Some(tokens_not) = tokens_not_set
+            && tokens_not.contains(&asset_exchange_info.token_out_symbol.as_str())
+        {
+            return false;
+        }
+        return true;
+    }
+
     tokens_set.is_none() && tokens_not_set.is_none()
 }
 
@@ -242,6 +259,60 @@ fn matches_recipients_filter(
             return false;
         }
         return true; // Payment proposal matched recipients filter
+    }
+
+    if let Some(asset_exchange_info) = AssetExchangeInfo::from_proposal(proposal) {
+        if let Some(recipients) = recipients_set
+            && !recipients.contains(
+                asset_exchange_info
+                    .deposit_address
+                    .as_ref()
+                    .unwrap_or(&"".to_string())
+                    .as_str(),
+            )
+        {
+            return false;
+        }
+        if let Some(recipients_not) = recipients_not_set
+            && recipients_not.contains(
+                asset_exchange_info
+                    .deposit_address
+                    .as_ref()
+                    .unwrap_or(&"".to_string())
+                    .as_str(),
+            )
+        {
+            return false;
+        }
+        return true;
+    }
+
+    if let Some(stake_info) = StakeDelegationInfo::from_proposal(proposal) {
+        if let Some(recipients) = recipients_set
+            && !recipients.contains(stake_info.validator.as_str())
+        {
+            return false;
+        }
+        if let Some(recipients_not) = recipients_not_set
+            && recipients_not.contains(stake_info.validator.as_str())
+        {
+            return false;
+        }
+        return true;
+    }
+
+    if let Some(lockup_info) = LockupInfo::from_proposal(proposal) {
+        if let Some(recipients) = recipients_set
+            && !recipients.contains(lockup_info.receiver.as_str())
+        {
+            return false;
+        }
+        if let Some(recipients_not) = recipients_not_set
+            && recipients_not.contains(lockup_info.receiver.as_str())
+        {
+            return false;
+        }
+        return true;
     }
 
     // If no relevant proposal type found and recipients filter is specified, exclude
@@ -346,6 +417,46 @@ async fn matches_amount_filters(
     // Check stake delegation
     if let Some(stake_info) = StakeDelegationInfo::from_proposal(proposal) {
         return matches_stake_amount_filters(&stake_info, filters);
+    }
+
+    // Check asset exchange
+    if let Some(asset_exchange_info) = AssetExchangeInfo::from_proposal(proposal) {
+        return matches_payment_amount_filters(
+            &PaymentInfo {
+                receiver: asset_exchange_info
+                    .deposit_address
+                    .unwrap_or("".to_string()),
+                token: asset_exchange_info
+                    .token_in_address
+                    .as_str()
+                    .split(':')
+                    .nth(1)
+                    .unwrap_or(&asset_exchange_info.token_in_address)
+                    .to_string(),
+                amount: asset_exchange_info.amount_in.to_string(),
+                is_lockup: false,
+            },
+            filters,
+            cache,
+            network,
+        )
+        .await;
+    }
+
+    // Check lockup
+    if let Some(lockup_info) = LockupInfo::from_proposal(proposal) {
+        return matches_payment_amount_filters(
+            &PaymentInfo {
+                receiver: lockup_info.receiver.to_string(),
+                token: "".to_string(),
+                amount: lockup_info.amount,
+                is_lockup: true,
+            },
+            filters,
+            cache,
+            network,
+        )
+        .await;
     }
 
     // If no relevant proposal type found and amount filters are specified, exclude

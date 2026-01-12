@@ -317,10 +317,19 @@ pub struct PaymentInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct LockupInfo;
+pub struct LockupInfo {
+    pub amount: String,
+    pub receiver: AccountId,
+}
 
 #[derive(Debug, Clone)]
-pub struct AssetExchangeInfo;
+pub struct AssetExchangeInfo {
+    pub token_in_address: String,
+    pub amount_in: u128,
+    pub token_out_symbol: String,
+    pub amount_out: String,
+    pub deposit_address: Option<String>,
+}
 
 #[derive(Debug, Clone)]
 pub struct StakeDelegationInfo {
@@ -548,15 +557,35 @@ impl ProposalType for LockupInfo {
                 .get("receiver_id")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            let actions = function_call.get("actions").and_then(|a| a.as_array());
-            let method_is_create = actions
-                .and_then(|arr| arr.first())
-                .and_then(|action| action.get("method_name"))
+            let actions = function_call.get("actions").and_then(|a| a.as_array())?;
+            let first_action = actions.first()?;
+
+            let method_name = first_action
+                .get("method_name")
                 .and_then(|m| m.as_str())
-                .map(|m| m == "create")
-                .unwrap_or(false);
-            if receiver_id.contains("lockup.near") && method_is_create {
-                return Some(LockupInfo);
+                .unwrap_or("");
+
+            if receiver_id.contains("lockup.near") && method_name == "create" {
+                // Extract amount from deposit
+                let amount = first_action
+                    .get("deposit")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("0")
+                    .to_string();
+
+                // Decode args to get receiver (owner_account_id)
+                let args_b64 = first_action.get("args").and_then(|a| a.as_str())?;
+                let decoded_bytes = base64::engine::general_purpose::STANDARD
+                    .decode(args_b64)
+                    .ok()?;
+                let json_args = serde_json::from_slice::<serde_json::Value>(&decoded_bytes).ok()?;
+
+                let receiver = json_args
+                    .get("owner_account_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| s.parse::<AccountId>().ok())?;
+
+                return Some(LockupInfo { amount, receiver });
             }
         }
         None
@@ -569,11 +598,69 @@ impl ProposalType for LockupInfo {
 
 impl ProposalType for AssetExchangeInfo {
     fn from_proposal(proposal: &Proposal) -> Option<Self> {
-        if let Some(_function_call) = proposal.kind.get("FunctionCall")
+        if let Some(function_call) = proposal.kind.get("FunctionCall")
             && extract_from_description(&proposal.description, "proposalaction")
                 == Some("asset-exchange".to_string())
         {
-            return Some(AssetExchangeInfo);
+            let actions = function_call
+                .get("actions")
+                .and_then(|a| a.as_array())
+                .map(|a| a.as_slice())
+                .unwrap_or(&[]);
+
+            // Find mt_transfer or mt_transfer_call action
+            let action = actions.iter().find(|a| {
+                a.get("method_name")
+                    .and_then(|m| m.as_str())
+                    .map(|m| m == "mt_transfer" || m == "mt_transfer_call")
+                    .unwrap_or(false)
+            })?;
+
+            // Decode the args
+            let args_b64 = action.get("args").and_then(|a| a.as_str())?;
+            let decoded_bytes = base64::engine::general_purpose::STANDARD
+                .decode(args_b64)
+                .ok()?;
+            let json_args = serde_json::from_slice::<serde_json::Value>(&decoded_bytes).ok()?;
+
+            // Extract token_in from args
+            let token_in_address = json_args
+                .get("token_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            // Extract amount_in from args or description
+            let amount_in = json_args
+                .get("amount")
+                .and_then(|v| v.as_str().map(|s| s.parse::<u128>().unwrap_or(0)))
+                .or_else(|| {
+                    extract_from_description(&proposal.description, "amountIn")
+                        .map(|s| s.parse::<u128>().unwrap_or(0))
+                })
+                .unwrap_or(0);
+
+            // Extract token_out from description
+            let token_out_symbol =
+                extract_from_description(&proposal.description, "tokenOut").unwrap_or_default();
+
+            // Extract amount_out from description
+            let amount_out = extract_from_description(&proposal.description, "amountOut")
+                .unwrap_or_else(|| "0".to_string());
+
+            // Extract deposit_address from args
+            let deposit_address = json_args
+                .get("receiver_id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            return Some(AssetExchangeInfo {
+                token_in_address,
+                amount_in,
+                token_out_symbol,
+                amount_out,
+                deposit_address,
+            });
         }
         None
     }

@@ -28,7 +28,7 @@ export const TokenDisplay = ({ symbol, icon, chainIcons, iconSize = "md" }: Toke
     const isImageIcon = icon.startsWith("data:image") || icon.startsWith("http");
 
     return (
-        <div className="relative">
+        <div className="relative flex">
             {isImageIcon ? (
                 <img src={icon} alt={symbol} className={cn("rounded-full shrink-0", iconSizeClasses[iconSize])} />
             ) : (
