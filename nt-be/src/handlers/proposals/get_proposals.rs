@@ -6,13 +6,13 @@ use axum::{
 use serde::Deserialize;
 use std::sync::Arc;
 
+use crate::handlers::proposals::{
+    filters::{ProposalFilters, SortBy},
+    scraper::{Policy, Proposal, fetch_policy, fetch_proposal, fetch_proposals},
+};
 use crate::{
     AppState,
-    utils::{
-        cache::{CacheKey, CacheTier},
-        filters::ProposalFilters,
-        scraper::{Policy, Proposal, fetch_policy, fetch_proposal, fetch_proposals},
-    },
+    utils::cache::{CacheKey, CacheTier},
 };
 
 #[derive(Deserialize)]
@@ -96,8 +96,8 @@ pub async fn get_proposals(
         search_not: query.search_not,
         proposal_types: query.proposal_types,
         sort_by: query.sort_by.and_then(|s| match s.as_str() {
-            "CreationTime" => Some(crate::utils::filters::SortBy::CreationTime),
-            "ExpiryTime" => Some(crate::utils::filters::SortBy::ExpiryTime),
+            "CreationTime" => Some(SortBy::CreationTime),
+            "ExpiryTime" => Some(SortBy::ExpiryTime),
             _ => None,
         }),
         sort_direction: query.sort_direction,

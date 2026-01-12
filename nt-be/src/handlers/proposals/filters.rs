@@ -2,11 +2,11 @@ use near_api::types::ft::FungibleTokenMetadata;
 use near_api::{AccountId, Contract, FTBalance, NetworkConfig};
 use serde::Deserialize;
 
-use crate::utils::cache::{Cache, CacheKey, CacheTier};
-use crate::utils::scraper::{
+use crate::handlers::proposals::scraper::{
     AssetExchangeInfo, LockupInfo, PaymentInfo, Policy, Proposal, ProposalType,
-    StakeDelegationInfo, fetch_ft_metadata, get_status_display,
+    StakeDelegationInfo, Vote, fetch_ft_metadata, get_status_display,
 };
+use crate::utils::cache::{Cache, CacheKey, CacheTier};
 
 use std::collections::HashSet;
 
@@ -323,9 +323,8 @@ impl ProposalFilters {
                 for voter_vote in voter_votes {
                     let actual_vote = proposal.votes.get(&voter_vote.account);
                     let vote_status = match actual_vote {
-                        Some(crate::utils::scraper::Vote::Approve) => "approved",
-                        Some(crate::utils::scraper::Vote::Reject)
-                        | Some(crate::utils::scraper::Vote::Remove) => "rejected",
+                        Some(Vote::Approve) => "approved",
+                        Some(Vote::Reject) | Some(Vote::Remove) => "rejected",
                         None => {
                             // If voter didn't vote, this proposal doesn't match
                             all_voter_checks_passed = false;
