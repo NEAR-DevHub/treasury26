@@ -16,10 +16,10 @@ import { BaseFilterPopover } from "./base-filter-popover";
 import { useFilterState } from "../hooks/use-filter-state";
 import { parseFilterData } from "../types/filter-types";
 import { TooltipUser, User } from "@/components/user";
-import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 import { useRecentAddresses } from "@/hooks/use-recent-addresses";
 import { useTreasury } from "@/stores/treasury-store";
 import { CheckboxFilterContent } from "./checkbox-filter-content";
+import { useDaoUsers, UserListType } from "../hooks/use-dao-users";
 
 const FILTER_OPTIONS = [
     { id: "proposal_types", label: "Requests Type" },
@@ -185,7 +185,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
     }, [value]);
 
     const displayValue = useMemo(() => {
-        if (!value || filterData) return null; // Use custom rendering for all filter types
+        if (!value || filterData) return 'ALL'; // Use custom rendering for all filter types
         return value;
     }, [value, filterData]);
 
@@ -283,7 +283,6 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         // User filter display (recipients, proposers, approvers)
         if ((id === "recipients" || id === "proposers" || id === "approvers") && (filterData as any).users) {
             const users = (filterData as any).users as string[];
-            if (users.length === 0) return null;
 
             return (
                 <div className="flex items-center">
@@ -556,7 +555,6 @@ interface UserData {
 
 function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: UserFilterContentProps) {
     const { selectedTreasury } = useTreasury();
-    const { members: daoMembers, isLoading: isLoadingMembers } = useTreasuryMembers(selectedTreasury);
     const { recentAddresses, addRecentAddress } = useRecentAddresses();
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -572,10 +570,20 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
         })
     });
 
-    // Extract unique member account IDs
+    // Determine which user list type to fetch based on label
+    const userListType: UserListType = useMemo(() => {
+        if (label === "Requester") return "proposers";
+        if (label === "Approver") return "approvers";
+        return "members";
+    }, [label]);
+
+    // Fetch the appropriate user list using the unified hook
+    const { users: fetchedUsers, isLoading: isLoadingMembers } = useDaoUsers(selectedTreasury ?? null, userListType);
+
+    // Use fetched users as suggestions
     const memberSuggestions = useMemo(() => {
-        return daoMembers.map(m => m.accountId);
-    }, [daoMembers]);
+        return fetchedUsers;
+    }, [fetchedUsers]);
 
     // Combine DAO members with custom addresses and recent addresses, then filter and sort
     const filteredMembers = useMemo(() => {

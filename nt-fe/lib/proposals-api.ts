@@ -370,3 +370,49 @@ export async function getProposal(daoId: string, proposalId: string): Promise<Pr
     return null;
   }
 }
+
+export interface ProposersResponse {
+  proposers: string[];
+  total: number;
+}
+
+export interface ApproversResponse {
+  approvers: string[];
+  total: number;
+}
+
+/**
+ * Get all unique proposers for a specific DAO
+ */
+export async function getDaoProposers(daoId: string): Promise<string[]> {
+  if (!daoId) {
+    return [];
+  }
+
+  try {
+    const url = `${BACKEND_API_BASE}/proposals/${daoId}/proposers`;
+    const response = await axios.get<ProposersResponse>(url);
+    return response.data.proposers;
+  } catch (error) {
+    console.error(`Error getting proposers for DAO ${daoId}`, error);
+    return [];
+  }
+}
+
+/**
+ * Get all unique approvers (voters) for a specific DAO
+ */
+export async function getDaoApprovers(daoId: string): Promise<string[]> {
+  if (!daoId) {
+    return [];
+  }
+
+  try {
+    const url = `${BACKEND_API_BASE}/proposals/${daoId}/approvers`;
+    const response = await axios.get<ApproversResponse>(url);
+    return response.data.approvers;
+  } catch (error) {
+    console.error(`Error getting approvers for DAO ${daoId}`, error);
+    return [];
+  }
+}
