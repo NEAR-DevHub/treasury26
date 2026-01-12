@@ -11,13 +11,17 @@ use crate::utils::cache::{Cache, CacheKey, CacheTier};
 use std::collections::HashSet;
 
 // Helper function to parse date string "2024-09-10" to timestamp
-fn parse_date_to_timestamp(date_str: &str) -> Result<u64, Box<dyn std::error::Error>> {
+fn parse_date_to_timestamp(date_str: &str, is_to: bool) -> Result<u64, Box<dyn std::error::Error>> {
     use chrono::{NaiveDate, TimeZone, Utc};
 
     // Trim whitespace and newlines
     let date_str = date_str.trim();
     let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")?;
-    let datetime = date.and_hms_opt(0, 0, 0).unwrap();
+    let datetime = if is_to {
+        date.and_hms_opt(23, 59, 59).unwrap()
+    } else {
+        date.and_hms_opt(0, 0, 0).unwrap()
+    };
     let utc_datetime = Utc.from_utc_datetime(&datetime);
 
     // Convert to nanoseconds (same format as proposal timestamps)
@@ -83,7 +87,7 @@ pub struct ProposalFilters {
 
     pub approvers: Option<String>,     // comma-separated accounts
     pub approvers_not: Option<String>, // array of accounts
-    pub voter_votes: Option<String>, // format: "account:vote,account:vote" where vote is "approved" or "rejected"
+    pub voter_votes: Option<String>, // format: "account:vote,account:vote" where vote is "approved", "rejected", or "no_voted"
 
     // Source filter
     pub source: Option<String>, // comma-separated values like "sputnikdao,intents,lockup"
@@ -113,7 +117,7 @@ fn to_str_hashset(opt: &Option<String>) -> Option<HashSet<&str>> {
 #[derive(Debug, Clone)]
 struct VoterVote {
     account: String,
-    expected_vote: String,
+    expected_vote: Vec<String>,
 }
 
 fn parse_voter_votes(opt: &Option<String>) -> Option<Vec<VoterVote>> {
@@ -124,7 +128,11 @@ fn parse_voter_votes(opt: &Option<String>) -> Option<Vec<VoterVote>> {
                 if parts.len() == 2 {
                     Some(VoterVote {
                         account: parts[0].trim().to_string(),
-                        expected_vote: parts[1].trim().to_lowercase(),
+                        expected_vote: parts[1]
+                            .trim()
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .collect(),
                     })
                 } else {
                     None
@@ -177,19 +185,19 @@ impl ProposalFilters {
         let from_timestamp = self
             .created_date_from
             .as_ref()
-            .and_then(|d| parse_date_to_timestamp(d).ok());
+            .and_then(|d| parse_date_to_timestamp(d, false).ok());
         let to_timestamp = self
             .created_date_to
             .as_ref()
-            .and_then(|d| parse_date_to_timestamp(d).ok());
+            .and_then(|d| parse_date_to_timestamp(d, true).ok());
         let from_timestamp_not = self
             .created_date_from_not
             .as_ref()
-            .and_then(|d| parse_date_to_timestamp(d).ok());
+            .and_then(|d| parse_date_to_timestamp(d, false).ok());
         let to_timestamp_not = self
             .created_date_to_not
             .as_ref()
-            .and_then(|d| parse_date_to_timestamp(d).ok());
+            .and_then(|d| parse_date_to_timestamp(d, true).ok());
 
         let mut filtered_proposals = Vec::with_capacity(proposals.len());
 
@@ -323,22 +331,21 @@ impl ProposalFilters {
                 for voter_vote in voter_votes {
                     let actual_vote = proposal.votes.get(&voter_vote.account);
                     let vote_status = match actual_vote {
-                        Some(Vote::Approve) => "approved",
-                        Some(Vote::Reject) | Some(Vote::Remove) => "rejected",
-                        None => {
-                            // If voter didn't vote, this proposal doesn't match
-                            all_voter_checks_passed = false;
-                            break;
-                        }
+                        Some(Vote::Approve) => "Approved",
+                        Some(Vote::Reject) | Some(Vote::Remove) => "Rejected",
+                        None => "No Voted",
                     };
 
-                    if vote_status != voter_vote.expected_vote {
+                    if !voter_vote.expected_vote.iter().any(|v| v == vote_status) {
                         all_voter_checks_passed = false;
                         break;
                     }
                 }
 
                 if !all_voter_checks_passed {
+                    println!("all_voter_checks_passed: false");
+                    println!("voter_votes: {:?}", voter_votes);
+                    println!("proposal: {:?}", proposal);
                     continue;
                 }
             }

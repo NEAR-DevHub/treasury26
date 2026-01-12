@@ -260,6 +260,7 @@ export interface ProposalFilters {
   proposers_not?: string[];
   approvers?: string[];
   approvers_not?: string[];
+  voter_votes?: string; // format: "account:vote,account:vote" where vote is "approved", "rejected", or "no_voted"
 
   // Payment-specific filters
   recipients?: string[];
@@ -339,6 +340,7 @@ export async function getProposals(
       if (filters.created_date_to) params.created_date_to = filters.created_date_to;
       if (filters.created_date_from_not) params.created_date_from_not = filters.created_date_from_not;
       if (filters.created_date_to_not) params.created_date_to_not = filters.created_date_to_not;
+      if (filters.voter_votes) params.voter_votes = filters.voter_votes;
 
       // Pagination and sorting
       if (filters.page !== undefined) params.page = filters.page.toString();

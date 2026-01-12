@@ -41,14 +41,13 @@ const PROPOSAL_TYPE_OPTIONS = [
 ];
 
 const MY_VOTE_OPTIONS = ["Approved", "Rejected", "No Voted"];
-const MY_VOTE_OPERATIONS = ["Is", "Is Not"];
+const MY_VOTE_OPERATIONS = ["Is"];
 
 const TOKEN_OPERATIONS = ["Is", "Is Not"];
 const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
 
 const PROPOSAL_TYPE_OPERATIONS = ["Is", "Is Not"];
 const DATE_OPERATIONS = ["Is", "Is Not", "Before", "After"];
-const TEXT_OPERATIONS = ["Is", "Is Not", "Contains"];
 const USER_OPERATIONS = ["Is", "Is Not"];
 
 interface TokenOption {

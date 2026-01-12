@@ -15,10 +15,11 @@ import Link from "next/link";
 import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
-import { addDays } from "date-fns";
+import { convertUrlParamsToApiFilters } from "@/features/proposals/utils/filter-params-converter";
 import { NumberBadge } from "@/components/number-badge";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { Input } from "@/components/ui/input";
+import { useNear } from "@/stores/near-store";
 
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
@@ -28,50 +29,26 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const { accountId } = useNear();
 
   const page = parseInt(searchParams.get("page") || "0", 10);
   const pageSize = 15;
 
   const filters = useMemo(() => {
+    const urlFilters = convertUrlParamsToApiFilters(searchParams, accountId);
     const f: any = {
+      ...urlFilters,
       page,
       page_size: pageSize,
       sort_by: "CreationTime",
       sort_direction: "desc",
     };
 
+    // Add status filter if provided
     if (status) f.statuses = status;
 
-    const typeParam = searchParams.get("proposal_types");
-    if (typeParam) {
-      f.proposal_types = [typeParam];
-    }
-
-    const proposerParam = searchParams.get("proposers");
-    if (proposerParam) f.proposers = [proposerParam];
-
-    const approverParam = searchParams.get("approvers");
-    if (approverParam) f.approvers = [approverParam];
-
-    const recipientParam = searchParams.get("recipients");
-    if (recipientParam) f.recipients = [recipientParam];
-
-    const tokenParam = searchParams.get("tokens");
-    if (tokenParam) f.tokens = [tokenParam];
-
-    const searchParam = searchParams.get("search");
-    if (searchParam) f.search = searchParam;
-
-    const dateParam = searchParams.get("created_date");
-    if (dateParam) {
-      const date = new Date(dateParam);
-      f.created_date_from = date.toISOString().split('T')[0];
-      // Add 1 day to the date
-      f.created_date_to = addDays(date, 1).toISOString().split('T')[0];
-    }
-
     return f;
-  }, [page, pageSize, searchParams]);
+  }, [page, pageSize, searchParams, status, accountId]);
 
   const updatePage = useCallback((newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -171,7 +148,14 @@ export default function RequestsPage() {
     router.push(`${pathname}?${params.toString()}`);
   }, [searchParams, router, pathname]);
 
-  if (allProposals?.proposals?.length === 0) {
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'tokens', 'created_date', 'my_vote'];
+    return filterParams.some(param => searchParams.has(param));
+  }, [searchParams]);
+
+  // Only show "No Requests Found" if there are no proposals AND no filters are active
+  if (allProposals?.proposals?.length === 0 && !hasActiveFilters) {
     return (
       <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
         <NoRequestsFound />

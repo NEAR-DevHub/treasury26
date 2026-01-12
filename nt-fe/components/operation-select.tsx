@@ -22,6 +22,9 @@ export function OperationSelect({
     className,
 }: OperationSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
+    if (operations.length <= 1) {
+        return null;
+    }
 
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
