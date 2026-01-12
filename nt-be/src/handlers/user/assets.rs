@@ -374,7 +374,29 @@ pub async fn get_user_assets(
                 Vec::new()
             };
 
-            let near_token_meta = tokens_metadata.last().cloned().unwrap();
+            // Find wrap.near metadata explicitly instead of assuming it's last
+            let near_token_meta = tokens_metadata
+                .iter()
+                .find(|m| m.token_id == "nep141:wrap.near")
+                .cloned()
+                .unwrap_or_else(|| {
+                    eprintln!(
+                        "[User Assets] Warning: wrap.near metadata not found, using fallback"
+                    );
+                    // Fallback metadata if wrap.near is not found
+                    TokenMetadataResponse {
+                        token_id: "nep141:wrap.near".to_string(),
+                        name: "NEAR".to_string(),
+                        symbol: "NEAR".to_string(),
+                        decimals: 24,
+                        icon: Some(crate::constants::NEAR_ICON.to_string()),
+                        price: None,
+                        price_updated_at: None,
+                        network: Some("near".to_string()),
+                        chain_name: Some("Near Protocol".to_string()),
+                        chain_icons: None,
+                    }
+                });
 
             // Build simplified tokens for REF Finance tokens
             let mut all_simplified_tokens: Vec<SimplifiedToken> = ref_tokens_with_balances
