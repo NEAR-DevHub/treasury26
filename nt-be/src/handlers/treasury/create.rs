@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{Json, extract::State};
 use base64::{Engine, prelude::BASE64_STANDARD};
-use near_api::{AccountId, Contract, NearToken};
+use near_api::{AccountId, Contract, NearToken, Tokens};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
@@ -146,6 +146,15 @@ pub async fn create_treasury(
     Json(payload): Json<CreateTreasuryRequest>,
 ) -> Result<Json<CreateTreasuryResponse>, (StatusCode, String)> {
     let treasury = payload.account_id.clone();
+
+    if state.env_vars.disable_treasury_creation {
+        let message = format!("Treasury creation disabled. Treasury: {treasury} is not created.");
+        if let Err(e) = state.telegram_client.send_message(&message).await {
+            log::warn!("Failed to send Telegram notification: {}", e);
+        }
+        return Err((StatusCode::SERVICE_UNAVAILABLE, message));
+    }
+
     let args = prepare_args(payload).map_err(|e| {
         eprintln!("Error preparing args: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
@@ -168,6 +177,25 @@ pub async fn create_treasury(
             eprintln!("Error creating treasury: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
         })?;
+
+    // Fetch balance after treasury creation to track the cost
+    let balance_after = Tokens::account(state.signer_id.clone())
+        .near_balance()
+        .fetch_from(&state.network)
+        .await
+        .map_err(|e| {
+            eprintln!("Error fetching near balance: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
+
+    // Send success notification (non-blocking - don't fail request if notification fails)
+    let message = format!(
+        "Treasury created: {treasury}\nBalance after: {}",
+        balance_after.total
+    );
+    if let Err(e) = state.telegram_client.send_message(&message).await {
+        log::warn!("Failed to send Telegram notification: {}", e);
+    }
 
     Ok(Json(CreateTreasuryResponse { treasury }))
 }
