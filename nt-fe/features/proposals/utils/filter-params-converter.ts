@@ -150,7 +150,6 @@ export function convertUrlParamsToApiFilters(
     const myVoteData = parseFilterData(myVoteParam) as { operation: string; selected: string[] } | null;
     if (myVoteData?.selected && myVoteData.selected.length > 0) {
       const voteString = `${userId}:${myVoteData.selected.join(',')}`;
-      console.log('voteString', voteString);
       filters.voter_votes = voteString;
     }
   }

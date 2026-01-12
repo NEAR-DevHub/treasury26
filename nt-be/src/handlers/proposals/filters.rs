@@ -343,9 +343,6 @@ impl ProposalFilters {
                 }
 
                 if !all_voter_checks_passed {
-                    println!("all_voter_checks_passed: false");
-                    println!("voter_votes: {:?}", voter_votes);
-                    println!("proposal: {:?}", proposal);
                     continue;
                 }
             }
