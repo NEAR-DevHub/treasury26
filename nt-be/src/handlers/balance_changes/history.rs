@@ -12,12 +12,27 @@ use axum::{
 };
 use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{DateTime, Months, NaiveDate, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::AppState;
+
+/// Deserializer for comma-separated values
+/// Accepts either a comma-separated string or None
+fn comma_separated<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: Option<String> = Option::deserialize(deserializer)?;
+    Ok(s.map(|s| {
+        s.split(',')
+            .map(|item| item.trim().to_string())
+            .filter(|item| !item.is_empty())
+            .collect()
+    }))
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -51,8 +66,8 @@ pub struct ChartRequest {
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
     pub interval: Interval,
-    #[serde(default)]
-    pub token_ids: Option<Vec<String>>, // If omitted, returns all tokens
+    #[serde(default, deserialize_with = "comma_separated")]
+    pub token_ids: Option<Vec<String>>, // Comma-separated list, e.g., "near,wrap.near"
 }
 
 #[derive(Debug, Serialize)]
@@ -113,8 +128,8 @@ pub struct CsvRequest {
     pub account_id: String,
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
-    #[serde(default)]
-    pub token_ids: Option<Vec<String>>,
+    #[serde(default, deserialize_with = "comma_separated")]
+    pub token_ids: Option<Vec<String>>, // Comma-separated list
 }
 
 /// CSV Export API - returns balance changes as CSV

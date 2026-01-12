@@ -3,7 +3,8 @@ import {
   getUserTreasuries,
   getTreasuryConfig,
   getTreasuryAssets,
-  getTokenBalanceHistory,
+  getBalanceChart,
+  BalanceChartRequest,
   getTokenBalance,
   getTreasuryPolicy,
   getStorageDepositIsRegistered,
@@ -77,17 +78,17 @@ export function useTreasuryAssets(
 }
 
 /**
- * Query hook to get token balance history across multiple time periods
- * Fetches historical balance data from the backend
+ * Query hook to get balance chart data with USD values
+ * Fetches historical balance snapshots at specified intervals
+ * Supports filtering by specific tokens or all tokens
  */
-export function useTokenBalanceHistory(
-  accountId: string | null | undefined,
-  tokenId: string | null | undefined,
+export function useBalanceChart(
+  params: BalanceChartRequest | null,
 ) {
   return useQuery({
-    queryKey: ["tokenBalanceHistory", accountId, tokenId],
-    queryFn: () => getTokenBalanceHistory(accountId!, tokenId!),
-    enabled: !!accountId && !!tokenId,
+    queryKey: ["balanceChart", params?.accountId, params?.startTime, params?.endTime, params?.interval, params?.tokenIds],
+    queryFn: () => getBalanceChart(params!),
+    enabled: !!params?.accountId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
