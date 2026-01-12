@@ -66,6 +66,7 @@ COPY nt-be/Cargo.toml nt-be/Cargo.lock ./
 COPY nt-be/src ./src
 COPY nt-be/migrations ./migrations
 COPY nt-be/.sqlx ./.sqlx
+COPY nt-be/data ./data
 
 ENV SQLX_OFFLINE=true
 RUN cargo build --release
