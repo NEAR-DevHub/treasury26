@@ -184,7 +184,7 @@ jobs:
           sleep 30
 
           for i in {1..30}; do
-            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+            if curl -sf http://localhost:8080/api/health > /dev/null 2>&1; then
               echo "API is ready!"
               break
             fi
