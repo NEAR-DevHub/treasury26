@@ -11,7 +11,10 @@ pub struct EnvVars {
     pub signer_key: SecretKey,
     pub signer_id: AccountId,
     pub disable_balance_monitoring: bool,
+    pub disable_treasury_creation: bool,
     pub monitor_interval_minutes: u64,
+    pub telegram_bot_token: Option<String>,
+    pub telegram_chat_id: Option<String>,
     pub coingecko_api_key: Option<String>,
     pub coingecko_api_base_url: String, // Override for testing
 }
@@ -42,6 +45,10 @@ impl Default for EnvVars {
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
+            disable_treasury_creation: std::env::var("DISABLE_TREASURY_CREATION")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
             monitor_interval_minutes: std::env::var("MONITOR_INTERVAL_MINUTES")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -51,6 +58,12 @@ impl Default for EnvVars {
                 .filter(|s| !s.is_empty()),
             coingecko_api_base_url: std::env::var("COINGECKO_API_BASE_URL")
                 .unwrap_or_else(|_| "https://pro-api.coingecko.com/api/v3".to_string()),
+            telegram_bot_token: std::env::var("TELEGRAM_BOT_TOKEN")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            telegram_chat_id: std::env::var("TELEGRAM_CHAT_ID")
+                .ok()
+                .filter(|s| !s.is_empty()),
         }
     }
 }
