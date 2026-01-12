@@ -260,6 +260,7 @@ export interface ProposalFilters {
   proposers_not?: string[];
   approvers?: string[];
   approvers_not?: string[];
+  voter_votes?: string; // format: "account:vote,account:vote" where vote is "approved", "rejected", or "no_voted"
 
   // Payment-specific filters
   recipients?: string[];
@@ -339,6 +340,7 @@ export async function getProposals(
       if (filters.created_date_to) params.created_date_to = filters.created_date_to;
       if (filters.created_date_from_not) params.created_date_from_not = filters.created_date_from_not;
       if (filters.created_date_to_not) params.created_date_to_not = filters.created_date_to_not;
+      if (filters.voter_votes) params.voter_votes = filters.voter_votes;
 
       // Pagination and sorting
       if (filters.page !== undefined) params.page = filters.page.toString();
@@ -368,5 +370,51 @@ export async function getProposal(daoId: string, proposalId: string): Promise<Pr
   } catch (error) {
     console.error(`Error getting proposal for DAO ${daoId} and proposal ${proposalId}`, error);
     return null;
+  }
+}
+
+export interface ProposersResponse {
+  proposers: string[];
+  total: number;
+}
+
+export interface ApproversResponse {
+  approvers: string[];
+  total: number;
+}
+
+/**
+ * Get all unique proposers for a specific DAO
+ */
+export async function getDaoProposers(daoId: string): Promise<string[]> {
+  if (!daoId) {
+    return [];
+  }
+
+  try {
+    const url = `${BACKEND_API_BASE}/proposals/${daoId}/proposers`;
+    const response = await axios.get<ProposersResponse>(url);
+    return response.data.proposers;
+  } catch (error) {
+    console.error(`Error getting proposers for DAO ${daoId}`, error);
+    return [];
+  }
+}
+
+/**
+ * Get all unique approvers (voters) for a specific DAO
+ */
+export async function getDaoApprovers(daoId: string): Promise<string[]> {
+  if (!daoId) {
+    return [];
+  }
+
+  try {
+    const url = `${BACKEND_API_BASE}/proposals/${daoId}/approvers`;
+    const response = await axios.get<ApproversResponse>(url);
+    return response.data.approvers;
+  } catch (error) {
+    console.error(`Error getting approvers for DAO ${daoId}`, error);
+    return [];
   }
 }

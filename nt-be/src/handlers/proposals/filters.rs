@@ -2,22 +2,27 @@ use near_api::types::ft::FungibleTokenMetadata;
 use near_api::{AccountId, Contract, FTBalance, NetworkConfig};
 use serde::Deserialize;
 
+use crate::constants::intents_tokens::find_token_by_symbol;
 use crate::handlers::proposals::scraper::{
-    AssetExchangeInfo, LockupInfo, PaymentInfo, Policy, Proposal, ProposalType,
-    StakeDelegationInfo, Vote, fetch_ft_metadata, get_status_display,
+    LockupInfo, PaymentInfo, Policy, Proposal, ProposalType, StakeDelegationInfo, Vote,
+    fetch_ft_metadata, get_status_display,
 };
 use crate::utils::cache::{Cache, CacheKey, CacheTier};
 
 use std::collections::HashSet;
 
 // Helper function to parse date string "2024-09-10" to timestamp
-fn parse_date_to_timestamp(date_str: &str) -> Result<u64, Box<dyn std::error::Error>> {
+fn parse_date_to_timestamp(date_str: &str, is_to: bool) -> Result<u64, Box<dyn std::error::Error>> {
     use chrono::{NaiveDate, TimeZone, Utc};
 
     // Trim whitespace and newlines
     let date_str = date_str.trim();
     let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")?;
-    let datetime = date.and_hms_opt(0, 0, 0).unwrap();
+    let datetime = if is_to {
+        date.and_hms_opt(23, 59, 59).unwrap()
+    } else {
+        date.and_hms_opt(0, 0, 0).unwrap()
+    };
     let utc_datetime = Utc.from_utc_datetime(&datetime);
 
     // Convert to nanoseconds (same format as proposal timestamps)
@@ -53,13 +58,6 @@ pub enum SortBy {
     ExpiryTime,
 }
 
-pub mod categories {
-    pub const PAYMENTS: &str = "payments";
-    pub const LOCKUP: &str = "lockup";
-    pub const ASSET_EXCHANGE: &str = "asset-exchange";
-    pub const STAKE_DELEGATION: &str = "stake-delegation";
-}
-
 #[derive(Deserialize, Default, Clone)]
 pub struct ProposalFilters {
     pub statuses: Option<String>, // comma-separated values like "Approved,Rejected"
@@ -68,7 +66,6 @@ pub struct ProposalFilters {
     pub proposal_types: Option<String>, // comma-separated values like 'FunctionCall,Transfer'
     pub sort_by: Option<SortBy>,
     pub sort_direction: Option<String>, // "asc" or "desc"
-    pub category: Option<String>,
     pub created_date_from: Option<String>,
     pub created_date_to: Option<String>,
     pub created_date_from_not: Option<String>, // exclude proposals created from this date
@@ -83,7 +80,7 @@ pub struct ProposalFilters {
 
     pub approvers: Option<String>,     // comma-separated accounts
     pub approvers_not: Option<String>, // array of accounts
-    pub voter_votes: Option<String>, // format: "account:vote,account:vote" where vote is "approved" or "rejected"
+    pub voter_votes: Option<String>, // format: "account:vote,account:vote" where vote is "approved", "rejected", or "no_voted"
 
     // Source filter
     pub source: Option<String>, // comma-separated values like "sputnikdao,intents,lockup"
@@ -113,7 +110,7 @@ fn to_str_hashset(opt: &Option<String>) -> Option<HashSet<&str>> {
 #[derive(Debug, Clone)]
 struct VoterVote {
     account: String,
-    expected_vote: String,
+    expected_vote: Vec<String>,
 }
 
 fn parse_voter_votes(opt: &Option<String>) -> Option<Vec<VoterVote>> {
@@ -124,7 +121,11 @@ fn parse_voter_votes(opt: &Option<String>) -> Option<Vec<VoterVote>> {
                 if parts.len() == 2 {
                     Some(VoterVote {
                         account: parts[0].trim().to_string(),
-                        expected_vote: parts[1].trim().to_lowercase(),
+                        expected_vote: parts[1]
+                            .trim()
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .collect(),
                     })
                 } else {
                     None
@@ -132,6 +133,364 @@ fn parse_voter_votes(opt: &Option<String>) -> Option<Vec<VoterVote>> {
             })
             .collect()
     })
+}
+
+fn get_token_addresses(symbol: &str) -> Option<Vec<String>> {
+    find_token_by_symbol(&symbol.to_lowercase()).map(|token| {
+        token
+            .grouped_tokens
+            .into_iter()
+            .map(|token| token.defuse_asset_id)
+            .map(|token| {
+                token
+                    .split(':')
+                    .nth(1)
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| token)
+            })
+            .collect()
+    })
+}
+
+/// Check if a token matches against the tokens filter sets
+fn token_matches_filter(
+    token_to_check: &str,
+    tokens_set: &Option<HashSet<&str>>,
+    tokens_not_set: &Option<HashSet<&str>>,
+) -> bool {
+    println!("token_to_check: {:#?}", token_to_check);
+    println!("tokens_set: {:#?}", tokens_set);
+    println!("tokens_not_set: {:#?}", tokens_not_set);
+    if let Some(tokens) = tokens_set {
+        for token in tokens {
+            let token_addresses = get_token_addresses(token);
+            if let Some(token_addresses) = token_addresses
+                && token_addresses.iter().any(|t| t == token_to_check)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if let Some(tokens_not) = tokens_not_set {
+        for token in tokens_not {
+            let token_addresses = get_token_addresses(token);
+            if let Some(token_addresses) = token_addresses
+                && token_addresses.iter().any(|t| t == token_to_check)
+            {
+                return false;
+            }
+        }
+    }
+
+    true // Token matched the filter
+}
+
+// Smart filter helper functions
+
+/// Check if proposal matches tokens filter (applies to payments, stake delegation, lockup)
+fn matches_tokens_filter(
+    proposal: &Proposal,
+    tokens_set: &Option<HashSet<&str>>,
+    tokens_not_set: &Option<HashSet<&str>>,
+) -> bool {
+    // Check payments
+    if let Some(payment_info) = PaymentInfo::from_proposal(proposal) {
+        let token_to_check = if payment_info.token.is_empty() {
+            "wrap.near"
+        } else {
+            payment_info.token.as_str()
+        };
+
+        return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
+    }
+
+    // Check stake delegation (though typically NEAR only)
+    if StakeDelegationInfo::from_proposal(proposal).is_some() {
+        // Stake delegation is typically NEAR only
+        let token_to_check = "near"; // Stake delegation is usually NEAR
+        return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
+    }
+
+    // Check lockup
+    if LockupInfo::from_proposal(proposal).is_some() {
+        let token_to_check = "near"; // Lockup is typically NEAR
+        return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
+    }
+
+    // If no relevant proposal type found and tokens filter is specified, exclude
+    tokens_set.is_none() && tokens_not_set.is_none()
+}
+
+/// Check if proposal matches recipients filter (applies to payments)
+fn matches_recipients_filter(
+    proposal: &Proposal,
+    recipients_set: &Option<HashSet<&str>>,
+    recipients_not_set: &Option<HashSet<&str>>,
+) -> bool {
+    // Check payments
+    if let Some(payment_info) = PaymentInfo::from_proposal(proposal) {
+        if let Some(recipients) = recipients_set
+            && !recipients.contains(payment_info.receiver.as_str())
+        {
+            return false;
+        }
+        if let Some(recipients_not) = recipients_not_set
+            && recipients_not.contains(payment_info.receiver.as_str())
+        {
+            return false;
+        }
+        return true; // Payment proposal matched recipients filter
+    }
+
+    // If no relevant proposal type found and recipients filter is specified, exclude
+    recipients_set.is_none() && recipients_not_set.is_none()
+}
+
+/// Check if proposal matches validators filter (applies to stake delegation)
+async fn matches_validators_filter(
+    proposal: &Proposal,
+    validators_set: &Option<HashSet<&str>>,
+    validators_not_set: &Option<HashSet<&str>>,
+    cache: &Cache,
+    network: &NetworkConfig,
+) -> bool {
+    if let Some(stake_info) = StakeDelegationInfo::from_proposal(proposal) {
+        // For lockup proposals, we need to get the validator from RPC if not already set
+        let mut validator_to_check = stake_info.validator.clone();
+        if stake_info.validator.as_str().contains("lockup.near")
+            && stake_info.proposal_type != "whitelist"
+        {
+            // This is a lockup proposal that's not a select_staking_pool call
+            // We need to get the validator from the lockup contract
+            let cache_key = CacheKey::new("pool-lookup")
+                .with(&stake_info.validator)
+                .build();
+            let pool_id = cache
+                .cached_contract_call(CacheTier::LongTerm, cache_key, async move {
+                    Ok(Contract(stake_info.validator.clone())
+                        .call_function("get_staking_pool_account_id", ())
+                        .read_only::<Option<AccountId>>()
+                        .fetch_from(network)
+                        .await?
+                        .data)
+                })
+                .await
+                .unwrap_or_default();
+            if let Some(pool_id) = pool_id {
+                validator_to_check = pool_id;
+            }
+        }
+
+        if let Some(validators) = validators_set
+            && !validators.contains(validator_to_check.as_str())
+        {
+            return false;
+        }
+        if let Some(validators_not) = validators_not_set
+            && validators_not.contains(validator_to_check.as_str())
+        {
+            return false;
+        }
+        return true; // Stake delegation proposal matched validators filter
+    }
+
+    // If no stake delegation proposal found and validators filter is specified, exclude
+    validators_set.is_none() && validators_not_set.is_none()
+}
+
+/// Check if proposal matches stake_type filter (applies to stake delegation)
+fn matches_stake_type_filter(
+    proposal: &Proposal,
+    stake_type_set: &Option<HashSet<&str>>,
+    stake_type_not_set: &Option<HashSet<&str>>,
+) -> bool {
+    if let Some(stake_info) = StakeDelegationInfo::from_proposal(proposal) {
+        if let Some(stake_types) = stake_type_set
+            && !stake_types.contains(stake_info.proposal_type.as_str())
+        {
+            return false;
+        }
+        if let Some(stake_types_not) = stake_type_not_set
+            && stake_types_not.contains(stake_info.proposal_type.as_str())
+        {
+            return false;
+        }
+        return true; // Stake delegation proposal matched stake_type filter
+    }
+
+    // If no stake delegation proposal found and stake_type filter is specified, exclude
+    stake_type_set.is_none() && stake_type_not_set.is_none()
+}
+
+/// Check if proposal matches amount filters (applies to payments, stake delegation)
+async fn matches_amount_filters(
+    proposal: &Proposal,
+    filters: &ProposalFilters,
+    cache: &Cache,
+    network: &NetworkConfig,
+) -> bool {
+    if filters.amount_equal.is_none()
+        && filters.amount_min.is_none()
+        && filters.amount_max.is_none()
+    {
+        return true; // No amount filters specified
+    }
+
+    // Check payments
+    if let Some(payment_info) = PaymentInfo::from_proposal(proposal) {
+        return matches_payment_amount_filters(&payment_info, filters, cache, network).await;
+    }
+
+    // Check stake delegation
+    if let Some(stake_info) = StakeDelegationInfo::from_proposal(proposal) {
+        return matches_stake_amount_filters(&stake_info, filters);
+    }
+
+    // If no relevant proposal type found and amount filters are specified, exclude
+    false
+}
+
+async fn matches_payment_amount_filters(
+    payment_info: &PaymentInfo,
+    filters: &ProposalFilters,
+    cache: &Cache,
+    network: &NetworkConfig,
+) -> bool {
+    // Get token metadata for amount comparison
+    let token_id = if payment_info.token.is_empty() {
+        "near"
+    } else {
+        &payment_info.token
+    };
+
+    let cache_key = CacheKey::new("ft-metadata-filters").with(token_id).build();
+    let ft_metadata = cache
+        .cached_contract_call(CacheTier::LongTerm, cache_key, async move {
+            if token_id == "near" {
+                return Ok(FungibleTokenMetadata {
+                    decimals: 24,
+                    name: "Near".to_string(),
+                    symbol: "NEAR".to_string(),
+                    icon: None,
+                    reference: None,
+                    reference_hash: None,
+                    spec: "".to_string(),
+                });
+            }
+            fetch_ft_metadata(network, &token_id.parse::<AccountId>().unwrap()).await
+        })
+        .await
+        .unwrap_or_else(|_| FungibleTokenMetadata {
+            decimals: 0,
+            name: "".to_string(),
+            symbol: "".to_string(),
+            icon: None,
+            reference: None,
+            reference_hash: None,
+            spec: "".to_string(),
+        });
+    let token_decimals = ft_metadata.decimals;
+
+    let proposal_amount = payment_info.amount.parse::<u128>().ok();
+
+    if let Some(amount_equal_str) = &filters.amount_equal {
+        if let Ok(amount_equal) =
+            FTBalance::with_decimals(token_decimals).with_float_str(amount_equal_str)
+        {
+            if let Some(amount) = proposal_amount {
+                if amount != amount_equal.amount() {
+                    return false;
+                }
+            } else {
+                return false; // Invalid amount
+            }
+        } else {
+            return false; // Invalid amount_equal input
+        }
+    }
+
+    if let Some(min_str) = &filters.amount_min {
+        if let Ok(min) = FTBalance::with_decimals(token_decimals).with_float_str(min_str) {
+            if let Some(amount) = proposal_amount {
+                if amount < min.amount() {
+                    return false;
+                }
+            } else {
+                return false; // Invalid amount
+            }
+        } else {
+            return false; // Invalid amount_min input
+        }
+    }
+
+    if let Some(max_str) = &filters.amount_max {
+        if let Ok(max) = FTBalance::with_decimals(token_decimals).with_float_str(max_str) {
+            if let Some(amount) = proposal_amount {
+                if amount > max.amount() {
+                    return false;
+                }
+            } else {
+                return false; // Invalid amount
+            }
+        } else {
+            return false; // Invalid amount_max input
+        }
+    }
+
+    true
+}
+
+fn matches_stake_amount_filters(
+    stake_info: &StakeDelegationInfo,
+    filters: &ProposalFilters,
+) -> bool {
+    let stake_amount = stake_info.amount.parse::<u128>().ok();
+
+    if let Some(amount_equal_str) = &filters.amount_equal {
+        if let Ok(amount_equal) = FTBalance::with_decimals(24).with_float_str(amount_equal_str) {
+            if let Some(amount) = stake_amount {
+                if amount != amount_equal.amount() {
+                    return false;
+                }
+            } else {
+                return false; // Invalid amount
+            }
+        } else {
+            return false; // Invalid amount_equal input
+        }
+    }
+
+    if let Some(min_str) = &filters.amount_min {
+        if let Ok(min) = FTBalance::with_decimals(24).with_float_str(min_str) {
+            if let Some(amount) = stake_amount {
+                if amount < min.amount() {
+                    return false;
+                }
+            } else {
+                return false; // Invalid amount
+            }
+        } else {
+            return false; // Invalid min input
+        }
+    }
+
+    if let Some(max_str) = &filters.amount_max {
+        if let Ok(max) = FTBalance::with_decimals(24).with_float_str(max_str) {
+            if let Some(amount) = stake_amount {
+                if amount > max.amount() {
+                    return false;
+                }
+            } else {
+                return false; // Invalid amount
+            }
+        } else {
+            return false; // Invalid max input
+        }
+    }
+
+    true
 }
 
 impl ProposalFilters {
@@ -177,19 +536,19 @@ impl ProposalFilters {
         let from_timestamp = self
             .created_date_from
             .as_ref()
-            .and_then(|d| parse_date_to_timestamp(d).ok());
+            .and_then(|d| parse_date_to_timestamp(d, false).ok());
         let to_timestamp = self
             .created_date_to
             .as_ref()
-            .and_then(|d| parse_date_to_timestamp(d).ok());
+            .and_then(|d| parse_date_to_timestamp(d, true).ok());
         let from_timestamp_not = self
             .created_date_from_not
             .as_ref()
-            .and_then(|d| parse_date_to_timestamp(d).ok());
+            .and_then(|d| parse_date_to_timestamp(d, false).ok());
         let to_timestamp_not = self
             .created_date_to_not
             .as_ref()
-            .and_then(|d| parse_date_to_timestamp(d).ok());
+            .and_then(|d| parse_date_to_timestamp(d, true).ok());
 
         let mut filtered_proposals = Vec::with_capacity(proposals.len());
 
@@ -323,16 +682,12 @@ impl ProposalFilters {
                 for voter_vote in voter_votes {
                     let actual_vote = proposal.votes.get(&voter_vote.account);
                     let vote_status = match actual_vote {
-                        Some(Vote::Approve) => "approved",
-                        Some(Vote::Reject) | Some(Vote::Remove) => "rejected",
-                        None => {
-                            // If voter didn't vote, this proposal doesn't match
-                            all_voter_checks_passed = false;
-                            break;
-                        }
+                        Some(Vote::Approve) => "Approved",
+                        Some(Vote::Reject) | Some(Vote::Remove) => "Rejected",
+                        None => "No Voted",
                     };
 
-                    if vote_status != voter_vote.expected_vote {
+                    if !voter_vote.expected_vote.iter().any(|v| v == vote_status) {
                         all_voter_checks_passed = false;
                         break;
                     }
@@ -359,280 +714,39 @@ impl ProposalFilters {
                 }
             }
 
-            if let Some(category) = &self.category {
-                match category.as_str() {
-                    categories::LOCKUP => {
-                        if LockupInfo::from_proposal(&proposal).is_none() {
-                            continue;
-                        }
-                    }
-                    categories::ASSET_EXCHANGE => {
-                        if AssetExchangeInfo::from_proposal(&proposal).is_none() {
-                            continue;
-                        }
-                    }
-                    categories::STAKE_DELEGATION => {
-                        if let Some(stake_info) = StakeDelegationInfo::from_proposal(&proposal) {
-                            // Filter by stake type
-                            if let Some(ref stake_types) = stake_type_set
-                                && !stake_types.contains(stake_info.proposal_type.as_str())
-                            {
-                                continue;
-                            }
+            // Smart filters - apply each filter independently across relevant proposal types
 
-                            // Filter by stake type (exclusion)
-                            if let Some(ref stake_types_not) = stake_type_not_set
-                                && stake_types_not.contains(stake_info.proposal_type.as_str())
-                            {
-                                continue;
-                            }
+            // Apply tokens filter
+            if !matches_tokens_filter(&proposal, &tokens_set, &tokens_not_set) {
+                continue;
+            }
 
-                            // For lockup proposals, we need to get the validator from RPC if not already set
-                            let mut validator_to_check = stake_info.validator.clone();
-                            if stake_info.validator.as_str().contains("lockup.near")
-                                && stake_info.proposal_type != "whitelist"
-                            {
-                                // This is a lockup proposal that's not a select_staking_pool call
-                                // We need to get the validator from the lockup contract
-                                let cache_key = CacheKey::new("pool-lookup")
-                                    .with(&stake_info.validator)
-                                    .build();
-                                let pool_id = cache
-                                    .cached_contract_call(
-                                        CacheTier::LongTerm,
-                                        cache_key,
-                                        async move {
-                                            Ok(Contract(stake_info.validator.clone())
-                                                .call_function("get_staking_pool_account_id", ())
-                                                .read_only::<Option<AccountId>>()
-                                                .fetch_from(network)
-                                                .await?
-                                                .data)
-                                        },
-                                    )
-                                    .await
-                                    .unwrap_or_default();
-                                if let Some(pool_id) = pool_id {
-                                    validator_to_check = pool_id;
-                                }
-                            }
+            // Apply recipients filter
+            if !matches_recipients_filter(&proposal, &recipients_set, &recipients_not_set) {
+                continue;
+            }
 
-                            // Filter by validator
-                            if let Some(ref validators) = validators_set
-                                && !validators.contains(validator_to_check.as_str())
-                            {
-                                continue;
-                            }
+            // Apply validators filter
+            if !matches_validators_filter(
+                &proposal,
+                &validators_set,
+                &validators_not_set,
+                cache,
+                network,
+            )
+            .await
+            {
+                continue;
+            }
 
-                            // Filter by validator (exclusion)
-                            if let Some(ref validators_not) = validators_not_set
-                                && validators_not.contains(validator_to_check.as_str())
-                            {
-                                continue;
-                            }
+            // Apply stake_type filter
+            if !matches_stake_type_filter(&proposal, &stake_type_set, &stake_type_not_set) {
+                continue;
+            }
 
-                            // Filter by amount (convert NEAR to yocto NEAR)
-                            let amount_min_ref = self.amount_min.as_ref();
-                            let amount_max_ref = self.amount_max.as_ref();
-                            let amount_equal_ref = self.amount_equal.as_ref();
-
-                            if amount_min_ref.is_some()
-                                || amount_max_ref.is_some()
-                                || amount_equal_ref.is_some()
-                            {
-                                let stake_amount = stake_info.amount.parse::<u128>().ok();
-
-                                if let Some(min_str) = amount_min_ref {
-                                    if let Ok(min) =
-                                        FTBalance::with_decimals(24).with_float_str(min_str)
-                                    {
-                                        if let Some(amount) = stake_amount {
-                                            if amount < min.amount() {
-                                                continue;
-                                            }
-                                        } else {
-                                            continue; // Invalid amount
-                                        }
-                                    } else {
-                                        continue; // Invalid amount_min input
-                                    }
-                                }
-
-                                if let Some(max_str) = amount_max_ref {
-                                    if let Ok(max) =
-                                        FTBalance::with_decimals(24).with_float_str(max_str)
-                                    {
-                                        // NEAR has 24 decimals
-                                        if let Some(amount) = stake_amount {
-                                            if amount > max.amount() {
-                                                continue;
-                                            }
-                                        } else {
-                                            continue; // Invalid amount
-                                        }
-                                    } else {
-                                        continue; // Invalid amount_max input
-                                    }
-                                }
-
-                                if let Some(equal_str) = amount_equal_ref {
-                                    if let Ok(equal) =
-                                        FTBalance::with_decimals(24).with_float_str(equal_str)
-                                    {
-                                        if let Some(amount) = stake_amount {
-                                            if amount != equal.amount() {
-                                                continue;
-                                            }
-                                        } else {
-                                            continue; // Invalid amount
-                                        }
-                                    } else {
-                                        continue; // Invalid amount_equal input
-                                    }
-                                }
-                            }
-                        } else {
-                            continue; // Not a stake delegation proposal
-                        }
-                    }
-                    categories::PAYMENTS => {
-                        if let Some(payment_info) = PaymentInfo::from_proposal(&proposal) {
-                            let token_to_check = if payment_info.token.is_empty() {
-                                "near"
-                            } else {
-                                payment_info.token.as_str()
-                            };
-
-                            if let Some(ref recipients) = recipients_set
-                                && !recipients.contains(payment_info.receiver.as_str())
-                            {
-                                continue;
-                            }
-
-                            if let Some(ref recipients_not) = recipients_not_set
-                                && recipients_not.contains(payment_info.receiver.as_str())
-                                && recipients_not.contains(payment_info.receiver.as_str())
-                            {
-                                continue;
-                            }
-
-                            if let Some(ref tokens) = tokens_set
-                                && !tokens.contains(token_to_check)
-                            {
-                                continue;
-                            }
-
-                            if let Some(ref tokens_not) = tokens_not_set
-                                && tokens_not.contains(token_to_check)
-                            {
-                                continue;
-                            }
-
-                            if self.amount_equal.is_some()
-                                || self.amount_min.is_some()
-                                || self.amount_max.is_some()
-                            {
-                                // Get token metadata for amount comparison
-                                let token_id = if payment_info.token.is_empty() {
-                                    "near"
-                                } else {
-                                    &payment_info.token
-                                };
-
-                                let cache_key =
-                                    CacheKey::new("ft-metadata-filters").with(token_id).build();
-                                let ft_metadata = cache
-                                    .cached_contract_call(
-                                        CacheTier::LongTerm,
-                                        cache_key,
-                                        async move {
-                                            if token_id == "near" {
-                                                return Ok(FungibleTokenMetadata {
-                                                    decimals: 24,
-                                                    name: "Near".to_string(),
-                                                    symbol: "NEAR".to_string(),
-                                                    icon: None,
-                                                    reference: None,
-                                                    reference_hash: None,
-                                                    spec: "".to_string(),
-                                                });
-                                            }
-                                            fetch_ft_metadata(
-                                                network,
-                                                &token_id.parse::<AccountId>().unwrap(),
-                                            )
-                                            .await
-                                        },
-                                    )
-                                    .await
-                                    .unwrap_or_else(|_| FungibleTokenMetadata {
-                                        decimals: 0,
-                                        name: "".to_string(),
-                                        symbol: "".to_string(),
-                                        icon: None,
-                                        reference: None,
-                                        reference_hash: None,
-                                        spec: "".to_string(),
-                                    });
-                                let token_decimals = ft_metadata.decimals;
-
-                                let proposal_amount = payment_info.amount.parse::<u128>().ok();
-
-                                if let Some(amount_equal_str) = &self.amount_equal {
-                                    if let Ok(amount_equal) =
-                                        FTBalance::with_decimals(token_decimals)
-                                            .with_float_str(amount_equal_str)
-                                    {
-                                        if let Some(amount) = proposal_amount {
-                                            if amount != amount_equal.amount() {
-                                                continue;
-                                            }
-                                        } else {
-                                            continue; // Invalid amount
-                                        }
-                                    } else {
-                                        continue; // Invalid amount_equal input
-                                    }
-                                }
-
-                                if let Some(min_str) = &self.amount_min {
-                                    if let Ok(min) = FTBalance::with_decimals(token_decimals)
-                                        .with_float_str(min_str)
-                                    {
-                                        if let Some(amount) = proposal_amount {
-                                            if amount < min.amount() {
-                                                continue;
-                                            }
-                                        } else {
-                                            continue; // Invalid amount
-                                        }
-                                    } else {
-                                        continue; // Invalid amount_min input
-                                    }
-                                }
-
-                                if let Some(max_str) = &self.amount_max {
-                                    if let Ok(max) = FTBalance::with_decimals(token_decimals)
-                                        .with_float_str(max_str)
-                                    {
-                                        if let Some(amount) = proposal_amount {
-                                            if amount > max.amount() {
-                                                continue;
-                                            }
-                                        } else {
-                                            continue; // Invalid amount
-                                        }
-                                    } else {
-                                        continue; // Invalid amount_max input
-                                    }
-                                }
-                            } // Close the amount filters conditional block
-                        } else {
-                            continue; // Not a payment proposal
-                        }
-                    }
-                    _ => {}
-                }
+            // Apply amount filters
+            if !matches_amount_filters(&proposal, self, cache, network).await {
+                continue;
             }
 
             filtered_proposals.push(proposal);

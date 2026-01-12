@@ -10,7 +10,7 @@ use std::fmt::Display;
 pub enum CacheTier {
     /// Long-lived data (5 minutes TTL) - metadata, configs, lookups
     LongTerm,
-    /// Frequently changing data (30 seconds TTL) - balances, policies
+    /// Frequently changing data (5 seconds TTL) - balances, policies
     ShortTerm,
     /// Historical/immutable data (very long TTL) - block data, historical balances
     /// Note: Implementation for immutable cache is not included yet
@@ -82,7 +82,7 @@ impl Cache {
 
         let short_term = MokaCache::builder()
             .max_capacity(1_000)
-            .time_to_live(Duration::from_secs(30)) // 30 seconds
+            .time_to_live(Duration::from_secs(5)) // 5 seconds
             .build();
 
         Self {
