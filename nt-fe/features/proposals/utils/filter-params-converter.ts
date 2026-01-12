@@ -88,7 +88,7 @@ export function convertUrlParamsToApiFilters(
     } | null;
 
     if (tokensData?.token) {
-      const tokenId = tokensData.token.id;
+      const tokenId = tokensData.token.symbol;
 
       if (tokensData.operation === "Is") {
         filters.tokens = [tokenId];

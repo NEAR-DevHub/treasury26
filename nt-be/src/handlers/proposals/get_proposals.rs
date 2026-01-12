@@ -91,7 +91,6 @@ pub async fn get_proposals(
             _ => None,
         }),
         sort_direction: query.sort_direction,
-        category: query.category,
         created_date_from: query.created_date_from,
         created_date_to: query.created_date_to,
         created_date_from_not: query.created_date_from_not,
