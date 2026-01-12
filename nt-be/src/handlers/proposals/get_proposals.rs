@@ -3,6 +3,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
 };
+use near_api::AccountId;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -60,20 +61,9 @@ pub struct PaginatedProposals {
 
 pub async fn get_proposals(
     State(state): State<Arc<AppState>>,
-    Path(dao_id): Path<String>,
+    Path(dao_id): Path<AccountId>,
     Query(query): Query<GetProposalsQuery>,
 ) -> Result<(StatusCode, Json<PaginatedProposals>), (StatusCode, String)> {
-    if dao_id.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "dao_id is required".to_string()));
-    }
-
-    let dao_account_id = near_api::AccountId::try_from(dao_id.clone()).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            "Invalid DAO account ID".to_string(),
-        )
-    })?;
-
     // Create cache key for proposals
     let cache_key = CacheKey::new("dao-proposals").with(&dao_id).build();
 
@@ -81,9 +71,9 @@ pub async fn get_proposals(
     let (proposals, policy): (Vec<Proposal>, Policy) = state
         .cache
         .cached_contract_call(CacheTier::ShortTerm, cache_key, async {
-            let proposals = fetch_proposals(&state.network, &dao_account_id).await?;
+            let proposals = fetch_proposals(&state.network, &dao_id).await?;
 
-            let policy = fetch_policy(&state.network, &dao_account_id).await?;
+            let policy = fetch_policy(&state.network, &dao_id).await?;
 
             Ok((proposals, policy))
         })
@@ -174,37 +164,19 @@ pub struct ProposalOutput {
 
 pub async fn get_proposal(
     State(state): State<Arc<AppState>>,
-    Path((dao_id, proposal_id)): Path<(String, String)>,
+    Path((dao_id, proposal_id)): Path<(AccountId, u64)>,
 ) -> Result<(StatusCode, Json<ProposalOutput>), (StatusCode, String)> {
-    if dao_id.is_empty() || proposal_id.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "dao_id and proposal_id are required".to_string(),
-        ));
-    }
-
-    let dao_account_id = near_api::AccountId::try_from(dao_id.clone()).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            "Invalid DAO account ID".to_string(),
-        )
-    })?;
-
-    let proposal_id_u64 = proposal_id
-        .parse::<u64>()
-        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid proposal ID".to_string()))?;
-
     // Create cache key for specific proposal
     let cache_key = CacheKey::new("dao-proposal")
         .with(&dao_id)
-        .with(&proposal_id)
+        .with(proposal_id)
         .build();
 
     // Try to get from cache first
     let proposal: Proposal = state
         .cache
         .cached_contract_call(CacheTier::ShortTerm, cache_key, async {
-            fetch_proposal(&state.network, &dao_account_id, proposal_id_u64).await
+            fetch_proposal(&state.network, &dao_id, proposal_id).await
         })
         .await?;
 
@@ -221,19 +193,8 @@ pub struct ProposersResponse {
 
 pub async fn get_dao_proposers(
     State(state): State<Arc<AppState>>,
-    Path(dao_id): Path<String>,
+    Path(dao_id): Path<AccountId>,
 ) -> Result<(StatusCode, Json<ProposersResponse>), (StatusCode, String)> {
-    if dao_id.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "dao_id is required".to_string()));
-    }
-
-    let dao_account_id = near_api::AccountId::try_from(dao_id.clone()).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            "Invalid DAO account ID".to_string(),
-        )
-    })?;
-
     // Create cache key for proposals
     let cache_key = CacheKey::new("dao-proposals").with(&dao_id).build();
 
@@ -241,9 +202,9 @@ pub async fn get_dao_proposers(
     let (proposals, _policy): (Vec<Proposal>, Policy) = state
         .cache
         .cached_contract_call(CacheTier::ShortTerm, cache_key, async {
-            let proposals = fetch_proposals(&state.network, &dao_account_id).await?;
+            let proposals = fetch_proposals(&state.network, &dao_id).await?;
 
-            let policy = fetch_policy(&state.network, &dao_account_id).await?;
+            let policy = fetch_policy(&state.network, &dao_id).await?;
 
             Ok((proposals, policy))
         })
@@ -276,19 +237,8 @@ pub struct ApproversResponse {
 
 pub async fn get_dao_approvers(
     State(state): State<Arc<AppState>>,
-    Path(dao_id): Path<String>,
+    Path(dao_id): Path<AccountId>,
 ) -> Result<(StatusCode, Json<ApproversResponse>), (StatusCode, String)> {
-    if dao_id.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "dao_id is required".to_string()));
-    }
-
-    let dao_account_id = near_api::AccountId::try_from(dao_id.clone()).map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            "Invalid DAO account ID".to_string(),
-        )
-    })?;
-
     // Create cache key for proposals
     let cache_key = CacheKey::new("dao-proposals").with(&dao_id).build();
 
@@ -296,9 +246,9 @@ pub async fn get_dao_approvers(
     let (proposals, _policy): (Vec<Proposal>, Policy) = state
         .cache
         .cached_contract_call(CacheTier::ShortTerm, cache_key, async {
-            let proposals = fetch_proposals(&state.network, &dao_account_id).await?;
+            let proposals = fetch_proposals(&state.network, &dao_id).await?;
 
-            let policy = fetch_policy(&state.network, &dao_account_id).await?;
+            let policy = fetch_policy(&state.network, &dao_id).await?;
 
             Ok((proposals, policy))
         })
