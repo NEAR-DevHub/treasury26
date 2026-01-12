@@ -4,8 +4,7 @@ use common::TestServer;
 
 #[tokio::test]
 async fn test_monitored_accounts_crud() {
-    // Load environment variables
-    dotenvy::dotenv().ok();
+    common::load_test_env();
 
     // Start the actual server
     let server = TestServer::start().await;

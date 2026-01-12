@@ -10,14 +10,29 @@ use axum::{
     http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
-use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use bigdecimal::{BigDecimal, ToPrimitive};
+use chrono::{DateTime, Months, NaiveDate, Utc};
+use serde::{Deserialize, Deserializer, Serialize};
 use sqlx::PgPool;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::AppState;
+
+/// Deserializer for comma-separated values
+/// Accepts either a comma-separated string or None
+fn comma_separated<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: Option<String> = Option::deserialize(deserializer)?;
+    Ok(s.map(|s| {
+        s.split(',')
+            .map(|item| item.trim().to_string())
+            .filter(|item| !item.is_empty())
+            .collect()
+    }))
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -36,8 +51,6 @@ impl Interval {
     /// If the day is invalid for the target month (e.g., Jan 31 -> Feb), it clamps
     /// to the last valid day of the target month (e.g., Feb 28 or Feb 29).
     pub fn increment(&self, datetime: DateTime<Utc>) -> DateTime<Utc> {
-        use chrono::Months;
-
         match self {
             Interval::Hourly => datetime + chrono::Duration::hours(1),
             Interval::Daily => datetime + chrono::Duration::days(1),
@@ -53,8 +66,8 @@ pub struct ChartRequest {
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
     pub interval: Interval,
-    #[serde(default)]
-    pub token_ids: Option<Vec<String>>, // If omitted, returns all tokens
+    #[serde(default, deserialize_with = "comma_separated")]
+    pub token_ids: Option<Vec<String>>, // Comma-separated list, e.g., "near,wrap.near"
 }
 
 #[derive(Debug, Serialize)]
@@ -104,10 +117,8 @@ pub async fn get_balance_chart(
         &params.interval,
     );
 
-    // Enrich snapshots with price data if price service is available
-    if let Some(price_service) = &state.price_service {
-        enrich_snapshots_with_prices(&mut snapshots, price_service).await;
-    }
+    // Enrich snapshots with price data
+    enrich_snapshots_with_prices(&mut snapshots, &state.price_service).await;
 
     Ok(Json(snapshots))
 }
@@ -117,8 +128,8 @@ pub struct CsvRequest {
     pub account_id: String,
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
-    #[serde(default)]
-    pub token_ids: Option<Vec<String>>,
+    #[serde(default, deserialize_with = "comma_separated")]
+    pub token_ids: Option<Vec<String>>, // Comma-separated list
 }
 
 /// CSV Export API - returns balance changes as CSV
@@ -131,7 +142,7 @@ pub async fn export_balance_csv(
     // Query balance changes
     let csv_data = generate_csv(
         &state.db_pool,
-        state.price_service.as_ref(),
+        &state.price_service,
         &params.account_id,
         params.start_time,
         params.end_time,
@@ -398,28 +409,33 @@ async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
     snapshots: &mut HashMap<String, Vec<BalanceSnapshot>>,
     price_service: &crate::services::PriceLookupService<P>,
 ) {
-    use bigdecimal::ToPrimitive;
-    use chrono::NaiveDate;
-
     for (token_id, token_snapshots) in snapshots.iter_mut() {
-        // Collect all unique dates for this token
-        let dates: Vec<NaiveDate> = token_snapshots
+        // Parse timestamps once and collect unique dates
+        let parsed_dates: Vec<Option<NaiveDate>> = token_snapshots
             .iter()
-            .filter_map(|s| {
+            .map(|s| {
                 DateTime::parse_from_rfc3339(&s.timestamp)
                     .ok()
                     .map(|dt| dt.date_naive())
             })
+            .collect();
+
+        let unique_dates: Vec<NaiveDate> = parsed_dates
+            .iter()
+            .filter_map(|d| *d)
             .collect::<std::collections::HashSet<_>>()
             .into_iter()
             .collect();
 
-        if dates.is_empty() {
+        if unique_dates.is_empty() {
             continue;
         }
 
         // Batch fetch prices for all dates
-        let prices = match price_service.get_prices_batch(token_id, &dates).await {
+        let prices = match price_service
+            .get_prices_batch(token_id, &unique_dates)
+            .await
+        {
             Ok(p) => p,
             Err(e) => {
                 log::warn!("Failed to fetch prices for {}: {}", token_id, e);
@@ -427,16 +443,15 @@ async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
             }
         };
 
-        // Enrich each snapshot with price data
-        for snapshot in token_snapshots.iter_mut() {
-            if let Ok(dt) = DateTime::parse_from_rfc3339(&snapshot.timestamp) {
-                let date = dt.date_naive();
-                if let Some(&price) = prices.get(&date) {
-                    snapshot.price_usd = Some(price);
-                    // Calculate value_usd = balance * price
-                    if let Some(balance_f64) = snapshot.balance.to_f64() {
-                        snapshot.value_usd = Some(balance_f64 * price);
-                    }
+        // Enrich each snapshot with price data (reusing parsed dates)
+        for (snapshot, parsed_date) in token_snapshots.iter_mut().zip(parsed_dates.iter()) {
+            if let Some(date) = parsed_date
+                && let Some(&price) = prices.get(date)
+            {
+                snapshot.price_usd = Some(price);
+                // Calculate value_usd = balance * price
+                if let Some(balance_f64) = snapshot.balance.to_f64() {
+                    snapshot.value_usd = Some(balance_f64 * price);
                 }
             }
         }
@@ -446,45 +461,40 @@ async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
 /// Generate CSV from balance changes
 async fn generate_csv<P: crate::services::PriceProvider>(
     pool: &PgPool,
-    price_service: Option<&crate::services::PriceLookupService<P>>,
+    price_service: &crate::services::PriceLookupService<P>,
     account_id: &str,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    use bigdecimal::ToPrimitive;
-    use chrono::NaiveDate;
-    use std::collections::HashSet;
-
     let changes = load_balance_changes(pool, account_id, start_date, end_date, token_ids).await?;
 
     // Pre-fetch prices for all token/date combinations to avoid per-row API calls
     let mut prices_cache: HashMap<(String, NaiveDate), f64> = HashMap::new();
-    if let Some(ps) = price_service {
-        // Collect all unique (token_id, date) pairs
-        let mut token_dates: HashMap<String, HashSet<NaiveDate>> = HashMap::new();
-        for change in &changes {
-            if change.counterparty == "SNAPSHOT" || change.counterparty == "NOT_REGISTERED" {
-                continue;
-            }
-            token_dates
-                .entry(change.token_id.clone())
-                .or_default()
-                .insert(change.block_time.date_naive());
-        }
 
-        // Batch fetch prices for each token
-        for (token_id, dates) in token_dates {
-            let dates_vec: Vec<_> = dates.into_iter().collect();
-            match ps.get_prices_batch(&token_id, &dates_vec).await {
-                Ok(token_prices) => {
-                    for (date, price) in token_prices {
-                        prices_cache.insert((token_id.clone(), date), price);
-                    }
+    // Collect all unique (token_id, date) pairs
+    let mut token_dates: HashMap<String, HashSet<NaiveDate>> = HashMap::new();
+    for change in &changes {
+        if change.counterparty == "SNAPSHOT" || change.counterparty == "NOT_REGISTERED" {
+            continue;
+        }
+        token_dates
+            .entry(change.token_id.clone())
+            .or_default()
+            .insert(change.block_time.date_naive());
+    }
+
+    // Batch fetch prices for each token
+    for (token_id, dates) in token_dates {
+        let dates_vec: Vec<_> = dates.into_iter().collect();
+        match price_service.get_prices_batch(&token_id, &dates_vec).await {
+            Ok(token_prices) => {
+                for (date, price) in token_prices {
+                    prices_cache.insert((token_id.clone(), date), price);
                 }
-                Err(e) => {
-                    log::debug!("Failed to batch fetch prices for {}: {}", token_id, e);
-                }
+            }
+            Err(e) => {
+                log::debug!("Failed to batch fetch prices for {}: {}", token_id, e);
             }
         }
     }

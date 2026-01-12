@@ -1,37 +1,15 @@
-use near_api::{NetworkConfig, RPCEndpoint};
+mod common;
+
 use nt_be::handlers::balance_changes::gap_detector::find_gaps;
 use nt_be::handlers::balance_changes::gap_filler::fill_gaps;
 use sqlx::PgPool;
-use sqlx::types::BigDecimal;
 use sqlx::types::chrono::DateTime;
-use std::str::FromStr;
 
 /// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
 fn timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<sqlx::types::chrono::Utc> {
     let secs = timestamp_nanos / 1_000_000_000;
     let nsecs = (timestamp_nanos % 1_000_000_000) as u32;
     DateTime::from_timestamp(secs, nsecs).expect("Failed to convert timestamp")
-}
-
-/// Helper to create archival network config for tests
-fn create_archival_network() -> NetworkConfig {
-    dotenvy::from_filename(".env").ok();
-    dotenvy::from_filename(".env.test").ok();
-
-    let fastnear_api_key =
-        std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env");
-
-    NetworkConfig {
-        rpc_endpoints: vec![
-            RPCEndpoint::new(
-                "https://archival-rpc.mainnet.fastnear.com/"
-                    .parse()
-                    .unwrap(),
-            )
-            .with_api_key(fastnear_api_key),
-        ],
-        ..NetworkConfig::mainnet()
-    }
 }
 
 /// Test gap detection and filling with a chain of SNAPSHOT records
@@ -54,7 +32,7 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
     let account_id = "petersalomonsen.near";
     let token_id = "npro.nearmobile.near";
 
-    let archival_network = create_archival_network();
+    let archival_network = common::create_archival_network();
 
     println!("\n=== Testing gap detection with SNAPSHOT chain ===");
     println!("Account: {}", account_id);
