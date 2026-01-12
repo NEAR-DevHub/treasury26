@@ -278,7 +278,7 @@ try {
   console.log(`✅ Connected as: ${account.accountId}`);
 
   console.log("\n🏥 Checking API health...");
-  const health = await apiRequest("/health");
+  const health = await apiRequest("/api/health");
   assert.equal(health.status, "healthy", "API must be healthy");
   console.log(`✅ API is healthy: ${JSON.stringify(health)}`);
 
@@ -429,7 +429,7 @@ try {
 
   console.log("\n🔒 Testing API rejection with mismatched hash...");
   const wrongHashResponse = await apiRequest(
-    "/submit-list",
+    "/api/bulk-payment/submit-list",
     "POST",
     {
       list_id: listId,
@@ -458,7 +458,7 @@ try {
 
   console.log("\n🔒 Testing API rejection without DAO proposal...");
   const rejectResponse = await apiRequest(
-    "/submit-list",
+    "/api/bulk-payment/submit-list",
     "POST",
     {
       list_id: listId,
@@ -495,7 +495,7 @@ try {
   );
 
   console.log("\n📤 Submitting payment list via API...");
-  const submitResponse = await apiRequest("/submit-list", "POST", {
+  const submitResponse = await apiRequest("/api/bulk-payment/submit-list", "POST", {
     list_id: listId,
     submitter_id: daoAccountId,
     dao_contract_id: daoAccountId,
@@ -542,7 +542,7 @@ try {
   while (!allProcessed && attempts < maxAttempts) {
     await sleep(5000);
     attempts++;
-    const currentStatus = await apiRequest(`/list/${listId}`);
+    const currentStatus = await apiRequest(`/api/bulk-payment/list/${listId}`);
     assert.equal(
       currentStatus.success,
       true,
