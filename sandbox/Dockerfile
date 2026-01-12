@@ -107,7 +107,8 @@ COPY --from=contract-builder /build/target/near/bulk_payment_contract.wasm /app/
 # Copy configuration files
 COPY sandbox/supervisord.conf /etc/supervisor/conf.d/
 COPY sandbox/start-sandbox.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/start-sandbox.sh
+COPY sandbox/start-postgres.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/start-sandbox.sh /usr/local/bin/start-postgres.sh
 
 # Copy additional contracts (DAO factory, wrap.near, etc.)
 COPY sandbox/contracts/ /app/contracts/
