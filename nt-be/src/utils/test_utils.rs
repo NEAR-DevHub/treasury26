@@ -71,6 +71,7 @@ pub async fn init_test_state() -> AppState {
 
     AppState {
         cache: Cache::new(),
+        telegram_client: crate::utils::telegram::TelegramClient::default(),
         http_client,
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
