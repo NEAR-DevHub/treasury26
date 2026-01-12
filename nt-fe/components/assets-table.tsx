@@ -158,7 +158,7 @@ export function AssetsTable({ tokens }: Props) {
 
   return (
     <Table>
-      <TableHeader>
+      <TableHeader className="bg-transparent border-t-0">
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id} className="hover:bg-transparent">
             {headerGroup.headers.map((header) => (

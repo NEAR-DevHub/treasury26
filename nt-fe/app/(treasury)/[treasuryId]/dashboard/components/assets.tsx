@@ -10,17 +10,9 @@ interface Props {
 export default function Assets({ tokens }: Props) {
 
     return (
-        <PageCard>
-            <Tabs>
-                <TabsList>
-                    <TabsTrigger value="assets">Assets</TabsTrigger>
-                </TabsList>
-                <TabsContents>
-                    <TabsContent value="assets">
-                        <AssetsTable tokens={tokens} />
-                    </TabsContent>
-                </TabsContents>
-            </Tabs>
+        <PageCard className="flex flex-col gap-5">
+            <h2 className="font-semibold">Assets</h2>
+            <AssetsTable tokens={tokens} />
         </PageCard>
     )
 }
