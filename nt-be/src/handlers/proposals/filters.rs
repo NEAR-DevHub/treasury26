@@ -4,8 +4,9 @@ use serde::Deserialize;
 
 use crate::constants::intents_tokens::find_token_by_symbol;
 use crate::handlers::proposals::scraper::{
-    AssetExchangeInfo, LockupInfo, PaymentInfo, Policy, Proposal, ProposalType,
-    StakeDelegationInfo, Vote, fetch_ft_metadata, get_status_display,
+    AssetExchangeInfo, BatchPaymentResponse, BulkPayment, LockupInfo, PaymentInfo, Policy,
+    Proposal, ProposalType, StakeDelegationInfo, Vote, fetch_batch_payment_list, fetch_ft_metadata,
+    get_status_display,
 };
 use crate::utils::cache::{Cache, CacheKey, CacheTier};
 
@@ -60,8 +61,10 @@ pub enum SortBy {
 
 #[derive(Deserialize, Default, Clone)]
 pub struct ProposalFilters {
-    pub statuses: Option<String>, // comma-separated values like "Approved,Rejected"
-    pub search: Option<String>,   // search the description
+    pub types: Option<String>, // comma-separated values like "Payments, Exchange, Earn, Vesting, Change Policy, Settings"
+    pub types_not: Option<String>, // comma-separated values to exclude like "Payments, Exchange, Earn, Vesting, Change Policy, Settings"
+    pub statuses: Option<String>,  // comma-separated values like "Approved,Rejected"
+    pub search: Option<String>,    // search the description
     pub search_not: Option<String>, // exclude proposals containing these keywords
     pub proposal_types: Option<String>, // comma-separated values like 'FunctionCall,Transfer'
     pub sort_by: Option<SortBy>,
@@ -213,6 +216,11 @@ fn matches_tokens_filter(
         return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
     }
 
+    if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
+        let token_to_check = bulk_payment.token_id.as_str();
+        return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
+    }
+
     if let Some(asset_exchange_info) = AssetExchangeInfo::from_proposal(proposal) {
         let token_in = asset_exchange_info
             .token_in_address
@@ -241,10 +249,12 @@ fn matches_tokens_filter(
 }
 
 /// Check if proposal matches recipients filter (applies to payments)
-fn matches_recipients_filter(
+async fn matches_recipients_filter(
     proposal: &Proposal,
     recipients_set: &Option<HashSet<&str>>,
     recipients_not_set: &Option<HashSet<&str>>,
+    cache: &Cache,
+    network: &NetworkConfig,
 ) -> bool {
     // Check payments
     if let Some(payment_info) = PaymentInfo::from_proposal(proposal) {
@@ -259,6 +269,46 @@ fn matches_recipients_filter(
             return false;
         }
         return true; // Payment proposal matched recipients filter
+    }
+
+    if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
+        // Fetch the batch payment list to get actual recipients
+        let batch_id = bulk_payment.batch_id.clone();
+        let cache_key = crate::utils::cache::CacheKey::new("batch-payment-recipients")
+            .with(&batch_id)
+            .build();
+        let batch_result = cache
+            .cached_contract_call(
+                crate::utils::cache::CacheTier::LongTerm,
+                cache_key,
+                async move { fetch_batch_payment_list(network, &batch_id).await },
+            )
+            .await;
+
+        if let Ok(BatchPaymentResponse { payments, .. }) = batch_result {
+            // Check if any recipient in the batch matches the filter
+            if let Some(recipients) = recipients_set {
+                let has_matching_recipient = payments
+                    .iter()
+                    .any(|payment| recipients.contains(payment.recipient.as_str()));
+                if !has_matching_recipient {
+                    return false;
+                }
+            }
+
+            // Check if any recipient should be excluded
+            if let Some(recipients_not) = recipients_not_set {
+                let has_excluded_recipient = payments
+                    .iter()
+                    .any(|payment| recipients_not.contains(payment.recipient.as_str()));
+                if has_excluded_recipient {
+                    return false;
+                }
+            }
+
+            return true; // Batch payment proposal matched recipients filter
+        }
+        return false;
     }
 
     if let Some(asset_exchange_info) = AssetExchangeInfo::from_proposal(proposal) {
@@ -417,6 +467,22 @@ async fn matches_amount_filters(
     // Check stake delegation
     if let Some(stake_info) = StakeDelegationInfo::from_proposal(proposal) {
         return matches_stake_amount_filters(&stake_info, filters);
+    }
+
+    // Check bulk payment
+    if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
+        return matches_payment_amount_filters(
+            &PaymentInfo {
+                receiver: "".to_string(),
+                token: bulk_payment.token_id.clone(),
+                amount: bulk_payment.total_amount.clone(),
+                is_lockup: false,
+            },
+            filters,
+            cache,
+            network,
+        )
+        .await;
     }
 
     // Check asset exchange
@@ -604,6 +670,52 @@ fn matches_stake_amount_filters(
     true
 }
 
+pub const POLICY_TYPES: &[&str] = &[
+    "ChangePolicy",
+    "ChangePolicyUpdateParameters",
+    "ChangePolicyAddOrUpdateRole",
+    "ChangePolicyRemoveRole",
+    "ChangePolicyUpdateDefaultVotePolicy",
+];
+
+fn matches_types_filter(
+    proposal: &Proposal,
+    types_set: &Option<HashSet<&str>>,
+    types_not_set: &Option<HashSet<&str>>,
+) -> bool {
+    let name = if PaymentInfo::from_proposal(proposal).is_some()
+        || BulkPayment::from_proposal(proposal).is_some()
+    {
+        "Payments"
+    } else if StakeDelegationInfo::from_proposal(proposal).is_some() {
+        "Earn"
+    } else if AssetExchangeInfo::from_proposal(proposal).is_some() {
+        "Exchange"
+    } else if LockupInfo::from_proposal(proposal).is_some() {
+        "Vesting"
+    } else if proposal.kind.get("ChangeConfig").is_some() {
+        "Settings"
+    } else if POLICY_TYPES.iter().any(|t| proposal.kind.get(t).is_some()) {
+        "Change Policy"
+    } else {
+        return false;
+    };
+
+    if let Some(types) = types_set
+        && !types.contains(name)
+    {
+        return false;
+    }
+
+    if let Some(types_not) = types_not_set
+        && types_not.contains(name)
+    {
+        return false;
+    }
+
+    true
+}
+
 impl ProposalFilters {
     pub async fn filter_proposals_async(
         &self,
@@ -612,6 +724,8 @@ impl ProposalFilters {
         cache: &Cache,
         network: &NetworkConfig,
     ) -> Result<Vec<Proposal>, Box<dyn std::error::Error>> {
+        let types_set = to_str_hashset(&self.types);
+        let types_not_set = to_str_hashset(&self.types_not);
         let statuses_set = to_str_hashset(&self.statuses);
         let proposers_set = to_str_hashset(&self.proposers);
         let proposers_not_set = to_str_hashset(&self.proposers_not);
@@ -665,6 +779,11 @@ impl ProposalFilters {
 
         for proposal in proposals {
             let submission_time = proposal.submission_time.0;
+
+            // Apply types filter
+            if !matches_types_filter(&proposal, &types_set, &types_not_set) {
+                continue;
+            }
 
             if let Some(ref proposers) = proposers_set
                 && !proposers.contains(proposal.proposer.as_str())
@@ -833,7 +952,15 @@ impl ProposalFilters {
             }
 
             // Apply recipients filter
-            if !matches_recipients_filter(&proposal, &recipients_set, &recipients_not_set) {
+            if !matches_recipients_filter(
+                &proposal,
+                &recipients_set,
+                &recipients_not_set,
+                cache,
+                network,
+            )
+            .await
+            {
                 continue;
             }
 

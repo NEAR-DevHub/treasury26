@@ -23,7 +23,6 @@ import {
 import { getProposalUIKind } from "./proposal-utils";
 import { ProposalUIKind } from "../types/index";
 import { Policy } from "@/types/policy";
-import { TreasuryConfig } from "@/lib/api";
 import { Action } from "@hot-labs/near-connect/build/types";
 import { getKindFromProposal } from "@/lib/config-utils";
 

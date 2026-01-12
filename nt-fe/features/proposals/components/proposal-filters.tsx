@@ -36,6 +36,7 @@ const PROPOSAL_TYPE_OPTIONS = [
     "Payments",
     "Exchange",
     "Earn",
+    "Vesting",
     "Change Policy",
     "Settings",
 ];

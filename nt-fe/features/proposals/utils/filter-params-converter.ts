@@ -60,19 +60,22 @@ export function convertUrlParamsToApiFilters(
       // Map frontend names to backend names
       const backendTypes = proposalTypesData.selected.map(type => {
         switch (type) {
-          case "Payments": return "Transfer";
-          case "Exchange": return "FunctionCall";
-          case "Earn": return "SetStakingContract";
-          case "Change Policy": return "ChangePolicy";
-          case "Settings": return "ChangeConfig";
+          case "Payments": return "Payments";
+          case "Exchange": return "Exchange";
+          case "Earn": return "Earn";
+          case "Vesting": return "Vesting";
+          case "Change Policy": return "Change Policy";
+          case "Settings": return "Settings";
           default: return type;
         }
       });
 
       if (proposalTypesData.operation === "Is") {
-        filters.proposal_types = backendTypes;
+        filters.types = backendTypes;
       }
-      // Note: Backend doesn't have proposal_types_not, but we could filter client-side if needed
+      if (proposalTypesData.operation === "Is Not") {
+        filters.types_not = backendTypes;
+      }
     }
   }
 

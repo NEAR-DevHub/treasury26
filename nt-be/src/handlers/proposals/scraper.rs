@@ -16,6 +16,8 @@ use serde_json::Value;
 use serde_json::json;
 use std::collections::HashMap;
 
+use crate::constants::BATCH_PAYMENT_ACCOUNT_ID;
+
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, Debug)]
 pub struct TxMetadata {
     pub signer_id: AccountId,
@@ -223,6 +225,23 @@ pub async fn fetch_ft_metadata(
         .map(|r| r.data)
 }
 
+pub async fn fetch_batch_payment_list(
+    network: &NetworkConfig,
+    batch_id: &str,
+) -> Result<BatchPaymentResponse, QueryError<RpcQueryError>> {
+    Contract(BATCH_PAYMENT_ACCOUNT_ID.into())
+        .call_function(
+            "view_list",
+            json!({
+                "list_id": batch_id,
+            }),
+        )
+        .read_only::<BatchPaymentResponse>()
+        .fetch_from(network)
+        .await
+        .map(|r| r.data)
+}
+
 pub fn extract_from_description(desc: &str, key: &str) -> Option<String> {
     let key_normalized = key.to_lowercase().replace(' ', "");
 
@@ -323,6 +342,28 @@ pub struct LockupInfo {
 }
 
 #[derive(Debug, Clone)]
+pub struct BulkPayment {
+    pub token_id: String,
+    pub total_amount: String,
+    pub batch_id: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct BatchPayment {
+    pub recipient: AccountId,
+    pub amount: String,
+    pub status: serde_json::Value,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct BatchPaymentResponse {
+    pub token_id: AccountId,
+    pub submitter: AccountId,
+    pub status: String,
+    pub payments: Vec<BatchPayment>,
+}
+
+#[derive(Debug, Clone)]
 pub struct AssetExchangeInfo {
     pub token_in_address: String,
     pub amount_in: u128,
@@ -343,6 +384,7 @@ impl ProposalType for PaymentInfo {
         if proposal.kind.get("Transfer").is_none() && proposal.kind.get("FunctionCall").is_none() {
             return None;
         }
+
         // Transfer kind
         if let Some(transfer_val) = proposal.kind.get("Transfer") {
             let token = transfer_val
@@ -378,6 +420,10 @@ impl ProposalType for PaymentInfo {
                 .and_then(|a| a.as_array())
                 .map(|a| a.as_slice())
                 .unwrap_or(&[]);
+
+            if receiver_id == "bulkpayment.near" {
+                return None;
+            }
             // Intents payment
             if receiver_id == "intents.near"
                 && actions
@@ -465,6 +511,7 @@ impl ProposalType for PaymentInfo {
                     is_lockup: true,
                 });
             }
+
             // NEARN requests: storage_deposit + ft_transfer
             if actions.len() >= 2
                 && actions
@@ -507,12 +554,13 @@ impl ProposalType for PaymentInfo {
                 }
             }
             // Standard ft_transfer
-            if actions
-                .first()
-                .and_then(|a| a.get("method_name"))
-                .and_then(|m| m.as_str())
-                == Some("ft_transfer")
-            {
+            if matches!(
+                actions
+                    .first()
+                    .and_then(|a| a.get("method_name"))
+                    .and_then(|m| m.as_str()),
+                Some("ft_transfer") | Some("ft_transfer_call")
+            ) {
                 let token = receiver_id.to_string();
                 if let Some(args_b64) = actions
                     .first()
@@ -756,5 +804,84 @@ impl ProposalType for StakeDelegationInfo {
 
     fn category_name() -> &'static str {
         "stake-delegation"
+    }
+}
+
+impl ProposalType for BulkPayment {
+    fn from_proposal(proposal: &Proposal) -> Option<Self> {
+        if let Some(function_call) = proposal.kind.get("FunctionCall") {
+            let actions = function_call
+                .get("actions")
+                .and_then(|a| a.as_array())
+                .map(|a| a.as_slice())
+                .unwrap_or(&[]);
+
+            // Find action with ft_transfer_call or approve_list method
+            let action = actions.iter().find(|a| {
+                a.get("method_name")
+                    .and_then(|m| m.as_str())
+                    .map(|m| m == "ft_transfer_call" || m == "approve_list")
+                    .unwrap_or(false)
+            })?;
+
+            // Decode args
+            let args_b64 = action.get("args").and_then(|a| a.as_str())?;
+            let decoded_bytes = base64::engine::general_purpose::STANDARD
+                .decode(args_b64)
+                .ok()?;
+            let json_args = serde_json::from_slice::<serde_json::Value>(&decoded_bytes).ok()?;
+
+            let method_name = action
+                .get("method_name")
+                .and_then(|m| m.as_str())
+                .unwrap_or("");
+
+            let (token_id, total_amount, batch_id) = if method_name == "approve_list" {
+                let token_id = "near".to_string();
+                let total_amount = action
+                    .get("deposit")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("0")
+                    .to_string();
+                let batch_id = json_args
+                    .get("list_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                (token_id, total_amount, batch_id)
+            } else {
+                // For ft_transfer_call
+                let token_id = function_call
+                    .get("receiver_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let total_amount = json_args
+                    .get("amount")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("0")
+                    .to_string();
+                let batch_id = json_args
+                    .get("msg")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                (token_id, total_amount, batch_id)
+            };
+
+            Some(BulkPayment {
+                token_id,
+                total_amount,
+                batch_id,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn category_name() -> &'static str {
+        "bulk-payment"
     }
 }

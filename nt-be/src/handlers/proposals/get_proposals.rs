@@ -18,6 +18,8 @@ use crate::{
 
 #[derive(Deserialize)]
 pub struct GetProposalsQuery {
+    pub types: Option<String>,
+    pub types_not: Option<String>,
     pub statuses: Option<String>,
     pub search: Option<String>,
     pub search_not: Option<String>,
@@ -90,6 +92,8 @@ pub async fn get_proposals(
             "ExpiryTime" => Some(SortBy::ExpiryTime),
             _ => None,
         }),
+        types: query.types,
+        types_not: query.types_not,
         sort_direction: query.sort_direction,
         created_date_from: query.created_date_from,
         created_date_to: query.created_date_to,
@@ -122,7 +126,7 @@ pub async fn get_proposals(
         .filter_proposals_async(proposals, &policy, &state.cache, &state.network)
         .await
         .map_err(|e| {
-            eprintln!("Error filtering proposals: {}", e);
+            log::warn!("Error filtering proposals: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to filter proposals".to_string(),
