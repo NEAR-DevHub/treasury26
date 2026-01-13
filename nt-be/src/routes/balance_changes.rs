@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use crate::AppState;
 use crate::handlers::balance_changes::gap_filler;
+use crate::handlers::token::{TokenMetadata, fetch_tokens_metadata};
 
 #[derive(Debug, Deserialize)]
 pub struct BalanceChangesQuery {
@@ -36,6 +37,25 @@ pub struct BalanceChange {
     pub balance_before: BigDecimal,
     pub balance_after: BigDecimal,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecentActivityResponse {
+    pub data: Vec<RecentActivity>,
+    pub total: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecentActivity {
+    pub id: i64,
+    pub block_time: DateTime<Utc>,
+    pub token_id: String,
+    pub token_metadata: TokenMetadata,
+    pub counterparty: Option<String>,
+    pub signer_id: Option<String>,
+    pub receiver_id: Option<String>,
+    pub amount: BigDecimal,
+    pub transaction_hashes: Vec<String>,
 }
 
 pub async fn get_balance_changes(
@@ -95,6 +115,206 @@ pub async fn get_balance_changes(
             ))
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RecentActivityQuery {
+    pub account_id: String,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+pub async fn get_recent_activity(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<RecentActivityQuery>,
+) -> Result<Json<RecentActivityResponse>, (StatusCode, Json<Value>)> {
+    let limit = params.limit.unwrap_or(50).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    // Helper function to convert token_id to metadata API format
+    fn token_id_for_metadata(token_id: &str) -> Option<String> {
+        // Skip native NEAR - we have a fallback for it
+        if token_id == "near" {
+            return None;
+        }
+
+        Some(if token_id.starts_with("intents.near:") {
+            // Strip "intents.near:" prefix for metadata API
+            token_id.strip_prefix("intents.near:").unwrap().to_string()
+        } else if token_id.starts_with("nep141:") || token_id.starts_with("nep245:") {
+            token_id.to_string()
+        } else {
+            format!("nep141:{}", token_id)
+        })
+    }
+
+    // Get total count (for pagination)
+    let total = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(*)
+        FROM balance_changes
+        WHERE account_id = $1
+          AND counterparty != 'SNAPSHOT'
+          AND counterparty != 'NOT_REGISTERED'
+        "#,
+    )
+    .bind(&params.account_id)
+    .fetch_one(&state.db_pool)
+    .await
+    .unwrap_or(0);
+
+    // Fetch recent balance changes (exclude SNAPSHOT and NOT_REGISTERED)
+    let changes = sqlx::query_as::<_, BalanceChange>(
+        r#"
+        SELECT id, account_id, block_height, block_time, token_id, 
+               receipt_id, transaction_hashes, counterparty, signer_id, receiver_id,
+               amount, balance_before, balance_after, created_at
+        FROM balance_changes
+        WHERE account_id = $1
+          AND counterparty != 'SNAPSHOT'
+          AND counterparty != 'NOT_REGISTERED'
+        ORDER BY block_height DESC, id DESC
+        LIMIT $2 OFFSET $3
+        "#,
+    )
+    .bind(&params.account_id)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&state.db_pool)
+    .await;
+
+    let changes = match changes {
+        Ok(data) => data,
+        Err(e) => {
+            log::error!("Failed to fetch recent activity: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Failed to fetch recent activity",
+                    "details": e.to_string()
+                })),
+            ));
+        }
+    };
+
+    // Get unique token IDs (excluding native NEAR since we have a fallback)
+    let token_ids: Vec<String> = changes
+        .iter()
+        .filter_map(|c| token_id_for_metadata(&c.token_id))
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+
+    // Fetch token metadata using the token metadata handler
+    let tokens_metadata = if !token_ids.is_empty() {
+        fetch_tokens_metadata(&state, &token_ids)
+            .await
+            .map_err(|e| {
+                log::error!("Failed to fetch token metadata: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "Failed to fetch token metadata"
+                    })),
+                )
+            })?
+    } else {
+        Vec::new()
+    };
+
+    // Build a map
+    let mut metadata_map: std::collections::HashMap<String, TokenMetadata> =
+        std::collections::HashMap::new();
+    for meta in tokens_metadata {
+        metadata_map.insert(meta.token_id.clone(), meta);
+    }
+
+    // Enrich balance changes with token metadata
+    let activities: Vec<RecentActivity> = changes
+        .into_iter()
+        .map(|change| {
+            let token_metadata = if change.token_id == "near" {
+                // Use fallback for native NEAR (we didn't fetch metadata for it)
+                TokenMetadata {
+                    token_id: "near".to_string(),
+                    name: "NEAR Protocol".to_string(),
+                    symbol: "NEAR".to_string(),
+                    decimals: 24,
+                    icon: Some(
+                        "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png"
+                            .to_string(),
+                    ),
+                    price: None,
+                    price_updated_at: None,
+                    network: Some("near".to_string()),
+                    chain_name: Some("Near Protocol".to_string()),
+                    chain_icons: None,
+                }
+            } else {
+                // Look up metadata
+                if let Some(lookup_id) = token_id_for_metadata(&change.token_id) {
+                    metadata_map.get(&lookup_id).cloned().unwrap_or_else(|| {
+                        // Fallback - extract symbol from token ID
+                        let symbol = change
+                            .token_id
+                            .split('.')
+                            .next()
+                            .unwrap_or("UNKNOWN")
+                            .to_uppercase();
+                        TokenMetadata {
+                            token_id: change.token_id.clone(),
+                            name: symbol.clone(),
+                            symbol,
+                            decimals: 18,
+                            icon: None,
+                            price: None,
+                            price_updated_at: None,
+                            network: None,
+                            chain_name: None,
+                            chain_icons: None,
+                        }
+                    })
+                } else {
+                    // This shouldn't happen, but provide a fallback anyway
+                    let symbol = change
+                        .token_id
+                        .split('.')
+                        .next()
+                        .unwrap_or("UNKNOWN")
+                        .to_uppercase();
+                    TokenMetadata {
+                        token_id: change.token_id.clone(),
+                        name: symbol.clone(),
+                        symbol,
+                        decimals: 18,
+                        icon: None,
+                        price: None,
+                        price_updated_at: None,
+                        network: None,
+                        chain_name: None,
+                        chain_icons: None,
+                    }
+                }
+            };
+
+            RecentActivity {
+                id: change.id,
+                block_time: change.block_time,
+                token_id: change.token_id,
+                token_metadata,
+                counterparty: change.counterparty,
+                signer_id: change.signer_id,
+                receiver_id: change.receiver_id,
+                amount: change.amount,
+                transaction_hashes: change.transaction_hashes,
+            }
+        })
+        .collect();
+
+    Ok(Json(RecentActivityResponse {
+        data: activities,
+        total,
+    }))
 }
 
 #[derive(Debug, Deserialize)]
