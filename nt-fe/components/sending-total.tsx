@@ -13,7 +13,7 @@ export function SendingTotal({ total, token, children }: SendingTotalProps) {
             <div className="flex flex-col gap-2 p-2 text-xs text-muted-foreground text-center justify-center items-center">
                 <p>You are sending a total of</p>
                 <img src={token.icon} alt={token.symbol} className="size-10 shrink-0 rounded-full" />
-                <p className="text-xl font-semibold text-primary">{total} {token.symbol}</p>
+                <p className="text-xl font-semibold text-foreground">{total} {token.symbol}</p>
                 <div>
                     {children}
                 </div>

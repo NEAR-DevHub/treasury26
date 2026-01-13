@@ -29,7 +29,7 @@ export function Rate({ tokenIn, tokenOut, amountIn, amountInWithDecimals, amount
 
 
     return (
-        <p className="text-sm text-primary">
+        <p className="text-sm text-foreground">
             1 {tokenInData?.symbol} ({formatCurrency(tokenInData?.price || 0)}) ≈ {cost} {tokenOutData?.symbol}
         </p>
     );

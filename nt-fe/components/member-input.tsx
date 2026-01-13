@@ -81,7 +81,7 @@ export function MemberInput<
                             </p>
 
                             {index > 0 && !disableAllInputs && <Button variant={"ghost"} className="size-6 p-0! group hover:text-destructive" onClick={() => remove(index)}>
-                                <Trash2 className="size-4 text-primary group-hover:text-destructive" />
+                                <Trash2 className="size-4 text-foreground group-hover:text-destructive" />
                             </Button>}
                         </div>
                         <div className="flex md:flex-row flex-col items-start justify-between md:items-center gap-3">
@@ -147,14 +147,14 @@ export function MemberInput<
                     </div>
                 ))}
                 {!hideAddButton && (
-                <Button variant={"ghost"} type="button" className="w-fit" onClick={() => append({ accountId: "", roles: defaultRoles } as TMemberPath extends ArrayPath<TFieldValues>
-                    ? PathValue<TFieldValues, TMemberPath> extends Member
-                    ? PathValue<TFieldValues, TMemberPath>[number]
-                    : never
-                    : never)}>
-                    <Plus className="size-4 text-primary" />
-                    <span className="text-primary">Add New Member</span>
-                </Button>
+                    <Button variant={"ghost"} type="button" className="w-fit" onClick={() => append({ accountId: "", roles: defaultRoles } as TMemberPath extends ArrayPath<TFieldValues>
+                        ? PathValue<TFieldValues, TMemberPath> extends Member
+                        ? PathValue<TFieldValues, TMemberPath>[number]
+                        : never
+                        : never)}>
+                        <Plus className="size-4 text-foreground" />
+                        <span className="text-foreground">Add New Member</span>
+                    </Button>
                 )}
             </div>
         </InputBlock >
