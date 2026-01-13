@@ -6,12 +6,14 @@
 
 use axum::{
     Json,
+    body::Body,
     extract::{Query, State},
     http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{DateTime, Months, NaiveDate, Utc};
+use rust_xlsxwriter::{Color, Format, Workbook};
 use serde::{Deserialize, Deserializer, Serialize};
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
@@ -167,6 +169,83 @@ pub async fn export_balance_csv(
             ),
         ],
         csv_data,
+    )
+        .into_response())
+}
+
+/// JSON Export API - returns balance changes as JSON
+///
+/// Excludes SNAPSHOT and NOT_REGISTERED records
+pub async fn export_balance_json(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<CsvRequest>,
+) -> Result<Response, (StatusCode, String)> {
+    let json_data = generate_json(
+        &state.db_pool,
+        &state.price_service,
+        &params.account_id,
+        params.start_time,
+        params.end_time,
+        params.token_ids.as_ref(),
+    )
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let filename = format!(
+        "balance_changes_{}_{}_to_{}.json",
+        params.account_id, params.start_time, params.end_time
+    );
+
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/json; charset=utf-8"),
+            (
+                header::CONTENT_DISPOSITION,
+                &format!("attachment; filename=\"{}\"", filename),
+            ),
+        ],
+        json_data,
+    )
+        .into_response())
+}
+
+/// XLSX Export API - returns balance changes as Excel file
+///
+/// Excludes SNAPSHOT and NOT_REGISTERED records
+pub async fn export_balance_xlsx(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<CsvRequest>,
+) -> Result<Response, (StatusCode, String)> {
+    let xlsx_data = generate_xlsx(
+        &state.db_pool,
+        &state.price_service,
+        &params.account_id,
+        params.start_time,
+        params.end_time,
+        params.token_ids.as_ref(),
+    )
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let filename = format!(
+        "balance_changes_{}_{}_to_{}.xlsx",
+        params.account_id, params.start_time, params.end_time
+    );
+
+    Ok((
+        StatusCode::OK,
+        [
+            (
+                header::CONTENT_TYPE,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ),
+            (
+                header::CONTENT_DISPOSITION,
+                &format!("attachment; filename=\"{}\"", filename),
+            ),
+        ],
+        Body::from(xlsx_data),
     )
         .into_response())
 }
@@ -458,7 +537,7 @@ async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
     }
 }
 
-/// Generate CSV from balance changes
+/// Generate CSV from enriched balance changes
 async fn generate_csv<P: crate::services::PriceProvider>(
     pool: &PgPool,
     price_service: &crate::services::PriceLookupService<P>,
@@ -467,13 +546,86 @@ async fn generate_csv<P: crate::services::PriceProvider>(
     end_date: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let enriched = load_enriched_balance_changes(
+        pool,
+        price_service,
+        account_id,
+        start_date,
+        end_date,
+        token_ids,
+    )
+    .await?;
+
+    let mut csv = String::new();
+
+    // Header (with price columns)
+    csv.push_str("block_height,block_time,token_id,token_symbol,counterparty,amount,balance_before,balance_after,price_usd,value_usd,transaction_hashes,receipt_id\n");
+
+    // Rows
+    for change in enriched {
+        let tx_hashes = change.transaction_hashes.join(",");
+        let price_str = change
+            .price_usd
+            .map(|p| format!("{}", p))
+            .unwrap_or_default();
+        let value_str = change
+            .value_usd
+            .map(|v| format!("{}", v))
+            .unwrap_or_default();
+
+        csv.push_str(&format!(
+            "{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            change.block_height,
+            change.block_time.to_rfc3339(),
+            change.token_id,
+            change.token_symbol,
+            change.counterparty,
+            change.amount,
+            change.balance_before,
+            change.balance_after,
+            price_str,
+            value_str,
+            tx_hashes,
+            change.receipt_id
+        ));
+    }
+
+    Ok(csv)
+}
+
+/// Common enriched balance change structure used for exports
+#[derive(Debug, Serialize)]
+struct EnrichedBalanceChange {
+    block_height: i64,
+    block_time: DateTime<Utc>,
+    token_id: String,
+    token_symbol: String,
+    counterparty: String,
+    amount: BigDecimal,
+    balance_before: BigDecimal,
+    balance_after: BigDecimal,
+    price_usd: Option<f64>,
+    value_usd: Option<f64>,
+    transaction_hashes: Vec<String>,
+    receipt_id: String,
+}
+
+/// Common function to load and enrich balance changes with price data
+/// Filters out SNAPSHOT and NOT_REGISTERED entries
+async fn load_enriched_balance_changes<P: crate::services::PriceProvider>(
+    pool: &PgPool,
+    price_service: &crate::services::PriceLookupService<P>,
+    account_id: &str,
+    start_date: DateTime<Utc>,
+    end_date: DateTime<Utc>,
+    token_ids: Option<&Vec<String>>,
+) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
     let changes = load_balance_changes(pool, account_id, start_date, end_date, token_ids).await?;
 
-    // Pre-fetch prices for all token/date combinations to avoid per-row API calls
+    // Pre-fetch prices for all token/date combinations
     let mut prices_cache: HashMap<(String, NaiveDate), f64> = HashMap::new();
-
-    // Collect all unique (token_id, date) pairs
     let mut token_dates: HashMap<String, HashSet<NaiveDate>> = HashMap::new();
+
     for change in &changes {
         if change.counterparty == "SNAPSHOT" || change.counterparty == "NOT_REGISTERED" {
             continue;
@@ -499,52 +651,175 @@ async fn generate_csv<P: crate::services::PriceProvider>(
         }
     }
 
-    let mut csv = String::new();
+    // Filter and enrich balance changes
+    let enriched: Vec<EnrichedBalanceChange> = changes
+        .into_iter()
+        .filter(|change| {
+            change.counterparty != "SNAPSHOT" && change.counterparty != "NOT_REGISTERED"
+        })
+        .map(|change| {
+            let date = change.block_time.date_naive();
+            let (price_usd, value_usd) = prices_cache
+                .get(&(change.token_id.clone(), date))
+                .map(|&price| {
+                    let value = change.balance_after.to_f64().map(|b| b * price);
+                    (Some(price), value)
+                })
+                .unwrap_or((None, None));
 
-    // Header (with price columns)
-    csv.push_str("block_height,block_time,token_id,token_symbol,counterparty,amount,balance_before,balance_after,price_usd,value_usd,transaction_hashes,receipt_id\n");
+            EnrichedBalanceChange {
+                block_height: change.block_height,
+                block_time: change.block_time,
+                token_id: change.token_id.clone(),
+                token_symbol: change.token_symbol.unwrap_or_default(),
+                counterparty: change.counterparty.clone(),
+                amount: change.amount,
+                balance_before: change.balance_before,
+                balance_after: change.balance_after,
+                price_usd,
+                value_usd,
+                transaction_hashes: change.transaction_hashes.clone(),
+                receipt_id: change
+                    .receipt_id
+                    .first()
+                    .map(|s| s.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+            }
+        })
+        .collect();
 
-    // Rows (exclude SNAPSHOT and NOT_REGISTERED)
-    for change in changes {
-        if change.counterparty == "SNAPSHOT" || change.counterparty == "NOT_REGISTERED" {
-            continue;
-        }
+    Ok(enriched)
+}
 
-        let tx_hashes = change.transaction_hashes.join(",");
-        let receipt_id = change.receipt_id.first().map(|s| s.as_str()).unwrap_or("");
-        let token_symbol = change.token_symbol.as_deref().unwrap_or("");
+/// Generate JSON from enriched balance changes
+async fn generate_json<P: crate::services::PriceProvider>(
+    pool: &PgPool,
+    price_service: &crate::services::PriceLookupService<P>,
+    account_id: &str,
+    start_date: DateTime<Utc>,
+    end_date: DateTime<Utc>,
+    token_ids: Option<&Vec<String>>,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let enriched = load_enriched_balance_changes(
+        pool,
+        price_service,
+        account_id,
+        start_date,
+        end_date,
+        token_ids,
+    )
+    .await?;
 
-        // Look up price from pre-fetched cache
-        let date = change.block_time.date_naive();
-        let (price_usd, value_usd) = prices_cache
-            .get(&(change.token_id.clone(), date))
-            .map(|&price| {
-                let value = change.balance_after.to_f64().map(|b| b * price);
-                (Some(price), value)
+    // Convert to JSON-friendly format with string representations for decimals
+    let json_records: Vec<serde_json::Value> = enriched
+        .into_iter()
+        .map(|change| {
+            serde_json::json!({
+                "block_height": change.block_height,
+                "block_time": change.block_time.to_rfc3339(),
+                "token_id": change.token_id,
+                "token_symbol": change.token_symbol,
+                "counterparty": change.counterparty,
+                "amount": change.amount.to_string(),
+                "balance_before": change.balance_before.to_string(),
+                "balance_after": change.balance_after.to_string(),
+                "price_usd": change.price_usd,
+                "value_usd": change.value_usd,
+                "transaction_hashes": change.transaction_hashes,
+                "receipt_id": change.receipt_id,
             })
-            .unwrap_or((None, None));
+        })
+        .collect();
 
-        let price_str = price_usd.map(|p| format!("{}", p)).unwrap_or_default();
-        let value_str = value_usd.map(|v| format!("{}", v)).unwrap_or_default();
+    Ok(serde_json::to_string_pretty(&json_records)?)
+}
 
-        csv.push_str(&format!(
-            "{},{},{},{},{},{},{},{},{},{},{},{}\n",
-            change.block_height,
-            change.block_time.to_rfc3339(),
-            change.token_id,
-            token_symbol,
-            change.counterparty,
-            change.amount,
-            change.balance_before,
-            change.balance_after,
-            price_str,
-            value_str,
-            tx_hashes,
-            receipt_id
-        ));
+/// Generate XLSX from enriched balance changes
+async fn generate_xlsx<P: crate::services::PriceProvider>(
+    pool: &PgPool,
+    price_service: &crate::services::PriceLookupService<P>,
+    account_id: &str,
+    start_date: DateTime<Utc>,
+    end_date: DateTime<Utc>,
+    token_ids: Option<&Vec<String>>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+    let enriched = load_enriched_balance_changes(
+        pool,
+        price_service,
+        account_id,
+        start_date,
+        end_date,
+        token_ids,
+    )
+    .await?;
+
+    // Create workbook
+    let mut workbook = Workbook::new();
+    let worksheet = workbook.add_worksheet();
+
+    // Create header format
+    let header_format = Format::new()
+        .set_bold()
+        .set_background_color(Color::RGB(0x4472C4))
+        .set_font_color(Color::White);
+
+    // Write headers
+    let headers = vec![
+        "Block Height",
+        "Block Time",
+        "Token ID",
+        "Token Symbol",
+        "Counterparty",
+        "Amount",
+        "Balance Before",
+        "Balance After",
+        "Price USD",
+        "Value USD",
+        "Transaction Hashes",
+        "Receipt ID",
+    ];
+
+    for (col, header) in headers.iter().enumerate() {
+        worksheet.write_with_format(0, col as u16, *header, &header_format)?;
     }
 
-    Ok(csv)
+    // Write data rows
+    let mut row = 1u32;
+    for change in enriched {
+        worksheet.write(row, 0, change.block_height)?;
+        worksheet.write(row, 1, change.block_time.to_rfc3339())?;
+        worksheet.write(row, 2, &change.token_id)?;
+        worksheet.write(row, 3, &change.token_symbol)?;
+        worksheet.write(row, 4, &change.counterparty)?;
+        worksheet.write(row, 5, change.amount.to_string())?;
+        worksheet.write(row, 6, change.balance_before.to_string())?;
+        worksheet.write(row, 7, change.balance_after.to_string())?;
+
+        if let Some(price) = change.price_usd {
+            worksheet.write(row, 8, price)?;
+        } else {
+            worksheet.write(row, 8, "")?;
+        }
+
+        if let Some(value) = change.value_usd {
+            worksheet.write(row, 9, value)?;
+        } else {
+            worksheet.write(row, 9, "")?;
+        }
+
+        worksheet.write(row, 10, change.transaction_hashes.join(","))?;
+        worksheet.write(row, 11, &change.receipt_id)?;
+
+        row += 1;
+    }
+
+    // Auto-fit columns
+    worksheet.autofit();
+
+    let buffer = workbook.save_to_buffer()?;
+
+    Ok(buffer)
 }
 
 #[cfg(test)]

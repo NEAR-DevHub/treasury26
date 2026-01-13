@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
 import type { RecentActivity as RecentActivityType } from "@/lib/api";
 import { TransactionDetailsModal } from "./transaction-details-modal";
+import { ExportActivityModal } from "./export-activity-modal";
 import {
   useReactTable,
   getCoreRowModel,
@@ -36,6 +37,7 @@ export function RecentActivity() {
   const [total, setTotal] = useState(0);
   const [selectedActivity, setSelectedActivity] = useState<RecentActivityType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   
   const { data: response, isLoading, isFetching } = useRecentActivity(
     treasuryId,
@@ -200,7 +202,7 @@ export function RecentActivity() {
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>History of sent and received transactions</CardDescription>
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => setIsExportModalOpen(true)}>
             <Upload className="h-4 w-4" />
             Export
           </Button>
@@ -265,6 +267,11 @@ export function RecentActivity() {
         treasuryId={treasuryId || ""}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      <ExportActivityModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
       />
     </>
   );

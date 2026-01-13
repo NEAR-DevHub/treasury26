@@ -75,6 +75,14 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/balance-history/csv",
             get(handlers::balance_changes::history::export_balance_csv),
         )
+        .route(
+            "/api/balance-history/json",
+            get(handlers::balance_changes::history::export_balance_json),
+        )
+        .route(
+            "/api/balance-history/xlsx",
+            get(handlers::balance_changes::history::export_balance_xlsx),
+        )
         // Token endpoints
         .route(
             "/api/token/metadata",
