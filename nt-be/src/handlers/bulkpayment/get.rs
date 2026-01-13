@@ -2,12 +2,12 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
-use near_api::AccountId;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::{
     AppState,
+    handlers::proposals::scraper::{BatchPaymentResponse, fetch_batch_payment_list},
     utils::cache::{CacheKey, CacheTier},
 };
 
@@ -15,21 +15,6 @@ use crate::{
 pub struct BatchPaymentQuery {
     #[serde(rename = "batchId")]
     pub batch_id: String,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct BatchPayment {
-    pub recipient: AccountId,
-    pub amount: String,
-    pub status: serde_json::Value,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct BatchPaymentResponse {
-    pub token_id: AccountId,
-    pub submitter: AccountId,
-    pub status: String,
-    pub payments: Vec<BatchPayment>,
 }
 
 pub async fn get_batch_payment(
@@ -43,17 +28,7 @@ pub async fn get_batch_payment(
         .cache
         .clone()
         .cached_contract_call(CacheTier::LongTerm, cache_key, async move {
-            near_api::Contract(state.bulk_payment_contract_id.clone())
-                .call_function(
-                    "view_list",
-                    serde_json::json!({
-                        "list_id": batch_id,
-                    }),
-                )
-                .read_only::<BatchPaymentResponse>()
-                .fetch_from(&state.network)
-                .await
-                .map(|r| r.data)
+            fetch_batch_payment_list(&state.network, &batch_id).await
         })
         .await?;
 

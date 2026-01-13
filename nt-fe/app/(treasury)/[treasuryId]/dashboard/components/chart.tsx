@@ -1,6 +1,6 @@
 "use client"
 
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 import {
     ChartContainer,
     ChartTooltip,
@@ -15,6 +15,7 @@ interface ChartDataPoint {
 
 interface BalanceChartProps {
     data?: ChartDataPoint[];
+    showUSD?: boolean;
 }
 
 const chartConfig = {
@@ -24,14 +25,30 @@ const chartConfig = {
     },
 } satisfies ChartConfig;
 
-export default function BalanceChart({ data = [] }: BalanceChartProps) {
+export default function BalanceChart({ data = [], showUSD = true }: BalanceChartProps) {
+    if (data.length === 0) {
+        return (
+            <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
+                No balance history available
+            </div>
+        );
+    }
+    
     const averageValue = data.reduce((acc, item) => acc + item.value, 0) / data.length;
+    
+    // Calculate optimal interval based on data length
+    // Show ~6-8 ticks for good readability
+    const calculateInterval = (length: number) => {
+        if (length <= 8) return 0; // Show all for small datasets
+        if (length <= 15) return 1; // Every other point
+        return Math.floor(length / 7); // ~7 ticks for larger datasets
+    };
+    
+    const tickInterval = calculateInterval(data.length);
 
     return (
         <ChartContainer config={chartConfig} className='h-56'>
-            <AreaChart
-                data={data}
-            >
+            <AreaChart data={data}>
                 <defs>
                     <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
                         <stop
@@ -51,14 +68,30 @@ export default function BalanceChart({ data = [] }: BalanceChartProps) {
                     dataKey="name"
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(value) => value.toLocaleString()}
+                    interval={tickInterval}
+                    padding={{ left: 20, right: 20 }}
                 />
                 <YAxis
                     hide
                     domain={[`dataMin - ${averageValue * 0.5}`, `dataMax + ${averageValue * 0.5}`]}
                 />
                 <ChartTooltip
-                    content={<ChartTooltipContent />}
+                    content={<ChartTooltipContent 
+                        formatter={(value) => {
+                            const num = Number(value);
+                            if (showUSD) {
+                                return `$${num.toLocaleString(undefined, { 
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2 
+                                })}`;
+                            } else {
+                                return num.toLocaleString(undefined, { 
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 6 
+                                });
+                            }
+                        }}
+                    />}
                 />
                 <Area
                     type="monotone"
@@ -66,6 +99,13 @@ export default function BalanceChart({ data = [] }: BalanceChartProps) {
                     stroke="var(--color-foreground)"
                     strokeWidth={2}
                     fill="url(#fillValue)"
+                    dot={false}
+                    activeDot={{ 
+                        r: 5, 
+                        fill: "var(--color-foreground)",
+                        stroke: "white",
+                        strokeWidth: 2
+                    }}
                 />
             </AreaChart>
         </ChartContainer>

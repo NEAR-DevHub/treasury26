@@ -75,6 +75,9 @@ static TOKENS_MAP_CELL: OnceLock<HashMap<String, UnifiedTokenInfo>> = OnceLock::
 /// Static map of base tokens by defuseAssetId for fast lookup
 static DEFUSE_TOKENS_MAP_CELL: OnceLock<HashMap<String, BaseTokenInfo>> = OnceLock::new();
 
+/// Static map of unified tokens by lowercase symbol for fast lookup
+static SYMBOL_TOKENS_MAP_CELL: OnceLock<HashMap<String, UnifiedTokenInfo>> = OnceLock::new();
+
 /// Get the map of unified tokens, loading from JSON if not already loaded
 pub fn get_tokens_map() -> &'static HashMap<String, UnifiedTokenInfo> {
     TOKENS_MAP_CELL.get_or_init(|| {
@@ -107,11 +110,30 @@ pub fn get_defuse_tokens_map() -> &'static HashMap<String, BaseTokenInfo> {
     })
 }
 
+/// Get the map of unified tokens by lowercase symbol, loading from JSON if not already loaded
+pub fn get_symbol_tokens_map() -> &'static HashMap<String, UnifiedTokenInfo> {
+    SYMBOL_TOKENS_MAP_CELL.get_or_init(|| {
+        let tokens = load_tokens_from_json().unwrap_or_else(|e| {
+            eprintln!("Failed to load tokens from JSON: {}", e);
+            vec![]
+        });
+        tokens
+            .into_iter()
+            .map(|t| (t.symbol.to_lowercase(), t))
+            .collect()
+    })
+}
+
 /// Find a token by its defuse_asset_id
 pub fn find_token_by_unified_asset_id(unified_asset_id: &str) -> Option<UnifiedTokenInfo> {
     get_tokens_map()
         .get(&unified_asset_id.to_lowercase())
         .cloned()
+}
+
+/// Find a token by its lowercase symbol
+pub fn find_token_by_symbol(symbol: &str) -> Option<UnifiedTokenInfo> {
+    get_symbol_tokens_map().get(&symbol.to_lowercase()).cloned()
 }
 
 /// Find a base token by its defuseAssetId (e.g., "nep141:wrap.near" or "nep245:v2_1.omni.hot.tg:137_...")

@@ -59,6 +59,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(balance_changes::get_balance_changes),
         )
         .route(
+            "/api/recent-activity",
+            get(balance_changes::get_recent_activity),
+        )
+        .route(
             "/api/balance-changes/fill-gaps",
             post(balance_changes::fill_gaps),
         )
@@ -137,6 +141,14 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/proposal/{dao_id}/{proposal_id}",
             get(handlers::proposals::get_proposals::get_proposal),
+        )
+        .route(
+            "/api/proposals/{dao_id}/proposers",
+            get(handlers::proposals::get_proposals::get_dao_proposers),
+        )
+        .route(
+            "/api/proposals/{dao_id}/approvers",
+            get(handlers::proposals::get_proposals::get_dao_approvers),
         )
         // Lookup endpoints
         .route(

@@ -55,7 +55,7 @@ export function TokenSelectPopover({
                         tokenMap.set(symbol, {
                             id: asset.id,
                             name: asset.name || asset.assetName,
-                            symbol: asset.symbol,
+                            symbol: asset.symbol === 'wNEAR' ? 'NEAR' : asset.symbol,
                             icon: hasValidIcon ? asset.icon : asset.symbol?.charAt(0) || "?",
                             gradient: "bg-gradient-cyan-blue",
                         });
@@ -104,7 +104,7 @@ export function TokenSelectPopover({
                     {selectedToken ? (
                         <>
                             {selectedToken.icon?.startsWith("http") ||
-                            selectedToken.icon?.startsWith("data:") ? (
+                                selectedToken.icon?.startsWith("data:") ? (
                                 <img
                                     src={selectedToken.icon}
                                     alt={selectedToken.symbol}
@@ -165,7 +165,7 @@ export function TokenSelectPopover({
                                         onClick={() => handleSelect(token)}
                                     >
                                         {token.icon?.startsWith("http") ||
-                                        token.icon?.startsWith("data:") ? (
+                                            token.icon?.startsWith("data:") ? (
                                             <img
                                                 src={token.icon}
                                                 alt={token.symbol}

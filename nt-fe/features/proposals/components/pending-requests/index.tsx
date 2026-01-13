@@ -15,7 +15,7 @@ import { useTreasuryConfig, useTreasuryPolicy } from "@/hooks/use-treasury-queri
 import { getProposalUIKind } from "../../utils/proposal-utils";
 import { VoteModal } from "../vote-modal";
 import { useState } from "react";
-import { getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
+import { getApproversAndThreshold, getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
 import { cn } from "@/lib/utils";
 
 const MAX_DISPLAYED_REQUESTS = 4;
@@ -57,6 +57,8 @@ interface PendingRequestItemProps {
 
 export function PendingRequestItem({ proposal, policy, config, accountId, onVote }: PendingRequestItemProps) {
     const type = getProposalUIKind(proposal);
+    const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposal.kind, false);
+    const canVote = approverAccounts.includes(accountId ?? "") && accountId;
 
     return (
         <Link href={`/${accountId}/requests/${proposal.id}`}>
@@ -65,20 +67,22 @@ export function PendingRequestItem({ proposal, policy, config, accountId, onVote
                 <div className="flex flex-col w-full gap-px">
                     <span className="leading-none font-semibold">{type}</span>
                     <TransactionCell proposal={proposal} withDate={true} textOnly />
-                    <div className="gap-3 pt-4 grid grid-rows-[0fr] w-full group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
-                        <div className="overflow-hidden w-full">
-                            <div className="flex gap-3 opacity-0 w-full group-hover:opacity-100 transition-opacity duration-300 ease-in-out">
-                                <Button variant="secondary" className="flex gap-1 flex-1" onClick={(e) => { e.preventDefault(); onVote("Reject") }}>
-                                    <X className="size-3.5" />
-                                    Reject
-                                </Button>
-                                <Button variant="default" className="flex gap-1 flex-1" onClick={(e) => { e.preventDefault(); onVote("Approve") }}>
-                                    <Check className="size-3.5" />
-                                    Approve
-                                </Button>
+                    {canVote && (
+                        <div className="gap-3 grid grid-rows-[0fr] w-full group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
+                            <div className="overflow-hidden w-full">
+                                <div className="pt-4 flex gap-3 invisible w-full group-hover:visible transition-opacity duration-300 ease-in-out">
+                                    <Button variant="secondary" className="flex gap-1 flex-1" onClick={(e) => { e.preventDefault(); onVote("Reject") }}>
+                                        <X className="size-3.5" />
+                                        Reject
+                                    </Button>
+                                    <Button variant="default" className="flex gap-1 flex-1" onClick={(e) => { e.preventDefault(); onVote("Approve") }}>
+                                        <Check className="size-3.5" />
+                                        Approve
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-card group-hover:text-card-foreground transition-colors absolute right-4 top-4" />
             </PageCard>

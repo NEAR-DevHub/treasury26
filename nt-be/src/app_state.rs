@@ -9,6 +9,7 @@ use crate::{
     utils::{
         cache::{Cache, CacheKey, CacheTier},
         env::EnvVars,
+        telegram::TelegramClient,
     },
 };
 
@@ -23,6 +24,7 @@ pub struct AppState {
     pub db_pool: PgPool,
     pub price_service: PriceLookupService<CoinGeckoClient>,
     pub bulk_payment_contract_id: AccountId,
+    pub telegram_client: TelegramClient,
 }
 
 /// Builder for constructing AppState instances
@@ -55,6 +57,7 @@ pub struct AppStateBuilder {
     db_pool: Option<PgPool>,
     price_service: Option<PriceLookupService<CoinGeckoClient>>,
     bulk_payment_contract_id: Option<AccountId>,
+    telegram_client: Option<TelegramClient>,
 }
 
 impl AppStateBuilder {
@@ -71,6 +74,7 @@ impl AppStateBuilder {
             db_pool: None,
             price_service: None,
             bulk_payment_contract_id: None,
+            telegram_client: None,
         }
     }
 
@@ -89,6 +93,12 @@ impl AppStateBuilder {
     /// Set the signer
     pub fn signer(mut self, signer: Arc<Signer>) -> Self {
         self.signer = Some(signer);
+        self
+    }
+
+    /// Set the telegram client
+    pub fn telegram_client(mut self, telegram_client: TelegramClient) -> Self {
+        self.telegram_client = Some(telegram_client);
         self
     }
 
@@ -225,6 +235,7 @@ impl AppStateBuilder {
             signer,
             signer_id,
             network,
+            telegram_client: self.telegram_client.unwrap_or_default(),
             archival_network,
             env_vars,
             db_pool,
@@ -298,6 +309,11 @@ impl AppState {
             PriceLookupService::without_provider(db_pool.clone())
         };
 
+        let telegram_client = TelegramClient::new(
+            env_vars.telegram_bot_token.clone(),
+            env_vars.telegram_chat_id.clone(),
+        );
+
         // Use the builder pattern internally for consistency
         AppStateBuilder::new()
             .http_client(http_client)
@@ -310,6 +326,7 @@ impl AppState {
             .env_vars(env_vars)
             .db_pool(db_pool)
             .price_service(price_service)
+            .telegram_client(telegram_client)
             .build()
             .await
     }

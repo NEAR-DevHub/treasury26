@@ -179,42 +179,57 @@ export async function getTreasuryAssets(
   }
 }
 
-export interface BalanceHistoryEntry {
-  timestamp: number;
-  date: string;
-  balance: string;
-  decimals: number;
+export interface BalanceSnapshot {
+  timestamp: string; // ISO 8601 format
+  balance: string;   // Decimal-adjusted balance
+  price_usd?: number; // USD price at timestamp (null if unavailable)
+  value_usd?: number; // balance * price_usd (null if unavailable)
 }
 
-export interface TokenBalanceHistory {
-  "1H": BalanceHistoryEntry[];
-  "1D": BalanceHistoryEntry[];
-  "1W": BalanceHistoryEntry[];
-  "1M": BalanceHistoryEntry[];
-  "1Y": BalanceHistoryEntry[];
-  All: BalanceHistoryEntry[];
+export interface BalanceChartData {
+  [tokenId: string]: BalanceSnapshot[];
+}
+
+export type ChartInterval = "hourly" | "daily" | "weekly" | "monthly";
+
+export interface BalanceChartRequest {
+  accountId: string;
+  startTime: string; // ISO 8601 format
+  endTime: string;   // ISO 8601 format
+  interval: ChartInterval;
+  tokenIds?: string[]; // If omitted, returns all tokens
 }
 
 /**
- * Get balance history for a specific token
- * Fetches historical balance data across multiple time periods
+ * Get balance history chart data with USD values
+ * Fetches historical balance snapshots at specified intervals with price data
+ * Supports filtering by specific tokens or all tokens
  */
-export async function getTokenBalanceHistory(
-  accountId: string,
-  tokenId: string,
-): Promise<TokenBalanceHistory | null> {
-  if (!accountId || !tokenId) return null;
+export async function getBalanceChart(
+  params: BalanceChartRequest,
+): Promise<BalanceChartData | null> {
+  if (!params.accountId) return null;
 
   try {
-    const url = `${BACKEND_API_BASE}/user/balance/history`;
+    const url = `${BACKEND_API_BASE}/balance-history/chart`;
 
-    const response = await axios.get<TokenBalanceHistory>(url, {
-      params: { accountId, tokenId },
+    const queryParams = new URLSearchParams({
+      account_id: params.accountId,
+      start_time: params.startTime,
+      end_time: params.endTime,
+      interval: params.interval,
     });
+
+    // Add token_ids as comma-separated values
+    if (params.tokenIds && params.tokenIds.length > 0) {
+      queryParams.append('token_ids', params.tokenIds.join(','));
+    }
+
+    const response = await axios.get<BalanceChartData>(`${url}?${queryParams.toString()}`);
 
     return response.data;
   } catch (error) {
-    console.error("Error getting token balance history", error);
+    console.error("Error getting balance chart data", error);
     return null;
   }
 }
@@ -224,6 +239,60 @@ export interface TokenBalance {
   token_id: string;
   balance: string;
   decimals: number;
+}
+
+export interface RecentActivity {
+  id: number;
+  block_time: string;
+  token_id: string;
+  token_metadata: {
+    tokenId: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+    icon?: string;
+    price?: number;
+    priceUpdatedAt?: string;
+    network?: string;
+    chainName?: string;
+    chainIcons?: {
+      dark: string;
+      light: string;
+    };
+  };
+  counterparty: string | null;
+  signer_id: string | null;
+  receiver_id: string | null;
+  amount: string;
+  transaction_hashes: string[];
+}
+
+export interface RecentActivityResponse {
+  data: RecentActivity[];
+  total: number;
+}
+
+/**
+ * Get recent activity (enriched balance changes) for an account
+ * Returns transaction history with token metadata already included
+ */
+export async function getRecentActivity(
+  accountId: string,
+  limit: number = 50,
+  offset: number = 0,
+): Promise<RecentActivityResponse | null> {
+  if (!accountId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/recent-activity`;
+    const response = await axios.get<RecentActivityResponse>(url, {
+      params: { account_id: accountId, limit, offset },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error getting recent activity", error);
+    return null;
+  }
 }
 
 /**

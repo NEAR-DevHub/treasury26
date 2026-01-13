@@ -41,6 +41,7 @@ import {
   getPaginationRowModel,
 } from "@tanstack/react-table"
 import { VoteModal } from "./vote-modal";
+import { Address } from "@/components/address";
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -149,8 +150,8 @@ export function ProposalsTable({
         cell: (info) => {
           const value = info.getValue();
           return (
-            <TooltipUser accountId={value}>
-              <span className="text-sm">{value}</span>
+            <TooltipUser accountId={value} triggerProps={{ asChild: false }}>
+              <Address address={value} />
             </TooltipUser>
           )
         }
@@ -219,7 +220,7 @@ export function ProposalsTable({
   const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
   const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
 
-  if (proposals.length === 0 && pageIndex === 0) {
+  if (proposals.length === 0 && pageIndex === 0 || total === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 gap-4">
         <div className="size-8 p-2 bg-muted rounded-full flex items-center justify-center">

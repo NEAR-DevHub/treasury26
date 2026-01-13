@@ -1,11 +1,10 @@
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Copy } from "lucide-react";
 import { Tooltip } from "./tooltip";
 import { TooltipTrigger } from "./ui/tooltip";
-import { toast } from "sonner";
 import { Separator } from "./ui/separator";
+import { CopyButton } from "./copy-button";
 
 interface UserProps {
     accountId: string;
@@ -29,17 +28,20 @@ interface TooltipUserProps {
 }
 
 export function TooltipUser({ accountId, children, triggerProps }: TooltipUserProps) {
-    const onCopy = () => {
-        navigator.clipboard.writeText(accountId);
-        toast.success("Wallet address copied to clipboard");
-    }
     return (
         <Tooltip content={<div className="flex flex-col gap-2">
             <User accountId={accountId} size="lg" />
             <Separator className="h-0.5!" />
-            <div className="flex items-center gap-2 w-full justify-start cursor-pointer py-1" onClick={onCopy}>
-                <Copy className="w-5 h-5 shrink-0" />
-                <span className="break-all">Copy Wallet Address</span>
+            <div className="flex items-center gap-2 w-full justify-start py-1">
+                <CopyButton
+                    text={accountId}
+                    toastMessage="Wallet address copied to clipboard"
+                    variant="ghost"
+                    size="icon"
+                    className="h-auto w-auto p-0 hover:bg-transparent"
+                >
+                    <span className="break-all">Copy Wallet Address</span>
+                </CopyButton>
             </div>
         </div>} triggerProps={triggerProps}>
             {children}

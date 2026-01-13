@@ -14,7 +14,7 @@ export interface TooltipProps {
 
 export function TooltipContent({ children, className, ...props }: React.ComponentProps<typeof TooltipContentPrimitive>) {
     return (
-        <TooltipContentPrimitive className="max-w-sm bg-card text-primary border-border border text-sm" {...props}>
+        <TooltipContentPrimitive className="max-w-sm bg-card text-foreground border-border border text-sm" {...props}>
             {children}
         </TooltipContentPrimitive>
     );

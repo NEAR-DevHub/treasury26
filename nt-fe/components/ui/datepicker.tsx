@@ -1,75 +1,85 @@
 'use client';
 
-// File taken from NEARN datetimepicker component
 
 import {
-    addHours,
     addMonths,
     endOfDay,
-    endOfHour,
-    endOfMinute,
     endOfMonth,
     endOfYear,
     format,
     getMonth,
     getYear,
-    parse,
-    setHours,
-    setMilliseconds,
-    setMinutes,
     setMonth as setMonthFns,
-    setSeconds,
     setYear,
     startOfDay,
-    startOfHour,
-    startOfMinute,
     startOfMonth,
     startOfYear,
-    subHours,
+    subDays,
     subMonths,
 } from 'date-fns';
 import {
     Calendar,
-    CheckIcon,
     ChevronDownIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
     ChevronUpIcon,
-    Clock,
     XCircle,
 } from 'lucide-react';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DayPicker, type Matcher, TZDate } from 'react-day-picker';
+import { DayPicker, type DateRange, type Matcher, TZDate } from 'react-day-picker';
 
 import { Button, buttonVariants } from '@/components/ui/button';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
+
+interface SelectOption {
+    value: number;
+    label: string;
+    disabled: boolean;
+}
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 import { Tooltip } from "@/components/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export type CalendarProps = Omit<
     React.ComponentProps<typeof DayPicker>,
-    'mode'
+    'mode' | 'selected' | 'onSelect'
 >;
 
-const AM_VALUE = 0;
-const PM_VALUE = 1;
 
 export type DateTimePickerProps = {
     /**
      * The datetime value to display and control.
      */
-    value: Date | undefined;
+    value: Date | DateRange | undefined;
     /**
      * Callback function to handle datetime changes.
      */
-    onChange: (date: Date | undefined) => void;
+    onChange: (date: Date | DateRange | undefined) => void;
+    /**
+     * The selection mode - single date or date range.
+     * @default 'single'
+     */
+    mode?: 'single' | 'range';
+    /**
+     * The default month to display.
+     * @default undefined
+     */
+    defaultMonth?: Date;
+    /**
+     * The number of months to display.
+     * @default 1
+     */
+    numberOfMonths?: number;
+    /**
+     * Preset date ranges to show when in range mode.
+     */
+    presets?: Array<{
+        label: string;
+        value: DateRange;
+    }>;
     /**
      * The minimum datetime value allowed.
      * @default undefined
@@ -97,21 +107,6 @@ export type DateTimePickerProps = {
      */
     showCalendarIcon?: boolean;
     /**
-     * Whether to show the time picker.
-     * @default false
-     */
-    hideTime?: boolean;
-    /**
-     * Whether to use 12-hour format.
-     * @default false
-     */
-    hideSeconds?: boolean;
-    /**
-     * Whether to hide seconds in dropdown.
-     * @default false
-     */
-    use12HourFormat?: boolean;
-    /**
      * Whether to show the clear button.
      * @default false
      */
@@ -135,15 +130,6 @@ export type DateTimePickerProps = {
          */
         trigger?: string;
     };
-    timePicker?: {
-        hour?: boolean;
-        minute?: boolean;
-        second?: boolean;
-    };
-    /**
-     * Custom render function for the trigger.
-     */
-    renderTrigger?: (props: DateTimeRenderTriggerProps) => React.ReactNode;
     /**
      * Content to show in tooltip for dates before minDate
      */
@@ -156,43 +142,45 @@ export type DateTimePickerProps = {
 };
 
 export type DateTimeRenderTriggerProps = {
-    value: Date | undefined;
+    value: Date | DateRange | undefined;
     open: boolean;
     timezone?: string;
     disabled?: boolean;
-    use12HourFormat?: boolean;
     setOpen: (open: boolean) => void;
-    hideSeconds?: boolean;
 };
 
 export function DateTimePicker({
     value,
     onChange,
-    renderTrigger,
     min,
     max,
     timezone,
-    hideTime,
-    use12HourFormat,
     disabled,
     showCalendarIcon = true,
     clearable,
     borderless,
     placeholder = 'Pick a date',
     classNames,
-    timePicker,
-    hideSeconds,
     minDateTooltipContent,
     maxDateTooltipContent,
+    mode = 'single',
+    defaultMonth,
+    numberOfMonths,
+    presets,
     ...props
 }: DateTimePickerProps & CalendarProps) {
+    // Helper to check if value is a range
+    const isRange = (val: Date | DateRange | undefined): val is DateRange => {
+        return mode === 'range' && val !== undefined && typeof val === 'object' && 'from' in val;
+    };
+
     const [open, setOpen] = useState(false);
     const [monthYearPicker, setMonthYearPicker] = useState<
         'month' | 'year' | false
     >(false);
     const initDate = useMemo(
-        () => new TZDate(value || new Date(), timezone),
-        [value, timezone],
+        () => new TZDate((isRange(value) ? value.from : value) || new Date(), timezone),
+        [value, timezone, isRange],
     );
 
     const [month, setMonth] = useState<Date>(initDate);
@@ -210,31 +198,26 @@ export function DateTimePicker({
     );
 
     const onDayChanged = useCallback(
-        (d: Date) => {
+        (d: Date | DateRange | undefined) => {
             if (!d) return;
-            const newDate = new Date(d);
-            if (!value) {
-                newDate.setHours(
-                    new Date().getHours(),
-                    new Date().getMinutes(),
-                    new Date().getSeconds(),
-                );
+
+            if (mode === 'range' && typeof d === 'object' && 'from' in d) {
+                // Handle range selection - automatically set startOfDay and endOfDay
+                const range = d as DateRange;
+                const newRange: DateRange = {
+                    from: range.from ? startOfDay(range.from) : undefined,
+                    to: range.to ? endOfDay(range.to) : undefined
+                };
+                onChange(newRange);
             } else {
-                newDate.setHours(
-                    value.getHours(),
-                    value.getMinutes(),
-                    value.getSeconds(),
-                );
+                // Handle single date selection
+                const newDate = new Date(d as Date);
+                // For single dates, set to start of day
+                const startOfDayDate = startOfDay(newDate);
+                onChange(startOfDayDate);
             }
-            if (min && newDate < min) {
-                newDate.setHours(min.getHours(), min.getMinutes(), min.getSeconds());
-            }
-            if (max && newDate > max) {
-                newDate.setHours(max.getHours(), max.getMinutes(), max.getSeconds());
-            }
-            onChange(newDate);
         },
-        [value, onChange, min, max],
+        [onChange, mode],
     );
 
     const onMonthYearChanged = useCallback(
@@ -262,70 +245,27 @@ export function DateTimePicker({
         }
     }, [open, initDate]);
 
-    const displayValue = value;
-
-    const dislayFormat = useMemo(() => {
-        if (!displayValue) return placeholder;
-        return format(
-            displayValue,
-            `${!hideTime ? 'MMM' : 'MMMM'} d, yyyy${!hideTime ? (use12HourFormat ? ' hh:mm a' : ' HH:mm:ss') : ''}`,
-        );
-    }, [displayValue, hideTime, use12HourFormat, placeholder]);
-
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                {renderTrigger ? (
-                    renderTrigger({
-                        value: displayValue,
-                        open,
-                        timezone,
-                        disabled,
-                        use12HourFormat,
-                        setOpen,
-                    })
-                ) : (
-                    <div
-                        className={cn(
-                            'flex h-9 w-full cursor-pointer items-center rounded-md pe-1 text-sm font-normal',
-                            !borderless && 'border border-input ps-3 shadow-sm',
-                            borderless && 'ps-0',
-                            !displayValue && 'text-muted-foreground',
-                            (!clearable || !value) && 'pe-3',
-                            disabled && 'pointer-events-none cursor-not-allowed opacity-50',
-                            classNames?.trigger,
-                        )}
-                        tabIndex={0}
-                    >
-                        <div className="flex grow items-center">
-                            {showCalendarIcon && (
-                                <Calendar className="mr-2 size-4 text-muted-foreground" />
-                            )}
-                            <span className={cn("font-mediu text-muted-foreground", displayValue && 'text-primary')}>{dislayFormat}</span>
-                        </div>
-                        {clearable && value && (
+        <div className="flex w-auto">
+            {/* Preset buttons for range mode */}
+            {mode === 'range' && presets && presets.length > 0 && (
+                <div className="pr-3">
+                    <div className="grid">
+                        {presets.map((preset, index) => (
                             <Button
-                                disabled={disabled}
+                                key={index}
                                 variant="ghost"
-                                size="sm"
-                                role="button"
-                                aria-label="Clear date"
-                                className="ms-1 size-6 p-1"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    onChange(undefined);
-                                    setOpen(false);
-                                }}
+                                className="justify-start text-sm px-2"
+                                onClick={() => onDayChanged(preset.value)}
                             >
-                                <XCircle className="size-4" />
+                                {preset.label}
                             </Button>
-                        )}
+                        ))}
                     </div>
-                )}
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-2">
-                <div className="flex items-center justify-between">
+                </div>
+            )}
+            <div>
+                <div className="flex items-center justify-between w-auto">
                     <div className="ms-2 flex cursor-pointer items-center text-sm font-medium">
                         <div>
                             <span
@@ -369,14 +309,19 @@ export function DateTimePicker({
                         </Button>
                     </div>
                 </div>
+
+
                 <div className="relative overflow-hidden">
                     <DayPicker
                         timeZone={timezone}
-                        mode="single"
-                        selected={value}
-                        onSelect={(d) => d && onDayChanged(d)}
+                        mode={mode as any}
+                        selected={value as any}
+                        onSelect={onDayChanged}
                         month={month}
                         endMonth={endMonth}
+                        defaultMonth={defaultMonth}
+                        numberOfMonths={numberOfMonths}
+                        required={mode === 'range' ? true as any : undefined}
                         disabled={
                             [
                                 max ? { after: max } : null,
@@ -427,10 +372,11 @@ export function DateTimePicker({
                                 buttonVariants({ variant: 'ghost' }),
                                 'size-9 rounded-md p-0 font-normal aria-selected:opacity-100',
                             ),
-                            range_end: 'day-range-end',
+                            range_end: 'day-range-end rounded-r-md',
+                            range_start: 'day-range-start rounded-l-md',
                             selected:
-                                'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-l-md rounded-r-md',
-                            today: 'bg-accent text-accent-foreground',
+                                cn('bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-none', !isRange(value) && 'rounded-md'),
+                            today: 'bg-accent text-accent-foreground rounded-md',
                             outside:
                                 'day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30',
                             disabled: 'text-muted-foreground opacity-50',
@@ -459,27 +405,14 @@ export function DateTimePicker({
                         )}
                     />
                 </div>
-                <div className="mt-2 flex flex-col gap-2">
-                    {!hideTime && (
-                        <TimePicker
-                            hideSeconds={hideSeconds}
-                            timePicker={timePicker}
-                            value={value || new Date()}
-                            onChange={onChange}
-                            use12HourFormat={use12HourFormat}
-                            min={minDate}
-                            max={maxDate}
-                        />
-                    )}
-                    {timezone && (
-                        <div className="text-sm">
-                            <span>Timezone:</span>
-                            <span className="ms-1 font-semibold">{timezone}</span>
-                        </div>
-                    )}
-                </div>
-            </PopoverContent>
-        </Popover>
+                {timezone && (
+                    <div className="mt-2 text-sm">
+                        <span>Timezone:</span>
+                        <span className="ms-1 font-semibold">{timezone}</span>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
 
@@ -498,9 +431,8 @@ function MonthYearPicker({
     onChange: (value: Date, mode: 'month' | 'year') => void;
     className?: string;
 }) {
-    const yearRef = useRef<HTMLDivElement>(null);
     const years = useMemo(() => {
-        const years: TimeOption[] = [];
+        const years: SelectOption[] = [];
         for (let i = 1912; i < 2100; i++) {
             let disabled = false;
             const startY = startOfYear(setYear(value, i));
@@ -512,7 +444,7 @@ function MonthYearPicker({
         return years;
     }, [value]);
     const months = useMemo(() => {
-        const months: TimeOption[] = [];
+        const months: SelectOption[] = [];
         for (let i = 0; i < 12; i++) {
             let disabled = false;
             const startM = startOfMonth(setMonthFns(value, i));
@@ -525,7 +457,7 @@ function MonthYearPicker({
     }, [value]);
 
     const onYearChange = useCallback(
-        (v: TimeOption) => {
+        (v: SelectOption) => {
             let newDate = setYear(value, v.value);
             if (minDate && newDate < minDate) {
                 newDate = setMonthFns(newDate, getMonth(minDate));
@@ -540,7 +472,12 @@ function MonthYearPicker({
 
     useEffect(() => {
         if (mode === 'year') {
-            yearRef.current?.scrollIntoView({ behavior: 'auto', block: 'center' });
+            // Scroll to selected year after a brief delay to ensure DOM is ready
+            const timeoutId = setTimeout(() => {
+                const selectedYearElement = document.querySelector(`[data-year="${getYear(value)}"]`);
+                selectedYearElement?.scrollIntoView({ behavior: 'auto', block: 'center' });
+            }, 10);
+            return () => clearTimeout(timeoutId);
         }
     }, [mode, value]);
     return (
@@ -551,7 +488,7 @@ function MonthYearPicker({
                         {years.map((year) => (
                             <div
                                 key={year.value}
-                                ref={year.value === getYear(value) ? yearRef : undefined}
+                                data-year={year.value}
                             >
                                 <Button
                                     disabled={year.disabled}
@@ -588,457 +525,112 @@ function MonthYearPicker({
     );
 }
 
-interface TimeOption {
-    value: number;
-    label: string;
-    disabled: boolean;
-}
+export type DatePickerPopoverProps = Omit<DateTimePickerProps, 'classNames'> & {
+    /**
+     * Custom class names for the component.
+     */
+    classNames?: {
+        /**
+         * Custom class names for the trigger button.
+         */
+        trigger?: string;
+        /**
+         * Custom class names for the popover content.
+         */
+        content?: string;
+    };
+    /**
+     * Alignment of the popover relative to the trigger.
+     * @default "start"
+     */
+    align?: 'start' | 'center' | 'end';
+    /**
+     * Side of the trigger where the popover should appear.
+     * @default "bottom"
+     */
+    side?: 'top' | 'right' | 'bottom' | 'left';
+};
 
-function TimePicker({
+export function DatePickerPopover({
     value,
     onChange,
-    use12HourFormat,
-    min,
-    max,
-    timePicker,
-    hideSeconds,
-}: {
-    use12HourFormat?: boolean;
-    value: Date;
-    onChange: (date: Date) => void;
-    min?: Date;
-    max?: Date;
-    timePicker?: DateTimePickerProps['timePicker'];
-    hideSeconds?: DateTimePickerProps['hideSeconds'];
-}) {
-    // hours24h = HH
-    // hours12h = hh
-    const formatStr = useMemo(
-        () =>
-            use12HourFormat
-                ? 'yyyy-MM-dd hh:mm:ss.SSS a xxxx'
-                : 'yyyy-MM-dd HH:mm:ss.SSS xxxx',
-        [use12HourFormat],
-    );
-    const [ampm, setAmpm] = useState(
-        format(value, 'a') === 'AM' ? AM_VALUE : PM_VALUE,
-    );
-    const [hour, setHour] = useState(
-        use12HourFormat ? +format(value, 'hh') : value.getHours(),
-    );
-    const [minute, setMinute] = useState(value.getMinutes());
-    const [second, setSecond] = useState(value.getSeconds());
-
-    useEffect(() => {
-        onChange(
-            buildTime({
-                use12HourFormat,
-                value,
-                formatStr,
-                hour,
-                minute,
-                second,
-                ampm,
-            }),
-        );
-    }, [hour, minute, second, ampm, formatStr, use12HourFormat]);
-
-    const _hourIn24h = useMemo(() => {
-        // if (use12HourFormat) {
-        //   return (hour % 12) + ampm * 12;
-        // }
-        return use12HourFormat ? (hour % 12) + ampm * 12 : hour;
-    }, [value, use12HourFormat, ampm]);
-
-    const hours: TimeOption[] = useMemo(
-        () =>
-            Array.from({ length: use12HourFormat ? 12 : 24 }, (_, i) => {
-                let disabled = false;
-                const hourValue = use12HourFormat ? (i === 0 ? 12 : i) : i;
-                const hDate = setHours(value, use12HourFormat ? i + ampm * 12 : i);
-                const hStart = startOfHour(hDate);
-                const hEnd = endOfHour(hDate);
-                if (min && hEnd < min) disabled = true;
-                if (max && hStart > max) disabled = true;
-                return {
-                    value: hourValue,
-                    label: hourValue.toString().padStart(2, '0'),
-                    disabled,
-                };
-            }),
-        [value, min, max, use12HourFormat, ampm],
-    );
-    const minutes: TimeOption[] = useMemo(() => {
-        const anchorDate = setHours(value, _hourIn24h);
-        return Array.from({ length: 60 }, (_, i) => {
-            let disabled = false;
-            const mDate = setMinutes(anchorDate, i);
-            const mStart = startOfMinute(mDate);
-            const mEnd = endOfMinute(mDate);
-            if (min && mEnd < min) disabled = true;
-            if (max && mStart > max) disabled = true;
-            return {
-                value: i,
-                label: i.toString().padStart(2, '0'),
-                disabled,
-            };
-        });
-    }, [value, min, max, _hourIn24h]);
-    const seconds: TimeOption[] = useMemo(() => {
-        const anchorDate = setMilliseconds(
-            setMinutes(setHours(value, _hourIn24h), minute),
-            0,
-        );
-        const _min = min ? setMilliseconds(min, 0) : undefined;
-        const _max = max ? setMilliseconds(max, 0) : undefined;
-        return Array.from({ length: 60 }, (_, i) => {
-            let disabled = false;
-            const sDate = setSeconds(anchorDate, i);
-            if (_min && sDate < _min) disabled = true;
-            if (_max && sDate > _max) disabled = true;
-            return {
-                value: i,
-                label: i.toString().padStart(2, '0'),
-                disabled,
-            };
-        });
-    }, [value, minute, min, max, _hourIn24h]);
-    const ampmOptions = useMemo(() => {
-        const startD = startOfDay(value);
-        const endD = endOfDay(value);
-        return [
-            { value: AM_VALUE, label: 'AM' },
-            { value: PM_VALUE, label: 'PM' },
-        ].map((v) => {
-            let disabled = false;
-            const start = addHours(startD, v.value * 12);
-            const end = subHours(endD, (1 - v.value) * 12);
-            if (min && end < min) disabled = true;
-            if (max && start > max) disabled = true;
-            return { ...v, disabled };
-        });
-    }, [value, min, max]);
-
+    mode = 'single',
+    disabled,
+    showCalendarIcon = true,
+    clearable,
+    borderless,
+    placeholder = 'Pick a date',
+    classNames,
+    align = 'start',
+    side = 'bottom',
+    ...dateTimePickerProps
+}: DatePickerPopoverProps) {
     const [open, setOpen] = useState(false);
 
-    const hourRef = useRef<HTMLDivElement>(null);
-    const minuteRef = useRef<HTMLDivElement>(null);
-    const secondRef = useRef<HTMLDivElement>(null);
+    // Helper to check if value is a range
+    const isRange = (val: Date | DateRange | undefined): val is DateRange => {
+        return mode === 'range' && val !== undefined && typeof val === 'object' && 'from' in val;
+    };
 
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            if (open) {
-                hourRef.current?.scrollIntoView({ behavior: 'auto' });
-                minuteRef.current?.scrollIntoView({ behavior: 'auto' });
-                secondRef.current?.scrollIntoView({ behavior: 'auto' });
-            }
-        }, 1);
-        return () => clearTimeout(timeoutId);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open]);
+    // Format display value
+    const getDisplayValue = () => {
+        if (!value) return placeholder;
 
-    const onHourChange = useCallback(
-        (v: TimeOption) => {
-            if (min) {
-                const newTime = buildTime({
-                    use12HourFormat,
-                    value,
-                    formatStr,
-                    hour: v.value,
-                    minute,
-                    second,
-                    ampm,
-                });
-                if (newTime < min) {
-                    setMinute(min.getMinutes());
-                    setSecond(min.getSeconds());
-                }
+        if (isRange(value)) {
+            if (value.from && value.to) {
+                return `${format(value.from, 'MMM dd, yyyy')} - ${format(value.to, 'MMM dd, yyyy')}`;
             }
-            if (max) {
-                const newTime = buildTime({
-                    use12HourFormat,
-                    value,
-                    formatStr,
-                    hour: v.value,
-                    minute,
-                    second,
-                    ampm,
-                });
-                if (newTime > max) {
-                    setMinute(max.getMinutes());
-                    setSecond(max.getSeconds());
-                }
+            if (value.from) {
+                return `${format(value.from, 'MMM dd, yyyy')} - ...`;
             }
-            setHour(v.value);
-        },
-        [setHour, use12HourFormat, value, formatStr, minute, second, ampm],
-    );
-
-    const onMinuteChange = useCallback(
-        (v: TimeOption) => {
-            if (min) {
-                const newTime = buildTime({
-                    use12HourFormat,
-                    value,
-                    formatStr,
-                    hour: v.value,
-                    minute,
-                    second,
-                    ampm,
-                });
-                if (newTime < min) {
-                    setSecond(min.getSeconds());
-                }
-            }
-            if (max) {
-                const newTime = buildTime({
-                    use12HourFormat,
-                    value,
-                    formatStr,
-                    hour: v.value,
-                    minute,
-                    second,
-                    ampm,
-                });
-                if (newTime > max) {
-                    setSecond(newTime.getSeconds());
-                }
-            }
-            setMinute(v.value);
-        },
-        [setMinute, use12HourFormat, value, formatStr, hour, second, ampm],
-    );
-
-    const onAmpmChange = useCallback(
-        (v: TimeOption) => {
-            if (min) {
-                const newTime = buildTime({
-                    use12HourFormat,
-                    value,
-                    formatStr,
-                    hour,
-                    minute,
-                    second,
-                    ampm: v.value,
-                });
-                if (newTime < min) {
-                    const minH = min.getHours() % 12;
-                    setHour(minH === 0 ? 12 : minH);
-                    setMinute(min.getMinutes());
-                    setSecond(min.getSeconds());
-                }
-            }
-            if (max) {
-                const newTime = buildTime({
-                    use12HourFormat,
-                    value,
-                    formatStr,
-                    hour,
-                    minute,
-                    second,
-                    ampm: v.value,
-                });
-                if (newTime > max) {
-                    const maxH = max.getHours() % 12;
-                    setHour(maxH === 0 ? 12 : maxH);
-                    setMinute(max.getMinutes());
-                    setSecond(max.getSeconds());
-                }
-            }
-            setAmpm(v.value);
-        },
-        [
-            setAmpm,
-            use12HourFormat,
-            value,
-            formatStr,
-            hour,
-            minute,
-            second,
-            min,
-            max,
-        ],
-    );
-
-    const display = useMemo(() => {
-        const arr = [];
-        for (const element of ['hour', 'minute', 'second']) {
-            if (!timePicker || timePicker[element as keyof typeof timePicker]) {
-                if (element === 'hour') {
-                    arr.push(use12HourFormat ? 'hh' : 'HH');
-                } else {
-                    arr.push(element === 'minute' ? 'mm' : 'ss');
-                }
-            }
+            return placeholder;
         }
-        return format(value, arr.join(':') + (use12HourFormat ? ' a' : ''));
-    }, [value, use12HourFormat, timePicker]);
+
+        return format(value as Date, 'MMM dd, yyyy');
+    };
+
+    // Handle clear action
+    const handleClear = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onChange(undefined);
+    };
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className="justify-between"
+                    variant={borderless ? 'ghost' : 'outline'}
+                    className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !value && 'text-muted-foreground',
+                        borderless && 'border-none shadow-none hover:bg-transparent',
+                        classNames?.trigger
+                    )}
+                    disabled={disabled}
                 >
-                    <Clock className="mr-2 size-4" />
-                    {display}
-                    <ChevronDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+                    {showCalendarIcon && <Calendar className="mr-2 h-4 w-4" />}
+                    <span className="flex-1">{getDisplayValue()}</span>
+                    {clearable && value && !disabled && (
+                        <XCircle
+                            className="h-4 w-4 opacity-50 hover:opacity-100"
+                            onClick={handleClear}
+                        />
+                    )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0" side="top">
-                <div className="flex-col gap-2 p-2">
-                    <div className="flex h-56 grow">
-                        {(!timePicker || timePicker.hour) && (
-                            <ScrollArea className="h-full grow">
-                                <div className="flex grow flex-col items-stretch overflow-y-auto pb-48 pe-2">
-                                    {hours.map((v) => (
-                                        <div
-                                            key={v.value}
-                                            ref={v.value === hour ? hourRef : undefined}
-                                        >
-                                            <TimeItem
-                                                option={v}
-                                                selected={v.value === hour}
-                                                onSelect={onHourChange}
-                                                className="h-8"
-                                                disabled={v.disabled}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        )}
-                        {(!timePicker || timePicker.minute) && (
-                            <ScrollArea className="h-full grow">
-                                <div className="flex grow flex-col items-stretch overflow-y-auto pb-48 pe-2">
-                                    {minutes.map((v) => (
-                                        <div
-                                            key={v.value}
-                                            ref={v.value === minute ? minuteRef : undefined}
-                                        >
-                                            <TimeItem
-                                                option={v}
-                                                selected={v.value === minute}
-                                                onSelect={onMinuteChange}
-                                                className="h-8"
-                                                disabled={v.disabled}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        )}
-                        {(!timePicker || timePicker.second) && !hideSeconds && (
-                            <ScrollArea className="h-full grow">
-                                <div className="flex grow flex-col items-stretch overflow-y-auto pb-48 pe-2">
-                                    {seconds.map((v) => (
-                                        <div
-                                            key={v.value}
-                                            ref={v.value === second ? secondRef : undefined}
-                                        >
-                                            <TimeItem
-                                                option={v}
-                                                selected={v.value === second}
-                                                onSelect={(v) => setSecond(v.value)}
-                                                className="h-8"
-                                                disabled={v.disabled}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        )}
-                        {use12HourFormat && (
-                            <ScrollArea className="h-full grow">
-                                <div className="flex grow flex-col items-stretch overflow-y-auto pe-2">
-                                    {ampmOptions.map((v) => (
-                                        <TimeItem
-                                            key={v.value}
-                                            option={v}
-                                            selected={v.value === ampm}
-                                            onSelect={onAmpmChange}
-                                            className="h-8"
-                                            disabled={v.disabled}
-                                        />
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        )}
-                    </div>
-                </div>
+            <PopoverContent
+                className={cn('w-auto p-0', classNames?.content)}
+                align={align}
+                side={side}
+            >
+                <DateTimePicker
+                    value={value}
+                    onChange={onChange}
+                    mode={mode}
+                    {...dateTimePickerProps}
+                />
             </PopoverContent>
         </Popover>
     );
 }
 
-const TimeItem = ({
-    option,
-    selected,
-    onSelect,
-    className,
-    disabled,
-}: {
-    option: TimeOption;
-    selected: boolean;
-    onSelect: (option: TimeOption) => void;
-    className?: string;
-    disabled?: boolean;
-}) => {
-    return (
-        <Button
-            variant="ghost"
-            className={cn('flex justify-center px-1 pe-2 ps-1', className)}
-            onClick={() => onSelect(option)}
-            disabled={disabled}
-        >
-            <div className="w-4">
-                {selected && <CheckIcon className="my-auto size-4" />}
-            </div>
-            <span className="ms-2">{option.label}</span>
-        </Button>
-    );
-};
-
-interface BuildTimeOptions {
-    use12HourFormat?: boolean;
-    value: Date;
-    formatStr: string;
-    hour: number;
-    minute: number;
-    second: number;
-    ampm: number;
-}
-
-function buildTime(options: BuildTimeOptions) {
-    const { use12HourFormat, value, formatStr, hour, minute, second, ampm } =
-        options;
-    let date: Date;
-    if (use12HourFormat) {
-        const dateStrRaw = format(value, formatStr);
-        // yyyy-MM-dd hh:mm:ss.SSS a zzzz
-        // 2024-10-14 01:20:07.524 AM GMT+00:00
-        let dateStr =
-            dateStrRaw.slice(0, 11) +
-            hour.toString().padStart(2, '0') +
-            dateStrRaw.slice(13);
-        dateStr =
-            dateStr.slice(0, 14) +
-            minute.toString().padStart(2, '0') +
-            dateStr.slice(16);
-        dateStr =
-            dateStr.slice(0, 17) +
-            second.toString().padStart(2, '0') +
-            dateStr.slice(19);
-        dateStr =
-            dateStr.slice(0, 24) +
-            (ampm == AM_VALUE ? 'AM' : 'PM') +
-            dateStr.slice(26);
-        date = parse(dateStr, formatStr, value);
-    } else {
-        date = setHours(setMinutes(setSeconds(value, second), minute), hour);
-    }
-    return date;
-}

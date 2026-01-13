@@ -1,6 +1,4 @@
-import { Copy } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "./button";
+import { CopyButton } from "./copy-button";
 
 interface AddressProps {
     address: string;
@@ -10,18 +8,16 @@ interface AddressProps {
 }
 
 export function Address({ address, copyable = false, prefixLength = 8, suffixLength = 8 }: AddressProps) {
-    const handleCopy = (address: string) => {
-        navigator.clipboard.writeText(address);
-        toast.success("Address copied to clipboard");
-    };
-
     const prefix = address.slice(0, prefixLength);
     const suffix = address.slice(address.length - suffixLength);
     const displayedAddress = address.length > prefixLength + suffixLength ? `${prefix}...${suffix}` : address;
     return <div className="flex items-center gap-2">
         <span>{displayedAddress}</span>
-        {copyable && <Button variant="ghost" size="icon-sm" onClick={() => handleCopy(address)}>
-            <Copy className="w-4 h-4 shrink-0" />
-        </Button>}
+        {copyable && <CopyButton
+            text={address}
+            toastMessage="Address copied to clipboard"
+            variant="ghost"
+            size="icon-sm"
+        />}
     </div>;
 }

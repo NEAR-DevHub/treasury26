@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, Copy } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import QRCode from "react-qr-code";
 import { SelectModal } from "./select-modal";
 import { fetchDepositAssets, fetchDepositAddress } from "@/lib/bridge-api";
 import { useTreasury } from "@/stores/treasury-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { Button } from "@/components/button";
+import { CopyButton } from "@/components/copy-button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -93,7 +94,6 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const [depositAddress, setDepositAddress] = useState<string | null>(null);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [assetNetworkMap, setAssetNetworkMap] = useState<Map<string, string[]>>(
     new Map()
   );
@@ -322,20 +322,11 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
     }
   }, [selectedAsset, selectedNetwork, selectedTreasury]);
 
-  const handleCopyAddress = useCallback(() => {
-    if (depositAddress) {
-      navigator.clipboard.writeText(depositAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  }, [depositAddress]);
-
   // Reset all state when modal closes
   const handleClose = useCallback(() => {
     form.reset();
     setDepositAddress(null);
     setFilteredNetworks([]);
-    setCopied(false);
     setModalType(null);
     onClose();
   }, [form, onClose]);
@@ -537,22 +528,14 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                         <code className="font-mono break-all">
                           {depositAddress}
                         </code>
-                        <Button
-                          type="button"
-                          onClick={handleCopyAddress}
+                        <CopyButton
+                          text={depositAddress}
+                          toastMessage="Address copied to clipboard"
                           variant="unstyled"
                           size="icon-sm"
                           className="shrink-0"
-                          title="Copy address"
-                        >
-                          {copied ? (
-                            <span className="text-lg text-green-600 dark:text-green-400">
-                              ✓
-                            </span>
-                          ) : (
-                            <Copy className="w-5 h-5 text-muted-foreground" />
-                          )}
-                        </Button>
+                          iconClassName="w-5 h-5 text-muted-foreground"
+                        />
                       </div>
                     </div>
                   </div>

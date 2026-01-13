@@ -148,11 +148,11 @@ function Step2({ handleBack, handleNext }: StepProps) {
 
 const VISUAL = [
     {
-        "icon": <UsersRound className="size-5 text-primary" />,
+        "icon": <UsersRound className="size-5 text-foreground" />,
         "title": "Members",
     },
     {
-        "icon": <Vote className="size-5 text-primary" />,
+        "icon": <Vote className="size-5 text-foreground" />,
         "title": "Threshold",
     }
 ] as const;
@@ -172,8 +172,8 @@ function Step3({ handleBack }: StepProps) {
             <div className="flex flex-col gap-2">
                 <InputBlock invalid={false}>
                     <div className="flex gap-3.5 px-3.5 py-3 items-center">
-                        <div className="size-10 rounded-[7px] bg-primary/10 flex items-center justify-center">
-                            <Database className="size-5 text-primary" />
+                        <div className="size-10 rounded-[7px] bg-foreground/10 flex items-center justify-center">
+                            <Database className="size-5 text-foreground" />
                         </div>
                         <div className="flex flex-col gap-0.5">
                             <p className="font-bold text-2xl">{details.treasuryName}</p>

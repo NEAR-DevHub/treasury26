@@ -7,7 +7,7 @@ import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
 import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
 import { ArrowRightLeft, ArrowUpRight, ListFilter } from "lucide-react";
@@ -15,10 +15,15 @@ import Link from "next/link";
 import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
-import { addDays } from "date-fns";
+import { convertUrlParamsToApiFilters } from "@/features/proposals/utils/filter-params-converter";
 import { NumberBadge } from "@/components/number-badge";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { Input } from "@/components/ui/input";
+import { useNear } from "@/stores/near-store";
+
+// Constants
+const SEARCH_DEBOUNCE_MS = 300;
+const FILTER_PANEL_MAX_HEIGHT = '500px';
 
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
@@ -28,50 +33,26 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const { accountId } = useNear();
 
   const page = parseInt(searchParams.get("page") || "0", 10);
   const pageSize = 15;
 
   const filters = useMemo(() => {
+    const urlFilters = convertUrlParamsToApiFilters(searchParams, accountId);
     const f: any = {
+      ...urlFilters,
       page,
       page_size: pageSize,
       sort_by: "CreationTime",
       sort_direction: "desc",
     };
 
+    // Add status filter if provided
     if (status) f.statuses = status;
 
-    const typeParam = searchParams.get("proposal_types");
-    if (typeParam) {
-      f.proposal_types = [typeParam];
-    }
-
-    const proposerParam = searchParams.get("proposers");
-    if (proposerParam) f.proposers = [proposerParam];
-
-    const approverParam = searchParams.get("approvers");
-    if (approverParam) f.approvers = [approverParam];
-
-    const recipientParam = searchParams.get("recipients");
-    if (recipientParam) f.recipients = [recipientParam];
-
-    const tokenParam = searchParams.get("tokens");
-    if (tokenParam) f.tokens = [tokenParam];
-
-    const searchParam = searchParams.get("search");
-    if (searchParam) f.search = searchParam;
-
-    const dateParam = searchParams.get("created_date");
-    if (dateParam) {
-      const date = new Date(dateParam);
-      f.created_date_from = date.toISOString().split('T')[0];
-      // Add 1 day to the date
-      f.created_date_to = addDays(date, 1).toISOString().split('T')[0];
-    }
-
     return f;
-  }, [page, pageSize, searchParams]);
+  }, [page, pageSize, searchParams, status, accountId]);
 
   const updatePage = useCallback((newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -160,6 +141,8 @@ export default function RequestsPage() {
   })
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const { data: allProposals } = useProposals(treasuryId, {});
+  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
   const currentTab = searchParams.get("tab") || "pending";
@@ -171,7 +154,50 @@ export default function RequestsPage() {
     router.push(`${pathname}?${params.toString()}`);
   }, [searchParams, router, pathname]);
 
-  if (allProposals?.proposals?.length === 0) {
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchValue(value);
+
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Debounce the URL update
+    searchTimeoutRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value.trim()) {
+        params.set("search", value.trim());
+      } else {
+        params.delete("search");
+      }
+      params.delete("page"); // Reset page when search changes
+      router.push(`${pathname}?${params.toString()}`);
+    }, SEARCH_DEBOUNCE_MS);
+  }, [searchParams, router, pathname]);
+
+  // Sync search value with URL params
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") || "";
+    setSearchValue(urlSearch);
+  }, [searchParams]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'tokens', 'created_date', 'my_vote', 'search'];
+    return filterParams.some(param => searchParams.has(param));
+  }, [searchParams]);
+
+  // Only show "No Requests Found" if there are no proposals AND no filters are active
+  if (allProposals?.proposals?.length === 0 && !hasActiveFilters) {
     return (
       <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
         <NoRequestsFound />
@@ -183,7 +209,7 @@ export default function RequestsPage() {
     <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
       <PageCard className="p-0">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="gap-0">
-          <div className="flex items-center justify-between border-b p-5 pb-3.5">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b p-5 pb-3.5">
             <TabsList className="w-fit border-none">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="pending" className="flex gap-2.5">Pending
@@ -196,19 +222,42 @@ export default function RequestsPage() {
               <TabsTrigger value="expired">Expired</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-2">
-              <Input type="text" placeholder="Search request by name or ID" className="w-64" />
-              <Button variant="secondary" className="flex gap-1.5" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
+              <Input
+                type="text"
+                placeholder="Search request by name or ID"
+                className="w-64"
+                value={searchValue}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+              <Button
+                variant="secondary"
+                className="flex gap-1.5 relative"
+                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                aria-label={hasActiveFilters ? "Filter (active)" : "Filter"}
+              >
                 <ListFilter className="size-4" />
                 Filter
+                {hasActiveFilters && (
+                  <span
+                    className="absolute top-1 right-1.5 size-2 rounded-full bg-general-info-foreground"
+                    aria-hidden="true"
+                  />
+                )}
               </Button>
             </div>
           </div>
 
-          {isFiltersOpen && (
+          <div
+            className="overflow-hidden transition-all duration-500 ease-in-out"
+            style={{
+              maxHeight: isFiltersOpen ? FILTER_PANEL_MAX_HEIGHT : '0px',
+              opacity: isFiltersOpen ? 1 : 0,
+            }}
+          >
             <div className="py-3 px-4">
               <ProposalFiltersComponent />
             </div>
-          )}
+          </div>
           <TabsContents>
             <TabsContent value="all">
               <ProposalsList />

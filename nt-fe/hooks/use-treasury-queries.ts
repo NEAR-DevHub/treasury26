@@ -3,7 +3,8 @@ import {
   getUserTreasuries,
   getTreasuryConfig,
   getTreasuryAssets,
-  getTokenBalanceHistory,
+  getBalanceChart,
+  BalanceChartRequest,
   getTokenBalance,
   getTreasuryPolicy,
   getStorageDepositIsRegistered,
@@ -18,6 +19,7 @@ import {
   checkAccountExists,
   searchIntentsTokens,
   SearchTokensParams,
+  getRecentActivity,
 } from "@/lib/api";
 
 /**
@@ -77,17 +79,17 @@ export function useTreasuryAssets(
 }
 
 /**
- * Query hook to get token balance history across multiple time periods
- * Fetches historical balance data from the backend
+ * Query hook to get balance chart data with USD values
+ * Fetches historical balance snapshots at specified intervals
+ * Supports filtering by specific tokens or all tokens
  */
-export function useTokenBalanceHistory(
-  accountId: string | null | undefined,
-  tokenId: string | null | undefined,
+export function useBalanceChart(
+  params: BalanceChartRequest | null,
 ) {
   return useQuery({
-    queryKey: ["tokenBalanceHistory", accountId, tokenId],
-    queryFn: () => getTokenBalanceHistory(accountId!, tokenId!),
-    enabled: !!accountId && !!tokenId,
+    queryKey: ["balanceChart", params?.accountId, params?.startTime, params?.endTime, params?.interval, params?.tokenIds],
+    queryFn: () => getBalanceChart(params!),
+    enabled: !!params?.accountId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
@@ -279,5 +281,23 @@ export function useSearchIntentsTokens(params: SearchTokensParams) {
     queryFn: () => searchIntentsTokens(params),
     enabled: hasParams,
     staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
+  });
+}
+
+/**
+ * Query hook to get recent activity for an account
+ * Fetches enriched transaction history with token metadata included
+ * Returns list of transactions with amounts, counterparties, and metadata
+ */
+export function useRecentActivity(
+  accountId: string | null | undefined,
+  limit: number = 50,
+  offset: number = 0,
+) {
+  return useQuery({
+    queryKey: ["recentActivity", accountId, limit, offset],
+    queryFn: () => getRecentActivity(accountId!, limit, offset),
+    enabled: !!accountId,
+    staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
   });
 }

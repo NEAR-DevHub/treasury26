@@ -17,7 +17,7 @@ export function Button({ variant, className: classNameOverride, size, tooltipCon
     let className = "";
     switch (variant ?? "default") {
         case "link":
-            className = "hover:no-underline font-semibold text-primary/80 hover:text-primary";
+            className = "hover:no-underline font-semibold text-foreground/80 hover:text-foreground";
             break;
         case "ghost":
         case "outline":
