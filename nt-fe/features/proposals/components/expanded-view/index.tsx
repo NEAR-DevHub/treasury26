@@ -88,6 +88,7 @@ interface ExpandedViewProps {
 export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVote }: ExpandedViewProps) {
   const { selectedTreasury } = useTreasury();
   const { accountId } = useNear();
+
   const component = ExpandedViewInternal({ proposal });
   const requestUrl = `${window.location.origin}/${selectedTreasury}/requests/${proposal.id}`;
 

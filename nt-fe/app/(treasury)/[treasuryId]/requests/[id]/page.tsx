@@ -9,6 +9,8 @@ import { useTreasury } from "@/stores/treasury-store";
 import { VoteModal } from "@/features/proposals/components/vote-modal";
 import { getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
 import { ProposalKind } from "@/lib/proposals-api";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageCard } from "@/components/card";
 
 interface RequestPageProps {
     params: Promise<{
@@ -16,26 +18,47 @@ interface RequestPageProps {
     }>;
 }
 
+function RequestPageSkeleton() {
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full">
+            <div className="w-full flex flex-col gap-4">
+                <PageCard className="w-full">
+                    <Skeleton className="h-8 w-48 mb-6" />
+                    <Skeleton className="h-[300px] w-full" />
+                </PageCard>
+                <PageCard className="w-full">
+                    <Skeleton className="h-[150px] w-full" />
+                </PageCard>
+            </div>
+            <div className="w-full">
+                <PageCard className="w-full">
+                    <Skeleton className="h-[200px] w-full" />
+                </PageCard>
+            </div>
+        </div >
+    );
+}
+
 export default function RequestPage({ params }: RequestPageProps) {
     const { id } = use(params);
     const { selectedTreasury } = useTreasury();
-    const { data: proposal, isLoading: isLoadingProposal, error: errorProposal } = useProposal(selectedTreasury, id);
-    const { data: policy, isLoading: isLoadingPolicy, error: errorPolicy } = useTreasuryPolicy(selectedTreasury, proposal?.submission_time);
+    const { data: proposal, isLoading: isLoadingProposal, } = useProposal(selectedTreasury, id);
+    const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(selectedTreasury, proposal?.submission_time);
 
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
     const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
 
-    if (isLoadingProposal || isLoadingPolicy) {
-        return <div>Loading...</div>;
-    }
-
-    if (errorProposal || errorPolicy) {
-        return <div>Error loading proposal or policy</div>;
+    if (isLoadingProposal || isLoadingPolicy || !proposal || !policy) {
+        return (
+            <PageComponentLayout title={`Request #${id}`} description="Details for Request" backButton={`/${selectedTreasury}/requests`}>
+                <RequestPageSkeleton />
+            </PageComponentLayout>
+        );
     }
 
     return (
         <PageComponentLayout title={`Request #${proposal?.id}`} description="Details for Request" backButton={`/${selectedTreasury}/requests`}>
-            <ExpandedView proposal={proposal!} policy={policy!} hideOpenInNewTab onVote={(vote) => {
+            <ExpandedView proposal={proposal} policy={policy} hideOpenInNewTab onVote={(vote) => {
                 setVoteInfo({ vote, proposalIds: [{ proposalId: proposal?.id ?? 0, kind: getKindFromProposal(proposal?.kind as ProposalKind) ?? "call" }] });
                 setIsVoteModalOpen(true);
             }} />
