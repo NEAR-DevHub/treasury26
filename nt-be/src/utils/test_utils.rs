@@ -94,6 +94,7 @@ pub async fn init_test_state() -> AppState {
             ],
             ..NetworkConfig::mainnet()
         },
+        bulk_payment_contract_id: env_vars.bulk_payment_contract_id.clone(),
         env_vars,
         db_pool,
         price_service,

@@ -611,7 +611,7 @@ mod tests {
 
         assert!(result.is_err(), "Should return error for future timestamp");
 
-        let error_msg = result.unwrap_err();
+        let _error_msg = result.unwrap_err();
     }
 
     /// Test that find_block_height uses cache for repeated lookups

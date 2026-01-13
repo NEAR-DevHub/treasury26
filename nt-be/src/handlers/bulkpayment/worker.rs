@@ -4,9 +4,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-/// Shared state for tracking pending payment lists
-/// This is used to avoid querying the contract for every poll
 lazy_static::lazy_static! {
+    /// Shared state for tracking pending payment lists
+    /// This is used to avoid querying the contract for every poll
     static ref PENDING_LISTS: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
 }
 
