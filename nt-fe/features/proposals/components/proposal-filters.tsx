@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/datepicker";
-import { format } from "date-fns";
+import { endOfDay, format, isSameDay, startOfDay, subDays, subMonths } from "date-fns";
 import { OperationSelect } from "@/components/operation-select";
 import { TokenSelectPopover } from "@/components/token-select-popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -48,7 +48,7 @@ const TOKEN_OPERATIONS = ["Is", "Is Not"];
 const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
 
 const PROPOSAL_TYPE_OPERATIONS = ["Is", "Is Not"];
-const DATE_OPERATIONS = ["Is", "Is Not", "Before", "After"];
+const DATE_OPERATIONS = ["Is"];
 const USER_OPERATIONS = ["Is", "Is Not"];
 
 interface TokenOption {
@@ -267,11 +267,16 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         }
 
         // Date filter display
-        if (id === "created_date" && (filterData as any).date) {
+        if (id === "created_date" && (filterData as any).dateRange) {
             try {
-                return <span className="font-medium text-sm">{format(new Date((filterData as any).date), "MMM d, yyyy")}</span>;
+                const { from, to } = (filterData as any).dateRange;
+                if (from && to && !isSameDay(new Date(from), new Date(to))) {
+                    return <span className="font-medium text-sm">{format(new Date(from), "MMM d, yyyy")} - {format(new Date(to), "MMM d, yyyy")}</span>;
+                } else if (from) {
+                    return <span className="font-medium text-sm">{format(new Date(from), "MMM d, yyyy")}</span>;
+                }
             } catch {
-                return <span className="font-medium text-sm">{(filterData as any).date}</span>;
+                return <span className="font-medium text-sm">Invalid date</span>;
             }
         }
 
@@ -319,7 +324,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
                         <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0 max-w-80 w-fit" align="start">
+                <PopoverContent className="p-0 max-w-96 w-fit" align="start">
                     {renderFilterContent()}
                 </PopoverContent>
             </Popover>
@@ -495,7 +500,10 @@ interface CreatedDateFilterContentProps {
 }
 
 interface DateData {
-    date: Date | undefined;
+    dateRange: {
+        from: Date | undefined;
+        to?: Date | undefined;
+    };
 }
 
 function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: CreatedDateFilterContentProps) {
@@ -503,11 +511,20 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: Crea
         value,
         onUpdate,
         parseData: (parsed) => ({
-            date: parsed.date ? new Date(parsed.date) : undefined
+            dateRange: parsed.dateRange ? {
+                from: parsed.dateRange.from ? new Date(parsed.dateRange.from) : undefined,
+                to: parsed.dateRange.to ? new Date(parsed.dateRange.to) : undefined
+            } : {
+                from: undefined,
+                to: undefined
+            }
         }),
         serializeData: (op, d) => ({
             operation: op,
-            date: d.date?.toISOString()
+            dateRange: d.dateRange ? {
+                from: d.dateRange.from?.toISOString(),
+                to: d.dateRange.to?.toISOString()
+            } : undefined
         })
     });
 
@@ -516,9 +533,74 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: Crea
         setIsOpen(false);
     };
 
-    const handleDateChange = (date: Date | undefined) => {
-        setData({ date });
-    };
+    const commonTimeFilters = useMemo(
+        () => [
+            {
+                label: 'Today',
+                value: {
+                    from: startOfDay(new Date()),
+                    to: endOfDay(new Date()),
+                },
+            },
+            {
+                label: 'Yesterday',
+                value: {
+                    from: subDays(startOfDay(new Date()), 1),
+                    to: subDays(endOfDay(new Date()), 1),
+                },
+            },
+            {
+                label: 'Last 3 days',
+                value: {
+                    from: subDays(startOfDay(new Date()), 3),
+                    to: endOfDay(new Date()),
+                },
+            },
+            {
+                label: 'Last 7 days',
+                value: {
+                    from: subDays(startOfDay(new Date()), 7),
+                    to: endOfDay(new Date()),
+                },
+            },
+            {
+                label: 'Last 14 days',
+                value: {
+                    from: subDays(startOfDay(new Date()), 14),
+                    to: endOfDay(new Date()),
+                },
+            },
+            {
+                label: 'Last month',
+                value: {
+                    from: subMonths(startOfDay(new Date()), 1),
+                    to: endOfDay(new Date()),
+                },
+            },
+            {
+                label: 'Last 3 months',
+                value: {
+                    from: subMonths(startOfDay(new Date()), 3),
+                    to: endOfDay(new Date()),
+                },
+            },
+            {
+                label: 'Last 6 months',
+                value: {
+                    from: subMonths(startOfDay(new Date()), 6),
+                    to: endOfDay(new Date()),
+                },
+            },
+        ],
+        [],
+    );
+
+    const defaultMonth = useMemo(() => {
+        if (data?.dateRange?.from) {
+            return data.dateRange.from;
+        }
+        return startOfDay(new Date());
+    }, [data?.dateRange?.from]);
 
     return (
         <BaseFilterPopover
@@ -528,14 +610,30 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: Crea
             onOperationChange={setOperation}
             onClear={handleClear}
             onDelete={handleDelete}
-            className="pb-1"
+            className="flex w-96 pb-1"
         >
-            <div className="px-2">
-                <DateTimePicker
-                    value={data?.date}
-                    onChange={handleDateChange}
-                    hideTime
-                />
+            <div className="flex max-w-md w-full">
+                <div className="h-full w-full flex items-center justify-center">
+                    <DateTimePicker
+                        mode="range"
+                        presets={commonTimeFilters}
+                        value={data?.dateRange ? { from: data?.dateRange.from, to: data?.dateRange.to } : undefined}
+                        onChange={(range) => {
+                            if (range && typeof range === 'object' && 'from' in range) {
+                                setData({
+                                    dateRange: {
+                                        from: range.from ? startOfDay(range.from) : undefined,
+                                        to: range.to ? endOfDay(range.to) : undefined
+                                    }
+                                });
+                            } else {
+                                setData({ dateRange: { from: undefined, to: undefined } });
+                            }
+                        }}
+                        defaultMonth={defaultMonth}
+                        numberOfMonths={1}
+                    />
+                </div>
             </div>
         </BaseFilterPopover>
     );

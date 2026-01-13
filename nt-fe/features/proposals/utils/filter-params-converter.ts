@@ -123,26 +123,14 @@ export function convertUrlParamsToApiFilters(
   // Handle created_date filter
   const createdDateParam = searchParams.get("created_date");
   if (createdDateParam) {
-    const dateData = parseFilterData(createdDateParam) as { operation: string; date: string } | null;
-    if (dateData?.date) {
-      const date = new Date(dateData.date);
-      const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const dateData = parseFilterData(createdDateParam) as { operation: string; dateRange: { from: string; to: string } } | null;
+    if (dateData?.dateRange) {
 
       switch (dateData.operation) {
         case "Is":
           // For "Is", set both from and to to the same date
-          filters.created_date_from = dateString;
-          filters.created_date_to = dateString;
-          break;
-        case "Before":
-          filters.created_date_to = dateString;
-          break;
-        case "After":
-          filters.created_date_from = dateString;
-          break;
-        case "Is Not":
-          filters.created_date_from_not = dateString;
-          filters.created_date_to_not = dateString;
+          filters.created_date_from = dateData.dateRange.from ? new Date(dateData.dateRange.from).toISOString().split('T')[0] : undefined;
+          filters.created_date_to = dateData.dateRange.to ? new Date(dateData.dateRange.to).toISOString().split('T')[0] : undefined;
           break;
       }
     }
