@@ -6,16 +6,15 @@ import { VestingExpanded } from "./vesting-expanded";
 import { ProposalSidebar } from "./common/proposal-sidebar";
 import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
-import { Copy, ExternalLink, Trash } from "lucide-react";
+import { CopyButton } from "@/components/copy-button";
+import { ExternalLink, Trash } from "lucide-react";
 import { TxDetails } from "./common/tx-details";
 import { Policy } from "@/types/policy";
-import { TreasuryConfig } from "@/lib/api";
 import { StakingExpanded } from "./staking-expanded";
 import { ChangeConfigExpanded } from "./change-config-expanded";
 import { SwapExpanded } from "./swap-expanded";
 import { useTreasury } from "@/stores/treasury-store";
 import Link from "next/link";
-import { toast } from "sonner";
 import { extractProposalData } from "../../utils/proposal-extractors";
 import {
   PaymentRequestData,
@@ -91,14 +90,6 @@ export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVot
   const { accountId } = useNear();
   const component = ExpandedViewInternal({ proposal });
   const requestUrl = `${window.location.origin}/${selectedTreasury}/requests/${proposal.id}`;
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(requestUrl);
-      toast.success("Link copied to clipboard");
-    } catch (error) {
-      toast.error("Failed to copy link");
-    }
-  }
 
   const ownProposal = proposal.proposer === accountId;
 
@@ -109,9 +100,14 @@ export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVot
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Request Details</h3>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onCopy}>
-                <Copy className="h-4 w-4" />
-              </Button>
+              <CopyButton
+                text={requestUrl}
+                toastMessage="Link copied to clipboard"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                iconClassName="h-4 w-4"
+              />
               {!hideOpenInNewTab && (
                 <Link href={requestUrl} target="_blank" rel="noopener noreferrer">
                   <Button variant="ghost" size="icon" className="h-8 w-8">

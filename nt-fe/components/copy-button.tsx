@@ -10,6 +10,7 @@ interface CopyButtonProps {
   size?: "default" | "sm" | "lg" | "icon" | "icon-sm";
   className?: string;
   iconClassName?: string;
+  children?: React.ReactNode;
 }
 
 export function CopyButton({
@@ -18,6 +19,7 @@ export function CopyButton({
   variant = "ghost",
   size = "icon",
   className,
+  children,
   iconClassName,
 }: CopyButtonProps) {
   const handleCopy = async () => {
@@ -37,6 +39,7 @@ export function CopyButton({
       onClick={handleCopy}
     >
       <Copy className={cn("h-4 w-4", iconClassName)} />
+      {children}
     </Button>
   );
 }
