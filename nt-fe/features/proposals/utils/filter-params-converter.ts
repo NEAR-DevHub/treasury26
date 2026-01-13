@@ -13,6 +13,12 @@ export function convertUrlParamsToApiFilters(
 ): Partial<ProposalFilters> {
   const filters: Partial<ProposalFilters> = {};
 
+  // Handle search parameter
+  const searchParam = searchParams.get("search");
+  if (searchParam && searchParam.trim()) {
+    filters.search = searchParam.trim();
+  }
+
   // Handle proposers filter
   const proposersParam = searchParams.get("proposers");
   if (proposersParam) {

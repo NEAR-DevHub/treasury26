@@ -7,7 +7,7 @@ import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
 import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
 import { ArrowRightLeft, ArrowUpRight, ListFilter } from "lucide-react";
@@ -137,6 +137,8 @@ export default function RequestsPage() {
   })
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const { data: allProposals } = useProposals(treasuryId, {});
+  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
   const currentTab = searchParams.get("tab") || "pending";
@@ -148,9 +150,45 @@ export default function RequestsPage() {
     router.push(`${pathname}?${params.toString()}`);
   }, [searchParams, router, pathname]);
 
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchValue(value);
+
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Debounce the URL update
+    searchTimeoutRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value.trim()) {
+        params.set("search", value.trim());
+      } else {
+        params.delete("search");
+      }
+      params.delete("page"); // Reset page when search changes
+      router.push(`${pathname}?${params.toString()}`);
+    }, 300);
+  }, [searchParams, router, pathname]);
+
+  // Sync search value with URL params
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") || "";
+    setSearchValue(urlSearch);
+  }, [searchParams]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
-    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'tokens', 'created_date', 'my_vote'];
+    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'tokens', 'created_date', 'my_vote', 'search'];
     return filterParams.some(param => searchParams.has(param));
   }, [searchParams]);
 
@@ -167,7 +205,7 @@ export default function RequestsPage() {
     <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
       <PageCard className="p-0">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="gap-0">
-          <div className="flex items-center justify-between border-b p-5 pb-3.5">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b p-5 pb-3.5">
             <TabsList className="w-fit border-none">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="pending" className="flex gap-2.5">Pending
@@ -180,7 +218,13 @@ export default function RequestsPage() {
               <TabsTrigger value="expired">Expired</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-2">
-              <Input type="text" placeholder="Search request by name or ID" className="w-64" />
+              <Input
+                type="text"
+                placeholder="Search request by name or ID"
+                className="w-64"
+                value={searchValue}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
               <Button variant="secondary" className="flex gap-1.5" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
                 <ListFilter className="size-4" />
                 Filter
@@ -188,11 +232,17 @@ export default function RequestsPage() {
             </div>
           </div>
 
-          {isFiltersOpen && (
+          <div
+            className="overflow-hidden transition-all duration-500 ease-in-out"
+            style={{
+              maxHeight: isFiltersOpen ? '100px' : '0px',
+              opacity: isFiltersOpen ? 1 : 0,
+            }}
+          >
             <div className="py-3 px-4">
               <ProposalFiltersComponent />
             </div>
-          )}
+          </div>
           <TabsContents>
             <TabsContent value="all">
               <ProposalsList />

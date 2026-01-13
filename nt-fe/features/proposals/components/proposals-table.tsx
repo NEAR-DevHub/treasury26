@@ -41,6 +41,7 @@ import {
   getPaginationRowModel,
 } from "@tanstack/react-table"
 import { VoteModal } from "./vote-modal";
+import { Address } from "@/components/address";
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -149,8 +150,8 @@ export function ProposalsTable({
         cell: (info) => {
           const value = info.getValue();
           return (
-            <TooltipUser accountId={value}>
-              <span className="text-sm">{value}</span>
+            <TooltipUser accountId={value} triggerProps={{ asChild: false }}>
+              <Address address={value} />
             </TooltipUser>
           )
         }

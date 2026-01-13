@@ -20,6 +20,7 @@ import { useRecentAddresses } from "@/hooks/use-recent-addresses";
 import { useTreasury } from "@/stores/treasury-store";
 import { CheckboxFilterContent } from "./checkbox-filter-content";
 import { useDaoUsers, UserListType } from "../hooks/use-dao-users";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const FILTER_OPTIONS = [
     { id: "proposal_types", label: "Requests Type" },
@@ -255,14 +256,14 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         // My Vote filter display
         if (id === "my_vote" && (filterData as any).selected) {
             const selected = (filterData as any).selected as string[];
-            if (selected.length === 0) return null;
+            if (selected.length === 0) return 'ALL';
             return <span className="font-medium text-sm">{selected.join(", ")}</span>;
         }
 
         // Proposal Type filter display
         if (id === "proposal_types" && (filterData as any).selected) {
             const selected = (filterData as any).selected as string[];
-            if (selected.length === 0) return null;
+            if (selected.length === 0) return 'ALL';
             return <span className="font-medium text-sm">{selected.join(", ")}</span>;
         }
 
@@ -270,6 +271,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         if (id === "created_date" && (filterData as any).dateRange) {
             try {
                 const { from, to } = (filterData as any).dateRange;
+                if (!from && !to) return 'ALL';
                 if (from && to && !isSameDay(new Date(from), new Date(to))) {
                     return <span className="font-medium text-sm">{format(new Date(from), "MMM d, yyyy")} - {format(new Date(to), "MMM d, yyyy")}</span>;
                 } else if (from) {
@@ -280,18 +282,13 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
             }
         }
 
-        // Text filter display
-        if ((filterData as any).text) {
-            return <span className="font-medium text-sm">{(filterData as any).text}</span>;
-        }
-
         // User filter display (recipients, proposers, approvers)
         if ((id === "recipients" || id === "proposers" || id === "approvers") && (filterData as any).users) {
             const users = (filterData as any).users as string[];
-
+            if (users.length === 0) return 'ALL';
             return (
                 <div className="flex items-center">
-                    {users.map((accountId, index) => (
+                    {users.slice(0, 3).map((accountId, index) => (
                         <TooltipUser key={accountId} accountId={accountId}>
                             <div className="cursor-pointer" style={{ marginLeft: index > 0 ? '-6px' : '0' }}>
                                 <User accountId={accountId} iconOnly withName={false} />
@@ -767,10 +764,10 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
                         Loading members...
                     </div>
                 ) : (
-                    <>
+                    <ScrollArea className="max-h-60 overflow-y-auto scrollbar-thin">
                         {/* Single unified list of all members */}
                         {filteredMembers.length > 0 && (
-                            <div className="max-w-full truncate overflow-y-auto">
+                            <div className="max-w-full overflow-y-auto">
                                 {filteredMembers.map((accountId) => {
                                     const isSelected = data?.users?.includes(accountId) || false;
                                     return (
@@ -782,7 +779,9 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
                                                 checked={isSelected}
                                                 onCheckedChange={() => handleToggleUser(accountId)}
                                             />
-                                            <User accountId={accountId} iconOnly={false} withLink={false} size="sm" />
+                                            <div className="truncate max-w-full">
+                                                <User accountId={accountId} iconOnly={false} withLink={false} size="sm" />
+                                            </div>
                                         </label>
                                     );
                                 })}
@@ -802,7 +801,7 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
                                 No members available
                             </p>
                         )}
-                    </>
+                    </ScrollArea>
                 )}
             </div>
         </BaseFilterPopover>
