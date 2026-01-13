@@ -225,9 +225,12 @@ export default function RequestsPage() {
                 value={searchValue}
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
-              <Button variant="secondary" className="flex gap-1.5" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
+              <Button variant="secondary" className="flex gap-1.5 relative" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
                 <ListFilter className="size-4" />
                 Filter
+                {hasActiveFilters && (
+                  <span className="absolute top-1 right-1.5 size-2 rounded-full bg-general-info-foreground" />
+                )}
               </Button>
             </div>
           </div>
