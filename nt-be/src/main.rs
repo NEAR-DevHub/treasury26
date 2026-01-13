@@ -86,6 +86,35 @@ async fn main() {
         });
     }
 
+    // Spawn bulk payment payout worker
+    {
+        let state_clone = state.clone();
+        tokio::spawn(async move {
+            log::info!("Starting bulk payment payout worker (5 second poll interval)");
+
+            // Wait a bit before first run to let server fully start
+            tokio::time::sleep(Duration::from_secs(15)).await;
+
+            let mut interval_timer = tokio::time::interval(Duration::from_secs(5));
+
+            loop {
+                interval_timer.tick().await;
+
+                // Query the bulk payment contract for pending lists
+                match nt_be::handlers::bulkpayment::worker::query_and_process_pending_lists(&state_clone).await {
+                    Ok(processed) => {
+                        if processed > 0 {
+                            log::info!("Processed {} payment batches", processed);
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("Payout worker error: {}", e);
+                    }
+                }
+            }
+        });
+    }
+
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)

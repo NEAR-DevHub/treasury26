@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
-use crate::{AppState, constants::BATCH_PAYMENT_ACCOUNT_ID};
+use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct PaymentInput {
@@ -103,6 +103,16 @@ async fn verify_dao_proposal(
     dao_contract_id: &str,
     list_id: &str,
 ) -> Result<bool, (StatusCode, String)> {
+    log::info!(
+        "Verifying DAO proposal: dao={}, list_id={}",
+        dao_contract_id,
+        list_id
+    );
+    log::info!(
+        "Using network RPC endpoints: {:?}",
+        state.network.rpc_endpoints
+    );
+
     // Get the last 100 proposals from the DAO
     let proposals: Vec<Proposal> = near_api::Contract(dao_contract_id.parse().unwrap())
         .call_function(
@@ -116,6 +126,7 @@ async fn verify_dao_proposal(
         .fetch_from(&state.network)
         .await
         .map_err(|e| {
+            log::error!("Failed to fetch DAO proposals: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to fetch DAO proposals: {}", e),
@@ -123,33 +134,64 @@ async fn verify_dao_proposal(
         })?
         .data;
 
+    log::info!("Fetched {} proposals from DAO", proposals.len());
+
     // Look for a pending proposal with this list_id
     for proposal in proposals {
+        log::info!(
+            "Checking proposal {}: status={:?}, kind={:?}",
+            proposal.id,
+            proposal.status,
+            match &proposal.kind {
+                ProposalKind::FunctionCall { function_call } => format!("FunctionCall(receiver={})", function_call.receiver_id),
+                _ => format!("{:?}", proposal.kind)
+            }
+        );
+
         if proposal.status != "InProgress" {
+            log::info!("  -> Skipping: status is not InProgress");
             continue;
         }
 
         // Check if this is a FunctionCall proposal
         if let ProposalKind::FunctionCall { function_call } = &proposal.kind {
+            log::info!("  -> FunctionCall proposal: receiver={}", function_call.receiver_id);
+            
             // Check if it targets the bulk payment contract
-            if function_call.receiver_id != *BATCH_PAYMENT_ACCOUNT_ID {
+            if function_call.receiver_id != state.bulk_payment_contract_id.as_str() {
+                log::info!("  -> Skipping: receiver is not bulk payment contract (expected {})", state.bulk_payment_contract_id);
                 continue;
             }
 
+            log::info!("  -> Checking {} actions", function_call.actions.len());
+            
             // Check each action for approve_list with matching list_id
             for action in &function_call.actions {
+                log::info!("    -> Action: method_name={}", action.method_name);
+                
                 if action.method_name != "approve_list" {
                     continue;
                 }
 
+                log::info!("    -> Found approve_list action, decoding args...");
+                
                 // Decode the base64 args and check for matching list_id
                 if let Ok(decoded) =
                     base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &action.args)
                     && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
                     && let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
-                    && proposal_list_id == list_id
                 {
-                    return Ok(true);
+                    log::info!("    -> Decoded list_id from args: {}", proposal_list_id);
+                    log::info!("    -> Looking for list_id: {}", list_id);
+                    
+                    if proposal_list_id == list_id {
+                        log::info!("  -> MATCH FOUND!");
+                        return Ok(true);
+                    } else {
+                        log::info!("    -> No match");
+                    }
+                } else {
+                    log::warn!("    -> Failed to decode args");
                 }
             }
         }
@@ -234,7 +276,7 @@ pub async fn submit_list(
         })
         .collect();
 
-    let result = near_api::Contract(BATCH_PAYMENT_ACCOUNT_ID.into())
+    let result = near_api::Contract(state.bulk_payment_contract_id.clone())
         .call_function(
             "submit_list",
             serde_json::json!({
@@ -250,11 +292,16 @@ pub async fn submit_list(
         .await;
 
     match result {
-        Ok(_) => Ok(Json(SubmitListResponse {
-            success: true,
-            list_id: Some(request.list_id),
-            error: None,
-        })),
+        Ok(_) => {
+            // Add the list to the payout worker's pending list
+            super::worker::add_pending_list(request.list_id.clone()).await;
+
+            Ok(Json(SubmitListResponse {
+                success: true,
+                list_id: Some(request.list_id),
+                error: None,
+            }))
+        }
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(SubmitListResponse {

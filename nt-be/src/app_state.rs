@@ -22,6 +22,7 @@ pub struct AppState {
     pub env_vars: EnvVars,
     pub db_pool: PgPool,
     pub price_service: PriceLookupService<CoinGeckoClient>,
+    pub bulk_payment_contract_id: AccountId,
 }
 
 /// Builder for constructing AppState instances
@@ -53,6 +54,7 @@ pub struct AppStateBuilder {
     env_vars: Option<EnvVars>,
     db_pool: Option<PgPool>,
     price_service: Option<PriceLookupService<CoinGeckoClient>>,
+    bulk_payment_contract_id: Option<AccountId>,
 }
 
 impl AppStateBuilder {
@@ -68,6 +70,7 @@ impl AppStateBuilder {
             env_vars: None,
             db_pool: None,
             price_service: None,
+            bulk_payment_contract_id: None,
         }
     }
 
@@ -158,30 +161,63 @@ impl AppStateBuilder {
         // Create default networks if not provided
         let fastnear_api_key = env_vars.fastnear_api_key.clone();
 
-        let network = self.network.unwrap_or_else(|| NetworkConfig {
-            rpc_endpoints: vec![
-                RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
-                    .with_api_key(fastnear_api_key.clone()),
-            ],
-            ..NetworkConfig::mainnet()
+        let network = self.network.unwrap_or_else(|| {
+            // If NEAR_RPC_URL is set, use it (for sandbox/testing)
+            if let Some(rpc_url) = &env_vars.near_rpc_url {
+                NetworkConfig {
+                    rpc_endpoints: vec![RPCEndpoint::new(rpc_url.parse().expect("Invalid NEAR_RPC_URL"))],
+                    ..NetworkConfig::testnet() // Use testnet defaults for sandbox
+                }
+            } else {
+                // Otherwise use mainnet with FastNEAR
+                NetworkConfig {
+                    rpc_endpoints: vec![
+                        RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
+                            .with_api_key(fastnear_api_key.clone()),
+                    ],
+                    ..NetworkConfig::mainnet()
+                }
+            }
         });
 
-        let archival_network = self.archival_network.unwrap_or_else(|| NetworkConfig {
-            rpc_endpoints: vec![
-                RPCEndpoint::new(
-                    "https://archival-rpc.mainnet.fastnear.com/"
-                        .parse()
-                        .unwrap(),
-                )
-                .with_api_key(fastnear_api_key),
-            ],
-            ..NetworkConfig::mainnet()
+        let archival_network = self.archival_network.unwrap_or_else(|| {
+            // If NEAR_ARCHIVAL_RPC_URL is set, use it
+            // Otherwise fall back to NEAR_RPC_URL (sandbox doesn't differentiate)
+            // Otherwise use mainnet archival
+            if let Some(archival_rpc_url) = &env_vars.near_archival_rpc_url {
+                NetworkConfig {
+                    rpc_endpoints: vec![RPCEndpoint::new(archival_rpc_url.parse().expect("Invalid NEAR_ARCHIVAL_RPC_URL"))],
+                    ..NetworkConfig::testnet()
+                }
+            } else if let Some(rpc_url) = &env_vars.near_rpc_url {
+                NetworkConfig {
+                    rpc_endpoints: vec![RPCEndpoint::new(rpc_url.parse().expect("Invalid NEAR_RPC_URL"))],
+                    ..NetworkConfig::testnet()
+                }
+            } else {
+                NetworkConfig {
+                    rpc_endpoints: vec![
+                        RPCEndpoint::new(
+                            "https://archival-rpc.mainnet.fastnear.com/"
+                                .parse()
+                                .unwrap(),
+                        )
+                        .with_api_key(fastnear_api_key),
+                    ],
+                    ..NetworkConfig::mainnet()
+                }
+            }
         });
 
         // Create default price service (cache-only) if not provided
         let price_service = self
             .price_service
             .unwrap_or_else(|| PriceLookupService::without_provider(db_pool.clone()));
+
+        // Use bulk payment contract from env or default
+        let bulk_payment_contract_id = self
+            .bulk_payment_contract_id
+            .unwrap_or_else(|| env_vars.bulk_payment_contract_id.clone());
 
         Ok(AppState {
             http_client: self.http_client.unwrap_or_default(),
@@ -193,6 +229,7 @@ impl AppStateBuilder {
             env_vars,
             db_pool,
             price_service,
+            bulk_payment_contract_id,
         })
     }
 }
@@ -270,24 +307,6 @@ impl AppState {
                     .expect("Failed to create signer."),
             )
             .signer_id(env_vars.signer_id.clone())
-            .network(NetworkConfig {
-                rpc_endpoints: vec![
-                    RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
-                        .with_api_key(env_vars.fastnear_api_key.clone()),
-                ],
-                ..NetworkConfig::mainnet()
-            })
-            .archival_network(NetworkConfig {
-                rpc_endpoints: vec![
-                    RPCEndpoint::new(
-                        "https://archival-rpc.mainnet.fastnear.com/"
-                            .parse()
-                            .unwrap(),
-                    )
-                    .with_api_key(env_vars.fastnear_api_key.clone()),
-                ],
-                ..NetworkConfig::mainnet()
-            })
             .env_vars(env_vars)
             .db_pool(db_pool)
             .price_service(price_service)

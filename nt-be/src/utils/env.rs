@@ -3,6 +3,9 @@ use near_api::{AccountId, SecretKey};
 #[derive(Clone, Debug)]
 pub struct EnvVars {
     pub database_url: String,
+    pub near_rpc_url: Option<String>,
+    pub near_archival_rpc_url: Option<String>,
+    pub bulk_payment_contract_id: AccountId,
     pub pikespeak_key: String,
     pub fastnear_api_key: String,
     pub sputnik_dao_api_base: String,
@@ -20,6 +23,12 @@ impl Default for EnvVars {
     fn default() -> Self {
         Self {
             database_url: std::env::var("DATABASE_URL").expect("DATABASE_URL is not set"),
+            near_rpc_url: std::env::var("NEAR_RPC_URL").ok().filter(|s| !s.is_empty()),
+            near_archival_rpc_url: std::env::var("NEAR_ARCHIVAL_RPC_URL").ok().filter(|s| !s.is_empty()),
+            bulk_payment_contract_id: std::env::var("BULK_PAYMENT_CONTRACT_ID")
+                .unwrap_or_else(|_| "bulkpayment.near".to_string())
+                .parse()
+                .expect("Invalid BULK_PAYMENT_CONTRACT_ID"),
             pikespeak_key: std::env::var("PIKESPEAK_KEY").expect("PIKESPEAK_KEY is not set"),
             fastnear_api_key: std::env::var("FASTNEAR_API_KEY")
                 .expect("FASTNEAR_API_KEY is not set"),

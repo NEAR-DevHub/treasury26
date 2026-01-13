@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use crate::{
     AppState,
-    constants::BATCH_PAYMENT_ACCOUNT_ID,
     utils::cache::{CacheKey, CacheTier},
 };
 
@@ -142,7 +141,7 @@ pub async fn get_list_status(
         .cache
         .clone()
         .cached_contract_call(CacheTier::ShortTerm, cache_key, async {
-            near_api::Contract(BATCH_PAYMENT_ACCOUNT_ID.into())
+            near_api::Contract(state.bulk_payment_contract_id.clone())
                 .call_function(
                     "view_list",
                     serde_json::json!({
@@ -198,7 +197,7 @@ pub async fn get_transactions(
         .cache
         .clone()
         .cached_contract_call(CacheTier::LongTerm, cache_key, async {
-            near_api::Contract(BATCH_PAYMENT_ACCOUNT_ID.into())
+            near_api::Contract(state.bulk_payment_contract_id.clone())
                 .call_function(
                     "get_payment_transactions",
                     serde_json::json!({
@@ -241,7 +240,7 @@ pub async fn get_transaction_hash(
         .cache
         .clone()
         .cached_contract_call(CacheTier::LongTerm, list_cache_key, async {
-            near_api::Contract(BATCH_PAYMENT_ACCOUNT_ID.into())
+            near_api::Contract(state.bulk_payment_contract_id.clone())
                 .call_function(
                     "view_list",
                     serde_json::json!({
