@@ -143,8 +143,9 @@ async fn verify_dao_proposal(
             proposal.id,
             proposal.status,
             match &proposal.kind {
-                ProposalKind::FunctionCall { function_call } => format!("FunctionCall(receiver={})", function_call.receiver_id),
-                _ => format!("{:?}", proposal.kind)
+                ProposalKind::FunctionCall { function_call } =>
+                    format!("FunctionCall(receiver={})", function_call.receiver_id),
+                _ => format!("{:?}", proposal.kind),
             }
         );
 
@@ -155,26 +156,32 @@ async fn verify_dao_proposal(
 
         // Check if this is a FunctionCall proposal
         if let ProposalKind::FunctionCall { function_call } = &proposal.kind {
-            log::info!("  -> FunctionCall proposal: receiver={}", function_call.receiver_id);
-            
+            log::info!(
+                "  -> FunctionCall proposal: receiver={}",
+                function_call.receiver_id
+            );
+
             // Check if it targets the bulk payment contract
             if function_call.receiver_id != state.bulk_payment_contract_id.as_str() {
-                log::info!("  -> Skipping: receiver is not bulk payment contract (expected {})", state.bulk_payment_contract_id);
+                log::info!(
+                    "  -> Skipping: receiver is not bulk payment contract (expected {})",
+                    state.bulk_payment_contract_id
+                );
                 continue;
             }
 
             log::info!("  -> Checking {} actions", function_call.actions.len());
-            
+
             // Check each action for approve_list with matching list_id
             for action in &function_call.actions {
                 log::info!("    -> Action: method_name={}", action.method_name);
-                
+
                 if action.method_name != "approve_list" {
                     continue;
                 }
 
                 log::info!("    -> Found approve_list action, decoding args...");
-                
+
                 // Decode the base64 args and check for matching list_id
                 if let Ok(decoded) =
                     base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &action.args)
@@ -183,7 +190,7 @@ async fn verify_dao_proposal(
                 {
                     log::info!("    -> Decoded list_id from args: {}", proposal_list_id);
                     log::info!("    -> Looking for list_id: {}", list_id);
-                    
+
                     if proposal_list_id == list_id {
                         log::info!("  -> MATCH FOUND!");
                         return Ok(true);

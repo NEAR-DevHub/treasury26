@@ -27,7 +27,9 @@ impl Default for EnvVars {
         Self {
             database_url: std::env::var("DATABASE_URL").expect("DATABASE_URL is not set"),
             near_rpc_url: std::env::var("NEAR_RPC_URL").ok().filter(|s| !s.is_empty()),
-            near_archival_rpc_url: std::env::var("NEAR_ARCHIVAL_RPC_URL").ok().filter(|s| !s.is_empty()),
+            near_archival_rpc_url: std::env::var("NEAR_ARCHIVAL_RPC_URL")
+                .ok()
+                .filter(|s| !s.is_empty()),
             bulk_payment_contract_id: std::env::var("BULK_PAYMENT_CONTRACT_ID")
                 .unwrap_or_else(|_| "bulkpayment.near".to_string())
                 .parse()

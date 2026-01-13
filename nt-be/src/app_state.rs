@@ -175,7 +175,9 @@ impl AppStateBuilder {
             // If NEAR_RPC_URL is set, use it (for sandbox/testing)
             if let Some(rpc_url) = &env_vars.near_rpc_url {
                 NetworkConfig {
-                    rpc_endpoints: vec![RPCEndpoint::new(rpc_url.parse().expect("Invalid NEAR_RPC_URL"))],
+                    rpc_endpoints: vec![RPCEndpoint::new(
+                        rpc_url.parse().expect("Invalid NEAR_RPC_URL"),
+                    )],
                     ..NetworkConfig::testnet() // Use testnet defaults for sandbox
                 }
             } else {
@@ -196,12 +198,18 @@ impl AppStateBuilder {
             // Otherwise use mainnet archival
             if let Some(archival_rpc_url) = &env_vars.near_archival_rpc_url {
                 NetworkConfig {
-                    rpc_endpoints: vec![RPCEndpoint::new(archival_rpc_url.parse().expect("Invalid NEAR_ARCHIVAL_RPC_URL"))],
+                    rpc_endpoints: vec![RPCEndpoint::new(
+                        archival_rpc_url
+                            .parse()
+                            .expect("Invalid NEAR_ARCHIVAL_RPC_URL"),
+                    )],
                     ..NetworkConfig::testnet()
                 }
             } else if let Some(rpc_url) = &env_vars.near_rpc_url {
                 NetworkConfig {
-                    rpc_endpoints: vec![RPCEndpoint::new(rpc_url.parse().expect("Invalid NEAR_RPC_URL"))],
+                    rpc_endpoints: vec![RPCEndpoint::new(
+                        rpc_url.parse().expect("Invalid NEAR_RPC_URL"),
+                    )],
                     ..NetworkConfig::testnet()
                 }
             } else {

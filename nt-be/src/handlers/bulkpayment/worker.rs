@@ -37,7 +37,11 @@ pub async fn query_and_process_pending_lists(
         return Ok(0);
     }
 
-    log::info!("Worker checking {} pending lists: {:?}", list_ids.len(), list_ids);
+    log::info!(
+        "Worker checking {} pending lists: {:?}",
+        list_ids.len(),
+        list_ids
+    );
 
     let mut processed_count = 0;
     let mut completed_lists = Vec::new();

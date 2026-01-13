@@ -101,7 +101,11 @@ async fn main() {
                 interval_timer.tick().await;
 
                 // Query the bulk payment contract for pending lists
-                match nt_be::handlers::bulkpayment::worker::query_and_process_pending_lists(&state_clone).await {
+                match nt_be::handlers::bulkpayment::worker::query_and_process_pending_lists(
+                    &state_clone,
+                )
+                .await
+                {
                     Ok(processed) => {
                         if processed > 0 {
                             log::info!("Processed {} payment batches", processed);
