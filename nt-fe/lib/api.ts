@@ -241,6 +241,60 @@ export interface TokenBalance {
   decimals: number;
 }
 
+export interface RecentActivity {
+  id: number;
+  block_time: string;
+  token_id: string;
+  token_metadata: {
+    tokenId: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+    icon?: string;
+    price?: number;
+    priceUpdatedAt?: string;
+    network?: string;
+    chainName?: string;
+    chainIcons?: {
+      dark: string;
+      light: string;
+    };
+  };
+  counterparty: string | null;
+  signer_id: string | null;
+  receiver_id: string | null;
+  amount: string;
+  transaction_hashes: string[];
+}
+
+export interface RecentActivityResponse {
+  data: RecentActivity[];
+  total: number;
+}
+
+/**
+ * Get recent activity (enriched balance changes) for an account
+ * Returns transaction history with token metadata already included
+ */
+export async function getRecentActivity(
+  accountId: string,
+  limit: number = 50,
+  offset: number = 0,
+): Promise<RecentActivityResponse | null> {
+  if (!accountId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/recent-activity`;
+    const response = await axios.get<RecentActivityResponse>(url, {
+      params: { account_id: accountId, limit, offset },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error getting recent activity", error);
+    return null;
+  }
+}
+
 /**
  * Get balance for a single token (supports both NEAR and FT tokens)
  * Fetches current balance from blockchain via backend

@@ -19,6 +19,7 @@ import {
   checkAccountExists,
   searchIntentsTokens,
   SearchTokensParams,
+  getRecentActivity,
 } from "@/lib/api";
 
 /**
@@ -280,5 +281,23 @@ export function useSearchIntentsTokens(params: SearchTokensParams) {
     queryFn: () => searchIntentsTokens(params),
     enabled: hasParams,
     staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
+  });
+}
+
+/**
+ * Query hook to get recent activity for an account
+ * Fetches enriched transaction history with token metadata included
+ * Returns list of transactions with amounts, counterparties, and metadata
+ */
+export function useRecentActivity(
+  accountId: string | null | undefined,
+  limit: number = 50,
+  offset: number = 0,
+) {
+  return useQuery({
+    queryKey: ["recentActivity", accountId, limit, offset],
+    queryFn: () => getRecentActivity(accountId!, limit, offset),
+    enabled: !!accountId,
+    staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
   });
 }
