@@ -1,7 +1,7 @@
 import { InputBlock } from "./input-block";
 import { FormField, FormMessage } from "./ui/form";
 import { Control, FieldValues, Path } from "react-hook-form";
-import { DateTimePicker } from "./ui/datepicker";
+import { DatePickerPopover, } from "./ui/datepicker";
 
 interface DateInputProps<TFieldValues extends FieldValues = FieldValues> {
     control: Control<TFieldValues>;
@@ -24,7 +24,7 @@ export function DateInput<TFieldValues extends FieldValues = FieldValues>({
             name={name}
             render={({ field, fieldState }) => (
                 <InputBlock title={title} invalid={!!fieldState.error}>
-                    <DateTimePicker
+                    <DatePickerPopover
                         value={field.value}
                         onChange={field.onChange}
                         min={minDate}

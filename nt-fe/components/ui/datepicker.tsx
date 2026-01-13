@@ -1,6 +1,5 @@
 'use client';
 
-// File taken from NEARN datetimepicker component
 
 import {
     addMonths,
@@ -42,6 +41,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 import { Tooltip } from "@/components/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export type CalendarProps = Omit<
     React.ComponentProps<typeof DayPicker>,
@@ -375,7 +375,7 @@ export function DateTimePicker({
                             range_end: 'day-range-end rounded-r-md',
                             range_start: 'day-range-start rounded-l-md',
                             selected:
-                                'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-none',
+                                cn('bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-none', !isRange(value) && 'rounded-md'),
                             today: 'bg-accent text-accent-foreground rounded-md',
                             outside:
                                 'day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30',
@@ -525,4 +525,112 @@ function MonthYearPicker({
     );
 }
 
+export type DatePickerPopoverProps = Omit<DateTimePickerProps, 'classNames'> & {
+    /**
+     * Custom class names for the component.
+     */
+    classNames?: {
+        /**
+         * Custom class names for the trigger button.
+         */
+        trigger?: string;
+        /**
+         * Custom class names for the popover content.
+         */
+        content?: string;
+    };
+    /**
+     * Alignment of the popover relative to the trigger.
+     * @default "start"
+     */
+    align?: 'start' | 'center' | 'end';
+    /**
+     * Side of the trigger where the popover should appear.
+     * @default "bottom"
+     */
+    side?: 'top' | 'right' | 'bottom' | 'left';
+};
+
+export function DatePickerPopover({
+    value,
+    onChange,
+    mode = 'single',
+    disabled,
+    showCalendarIcon = true,
+    clearable,
+    borderless,
+    placeholder = 'Pick a date',
+    classNames,
+    align = 'start',
+    side = 'bottom',
+    ...dateTimePickerProps
+}: DatePickerPopoverProps) {
+    const [open, setOpen] = useState(false);
+
+    // Helper to check if value is a range
+    const isRange = (val: Date | DateRange | undefined): val is DateRange => {
+        return mode === 'range' && val !== undefined && typeof val === 'object' && 'from' in val;
+    };
+
+    // Format display value
+    const getDisplayValue = () => {
+        if (!value) return placeholder;
+
+        if (isRange(value)) {
+            if (value.from && value.to) {
+                return `${format(value.from, 'MMM dd, yyyy')} - ${format(value.to, 'MMM dd, yyyy')}`;
+            }
+            if (value.from) {
+                return `${format(value.from, 'MMM dd, yyyy')} - ...`;
+            }
+            return placeholder;
+        }
+
+        return format(value as Date, 'MMM dd, yyyy');
+    };
+
+    // Handle clear action
+    const handleClear = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onChange(undefined);
+    };
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant={borderless ? 'ghost' : 'outline'}
+                    className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !value && 'text-muted-foreground',
+                        borderless && 'border-none shadow-none hover:bg-transparent',
+                        classNames?.trigger
+                    )}
+                    disabled={disabled}
+                >
+                    {showCalendarIcon && <Calendar className="mr-2 h-4 w-4" />}
+                    <span className="flex-1">{getDisplayValue()}</span>
+                    {clearable && value && !disabled && (
+                        <XCircle
+                            className="h-4 w-4 opacity-50 hover:opacity-100"
+                            onClick={handleClear}
+                        />
+                    )}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent
+                className={cn('w-auto p-0', classNames?.content)}
+                align={align}
+                side={side}
+            >
+                <DateTimePicker
+                    value={value}
+                    onChange={onChange}
+                    mode={mode}
+                    {...dateTimePickerProps}
+                />
+            </PopoverContent>
+        </Popover>
+    );
+}
 
