@@ -42,6 +42,7 @@ near-jsonrpc-primitives = "0.30.3"
 near-openapi-types = "0.6.0"
 once_cell = "1.21.3"
 borsh = "1.5.7"
+rust_xlsxwriter = "0.92.3"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
