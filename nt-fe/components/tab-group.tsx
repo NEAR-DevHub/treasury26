@@ -15,7 +15,7 @@ interface TabGroupProps {
 }
 
 const toggleGroupItemStyle =
-  "h-8 !rounded-full px-3 text-sm font-medium transition-all data-[state=off]:bg-transparent data-[state=off]:text-foreground data-[state=off]:hover:text-foreground/80 data-[state=off]:hover:bg-muted data-[state=on]:!bg-primary data-[state=on]:!text-primary-foreground data-[state=on]:shadow-none data-[state=on]:!rounded-full";
+  "h-8 !rounded-full px-3 text-sm font-medium transition-all data-[state=off]:bg-transparent data-[state=off]:text-foreground data-[state=off]:hover:text-foreground/80 data-[state=off]:hover:bg-muted data-[state=on]:!bg-foreground data-[state=on]:!text-primary-foreground data-[state=on]:shadow-none data-[state=on]:!rounded-full";
 
 export function TabGroup({ tabs, activeTab, onTabChange }: TabGroupProps) {
   return (
@@ -37,11 +37,10 @@ export function TabGroup({ tabs, activeTab, onTabChange }: TabGroupProps) {
               <>
                 {" "}
                 <span
-                  className={`px-2 py-0.5 rounded-full text-xs ${
-                    activeTab === tab.value
+                  className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.value
                       ? "bg-background/30 dark:bg-background/30"
                       : "bg-black/20 dark:bg-white/30"
-                  }`}
+                    }`}
                 >
                   {tab.count}
                 </span>

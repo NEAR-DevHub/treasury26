@@ -26,7 +26,7 @@ export function CheckboxInput<TFieldValues extends FieldValues = FieldValues>({
                 <InputBlock invalid={!!fieldState.error}>
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-2">
-                            {title && <p className="text-sm text-primary">{title}</p>}
+                            {title && <p className="text-sm text-foreground">{title}</p>}
                             {description && <p className="text-xs text-muted-foreground">{description}</p>}
                         </div>
                         <Switch

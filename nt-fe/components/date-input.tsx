@@ -27,7 +27,6 @@ export function DateInput<TFieldValues extends FieldValues = FieldValues>({
                     <DateTimePicker
                         value={field.value}
                         onChange={field.onChange}
-                        hideTime
                         min={minDate}
                         max={maxDate}
                         showCalendarIcon={false}

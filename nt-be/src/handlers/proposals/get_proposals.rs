@@ -160,15 +160,10 @@ pub async fn get_proposals(
     Ok((StatusCode::OK, Json(response)))
 }
 
-#[derive(serde::Serialize)]
-pub struct ProposalOutput {
-    pub proposal: Proposal,
-}
-
 pub async fn get_proposal(
     State(state): State<Arc<AppState>>,
     Path((dao_id, proposal_id)): Path<(AccountId, u64)>,
-) -> Result<(StatusCode, Json<ProposalOutput>), (StatusCode, String)> {
+) -> Result<(StatusCode, Json<Proposal>), (StatusCode, String)> {
     // Create cache key for specific proposal
     let cache_key = CacheKey::new("dao-proposal")
         .with(&dao_id)
@@ -183,9 +178,7 @@ pub async fn get_proposal(
         })
         .await?;
 
-    let response = ProposalOutput { proposal };
-
-    Ok((StatusCode::OK, Json(response)))
+    Ok((StatusCode::OK, Json(proposal)))
 }
 
 #[derive(serde::Serialize)]
