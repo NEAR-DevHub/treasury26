@@ -21,6 +21,10 @@ import { TableSkeleton } from "@/components/table-skeleton";
 import { Input } from "@/components/ui/input";
 import { useNear } from "@/stores/near-store";
 
+// Constants
+const SEARCH_DEBOUNCE_MS = 300;
+const FILTER_PANEL_MAX_HEIGHT = '500px';
+
 function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const { selectedTreasury } = useTreasury();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
@@ -168,7 +172,7 @@ export default function RequestsPage() {
       }
       params.delete("page"); // Reset page when search changes
       router.push(`${pathname}?${params.toString()}`);
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
   }, [searchParams, router, pathname]);
 
   // Sync search value with URL params
@@ -225,11 +229,19 @@ export default function RequestsPage() {
                 value={searchValue}
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
-              <Button variant="secondary" className="flex gap-1.5 relative" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
+              <Button
+                variant="secondary"
+                className="flex gap-1.5 relative"
+                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                aria-label={hasActiveFilters ? "Filter (active)" : "Filter"}
+              >
                 <ListFilter className="size-4" />
                 Filter
                 {hasActiveFilters && (
-                  <span className="absolute top-1 right-1.5 size-2 rounded-full bg-general-info-foreground" />
+                  <span
+                    className="absolute top-1 right-1.5 size-2 rounded-full bg-general-info-foreground"
+                    aria-hidden="true"
+                  />
                 )}
               </Button>
             </div>
@@ -238,7 +250,7 @@ export default function RequestsPage() {
           <div
             className="overflow-hidden transition-all duration-500 ease-in-out"
             style={{
-              maxHeight: isFiltersOpen ? '100px' : '0px',
+              maxHeight: isFiltersOpen ? FILTER_PANEL_MAX_HEIGHT : '0px',
               opacity: isFiltersOpen ? 1 : 0,
             }}
           >
