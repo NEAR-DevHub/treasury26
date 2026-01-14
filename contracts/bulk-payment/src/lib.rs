@@ -175,7 +175,7 @@ impl BulkPaymentContract {
         );
 
         // Determine who receives the storage credits
-        let beneficiary = beneficiary_account_id.unwrap_or_else(|| env::predecessor_account_id());
+        let beneficiary = beneficiary_account_id.unwrap_or_else(env::predecessor_account_id);
 
         // Track storage credits for the beneficiary account
         let current_credits = self
@@ -456,19 +456,22 @@ impl BulkPaymentContract {
                         )
                     };
 
-                    Promise::new("intents.near".parse().unwrap()).function_call(
-                        "ft_withdraw".to_string(),
-                        args_json.into_bytes(),
-                        NearToken::from_yoctonear(1),
-                        Gas::from_tgas(50),
-                    );
+                    Promise::new("intents.near".parse().unwrap())
+                        .function_call(
+                            "ft_withdraw".to_string(),
+                            args_json.into_bytes(),
+                            NearToken::from_yoctonear(1),
+                            Gas::from_tgas(50),
+                        )
+                        .detach();
                 } else if list.token_id == "native"
                     || list.token_id == "near"
                     || list.token_id == "NEAR"
                 {
                     // Native NEAR transfer
                     Promise::new(payment.recipient.clone())
-                        .transfer(NearToken::from_yoctonear(payment.amount.0));
+                        .transfer(NearToken::from_yoctonear(payment.amount.0))
+                        .detach();
                 } else {
                     // NEP-141 fungible token transfer
                     let token_account: AccountId = list
@@ -481,12 +484,14 @@ impl BulkPaymentContract {
                         payment.recipient, payment.amount.0
                     );
 
-                    Promise::new(token_account).function_call(
-                        "ft_transfer".to_string(),
-                        args.into_bytes(),
-                        NearToken::from_yoctonear(1),
-                        Gas::from_tgas(50),
-                    );
+                    Promise::new(token_account)
+                        .function_call(
+                            "ft_transfer".to_string(),
+                            args.into_bytes(),
+                            NearToken::from_yoctonear(1),
+                            Gas::from_tgas(50),
+                        )
+                        .detach();
                 }
 
                 // Mark as Paid with current block height
