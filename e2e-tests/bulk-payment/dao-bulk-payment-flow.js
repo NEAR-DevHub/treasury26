@@ -407,7 +407,7 @@ console.log(`✅ Connected as: ${account.accountId}`);
 
 // Step 2: Check API health
 console.log('\n🏥 Checking API health...');
-const health = await apiRequest('/health');
+const health = await apiRequest('/api/health');
 assert.equal(health.status, 'healthy', 'API must be healthy');
 console.log(`✅ API is healthy: ${JSON.stringify(health)}`);
 
@@ -574,7 +574,7 @@ assert.match(listId, /^[0-9a-f]{64}$/, 'list_id must be hex-encoded');
 
 // Step 7b: Verify API rejects submission with WRONG hash (payload doesn't match list_id)
 console.log('\n🔒 Testing API rejection with mismatched hash...');
-const wrongHashResponse = await apiRequest('/submit-list', 'POST', {
+const wrongHashResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
   list_id: listId,
   submitter_id: daoAccountId,
   dao_contract_id: daoAccountId,
@@ -590,7 +590,7 @@ console.log(`✅ API correctly rejected tampered payload: ${wrongHashResponse.er
 
 // Step 7c: Verify API rejects submission WITHOUT a DAO proposal
 console.log('\n🔒 Testing API rejection without DAO proposal...');
-const rejectResponse = await apiRequest('/submit-list', 'POST', {
+const rejectResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
   list_id: listId,
   submitter_id: daoAccountId,
   dao_contract_id: daoAccountId,
@@ -618,7 +618,7 @@ const submitListProposalId = await createProposal(
 
 // Step 9: Submit payment list via API (requires DAO proposal to exist)
 console.log('\n📤 Submitting payment list via API...');
-const submitResponse = await apiRequest('/submit-list', 'POST', {
+const submitResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
   list_id: listId,
   submitter_id: daoAccountId,
   dao_contract_id: daoAccountId,
@@ -655,7 +655,7 @@ while (!allProcessed && attempts < maxAttempts) {
   await sleep(5000);
   attempts++;
   
-  const currentStatus = await apiRequest(`/list/${listId}`);
+  const currentStatus = await apiRequest(`/api/bulk-payment/list/${listId}`);
   assert.equal(currentStatus.success, true, `Must be able to get list status: ${currentStatus.error}`);
   
   const { list } = currentStatus;
@@ -725,7 +725,7 @@ for (const payment of finalStatus.payments) {
   console.log(`\n📦 Checking ${recipientType}: ${recipient.substring(0, 30)}... (block ${blockHeight})`);
   
   // Get transaction hash from API
-  const txResponse = await apiRequest(`/list/${listId}/transaction/${recipient}`);
+  const txResponse = await apiRequest(`/api/bulk-payment/list/${listId}/transaction/${recipient}`);
   
   // Fail immediately on API errors instead of silently continuing
   assert.equal(txResponse.success, true, 

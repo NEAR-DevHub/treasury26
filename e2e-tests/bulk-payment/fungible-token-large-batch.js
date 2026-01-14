@@ -289,7 +289,7 @@ try {
 
   // Step 2: Check API health
   console.log('\n🏥 Checking API health...');
-  const health = await apiRequest('/health');
+  const health = await apiRequest('/api/health');
   assert.equal(health.status, 'healthy', 'API must be healthy');
   console.log(`✅ API is healthy`);
 
@@ -457,7 +457,7 @@ try {
   // Step 11: Submit payment list via API
   console.log(`\n📤 Submitting payment list via API (${CONFIG.NUM_RECIPIENTS} payments)...`);
   const submitStart = Date.now();
-  const submitResponse = await apiRequest('/submit-list', 'POST', {
+  const submitResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
     list_id: listId,
     submitter_id: daoAccountId,
     dao_contract_id: daoAccountId,
@@ -487,7 +487,7 @@ try {
     await sleep(5000);
     attempts++;
     
-    const currentStatus = await apiRequest(`/list/${listId}`);
+    const currentStatus = await apiRequest(`/api/bulk-payment/list/${listId}`);
     assert.equal(currentStatus.success, true, `Must be able to get list status: ${currentStatus.error}`);
     
     const { list } = currentStatus;

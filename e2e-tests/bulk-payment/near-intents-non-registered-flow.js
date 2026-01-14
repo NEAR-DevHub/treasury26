@@ -423,7 +423,7 @@ console.log(`✅ Using DAO: ${daoAccountId}`);
 
 // Step 2: Check API health
 console.log('\n🏥 Checking API health...');
-const health = await apiRequest('/health');
+const health = await apiRequest('/api/health');
 assert.equal(health.status, 'healthy', 'API must be healthy');
 console.log(`✅ API is healthy`);
 
@@ -609,7 +609,7 @@ const mtTransferProposalId = await createProposal(
 // Step 11: Submit payment list via API (requires DAO proposal to exist)
 // The API will verify the DAO proposal exists and track the list for the worker
 console.log('\n📤 Submitting payment list via API...');
-const submitResponse = await apiRequest('/submit-list', 'POST', {
+const submitResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
   list_id: listId,
   submitter_id: daoAccountId,
   dao_contract_id: daoAccountId,
@@ -638,7 +638,7 @@ while (!allProcessed && attempts < maxAttempts) {
   await sleep(5000);
   attempts++;
   
-  const currentStatus = await apiRequest(`/list/${listId}`);
+  const currentStatus = await apiRequest(`/api/bulk-payment/list/${listId}`);
   assert.equal(currentStatus.success, true, `Must be able to get list status: ${currentStatus.error}`);
   
   const { list } = currentStatus;
