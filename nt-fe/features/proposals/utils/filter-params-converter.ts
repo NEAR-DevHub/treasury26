@@ -100,7 +100,7 @@ export function convertUrlParamsToApiFilters(
       const tokenId = tokensData.token.symbol;
 
       if (tokensData.operation === "Is") {
-        filters.tokens = [tokenId];
+        filters.token = tokenId;
 
         // Handle amount filters
         if (tokensData.amountOperation && (tokensData.minAmount || tokensData.maxAmount)) {
@@ -121,7 +121,7 @@ export function convertUrlParamsToApiFilters(
           }
         }
       } else if (tokensData.operation === "Is Not") {
-        filters.tokens_not = [tokenId];
+        filters.token_not = tokenId;
       }
     }
   }

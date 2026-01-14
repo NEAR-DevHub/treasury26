@@ -288,18 +288,26 @@ export const useNear = () => {
   const voteProposals = async (treasuryId: string, votes: Vote[]) => {
     const results = await storeVoteProposals(treasuryId, votes);
     if (results.length > 0) {
+      let promises = [];
       // Invalidate proposals list
-      await queryClient.invalidateQueries({
+      promises.push(queryClient.invalidateQueries({
         queryKey: ["proposals", treasuryId],
-      });
+      }));
       // Invalidate individual proposal queries for the voted proposals
-      await Promise.all(
+      promises.push(...
         votes.map((vote) =>
           queryClient.invalidateQueries({
             queryKey: ["proposal", treasuryId, vote.proposalId.toString()],
-          })
-        )
+          }))
       );
+      promises.push(...
+        votes.map((vote) =>
+          queryClient.invalidateQueries({
+            queryKey: ["proposal-transaction", treasuryId, vote.proposalId.toString()],
+          }))
+      );
+      await Promise.all(promises);
+
       await new Promise((resolve) => setTimeout(resolve, 1000));
       // Invalidate policy and config since voting can approve proposals that change them
       await queryClient.invalidateQueries({

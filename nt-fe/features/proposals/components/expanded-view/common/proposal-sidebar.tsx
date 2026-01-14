@@ -1,6 +1,6 @@
 import { Proposal, ProposalStatus, } from "@/lib/proposals-api";
 import { Button } from "@/components/button";
-import { Check, X } from "lucide-react";
+import { ArrowUpRight, Check, X } from "lucide-react";
 import { PageCard } from "@/components/card";
 import { Policy } from "@/types/policy";
 import { getApproversAndThreshold, getKindFromProposal } from "@/lib/config-utils";
@@ -8,6 +8,9 @@ import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposalStatus } from "@/features/proposals/utils/proposal-utils";
 import { UserVote } from "../../user-vote";
+import { useProposalTransaction } from "@/hooks/use-proposals";
+import { formatDate } from "@/lib/utils";
+import Link from "next/link";
 
 interface ProposalSidebarProps {
   proposal: Proposal;
@@ -89,7 +92,8 @@ function VotingSection({ proposal, policy, accountId }: { proposal: Proposal, po
   );
 }
 
-function ExecutedSection({ status }: { status: ProposalStatus }) {
+function ExecutedSection({ status, date }: { status: ProposalStatus, date?: Date }) {
+
   let statusIcon = <StepIcon status="Pending" />;
   let statusText = "Executed";
   if (status === "Rejected") {
@@ -109,8 +113,9 @@ function ExecutedSection({ status }: { status: ProposalStatus }) {
     <div className="space-y-3 relative z-10">
       <div className="flex items-center gap-2">
         {statusIcon}
-        <div>
+        <div className="flex flex-col gap-0">
           <p className="text-sm font-semibold">{statusText}</p>
+          {date && <p className="text-xs text-muted-foreground">{formatDate(date)}</p>}
         </div>
       </div>
     </div>
@@ -123,6 +128,7 @@ export function ProposalSidebar({ proposal, policy, onVote }: ProposalSidebarPro
   const isPending = proposal.status === "InProgress";
   const proposalKind = getKindFromProposal(proposal.kind) ?? "call";
   const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposalKind, false);
+  const { data: transaction } = useProposalTransaction(selectedTreasury, proposal, policy);
 
   const canVote = approverAccounts.includes(accountId ?? "") && accountId && selectedTreasury;
 
@@ -132,8 +138,14 @@ export function ProposalSidebar({ proposal, policy, onVote }: ProposalSidebarPro
         <div className="absolute left-[11px] top-0 bottom-0 w-px bg-muted-foreground/20" />
         <TransactionCreated />
         <VotingSection proposal={proposal} policy={policy} accountId={accountId ?? ""} />
-        <ExecutedSection status={proposal.status} />
+        <ExecutedSection status={proposal.status} date={transaction?.timestamp ? new Date(transaction.timestamp / 1000000) : undefined} />
       </div>
+
+      {transaction && (
+        <Link href={transaction.nearblocks_url} target="_blank" rel="noopener noreferrer" className="flex font-medium text-sm items-center gap-1.5">
+          View Transaction <ArrowUpRight className="size-4" />
+        </Link>
+      )}
 
       {/* Action Buttons */}
       {isPending && canVote && (

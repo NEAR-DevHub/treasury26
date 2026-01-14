@@ -20,6 +20,7 @@ pub struct EnvVars {
     pub telegram_chat_id: Option<String>,
     pub coingecko_api_key: Option<String>,
     pub coingecko_api_base_url: String, // Override for testing
+    pub nearblocks_api_key: Option<String>,
 }
 
 impl Default for EnvVars {
@@ -73,6 +74,9 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty()),
             telegram_chat_id: std::env::var("TELEGRAM_CHAT_ID")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            nearblocks_api_key: std::env::var("NEARBLOCKS_API_KEY")
                 .ok()
                 .filter(|s| !s.is_empty()),
         }

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { getProposals, ProposalFilters, getProposal } from "@/lib/proposals-api";
+import { getProposals, ProposalFilters, getProposal, getProposalTransaction, Proposal } from "@/lib/proposals-api";
+import { Policy } from "@/types/policy";
 
 /**
  * Query hook to get proposals for a specific DAO with optional filtering
@@ -50,5 +51,29 @@ export function useProposal(daoId: string | null | undefined, proposalId: string
     enabled: !!daoId && !!proposalId,
     staleTime: 1000 * 60 * 2, // 2 minutes (proposals can change frequently)
     refetchInterval: 1000 * 60 * 2, // Refetch every 2 minutes
+  });
+}
+
+export function useProposalTransaction(
+  daoId: string | null | undefined,
+  proposal: Proposal | null | undefined,
+  policy: Policy | null | undefined
+
+) {
+  return useQuery({
+    queryKey: ["proposal-transaction", daoId, proposal?.id, policy],
+    queryFn: () => getProposalTransaction(daoId!, proposal!, policy!),
+    enabled: !!daoId && !!proposal && !!policy,
+    staleTime: 1000 * 60 * 5, // 5 minutes (transaction data is more stable)
+    retry: (failureCount, error) => {
+      // Don't retry on 404 (not found) errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as any;
+        if (axiosError.response?.status === 404) {
+          return false;
+        }
+      }
+      return failureCount < 3;
+    },
   });
 }

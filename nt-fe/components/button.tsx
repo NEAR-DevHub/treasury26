@@ -33,7 +33,7 @@ export function Button({ variant, className: classNameOverride, size, tooltipCon
         case "lg":
             sizeClassName = "h-13 font-semibold text-lg";
         default:
-            sizeClassName = "py-[5.5px] px-5 gap-1.5 rounded-[8px]";
+            sizeClassName = "py-[5.5px] px-5! gap-1.5 rounded-[8px]";
     }
     const button = <ShadcnButton variant={variant} className={cn(className, sizeClassName, classNameOverride)} size={size} {...props} />;
 
