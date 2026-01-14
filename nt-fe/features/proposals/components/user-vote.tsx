@@ -26,7 +26,7 @@ export function UserVote({ accountId, vote, iconOnly = true }: { accountId: stri
 
     return (
         <TooltipUser accountId={accountId}>
-            <Button variant="ghost" className="relative p-2 m-0">
+            <Button variant="ghost" size="icon" className="relative m-0">
                 <User accountId={accountId} iconOnly={iconOnly} />
                 <div className="absolute left-5.5 bottom-1">
                     {icon}

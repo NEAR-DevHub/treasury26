@@ -194,8 +194,19 @@ export function ChangePolicyExpanded({ data, proposal }: ChangePolicyExpandedPro
 
   if (hasNoChanges) {
     return (
-      <div className="p-4 text-center text-muted-foreground">
-        No changes detected - the proposed policy is identical to the {isPending ? "current" : "historical"} policy.
+      <div className="flex flex-col gap-4">
+        <div className="p-4 text-center text-muted-foreground">
+          No changes detected - the proposed policy is identical to the {isPending ? "current" : "historical"} policy.
+        </div>
+        <InfoDisplay items={[{
+          label: "Transaction Details",
+          differentLine: true,
+          value: <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs">
+            <code className="text-foreground/90">
+              {JSON.stringify(data.originalProposalKind, null, 2)}
+            </code>
+          </pre>
+        }]} />
       </div>
     );
   }
