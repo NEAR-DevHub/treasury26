@@ -17,6 +17,7 @@ use serde_json::json;
 use std::collections::HashMap;
 
 use crate::constants::BATCH_PAYMENT_ACCOUNT_ID;
+use crate::utils::cache::{Cache, CacheKey, CacheTier};
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, Debug)]
 pub struct TxMetadata {
@@ -216,13 +217,34 @@ pub async fn fetch_actions_log(
 }
 
 pub async fn fetch_ft_metadata(
+    cache: &Cache,
     network: &NetworkConfig,
     contract_id: &AccountId,
-) -> Result<FungibleTokenMetadata, QueryError<RpcQueryError>> {
-    Tokens::ft_metadata(contract_id.clone())
-        .fetch_from(network)
+) -> Result<FungibleTokenMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    let cache_key = CacheKey::new("ft-metadata-filters")
+        .with(contract_id.to_string())
+        .build();
+    let ft_metadata = cache
+        .cached_contract_call(CacheTier::LongTerm, cache_key, async move {
+            if contract_id == "near" {
+                return Ok(FungibleTokenMetadata {
+                    decimals: 24,
+                    name: "Near".to_string(),
+                    symbol: "NEAR".to_string(),
+                    icon: None,
+                    reference: None,
+                    reference_hash: None,
+                    spec: "".to_string(),
+                });
+            }
+            Tokens::ft_metadata(contract_id.clone())
+                .fetch_from(network)
+                .await
+                .map(|r| r.data)
+        })
         .await
-        .map(|r| r.data)
+        .map_err(|e| e.1)?;
+    Ok(ft_metadata)
 }
 
 pub async fn fetch_batch_payment_list(

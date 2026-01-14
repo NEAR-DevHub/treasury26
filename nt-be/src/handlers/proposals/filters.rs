@@ -92,8 +92,8 @@ pub struct ProposalFilters {
     // Payment-specific filters
     pub recipients: Option<String>,     // comma-separated accounts
     pub recipients_not: Option<String>, // comma-separated accounts
-    pub tokens: Option<String>,         // comma-separated ft token ids
-    pub tokens_not: Option<String>,     // comma-separated ft token ids
+    pub token: Option<String>,          // single token symbol (used with amount filters)
+    pub token_not: Option<String>,      // comma-separated ft token ids to exclude
 
     // Stake delegation specific filters
     pub stake_type: Option<String>, // comma-separated values like "stake,unstake,withdraw"
@@ -155,32 +155,31 @@ fn get_token_addresses(symbol: &str) -> Option<Vec<String>> {
     })
 }
 
-/// Check if a token matches against the tokens filter sets
+/// Check if a token matches against the token filter
 fn token_matches_filter(
     token_to_check: &str,
-    tokens_set: &Option<HashSet<&str>>,
-    tokens_not_set: &Option<HashSet<&str>>,
+    token_filter: Option<&String>,
+    token_not: Option<&String>,
 ) -> bool {
-    if let Some(tokens) = tokens_set {
-        for token in tokens {
-            let token_addresses = get_token_addresses(token);
-            if let Some(token_addresses) = token_addresses
-                && token_addresses.iter().any(|t| t == token_to_check)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    if let Some(tokens_not) = tokens_not_set {
-        for token in tokens_not {
-            let token_addresses = get_token_addresses(token);
-            if let Some(token_addresses) = token_addresses
-                && token_addresses.iter().any(|t| t == token_to_check)
-            {
+    if let Some(token) = token_filter {
+        let token_addresses = get_token_addresses(token);
+        if let Some(token_addresses) = token_addresses {
+            if !token_addresses.iter().any(|t| t == token_to_check) {
                 return false;
             }
+        } else {
+            return false;
+        }
+    }
+
+    if let Some(token_not) = token_not {
+        let token_addresses = get_token_addresses(token_not);
+        if let Some(token_addresses) = token_addresses {
+            if token_addresses.iter().any(|t| t == token_to_check) {
+                return false;
+            }
+        } else {
+            return false;
         }
     }
 
@@ -192,8 +191,8 @@ fn token_matches_filter(
 /// Check if proposal matches tokens filter (applies to payments, stake delegation, lockup)
 fn matches_tokens_filter(
     proposal: &Proposal,
-    tokens_set: &Option<HashSet<&str>>,
-    tokens_not_set: &Option<HashSet<&str>>,
+    token: Option<&String>,
+    token_not: Option<&String>,
 ) -> bool {
     // Check payments
     if let Some(payment_info) = PaymentInfo::from_proposal(proposal) {
@@ -203,22 +202,22 @@ fn matches_tokens_filter(
             payment_info.token.as_str()
         };
 
-        return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
+        return token_matches_filter(token_to_check, token, token_not);
     }
 
     if StakeDelegationInfo::from_proposal(proposal).is_some() {
         let token_to_check = "wrap.near"; // Stake delegation is usually NEAR
-        return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
+        return token_matches_filter(token_to_check, token, token_not);
     }
 
     if LockupInfo::from_proposal(proposal).is_some() {
         let token_to_check = "wrap.near"; // Lockup is typically NEAR
-        return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
+        return token_matches_filter(token_to_check, token, token_not);
     }
 
     if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
         let token_to_check = bulk_payment.token_id.as_str();
-        return token_matches_filter(token_to_check, tokens_set, tokens_not_set);
+        return token_matches_filter(token_to_check, token, token_not);
     }
 
     if let Some(asset_exchange_info) = AssetExchangeInfo::from_proposal(proposal) {
@@ -228,23 +227,23 @@ fn matches_tokens_filter(
             .split(':')
             .nth(1)
             .unwrap_or(&asset_exchange_info.token_in_address);
-        if token_matches_filter(token_in, tokens_set, tokens_not_set) {
+        if token_matches_filter(token_in, token, token_not) {
             return true;
         }
-
-        if let Some(tokens) = tokens_set
-            && tokens.contains(&asset_exchange_info.token_out_symbol.as_str())
+        let token_out = asset_exchange_info.token_out_symbol.as_str();
+        if let Some(token) = token
+            && token == token_out
         {
             return true;
         }
-        if let Some(tokens_not) = tokens_not_set
-            && tokens_not.contains(&asset_exchange_info.token_out_symbol.as_str())
+        if let Some(token_not) = token_not
+            && token_not == token_out
         {
             return false;
         }
     }
 
-    tokens_set.is_none() && tokens_not_set.is_none()
+    token.is_none() && token_not.is_none()
 }
 
 /// Check if proposal matches recipients filter (applies to payments)
@@ -457,6 +456,7 @@ async fn matches_amount_filters(
     {
         return true; // No amount filters specified
     }
+    let token = filters.token.as_deref().unwrap_or("");
 
     // Check payments
     if let Some(payment_info) = PaymentInfo::from_proposal(proposal) {
@@ -486,26 +486,58 @@ async fn matches_amount_filters(
 
     // Check asset exchange
     if let Some(asset_exchange_info) = AssetExchangeInfo::from_proposal(proposal) {
-        return matches_payment_amount_filters(
-            &PaymentInfo {
-                receiver: asset_exchange_info
-                    .deposit_address
-                    .unwrap_or("".to_string()),
-                token: asset_exchange_info
-                    .token_in_address
-                    .as_str()
-                    .split(':')
-                    .nth(1)
-                    .unwrap_or(&asset_exchange_info.token_in_address)
-                    .to_string(),
-                amount: asset_exchange_info.amount_in.to_string(),
-                is_lockup: false,
-            },
-            filters,
-            cache,
-            network,
-        )
-        .await;
+        let token_in = asset_exchange_info
+            .token_in_address
+            .as_str()
+            .split(':')
+            .nth(1)
+            .unwrap_or(&asset_exchange_info.token_in_address);
+        let token_addresses = get_token_addresses(token);
+        if let Some(token_addresses) = token_addresses
+            && token_addresses.iter().any(|t| t == token_in)
+        {
+            return matches_payment_amount_filters(
+                &PaymentInfo {
+                    receiver: asset_exchange_info
+                        .deposit_address
+                        .unwrap_or("".to_string()),
+                    token: token_in.to_string(),
+                    amount: asset_exchange_info.amount_in.to_string(),
+                    is_lockup: false,
+                },
+                filters,
+                cache,
+                network,
+            )
+            .await;
+        } else if let Some(token_out) =
+            dbg!(find_token_by_symbol(&asset_exchange_info.token_out_symbol))
+            && let Some(grouped_token) = token_out.grouped_tokens.first()
+            && let Ok(balance) = dbg!(
+                FTBalance::with_decimals(grouped_token.decimals)
+                    .with_float_str(&asset_exchange_info.amount_out)
+            )
+        {
+            return matches_payment_amount_filters(
+                &PaymentInfo {
+                    receiver: asset_exchange_info
+                        .deposit_address
+                        .unwrap_or("".to_string()),
+                    token: grouped_token
+                        .defuse_asset_id
+                        .split(':')
+                        .nth(1)
+                        .unwrap_or(&grouped_token.defuse_asset_id)
+                        .to_string(),
+                    amount: balance.amount().to_string(),
+                    is_lockup: false,
+                },
+                filters,
+                cache,
+                network,
+            )
+            .await;
+        }
     }
 
     // Check lockup
@@ -541,22 +573,11 @@ async fn matches_payment_amount_filters(
         &payment_info.token
     };
 
-    let cache_key = CacheKey::new("ft-metadata-filters").with(token_id).build();
-    let ft_metadata = cache
-        .cached_contract_call(CacheTier::LongTerm, cache_key, async move {
-            if token_id == "near" {
-                return Ok(FungibleTokenMetadata {
-                    decimals: 24,
-                    name: "Near".to_string(),
-                    symbol: "NEAR".to_string(),
-                    icon: None,
-                    reference: None,
-                    reference_hash: None,
-                    spec: "".to_string(),
-                });
-            }
-            fetch_ft_metadata(network, &token_id.parse::<AccountId>().unwrap()).await
-        })
+    let Ok(token_id) = token_id.parse::<AccountId>() else {
+        return false;
+    };
+
+    let ft_metadata = fetch_ft_metadata(cache, network, &token_id)
         .await
         .unwrap_or_else(|_| FungibleTokenMetadata {
             decimals: 0,
@@ -733,8 +754,8 @@ impl ProposalFilters {
         let voter_votes_set = parse_voter_votes(&self.voter_votes);
         let recipients_set = to_str_hashset(&self.recipients);
         let recipients_not_set = to_str_hashset(&self.recipients_not);
-        let tokens_set = to_str_hashset(&self.tokens);
-        let tokens_not_set = to_str_hashset(&self.tokens_not);
+        let token = self.token.as_ref();
+        let token_not = self.token_not.as_ref();
         let proposal_types_set = to_str_hashset(&self.proposal_types);
         let stake_type_set = to_str_hashset(&self.stake_type);
         let stake_type_not_set = to_str_hashset(&self.stake_type_not);
@@ -946,7 +967,7 @@ impl ProposalFilters {
             // Smart filters - apply each filter independently across relevant proposal types
 
             // Apply tokens filter
-            if !matches_tokens_filter(&proposal, &tokens_set, &tokens_not_set) {
+            if !matches_tokens_filter(&proposal, token.as_deref(), token_not.as_deref()) {
                 continue;
             }
 

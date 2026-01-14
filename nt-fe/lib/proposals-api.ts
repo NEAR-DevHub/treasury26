@@ -269,8 +269,8 @@ export interface ProposalFilters {
   // Payment-specific filters
   recipients?: string[];
   recipients_not?: string[];
-  tokens?: string[];
-  tokens_not?: string[];
+  token?: string;
+  token_not?: string;
   amount_min?: string;
   amount_max?: string;
   amount_equal?: string;
@@ -327,8 +327,8 @@ export async function getProposals(
       if (filters.approvers_not) params.approvers_not = filters.approvers_not.join(',');
       if (filters.recipients) params.recipients = filters.recipients.join(',');
       if (filters.recipients_not) params.recipients_not = filters.recipients_not.join(',');
-      if (filters.tokens) params.tokens = filters.tokens.join(',');
-      if (filters.tokens_not) params.tokens_not = filters.tokens_not.join(',');
+      if (filters.token) params.token = filters.token;
+      if (filters.token_not) params.token_not = filters.token_not;
       if (filters.stake_type) params.stake_type = filters.stake_type.join(',');
       if (filters.stake_type_not) params.stake_type_not = filters.stake_type_not.join(',');
       if (filters.validators) params.validators = filters.validators.join(',');
