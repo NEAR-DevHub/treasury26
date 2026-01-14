@@ -61,7 +61,7 @@ export function useProposalTransaction(
 
 ) {
   return useQuery({
-    queryKey: ["proposal-transaction", daoId, proposal, policy],
+    queryKey: ["proposal-transaction", daoId, proposal?.id, policy],
     queryFn: () => getProposalTransaction(daoId!, proposal!, policy!),
     enabled: !!daoId && !!proposal && !!policy,
     staleTime: 1000 * 60 * 5, // 5 minutes (transaction data is more stable)
