@@ -18,11 +18,6 @@ on:
       - 'nt-be/**'
       - '.github/workflows/bulk-payment-e2e.yml'
   workflow_dispatch:
-    inputs:
-      fly_app_url:
-        description: 'Fly.io app URL (optional, runs against Docker if not provided)'
-        required: false
-        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -30,7 +25,6 @@ env:
 jobs:
   build:
     name: Build (${{ matrix.platform }})
-    if: ${{ !inputs.fly_app_url }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     permissions:
@@ -89,7 +83,6 @@ jobs:
 
   merge-manifest:
     name: Merge Multi-Arch Manifest
-    if: ${{ !inputs.fly_app_url }}
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -133,7 +126,7 @@ jobs:
   e2e-test:
     name: Run E2E Tests
     needs: merge-manifest
-    if: ${{ !inputs.fly_app_url && always() && (needs.merge-manifest.result == 'success' || needs.merge-manifest.result == 'skipped') }}
+    if: ${{ always() && (needs.merge-manifest.result == 'success' || needs.merge-manifest.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -211,30 +204,3 @@ jobs:
         run: |
           docker stop sandbox || true
           docker rm sandbox || true
-
-  e2e-test-fly:
-    name: Run E2E Tests (Fly.io)
-    if: ${{ inputs.fly_app_url }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install test dependencies
-        working-directory: ./e2e-tests/bulk-payment
-        run: npm install
-
-      - name: Run E2E tests against Fly.io
-        working-directory: ./e2e-tests/bulk-payment
-        env:
-          SANDBOX_RPC_URL: ${{ inputs.fly_app_url }}:3030
-          API_URL: ${{ inputs.fly_app_url }}:8080
-          NUM_RECIPIENTS: '100'
-        run: npm test
