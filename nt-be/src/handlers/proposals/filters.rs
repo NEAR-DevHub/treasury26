@@ -242,7 +242,6 @@ fn matches_tokens_filter(
         {
             return false;
         }
-        return true;
     }
 
     tokens_set.is_none() && tokens_not_set.is_none()
