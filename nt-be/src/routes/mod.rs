@@ -150,6 +150,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/proposals/{dao_id}/approvers",
             get(handlers::proposals::get_proposals::get_dao_approvers),
         )
+        .route(
+            "/api/proposal/{dao_id}/{proposal_id}/tx",
+            get(handlers::proposals::tx::find_proposal_execution_transaction),
+        )
         // Lookup endpoints
         .route(
             "/api/lockup/pool",

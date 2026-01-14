@@ -1,5 +1,6 @@
-import { VotePolicy } from "@/types/policy";
+import { Policy, VotePolicy } from "@/types/policy";
 import axios from "axios";
+import Big from "big.js";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -388,6 +389,13 @@ export interface ApproversResponse {
   total: number;
 }
 
+export interface ProposalTransactionResponse {
+  transaction_hash: string;
+  nearblocks_url: string;
+  block_height: number;
+  timestamp: number;
+}
+
 /**
  * Get all unique proposers for a specific DAO
  */
@@ -421,5 +429,53 @@ export async function getDaoApprovers(daoId: string): Promise<string[]> {
   } catch (error) {
     console.error(`Error getting approvers for DAO ${daoId}`, error);
     return [];
+  }
+}
+
+/**
+ * Get the execution transaction for a specific proposal
+ */
+export async function getProposalTransaction(
+  daoId: string,
+  proposal: Proposal,
+  policy: Policy
+): Promise<ProposalTransactionResponse | null> {
+  if (!daoId || !proposal || !policy) {
+    return null;
+  }
+
+  if (proposal.status !== "Approved" && proposal.status !== "Failed") {
+    return null;
+  }
+
+  try {
+    const url = `${BACKEND_API_BASE}/proposal/${daoId}/${proposal.id}/tx`;
+
+    // Calculate the proposal timeframe using the actual proposal timestamps
+    const submissionTimestamp = Big(proposal.submission_time);
+    const expirationTimestamp = submissionTimestamp.add(policy.proposal_period);
+
+    // Convert nanoseconds to milliseconds and create UTC dates
+    const submissionDate = new Date(submissionTimestamp.div(1000000).toNumber());
+    const expirationDate = new Date(expirationTimestamp.div(1000000).toNumber());
+
+    const afterDate = new Date(submissionDate.getTime() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+    const beforeDate = new Date(expirationDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0]; // Add 7 days buffer
+
+    // Build query parameters for time constraints
+    const params: Record<string, string> = {
+      afterDate,
+      beforeDate,
+    };
+
+    const response = await axios.get<ProposalTransactionResponse>(url, { params });
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting transaction for proposal ${daoId}/${proposal.id}`, error);
+    return null;
   }
 }
