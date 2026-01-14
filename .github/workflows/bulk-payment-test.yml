@@ -46,6 +46,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Install Rust 1.86
+        run: |
+          rustup install 1.86
+          rustup default 1.86
+          rustup target add wasm32-unknown-unknown
       - name: Install system dependencies
         run: |
           sudo apt-get update
