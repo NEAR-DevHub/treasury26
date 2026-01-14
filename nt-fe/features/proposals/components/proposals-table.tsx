@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Proposal, ProposalStatus, Vote } from "@/lib/proposals-api";
+import { Proposal } from "@/lib/proposals-api";
 import {
   Table,
   TableBody,
@@ -213,8 +213,7 @@ export function ProposalsTable({
     manualPagination: true,
     enableRowSelection: (row) => {
       const proposal = row.original;
-      const proposalKind = getKindFromProposal(proposal.kind) ?? "call";
-      const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposalKind, false);
+      const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposal.kind, false);
       const proposalStatus = getProposalStatus(proposal, policy);
       return approverAccounts.includes(accountId ?? "") && !!accountId && !!selectedTreasury && proposal.status === "InProgress" && proposalStatus !== "Expired";
     },
@@ -224,10 +223,11 @@ export function ProposalsTable({
   const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
 
   // Notify parent when selection changes
+  let selectedRows = table.getFilteredSelectedRowModel().rows;
   useEffect(() => {
-    const selectedCount = Object.keys(rowSelection).length;
+    const selectedCount = selectedRows.length;
     onSelectionChange?.(selectedCount);
-  }, [rowSelection, onSelectionChange]);
+  }, [selectedRows.length, onSelectionChange]);
 
   if (proposals.length === 0 && pageIndex === 0 || total === 0) {
     return (
@@ -350,6 +350,10 @@ export function ProposalsTable({
       <VoteModal
         isOpen={isVoteModalOpen}
         onClose={() => setIsVoteModalOpen(false)}
+        onSuccess={() => {
+          table.setRowSelection({});
+          onSelectionChange?.(0);
+        }}
         proposalIds={voteInfo.proposalIds}
         vote={voteInfo.vote}
       />

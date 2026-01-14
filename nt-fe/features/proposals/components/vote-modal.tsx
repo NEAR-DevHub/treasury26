@@ -9,6 +9,7 @@ import { useState } from "react";
 interface VoteModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onSuccess?: () => void;
     proposalIds: {
         proposalId: number;
         kind: ProposalPermissionKind;
@@ -16,7 +17,7 @@ interface VoteModalProps {
     vote: "Approve" | "Reject" | "Remove";
 }
 
-export function VoteModal({ isOpen, onClose, proposalIds, vote }: VoteModalProps) {
+export function VoteModal({ isOpen, onClose, onSuccess, proposalIds, vote }: VoteModalProps) {
     const { selectedTreasury } = useTreasury();
     const { voteProposals } = useNear();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,6 +29,7 @@ export function VoteModal({ isOpen, onClose, proposalIds, vote }: VoteModalProps
                 vote: vote,
                 proposalKind: proposal.kind,
             })));
+            onSuccess?.();
         } catch (error) {
             console.error(`Failed to ${vote.toLowerCase()} proposal:`, error);
         } finally {
