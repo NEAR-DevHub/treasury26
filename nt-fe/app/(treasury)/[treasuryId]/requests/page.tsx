@@ -25,7 +25,7 @@ import { useNear } from "@/stores/near-store";
 const SEARCH_DEBOUNCE_MS = 300;
 const FILTER_PANEL_MAX_HEIGHT = '500px';
 
-function ProposalsList({ status }: { status?: ProposalStatus[] }) {
+function ProposalsList({ status, onSelectionChange }: { status?: ProposalStatus[]; onSelectionChange?: (count: number) => void }) {
   const { selectedTreasury } = useTreasury();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const { data: config } = useTreasuryConfig(selectedTreasury);
@@ -34,6 +34,11 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const { accountId } = useNear();
+
+  const hasActiveFilters = useMemo(() => {
+    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'tokens', 'created_date', 'my_vote', 'search'];
+    return filterParams.some(param => searchParams.has(param));
+  }, [searchParams]);
 
   const page = parseInt(searchParams.get("page") || "0", 10);
   const pageSize = 15;
@@ -96,10 +101,12 @@ function ProposalsList({ status }: { status?: ProposalStatus[] }) {
           proposals={data?.proposals ?? []}
           policy={policy}
           config={config}
+          withFilters={hasActiveFilters}
           pageIndex={page}
           pageSize={pageSize}
           total={data?.total ?? 0}
           onPageChange={updatePage}
+          onSelectionChange={onSelectionChange}
         />
       )}
     </div>
@@ -143,7 +150,7 @@ export default function RequestsPage() {
   const { data: allProposals } = useProposals(treasuryId, {});
   const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  const [selectedCount, setSelectedCount] = useState(0);
 
   const currentTab = searchParams.get("tab") || "pending";
 
@@ -209,70 +216,74 @@ export default function RequestsPage() {
     <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
       <PageCard className="p-0">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="gap-0">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b p-5 pb-3.5">
-            <TabsList className="w-fit border-none">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending" className="flex gap-2.5">Pending
-                {!!proposals?.proposals?.length && proposals?.proposals?.length > 0 && (
-                  <NumberBadge number={proposals?.proposals?.length} variant="secondary" />
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="executed">Executed</TabsTrigger>
-              <TabsTrigger value="rejected">Rejected</TabsTrigger>
-              <TabsTrigger value="expired">Expired</TabsTrigger>
-            </TabsList>
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                placeholder="Search request by name or ID"
-                className="w-64"
-                value={searchValue}
-                onChange={(e) => handleSearchChange(e.target.value)}
-              />
-              <Button
-                variant="secondary"
-                className="flex gap-1.5 relative"
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                aria-label={hasActiveFilters ? "Filter (active)" : "Filter"}
-              >
-                <ListFilter className="size-4" />
-                Filter
-                {hasActiveFilters && (
-                  <span
-                    className="absolute top-1 right-1.5 size-2 rounded-full bg-general-info-foreground"
-                    aria-hidden="true"
+          {selectedCount === 0 && (
+            <>
+              <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b p-5 pb-3.5">
+                <TabsList className="w-fit border-none">
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="pending" className="flex gap-2.5">Pending
+                    {!!proposals?.proposals?.length && proposals?.proposals?.length > 0 && (
+                      <NumberBadge number={proposals?.proposals?.length} variant="secondary" />
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="executed">Executed</TabsTrigger>
+                  <TabsTrigger value="rejected">Rejected</TabsTrigger>
+                  <TabsTrigger value="expired">Expired</TabsTrigger>
+                </TabsList>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Search request by name or ID"
+                    className="w-64"
+                    value={searchValue}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                   />
-                )}
-              </Button>
-            </div>
-          </div>
+                  <Button
+                    variant="secondary"
+                    className="flex gap-1.5 relative"
+                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                    aria-label={hasActiveFilters ? "Filter (active)" : "Filter"}
+                  >
+                    <ListFilter className="size-4" />
+                    Filter
+                    {hasActiveFilters && (
+                      <span
+                        className="absolute top-1 right-1.5 size-2 rounded-full bg-general-info-foreground"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </Button>
+                </div>
+              </div>
 
-          <div
-            className="overflow-hidden transition-all duration-500 ease-in-out"
-            style={{
-              maxHeight: isFiltersOpen ? FILTER_PANEL_MAX_HEIGHT : '0px',
-              opacity: isFiltersOpen ? 1 : 0,
-            }}
-          >
-            <div className="py-3 px-4">
-              <ProposalFiltersComponent />
-            </div>
-          </div>
+              <div
+                className="overflow-hidden transition-all duration-500 ease-in-out"
+                style={{
+                  maxHeight: isFiltersOpen ? FILTER_PANEL_MAX_HEIGHT : '0px',
+                  opacity: isFiltersOpen ? 1 : 0,
+                }}
+              >
+                <div className="py-3 px-4">
+                  <ProposalFiltersComponent />
+                </div>
+              </div>
+            </>
+          )}
           <TabsContents>
             <TabsContent value="all">
-              <ProposalsList />
+              <ProposalsList onSelectionChange={setSelectedCount} />
             </TabsContent>
             <TabsContent value="pending">
-              <ProposalsList status={["InProgress"]} />
+              <ProposalsList status={["InProgress"]} onSelectionChange={setSelectedCount} />
             </TabsContent>
             <TabsContent value="executed">
-              <ProposalsList status={["Approved"]} />
+              <ProposalsList status={["Approved"]} onSelectionChange={setSelectedCount} />
             </TabsContent>
             <TabsContent value="rejected">
-              <ProposalsList status={["Rejected", "Failed"]} />
+              <ProposalsList status={["Rejected", "Failed"]} onSelectionChange={setSelectedCount} />
             </TabsContent>
             <TabsContent value="expired">
-              <ProposalsList status={["Expired"]} />
+              <ProposalsList status={["Expired"]} onSelectionChange={setSelectedCount} />
             </TabsContent>
           </TabsContents>
         </Tabs>

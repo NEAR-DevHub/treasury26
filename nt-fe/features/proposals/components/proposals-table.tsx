@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Proposal, ProposalStatus, Vote } from "@/lib/proposals-api";
 import {
   Table,
@@ -49,20 +49,23 @@ interface ProposalsTableProps {
   proposals: Proposal[];
   policy: Policy;
   config?: TreasuryConfig | null;
+  withFilters?: boolean;
   pageIndex?: number;
   pageSize?: number;
   total?: number;
   onPageChange?: (page: number) => void;
+  onSelectionChange?: (count: number) => void;
 }
 
 export function ProposalsTable({
   proposals,
   policy,
-  config,
+  withFilters = false,
   pageIndex = 0,
   pageSize = 10,
   total = 0,
-  onPageChange
+  onPageChange,
+  onSelectionChange
 }: ProposalsTableProps) {
   const [rowSelection, setRowSelection] = useState({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
@@ -220,13 +223,21 @@ export function ProposalsTable({
   const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
   const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
 
+  // Notify parent when selection changes
+  useEffect(() => {
+    const selectedCount = Object.keys(rowSelection).length;
+    onSelectionChange?.(selectedCount);
+  }, [rowSelection, onSelectionChange]);
+
   if (proposals.length === 0 && pageIndex === 0 || total === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 gap-4">
         <div className="size-8 p-2 bg-muted rounded-full flex items-center justify-center">
           <SearchX className="size-5 text-muted-foreground shrink-0" />
         </div>
-        <p className="text-muted-foreground text-xs">No requests found matching your filters.</p>
+        <p className="text-muted-foreground text-xs">
+          {withFilters ? "No requests found matching your filters." : "No requests found."}
+        </p>
       </div>
     );
   }
@@ -244,7 +255,7 @@ export function ProposalsTable({
 
   return (
     <>
-      <div className="flex flex-col gap-3 pb-3">
+      <div className="flex flex-col pb-3">
         {selectedCount > 0 && (
           <div className="flex items-center justify-between pt-6 pb-4 px-5 border-b">
             <span className="font-semibold">
