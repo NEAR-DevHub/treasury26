@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     AppState,
     constants::intents_chains::{ChainIcons, get_chain_metadata_by_name},
+    handlers::proposals::scraper::fetch_ft_metadata,
     handlers::proxy::external::fetch_proxy_api,
     utils::cache::{CacheKey, CacheTier},
 };
@@ -123,50 +124,95 @@ pub async fn fetch_tokens_metadata(
         )
     })?;
 
-    // Map RefSdkToken to TokenMetadata with chain metadata, filtering out errors/invalid entries
-    let metadata_responses: Vec<TokenMetadata> = tokens
-        .iter()
-        .filter_map(|token| {
-            // Skip error entries
-            if token.error.is_some() {
-                return None;
+    // Map RefSdkToken to TokenMetadata with chain metadata, using fallback for errors
+    let mut metadata_responses: Vec<TokenMetadata> = Vec::new();
+
+    for (idx, token) in tokens.iter().enumerate() {
+        // Handle error entries with fallback
+        if token.error.is_some() {
+            eprintln!("Token has error, trying fallback: {:?}", token.error);
+
+            // Get the original token ID from input to use for fallback
+            if let Some(original_id) = defuse_asset_ids.get(idx) {
+                // Extract the contract ID from defuse asset ID (format: "nep141:contract.near")
+                let contract_id = original_id.split(':').nth(1).unwrap_or(original_id);
+
+                if let Ok(account_id) = contract_id.parse::<near_api::AccountId>() {
+                    match fetch_ft_metadata(&state.cache, &state.network, &account_id).await {
+                        Ok(ft_metadata) => {
+                            metadata_responses.push(TokenMetadata {
+                                token_id: original_id.clone(),
+                                name: ft_metadata.name,
+                                symbol: ft_metadata.symbol,
+                                decimals: ft_metadata.decimals,
+                                icon: ft_metadata.icon,
+                                price: None,
+                                price_updated_at: None,
+                                network: Some("near".to_string()),
+                                chain_name: Some("Near Protocol".to_string()),
+                                chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
+                            });
+                            continue;
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Fallback fetch_ft_metadata failed for {}: {:?}",
+                                contract_id, e
+                            );
+                            continue;
+                        }
+                    }
+                }
             }
+            continue;
+        }
 
-            // Skip if missing required fields
-            let token_id = token
-                .defuse_asset_id
+        // Skip if missing required fields
+        let Some(token_id) = token
+            .defuse_asset_id
+            .as_ref()
+            .or(token.defuse_asset_id_snake_case.as_ref())
+        else {
+            continue;
+        };
+        let Some(name) = token.name.as_ref() else {
+            continue;
+        };
+        let Some(symbol) = token.symbol.as_ref() else {
+            continue;
+        };
+        let Some(decimals) = token.decimals else {
+            continue;
+        };
+        let Some(chain_name_str) = token
+            .chain_name
+            .as_ref()
+            .or(token.chain_name_snake_case.as_ref())
+        else {
+            continue;
+        };
+
+        let chain_metadata = get_chain_metadata_by_name(chain_name_str);
+        let chain_name = chain_metadata.as_ref().map(|m| m.name.clone());
+        let chain_icons = chain_metadata.map(|m| m.icon);
+
+        metadata_responses.push(TokenMetadata {
+            token_id: token_id.clone(),
+            name: name.clone(),
+            symbol: symbol.clone(),
+            decimals,
+            icon: token.icon.clone(),
+            price: token.price,
+            price_updated_at: token
+                .price_updated_at
                 .as_ref()
-                .or(token.defuse_asset_id_snake_case.as_ref())?;
-            let name = token.name.as_ref()?;
-            let symbol = token.symbol.as_ref()?;
-            let decimals = token.decimals?;
-            let chain_name_str = token
-                .chain_name
-                .as_ref()
-                .or(token.chain_name_snake_case.as_ref())?;
-
-            let chain_metadata = get_chain_metadata_by_name(chain_name_str);
-            let chain_name = chain_metadata.as_ref().map(|m| m.name.clone());
-            let chain_icons = chain_metadata.map(|m| m.icon);
-
-            Some(TokenMetadata {
-                token_id: token_id.clone(),
-                name: name.clone(),
-                symbol: symbol.clone(),
-                decimals,
-                icon: token.icon.clone(),
-                price: token.price,
-                price_updated_at: token
-                    .price_updated_at
-                    .as_ref()
-                    .or(token.price_updated_at_snake_case.as_ref())
-                    .cloned(),
-                network: Some(chain_name_str.clone()),
-                chain_name,
-                chain_icons,
-            })
-        })
-        .collect();
+                .or(token.price_updated_at_snake_case.as_ref())
+                .cloned(),
+            network: Some(chain_name_str.clone()),
+            chain_name,
+            chain_icons,
+        });
+    }
 
     Ok(metadata_responses)
 }

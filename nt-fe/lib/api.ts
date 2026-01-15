@@ -466,7 +466,7 @@ export async function getTokenMetadata(
   if (!tokenId) return null;
 
   let token = tokenId;
-  if (!token.startsWith("nep141:") && token.toLowerCase() !== "near") {
+  if (!token.startsWith("nep141:") && !token.startsWith("nep245:") && token.toLowerCase() !== "near") {
     token = `nep141:${token}`;
   }
 
