@@ -252,8 +252,8 @@ pub async fn insert_staking_snapshot(
     .bind(&amount)
     .bind(&balance_before)
     .bind(&balance)
-    .bind(&Vec::<String>::new()) // No transaction hashes for synthetic records
-    .bind(&Vec::<String>::new()) // No receipt IDs
+    .bind(Vec::<String>::new()) // No transaction hashes for synthetic records
+    .bind(Vec::<String>::new()) // No receipt IDs
     .bind(None::<String>)        // No signer
     .bind(None::<String>)        // No receiver
     .bind(STAKING_SNAPSHOT_COUNTERPARTY)
@@ -370,15 +370,11 @@ pub async fn track_staking_rewards(
         .fetch_optional(pool)
         .await?;
 
-        if existing.is_none() {
-            match insert_staking_snapshot(pool, network, account_id, staking_pool, epoch_block)
-                .await
-            {
-                Ok(Some(_)) => {
-                    snapshots_created += 1;
-                }
-                Ok(None) | Err(_) => {}
-            }
+        if existing.is_none()
+            && let Ok(Some(_)) =
+                insert_staking_snapshot(pool, network, account_id, staking_pool, epoch_block).await
+        {
+            snapshots_created += 1;
         }
     }
 
