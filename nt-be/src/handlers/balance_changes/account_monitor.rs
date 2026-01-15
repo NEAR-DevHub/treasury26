@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use super::balance::ft::get_balance_at_block as get_ft_balance;
 use super::gap_filler::{fill_gaps, insert_snapshot_record};
+use super::staking_rewards::track_staking_rewards;
 use super::token_discovery::snapshot_intents_tokens;
 
 /// Run one cycle of monitoring for all enabled accounts
@@ -150,6 +151,21 @@ pub async fn run_monitor_cycle(
             }
             Err(e) => {
                 eprintln!("  {}: Error discovering intents tokens: {}", account_id, e);
+            }
+        }
+
+        // Track staking rewards - discover staking pools and create epoch snapshots
+        match track_staking_rewards(pool, network, account_id, up_to_block).await {
+            Ok(snapshots_created) => {
+                if snapshots_created > 0 {
+                    println!(
+                        "  {}: Created {} staking reward snapshots",
+                        account_id, snapshots_created
+                    );
+                }
+            }
+            Err(e) => {
+                eprintln!("  {}: Error tracking staking rewards: {}", account_id, e);
             }
         }
     }
