@@ -152,10 +152,11 @@ export interface VestingData {
 }
 
 export interface SwapRequestData {
+    source: "exchange" | "wrap.near";
     timeEstimate?: string;
     intentsTokenContractId?: string;
     quoteSignature?: string;
-    depositAddress: string;
+    depositAddress?: string;
     tokenIn: string;
     sourceNetwork: string;
     destinationNetwork: string;

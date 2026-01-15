@@ -445,7 +445,7 @@ export async function getProposalTransaction(
     return null;
   }
 
-  if (proposal.status === "InProgress") {
+  if (proposal.status === "InProgress" || proposal.status === "Expired") {
     return null;
   }
 

@@ -1,4 +1,4 @@
-use axum::{Json, extract::State, http::StatusCode};
+use axum::http::StatusCode;
 use serde_json::Value;
 use std::sync::Arc;
 
@@ -70,12 +70,4 @@ pub async fn fetch_supported_tokens_data(
             Ok::<_, (StatusCode, String)>(result)
         })
         .await
-}
-
-/// Handler: Get list of all supported bridge tokens from intents.near
-pub async fn get_supported_tokens(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<Value>, (StatusCode, String)> {
-    let result = fetch_supported_tokens_data(&state).await?;
-    Ok(Json(result))
 }

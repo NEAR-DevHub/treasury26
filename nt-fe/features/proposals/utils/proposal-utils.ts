@@ -2,7 +2,7 @@ import { getKindFromProposal } from "@/lib/config-utils";
 import { Proposal, ProposalStatus } from "@/lib/proposals-api";
 import { Policy } from "@/types/policy";
 import { ProposalUIKind } from "../types/index";
-import { decodeArgs } from "@/lib/utils";
+import { decodeArgs, decodeProposalDescription } from "@/lib/utils";
 
 function isVestingProposal(proposal: Proposal): boolean {
   if (!('FunctionCall' in proposal.kind)) return false;
@@ -27,12 +27,21 @@ function isBatchPaymentProposal(proposal: Proposal): boolean {
   return false;
 }
 
-function processFTTransferProposal(proposal: Proposal): "Payment Request" | "Batch Payment Request" | undefined {
+function processFTTransferProposal(proposal: Proposal): "Payment Request" | "Batch Payment Request" | "Exchange" | undefined {
   if (!('FunctionCall' in proposal.kind)) return undefined;
   const functionCall = proposal.kind.FunctionCall;
   if (isIntentWithdrawProposal(proposal)) {
     return "Payment Request" as const;
   }
+  const proposalType = decodeProposalDescription("proposal action", proposal.description) === "asset-exchange";
+  if (proposalType) {
+    return "Exchange" as const;
+  }
+
+  if (functionCall.receiver_id === 'wrap.near' && functionCall.actions.some(action => action.method_name === 'near_withdraw' || action.method_name === 'near_deposit')) {
+    return "Exchange" as const;
+  }
+
   const action = functionCall.actions.find(action => action.method_name === 'ft_transfer' || action.method_name === 'ft_transfer_call');
   if (!action) return undefined;
   if (action.method_name === 'ft_transfer') {
@@ -61,10 +70,6 @@ function isIntentWithdrawProposal(proposal: Proposal): boolean {
 function stakingType(proposal: Proposal): "Earn NEAR" | "Withdraw Earnings" | "Unstake NEAR" | undefined {
   if (!('FunctionCall' in proposal.kind)) return undefined;
   const functionCall = proposal.kind.FunctionCall;
-
-  if (isIntentWithdrawProposal(proposal)) {
-    return "Withdraw Earnings";
-  }
 
   const isPool = functionCall.receiver_id.endsWith('poolv1.near') || functionCall.receiver_id.endsWith('lockup.near');
   if (!isPool) return undefined;

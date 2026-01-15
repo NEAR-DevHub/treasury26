@@ -38,6 +38,7 @@ const PROPOSAL_TYPE_OPTIONS = [
     "Exchange",
     "Earn",
     "Vesting",
+    "Function Call",
     "Change Policy",
     "Settings",
 ];

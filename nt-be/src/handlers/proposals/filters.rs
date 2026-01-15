@@ -53,13 +53,13 @@ fn get_proposal_source(proposal: &Proposal) -> &'static str {
     "sputnikdao"
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub enum SortBy {
     CreationTime,
     ExpiryTime,
 }
 
-#[derive(Deserialize, Default, Clone)]
+#[derive(Deserialize, Default, Clone, Debug)]
 pub struct ProposalFilters {
     pub types: Option<String>, // comma-separated values like "Payments, Exchange, Earn, Vesting, Change Policy, Settings"
     pub types_not: Option<String>, // comma-separated values to exclude like "Payments, Exchange, Earn, Vesting, Change Policy, Settings"
@@ -703,22 +703,24 @@ fn matches_types_filter(
     types_set: &Option<HashSet<&str>>,
     types_not_set: &Option<HashSet<&str>>,
 ) -> bool {
-    let name = if PaymentInfo::from_proposal(proposal).is_some()
+    let name = if AssetExchangeInfo::from_proposal(proposal).is_some() {
+        "Exchange"
+    } else if PaymentInfo::from_proposal(proposal).is_some()
         || BulkPayment::from_proposal(proposal).is_some()
     {
         "Payments"
     } else if StakeDelegationInfo::from_proposal(proposal).is_some() {
         "Earn"
-    } else if AssetExchangeInfo::from_proposal(proposal).is_some() {
-        "Exchange"
     } else if LockupInfo::from_proposal(proposal).is_some() {
         "Vesting"
     } else if proposal.kind.get("ChangeConfig").is_some() {
         "Settings"
     } else if POLICY_TYPES.iter().any(|t| proposal.kind.get(t).is_some()) {
         "Change Policy"
+    } else if proposal.kind.get("FunctionCall").is_some() {
+        "Function Call"
     } else {
-        return false;
+        "Unknown"
     };
 
     if let Some(types) = types_set

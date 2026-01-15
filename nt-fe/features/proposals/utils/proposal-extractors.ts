@@ -272,14 +272,14 @@ export function extractVestingData(proposal: Proposal): VestingData {
 /**
  * Extract Exchange data from proposal
  */
-export function extractSwapRequestData(proposal: Proposal): SwapRequestData {
+export function extractExchangeRequestData(proposal: Proposal): SwapRequestData {
   if (!("FunctionCall" in proposal.kind)) {
     throw new Error("Proposal is not a Exchange proposal");
   }
 
   const functionCall = proposal.kind.FunctionCall;
   const action = functionCall.actions.find(
-    (a) => a.method_name === "mt_transfer" || a.method_name === "mt_transfer_call"
+    (a) => a.method_name === "mt_transfer" || a.method_name === "mt_transfer_call" || a.method_name === "ft_transfer" || a.method_name === "ft_transfer_call"
   );
 
   if (!action) {
@@ -307,7 +307,8 @@ export function extractSwapRequestData(proposal: Proposal): SwapRequestData {
 
 
   return {
-    tokenIn: args.token_id || "",
+    source: "exchange",
+    tokenIn: args.receiver_id === "v2.ref-finance.near" ? functionCall.receiver_id : args.token_id || "",
     intentsTokenContractId,
     amountIn,
     tokenOut,
@@ -319,6 +320,37 @@ export function extractSwapRequestData(proposal: Proposal): SwapRequestData {
     timeEstimate: timeEstimate || undefined,
     slippage: slippage || undefined,
     quoteDeadline: quoteDeadline || undefined,
+  };
+}
+
+export function extractNearWrapSwapRequestData(proposal: Proposal): SwapRequestData {
+  if (!("FunctionCall" in proposal.kind)) {
+    throw new Error("Proposal is not a Exchange proposal");
+  }
+
+  const functionCall = proposal.kind.FunctionCall;
+  const action = functionCall.actions.find(
+    (a) => a.method_name === "near_withdraw" || a.method_name === "near_deposit"
+  );
+  if (!action) {
+    throw new Error("Proposal is not a Exchange proposal");
+  }
+
+  const args = decodeArgs(action.args);
+  if (!args) {
+    throw new Error("Proposal is not a Exchange proposal");
+  }
+  const isWrap = action.method_name === "near_deposit";
+  const amount = isWrap ? action.deposit || "0" : args.amount || "0";
+
+  return {
+    source: "wrap.near",
+    tokenIn: isWrap ? "near" : "wrap.near",
+    amountIn: amount,
+    tokenOut: isWrap ? "wrap.near" : "near",
+    amountOut: amount,
+    destinationNetwork: "near",
+    sourceNetwork: "near",
   };
 }
 
@@ -500,7 +532,6 @@ export function extractProposalData(proposal: Proposal): {
   data: AnyProposalData;
 } {
   const type = getProposalUIKind(proposal);
-
   let data: AnyProposalData;
 
   switch (type) {
@@ -528,7 +559,15 @@ export function extractProposalData(proposal: Proposal): {
       data = extractVestingData(proposal);
       break;
     case "Exchange":
-      data = extractSwapRequestData(proposal);
+      if ("FunctionCall" in proposal.kind) {
+        if (proposal.kind.FunctionCall.receiver_id === 'wrap.near') {
+          data = extractNearWrapSwapRequestData(proposal);
+        } else {
+          data = extractExchangeRequestData(proposal);
+        }
+      } else {
+        throw new Error("Proposal is not a Exchange proposal");
+      }
       break;
     case "Members":
       data = extractMembersData(proposal);

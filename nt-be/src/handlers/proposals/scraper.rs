@@ -8,7 +8,7 @@ use near_api::errors::QueryError;
 use near_api::types::BlockHeight;
 use near_api::types::ft::FungibleTokenMetadata;
 use near_api::types::json::{U64, U128};
-use near_api::{AccountId, Contract, CryptoHash, NetworkConfig, Reference, Tokens};
+use near_api::{AccountId, Contract, CryptoHash, NetworkConfig, Reference, Tokens, W_NEAR_BALANCE};
 use near_openapi_types::RpcQueryError;
 
 use serde::{Deserialize, Serialize};
@@ -384,7 +384,6 @@ pub struct BatchPaymentResponse {
     pub status: String,
     pub payments: Vec<BatchPayment>,
 }
-
 #[derive(Debug, Clone)]
 pub struct AssetExchangeInfo {
     pub token_in_address: String,
@@ -668,69 +667,153 @@ impl ProposalType for LockupInfo {
 
 impl ProposalType for AssetExchangeInfo {
     fn from_proposal(proposal: &Proposal) -> Option<Self> {
-        if let Some(function_call) = proposal.kind.get("FunctionCall")
-            && extract_from_description(&proposal.description, "proposalaction")
-                == Some("asset-exchange".to_string())
-        {
+        if let Some(function_call) = proposal.kind.get("FunctionCall") {
             let actions = function_call
                 .get("actions")
                 .and_then(|a| a.as_array())
                 .map(|a| a.as_slice())
                 .unwrap_or(&[]);
 
-            // Find mt_transfer or mt_transfer_call action
-            let action = actions.iter().find(|a| {
-                a.get("method_name")
-                    .and_then(|m| m.as_str())
-                    .map(|m| m == "mt_transfer" || m == "mt_transfer_call")
-                    .unwrap_or(false)
-            })?;
-
-            // Decode the args
-            let args_b64 = action.get("args").and_then(|a| a.as_str())?;
-            let decoded_bytes = base64::engine::general_purpose::STANDARD
-                .decode(args_b64)
-                .ok()?;
-            let json_args = serde_json::from_slice::<serde_json::Value>(&decoded_bytes).ok()?;
-
-            // Extract token_in from args
-            let token_in_address = json_args
-                .get("token_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-
-            // Extract amount_in from args or description
-            let amount_in = json_args
-                .get("amount")
-                .and_then(|v| v.as_str().map(|s| s.parse::<u128>().unwrap_or(0)))
-                .or_else(|| {
-                    extract_from_description(&proposal.description, "amountIn")
-                        .map(|s| s.parse::<u128>().unwrap_or(0))
-                })
-                .unwrap_or(0);
-
-            // Extract token_out from description
-            let token_out_symbol =
-                extract_from_description(&proposal.description, "tokenOut").unwrap_or_default();
-
-            // Extract amount_out from description
-            let amount_out = extract_from_description(&proposal.description, "amountOut")
-                .unwrap_or_else(|| "0".to_string());
-
-            // Extract deposit_address from args
-            let deposit_address = json_args
+            let receiver_id = function_call
                 .get("receiver_id")
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+                .unwrap_or("");
 
-            return Some(AssetExchangeInfo {
-                token_in_address,
-                amount_in,
-                token_out_symbol,
-                amount_out,
-                deposit_address,
-            });
+            if receiver_id == "wrap.near"
+                && let Some(action) = actions.iter().find(|a| {
+                    a.get("method_name")
+                        .and_then(|m| m.as_str())
+                        .map(|m| m == "near_deposit" || m == "near_withdraw")
+                        .unwrap_or(false)
+                })
+            {
+                let is_wrap = action
+                    .get("method_name")
+                    .and_then(|m| m.as_str())
+                    .unwrap_or("")
+                    == "near_deposit";
+                // Decode the args
+                let args_b64 = action.get("args").and_then(|a| a.as_str())?;
+                let decoded_bytes = base64::engine::general_purpose::STANDARD
+                    .decode(args_b64)
+                    .ok()?;
+                let json_args = serde_json::from_slice::<serde_json::Value>(&decoded_bytes).ok()?;
+
+                if is_wrap {
+                    let near_token: U128 = U128::from(
+                        action
+                            .get("deposit")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("0")
+                            .parse::<u128>()
+                            .unwrap_or_default(),
+                    );
+
+                    return Some(AssetExchangeInfo {
+                        token_in_address: "wrap.near".to_string(),
+                        amount_in: near_token.0,
+                        token_out_symbol: "near".to_string(),
+                        amount_out: W_NEAR_BALANCE
+                            .with_amount(near_token.0)
+                            .to_string()
+                            .split(' ')
+                            .nth(0)
+                            .unwrap_or_default()
+                            .to_string(),
+                        deposit_address: None,
+                    });
+                } else {
+                    let near_token: U128 = U128::from(
+                        json_args
+                            .get("amount")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("0")
+                            .parse::<u128>()
+                            .unwrap_or_default(),
+                    );
+
+                    return Some(AssetExchangeInfo {
+                        token_in_address: "wrap.near".to_string(),
+                        amount_in: near_token.0,
+                        token_out_symbol: "near".to_string(),
+                        amount_out: W_NEAR_BALANCE
+                            .with_amount(near_token.0)
+                            .to_string()
+                            .split(' ')
+                            .nth(0)
+                            .unwrap_or("0")
+                            .to_string(),
+                        deposit_address: None,
+                    });
+                }
+            } else if extract_from_description(&proposal.description, "proposalaction")
+                == Some("asset-exchange".to_string())
+            {
+                println!("proposal id: {}", proposal.id);
+                // Find mt_transfer or mt_transfer_call action
+                let action = actions.iter().find(|a| {
+                    a.get("method_name")
+                        .and_then(|m| m.as_str())
+                        .map(|m| {
+                            m == "mt_transfer"
+                                || m == "mt_transfer_call"
+                                || m == "ft_transfer"
+                                || m == "ft_transfer_call"
+                        })
+                        .unwrap_or(false)
+                })?;
+                // Decode the args
+                let args_b64 = action.get("args").and_then(|a| a.as_str())?;
+                let decoded_bytes = base64::engine::general_purpose::STANDARD
+                    .decode(args_b64)
+                    .ok()?;
+                let json_args = serde_json::from_slice::<serde_json::Value>(&decoded_bytes).ok()?;
+
+                // Extract token_in from args
+                let token_in_address = json_args
+                    .get("token_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(
+                        function_call
+                            .get("receiver_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or(""),
+                    )
+                    .to_string();
+
+                println!("token_in_address: {:?}", token_in_address);
+                // Extract amount_in from args or description
+                let amount_in = json_args
+                    .get("amount")
+                    .and_then(|v| v.as_str().map(|s| s.parse::<u128>().unwrap_or(0)))
+                    .or_else(|| {
+                        extract_from_description(&proposal.description, "amountIn")
+                            .map(|s| s.parse::<u128>().unwrap_or(0))
+                    })
+                    .unwrap_or(0);
+
+                // Extract token_out from description
+                let token_out_symbol =
+                    extract_from_description(&proposal.description, "tokenOut").unwrap_or_default();
+
+                // Extract amount_out from description
+                let amount_out = extract_from_description(&proposal.description, "amountOut")
+                    .unwrap_or_else(|| "0".to_string());
+
+                // Extract deposit_address from args
+                let deposit_address = json_args
+                    .get("receiver_id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
+                return Some(AssetExchangeInfo {
+                    token_in_address,
+                    amount_in,
+                    token_out_symbol,
+                    amount_out,
+                    deposit_address,
+                });
+            }
         }
         None
     }

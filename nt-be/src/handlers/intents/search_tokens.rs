@@ -175,7 +175,10 @@ fn search_token_in(
 
 /// Search for tokenOut with destinationNetwork (chainId) matching
 fn search_token_out(query: &str, destination_network: Option<&str>) -> Option<TokenSearchResult> {
-    let query_lower = query.to_lowercase();
+    let mut query_lower = query.to_lowercase();
+    if query_lower == "wnear" {
+        query_lower = "near".to_string();
+    }
     let tokens_map = get_tokens_map();
 
     // Search through all unified tokens
