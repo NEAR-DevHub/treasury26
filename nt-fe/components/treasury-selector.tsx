@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/select";
 import { useTreasury } from "@/stores/treasury-store";
 import { Database } from "lucide-react";
-import Link from "next/link";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
 import { useUserTreasuries, useTreasuryConfig } from "@/hooks/use-treasury-queries";

@@ -69,7 +69,7 @@ pub async fn get_user_treasuries(
 
     let treasuries = state
         .cache
-        .cached(CacheTier::LongTerm, cache_key, async move {
+        .cached(CacheTier::ShortTerm, cache_key, async move {
             let response = state_clone
                 .http_client
                 .get("https://api.pikespeak.ai/daos/members")

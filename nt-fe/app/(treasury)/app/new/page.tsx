@@ -18,6 +18,7 @@ import { CircleCheck, Database, Info, UsersRound, Vote } from "lucide-react";
 import { InfoAlert } from "@/components/info-alert";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { ROLES } from "@/components/role-selector";
 
 const treasuryFormSchema = z.object({
@@ -218,6 +219,7 @@ function Step3({ handleBack }: StepProps) {
 export default function NewTreasuryPage() {
     const { accountId, isInitializing } = useNear();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const form = useForm<TreasuryFormValues>({
         resolver: zodResolver(treasuryFormSchema),
         defaultValues: {
@@ -269,6 +271,7 @@ export default function NewTreasuryPage() {
             };
 
             await createTreasury(request).then((response) => {
+                queryClient.invalidateQueries({ queryKey: ["userTreasuries", accountId] });
                 toast.success("Treasury created successfully");
                 router.push(`/${response.treasury}`);
             }).catch((error) => {
