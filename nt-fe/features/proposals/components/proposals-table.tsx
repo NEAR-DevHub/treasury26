@@ -324,7 +324,7 @@ export function ProposalsTable({
                   </TableRow>
                   {row.getIsExpanded() && (
                     <TableRow>
-                      <TableCell colSpan={row.getVisibleCells().length} className="p-4 bg-background">
+                      <TableCell colSpan={row.getVisibleCells().length} className="p-4 bg-general-tertiary">
                         <ExpandedView proposal={row.original} policy={policy} onVote={(vote) => {
                           setVoteInfo({ vote, proposalIds: [{ proposalId: row.original.id, kind: getKindFromProposal(row.original.kind) ?? "call" }] });
                           setIsVoteModalOpen(true);

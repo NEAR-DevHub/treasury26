@@ -11,15 +11,15 @@ export function UserVote({ accountId, vote, iconOnly = true }: { accountId: stri
     let action;
     switch (vote) {
         case "Approve":
-            icon = <Check className={cn(iconStyle, "bg-green-500")} />;
+            icon = <Check className={cn(iconStyle, "bg-general-success-foreground")} />;
             action = "Approved";
             break;
         case "Reject":
-            icon = <X className={cn(iconStyle, "bg-red-500")} />;
+            icon = <X className={cn(iconStyle, "bg-general-destructive-foreground")} />;
             action = "Rejected";
             break;
         case "Remove":
-            icon = <Trash className={cn(iconStyle, "bg-red-500")} />;
+            icon = <Trash className={cn(iconStyle, "bg-general-destructive-foreground")} />;
             action = "Removed";
             break;
     }

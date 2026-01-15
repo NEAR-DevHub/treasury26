@@ -1,5 +1,5 @@
 import { getKindFromProposal } from "@/lib/config-utils";
-import { Proposal } from "@/lib/proposals-api";
+import { Proposal, ProposalStatus } from "@/lib/proposals-api";
 import { Policy } from "@/types/policy";
 import { ProposalUIKind } from "../types/index";
 import { decodeArgs } from "@/lib/utils";
@@ -123,7 +123,9 @@ export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
   }
 }
 
-export function getProposalStatus(proposal: Proposal, policy: Policy): string {
+export type UIProposalStatus = "Executed" | "Rejected" | "Pending" | "Expired" | "Removed" | "Moved";
+
+export function getProposalStatus(proposal: Proposal, policy: Policy): UIProposalStatus {
   const proposalPeriod = parseInt(policy.proposal_period);
   const submissionTime = parseInt(proposal.submission_time);
 

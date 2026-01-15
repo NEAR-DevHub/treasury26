@@ -1,3 +1,4 @@
+import { getProposalStatus } from "@/features/proposals/utils/proposal-utils";
 import { Policy, VotePolicy } from "@/types/policy";
 import axios from "axios";
 import Big from "big.js";
@@ -444,7 +445,7 @@ export async function getProposalTransaction(
     return null;
   }
 
-  if (proposal.status !== "Approved" && proposal.status !== "Failed") {
+  if (proposal.status === "InProgress") {
     return null;
   }
 
@@ -466,10 +467,15 @@ export async function getProposalTransaction(
       .toISOString()
       .split("T")[0]; // Add 7 days buffer
 
+    const status = getProposalStatus(proposal, policy);
+    const action = status === "Executed" ? "VoteApprove"
+      : status === "Rejected" ? "VoteReject" : "VoteRemove";
+
     // Build query parameters for time constraints
     const params: Record<string, string> = {
       afterDate,
       beforeDate,
+      action,
     };
 
     const response = await axios.get<ProposalTransactionResponse>(url, { params });

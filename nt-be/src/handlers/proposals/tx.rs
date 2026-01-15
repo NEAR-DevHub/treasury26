@@ -53,6 +53,7 @@ pub struct TransactionQueryParams {
     pub after_date: NaiveDate,
     #[serde(rename = "beforeDate")]
     pub before_date: NaiveDate,
+    pub action: String,
 }
 
 async fn fetch_nearblocks_transactions(
@@ -102,10 +103,11 @@ async fn fetch_nearblocks_transactions(
     Ok(data.txns)
 }
 
-fn find_matching_transaction(
-    txns: &[NearBlocksTransaction],
+fn find_matching_transaction<'a>(
+    txns: &'a [NearBlocksTransaction],
     proposal_id: u64,
-) -> Option<&NearBlocksTransaction> {
+    action_str: &str,
+) -> Option<&'a NearBlocksTransaction> {
     txns.iter().find(|txn| {
         txn.actions.iter().any(|action| {
             let Ok(args) = serde_json::from_str::<serde_json::Value>(&action.args) else {
@@ -118,7 +120,7 @@ fn find_matching_transaction(
                 }
                 "act_proposal" => {
                     args.get("id").and_then(|v| v.as_u64()) == Some(proposal_id)
-                        && args.get("action").and_then(|v| v.as_str()) == Some("VoteApprove")
+                        && args.get("action").and_then(|v| v.as_str()) == Some(action_str)
                 }
                 _ => false,
             }
@@ -146,33 +148,35 @@ pub async fn find_proposal_execution_transaction(
         ));
     };
 
-    // Try on_proposal_callback first
-    let callback_txns = fetch_nearblocks_transactions(
-        &state.http_client,
-        nearblocks_api_key,
-        &dao_id,
-        "on_proposal_callback",
-        params.after_date,
-        params.before_date,
-    )
-    .await?;
+    if params.action == "VoteApprove" {
+        // Try on_proposal_callback first
+        let callback_txns = fetch_nearblocks_transactions(
+            &state.http_client,
+            nearblocks_api_key,
+            &dao_id,
+            "on_proposal_callback",
+            params.after_date,
+            params.before_date,
+        )
+        .await?;
 
-    log::info!(
-        "Found {} on_proposal_callback transactions",
-        callback_txns.len()
-    );
+        log::info!(
+            "Found {} on_proposal_callback transactions",
+            callback_txns.len()
+        );
 
-    if let Some(txn) = find_matching_transaction(&callback_txns, proposal_id) {
-        log::info!("Found execution transaction: {}", txn.transaction_hash);
-        return Ok((
-            StatusCode::OK,
-            Json(ProposalTransactionResponse {
-                transaction_hash: txn.transaction_hash.clone(),
-                nearblocks_url: format!("https://nearblocks.io/txns/{}", txn.transaction_hash),
-                block_height: txn.block.block_height,
-                timestamp: txn.receipt_block.block_timestamp,
-            }),
-        ));
+        if let Some(txn) = find_matching_transaction(&callback_txns, proposal_id, &params.action) {
+            log::info!("Found execution transaction: {}", txn.transaction_hash);
+            return Ok((
+                StatusCode::OK,
+                Json(ProposalTransactionResponse {
+                    transaction_hash: txn.transaction_hash.clone(),
+                    nearblocks_url: format!("https://nearblocks.io/txns/{}", txn.transaction_hash),
+                    block_height: txn.block.block_height,
+                    timestamp: txn.receipt_block.block_timestamp,
+                }),
+            ));
+        }
     }
 
     // Fallback to act_proposal if not found
@@ -191,7 +195,7 @@ pub async fn find_proposal_execution_transaction(
         act_proposal_txns.len()
     );
 
-    if let Some(txn) = find_matching_transaction(&act_proposal_txns, proposal_id) {
+    if let Some(txn) = find_matching_transaction(&act_proposal_txns, proposal_id, &params.action) {
         log::info!("Found execution transaction: {}", txn.transaction_hash);
         return Ok((
             StatusCode::OK,

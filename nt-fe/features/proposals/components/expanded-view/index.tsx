@@ -8,7 +8,6 @@ import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { ExternalLink, Trash } from "lucide-react";
-import { TxDetails } from "./common/tx-details";
 import { Policy } from "@/types/policy";
 import { StakingExpanded } from "./staking-expanded";
 import { ChangeConfigExpanded } from "./change-config-expanded";
@@ -97,38 +96,35 @@ export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVot
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full">
-      <div className="w-full flex flex-col gap-4">
-        <PageCard className="w-full">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Request Details</h3>
-            <div className="flex items-center gap-2">
-              <CopyButton
-                text={requestUrl}
-                toastMessage="Link copied to clipboard"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                iconClassName="h-4 w-4"
-              />
-              {!hideOpenInNewTab && (
-                <Link href={requestUrl} target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </Link>
-              )}
-              {ownProposal && (
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onVote("Remove")}>
-                  <Trash className="h-4 w-4" />
+      <PageCard className="w-full">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Request Details</h3>
+          <div className="flex items-center gap-2">
+            <CopyButton
+              text={requestUrl}
+              toastMessage="Link copied to clipboard"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              iconClassName="h-4 w-4"
+            />
+            {!hideOpenInNewTab && (
+              <Link href={requestUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <ExternalLink className="h-4 w-4" />
                 </Button>
-              )}
-            </div>
+              </Link>
+            )}
+            {ownProposal && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onVote("Remove")}>
+                <Trash className="h-4 w-4" />
+              </Button>
+            )}
           </div>
-          {component}
-        </PageCard>
+        </div>
+        {component}
+      </PageCard>
 
-        <TxDetails proposal={proposal} policy={policy} />
-      </div>
       <div className="w-full">
         <ProposalSidebar proposal={proposal} policy={policy} onVote={onVote} />
       </div>
