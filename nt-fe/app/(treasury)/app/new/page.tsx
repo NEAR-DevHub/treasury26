@@ -205,9 +205,9 @@ function Step3({ handleBack }: StepProps) {
             </div>
 
             <InfoAlert message={
-                <>
+                <p className="inline-block">
                     To support new projects, <span className="font-semibold">TREASURY</span> is sponsoring the one-time platform and network storage fees for your Treasury deployment on the NEAR protocol.
-                </>
+                </p>
             } />
 
             <InlineNextButton text="Create Treasury" loading={form.formState.isSubmitting} />

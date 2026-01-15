@@ -135,8 +135,13 @@ fn prepare_args(payload: CreateTreasuryRequest) -> Result<serde_json::Value, ser
 
     let bytes = BASE64_STANDARD.encode(serde_json::to_vec(&config)?);
 
+    let name = payload
+        .account_id
+        .as_str()
+        .strip_suffix(".sputnik-dao.near")
+        .unwrap_or(payload.account_id.as_str());
     Ok(serde_json::json!({
-      "name": payload.account_id.to_string(),
+      "name": name,
       "args": bytes,
     }))
 }
