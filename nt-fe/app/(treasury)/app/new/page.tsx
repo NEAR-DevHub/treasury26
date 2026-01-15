@@ -270,7 +270,7 @@ export default function NewTreasuryPage() {
 
             await createTreasury(request).then((response) => {
                 toast.success("Treasury created successfully");
-                router.push(`/app/${response.treasury}`);
+                router.push(`/${response.treasury}`);
             }).catch((error) => {
                 console.error("Treasury creation error", error);
                 toast.error("Failed to create treasury");
