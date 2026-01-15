@@ -967,7 +967,7 @@ impl ProposalFilters {
             // Smart filters - apply each filter independently across relevant proposal types
 
             // Apply tokens filter
-            if !matches_tokens_filter(&proposal, token.as_deref(), token_not.as_deref()) {
+            if !matches_tokens_filter(&proposal, token, token_not) {
                 continue;
             }
 

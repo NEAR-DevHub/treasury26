@@ -1,0 +1,41 @@
+name: Bulk Payment Contract - Build WASM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/bulk-payment/**'
+      - '.github/workflows/bulk-payment-build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/bulk-payment/**'
+      - '.github/workflows/bulk-payment-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Reproducible WASM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cargo-near CLI
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/near/cargo-near/releases/download/cargo-near-v0.14.2/cargo-near-installer.sh | sh
+
+      - name: Build reproducible WASM
+        working-directory: contracts/bulk-payment
+        run: cargo near build reproducible-wasm
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bulk-payment-contract
+          path: contracts/bulk-payment/target/near/bulk_payment_contract.wasm
+          if-no-files-found: error

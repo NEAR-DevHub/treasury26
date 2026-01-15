@@ -1,0 +1,40 @@
+[package]
+name = "sandbox-init"
+description = "NEAR Sandbox initializer for Treasury test environment"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "sandbox-init"
+path = "src/main.rs"
+
+[dependencies]
+# NEAR Sandbox
+near-sandbox = "0.2.2"
+near-api = "0.7.8"
+near-gas = "0.3"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# HTTP client for fetching contracts from mainnet
+reqwest = { version = "0.12", features = ["json"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Base64 decoding
+base64 = "0.22"
+
+# Archive extraction for sandbox binary
+flate2 = "1.0"
+tar = "0.4"
+
+# Directory utilities
+dirs-next = "2.0"
+
+# Utilities
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

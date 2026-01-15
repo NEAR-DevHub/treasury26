@@ -1,0 +1,62 @@
+name: Bulk Payment Contract - Test
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/bulk-payment/**'
+      - '.github/workflows/bulk-payment-test.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/bulk-payment/**'
+      - '.github/workflows/bulk-payment-test.yml'
+  workflow_dispatch:
+
+jobs:
+  code-formatting:
+    name: Code Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check formatting
+        working-directory: contracts/bulk-payment
+        run: cargo fmt --check
+
+  code-linter:
+    name: Code Linter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev pkg-config
+      - name: Run cargo clippy
+        working-directory: contracts/bulk-payment
+        run: |
+          rustup component add clippy
+          cargo clippy --all-features --workspace --tests -- --warn clippy::all --warn clippy::nursery
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install Rust 1.86
+        run: |
+          rustup install 1.86
+          rustup default 1.86
+          rustup target add wasm32-unknown-unknown
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev pkg-config
+      - name: Install cargo-near CLI
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.14.2/cargo-near-installer.sh | sh
+      - name: Run cargo test
+        working-directory: contracts/bulk-payment
+        run: cargo test -- --nocapture

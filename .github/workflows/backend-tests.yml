@@ -27,6 +27,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Free Disk Space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+
     - uses: actions/checkout@v4
 
     - name: Set up Rust
@@ -55,10 +61,13 @@ jobs:
     - name: Cache cargo build
       uses: actions/cache@v4
       with:
-        path: nt-be/target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+        path: |
+          nt-be/target/debug/deps
+          nt-be/target/debug/build
+          nt-be/target/debug/.fingerprint
+        key: ${{ runner.os }}-cargo-build-deps-${{ hashFiles('nt-be/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-cargo-build-target-
+          ${{ runner.os }}-cargo-build-deps-
 
     - name: Check formatting
       working-directory: nt-be

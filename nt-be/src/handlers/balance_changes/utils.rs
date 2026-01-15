@@ -27,7 +27,7 @@ mod tests {
     #[test]
     fn test_block_timestamp_conversion() {
         // Test with a known timestamp (2024-01-01 00:00:00 UTC = 1704067200 seconds)
-        let nanos = 1704067200_000_000_000i64;
+        let nanos = 1_704_067_200_000_000_000_i64;
         let dt = block_timestamp_to_datetime(nanos);
 
         assert_eq!(dt.timestamp(), 1704067200);
@@ -37,7 +37,7 @@ mod tests {
     #[test]
     fn test_block_timestamp_with_subsecond() {
         // Test with nanoseconds (1704067200.5 seconds)
-        let nanos = 1704067200_500_000_000i64;
+        let nanos = 1_704_067_200_500_000_000_i64;
         let dt = block_timestamp_to_datetime(nanos);
 
         assert_eq!(dt.timestamp(), 1704067200);

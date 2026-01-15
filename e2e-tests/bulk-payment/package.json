@@ -1,0 +1,30 @@
+{
+  "name": "bulk-payment-e2e-tests",
+  "version": "0.1.0",
+  "description": "End-to-end tests for the bulk payment contract with DAO integration",
+  "type": "module",
+  "main": "dao-bulk-payment-flow.js",
+  "scripts": {
+    "test": "node dao-bulk-payment-flow.js",
+    "test:ft": "node fungible-token-large-batch.js",
+    "test:ft-non-registered": "node fungible-token-non-registered-flow.js",
+    "test:intents": "node near-intents-non-registered-flow.js",
+    "test:all": "npm run test && npm run test:ft && npm run test:ft-non-registered && npm run test:intents",
+    "test:docker": "SANDBOX_RPC_URL=http://localhost:3030 API_URL=http://localhost:8080 node dao-bulk-payment-flow.js",
+    "test:ft:docker": "SANDBOX_RPC_URL=http://localhost:3030 API_URL=http://localhost:8080 node fungible-token-large-batch.js",
+    "test:ft-non-registered:docker": "SANDBOX_RPC_URL=http://localhost:3030 API_URL=http://localhost:8080 node fungible-token-non-registered-flow.js",
+    "test:intents:docker": "SANDBOX_RPC_URL=http://localhost:3030 API_URL=http://localhost:8080 node near-intents-non-registered-flow.js"
+  },
+  "keywords": [
+    "near",
+    "blockchain",
+    "bulk-payment",
+    "dao",
+    "e2e"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "near-api-js": "^5.0.1",
+    "@near-js/jsonrpc-client": "^1.5.0"
+  }
+}
