@@ -2,7 +2,7 @@
 
 import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/components/underline-tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
@@ -269,23 +269,21 @@ export default function RequestsPage() {
               </div>
             </>
           )}
-          <TabsContents>
-            <TabsContent value="all">
-              <ProposalsList onSelectionChange={setSelectedCount} />
-            </TabsContent>
-            <TabsContent value="pending">
-              <ProposalsList status={["InProgress"]} onSelectionChange={setSelectedCount} />
-            </TabsContent>
-            <TabsContent value="executed">
-              <ProposalsList status={["Approved"]} onSelectionChange={setSelectedCount} />
-            </TabsContent>
-            <TabsContent value="rejected">
-              <ProposalsList status={["Rejected", "Failed"]} onSelectionChange={setSelectedCount} />
-            </TabsContent>
-            <TabsContent value="expired">
-              <ProposalsList status={["Expired"]} onSelectionChange={setSelectedCount} />
-            </TabsContent>
-          </TabsContents>
+          <TabsContent value="all">
+            <ProposalsList onSelectionChange={setSelectedCount} />
+          </TabsContent>
+          <TabsContent value="pending">
+            <ProposalsList status={["InProgress"]} onSelectionChange={setSelectedCount} />
+          </TabsContent>
+          <TabsContent value="executed">
+            <ProposalsList status={["Approved"]} onSelectionChange={setSelectedCount} />
+          </TabsContent>
+          <TabsContent value="rejected">
+            <ProposalsList status={["Rejected", "Failed"]} onSelectionChange={setSelectedCount} />
+          </TabsContent>
+          <TabsContent value="expired">
+            <ProposalsList status={["Expired"]} onSelectionChange={setSelectedCount} />
+          </TabsContent>
         </Tabs>
       </PageCard>
     </PageComponentLayout >

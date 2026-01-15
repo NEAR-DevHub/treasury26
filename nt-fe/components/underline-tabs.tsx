@@ -1,5 +1,4 @@
-import { Tabs, TabsContent, TabsContents, TabsList as AnimateTabsList } from "@/components/animate-ui/components/animate/tabs";
-import { TabsTrigger as BaseTabsTrigger } from "@/components/animate-ui/primitives/animate/tabs";
+import { Tabs, TabsContent, TabsList as AnimateTabsList, TabsTrigger as BaseTabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 function TabsList({ className, ...props }: React.ComponentProps<typeof AnimateTabsList>) {
@@ -21,7 +20,6 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof BaseTa
 export {
     Tabs,
     TabsContent,
-    TabsContents,
     TabsList,
     TabsTrigger,
 }

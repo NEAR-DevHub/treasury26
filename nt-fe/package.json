@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@hot-labs/near-connect": "^0.7.1",
+    "@hot-labs/near-connect": "^0.8.2",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -36,7 +36,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "gradflow": "^0.1.0",
-    "lucide-react": "^0.559.0",
+    "lucide-react": "^0.562.0",
     "motion": "^12.24.12",
     "next": "16.0.7",
     "radix-ui": "^1.4.3",

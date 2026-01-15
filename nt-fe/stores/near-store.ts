@@ -77,15 +77,6 @@ export const useNearStore = create<NearStore>((set, get) => ({
     try {
       newConnector = new NearConnector({
         network: "mainnet",
-        walletConnect: {
-          projectId: "near-treasury",
-          metadata: {
-            name: NEAR_TREASURY_CONFIG.brandName,
-            description: NEAR_TREASURY_CONFIG.brandDescription,
-            url: NEAR_TREASURY_CONFIG.brandUrl,
-            icons: [NEAR_TREASURY_CONFIG.brandLogo],
-          },
-        },
       });
     } catch (err) {
       set({ isInitializing: false });

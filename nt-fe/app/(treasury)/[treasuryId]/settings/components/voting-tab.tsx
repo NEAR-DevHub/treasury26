@@ -11,11 +11,10 @@ import {
   TabsList,
   TabsTrigger,
   TabsContent,
-  TabsContents,
 } from "@/components/underline-tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { config, z } from "zod";
+import { z } from "zod";
 import {
   Form,
   FormField,
@@ -421,9 +420,8 @@ export function VotingTab() {
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className="w-full"
           >
-            <TabsList>
+            <TabsList className="w-fit">
               {groupRoles.map((role) => (
                 <TabsTrigger key={role.name} value={role.name}>
                   <RoleName name={role.name} />
@@ -431,71 +429,69 @@ export function VotingTab() {
               ))}
             </TabsList>
 
-            <TabsContents>
-              {groupRoles.map((role) => (
-                <TabsContent key={role.name} value={role.name}>
-                  <div className="space-y-4">
-                    {/* Members who can vote */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        Members who can vote
-                      </span>
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-sm">
-                        {role.memberCount}
-                      </span>
-                    </div>
-
-                    {/* Member avatars */}
-                    <div className="flex items-center">
-                      {role.members
-                        .slice(0, 15)
-                        .map((member: string, index: number) => (
-                          <div key={member} className="-ml-2 first:ml-0">
-                            <User
-                              accountId={member}
-                              iconOnly={true}
-                              size="lg"
-                              withLink={true}
-                              withHoverCard={true}
-                            />
-                          </div>
-                        ))}
-                      {role.memberCount > 10 && (
-                        <span className="ml-2 text-sm text-muted-foreground">
-                          +{role.memberCount - 10} more
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Threshold slider */}
-                    {(() => {
-                      const thresholds = form.watch("thresholds");
-                      const currentThreshold =
-                        thresholds?.[role.name] ?? role.threshold;
-
-                      return (
-                        <ThresholdSlider
-                          currentThreshold={currentThreshold}
-                          originalThreshold={originalThresholds[role.name]}
-                          memberCount={role.memberCount}
-                          onValueChange={(value) => {
-                            form.setValue(
-                              "thresholds",
-                              {
-                                ...thresholds,
-                                [role.name]: value,
-                              },
-                              { shouldDirty: true }
-                            );
-                          }}
-                          disabled={!isAuthorized || hasPendingVotingRequest}
-                        />
-                      );
-                    })()}
+            {groupRoles.map((role) => (
+              <TabsContent key={role.name} value={role.name}>
+                <div className="space-y-4">
+                  {/* Members who can vote */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      Members who can vote
+                    </span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-sm">
+                      {role.memberCount}
+                    </span>
                   </div>
-                </TabsContent>
-              ))}
-            </TabsContents>
+
+                  {/* Member avatars */}
+                  <div className="flex items-center">
+                    {role.members
+                      .slice(0, 15)
+                      .map((member: string, index: number) => (
+                        <div key={member} className="-ml-2 first:ml-0">
+                          <User
+                            accountId={member}
+                            iconOnly={true}
+                            size="lg"
+                            withLink={true}
+                            withHoverCard={true}
+                          />
+                        </div>
+                      ))}
+                    {role.memberCount > 10 && (
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        +{role.memberCount - 10} more
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Threshold slider */}
+                  {(() => {
+                    const thresholds = form.watch("thresholds");
+                    const currentThreshold =
+                      thresholds?.[role.name] ?? role.threshold;
+
+                    return (
+                      <ThresholdSlider
+                        currentThreshold={currentThreshold}
+                        originalThreshold={originalThresholds[role.name]}
+                        memberCount={role.memberCount}
+                        onValueChange={(value) => {
+                          form.setValue(
+                            "thresholds",
+                            {
+                              ...thresholds,
+                              [role.name]: value,
+                            },
+                            { shouldDirty: true }
+                          );
+                        }}
+                        disabled={!isAuthorized || hasPendingVotingRequest}
+                      />
+                    );
+                  })()}
+                </div>
+              </TabsContent>
+            ))}
           </Tabs>
 
           <VotingRequestAction
@@ -508,7 +504,7 @@ export function VotingTab() {
               !activeTab ||
               !form.watch("thresholds")?.[activeTab] ||
               form.watch("thresholds")[activeTab] ===
-                originalThresholds[activeTab]
+              originalThresholds[activeTab]
             }
             permissionMessage="You don't have permission to change the voting threshold"
           />

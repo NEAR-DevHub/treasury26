@@ -1,5 +1,4 @@
 import { AssetsTable } from "@/components/assets-table";
-import { Tabs, TabsContent, TabsContents, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import { TreasuryAsset } from "@/lib/api";
 import { PageCard } from "@/components/card";
 
