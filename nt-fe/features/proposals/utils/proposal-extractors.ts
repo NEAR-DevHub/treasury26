@@ -87,12 +87,15 @@ export function extractPaymentRequestData(proposal: Proposal): PaymentRequestDat
   }
 
   const notes = decodeProposalDescription("notes", proposal.description);
+  const title = decodeProposalDescription("title", proposal.description);
+  const url = decodeProposalDescription("url", proposal.description);
 
   return {
     tokenId,
     amount,
     receiver,
-    notes: notes || "",
+    notes: title ? title : notes,
+    url: url || "",
   };
 }
 

@@ -47,7 +47,8 @@ export interface PaymentRequestData {
     tokenId: string;
     amount: string;
     receiver: string;
-    notes: string;
+    notes?: string;
+    url?: string;
 }
 
 /**

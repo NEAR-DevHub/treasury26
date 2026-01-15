@@ -2,6 +2,8 @@ import { Amount } from "../amount";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { User } from "@/components/user";
 import { PaymentRequestData } from "../../types/index";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 
 interface TransferExpandedProps {
   data: PaymentRequestData;
@@ -20,7 +22,11 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
   ];
 
   if (data.notes && data.notes !== "") {
-    infoItems.push({ label: "Notes", value: <span>{data.notes}</span> });
+    const notes = <span>{data.notes}</span>;
+    const content = data.url && data.url !== "" ?
+      <Link href={data.url} target="_blank" className="flex items-center gap-5">{notes} <ArrowUpRight className="size-4 shrink-0" /> </Link>
+      : notes;
+    infoItems.push({ label: "Notes", value: content });
   }
 
   return (

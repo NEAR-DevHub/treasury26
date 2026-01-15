@@ -5,8 +5,8 @@ import type React from "react";
 /**
  * Checks if a value should be considered "null" for display purposes
  */
-export const isNullValue = (val: any): boolean => 
-    val === undefined || val === null || val === "" || val === "null";
+export const isNullValue = (val: any): boolean =>
+  val === undefined || val === null || val === "" || val === "null";
 
 /**
  * Common component for displaying a diff between two values

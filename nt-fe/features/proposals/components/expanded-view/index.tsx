@@ -28,6 +28,7 @@ import {
 } from "../../types/index";
 import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
 import { useNear } from "@/stores/near-store";
+import { getProposalStatus } from "../../utils/proposal-utils";
 
 interface InternalExpandedViewProps {
   proposal: Proposal;
@@ -92,7 +93,7 @@ export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVot
   const component = ExpandedViewInternal({ proposal });
   const requestUrl = `${window.location.origin}/${selectedTreasury}/requests/${proposal.id}`;
 
-  const ownProposal = proposal.proposer === accountId;
+  const ownProposal = proposal.proposer === accountId && getProposalStatus(proposal, policy) === "Pending";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full">

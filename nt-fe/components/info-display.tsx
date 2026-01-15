@@ -58,14 +58,14 @@ export function InfoDisplay({ items, expandableItems, className, style = "defaul
         <div className={styleVariants({ style, className })}>
             {displayItems.map((item, index) => (
                 <div key={index} className={cn("flex flex-col gap-2", lineVariants({ style, className: !hasExpandableItems && "last:border-b-0" }))}>
-                    <div className={cn("flex justify-between items-center", item.differentLine && "flex-col items-start gap-2")}>
+                    <div className={cn("flex justify-between items-center flex-wrap", item.differentLine && "flex-col items-start gap-2")}>
                         <div className="flex items-center gap-2">
                             <p className="text-sm text-muted-foreground">{item.label}</p>
                             {item.info && <Tooltip content={item.info}>
                                 <Info className="w-4 h-4 text-muted-foreground" />
                             </Tooltip>}
                         </div>
-                        <div className="text-sm font-medium">{item.value}</div>
+                        <div className="text-sm font-medium text-wrap">{item.value}</div>
                     </div>
                     {item.afterValue && (
                         <div className="flex flex-col gap-2">
