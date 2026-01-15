@@ -560,7 +560,8 @@ export function extractProposalData(proposal: Proposal): {
       break;
     case "Exchange":
       if ("FunctionCall" in proposal.kind) {
-        if (proposal.kind.FunctionCall.receiver_id === 'wrap.near') {
+        const functionCall = proposal.kind.FunctionCall;
+        if (functionCall.receiver_id === 'wrap.near' && functionCall.actions.some(action => action.method_name === 'near_withdraw' || action.method_name === 'near_deposit')) {
           data = extractNearWrapSwapRequestData(proposal);
         } else {
           data = extractExchangeRequestData(proposal);
