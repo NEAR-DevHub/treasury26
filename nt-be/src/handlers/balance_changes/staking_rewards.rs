@@ -180,21 +180,20 @@ pub async fn insert_staking_snapshot(
     let epoch = block_to_epoch(block_height);
 
     // Get current staking balance
-    let balance = match get_staking_balance_at_block(network, account_id, staking_pool, block_height)
-        .await
-    {
-        Ok(b) => b,
-        Err(e) => {
-            log::debug!(
-                "Could not query staking balance for {}/{} at block {}: {}",
-                account_id,
-                staking_pool,
-                block_height,
-                e
-            );
-            return Ok(None);
-        }
-    };
+    let balance =
+        match get_staking_balance_at_block(network, account_id, staking_pool, block_height).await {
+            Ok(b) => b,
+            Err(e) => {
+                log::debug!(
+                    "Could not query staking balance for {}/{} at block {}: {}",
+                    account_id,
+                    staking_pool,
+                    block_height,
+                    e
+                );
+                return Ok(None);
+            }
+        };
 
     // Skip if balance is zero
     if balance == BigDecimal::from(0) {
@@ -209,7 +208,8 @@ pub async fn insert_staking_snapshot(
 
     // Get balance at previous block to calculate change
     let balance_before = if block_height > 0 {
-        match get_staking_balance_at_block(network, account_id, staking_pool, block_height - 1).await
+        match get_staking_balance_at_block(network, account_id, staking_pool, block_height - 1)
+            .await
         {
             Ok(b) => b,
             Err(_) => BigDecimal::from(0),
@@ -371,7 +371,8 @@ pub async fn track_staking_rewards(
         .await?;
 
         if existing.is_none() {
-            match insert_staking_snapshot(pool, network, account_id, staking_pool, epoch_block).await
+            match insert_staking_snapshot(pool, network, account_id, staking_pool, epoch_block)
+                .await
             {
                 Ok(Some(_)) => {
                     snapshots_created += 1;

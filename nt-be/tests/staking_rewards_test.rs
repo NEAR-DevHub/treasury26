@@ -9,8 +9,8 @@ use nt_be::handlers::balance_changes::balance::staking::{
     block_to_epoch, epoch_to_block, get_staking_balance_at_block, is_staking_pool,
 };
 use nt_be::handlers::balance_changes::staking_rewards::{
-    discover_staking_pools, extract_staking_pool, insert_staking_snapshot, is_staking_token,
-    staking_token_id, track_staking_rewards, STAKING_SNAPSHOT_COUNTERPARTY,
+    STAKING_SNAPSHOT_COUNTERPARTY, discover_staking_pools, extract_staking_pool,
+    insert_staking_snapshot, is_staking_token, staking_token_id, track_staking_rewards,
 };
 use sqlx::{PgPool, Row};
 
@@ -52,7 +52,11 @@ async fn test_query_staking_balance(_pool: PgPool) -> sqlx::Result<()> {
 async fn test_epoch_calculations(_pool: PgPool) -> sqlx::Result<()> {
     // Test block to epoch conversion
     assert_eq!(block_to_epoch(0), 0, "Block 0 should be epoch 0");
-    assert_eq!(block_to_epoch(43_199), 0, "Block 43199 should still be epoch 0");
+    assert_eq!(
+        block_to_epoch(43_199),
+        0,
+        "Block 43199 should still be epoch 0"
+    );
     assert_eq!(block_to_epoch(43_200), 1, "Block 43200 should be epoch 1");
 
     // Test epoch to block conversion
@@ -72,7 +76,10 @@ async fn test_epoch_calculations(_pool: PgPool) -> sqlx::Result<()> {
         "Next epoch start should be > original block"
     );
 
-    println!("Block {} is in epoch {} (starts at block {})", test_block, epoch, epoch_start);
+    println!(
+        "Block {} is in epoch {} (starts at block {})",
+        test_block, epoch, epoch_start
+    );
 
     Ok(())
 }
@@ -81,16 +88,40 @@ async fn test_epoch_calculations(_pool: PgPool) -> sqlx::Result<()> {
 #[sqlx::test]
 async fn test_staking_pool_patterns(_pool: PgPool) -> sqlx::Result<()> {
     // Valid staking pool patterns
-    assert!(is_staking_pool("aurora.poolv1.near"), "aurora.poolv1.near should be detected");
-    assert!(is_staking_pool("kiln.poolv1.near"), "kiln.poolv1.near should be detected");
-    assert!(is_staking_pool("meta-pool.pool.near"), "meta-pool.pool.near should be detected");
-    assert!(is_staking_pool("some-validator.pool.near"), "some-validator.pool.near should be detected");
+    assert!(
+        is_staking_pool("aurora.poolv1.near"),
+        "aurora.poolv1.near should be detected"
+    );
+    assert!(
+        is_staking_pool("kiln.poolv1.near"),
+        "kiln.poolv1.near should be detected"
+    );
+    assert!(
+        is_staking_pool("meta-pool.pool.near"),
+        "meta-pool.pool.near should be detected"
+    );
+    assert!(
+        is_staking_pool("some-validator.pool.near"),
+        "some-validator.pool.near should be detected"
+    );
 
     // Not staking pools
-    assert!(!is_staking_pool("wrap.near"), "wrap.near should not be detected");
-    assert!(!is_staking_pool("usdt.tether-token.near"), "usdt.tether-token.near should not be detected");
-    assert!(!is_staking_pool("example.near"), "example.near should not be detected");
-    assert!(!is_staking_pool("pool.near"), "pool.near alone should not be detected");
+    assert!(
+        !is_staking_pool("wrap.near"),
+        "wrap.near should not be detected"
+    );
+    assert!(
+        !is_staking_pool("usdt.tether-token.near"),
+        "usdt.tether-token.near should not be detected"
+    );
+    assert!(
+        !is_staking_pool("example.near"),
+        "example.near should not be detected"
+    );
+    assert!(
+        !is_staking_pool("pool.near"),
+        "pool.near alone should not be detected"
+    );
 
     println!("✓ Staking pool pattern detection working correctly");
 
@@ -137,7 +168,10 @@ async fn test_insert_staking_snapshot(pool: PgPool) -> sqlx::Result<()> {
     let staking_pool = "aurora.poolv1.near";
     let block_height: u64 = 177_000_000;
 
-    println!("Inserting staking snapshot for {}/{} at block {}", account_id, staking_pool, block_height);
+    println!(
+        "Inserting staking snapshot for {}/{} at block {}",
+        account_id, staking_pool, block_height
+    );
 
     let result = insert_staking_snapshot(&pool, &network, account_id, staking_pool, block_height)
         .await
@@ -175,12 +209,21 @@ async fn test_insert_staking_snapshot(pool: PgPool) -> sqlx::Result<()> {
     assert_eq!(record_account_id, account_id);
     assert_eq!(record_token_id.as_deref(), Some(token_id.as_str()));
     assert_eq!(record_counterparty, STAKING_SNAPSHOT_COUNTERPARTY);
-    assert!(record_transaction_hashes.is_empty(), "Staking snapshots should have empty transaction_hashes");
+    assert!(
+        record_transaction_hashes.is_empty(),
+        "Staking snapshots should have empty transaction_hashes"
+    );
 
     // Verify raw_data contains epoch metadata
     let raw_data = raw_data.expect("Should have raw_data");
-    assert!(raw_data.get("epoch").is_some(), "Should have epoch in raw_data");
-    assert!(raw_data.get("staking_pool").is_some(), "Should have staking_pool in raw_data");
+    assert!(
+        raw_data.get("epoch").is_some(),
+        "Should have epoch in raw_data"
+    );
+    assert!(
+        raw_data.get("staking_pool").is_some(),
+        "Should have staking_pool in raw_data"
+    );
 
     let balance_before: String = record.get("balance_before");
     let balance_after: String = record.get("balance_after");
@@ -223,8 +266,14 @@ async fn test_discover_staking_pools_from_counterparties(pool: PgPool) -> sqlx::
     println!("Discovered staking pools: {:?}", pools);
 
     // Should find the two staking pools, not wrap.near or SNAPSHOT
-    assert!(pools.contains("aurora.poolv1.near"), "Should discover aurora.poolv1.near");
-    assert!(pools.contains("kiln.poolv1.near"), "Should discover kiln.poolv1.near");
+    assert!(
+        pools.contains("aurora.poolv1.near"),
+        "Should discover aurora.poolv1.near"
+    );
+    assert!(
+        pools.contains("kiln.poolv1.near"),
+        "Should discover kiln.poolv1.near"
+    );
     assert!(!pools.contains("wrap.near"), "Should not include wrap.near");
     assert!(!pools.contains("SNAPSHOT"), "Should not include SNAPSHOT");
     assert_eq!(pools.len(), 2, "Should have exactly 2 staking pools");
@@ -267,14 +316,18 @@ async fn test_track_staking_rewards_flow(pool: PgPool) -> sqlx::Result<()> {
     // Verify staking snapshot was created
     let token_id = staking_token_id(staking_pool);
     let snapshot_exists: bool = sqlx::query_scalar(
-        r#"SELECT EXISTS(SELECT 1 FROM balance_changes WHERE account_id = $1 AND token_id = $2)"#
+        r#"SELECT EXISTS(SELECT 1 FROM balance_changes WHERE account_id = $1 AND token_id = $2)"#,
     )
     .bind(account_id)
     .bind(&token_id)
     .fetch_one(&pool)
     .await?;
 
-    assert!(snapshot_exists, "Should have created staking snapshot for {}", token_id);
+    assert!(
+        snapshot_exists,
+        "Should have created staking snapshot for {}",
+        token_id
+    );
 
     // Query the snapshot details
     let snapshot = sqlx::query(
@@ -307,12 +360,17 @@ async fn test_query_nonexistent_staking_balance(_pool: PgPool) -> sqlx::Result<(
     let staking_pool = "aurora.poolv1.near";
     let block_height: u64 = 177_000_000;
 
-    let result = get_staking_balance_at_block(&network, account_id, staking_pool, block_height).await;
+    let result =
+        get_staking_balance_at_block(&network, account_id, staking_pool, block_height).await;
 
     // The result should be OK with 0 balance (account not registered with pool)
     match result {
         Ok(balance) => {
-            assert_eq!(balance, BigDecimal::from(0), "Non-staker should have 0 balance");
+            assert_eq!(
+                balance,
+                BigDecimal::from(0),
+                "Non-staker should have 0 balance"
+            );
             println!("✓ Non-existent staking account returns 0 balance");
         }
         Err(e) => {

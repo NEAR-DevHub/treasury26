@@ -95,7 +95,8 @@ pub async fn get_staking_balance_at_block(
 
                 // Convert yoctoNEAR to human-readable NEAR (24 decimals)
                 let raw_balance = data.data;
-                let decimal_balance = convert_raw_to_decimal(&raw_balance.0.to_string(), NEAR_DECIMALS)?;
+                let decimal_balance =
+                    convert_raw_to_decimal(&raw_balance.0.to_string(), NEAR_DECIMALS)?;
 
                 return Ok(decimal_balance);
             }
