@@ -312,7 +312,7 @@ pub async fn get_transaction_hash(
 
     // Look up the transaction hash by querying the block
     let contract_id = state.bulk_payment_contract_id.to_string();
-    match lookup_transaction_hash(&state.network, block_height, &contract_id).await {
+    match lookup_transaction_hash(&state.archival_network, block_height, &contract_id).await {
         Ok(tx_hash) => Ok(Json(TransactionHashResponse {
             success: true,
             transaction_hash: Some(tx_hash),

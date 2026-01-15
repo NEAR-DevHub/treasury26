@@ -759,3 +759,94 @@ export async function searchIntentsTokens(
     throw error;
   }
 }
+
+export interface BulkPaymentListStatus {
+  list_id: string;
+  status: string;
+  total_payments: number;
+  processed_payments: number;
+  pending_payments: number;
+}
+
+export interface BulkPaymentListStatusResponse {
+  success: boolean;
+  list?: BulkPaymentListStatus;
+  error?: string;
+}
+
+export interface BulkPaymentTransaction {
+  recipient: string;
+  amount: string;
+  block_height: number;
+}
+
+export interface BulkPaymentTransactionsResponse {
+  success: boolean;
+  transactions?: BulkPaymentTransaction[];
+  error?: string;
+}
+
+export interface BulkPaymentTransactionHashResponse {
+  success: boolean;
+  transaction_hash?: string;
+  block_height?: number;
+  error?: string;
+}
+
+/**
+ * Get bulk payment list status
+ * Returns the status of a payment list including counts of processed/pending payments
+ */
+export async function getBulkPaymentListStatus(
+  listId: string
+): Promise<BulkPaymentListStatusResponse | null> {
+  if (!listId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/bulk-payment/list/${listId}`;
+    const response = await axios.get<BulkPaymentListStatusResponse>(url);
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting bulk payment list status for ${listId}`, error);
+    return null;
+  }
+}
+
+/**
+ * Get all payment transactions for a bulk payment list
+ * Returns the list of completed payment transactions with block heights
+ */
+export async function getBulkPaymentTransactions(
+  listId: string
+): Promise<BulkPaymentTransactionsResponse | null> {
+  if (!listId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/bulk-payment/list/${listId}/transactions`;
+    const response = await axios.get<BulkPaymentTransactionsResponse>(url);
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting bulk payment transactions for ${listId}`, error);
+    return null;
+  }
+}
+
+/**
+ * Get the transaction hash for a specific payment recipient
+ * Returns the blockchain transaction hash for a completed payment
+ */
+export async function getBulkPaymentTransactionHash(
+  listId: string,
+  recipient: string
+): Promise<BulkPaymentTransactionHashResponse | null> {
+  if (!listId || !recipient) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/bulk-payment/list/${listId}/transaction/${encodeURI(recipient)}`;
+    const response = await axios.get<BulkPaymentTransactionHashResponse>(url);
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting transaction hash for ${recipient} in ${listId}`, error);
+    return null;
+  }
+}

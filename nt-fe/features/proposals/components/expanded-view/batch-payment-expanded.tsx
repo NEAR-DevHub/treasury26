@@ -1,15 +1,18 @@
-import { useBatchPayment, useToken } from "@/hooks/use-treasury-queries";
+import { useBatchPayment } from "@/hooks/use-treasury-queries";
+import { useBulkPaymentTransactionHash } from "@/hooks/use-bulk-payment-transactions";
 import { BatchPaymentRequestData } from "../../types/index";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { Amount } from "../amount";
-import { BatchPayment, BatchPaymentResponse, TokenMetadata } from "@/lib/api";
+import { BatchPayment, BatchPaymentResponse, PaymentStatus } from "@/lib/api";
 import { Button } from "@/components/button";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ArrowUpRight, ChevronDown, } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Address } from "@/components/address";
 import { User } from "@/components/user";
+import Link from "next/link";
+import { ProposalStatusPill } from "../proposal-status-pill";
 
 interface PaymentDisplayProps {
     number: number;
@@ -17,10 +20,52 @@ interface PaymentDisplayProps {
     expanded: boolean;
     onExpandedClick: () => void;
     tokenId: string;
+    batchId: string;
 }
 
-function PaymentDisplay({ number, payment, expanded, onExpandedClick, tokenId }: PaymentDisplayProps) {
+const paymentStatusToText = (status: PaymentStatus): string => {
+    if (typeof status === "string") {
+        return status;
+    }
+    return Object.keys(status)[0];
+}
 
+function PaymentDisplay({ number, payment, expanded, onExpandedClick, tokenId, batchId }: PaymentDisplayProps) {
+    const status = paymentStatusToText(payment.status);
+    const isPaid = status === "Paid";
+    const { data: txData } = useBulkPaymentTransactionHash(
+        isPaid ? batchId : null,
+        isPaid ? payment.recipient : null
+    );
+    const transactionHash = txData?.transaction_hash;
+    const nearBlocksUrl = transactionHash ? `https://nearblocks.io/txns/${transactionHash}` : null;
+
+    let items: InfoItem[] = [
+        {
+            label: "Recipient",
+            value: <User accountId={payment.recipient} />
+        },
+        {
+            label: "Amount",
+            value: <Amount amount={payment.amount.toString()} showNetwork tokenId={tokenId} />
+        },
+    ];
+
+    if (status !== "Pending") {
+        items.push({
+            label: "Status",
+            value: <ProposalStatusPill status={status} />
+        });
+    }
+
+    if (isPaid && nearBlocksUrl && nearBlocksUrl.length > 0) {
+        items.push({
+            label: "Transaction Link",
+            value: <Link className="flex items-center gap-2" href={nearBlocksUrl} target="_blank" rel="noopener noreferrer">
+                View Transaction <ArrowUpRight className="size-4" />
+            </Link>
+        });
+    }
 
     return <Collapsible open={expanded} onOpenChange={onExpandedClick}>
         <CollapsibleTrigger className={cn("w-full flex justify-between items-center p-3 border rounded-lg", expanded && "rounded-b-none")}>
@@ -34,17 +79,7 @@ function PaymentDisplay({ number, payment, expanded, onExpandedClick, tokenId }:
             </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-            <InfoDisplay style="secondary" className="p-3 rounded-b-lg" items={[
-                {
-                    label: "Recipient",
-                    value: <User accountId={payment.recipient} />
-                },
-                {
-                    label: "Amount",
-                    value: <Amount amount={payment.amount.toString()} showNetwork tokenId={tokenId} />
-                }
-            ]} />
-
+            <InfoDisplay style="secondary" className="p-3 rounded-b-lg" items={items} />
         </CollapsibleContent>
     </Collapsible>
 }
@@ -53,7 +88,7 @@ interface BatchPaymentRequestExpandedProps {
     data: BatchPaymentRequestData;
 }
 
-function recipientsDisplay({ batchData, tokenId }: { batchData?: BatchPaymentResponse | null, tokenId: string }): InfoItem {
+function recipientsDisplay({ batchData, tokenId, batchId }: { batchData?: BatchPaymentResponse | null, tokenId: string, batchId: string }): InfoItem {
     const [expanded, setExpanded] = useState<number[]>([]);
     if (!batchData) {
         return {
@@ -62,14 +97,14 @@ function recipientsDisplay({ batchData, tokenId }: { batchData?: BatchPaymentRes
         };
     }
 
-    const onExpandedChanged = (expanded: number) => {
+    const onExpandedChanged = (index: number) => {
         setExpanded((prev) => {
-            if (prev.includes(expanded)) {
-                return prev.filter((id) => id !== expanded);
+            if (prev.includes(index)) {
+                return prev.filter((id) => id !== index);
             }
-            return [...prev, expanded];
-        })
-    }
+            return [...prev, index];
+        });
+    };
 
     const isAllExpanded = expanded.length === batchData?.payments.length;
     const toggleAllExpanded = () => {
@@ -78,7 +113,7 @@ function recipientsDisplay({ batchData, tokenId }: { batchData?: BatchPaymentRes
         } else {
             setExpanded(batchData.payments.map((_, index) => index));
         }
-    }
+    };
 
     return {
         label: "Recipients",
@@ -88,7 +123,15 @@ function recipientsDisplay({ batchData, tokenId }: { batchData?: BatchPaymentRes
         </div>,
         afterValue: <div className="flex flex-col gap-1">
             {batchData.payments.map((payment, index) => (
-                <PaymentDisplay tokenId={tokenId} number={index + 1} key={index} payment={payment} expanded={expanded.includes(index)} onExpandedClick={() => onExpandedChanged(index)} />
+                <PaymentDisplay
+                    tokenId={tokenId}
+                    number={index + 1}
+                    key={index}
+                    payment={payment}
+                    expanded={expanded.includes(index)}
+                    onExpandedClick={() => onExpandedChanged(index)}
+                    batchId={batchId}
+                />
             ))}
         </div>
     };
@@ -107,7 +150,7 @@ export function BatchPaymentRequestExpanded({ data }: BatchPaymentRequestExpande
             label: "Total Amount",
             value: <Amount showNetwork amount={data.totalAmount} tokenId={tokenId} />
         },
-        recipientsDisplay({ batchData, tokenId: tokenId })
+        recipientsDisplay({ batchData, tokenId, batchId: data.batchId })
     ];
 
     return (

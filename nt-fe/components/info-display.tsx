@@ -28,7 +28,7 @@ const styleVariants = cva("flex flex-col gap-2", {
     variants: {
         style: {
             default: "",
-            secondary: "bg-secondary text-secondary-foreground",
+            secondary: "bg-general-tertiary text-secondary-foreground",
         }
     },
     defaultVariants: {

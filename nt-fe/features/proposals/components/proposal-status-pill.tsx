@@ -12,6 +12,7 @@ export function getStatusColor(status: string | ProposalStatus): string {
     switch (status) {
         case "Approved":
         case "Executed":
+        case "Paid":
             return "bg-green-500/10 text-green-600";
         case "Rejected":
         case "Failed":
@@ -30,8 +31,10 @@ export function getStatusColor(status: string | ProposalStatus): string {
 export function getStatusLabel(status: string | ProposalStatus): string {
     switch (status) {
         case "Approved":
+        case "Paid":
             return "Executed";
         case "InProgress":
+        case "Pending":
             return "Pending";
         default:
             return status;
