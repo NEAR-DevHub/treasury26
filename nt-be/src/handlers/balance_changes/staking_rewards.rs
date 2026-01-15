@@ -370,11 +370,13 @@ pub async fn track_staking_rewards(
         .fetch_optional(pool)
         .await?;
 
-        if existing.is_none()
-            && let Ok(Some(_)) =
+        #[allow(clippy::collapsible_if)]
+        if existing.is_none() {
+            if let Ok(Some(_)) =
                 insert_staking_snapshot(pool, network, account_id, staking_pool, epoch_block).await
-        {
-            snapshots_created += 1;
+            {
+                snapshots_created += 1;
+            }
         }
     }
 
