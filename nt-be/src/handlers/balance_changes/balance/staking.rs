@@ -230,6 +230,6 @@ mod tests {
         assert_eq!(epoch_to_block(0), 0);
         assert_eq!(epoch_to_block(1), 43_200);
         assert_eq!(epoch_to_block(2), 86_400);
-        assert_eq!(epoch_to_block(4097), 177_014_400);
+        assert_eq!(epoch_to_block(4097), 176_990_400);
     }
 }
