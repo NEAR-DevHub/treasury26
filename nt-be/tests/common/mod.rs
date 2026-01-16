@@ -41,6 +41,16 @@ pub fn create_archival_network() -> NetworkConfig {
     }
 }
 
+/// Check if FASTNEAR_API_KEY is available and valid for network tests
+pub fn has_valid_fastnear_key() -> bool {
+    load_test_env();
+    
+    std::env::var("FASTNEAR_API_KEY")
+        .ok()
+        .filter(|key| !key.is_empty())
+        .is_some()
+}
+
 pub struct TestServer {
     process: Child,
     port: u16,

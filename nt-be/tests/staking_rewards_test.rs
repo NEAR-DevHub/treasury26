@@ -17,6 +17,12 @@ use sqlx::{PgPool, Row};
 /// Test querying staking pool balance for a known staking account
 #[sqlx::test]
 async fn test_query_staking_balance(_pool: PgPool) -> sqlx::Result<()> {
+    // Skip this test if FASTNEAR_API_KEY is not available
+    if !common::has_valid_fastnear_key() {
+        println!("Skipping test_query_staking_balance: FASTNEAR_API_KEY not available");
+        return Ok(());
+    }
+
     let network = common::create_archival_network();
 
     // Use a known account that has staked with aurora.poolv1.near
@@ -162,6 +168,12 @@ async fn test_staking_token_format(_pool: PgPool) -> sqlx::Result<()> {
 /// Test inserting staking snapshot records
 #[sqlx::test]
 async fn test_insert_staking_snapshot(pool: PgPool) -> sqlx::Result<()> {
+    // Skip this test if FASTNEAR_API_KEY is not available
+    if !common::has_valid_fastnear_key() {
+        println!("Skipping test_insert_staking_snapshot: FASTNEAR_API_KEY not available");
+        return Ok(());
+    }
+
     let network = common::create_archival_network();
 
     let account_id = "petersalomonsen.near";
@@ -286,6 +298,12 @@ async fn test_discover_staking_pools_from_counterparties(pool: PgPool) -> sqlx::
 /// Test full staking rewards tracking flow
 #[sqlx::test]
 async fn test_track_staking_rewards_flow(pool: PgPool) -> sqlx::Result<()> {
+    // Skip this test if FASTNEAR_API_KEY is not available
+    if !common::has_valid_fastnear_key() {
+        println!("Skipping test_track_staking_rewards_flow: FASTNEAR_API_KEY not available");
+        return Ok(());
+    }
+
     let network = common::create_archival_network();
 
     let account_id = "test-staking-flow.near";
@@ -353,6 +371,12 @@ async fn test_track_staking_rewards_flow(pool: PgPool) -> sqlx::Result<()> {
 /// Test staking balance query with non-existent account
 #[sqlx::test]
 async fn test_query_nonexistent_staking_balance(_pool: PgPool) -> sqlx::Result<()> {
+    // Skip this test if FASTNEAR_API_KEY is not available
+    if !common::has_valid_fastnear_key() {
+        println!("Skipping test_query_nonexistent_staking_balance: FASTNEAR_API_KEY not available");
+        return Ok(());
+    }
+
     let network = common::create_archival_network();
 
     // Query an account that has never staked with this pool
