@@ -19,13 +19,13 @@ use sqlx::{PgPool, Row};
 async fn test_query_staking_balance(_pool: PgPool) -> sqlx::Result<()> {
     let network = common::create_archival_network();
 
-    // Use a known account that has staked with aurora.poolv1.near
-    // petersalomonsen.near has been staking for a long time
-    let account_id = "petersalomonsen.near";
-    let staking_pool = "aurora.poolv1.near";
+    // Use a known account that has staked with astro-stakers.poolv1.near
+    // webassemblymusic-treasury has historical staking activity
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    let staking_pool = "astro-stakers.poolv1.near";
 
-    // Use a recent block where we know there's staked balance
-    let block_height: u64 = 177_000_000;
+    // Use a block where we know there's staked balance (from test data)
+    let block_height: u64 = 161_048_666;
 
     println!(
         "Querying staking balance for {}/{} at block {}",
@@ -38,7 +38,7 @@ async fn test_query_staking_balance(_pool: PgPool) -> sqlx::Result<()> {
 
     println!("Staking balance: {} NEAR", balance);
 
-    // petersalomonsen.near should have some staked balance
+    // webassemblymusic-treasury should have some staked balance
     assert!(
         balance > BigDecimal::from(0),
         "Should have non-zero staking balance"
@@ -164,9 +164,9 @@ async fn test_staking_token_format(_pool: PgPool) -> sqlx::Result<()> {
 async fn test_insert_staking_snapshot(pool: PgPool) -> sqlx::Result<()> {
     let network = common::create_archival_network();
 
-    let account_id = "petersalomonsen.near";
-    let staking_pool = "aurora.poolv1.near";
-    let block_height: u64 = 177_000_000;
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    let staking_pool = "astro-stakers.poolv1.near";
+    let block_height: u64 = 161_048_666;
 
     println!(
         "Inserting staking snapshot for {}/{} at block {}",
@@ -288,8 +288,8 @@ async fn test_discover_staking_pools_from_counterparties(pool: PgPool) -> sqlx::
 async fn test_track_staking_rewards_flow(pool: PgPool) -> sqlx::Result<()> {
     let network = common::create_archival_network();
 
-    let account_id = "test-staking-flow.near";
-    let staking_pool = "aurora.poolv1.near";
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    let staking_pool = "astro-stakers.poolv1.near";
 
     // Insert a NEAR balance change with staking pool as counterparty
     // This simulates the account having interacted with the staking pool
@@ -297,7 +297,7 @@ async fn test_track_staking_rewards_flow(pool: PgPool) -> sqlx::Result<()> {
         r#"
         INSERT INTO balance_changes
         (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, transaction_hashes, receipt_id, counterparty, actions, raw_data)
-        VALUES ($1, 'near', 177000000, 1700000000000000000, NOW(), 10, 100, 110, '{}', '{}', $2, '{}', '{}')
+        VALUES ($1, 'near', 161048666, 1700000000000000000, NOW(), 10, 100, 110, '{}', '{}', $2, '{}', '{}')
         "#
     )
     .bind(account_id)
@@ -305,8 +305,9 @@ async fn test_track_staking_rewards_flow(pool: PgPool) -> sqlx::Result<()> {
     .execute(&pool)
     .await?;
 
-    // Track staking rewards
-    let up_to_block: i64 = 177_000_000;
+    // Track staking rewards - use epoch boundary after the transaction
+    // Epoch 3728 starts at block 161049600 (next epoch after the staking interaction)
+    let up_to_block: i64 = 161_049_600;
     let snapshots_created = track_staking_rewards(&pool, &network, account_id, up_to_block)
         .await
         .expect("Should track staking rewards");
