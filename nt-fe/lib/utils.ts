@@ -93,7 +93,7 @@ export function formatUserDate(
     }
 
     const formatter = new Intl.DateTimeFormat("en-US", formatOptions);
-    return formatter.format(dateObj);
+    return formatter.format(dateObj).replace("GMT", "UTC");
   } catch (error) {
     console.error("Error formatting date with Intl:", error);
 
@@ -120,7 +120,7 @@ export function formatUserDate(
     }
 
     // return formattedDate;
-    return dateObj.toUTCString();
+    return dateObj.toUTCString().replace("GMT", "UTC");
   }
 }
 
