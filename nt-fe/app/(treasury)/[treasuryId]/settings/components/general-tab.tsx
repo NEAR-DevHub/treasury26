@@ -238,6 +238,7 @@ export function GeneralTab() {
                     <FormControl>
                       <Input
                         id="display-name"
+                        clearable={false}
                         {...field}
                         placeholder="Enter display name"
                       />
@@ -260,7 +261,7 @@ export function GeneralTab() {
                   <div className="space-y-2">
                     <Label htmlFor="account-name">Account Name</Label>
                     <FormControl>
-                      <Input id="account-name" {...field} disabled={true} />
+                      <Input id="account-name" clearable={false} {...field} disabled={true} />
                     </FormControl>
                   </div>
                 </FormItem>
