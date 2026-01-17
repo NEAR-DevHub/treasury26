@@ -276,12 +276,15 @@ pub async fn insert_staking_snapshot(
     Ok(Some(balance))
 }
 
+/// Maximum number of epochs to fill per monitoring cycle
+const MAX_EPOCHS_PER_CYCLE: usize = 5;
+
 /// Track staking rewards for all discovered staking pools
 ///
 /// This function:
 /// 1. Discovers staking pools from balance_changes counterparties
-/// 2. For each new staking pool, creates initial and current epoch snapshots
-/// 3. For existing staking pools, creates snapshot at current epoch if missing
+/// 2. Finds all missing epochs between first staking transaction and current epoch
+/// 3. Fills up to MAX_EPOCHS_PER_CYCLE missing epochs per cycle (prioritizing recent ones)
 ///
 /// # Arguments
 /// * `pool` - Database connection pool
@@ -304,77 +307,123 @@ pub async fn track_staking_rewards(
         return Ok(0);
     }
 
-    // Get already tracked staking pools
-    let tracked_pools = get_tracked_staking_pools(pool, account_id).await?;
-
-    // Find new pools (discovered but not yet tracked)
-    let new_pools: Vec<_> = discovered_pools
-        .iter()
-        .filter(|p| !tracked_pools.contains(*p))
-        .collect();
-
     let current_epoch = block_to_epoch(up_to_block as u64);
     let mut snapshots_created = 0;
 
-    // For new pools, create initial snapshot at current epoch
-    for staking_pool in &new_pools {
-        let epoch_block = epoch_to_block(current_epoch);
-
-        match insert_staking_snapshot(pool, network, account_id, staking_pool, epoch_block).await {
-            Ok(Some(_)) => {
-                snapshots_created += 1;
-                log::info!(
-                    "Created initial staking snapshot for {}/{} at epoch {}",
-                    account_id,
-                    staking_pool,
-                    current_epoch
-                );
-            }
-            Ok(None) => {
-                log::debug!(
-                    "No staking balance for {}/{} at epoch {}",
-                    account_id,
-                    staking_pool,
-                    current_epoch
-                );
-            }
-            Err(e) => {
-                log::warn!(
-                    "Failed to create staking snapshot for {}/{}: {}",
-                    account_id,
-                    staking_pool,
-                    e
-                );
-            }
-        }
-    }
-
-    // For all tracked pools (including newly added), check if current epoch snapshot exists
-    let all_pools: HashSet<_> = discovered_pools.union(&tracked_pools).cloned().collect();
-
-    for staking_pool in &all_pools {
+    for staking_pool in &discovered_pools {
         let token_id = staking_token_id(staking_pool);
-        let epoch_block = epoch_to_block(current_epoch);
 
-        // Check if snapshot exists for current epoch
-        let existing: Option<(i64,)> = sqlx::query_as(
+        // Find the first staking transaction to determine how far back to go
+        let first_staking_tx: Option<(i64,)> = sqlx::query_as(
+            r#"
+            SELECT MIN(block_height) as first_block
+            FROM balance_changes
+            WHERE account_id = $1 AND counterparty = $2
+            "#,
+        )
+        .bind(account_id)
+        .bind(staking_pool.as_str())
+        .fetch_optional(pool)
+        .await?;
+
+        let first_tx_epoch = match first_staking_tx {
+            Some((first_block,)) => block_to_epoch(first_block as u64),
+            None => {
+                log::debug!(
+                    "No staking transactions found for {}/{}",
+                    account_id,
+                    staking_pool
+                );
+                continue;
+            }
+        };
+
+        // Get all existing epoch snapshots for this staking pool
+        let existing_epochs: Vec<(i64,)> = sqlx::query_as(
             r#"
             SELECT block_height
             FROM balance_changes
-            WHERE account_id = $1 AND token_id = $2 AND block_height = $3
+            WHERE account_id = $1 AND token_id = $2
+            ORDER BY block_height
             "#,
         )
         .bind(account_id)
         .bind(&token_id)
-        .bind(epoch_block as i64)
-        .fetch_optional(pool)
+        .fetch_all(pool)
         .await?;
 
-        if existing.is_none()
-            && let Ok(Some(_)) =
-                insert_staking_snapshot(pool, network, account_id, staking_pool, epoch_block).await
-        {
-            snapshots_created += 1;
+        let existing_epoch_set: HashSet<u64> = existing_epochs
+            .iter()
+            .map(|(block,)| block_to_epoch(*block as u64))
+            .collect();
+
+        // Find all missing epochs from first_tx_epoch to current_epoch
+        let mut missing_epochs: Vec<u64> = (first_tx_epoch..=current_epoch)
+            .filter(|epoch| !existing_epoch_set.contains(epoch))
+            .collect();
+
+        if missing_epochs.is_empty() {
+            log::debug!(
+                "All epochs covered for {}/{} ({} to {})",
+                account_id,
+                staking_pool,
+                first_tx_epoch,
+                current_epoch
+            );
+            continue;
+        }
+
+        // Sort descending to prioritize recent epochs
+        missing_epochs.sort_by(|a, b| b.cmp(a));
+
+        // Take up to MAX_EPOCHS_PER_CYCLE missing epochs
+        let epochs_to_fill: Vec<u64> = missing_epochs
+            .into_iter()
+            .take(MAX_EPOCHS_PER_CYCLE)
+            .collect();
+
+        log::info!(
+            "Filling {} missing staking epochs for {}/{} (epochs: {:?})",
+            epochs_to_fill.len(),
+            account_id,
+            staking_pool,
+            epochs_to_fill
+        );
+
+        for epoch in epochs_to_fill {
+            let epoch_block = epoch_to_block(epoch);
+
+            match insert_staking_snapshot(pool, network, account_id, staking_pool, epoch_block)
+                .await
+            {
+                Ok(Some(_)) => {
+                    snapshots_created += 1;
+                    log::info!(
+                        "Created staking snapshot for {}/{} at epoch {} (block {})",
+                        account_id,
+                        staking_pool,
+                        epoch,
+                        epoch_block
+                    );
+                }
+                Ok(None) => {
+                    log::debug!(
+                        "No staking balance for {}/{} at epoch {}",
+                        account_id,
+                        staking_pool,
+                        epoch
+                    );
+                }
+                Err(e) => {
+                    log::warn!(
+                        "Failed to create staking snapshot for {}/{} at epoch {}: {}",
+                        account_id,
+                        staking_pool,
+                        epoch,
+                        e
+                    );
+                }
+            }
         }
     }
 

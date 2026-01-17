@@ -382,3 +382,149 @@ async fn test_query_nonexistent_staking_balance(_pool: PgPool) -> sqlx::Result<(
 
     Ok(())
 }
+
+/// Test that track_staking_rewards prioritizes recent epochs over older ones
+///
+/// Scenario: Existing snapshots at epochs [3720, 3723, 3725], current epoch 3730
+/// Missing: [3721, 3722, 3724, 3726, 3727, 3728, 3729, 3730]
+/// Expected: Fill the 5 most recent: [3730, 3729, 3728, 3727, 3726]
+///
+/// Uses historical epochs that are definitely available on mainnet archival nodes.
+#[sqlx::test]
+async fn test_track_staking_rewards_prioritizes_recent_epochs(pool: PgPool) -> sqlx::Result<()> {
+    let network = common::create_archival_network();
+
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    let staking_pool = "astro-stakers.poolv1.near";
+    let token_id = staking_token_id(staking_pool);
+
+    // Use historical epochs that are definitely available
+    // Epoch 3720 = block 160,704,000 (historical, definitely exists)
+    let first_epoch = 3720u64;
+    let current_epoch = 3730u64;
+
+    // First, insert a staking transaction so the pool is discovered
+    let first_tx_block = epoch_to_block(first_epoch);
+    sqlx::query(
+        r#"
+        INSERT INTO balance_changes
+        (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, transaction_hashes, receipt_id, counterparty, actions, raw_data)
+        VALUES ($1, 'NEAR', $2, 1700000000000000000, NOW(), 10, 100, 110, '{}', '{}', $3, '{}', '{}')
+        "#
+    )
+    .bind(account_id)
+    .bind(first_tx_block as i64)
+    .bind(staking_pool)
+    .execute(&pool)
+    .await?;
+
+    // Insert existing staking snapshots at epochs 3720, 3723, 3725 (with gaps)
+    for epoch in [3720u64, 3723, 3725] {
+        let epoch_block = epoch_to_block(epoch);
+        sqlx::query(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, transaction_hashes, receipt_id, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, 1700000000000000000, NOW(), 0, 100, 100, '{}', '{}', 'STAKING_SNAPSHOT', '{}', '{"epoch": 0}')
+            "#
+        )
+        .bind(account_id)
+        .bind(&token_id)
+        .bind(epoch_block as i64)
+        .execute(&pool)
+        .await?;
+    }
+
+    // Verify initial state: 3 existing snapshots
+    let initial_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM balance_changes WHERE account_id = $1 AND token_id = $2",
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_one(&pool)
+    .await?;
+    assert_eq!(initial_count, 3, "Should start with 3 existing snapshots");
+
+    // Set current block to epoch 3730 boundary
+    let up_to_block = epoch_to_block(current_epoch) as i64;
+
+    println!(
+        "Testing with epochs {} to {}, up_to_block={}",
+        first_epoch, current_epoch, up_to_block
+    );
+
+    // Run track_staking_rewards - should fill up to 5 missing epochs
+    let snapshots_created = track_staking_rewards(&pool, &network, account_id, up_to_block)
+        .await
+        .expect("Should track staking rewards");
+
+    println!("Created {} staking snapshots", snapshots_created);
+
+    // Get all snapshots ordered by block_height descending to see which were created
+    let snapshots: Vec<(i64,)> = sqlx::query_as(
+        r#"
+        SELECT block_height
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        ORDER BY block_height DESC
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_all(&pool)
+    .await?;
+
+    let snapshot_epochs: Vec<u64> = snapshots
+        .iter()
+        .map(|(block,)| block_to_epoch(*block as u64))
+        .collect();
+
+    println!("All snapshot epochs (newest first): {:?}", snapshot_epochs);
+
+    // Verify that the most recent epochs were filled first
+    // Missing epochs: [3721, 3722, 3724, 3726, 3727, 3728, 3729, 3730]
+    // The 5 most recent missing epochs are: 3730, 3729, 3728, 3727, 3726
+
+    // Check that we have the current epoch (3730)
+    assert!(
+        snapshot_epochs.contains(&current_epoch),
+        "Should have filled current epoch {}",
+        current_epoch
+    );
+
+    // Check that recent epochs were prioritized over older gaps
+    let has_3726 = snapshot_epochs.contains(&3726);
+    let has_3727 = snapshot_epochs.contains(&3727);
+    let has_3728 = snapshot_epochs.contains(&3728);
+    let has_3729 = snapshot_epochs.contains(&3729);
+
+    // If we created 5 snapshots, all recent ones should be present
+    if snapshots_created >= 5 {
+        assert!(has_3726, "Should have epoch 3726");
+        assert!(has_3727, "Should have epoch 3727");
+        assert!(has_3728, "Should have epoch 3728");
+        assert!(has_3729, "Should have epoch 3729");
+    }
+
+    // Verify older gaps (3721, 3722, 3724) are NOT filled yet (they come later)
+    // They should only be filled in subsequent cycles
+    let has_3721 = snapshot_epochs.contains(&3721);
+    let has_3722 = snapshot_epochs.contains(&3722);
+    let has_3724 = snapshot_epochs.contains(&3724);
+
+    // At least some older epochs should still be missing after first cycle
+    let older_gaps_remaining = !has_3721 || !has_3722 || !has_3724;
+    assert!(
+        older_gaps_remaining || snapshots_created < 5,
+        "Older gaps (3721, 3722, 3724) should not all be filled before recent epochs"
+    );
+
+    println!("✓ Staking rewards correctly prioritizes recent epochs");
+    println!("  Filled epochs: {:?}", snapshot_epochs);
+    println!(
+        "  Older gaps remaining: 3721={}, 3722={}, 3724={}",
+        !has_3721, !has_3722, !has_3724
+    );
+
+    Ok(())
+}
