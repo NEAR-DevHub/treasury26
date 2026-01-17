@@ -42,7 +42,7 @@ pub async fn find_gaps(
     let gaps = sqlx::query_as::<_, BalanceGap>(
         r#"
         WITH balance_chain AS (
-            SELECT 
+            SELECT
                 account_id,
                 token_id,
                 block_height,
@@ -51,9 +51,10 @@ pub async fn find_gaps(
                 LAG(block_height) OVER w as prev_block_height,
                 LAG(balance_after) OVER w as prev_balance_after
             FROM balance_changes
-            WHERE account_id = $1 
+            WHERE account_id = $1
               AND token_id = $2
               AND block_height <= $3
+              AND counterparty NOT IN ('SNAPSHOT', 'NOT_REGISTERED', 'STAKING_SNAPSHOT')
             WINDOW w AS (PARTITION BY account_id, token_id ORDER BY block_height)
         )
         SELECT
@@ -251,6 +252,196 @@ mod tests {
         assert_eq!(gaps[0].end_block, 200);
         assert_eq!(gaps[1].start_block, 300);
         assert_eq!(gaps[1].end_block, 400);
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn test_find_gaps_ignores_staking_snapshot(pool: PgPool) -> sqlx::Result<()> {
+        // Insert a normal balance record
+        let block_time1 = block_timestamp_to_datetime(1000000000i64);
+        sqlx::query!(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            "test.near",
+            "NEAR",
+            100i64,
+            1000000000i64,
+            block_time1,
+            BigDecimal::from_str("100").unwrap(),
+            BigDecimal::from_str("1000").unwrap(),
+            BigDecimal::from_str("900").unwrap(),
+            Some("recipient.near"),
+            serde_json::json!({}),
+            serde_json::json!({})
+        )
+        .execute(&pool)
+        .await?;
+
+        // Insert a STAKING_SNAPSHOT record with different balance (would cause gap if not ignored)
+        let block_time2 = block_timestamp_to_datetime(1500000000i64);
+        sqlx::query!(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            "test.near",
+            "NEAR",
+            150i64,
+            1500000000i64,
+            block_time2,
+            BigDecimal::from_str("0").unwrap(),
+            BigDecimal::from_str("500").unwrap(),  // Different balance - would cause gap if not ignored
+            BigDecimal::from_str("500").unwrap(),
+            Some("STAKING_SNAPSHOT"),
+            serde_json::json!({}),
+            serde_json::json!({})
+        )
+        .execute(&pool)
+        .await?;
+
+        // Insert another normal record that continues from first record's balance
+        let block_time3 = block_timestamp_to_datetime(2000000000i64);
+        sqlx::query!(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            "test.near",
+            "NEAR",
+            200i64,
+            2000000000i64,
+            block_time3,
+            BigDecimal::from_str("100").unwrap(),
+            BigDecimal::from_str("900").unwrap(),  // Continues from first record's balance_after
+            BigDecimal::from_str("800").unwrap(),
+            Some("recipient.near"),
+            serde_json::json!({}),
+            serde_json::json!({})
+        )
+        .execute(&pool)
+        .await?;
+
+        let gaps = find_gaps(&pool, "test.near", "NEAR", 200).await?;
+
+        // Should detect no gaps because STAKING_SNAPSHOT is ignored
+        // Chain is: block 100 (900) -> block 200 (900) = continuous
+        assert_eq!(
+            gaps.len(),
+            0,
+            "Should detect no gaps when STAKING_SNAPSHOT is ignored"
+        );
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn test_find_gaps_ignores_snapshot_and_not_registered(pool: PgPool) -> sqlx::Result<()> {
+        // Insert a normal balance record
+        let block_time1 = block_timestamp_to_datetime(1000000000i64);
+        sqlx::query!(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            "test.near",
+            "NEAR",
+            100i64,
+            1000000000i64,
+            block_time1,
+            BigDecimal::from_str("100").unwrap(),
+            BigDecimal::from_str("1000").unwrap(),
+            BigDecimal::from_str("900").unwrap(),
+            Some("recipient.near"),
+            serde_json::json!({}),
+            serde_json::json!({})
+        )
+        .execute(&pool)
+        .await?;
+
+        // Insert a SNAPSHOT record (would cause gap if not ignored)
+        let block_time2 = block_timestamp_to_datetime(1200000000i64);
+        sqlx::query!(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            "test.near",
+            "NEAR",
+            120i64,
+            1200000000i64,
+            block_time2,
+            BigDecimal::from_str("0").unwrap(),
+            BigDecimal::from_str("0").unwrap(),
+            BigDecimal::from_str("0").unwrap(),
+            Some("SNAPSHOT"),
+            serde_json::json!({}),
+            serde_json::json!({})
+        )
+        .execute(&pool)
+        .await?;
+
+        // Insert a NOT_REGISTERED record (would cause gap if not ignored)
+        let block_time3 = block_timestamp_to_datetime(1500000000i64);
+        sqlx::query!(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            "test.near",
+            "NEAR",
+            150i64,
+            1500000000i64,
+            block_time3,
+            BigDecimal::from_str("0").unwrap(),
+            BigDecimal::from_str("0").unwrap(),
+            BigDecimal::from_str("0").unwrap(),
+            Some("NOT_REGISTERED"),
+            serde_json::json!({}),
+            serde_json::json!({})
+        )
+        .execute(&pool)
+        .await?;
+
+        // Insert another normal record that continues from first record's balance
+        let block_time4 = block_timestamp_to_datetime(2000000000i64);
+        sqlx::query!(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            "#,
+            "test.near",
+            "NEAR",
+            200i64,
+            2000000000i64,
+            block_time4,
+            BigDecimal::from_str("100").unwrap(),
+            BigDecimal::from_str("900").unwrap(),
+            BigDecimal::from_str("800").unwrap(),
+            Some("recipient.near"),
+            serde_json::json!({}),
+            serde_json::json!({})
+        )
+        .execute(&pool)
+        .await?;
+
+        let gaps = find_gaps(&pool, "test.near", "NEAR", 200).await?;
+
+        // Should detect no gaps because SNAPSHOT and NOT_REGISTERED are ignored
+        assert_eq!(
+            gaps.len(),
+            0,
+            "Should detect no gaps when SNAPSHOT and NOT_REGISTERED are ignored"
+        );
 
         Ok(())
     }

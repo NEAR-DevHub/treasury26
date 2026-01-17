@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use super::balance::ft::get_balance_at_block as get_ft_balance;
 use super::gap_filler::{fill_gaps, insert_snapshot_record};
-use super::staking_rewards::track_staking_rewards;
+use super::staking_rewards::{is_staking_token, track_staking_rewards};
 use super::token_discovery::snapshot_intents_tokens;
 
 /// Run one cycle of monitoring for all enabled accounts
@@ -80,6 +80,12 @@ pub async fn run_monitor_cycle(
         let mut errors = Vec::new();
 
         for token_id in &tokens {
+            // Skip staking tokens - they use epoch-based snapshots, not gap filling
+            if is_staking_token(token_id) {
+                processed_tokens += 1;
+                continue;
+            }
+
             match fill_gaps(pool, network, account_id, token_id, up_to_block).await {
                 Ok(filled) => {
                     if !filled.is_empty() {
