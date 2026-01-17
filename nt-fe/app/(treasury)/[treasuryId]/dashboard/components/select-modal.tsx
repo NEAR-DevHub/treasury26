@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/input";
 import { Button } from "@/components/button";
 import {
   Dialog,
@@ -78,6 +78,7 @@ export function SelectModal({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
               type="text"
+              search
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

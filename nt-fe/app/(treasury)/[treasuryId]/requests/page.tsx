@@ -18,7 +18,7 @@ import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposal
 import { convertUrlParamsToApiFilters } from "@/features/proposals/utils/filter-params-converter";
 import { NumberBadge } from "@/components/number-badge";
 import { TableSkeleton } from "@/components/table-skeleton";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/input";
 import { useNear } from "@/stores/near-store";
 
 // Constants
@@ -199,12 +199,16 @@ export default function RequestsPage() {
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
-    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'tokens', 'created_date', 'my_vote', 'search'];
+    // Without search as we shouldn't show indicator for search
+    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'tokens', 'created_date', 'my_vote'];
     return filterParams.some(param => searchParams.has(param));
+  }, [searchParams]);
+  const isSearchActive = useMemo(() => {
+    return searchParams.has('search');
   }, [searchParams]);
 
   // Only show "No Requests Found" if there are no proposals AND no filters are active
-  if (allProposals?.proposals?.length === 0 && !hasActiveFilters) {
+  if (allProposals?.proposals?.length === 0 && !hasActiveFilters && !isSearchActive) {
     return (
       <PageComponentLayout title="Requests" description="View and manage all pending multisig requests">
         <NoRequestsFound />
@@ -218,7 +222,7 @@ export default function RequestsPage() {
         <Tabs value={currentTab} onValueChange={handleTabChange} className="gap-0">
           {selectedCount === 0 && (
             <>
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b p-5 pb-3.5">
+              <div className="flex flex-col md:flex-row gap-4 items-center md:justify-between border-b p-5 pb-3.5">
                 <TabsList className="w-fit border-none">
                   <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="pending" className="flex gap-2.5">Pending
@@ -235,6 +239,7 @@ export default function RequestsPage() {
                     type="text"
                     placeholder="Search request by name or ID"
                     className="w-64"
+                    search
                     value={searchValue}
                     onChange={(e) => handleSearchChange(e.target.value)}
                   />

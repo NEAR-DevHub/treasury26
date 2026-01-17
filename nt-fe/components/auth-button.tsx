@@ -63,12 +63,10 @@ export function AuthButtonWithProposal({
 }: AuthButtonWithProposalProps) {
     const hasAccess = (() => {
         if (!policy || !accountId) return false;
-        console.log({ policy, accountId, proposalKind, isDeleteCheck });
         const { approverAccounts } = getApproversAndThreshold(policy, accountId, proposalKind, isDeleteCheck);
         return approverAccounts.includes(accountId);
     })();
 
-    console.log(hasAccess);
 
     if (!hasAccess) {
         return (

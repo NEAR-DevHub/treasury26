@@ -12,7 +12,7 @@ import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-aggregated-tok
 import Big from "big.js";
 import { NetworkDisplay } from "./token-display";
 import { TokenDisplay } from "./token-display-with-network";
-import { Input } from "./ui/input";
+import { Input } from "./input";
 
 interface TokenSelectProps {
     selectedToken: string | null;
@@ -146,6 +146,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                         <div className="px-4">
                             <Input
                                 placeholder="Search by name"
+                                search
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />

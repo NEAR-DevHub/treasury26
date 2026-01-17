@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { Button } from "@/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/input";
 import { cn } from "@/lib/utils";
 import { fetchDepositAssets } from "@/lib/bridge-api";
 import { useThemeStore } from "@/stores/theme-store";
@@ -131,6 +131,7 @@ export function TokenSelectPopover({
                         <Input
                             type="text"
                             placeholder="Search tokens..."
+                            search
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="pl-8 h-8 text-sm bg-muted border-0"

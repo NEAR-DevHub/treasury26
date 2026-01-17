@@ -6,7 +6,7 @@ import { Button } from "@/components/button";
 import { Plus, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/input";
 import { DateTimePicker } from "@/components/ui/datepicker";
 import { endOfDay, format, isSameDay, startOfDay, subDays, subMonths } from "date-fns";
 import { OperationSelect } from "@/components/operation-select";
@@ -752,6 +752,7 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
                     <Input
                         autoFocus
                         placeholder="Search by address"
+                        search
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={handleKeyDown}

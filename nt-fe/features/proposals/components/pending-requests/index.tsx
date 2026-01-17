@@ -57,9 +57,6 @@ interface PendingRequestItemProps {
 
 export function PendingRequestItem({ proposal, policy, accountId, onVote }: PendingRequestItemProps) {
     const type = getProposalUIKind(proposal);
-    console.log(proposal);
-    console.log(policy);
-    console.log(accountId);
 
     return (
         <Link href={`/${accountId}/requests/${proposal.id}`}>
