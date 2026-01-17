@@ -77,30 +77,22 @@ interface VotingRequestActionProps {
   hasPendingRequest: boolean;
   onCreateRequest: () => void;
   isSubmitting: boolean;
-  isAuthorized: boolean;
-  accountId: string | null;
   disabled: boolean;
-  permissionMessage: string;
 }
 
 function VotingRequestAction({
   hasPendingRequest,
   onCreateRequest,
   isSubmitting,
-  isAuthorized,
-  accountId,
   disabled,
-  permissionMessage,
 }: VotingRequestActionProps) {
   return (
     <div className="rounded-lg border bg-card p-0 overflow-hidden">
       <CreateRequestButton
         onClick={onCreateRequest}
         isSubmitting={isSubmitting}
-        isAuthorized={isAuthorized}
-        accountId={accountId}
+        permissions={{ kind: "policy", action: "AddProposal" }}
         disabled={disabled || hasPendingRequest}
-        permissionMessage={permissionMessage}
         className="w-full h-10 rounded-none"
       />
     </div>
@@ -498,15 +490,12 @@ export function VotingTab() {
             hasPendingRequest={hasPendingVotingRequest}
             onCreateRequest={handleThresholdChange}
             isSubmitting={isSubmittingThreshold}
-            isAuthorized={isAuthorized}
-            accountId={accountId}
             disabled={
               !activeTab ||
               !form.watch("thresholds")?.[activeTab] ||
               form.watch("thresholds")[activeTab] ===
               originalThresholds[activeTab]
             }
-            permissionMessage="You don't have permission to change the voting threshold"
           />
         </PageCard>
 
@@ -549,13 +538,10 @@ export function VotingTab() {
             hasPendingRequest={hasPendingVotingRequest}
             onCreateRequest={handleDurationChange}
             isSubmitting={isSubmittingDuration}
-            isAuthorized={isAuthorized}
-            accountId={accountId}
             disabled={
               !form.formState.dirtyFields.voteDuration ||
               !!form.formState.errors.voteDuration
             }
-            permissionMessage="You don't have permission to change the vote duration"
           />
         </PageCard>
       </div>

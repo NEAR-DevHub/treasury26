@@ -1,31 +1,47 @@
 import { Button } from "@/components/button";
 import { Loader2 } from "lucide-react";
+import { useNear } from "@/stores/near-store";
+import { useTreasury } from "@/stores/treasury-store";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useMemo } from "react";
+import { hasPermission } from "@/lib/config-utils";
+
+interface PermissionRequirement {
+  kind: string;
+  action: string;
+}
 
 interface CreateRequestButtonProps {
-  isSubmitting: boolean;
-  isAuthorized: boolean;
-  accountId: string | null;
+  isSubmitting?: boolean;
+  permissions?: PermissionRequirement | PermissionRequirement[];
   disabled?: boolean;
   onClick?: () => void;
   type?: "button" | "submit";
   className?: string;
-  permissionMessage?: string;
-  submittingMessage?: string;
   idleMessage?: string;
 }
 
 export function CreateRequestButton({
-  isSubmitting,
-  isAuthorized,
-  accountId,
+  isSubmitting = false,
+  permissions,
   disabled = false,
   onClick,
   type = "button",
   className = "w-full h-10",
-  permissionMessage = "You don't have permission to create this request",
-  submittingMessage = "Creating Proposal...",
   idleMessage = "Create Request",
 }: CreateRequestButtonProps) {
+  const { accountId } = useNear();
+  const { selectedTreasury } = useTreasury();
+  const { data: policy } = useTreasuryPolicy(selectedTreasury);
+
+  const isAuthorized = useMemo(() => {
+    if (!permissions || !policy || !accountId) return false;
+    const requirements = Array.isArray(permissions) ? permissions : [permissions];
+    return requirements.some((req) =>
+      hasPermission(policy, accountId, req.kind, req.action)
+    );
+  }, [permissions, policy, accountId]);
+
   const isDisabled = disabled || isSubmitting || !isAuthorized || !accountId;
 
   return (
@@ -38,12 +54,12 @@ export function CreateRequestButton({
       {isSubmitting ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          {submittingMessage}
+          Creating Proposal...
         </>
       ) : !accountId ? (
-        "Sign in required"
+        "Connect your wallet"
       ) : !isAuthorized ? (
-        permissionMessage
+        "You don’t have permission to create a request"
       ) : (
         idleMessage
       )}

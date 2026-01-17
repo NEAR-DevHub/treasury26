@@ -20,6 +20,7 @@ import { ConnectorAction } from "@hot-labs/near-connect";
 import { NEAR_TOKEN } from "@/constants/token";
 import { SendingTotal } from "@/components/sending-total";
 import { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
+import { CreateRequestButton } from "@/components/create-request-button";
 
 const paymentFormSchema = z.object({
   address: z.string().min(2, "Recipient should be at least 2 characters").max(64, "Recipient must be less than 64 characters"),
@@ -43,6 +44,7 @@ const paymentFormSchema = z.object({
 
 function Step1({ handleNext }: StepProps) {
   const form = useFormContext<PaymentFormValues>();
+  const token = form.watch("token");
 
   const handleContinue = () => {
     form.trigger().then((isValid) => {
@@ -57,7 +59,17 @@ function Step1({ handleNext }: StepProps) {
       <StepperHeader title="New Payment" />
       <TokenInput title="You send" control={form.control} amountName="amount" tokenName="token" />
       <RecipientInput control={form.control} name="address" />
-      <InlineNextButton text="Review Payment" onClick={handleContinue} />
+      <div className="rounded-lg border bg-card p-0 overflow-hidden">
+        <CreateRequestButton
+          onClick={handleContinue}
+          className="w-full h-10 rounded-none"
+          permissions={[
+            { kind: "transfer", action: "AddProposal" },
+            { kind: "call", action: "AddProposal" },
+          ]}
+          idleMessage="Review Payment"
+        />
+      </div>
     </PageCard>
   );
 }
@@ -117,7 +129,18 @@ function Step2({ handleBack }: StepProps) {
         <></>
       </ReviewStep>
 
-      <InlineNextButton text="Confirm and Submit Request" loading={form.formState.isSubmitting} />
+      <div className="rounded-lg border bg-card p-0 overflow-hidden">
+        <CreateRequestButton
+          isSubmitting={form.formState.isSubmitting}
+          type="submit"
+          className="w-full h-10 rounded-none"
+          permissions={[
+            { kind: "transfer", action: "AddProposal" },
+            { kind: "call", action: "AddProposal" },
+          ]}
+          idleMessage="Confirm and Submit Request"
+        />
+      </div>
     </PageCard>
   );
 }

@@ -22,6 +22,9 @@ export function TooltipContent({ children, className, ...props }: React.Componen
 
 export function Tooltip({ children, content, contentProps, triggerProps, disabled }: TooltipProps) {
     const { className, ...contentPropsRest } = contentProps || {};
+    if (disabled) {
+        return children;
+    }
     return (
         <TooltipPrimitive disableHoverableContent={disabled}>
             <TooltipTrigger asChild {...triggerProps}>

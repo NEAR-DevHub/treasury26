@@ -52,19 +52,17 @@ function PendingRequestsSkeleton() {
 
 interface PendingRequestItemProps {
     proposal: Proposal;
-    policy: Policy;
-    accountId: string;
     treasuryId: string;
     onVote: (vote: "Approve" | "Reject") => void;
     onDeposit: (tokenSymbol?: string, tokenNetwork?: string) => void;
 }
 
-export function PendingRequestItem({ proposal, policy, accountId, treasuryId, onVote, onDeposit }: PendingRequestItemProps) {
+export function PendingRequestItem({ proposal, treasuryId, onVote, onDeposit }: PendingRequestItemProps) {
     const type = getProposalUIKind(proposal);
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(proposal, treasuryId);
 
     return (
-        <Link href={`/${accountId}/requests/${proposal.id}`}>
+        <Link href={`/${treasuryId}/requests/${proposal.id}`}>
             <PageCard className="flex relative flex-row gap-3.5 justify-between w-full group">
                 <ProposalTypeIcon proposal={proposal} />
                 <div className="flex flex-col w-full gap-px">
@@ -74,13 +72,10 @@ export function PendingRequestItem({ proposal, policy, accountId, treasuryId, on
                         <div className="overflow-hidden w-full">
                             <div className="pt-4 flex gap-3 invisible w-full group-hover:visible transition-opacity duration-300 ease-in-out">
                                 <AuthButtonWithProposal
-                                    policy={policy}
-                                    accountId={accountId}
                                     proposalKind={proposal.kind}
                                     variant="secondary"
                                     className="flex gap-1 flex-1"
                                     onClick={(e) => { e.preventDefault(); onVote("Reject") }}
-                                    noPermissionMessage="You don't have permission to vote on this proposal"
                                 >
                                     <X className="size-3.5" />
                                     Reject
@@ -96,13 +91,10 @@ export function PendingRequestItem({ proposal, policy, accountId, treasuryId, on
                                     </Button>
                                 ) : (
                                     <AuthButtonWithProposal
-                                        policy={policy}
-                                        accountId={accountId}
                                         proposalKind={proposal.kind}
                                         variant="default"
                                         className="flex gap-1 flex-1"
                                         onClick={(e) => { e.preventDefault(); onVote("Approve") }}
-                                        noPermissionMessage="You don't have permission to vote on this proposal"
                                     >
                                         <Check className="size-3.5" />
                                         Approve
@@ -119,9 +111,7 @@ export function PendingRequestItem({ proposal, policy, accountId, treasuryId, on
 }
 
 export function PendingRequests() {
-    const { accountId } = useNear();
     const { selectedTreasury } = useTreasury();
-    const { data: treasury, isLoading: isTreasuryLoading } = useTreasuryConfig(selectedTreasury);
     const { data: policy, isLoading: isPolicyLoading } = useTreasuryPolicy(selectedTreasury);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
     const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
@@ -131,9 +121,9 @@ export function PendingRequests() {
         statuses: ["InProgress"],
     });
 
-    const isLoading = isTreasuryLoading || isPolicyLoading || isRequestsLoading;
+    const isLoading = isPolicyLoading || isRequestsLoading;
 
-    if (isLoading || !treasury || !policy || !accountId) {
+    if (isLoading || !policy) {
         return <PendingRequestsSkeleton />;
     }
 
@@ -151,7 +141,7 @@ export function PendingRequests() {
                     </div>
 
                     {hasPendingRequests && (
-                        <Link href={`/${accountId}/requests`}>
+                        <Link href={`/${selectedTreasury}/requests`}>
                             <Button variant="ghost" className="flex gap-2">
                                 View All
                                 <ChevronRight className="size-4" />
@@ -166,8 +156,6 @@ export function PendingRequests() {
                             <PendingRequestItem
                                 key={proposal.id}
                                 proposal={proposal}
-                                policy={policy}
-                                accountId={accountId}
                                 treasuryId={selectedTreasury!}
                                 onVote={(vote) => {
                                     setVoteInfo({ vote, proposalIds: [{ proposalId: proposal.id, kind: getKindFromProposal(proposal.kind) ?? "call" }] });

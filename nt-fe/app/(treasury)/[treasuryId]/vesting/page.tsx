@@ -24,6 +24,7 @@ import { useForm, useFormContext } from "react-hook-form";
 import z from "zod";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
 import { SendingTotal } from "@/components/sending-total";
+import { CreateRequestButton } from "@/components/create-request-button";
 
 const vestingFormSchema = z.object({
   vesting: z.object({
@@ -98,7 +99,11 @@ function Step1({ handleNext }: StepProps) {
         <DateInput control={form.control} name="vesting.endDate" title="End Date" minDate={startDate} />
       </div>
 
-      <InlineNextButton text="Continue" onClick={handleContinue} />
+      <CreateRequestButton
+        onClick={handleContinue}
+        permissions={{ kind: "call", action: "AddProposal" }}
+        idleMessage="Continue"
+      />
     </PageCard>)
 }
 
@@ -147,7 +152,14 @@ function Step2({ handleBack, handleNext }: StepProps) {
         </InputBlock>
       )} />
 
-      <InlineNextButton text="Review Request" onClick={handleReview} />
+      <div className="rounded-lg border bg-card p-0 overflow-hidden">
+        <CreateRequestButton
+          onClick={handleReview}
+          className="w-full h-10 rounded-none"
+          permissions={{ kind: "call", action: "AddProposal" }}
+          idleMessage="Review Request"
+        />
+      </div>
     </PageCard>
   )
 }
@@ -210,7 +222,13 @@ function Step3({ handleBack }: StepProps) {
         </div>
       </ReviewStep>
 
-      <InlineNextButton text="Confirm and Submit Request" loading={form.formState.isSubmitting} />
+      <CreateRequestButton
+        isSubmitting={form.formState.isSubmitting}
+        type="submit"
+        className="w-full h-10 rounded-none"
+        permissions={{ kind: "call", action: "AddProposal" }}
+        idleMessage="Confirm and Submit Request"
+      />
     </PageCard>
   )
 }

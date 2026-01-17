@@ -200,8 +200,6 @@ export function ProposalSidebar({ proposal, policy, onVote, onDeposit }: Proposa
       {isPending && (
         <div className="flex gap-2">
           <AuthButtonWithProposal
-            policy={policy}
-            accountId={accountId ?? ""}
             proposalKind={proposal.kind}
             variant="secondary"
             className="flex-1"
@@ -221,8 +219,6 @@ export function ProposalSidebar({ proposal, policy, onVote, onDeposit }: Proposa
             </Button>
           ) : (
             <AuthButtonWithProposal
-              policy={policy}
-              accountId={accountId ?? ""}
               proposalKind={proposal.kind}
               variant="default"
               className="flex gap-1 flex-1"

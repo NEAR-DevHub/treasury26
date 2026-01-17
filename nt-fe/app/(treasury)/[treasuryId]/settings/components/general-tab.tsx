@@ -56,7 +56,7 @@ type GeneralFormValues = z.infer<typeof generalSchema>;
 
 export function GeneralTab() {
   const { selectedTreasury } = useTreasury();
-  const { accountId, createProposal } = useNear();
+  const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,12 +65,6 @@ export function GeneralTab() {
 
   // Fetch the treasury config directly by treasuryId
   const { data: currentTreasury } = useTreasuryConfig(selectedTreasury);
-
-  // Check if user is authorized to make config changes
-  const isAuthorized = useMemo(() => {
-    if (!policy || !accountId) return false;
-    return hasPermission(policy, accountId, "config", "AddProposal");
-  }, [policy, accountId]);
 
   const form = useForm<GeneralFormValues>({
     resolver: zodResolver(generalSchema),
@@ -384,10 +378,8 @@ export function GeneralTab() {
           <CreateRequestButton
             type="submit"
             isSubmitting={isSubmitting}
-            isAuthorized={isAuthorized}
-            accountId={accountId}
+            permissions={{ kind: "config", action: "AddProposal" }}
             disabled={!form.formState.isDirty}
-            permissionMessage="You don't have permission to change configuration"
           />
         </div>
       </form>

@@ -4,7 +4,7 @@ import BalanceChart from "./chart";
 import { Button } from "@/components/button";
 import { ArrowLeftRight, ArrowUpRightIcon, Database, Download, Coins } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { useBalanceChart } from "@/hooks/use-treasury-queries";
+import { useBalanceChart, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageCard } from "@/components/card";
@@ -14,6 +14,8 @@ import { useParams } from "next/navigation";
 import { DepositModal } from "./deposit-modal";
 import type { ChartInterval } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNear } from "@/stores/near-store";
+import { AuthButton } from "@/components/auth-button";
 
 interface Props {
     totalBalanceUSD: number | Big.Big;
@@ -43,21 +45,21 @@ const PERIOD_TO_HOURS: Record<TimePeriod, number> = {
 // Format timestamp based on time period
 const formatTimestampForPeriod = (timestamp: string, period: TimePeriod): string => {
     const date = new Date(timestamp);
-    
+
     switch (period) {
         case "1D":
             // Show time only: "3:00 PM"
-            return date.toLocaleTimeString('en-US', { 
-                hour: 'numeric', 
+            return date.toLocaleTimeString('en-US', {
+                hour: 'numeric',
                 minute: '2-digit',
-                hour12: true 
+                hour12: true
             });
         case "1W":
         case "1M":
             // Show date: "6 Jan"
-            return date.toLocaleDateString('en-US', { 
-                day: 'numeric', 
-                month: 'short' 
+            return date.toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'short'
             });
         case "1Y":
             // Show month and year: "Mar '25"
@@ -88,17 +90,17 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
     // Group tokens by symbol (to handle same token on different networks)
     const groupedTokens = useMemo(() => {
         const grouped = new Map<string, GroupedToken>();
-        
+
         for (const token of tokens) {
             const existing = grouped.get(token.symbol);
-            
+
             // Convert token ID to balance-history format
             // Intents tokens need "intents.near:" prefix for balance-history API
             let tokenIdForHistory = token.id;
             if (token.residency === "Intents" && !token.id.startsWith("intents.near:")) {
                 tokenIdForHistory = `intents.near:${token.id}`;
             }
-            
+
             if (existing) {
                 existing.tokens.push(token);
                 existing.totalBalanceUSD += token.balanceUSD;
@@ -116,16 +118,16 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                 });
             }
         }
-        
+
         // Sort by total USD value descending
         return Array.from(grouped.values()).sort((a, b) => b.totalBalanceUSD - a.totalBalanceUSD);
     }, [tokens]);
 
     // Get the selected token group
-    const selectedTokenGroup = selectedToken === "all" 
-        ? null 
+    const selectedTokenGroup = selectedToken === "all"
+        ? null
         : groupedTokens.find(group => group.symbol === selectedToken);
-    
+
     const balance = selectedTokenGroup ? selectedTokenGroup.totalBalanceUSD : totalBalanceUSD;
 
     // Calculate time range for chart API
@@ -135,12 +137,12 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
         const endTime = new Date();
         const hoursBack = PERIOD_TO_HOURS[selectedPeriod];
         const startTime = new Date(endTime.getTime() - (hoursBack * 60 * 60 * 1000));
-        
+
         // Validate dates
         if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
             return null;
         }
-        
+
         const params = {
             accountId,
             startTime: startTime.toISOString(),
@@ -164,46 +166,46 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
         if (selectedToken === "all") {
             // Aggregate USD values across all tokens
             const timeMap = new Map<string, { usdValue: number; hasUSD: boolean }>();
-            
+
             for (const [tokenId, snapshots] of Object.entries(balanceChartData)) {
                 for (const snapshot of snapshots) {
                     const existing = timeMap.get(snapshot.timestamp) || { usdValue: 0, hasUSD: false };
                     const hasUSD = snapshot.value_usd !== null && snapshot.value_usd !== undefined;
-                    
+
                     timeMap.set(snapshot.timestamp, {
                         usdValue: existing.usdValue + (snapshot.value_usd || 0),
                         hasUSD: existing.hasUSD || hasUSD,
                     });
                 }
             }
-            
+
             const data = Array.from(timeMap.entries())
                 .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
                 .map(([timestamp, { usdValue }]) => ({
                     name: formatTimestampForPeriod(timestamp, selectedPeriod),
                     value: usdValue,
                 }));
-            
+
             // Check if any snapshot has USD values
             const hasAnyUSD = Array.from(timeMap.values()).some(v => v.hasUSD);
-            
+
             return { data, showUSD: hasAnyUSD };
         } else {
             // Aggregate values for selected token across all networks
             const timeMap = new Map<string, { usdValue: number; balance: number; hasUSD: boolean }>();
-            
+
             for (const [tokenId, snapshots] of Object.entries(balanceChartData)) {
                 // Only include token IDs that belong to the selected token group
                 if (selectedTokenGroup?.tokenIds.includes(tokenId)) {
                     for (const snapshot of snapshots) {
-                        const existing = timeMap.get(snapshot.timestamp) || { 
-                            usdValue: 0, 
+                        const existing = timeMap.get(snapshot.timestamp) || {
+                            usdValue: 0,
                             balance: 0,
-                            hasUSD: false 
+                            hasUSD: false
                         };
                         const hasUSD = snapshot.value_usd !== null && snapshot.value_usd !== undefined;
                         const balance = parseFloat(snapshot.balance) || 0;
-                        
+
                         timeMap.set(snapshot.timestamp, {
                             usdValue: existing.usdValue + (snapshot.value_usd || 0),
                             balance: existing.balance + balance,
@@ -212,16 +214,16 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                     }
                 }
             }
-            
+
             const hasAnyUSD = Array.from(timeMap.values()).some(v => v.hasUSD);
-            
+
             const data = Array.from(timeMap.entries())
                 .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
                 .map(([timestamp, { usdValue, balance }]) => ({
                     name: formatTimestampForPeriod(timestamp, selectedPeriod),
                     value: hasAnyUSD ? usdValue : balance,
                 }));
-            
+
             return { data, showUSD: hasAnyUSD };
         }
     }, [balanceChartData, selectedToken, selectedTokenGroup, selectedPeriod]);
@@ -245,8 +247,8 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                                 ) : (
                                     <div className="flex items-center gap-2">
                                         {selectedTokenGroup?.icon && (
-                                            <img 
-                                                src={selectedTokenGroup.icon} 
+                                            <img
+                                                src={selectedTokenGroup.icon}
                                                 alt={selectedTokenGroup.symbol}
                                                 width={16}
                                                 height={16}
@@ -269,8 +271,8 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                                 <SelectItem key={group.symbol} value={group.symbol}>
                                     <div className="flex items-center gap-2">
                                         {group.icon && (
-                                            <img 
-                                                src={group.icon} 
+                                            <img
+                                                src={group.icon}
                                                 alt={group.symbol}
                                                 width={16}
                                                 height={16}
@@ -293,13 +295,17 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
                 <Button onClick={() => setIsDepositModalOpen(true)}>
                     <Download className="size-4" /> Deposit
                 </Button>
-                <Link href={treasuryId ? `/${treasuryId}/payments` : "/payments"} className="flex"> 
-                    <Button className="w-full">
+                <Link href={treasuryId ? `/${treasuryId}/payments` : "/payments"} className="flex">
+                    <AuthButton permissionKind="transfer" permissionAction="AddProposal" className="w-full">
                         <ArrowUpRightIcon className="size-4" />Send
-                    </Button>
+                    </AuthButton>
                 </Link>
-                <Button><ArrowLeftRight className="size-4" /> Exchange</Button>
-                <Button><Database className="size-4" /> Earn</Button>
+                <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
+                    <ArrowLeftRight className="size-4" /> Exchange
+                </AuthButton>
+                <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
+                    <Database className="size-4" /> Earn
+                </AuthButton>
             </div>
             {isLoading ? (
                 <div className="h-56 w-full space-y-3 p-4">
@@ -310,7 +316,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
             )}
 
             {/* Deposit Modal */}
-            <DepositModal 
+            <DepositModal
                 isOpen={isDepositModalOpen}
                 onClose={() => setIsDepositModalOpen(false)}
             />

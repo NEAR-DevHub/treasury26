@@ -63,9 +63,7 @@ export function SignIn() {
                 variant="ghost"
                 className="w-full justify-start gap-2 text-sm"
                 onClick={() => {
-                  disconnect().then(() => {
-                    router.push("/app");
-                  });
+                  disconnect();
                   setIsMenuOpen(false);
                 }}
               >

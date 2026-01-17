@@ -95,10 +95,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter();
   const params = useParams();
   const treasuryId = params?.treasuryId as string | undefined;
-  const { accountId } = useNear();
-  const { data: policy } = useTreasuryPolicy(treasuryId);
 
-  const isUserInRequestorRole = policy ? isRequestor(policy, accountId ?? "") : false;
   const { data: proposals } = useProposals(treasuryId, {
     statuses: ["InProgress"],
   })
@@ -141,7 +138,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               : `/${link.path ? `/${link.path}` : ""}`;
             const isActive = pathname === href;
             const showBadge = link.path === "requests" && (proposals?.total ?? 0) > 0;
-            const isRoleRequired = !link.roleRequired || isUserInRequestorRole;
 
             return (
               <NavLink
@@ -149,7 +145,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 isActive={isActive}
                 icon={link.icon}
                 label={link.label}
-                disabled={!isRoleRequired}
                 showBadge={showBadge}
                 badgeCount={proposals?.total ?? 0}
                 onClick={() => {
