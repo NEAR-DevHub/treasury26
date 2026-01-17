@@ -47,9 +47,8 @@ export function useMemberValidation(
     if (criticalRoles.length === 1) return criticalRoles[0];
     if (criticalRoles.length === 2)
       return `${criticalRoles[0]} and ${criticalRoles[1]}`;
-    return `${criticalRoles.slice(0, -1).join(", ")}, and ${
-      criticalRoles[criticalRoles.length - 1]
-    }`;
+    return `${criticalRoles.slice(0, -1).join(", ")}, and ${criticalRoles[criticalRoles.length - 1]
+      }`;
   }, []);
 
   // Helper to check if roles contain governance - memoized
@@ -64,10 +63,10 @@ export function useMemberValidation(
   // Check permission/auth issues first - memoized result
   const permissionError = useMemo((): string | undefined => {
     if (!accountId) {
-      return "Sign in required to manage members";
+      return "Connect your wallet";
     }
     if (!canAddMember) {
-      return "You don't have permission to manage members";
+      return "You don’t have permission to manage members";
     }
     if (hasPendingMemberRequest) {
       return "You can't manage members while there is an active request";
@@ -105,14 +104,11 @@ export function useMemberValidation(
         const rolesList = formatRolesList(criticalRoles);
         const action = newRoles ? "modify" : "remove";
         const reason = hasGovernance
-          ? `Cannot ${action} this member. They are the only person assigned to the ${rolesList} ${
-              criticalRoles.length === 1 ? "role" : "roles"
-            }, which ${
-              criticalRoles.length === 1 ? "is" : "are"
-            } required to manage team members and configure voting.`
-          : `Cannot ${action} this member. They are the only person assigned to the ${rolesList} ${
-              criticalRoles.length === 1 ? "role" : "roles"
-            }.`;
+          ? `Cannot ${action} this member. They are the only person assigned to the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
+          }, which ${criticalRoles.length === 1 ? "is" : "are"
+          } required to manage team members and configure voting.`
+          : `Cannot ${action} this member. They are the only person assigned to the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
+          }.`;
 
         return {
           canModify: false,
@@ -178,14 +174,11 @@ export function useMemberValidation(
         const hasGovernance = hasGovernanceRole(criticalRoles);
         const rolesList = formatRolesList(criticalRoles);
         const reason = hasGovernance
-          ? `Cannot remove these members. This would leave the ${rolesList} ${
-              criticalRoles.length === 1 ? "role" : "roles"
-            } empty, which ${
-              criticalRoles.length === 1 ? "is" : "are"
-            } required to manage team members and configure voting.`
-          : `Cannot remove these members. This would leave the ${rolesList} ${
-              criticalRoles.length === 1 ? "role" : "roles"
-            } empty.`;
+          ? `Cannot remove these members. This would leave the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
+          } empty, which ${criticalRoles.length === 1 ? "is" : "are"
+          } required to manage team members and configure voting.`
+          : `Cannot remove these members. This would leave the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
+          } empty.`;
 
         return {
           canModify: false,
@@ -247,14 +240,11 @@ export function useMemberValidation(
         const hasGovernance = hasGovernanceRole(criticalRoles);
         const rolesList = formatRolesList(criticalRoles);
         const reason = hasGovernance
-          ? `Cannot save these changes. This would leave the ${rolesList} ${
-              criticalRoles.length === 1 ? "role" : "roles"
-            } empty, which ${
-              criticalRoles.length === 1 ? "is" : "are"
-            } required to manage team members and configure voting.`
-          : `Cannot save these changes. This would leave the ${rolesList} ${
-              criticalRoles.length === 1 ? "role" : "roles"
-            } empty.`;
+          ? `Cannot save these changes. This would leave the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
+          } empty, which ${criticalRoles.length === 1 ? "is" : "are"
+          } required to manage team members and configure voting.`
+          : `Cannot save these changes. This would leave the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
+          } empty.`;
 
         return {
           canModify: false,

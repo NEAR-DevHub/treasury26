@@ -4,8 +4,10 @@ import { hasPermission, getApproversAndThreshold } from "@/lib/config-utils";
 import { ProposalKind } from "@/lib/proposals-api";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useMemo } from "react";
+import { useTreasuryPolicy, useTokenBalance } from "@/hooks/use-treasury-queries";
+import { useMemo, useState } from "react";
+import { InsufficientBalanceModal } from "@/features/proposals/components/insufficient-balance-modal";
+import Big from "big.js";
 
 interface AuthButtonProps extends React.ComponentProps<typeof Button> {
     permissionKind: string;
@@ -66,22 +68,42 @@ interface AuthButtonWithProposalProps extends React.ComponentProps<typeof Button
     isDeleteCheck?: boolean;
 }
 
+const MIN_VOTE_BALANCE = "0.03";
+
 export function AuthButtonWithProposal({
     proposalKind,
     isDeleteCheck = false,
     children,
     disabled,
+    onClick,
     ...props
 }: AuthButtonWithProposalProps) {
     const { accountId } = useNear();
     const { selectedTreasury } = useTreasury();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
+    const { data: nearBalance } = useTokenBalance(accountId, "near", "near");
+    const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
 
     const hasAccess = useMemo(() => {
         if (!policy || !accountId) return false;
         const { approverAccounts } = getApproversAndThreshold(policy, accountId, proposalKind, isDeleteCheck);
         return approverAccounts.includes(accountId);
     }, [policy, accountId, proposalKind, isDeleteCheck]);
+
+    const hasInsufficientBalance = useMemo(() => {
+        if (!nearBalance) return false;
+        const balanceInNear = Big(nearBalance.balance).div(Big(10).pow(24));
+        return balanceInNear.lt(MIN_VOTE_BALANCE);
+    }, [nearBalance]);
+
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+        if (hasInsufficientBalance) {
+            e.preventDefault();
+            setShowInsufficientBalanceModal(true);
+            return;
+        }
+        onClick?.(e);
+    };
 
     if (!accountId) {
         return <ErrorMessage message={NO_WALLET_MESSAGE} {...props}>{children}</ErrorMessage>;
@@ -92,8 +114,16 @@ export function AuthButtonWithProposal({
     }
 
     return (
-        <Button {...props} disabled={disabled}>
-            {children}
-        </Button>
+        <>
+            <Button {...props} disabled={disabled} onClick={handleClick}>
+                {children}
+            </Button>
+            <InsufficientBalanceModal
+                isOpen={showInsufficientBalanceModal}
+                onClose={() => setShowInsufficientBalanceModal(false)}
+                requiredAmount={MIN_VOTE_BALANCE}
+                actionType="vote"
+            />
+        </>
     );
 }

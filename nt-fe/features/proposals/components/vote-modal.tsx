@@ -21,6 +21,7 @@ export function VoteModal({ isOpen, onClose, onSuccess, proposalIds, vote }: Vot
     const { selectedTreasury } = useTreasury();
     const { voteProposals } = useNear();
     const [isSubmitting, setIsSubmitting] = useState(false);
+
     const handleVote = async () => {
         setIsSubmitting(true);
         try {
