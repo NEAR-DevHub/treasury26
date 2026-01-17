@@ -10,30 +10,24 @@ import {
 } from "@/components/ui/select";
 import { useTreasury } from "@/stores/treasury-store";
 import { Database } from "lucide-react";
-import { useRouter, useParams, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
-import { useUserTreasuries, useTreasuryConfig } from "@/hooks/use-treasury-queries";
+import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
 import { Button } from "./button";
 
 export function TreasurySelector() {
   const router = useRouter();
-  const params = useParams();
   const pathname = usePathname();
   const { setSelectedTreasury } = useTreasury();
   const { accountId } = useNear();
 
-  const treasuryId = params?.treasuryId as string | undefined;
-
-  const { data: treasuries = [], isLoading: isLoadingTreasuries } = useUserTreasuries(accountId);
-  const currentTreasury = treasuries.find(t => t.daoId === treasuryId);
-
-  // Fetch config for treasury from URL if it's not in user's list
-  const { data: guestTreasuryConfig, isLoading: isLoadingGuestConfig } = useTreasuryConfig(
-    treasuryId && !currentTreasury ? treasuryId : null
-  );
-
-  const isLoading = isLoadingTreasuries || isLoadingGuestConfig;
-  const isGuestTreasury = treasuryId && !currentTreasury && guestTreasuryConfig;
+  const {
+    isLoading,
+    treasuryId,
+    currentTreasury,
+    guestTreasuryConfig,
+    treasuries,
+  } = useIsGuestTreasury();
 
   React.useEffect(() => {
     if (treasuryId) {
@@ -83,10 +77,6 @@ export function TreasurySelector() {
     );
   }
 
-  const getTreasuryName = (treasury: typeof treasuries[0]) => {
-    return treasury.config?.name || treasury.daoId;
-  };
-
   const handleTreasuryChange = (newTreasuryId: string) => {
     const pathAfterTreasury = pathname?.split('/').slice(2).join('/') || '';
     router.push(`/${newTreasuryId}/${pathAfterTreasury}`);
@@ -101,17 +91,13 @@ export function TreasurySelector() {
     </div>;
   }
 
-  const displayName = currentTreasury
-    ? getTreasuryName(currentTreasury)
-    : guestTreasuryConfig
-      ? guestTreasuryConfig.name || treasuryId
-      : "Select treasury";
+  const displayTreasury = currentTreasury?.config ?? guestTreasuryConfig;
 
-  const displaySubtext = currentTreasury
-    ? currentTreasury.daoId
-    : isGuestTreasury
-      ? "Guest view"
-      : undefined;
+  const displayName = displayTreasury
+    ? displayTreasury.name ?? treasuryId
+    : "Select treasury";
+
+  const displaySubtext = treasuryId;
 
   return (
     <Select value={treasuryId} onValueChange={handleTreasuryChange} >
@@ -140,7 +126,7 @@ export function TreasurySelector() {
             <div className="flex items-center gap-3">
               <Logo logo={treasury.config.metadata?.flagLogo} />
               <div className="flex flex-col items-start">
-                <span className="text-sm font-medium">{getTreasuryName(treasury)}</span>
+                <span className="text-sm font-medium">{treasury.config?.name ?? treasury.daoId}</span>
                 <span className="text-xs text-muted-foreground">
                   {treasury.daoId}
                 </span>

@@ -22,6 +22,8 @@ import { useNear } from "@/stores/near-store";
 import { Button } from "./button";
 import { useProposals } from "@/hooks/use-proposals";
 import { NumberBadge } from "./number-badge";
+import { Pill } from "./pill";
+import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
 
 interface NavLinkProps {
   isActive: boolean;
@@ -101,6 +103,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     statuses: ["InProgress"],
   })
 
+  const { isGuestTreasury } = useIsGuestTreasury();
 
   return (
     <>
@@ -123,7 +126,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="p-3.5 flex flex-col gap-2">
             <TreasurySelector />
             <div className="px-3">
-              <ApprovalInfo variant="pupil" />
+              {isGuestTreasury ? (
+                <Pill variant="info" title="Guest" info="You are a guest of this treasury. You can only view the data. Creating requests, adding members, or making any changes is not allowed because you are not a member of the team." />
+              ) :
+                (<ApprovalInfo variant="pupil" />)}
             </div>
           </div>
         </div>

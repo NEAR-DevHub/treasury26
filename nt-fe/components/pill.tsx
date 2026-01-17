@@ -5,12 +5,13 @@ import { Info } from "lucide-react";
 interface PillProps {
     title: string;
     info?: string;
-    variant?: "default" | "secondary";
+    variant?: "default" | "secondary" | "info";
 }
 
 const variants = {
     default: "",
     secondary: "bg-card text-card-foreground",
+    info: "bg-general-info-background-faded border border-general-info-border text-general-info-foreground",
 }
 
 export function Pill({ title, info, variant = "default" }: PillProps) {
@@ -18,7 +19,7 @@ export function Pill({ title, info, variant = "default" }: PillProps) {
         <div className={cn("flex border rounded-md items-center py-[3px] px-2 gap-1.5 w-fit text-xs font-medium text-center", variants[variant])}>
             {title}
             {info && <Tooltip content={info}>
-                <Info className="size-3 shrink-0 text-muted-foreground" />
+                <Info className="size-3 shrink-0" />
             </Tooltip>}
         </div>
     )
