@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/modal";
 import { MemberInput } from "@/components/member-input";
 import {
@@ -59,12 +60,12 @@ export function MemberModal({
       open={isOpen}
       onOpenChange={(open) => !open && !isValidatingAddresses && onClose()}
     >
-      <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col p-0 gap-4">
-        <DialogHeader className="p-4">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col gap-4">
+        <DialogHeader>
           <DialogTitle className="text-left">{title}</DialogTitle>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 px-6">
+        <div className="overflow-y-auto flex-1">
           <FormProvider {...form}>
             <MemberInput
               control={form.control}
@@ -84,10 +85,10 @@ export function MemberModal({
           </FormProvider>
         </div>
 
-        <div className="px-6 py-4 border-t border-border shrink-0">
+        <DialogFooter className="w-full">
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="block">
+              <span className="block w-full">
                 <Button
                   type="button"
                   onClick={onReviewRequest}
@@ -108,7 +109,7 @@ export function MemberModal({
               </TooltipContent>
             )}
           </Tooltip>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

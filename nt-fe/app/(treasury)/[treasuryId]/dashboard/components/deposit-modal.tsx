@@ -333,13 +333,13 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-xl p-0 gap-0">
-        <DialogHeader className="p-4">
-          <DialogTitle className="text-left">Deposit</DialogTitle>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Deposit</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <div className="p-4">
+          <div>
             <p className="font-semibold pb-2">
               Select asset and network to see deposit address
             </p>

@@ -747,7 +747,7 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
             onDelete={handleDelete}
             className="w-64"
         >
-            <div>
+            <div className="flex flex-col">
                 <div className="px-2 py-1.5">
                     <Input
                         autoFocus
@@ -765,10 +765,9 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
                         Loading members...
                     </div>
                 ) : (
-                    <ScrollArea className="max-h-60 overflow-y-auto scrollbar-thin">
-                        {/* Single unified list of all members */}
+                    <ScrollArea className="h-60 [&>[data-radix-scroll-area-viewport]>div]:block!" type="always" >
                         {filteredMembers.length > 0 && (
-                            <div className="max-w-full overflow-y-auto">
+                            <div className="flex flex-col">
                                 {filteredMembers.map((accountId) => {
                                     const isSelected = data?.users?.includes(accountId) || false;
                                     return (
@@ -779,8 +778,9 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
                                             <Checkbox
                                                 checked={isSelected}
                                                 onCheckedChange={() => handleToggleUser(accountId)}
+                                                className="shrink-0"
                                             />
-                                            <div className="truncate max-w-full">
+                                            <div className="min-w-0">
                                                 <User accountId={accountId} iconOnly={false} withLink={false} size="sm" />
                                             </div>
                                         </label>
@@ -789,14 +789,12 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
                             </div>
                         )}
 
-                        {/* No results with search query */}
                         {searchQuery && filteredMembers.length === 0 && (
                             <p className="text-xs text-muted-foreground text-center py-2">
                                 No members found. Press Enter to add "{searchQuery}"
                             </p>
                         )}
 
-                        {/* Empty state */}
                         {!searchQuery && filteredMembers.length === 0 && (
                             <p className="text-xs text-muted-foreground text-center py-2">
                                 No members available

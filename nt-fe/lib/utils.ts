@@ -25,31 +25,6 @@ export function formatTimestamp(date: Date) {
   return d.getTime() * 1000000;
 }
 
-export function formatDate(date: Date | string | number | Big) {
-  if (!date) return "";
-  if (typeof date === "string" || typeof date === "number") {
-    date = new Date(date);
-  } else if (date instanceof Big) {
-    date = new Date(date.div(1000000).toNumber());
-  }
-
-  // Get timezone offset in minutes
-  const timezoneOffset = date.getTimezoneOffset();
-
-  // Calculate hours and minutes
-  const offsetHours = Math.abs(Math.floor(timezoneOffset / 60));
-  const offsetMinutes = Math.abs(timezoneOffset % 60);
-
-  // Determine timezone string
-  let timezoneStr = "UTC";
-  if (timezoneOffset !== 0) {
-    const sign = timezoneOffset > 0 ? "-" : "+";
-    timezoneStr = `UTC${sign}${offsetHours}${offsetMinutes > 0 ? `:${offsetMinutes.toString().padStart(2, "0")}` : ""}`;
-  }
-
-  return `${format(date, "MMM dd, yyyy HH:mm")} ${timezoneStr}`;
-}
-
 /**
  * Format date according to user preferences (timezone and time format)
  * @param date - Date to format
@@ -144,7 +119,8 @@ export function formatUserDate(
       formattedDate += ` ${timezoneStr}`;
     }
 
-    return formattedDate;
+    // return formattedDate;
+    return dateObj.toUTCString();
   }
 }
 

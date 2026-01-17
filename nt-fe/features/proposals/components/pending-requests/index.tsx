@@ -1,4 +1,5 @@
 import { Button } from "@/components/button";
+import { AuthButtonWithProposal } from "@/components/auth-button";
 import { PageCard } from "@/components/card";
 import { NumberBadge } from "@/components/number-badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,13 +11,13 @@ import Link from "next/link";
 import { ProposalTypeIcon } from "../proposal-type-icon";
 import { TransactionCell } from "../transaction-cell";
 import { Policy } from "@/types/policy";
-import { TreasuryConfig } from "@/lib/api";
 import { useTreasuryConfig, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { getProposalUIKind } from "../../utils/proposal-utils";
 import { VoteModal } from "../vote-modal";
 import { useState } from "react";
-import { getApproversAndThreshold, getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
+import { getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
 import { cn } from "@/lib/utils";
+import { useNear } from "@/stores/near-store";
 
 const MAX_DISPLAYED_REQUESTS = 4;
 
@@ -50,15 +51,15 @@ function PendingRequestsSkeleton() {
 interface PendingRequestItemProps {
     proposal: Proposal;
     policy: Policy;
-    config: TreasuryConfig;
     accountId: string;
     onVote: (vote: "Approve" | "Reject") => void;
 }
 
-export function PendingRequestItem({ proposal, policy, config, accountId, onVote }: PendingRequestItemProps) {
+export function PendingRequestItem({ proposal, policy, accountId, onVote }: PendingRequestItemProps) {
     const type = getProposalUIKind(proposal);
-    const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposal.kind, false);
-    const canVote = approverAccounts.includes(accountId ?? "") && accountId;
+    console.log(proposal);
+    console.log(policy);
+    console.log(accountId);
 
     return (
         <Link href={`/${accountId}/requests/${proposal.id}`}>
@@ -67,22 +68,36 @@ export function PendingRequestItem({ proposal, policy, config, accountId, onVote
                 <div className="flex flex-col w-full gap-px">
                     <span className="leading-none font-semibold">{type}</span>
                     <TransactionCell proposal={proposal} withDate={true} textOnly />
-                    {canVote && (
-                        <div className="gap-3 grid grid-rows-[0fr] w-full group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
-                            <div className="overflow-hidden w-full">
-                                <div className="pt-4 flex gap-3 invisible w-full group-hover:visible transition-opacity duration-300 ease-in-out">
-                                    <Button variant="secondary" className="flex gap-1 flex-1" onClick={(e) => { e.preventDefault(); onVote("Reject") }}>
-                                        <X className="size-3.5" />
-                                        Reject
-                                    </Button>
-                                    <Button variant="default" className="flex gap-1 flex-1" onClick={(e) => { e.preventDefault(); onVote("Approve") }}>
-                                        <Check className="size-3.5" />
-                                        Approve
-                                    </Button>
-                                </div>
+                    <div className="gap-3 grid grid-rows-[0fr] w-full group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
+                        <div className="overflow-hidden w-full">
+                            <div className="pt-4 flex gap-3 invisible w-full group-hover:visible transition-opacity duration-300 ease-in-out">
+                                <AuthButtonWithProposal
+                                    policy={policy}
+                                    accountId={accountId}
+                                    proposalKind={proposal.kind}
+                                    variant="secondary"
+                                    className="flex gap-1 flex-1"
+                                    onClick={(e) => { e.preventDefault(); onVote("Reject") }}
+                                    noPermissionMessage="You don't have permission to vote on this proposal"
+                                >
+                                    <X className="size-3.5" />
+                                    Reject
+                                </AuthButtonWithProposal>
+                                <AuthButtonWithProposal
+                                    policy={policy}
+                                    accountId={accountId}
+                                    proposalKind={proposal.kind}
+                                    variant="default"
+                                    className="flex gap-1 flex-1"
+                                    onClick={(e) => { e.preventDefault(); onVote("Approve") }}
+                                    noPermissionMessage="You don't have permission to vote on this proposal"
+                                >
+                                    <Check className="size-3.5" />
+                                    Approve
+                                </AuthButtonWithProposal>
                             </div>
                         </div>
-                    )}
+                    </div>
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-card group-hover:text-card-foreground transition-colors absolute right-4 top-4" />
             </PageCard>
@@ -91,12 +106,13 @@ export function PendingRequestItem({ proposal, policy, config, accountId, onVote
 }
 
 export function PendingRequests() {
-    const { selectedTreasury: accountId } = useTreasury();
-    const { data: treasury, isLoading: isTreasuryLoading } = useTreasuryConfig(accountId);
-    const { data: policy, isLoading: isPolicyLoading } = useTreasuryPolicy(accountId);
+    const { accountId } = useNear();
+    const { selectedTreasury } = useTreasury();
+    const { data: treasury, isLoading: isTreasuryLoading } = useTreasuryConfig(selectedTreasury);
+    const { data: policy, isLoading: isPolicyLoading } = useTreasuryPolicy(selectedTreasury);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
     const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
-    const { data: pendingRequests, isLoading: isRequestsLoading } = useProposals(accountId, {
+    const { data: pendingRequests, isLoading: isRequestsLoading } = useProposals(selectedTreasury, {
         statuses: ["InProgress"],
     });
 
@@ -136,7 +152,6 @@ export function PendingRequests() {
                                 key={proposal.id}
                                 proposal={proposal}
                                 policy={policy}
-                                config={treasury}
                                 accountId={accountId}
                                 onVote={(vote) => {
                                     setVoteInfo({ vote, proposalIds: [{ proposalId: proposal.id, kind: getKindFromProposal(proposal.kind) ?? "call" }] });

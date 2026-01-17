@@ -3,16 +3,17 @@ import { Button } from "@/components/button";
 import { ArrowUpRight, Check, X } from "lucide-react";
 import { PageCard } from "@/components/card";
 import { Policy } from "@/types/policy";
-import { getApproversAndThreshold, getKindFromProposal } from "@/lib/config-utils";
+import { getApproversAndThreshold, } from "@/lib/config-utils";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposalStatus, UIProposalStatus } from "@/features/proposals/utils/proposal-utils";
 import { UserVote } from "../../user-vote";
 import { useProposalTransaction } from "@/hooks/use-proposals";
-import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import Big from "big.js";
 import { User } from "@/components/user";
+import { AuthButtonWithProposal } from "@/components/auth-button";
+import { useFormatDate } from "@/components/formatted-date";
 
 interface ProposalSidebarProps {
   proposal: Proposal;
@@ -48,6 +49,8 @@ function StepIcon({ status }: { status: "Success" | "Pending" | "Failed" | "Expi
 }
 
 function TransactionCreated({ proposer, date }: { proposer: string, date: Date }) {
+  const formatDate = useFormatDate();
+
   return (
     <div className="flex flex-col gap-3 relative z-10">
       <div className="flex items-center gap-2">
@@ -103,6 +106,7 @@ function VotingSection({ proposal, policy, accountId }: { proposal: Proposal, po
 }
 
 function ExecutedSection({ status, date, expiresAt }: { status: UIProposalStatus, date?: Date, expiresAt: Date }) {
+  const formatDate = useFormatDate();
 
   let statusIcon = <StepIcon status="Pending" />;
   let statusText = status as string;
@@ -142,13 +146,10 @@ export function ProposalSidebar({ proposal, policy, onVote }: ProposalSidebarPro
   const { accountId } = useNear();
   const { selectedTreasury } = useTreasury();
   const isPending = proposal.status === "InProgress";
-  const proposalKind = getKindFromProposal(proposal.kind) ?? "call";
-  const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposalKind, false);
   const { data: transaction } = useProposalTransaction(selectedTreasury, proposal, policy);
 
   const status = getProposalStatus(proposal, policy);
 
-  const canVote = approverAccounts.includes(accountId ?? "") && accountId && selectedTreasury && status === "Pending";
   const expiresAt = new Date(Big(proposal.submission_time).add(policy.proposal_period).div(1000000).toNumber());
   let timestamp;
   switch (status) {
@@ -179,23 +180,30 @@ export function ProposalSidebar({ proposal, policy, onVote }: ProposalSidebarPro
       )}
 
       {/* Action Buttons */}
-      {isPending && canVote && (
+      {isPending && (
         <div className="flex gap-2">
-          <Button
+          <AuthButtonWithProposal
+            policy={policy}
+            accountId={accountId ?? ""}
+            proposalKind={proposal.kind}
             variant="secondary"
             className="flex-1"
             onClick={() => onVote("Reject")}
           >
             <X className="h-4 w-4 mr-2" />
             Reject
-          </Button>
-          <Button
-            className="flex-1"
+          </AuthButtonWithProposal>
+          <AuthButtonWithProposal
+            policy={policy}
+            accountId={accountId ?? ""}
+            proposalKind={proposal.kind}
+            variant="default"
+            className="flex gap-1 flex-1"
             onClick={() => onVote("Approve")}
           >
             <Check className="h-4 w-4 mr-2" />
             Approve
-          </Button>
+          </AuthButtonWithProposal>
         </div>
       )}
     </PageCard>

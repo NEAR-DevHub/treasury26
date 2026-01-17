@@ -26,9 +26,6 @@ function RequestPageSkeleton() {
                     <Skeleton className="h-8 w-48 mb-6" />
                     <Skeleton className="h-[300px] w-full" />
                 </PageCard>
-                <PageCard className="w-full">
-                    <Skeleton className="h-[150px] w-full" />
-                </PageCard>
             </div>
             <div className="w-full">
                 <PageCard className="w-full">

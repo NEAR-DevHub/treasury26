@@ -24,12 +24,12 @@ export function TransactionDetailsModal({
 
   const isReceived = parseFloat(activity.amount) > 0;
   const transactionType = isReceived ? "Payment received" : "Payment sent";
-  
+
   // Determine From/To based on receiver_id vs treasury account
-  const fromAccount = isReceived 
+  const fromAccount = isReceived
     ? activity.counterparty || activity.signer_id || "unknown"
     : treasuryId;
-  
+
   const toAccount = isReceived
     ? treasuryId
     : activity.receiver_id || activity.counterparty || "unknown";
@@ -38,9 +38,9 @@ export function TransactionDetailsModal({
     const num = parseFloat(amount);
     const absNum = Math.abs(num);
     const sign = num >= 0 ? "+" : "-";
-    
+
     const decimals = absNum >= 1 ? 2 : Math.min(6, activity.token_metadata.decimals);
-    
+
     return `${sign}${absNum.toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: decimals,
@@ -54,15 +54,15 @@ export function TransactionDetailsModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] bg-white p-0">
-        <DialogHeader className="border-b border-border p-4">
+        <DialogHeader className="border-b border-border">
           <DialogTitle>Transaction Details</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 p-4 pt-0">
+        <div className="space-y-6">
           {/* Transaction Summary */}
           <div className="bg-muted rounded-lg flex flex-col items-center justify-center space-y-1 py-6">
             <p className="text-sm text-muted-foreground font-medium">{transactionType}</p>
-            
+
             {activity.token_metadata.icon && (
               <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center border-2">
                 <img
@@ -76,8 +76,8 @@ export function TransactionDetailsModal({
             )}
 
             <div className="flex items-center gap-1 justify-center">
-                <span className="text-2xl font-bold text-general">{formatAmount(activity.amount)}</span>
-                <span className="text-muted-foreground text-md">{activity.token_metadata.symbol}</span>
+              <span className="text-2xl font-bold text-general">{formatAmount(activity.amount)}</span>
+              <span className="text-muted-foreground text-md">{activity.token_metadata.symbol}</span>
             </div>
           </div>
 

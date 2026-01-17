@@ -54,8 +54,8 @@ export function PreviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] p-0 gap-4">
-        <DialogHeader className="p-4">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] gap-4">
+        <DialogHeader>
           <div className="flex items-center gap-3">
             <Button
               type="button"
@@ -70,7 +70,7 @@ export function PreviewModal({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 overflow-y-auto flex-1 px-4">
+        <div className="space-y-4 overflow-y-auto flex-1">
           {/* Summary Section with Background */}
           <div className="text-center py-8 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground mb-2">You are adding</p>
@@ -108,29 +108,27 @@ export function PreviewModal({
           </div>
         </div>
 
-        <div className="px-6 pb-4">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="block">
-                <Button
-                  type="button"
-                  onClick={handleSubmit}
-                  className="w-full"
-                  disabled={isSubmitting || !!validationError}
-                >
-                  {isSubmitting
-                    ? "Creating Proposal..."
-                    : "Confirm and Submit Request"}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {validationError && (
-              <TooltipContent className="max-w-[280px]">
-                <p>{validationError}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="block">
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                className="w-full"
+                disabled={isSubmitting || !!validationError}
+              >
+                {isSubmitting
+                  ? "Creating Proposal..."
+                  : "Confirm and Submit Request"}
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {validationError && (
+            <TooltipContent className="max-w-[280px]">
+              <p>{validationError}</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
       </DialogContent>
     </Dialog>
   );

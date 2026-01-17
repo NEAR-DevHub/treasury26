@@ -1,5 +1,4 @@
-import { formatDate } from "@/lib/utils";
-import Big from "big.js";
+import { useFormatDate } from "@/components/formatted-date";
 
 interface TitleSubtitleCellProps {
   title: string | React.ReactNode;
@@ -8,7 +7,8 @@ interface TitleSubtitleCellProps {
 }
 
 export function TitleSubtitleCell({ title, subtitle, timestamp }: TitleSubtitleCellProps) {
-  const formattedDate = timestamp ? formatDate(Big(timestamp)) : null;
+  const formatDate = useFormatDate();
+  const formattedDate = timestamp ? formatDate(new Date(parseInt(timestamp) / 1000000)) : null;
 
   return (
     <div className="flex flex-col gap-1 items-start">

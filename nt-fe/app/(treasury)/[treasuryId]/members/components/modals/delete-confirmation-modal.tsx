@@ -56,7 +56,7 @@ export function DeleteConfirmationModal({
       onOpenChange={(open) => !open && onClose()}
     >
       <DialogContent className="max-w-md gap-4">
-        <DialogHeader className="p-2">
+        <DialogHeader>
           <DialogTitle className="text-left">
             {isBulk
               ? `Remove ${membersToDelete.length} Members`
@@ -64,7 +64,7 @@ export function DeleteConfirmationModal({
           </DialogTitle>
         </DialogHeader>
 
-        <p className="text-foreground px-2">
+        <p className="text-foreground">
           Once approved, this action will permanently remove{" "}
           <span className="font-semibold break-all overflow-wrap-anywhere text-wrap">
             {membersToDelete.map((m) => m.accountId).join(", ")}
@@ -72,28 +72,26 @@ export function DeleteConfirmationModal({
           from the treasury and revoke all assigned permissions.
         </p>
 
-        <div className="px-2 mt-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="block">
-                <Button
-                  type="button"
-                  onClick={handleConfirm}
-                  variant="destructive"
-                  className="w-full"
-                  disabled={isSubmitting || !!validationError}
-                >
-                  {isSubmitting ? "Creating Proposal..." : "Remove"}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {validationError && (
-              <TooltipContent className="max-w-[280px]">
-                <p>{validationError}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="block">
+              <Button
+                type="button"
+                onClick={handleConfirm}
+                variant="destructive"
+                className="w-full"
+                disabled={isSubmitting || !!validationError}
+              >
+                {isSubmitting ? "Creating Proposal..." : "Remove"}
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {validationError && (
+            <TooltipContent className="max-w-[280px]">
+              <p>{validationError}</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
       </DialogContent>
     </Dialog>
   );

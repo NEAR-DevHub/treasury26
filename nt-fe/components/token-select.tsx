@@ -6,13 +6,13 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { Button } from "./button";
-import { LargeInput } from "./large-input";
 import { cn, formatBalance } from "@/lib/utils";
 import { TreasuryAsset, ChainIcons } from "@/lib/api";
 import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-aggregated-tokens";
 import Big from "big.js";
 import { NetworkDisplay } from "./token-display";
 import { TokenDisplay } from "./token-display-with-network";
+import { Input } from "./ui/input";
 
 interface TokenSelectProps {
     selectedToken: string | null;
@@ -121,8 +121,8 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                     <ChevronDown className="size-4 text-muted-foreground" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="flex flex-col max-w-md p-0 gap-4">
-                <DialogHeader className="p-4 w-full" centerTitle={true}>
+            <DialogContent className="flex flex-col max-w-md gap-4">
+                <DialogHeader centerTitle={true}>
                     <div className="flex items-center gap-2 w-full">
                         {step === 'network' && (
                             <Button
@@ -144,8 +144,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                 {step === 'token' && (
                     <>
                         <div className="px-4">
-                            <LargeInput
-                                search
+                            <Input
                                 placeholder="Search by name"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}

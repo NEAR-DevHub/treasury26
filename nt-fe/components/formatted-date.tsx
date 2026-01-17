@@ -29,10 +29,10 @@ export function FormattedDate({
 
   // Use override values or fall back to user preferences
   // Note: timezone.name contains the IANA timezone (e.g., "Asia/Kolkata")
-  const timezone = overrideTimezone !== undefined 
-    ? overrideTimezone 
+  const timezone = overrideTimezone !== undefined
+    ? overrideTimezone
     : preferences.timezone?.name || null;
-    
+
   const timeFormat = overrideTimeFormat || preferences.timeFormat;
 
   const formattedDate = formatUserDate(date, {
