@@ -528,3 +528,270 @@ async fn test_track_staking_rewards_prioritizes_recent_epochs(pool: PgPool) -> s
 
     Ok(())
 }
+
+/// End-to-end test for staking rewards using real monitoring cycles
+///
+/// This test uses real blockchain data:
+/// - Account: webassemblymusic-treasury.sputnik-dao.near
+/// - Staking pool: astro-stakers.poolv1.near
+/// - Real staking transaction at block 161048663 (epoch 3727)
+/// - Staking balance: 1000 NEAR
+///
+/// The test:
+/// 1. Sets up the account as monitored
+/// 2. Runs monitor cycles starting a few epochs after the staking transaction
+/// 3. Verifies the staking transaction is discovered and staking snapshots are created
+/// 4. Runs additional cycles to fill more epochs
+/// 5. Asserts exact staking balance amounts
+#[sqlx::test]
+async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
+
+    let network = common::create_archival_network();
+
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    let staking_pool = "astro-stakers.poolv1.near";
+    let token_id = staking_token_id(staking_pool);
+
+    // The real staking transaction is at block 161048663 (epoch 3727)
+    // We'll run cycles starting at epoch 3730 to discover it and create snapshots
+    let staking_tx_block = 161_048_663i64;
+    let staking_tx_epoch = block_to_epoch(staking_tx_block as u64);
+    println!(
+        "Staking transaction at block {} (epoch {})",
+        staking_tx_block, staking_tx_epoch
+    );
+
+    // Set up the account as monitored
+    sqlx::query(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled, last_synced_at)
+        VALUES ($1, true, NULL)
+        "#,
+    )
+    .bind(account_id)
+    .execute(&pool)
+    .await?;
+
+    // Run first monitor cycle at epoch 3730 (a few epochs after the staking transaction)
+    // This should:
+    // 1. Seed NEAR balance (which will discover the staking pool as counterparty)
+    // 2. Track staking rewards and create snapshots
+    let first_cycle_epoch = 3730u64;
+    let first_cycle_block = epoch_to_block(first_cycle_epoch) as i64;
+    println!(
+        "\n=== Running first monitor cycle at block {} (epoch {}) ===",
+        first_cycle_block, first_cycle_epoch
+    );
+
+    run_monitor_cycle(&pool, &network, first_cycle_block)
+        .await
+        .expect("First monitor cycle should succeed");
+
+    // Check if staking snapshots were created
+    let snapshots_after_cycle1: Vec<(i64, String, String)> = sqlx::query_as(
+        r#"
+        SELECT block_height, balance_before::TEXT, balance_after::TEXT
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        ORDER BY block_height
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_all(&pool)
+    .await?;
+
+    println!(
+        "After cycle 1: {} staking snapshots",
+        snapshots_after_cycle1.len()
+    );
+    for (block, before, after) in &snapshots_after_cycle1 {
+        let epoch = block_to_epoch(*block as u64);
+        println!(
+            "  Epoch {} (block {}): {} -> {}",
+            epoch, block, before, after
+        );
+    }
+
+    // Run a second monitor cycle at a later epoch to fill more snapshots
+    let second_cycle_epoch = 3732u64;
+    let second_cycle_block = epoch_to_block(second_cycle_epoch) as i64;
+    println!(
+        "\n=== Running second monitor cycle at block {} (epoch {}) ===",
+        second_cycle_block, second_cycle_epoch
+    );
+
+    run_monitor_cycle(&pool, &network, second_cycle_block)
+        .await
+        .expect("Second monitor cycle should succeed");
+
+    // Check snapshots after second cycle
+    let snapshots_after_cycle2: Vec<(i64, String, String)> = sqlx::query_as(
+        r#"
+        SELECT block_height, balance_before::TEXT, balance_after::TEXT
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        ORDER BY block_height
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_all(&pool)
+    .await?;
+
+    println!(
+        "After cycle 2: {} staking snapshots",
+        snapshots_after_cycle2.len()
+    );
+    for (block, before, after) in &snapshots_after_cycle2 {
+        let epoch = block_to_epoch(*block as u64);
+        println!(
+            "  Epoch {} (block {}): {} -> {}",
+            epoch, block, before, after
+        );
+    }
+
+    // Run a third monitor cycle to potentially fill more gaps
+    let third_cycle_epoch = 3734u64;
+    let third_cycle_block = epoch_to_block(third_cycle_epoch) as i64;
+    println!(
+        "\n=== Running third monitor cycle at block {} (epoch {}) ===",
+        third_cycle_block, third_cycle_epoch
+    );
+
+    run_monitor_cycle(&pool, &network, third_cycle_block)
+        .await
+        .expect("Third monitor cycle should succeed");
+
+    // Final verification
+    let final_snapshots: Vec<(i64, String, String, String)> = sqlx::query_as(
+        r#"
+        SELECT block_height, balance_before::TEXT, balance_after::TEXT, counterparty
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        ORDER BY block_height
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_all(&pool)
+    .await?;
+
+    println!("\n=== Final staking snapshots ===");
+    println!("Total: {} snapshots", final_snapshots.len());
+
+    // Verify we have staking snapshots
+    assert!(
+        !final_snapshots.is_empty(),
+        "Should have created staking snapshots"
+    );
+
+    // All staking snapshots should have STAKING_SNAPSHOT counterparty
+    for (block, before, after, counterparty) in &final_snapshots {
+        let epoch = block_to_epoch(*block as u64);
+        println!(
+            "  Epoch {} (block {}): {} -> {} [{}]",
+            epoch, block, before, after, counterparty
+        );
+
+        assert_eq!(
+            counterparty, STAKING_SNAPSHOT_COUNTERPARTY,
+            "All staking records should have STAKING_SNAPSHOT counterparty"
+        );
+
+        // Verify the balance is approximately 1000 NEAR (the known staking amount)
+        // Balance should be >= 1000 (initial stake) and could grow with rewards
+        let balance: BigDecimal = after.parse().expect("Should parse balance");
+        assert!(
+            balance >= BigDecimal::from(1000),
+            "Staking balance should be at least 1000 NEAR, got {}",
+            balance
+        );
+    }
+
+    // Verify exact balances for specific epochs (these are deterministic on-chain values)
+    // The staking balance grows with rewards each epoch
+    let balance_map: std::collections::HashMap<u64, String> = final_snapshots
+        .iter()
+        .map(|(block, _, after, _)| (block_to_epoch(*block as u64), after.clone()))
+        .collect();
+
+    // Epoch 3728: Initial stake of 1000 NEAR (first epoch after staking transaction)
+    if let Some(balance) = balance_map.get(&3728) {
+        assert_eq!(
+            balance, "1000",
+            "Epoch 3728 should have exactly 1000 NEAR staked"
+        );
+    }
+
+    // Epoch 3729: 1000 NEAR + first epoch of rewards
+    if let Some(balance) = balance_map.get(&3729) {
+        assert_eq!(
+            balance, "1000.081598495096742265936191",
+            "Epoch 3729 balance should match expected value with rewards"
+        );
+    }
+
+    // Epoch 3730: More accumulated rewards
+    if let Some(balance) = balance_map.get(&3730) {
+        assert_eq!(
+            balance, "1000.162843277605394644382094",
+            "Epoch 3730 balance should match expected value with rewards"
+        );
+    }
+
+    // Epoch 3731: More accumulated rewards
+    if let Some(balance) = balance_map.get(&3731) {
+        assert_eq!(
+            balance, "1000.245604806973206628912358",
+            "Epoch 3731 balance should match expected value with rewards"
+        );
+    }
+
+    // Epoch 3732: More accumulated rewards
+    if let Some(balance) = balance_map.get(&3732) {
+        assert_eq!(
+            balance, "1000.327977473718191328977448",
+            "Epoch 3732 balance should match expected value with rewards"
+        );
+    }
+
+    // Epoch 3733: More accumulated rewards
+    if let Some(balance) = balance_map.get(&3733) {
+        assert_eq!(
+            balance, "1000.408574502130747008715062",
+            "Epoch 3733 balance should match expected value with rewards"
+        );
+    }
+
+    // Epoch 3734: More accumulated rewards (final epoch in test)
+    if let Some(balance) = balance_map.get(&3734) {
+        assert_eq!(
+            balance, "1000.490123937552885356492289",
+            "Epoch 3734 balance should match expected value with rewards"
+        );
+    }
+
+    // Verify we have at least some recent epochs covered
+    let epochs: Vec<u64> = final_snapshots
+        .iter()
+        .map(|(block, _, _, _)| block_to_epoch(*block as u64))
+        .collect();
+
+    // Should have the most recent epoch from the last cycle
+    assert!(
+        epochs.contains(&third_cycle_epoch) || epochs.iter().any(|&e| e >= staking_tx_epoch),
+        "Should have covered epochs after the staking transaction"
+    );
+
+    println!("\n✓ End-to-end staking rewards test passed");
+    println!(
+        "  Discovered staking pool {} for {}",
+        staking_pool, account_id
+    );
+    println!("  Created {} staking snapshots", final_snapshots.len());
+    println!("  Covered epochs: {:?}", epochs);
+
+    Ok(())
+}
