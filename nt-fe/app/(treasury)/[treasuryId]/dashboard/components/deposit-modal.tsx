@@ -23,6 +23,10 @@ import { WarningAlert } from "@/components/warning-alert";
 interface DepositModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Optional token symbol to prefill (e.g., "USDC", "NEAR") */
+  prefillTokenSymbol?: string;
+  /** Optional network ID to prefill (e.g., "near:mainnet") */
+  prefillNetworkId?: string;
 }
 
 interface SelectOption {
@@ -74,7 +78,7 @@ type DepositFormValues = {
   network: Network | null;
 };
 
-export function DepositModal({ isOpen, onClose }: DepositModalProps) {
+export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetworkId }: DepositModalProps) {
   const { selectedTreasury } = useTreasury();
   const { theme } = useThemeStore();
 
@@ -101,12 +105,12 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const selectedAsset = form.watch("asset");
   const selectedNetwork = form.watch("network");
 
-  // Fetch assets when modal opens or theme changes
+  // Fetch assets when modal opens, theme changes, or prefill token changes
   useEffect(() => {
     if (isOpen) {
       fetchAssets();
     }
-  }, [isOpen, theme]);
+  }, [isOpen, theme, prefillTokenSymbol, prefillNetworkId]);
 
   // Fetch all assets and networks once
   const fetchAssets = async () => {
@@ -146,7 +150,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
           return {
             id: asset.id,
             name: asset.name || asset.assetName,
-            symbol: asset.symbol,
+            symbol: asset.symbol === 'wNEAR' ? 'NEAR' : asset.symbol,
             icon: hasValidIcon ? asset.icon : asset.symbol?.charAt(0) || "?",
             gradient: "bg-gradient-cyan-blue",
             networks: asset.networks,
@@ -194,26 +198,47 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
       setAllNetworks(formattedNetworks);
       setAssetNetworkMap(assetToNetworks);
 
-      // Auto-select USDT asset
-      const usdtAsset = formattedAssets.find(
+      // Auto-select asset based on prefillTokenSymbol or default to USDT
+      const targetSymbol = prefillTokenSymbol?.toLowerCase() || "usdt";
+      const targetAsset = formattedAssets.find(
         (asset) =>
-          asset.symbol?.toLowerCase() === "usdt" ||
-          asset.name?.toLowerCase().includes("tether")
+          asset.symbol?.toLowerCase() === targetSymbol ||
+          // Fallback to USDT if prefill not found
+          (!prefillTokenSymbol && (
+            asset.symbol?.toLowerCase() === "usdt" ||
+            asset.name?.toLowerCase().includes("tether")
+          ))
       );
 
-      if (usdtAsset) {
-        form.setValue("asset", usdtAsset);
+      if (targetAsset) {
+        form.setValue("asset", targetAsset);
 
-        // Get networks for USDT
-        const networkIds = assetToNetworks.get(usdtAsset.id) || [];
+        // Get networks for the selected asset
+        const networkIds = assetToNetworks.get(targetAsset.id) || [];
         const availableNetworks = formattedNetworks.filter((n) =>
           networkIds.includes(n.id)
         );
         setFilteredNetworks(availableNetworks);
 
-        // Auto-select network if only one is available
-        if (availableNetworks.length === 1) {
-          form.setValue("network", availableNetworks[0]);
+        if (prefillNetworkId) {
+          const prefillNetwork = availableNetworks.find(
+            (n) => n.id === prefillNetworkId || n.name.toLowerCase().includes(prefillNetworkId.toLowerCase())
+          );
+          if (prefillNetwork) {
+            form.setValue("network", prefillNetwork);
+          } else {
+            form.setValue("network", availableNetworks[0]);
+          }
+        } else {
+          // Auto-select NEAR network if available, otherwise first network if only one
+          const nearNetwork = availableNetworks.find(
+            (n) => n.name.toLowerCase() === "near" || n.id.toLowerCase().includes("near")
+          );
+          if (nearNetwork) {
+            form.setValue("network", nearNetwork);
+          } else if (availableNetworks.length === 1) {
+            form.setValue("network", availableNetworks[0]);
+          }
         }
       }
     } catch (err) {

@@ -9,7 +9,7 @@ interface InfoAlertProps {
 export function InfoAlert({ message, className }: InfoAlertProps) {
   return (
     <Alert variant="info" className={className}>
-      <Info className="h-4 w-4" />
+      <Info className="h-4 w-4 shrink-0" />
       <AlertDescription>{message}</AlertDescription>
     </Alert>
   );

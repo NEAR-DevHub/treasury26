@@ -42,6 +42,7 @@ import {
 } from "@tanstack/react-table"
 import { VoteModal } from "./vote-modal";
 import { Address } from "@/components/address";
+import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -220,6 +221,8 @@ export function ProposalsTable({
   });
 
   const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{ tokenSymbol?: string, tokenNetwork?: string }>({});
   const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
 
   // Notify parent when selection changes
@@ -325,10 +328,18 @@ export function ProposalsTable({
                   {row.getIsExpanded() && (
                     <TableRow>
                       <TableCell colSpan={row.getVisibleCells().length} className="p-4 bg-general-tertiary">
-                        <ExpandedView proposal={row.original} policy={policy} onVote={(vote) => {
-                          setVoteInfo({ vote, proposalIds: [{ proposalId: row.original.id, kind: getKindFromProposal(row.original.kind) ?? "call" }] });
-                          setIsVoteModalOpen(true);
-                        }} />
+                        <ExpandedView
+                          proposal={row.original}
+                          policy={policy}
+                          onVote={(vote) => {
+                            setVoteInfo({ vote, proposalIds: [{ proposalId: row.original.id, kind: getKindFromProposal(row.original.kind) ?? "call" }] });
+                            setIsVoteModalOpen(true);
+                          }}
+                          onDeposit={(tokenSymbol, tokenNetwork) => {
+                            setDepositTokenInfo({ tokenSymbol, tokenNetwork });
+                            setIsDepositModalOpen(true);
+                          }}
+                        />
                       </TableCell>
                     </TableRow>
                   )}
@@ -356,6 +367,12 @@ export function ProposalsTable({
         }}
         proposalIds={voteInfo.proposalIds}
         vote={voteInfo.vote}
+      />
+      <DepositModal
+        isOpen={isDepositModalOpen}
+        onClose={() => setIsDepositModalOpen(false)}
+        prefillTokenSymbol={tokenSymbol}
+        prefillNetworkId={tokenNetwork}
       />
     </>
   );

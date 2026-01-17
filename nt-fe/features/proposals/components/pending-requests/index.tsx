@@ -6,18 +6,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
 import { useTreasury } from "@/stores/treasury-store";
-import { ChevronRight, Check, X } from "lucide-react";
+import { ChevronRight, Check, X, Download } from "lucide-react";
 import Link from "next/link";
 import { ProposalTypeIcon } from "../proposal-type-icon";
 import { TransactionCell } from "../transaction-cell";
 import { Policy } from "@/types/policy";
 import { useTreasuryConfig, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { getProposalUIKind } from "../../utils/proposal-utils";
+import { useProposalInsufficientBalance } from "../../hooks/use-proposal-insufficient-balance";
 import { VoteModal } from "../vote-modal";
 import { useState } from "react";
 import { getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
+import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
 
 const MAX_DISPLAYED_REQUESTS = 4;
 
@@ -52,11 +54,14 @@ interface PendingRequestItemProps {
     proposal: Proposal;
     policy: Policy;
     accountId: string;
+    treasuryId: string;
     onVote: (vote: "Approve" | "Reject") => void;
+    onDeposit: (tokenSymbol?: string, tokenNetwork?: string) => void;
 }
 
-export function PendingRequestItem({ proposal, policy, accountId, onVote }: PendingRequestItemProps) {
+export function PendingRequestItem({ proposal, policy, accountId, treasuryId, onVote, onDeposit }: PendingRequestItemProps) {
     const type = getProposalUIKind(proposal);
+    const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(proposal, treasuryId);
 
     return (
         <Link href={`/${accountId}/requests/${proposal.id}`}>
@@ -80,18 +85,29 @@ export function PendingRequestItem({ proposal, policy, accountId, onVote }: Pend
                                     <X className="size-3.5" />
                                     Reject
                                 </AuthButtonWithProposal>
-                                <AuthButtonWithProposal
-                                    policy={policy}
-                                    accountId={accountId}
-                                    proposalKind={proposal.kind}
-                                    variant="default"
-                                    className="flex gap-1 flex-1"
-                                    onClick={(e) => { e.preventDefault(); onVote("Approve") }}
-                                    noPermissionMessage="You don't have permission to vote on this proposal"
-                                >
-                                    <Check className="size-3.5" />
-                                    Approve
-                                </AuthButtonWithProposal>
+                                {insufficientBalanceInfo.hasInsufficientBalance ? (
+                                    <Button
+                                        variant="default"
+                                        className="flex gap-1 flex-1"
+                                        onClick={(e) => { e.preventDefault(); onDeposit(insufficientBalanceInfo.tokenSymbol, insufficientBalanceInfo.tokenNetwork); }}
+                                    >
+                                        <Download className="size-3.5" />
+                                        Deposit
+                                    </Button>
+                                ) : (
+                                    <AuthButtonWithProposal
+                                        policy={policy}
+                                        accountId={accountId}
+                                        proposalKind={proposal.kind}
+                                        variant="default"
+                                        className="flex gap-1 flex-1"
+                                        onClick={(e) => { e.preventDefault(); onVote("Approve") }}
+                                        noPermissionMessage="You don't have permission to vote on this proposal"
+                                    >
+                                        <Check className="size-3.5" />
+                                        Approve
+                                    </AuthButtonWithProposal>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -108,6 +124,8 @@ export function PendingRequests() {
     const { data: treasury, isLoading: isTreasuryLoading } = useTreasuryConfig(selectedTreasury);
     const { data: policy, isLoading: isPolicyLoading } = useTreasuryPolicy(selectedTreasury);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
+    const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+    const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{ tokenSymbol?: string, tokenNetwork?: string }>({});
     const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
     const { data: pendingRequests, isLoading: isRequestsLoading } = useProposals(selectedTreasury, {
         statuses: ["InProgress"],
@@ -150,9 +168,14 @@ export function PendingRequests() {
                                 proposal={proposal}
                                 policy={policy}
                                 accountId={accountId}
+                                treasuryId={selectedTreasury!}
                                 onVote={(vote) => {
                                     setVoteInfo({ vote, proposalIds: [{ proposalId: proposal.id, kind: getKindFromProposal(proposal.kind) ?? "call" }] });
                                     setIsVoteModalOpen(true);
+                                }}
+                                onDeposit={(tokenSymbol, tokenNetwork) => {
+                                    setDepositTokenInfo({ tokenSymbol, tokenNetwork });
+                                    setIsDepositModalOpen(true);
                                 }}
                             />
                         ))}
@@ -169,6 +192,12 @@ export function PendingRequests() {
                 onClose={() => setIsVoteModalOpen(false)}
                 proposalIds={voteInfo.proposalIds}
                 vote={voteInfo.vote}
+            />
+            <DepositModal
+                isOpen={isDepositModalOpen}
+                onClose={() => setIsDepositModalOpen(false)}
+                prefillTokenSymbol={tokenSymbol}
+                prefillNetworkId={tokenNetwork}
             />
         </>
     );

@@ -4,9 +4,10 @@ import { use, useState } from "react";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { ExpandedView } from "@/features/proposals";
 import { useProposal } from "@/hooks/use-proposals";
-import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { VoteModal } from "@/features/proposals/components/vote-modal";
+import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
 import { getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
 import { ProposalKind } from "@/lib/proposals-api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,6 +44,8 @@ export default function RequestPage({ params }: RequestPageProps) {
     const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(selectedTreasury, proposal?.submission_time);
 
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
+    const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+    const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{ tokenSymbol?: string, tokenNetwork?: string }>({});
     const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
 
     if (isLoadingProposal || isLoadingPolicy || !proposal || !policy) {
@@ -55,15 +58,30 @@ export default function RequestPage({ params }: RequestPageProps) {
 
     return (
         <PageComponentLayout title={`Request #${proposal?.id}`} description="Details for Request" backButton={`/${selectedTreasury}/requests`}>
-            <ExpandedView proposal={proposal} policy={policy} hideOpenInNewTab onVote={(vote) => {
-                setVoteInfo({ vote, proposalIds: [{ proposalId: proposal?.id ?? 0, kind: getKindFromProposal(proposal?.kind as ProposalKind) ?? "call" }] });
-                setIsVoteModalOpen(true);
-            }} />
+            <ExpandedView
+                proposal={proposal}
+                policy={policy}
+                hideOpenInNewTab
+                onVote={(vote) => {
+                    setVoteInfo({ vote, proposalIds: [{ proposalId: proposal?.id ?? 0, kind: getKindFromProposal(proposal?.kind as ProposalKind) ?? "call" }] });
+                    setIsVoteModalOpen(true);
+                }}
+                onDeposit={(tokenSymbol, tokenNetwork) => {
+                    setDepositTokenInfo({ tokenSymbol, tokenNetwork });
+                    setIsDepositModalOpen(true);
+                }}
+            />
             <VoteModal
                 isOpen={isVoteModalOpen}
                 onClose={() => setIsVoteModalOpen(false)}
                 proposalIds={voteInfo.proposalIds}
                 vote={voteInfo.vote}
+            />
+            <DepositModal
+                isOpen={isDepositModalOpen}
+                onClose={() => setIsDepositModalOpen(false)}
+                prefillTokenSymbol={tokenSymbol}
+                prefillNetworkId={tokenNetwork}
             />
         </PageComponentLayout>
     );

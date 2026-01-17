@@ -83,9 +83,10 @@ interface ExpandedViewProps {
   policy: Policy;
   hideOpenInNewTab?: boolean;
   onVote: (vote: "Approve" | "Reject" | "Remove") => void;
+  onDeposit: (tokenSymbol?: string, tokenNetwork?: string) => void;
 }
 
-export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVote }: ExpandedViewProps) {
+export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVote, onDeposit }: ExpandedViewProps) {
   const { selectedTreasury } = useTreasury();
   const { accountId } = useNear();
 
@@ -95,8 +96,8 @@ export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVot
   const ownProposal = proposal.proposer === accountId && getProposalStatus(proposal, policy) === "Pending";
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full">
-      <PageCard className="w-full">
+    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full min-w-0">
+      <PageCard className="w-full min-w-0">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Request Details</h3>
           <div className="flex items-center gap-2">
@@ -125,8 +126,8 @@ export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVot
         {component}
       </PageCard>
 
-      <div className="w-full">
-        <ProposalSidebar proposal={proposal} policy={policy} onVote={onVote} />
+      <div className="w-full min-w-0">
+        <ProposalSidebar proposal={proposal} policy={policy} onVote={onVote} onDeposit={onDeposit} />
       </div>
 
     </div>

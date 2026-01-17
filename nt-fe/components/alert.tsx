@@ -36,7 +36,7 @@ export function Alert({
   return (
     <ShadcnAlert
       variant={variant === "warning" || variant === "info" ? "default" : variant}
-      className={cn(className, classNameOverride)}
+      className={cn("inline-flex text-wrap", className, classNameOverride)}
       {...props}
     />
   );

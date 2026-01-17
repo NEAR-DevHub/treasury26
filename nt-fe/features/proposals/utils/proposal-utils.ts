@@ -150,3 +150,99 @@ export function getProposalStatus(proposal: Proposal, policy: Policy): UIProposa
       return proposal.status;
   }
 }
+
+
+/**
+ * Helper to extract token ID and amount required for a proposal
+ */
+export function getProposalRequiredFunds(proposal: Proposal): { tokenId: string; amount: string } | null {
+  // Transfer proposal
+  if ("Transfer" in proposal.kind) {
+    const transfer = proposal.kind.Transfer;
+    const tokenId = transfer.token_id.length > 0 ? transfer.token_id : "near";
+    return { tokenId, amount: transfer.amount };
+  }
+
+  // FunctionCall proposal
+  if ("FunctionCall" in proposal.kind) {
+    const functionCall = proposal.kind.FunctionCall;
+    const actions = functionCall.actions;
+
+    // Check for ft_transfer or ft_transfer_call (Payment Request)
+    const ftTransferAction = actions.find(
+      (a) => a.method_name === "ft_transfer" || a.method_name === "ft_transfer_call"
+    );
+    if (ftTransferAction) {
+      const args = decodeArgs(ftTransferAction.args);
+      if (args?.amount) {
+        // For ft_transfer to bulkpayment.near, the token is the receiver_id of the function call
+        return { tokenId: functionCall.receiver_id, amount: args.amount };
+      }
+    }
+
+    // Check for ft_withdraw (Intents withdrawal)
+    const ftWithdrawAction = actions.find((a) => a.method_name === "ft_withdraw");
+    if (ftWithdrawAction) {
+      const args = decodeArgs(ftWithdrawAction.args);
+      if (args?.amount && args?.token) {
+        return { tokenId: `nep141:${args.token}`, amount: args.amount };
+      }
+    }
+
+    // Check for mt_transfer or mt_transfer_call (Exchange - intents)
+    const mtTransferAction = actions.find(
+      (a) => a.method_name === "mt_transfer" || a.method_name === "mt_transfer_call"
+    );
+    if (mtTransferAction) {
+      const args = decodeArgs(mtTransferAction.args);
+      if (args?.amount && args?.token_id) {
+        return { tokenId: args.token_id, amount: args.amount };
+      }
+    }
+
+    // Check for near_withdraw (wrap.near unwrap)
+    const nearWithdrawAction = actions.find((a) => a.method_name === "near_withdraw");
+    if (nearWithdrawAction && functionCall.receiver_id === "wrap.near") {
+      const args = decodeArgs(nearWithdrawAction.args);
+      if (args?.amount) {
+        return { tokenId: "wrap.near", amount: args.amount };
+      }
+    }
+
+    // Check for near_deposit (wrap.near wrap) - uses deposit amount
+    const nearDepositAction = actions.find((a) => a.method_name === "near_deposit");
+    if (nearDepositAction && functionCall.receiver_id === "wrap.near") {
+      if (nearDepositAction.deposit && nearDepositAction.deposit !== "0") {
+        return { tokenId: "near", amount: nearDepositAction.deposit };
+      }
+    }
+
+    // Check for approve_list (Batch Payment with NEAR)
+    const approveListAction = actions.find((a) => a.method_name === "approve_list");
+    if (approveListAction && functionCall.receiver_id === "bulkpayment.near") {
+      if (approveListAction.deposit && approveListAction.deposit !== "0") {
+        return { tokenId: "near", amount: approveListAction.deposit };
+      }
+    }
+
+    // Staking proposals (deposit_and_stake, stake, deposit)
+    const stakingAction = actions.find((a) => a.method_name === "deposit_and_stake" || a.method_name === "deposit");
+    if (stakingAction) {
+      const args = decodeArgs(stakingAction.args);
+      if (args?.amount) {
+        return { tokenId: "near", amount: args.amount };
+      }
+    }
+
+    // Vesting proposal (create with NEAR deposit)
+    const createAction = actions.find((a) => a.method_name === "create");
+    if (createAction && functionCall.receiver_id.includes("lockup.near")) {
+      if (createAction.deposit && createAction.deposit !== "0") {
+        return { tokenId: "near", amount: createAction.deposit };
+      }
+    }
+  }
+
+  return null;
+}
+

@@ -1,12 +1,13 @@
-import { Proposal, ProposalStatus, } from "@/lib/proposals-api";
+import { Proposal, } from "@/lib/proposals-api";
 import { Button } from "@/components/button";
-import { ArrowUpRight, Check, X } from "lucide-react";
+import { ArrowUpRight, Check, X, Download } from "lucide-react";
 import { PageCard } from "@/components/card";
 import { Policy } from "@/types/policy";
 import { getApproversAndThreshold, } from "@/lib/config-utils";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { getProposalStatus, UIProposalStatus } from "@/features/proposals/utils/proposal-utils";
+import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
 import { UserVote } from "../../user-vote";
 import { useProposalTransaction } from "@/hooks/use-proposals";
 import Link from "next/link";
@@ -14,11 +15,13 @@ import Big from "big.js";
 import { User } from "@/components/user";
 import { AuthButtonWithProposal } from "@/components/auth-button";
 import { useFormatDate } from "@/components/formatted-date";
+import { InfoAlert } from "@/components/info-alert";
 
 interface ProposalSidebarProps {
   proposal: Proposal;
   policy: Policy;
   onVote: (vote: "Approve" | "Reject" | "Remove") => void;
+  onDeposit: (tokenSymbol?: string, tokenNetwork?: string) => void;
 }
 
 function StepIcon({ status }: { status: "Success" | "Pending" | "Failed" | "Expired" }) {
@@ -142,11 +145,12 @@ function ExecutedSection({ status, date, expiresAt }: { status: UIProposalStatus
   );
 }
 
-export function ProposalSidebar({ proposal, policy, onVote }: ProposalSidebarProps) {
+export function ProposalSidebar({ proposal, policy, onVote, onDeposit }: ProposalSidebarProps) {
   const { accountId } = useNear();
   const { selectedTreasury } = useTreasury();
   const isPending = proposal.status === "InProgress";
   const { data: transaction } = useProposalTransaction(selectedTreasury, proposal, policy);
+  const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(proposal, selectedTreasury);
 
   const status = getProposalStatus(proposal, policy);
 
@@ -165,7 +169,7 @@ export function ProposalSidebar({ proposal, policy, onVote }: ProposalSidebarPro
   }
 
   return (
-    <PageCard className="w-full">
+    <PageCard className="relative w-full">
       <div className="relative flex flex-col gap-4">
         <TransactionCreated proposer={proposal.proposer} date={new Date(Big(proposal.submission_time).div(1000000).toNumber())} />
         <VotingSection proposal={proposal} policy={policy} accountId={accountId ?? ""} />
@@ -177,6 +181,19 @@ export function ProposalSidebar({ proposal, policy, onVote }: ProposalSidebarPro
         <Link href={transaction.nearblocks_url} target="_blank" rel="noopener noreferrer" className="flex font-medium text-sm items-center gap-1.5">
           View Transaction <ArrowUpRight className="size-4" />
         </Link>
+      )}
+
+      {/* Insufficient Balance Warning */}
+      {isPending && insufficientBalanceInfo.hasInsufficientBalance && (
+        <InfoAlert
+          className="inline-flex"
+          message={
+            <span>
+              This request can&apos;t be approved because the treasury has insufficient{" "}
+              <strong>{insufficientBalanceInfo.tokenSymbol}</strong> balance. Add <strong>{insufficientBalanceInfo.differenceDisplay} {insufficientBalanceInfo.tokenSymbol}</strong> to continue.
+            </span>
+          }
+        />
       )}
 
       {/* Action Buttons */}
@@ -193,17 +210,28 @@ export function ProposalSidebar({ proposal, policy, onVote }: ProposalSidebarPro
             <X className="h-4 w-4 mr-2" />
             Reject
           </AuthButtonWithProposal>
-          <AuthButtonWithProposal
-            policy={policy}
-            accountId={accountId ?? ""}
-            proposalKind={proposal.kind}
-            variant="default"
-            className="flex gap-1 flex-1"
-            onClick={() => onVote("Approve")}
-          >
-            <Check className="h-4 w-4 mr-2" />
-            Approve
-          </AuthButtonWithProposal>
+          {insufficientBalanceInfo.hasInsufficientBalance ? (
+            <Button
+              variant="default"
+              className="flex gap-1 flex-1"
+              onClick={() => onDeposit(insufficientBalanceInfo.tokenSymbol, insufficientBalanceInfo.tokenNetwork)}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Deposit
+            </Button>
+          ) : (
+            <AuthButtonWithProposal
+              policy={policy}
+              accountId={accountId ?? ""}
+              proposalKind={proposal.kind}
+              variant="default"
+              className="flex gap-1 flex-1"
+              onClick={() => onVote("Approve")}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Approve
+            </AuthButtonWithProposal>
+          )}
         </div>
       )}
     </PageCard>
