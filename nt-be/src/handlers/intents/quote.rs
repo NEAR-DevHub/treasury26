@@ -42,8 +42,8 @@ pub struct QuoteRequest {
     pub recipient: Option<String>,
     /// Recipient type (e.g., "DESTINATION_CHAIN")
     pub recipient_type: Option<String>,
-    /// Deadline as ISO 8601 timestamp
-    pub deadline: Option<String>,
+    /// Deadline as ISO 8601 timestamp (required by 1click API)
+    pub deadline: String,
     /// Time to wait for quote in milliseconds
     pub quote_waiting_time_ms: Option<u32>,
     // Note: appFees and referral are intentionally NOT included here
@@ -73,8 +73,7 @@ struct OneClickQuoteRequest {
     pub recipient: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recipient_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub deadline: Option<String>,
+    pub deadline: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quote_waiting_time_ms: Option<u32>,
     /// App fees injected from server config
@@ -99,7 +98,7 @@ impl From<QuoteRequest> for OneClickQuoteRequest {
             refund_type: req.refund_type,
             recipient: req.recipient,
             recipient_type: req.recipient_type,
-            deadline: req.deadline,
+            deadline: req.deadline.clone(),
             quote_waiting_time_ms: req.quote_waiting_time_ms,
             app_fees: None,
             referral: None,
@@ -190,7 +189,10 @@ mod tests {
     use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    async fn create_test_state(mock_server_url: &str, env_overrides: Option<EnvVars>) -> Arc<AppState> {
+    async fn create_test_state(
+        mock_server_url: &str,
+        env_overrides: Option<EnvVars>,
+    ) -> Arc<AppState> {
         // Load .env files for test environment
         dotenvy::from_filename(".env").ok();
         dotenvy::from_filename(".env.test").ok();
@@ -234,51 +236,45 @@ mod tests {
             refund_type: Some("ORIGIN_CHAIN".to_string()),
             recipient: Some("user.near".to_string()),
             recipient_type: Some("DESTINATION_CHAIN".to_string()),
-            deadline: None,
+            deadline: "2026-01-18T16:30:00.000Z".to_string(), // Required ISO 8601 timestamp
             quote_waiting_time_ms: Some(3000),
         }
     }
 
-    /// Realistic mock response based on 1click API documentation
-    /// Response fields documented at:
-    /// https://docs.near-intents.org/near-intents/integration/distribution-channels/1click-api
+    /// Realistic mock response based on actual 1click API response
+    /// Captured from: POST https://1click.chaindefuser.com/v0/quote
     fn create_realistic_quote_response() -> serde_json::Value {
         serde_json::json!({
-            // Core quote identifiers
-            "quoteHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-
-            // Input amounts
-            "amountIn": "1000000000000000000000000",
-            "amountInFormatted": "1.0",
-            "amountInUsd": "3.45",
-
-            // Output amounts
-            "amountOut": "3420000",
-            "amountOutFormatted": "3.42",
-            "amountOutUsd": "3.42",
-
-            // Min/max bounds for EXACT_INPUT swap type
-            "minAmountOut": "3386000",
-
-            // Deposit information (only present when dry: false)
-            // "depositAddress": "0x...",
-            // "depositMemo": null,
-
-            // Timing
-            "timeEstimate": 60,
-            "deadline": "2026-01-18T16:00:00Z",
-
-            // Asset details
-            "originAsset": {
-                "defuseAssetId": "nep141:wrap.near",
-                "symbol": "wNEAR",
-                "decimals": 24
+            "quote": {
+                "amountIn": "1000000000000000000000000",
+                "amountInFormatted": "1.0",
+                "amountInUsd": "1.7100",
+                "minAmountIn": "1000000000000000000000000",
+                "amountOut": "1714985",
+                "amountOutFormatted": "1.714985",
+                "amountOutUsd": "1.7100",
+                "minAmountOut": "1697835",
+                "timeEstimate": 20
             },
-            "destinationAsset": {
-                "defuseAssetId": "nep141:usdt.tether-token.near",
-                "symbol": "USDT",
-                "decimals": 6
-            }
+            "quoteRequest": {
+                "dry": true,
+                "depositMode": "SIMPLE",
+                "swapType": "EXACT_INPUT",
+                "slippageTolerance": 100,
+                "originAsset": "nep141:wrap.near",
+                "depositType": "ORIGIN_CHAIN",
+                "destinationAsset": "nep141:usdt.tether-token.near",
+                "amount": "1000000000000000000000000",
+                "refundTo": "user.near",
+                "refundType": "ORIGIN_CHAIN",
+                "recipient": "user.near",
+                "recipientType": "DESTINATION_CHAIN",
+                "deadline": "2026-01-18T16:30:00.000Z",
+                "quoteWaitingTimeMs": 3000
+            },
+            "signature": "ed25519:Sqg1sRLhpg1QtC9g69DKphB4qBBLUbqVYcPgytZ6LbQR275LtXNojsgpFBs9EKpdMn9sLkfPXZjBAMVPmVNEcre",
+            "timestamp": "2026-01-18T15:55:15.062Z",
+            "correlationId": "261f3a3b-9568-4dd6-85a5-2688b370d07a"
         })
     }
 
@@ -305,11 +301,17 @@ mod tests {
         assert!(result.is_ok());
         let response = result.unwrap();
 
-        // Verify key response fields from realistic mock
-        assert!(response.0.get("quoteHash").is_some());
-        assert_eq!(response.0["amountIn"], "1000000000000000000000000");
-        assert_eq!(response.0["amountOut"], "3420000");
-        assert_eq!(response.0["timeEstimate"], 60);
+        // Verify key response fields from realistic mock (nested under "quote")
+        assert!(response.0.get("quote").is_some());
+        let quote = &response.0["quote"];
+        assert_eq!(quote["amountIn"], "1000000000000000000000000");
+        assert_eq!(quote["amountOut"], "1714985");
+        assert_eq!(quote["timeEstimate"], 20);
+
+        // Verify other top-level fields
+        assert!(response.0.get("signature").is_some());
+        assert!(response.0.get("timestamp").is_some());
+        assert!(response.0.get("correlationId").is_some());
     }
 
     #[tokio::test]
@@ -341,7 +343,7 @@ mod tests {
             refund_type: None,
             recipient: None,
             recipient_type: None,
-            deadline: None,
+            deadline: "2026-01-18T16:30:00.000Z".to_string(),
             quote_waiting_time_ms: None,
         };
 
@@ -364,7 +366,9 @@ mod tests {
         // This test verifies we can make requests without JWT token
         Mock::given(method("POST"))
             .and(path("/v0/quote"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(create_realistic_quote_response()))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(create_realistic_quote_response()),
+            )
             .mount(&mock_server)
             .await;
 
@@ -388,7 +392,7 @@ mod tests {
             refund_type: None,
             recipient: None,
             recipient_type: None,
-            deadline: None,
+            deadline: "2026-01-18T16:30:00.000Z".to_string(),
             quote_waiting_time_ms: None,
         };
 
@@ -441,7 +445,7 @@ mod tests {
             refund_type: None,
             recipient: None,
             recipient_type: None,
-            deadline: None,
+            deadline: "2026-01-18T16:30:00.000Z".to_string(),
             quote_waiting_time_ms: None,
         };
 
@@ -478,7 +482,7 @@ mod tests {
             refund_type: None,
             recipient: None,
             recipient_type: None,
-            deadline: None,
+            deadline: "2026-01-18T16:30:00.000Z".to_string(),
             quote_waiting_time_ms: None,
         };
 
@@ -495,6 +499,7 @@ mod tests {
         assert!(json.get("originAsset").is_some());
         assert!(json.get("destinationAsset").is_some());
         assert!(json.get("amount").is_some());
+        assert!(json.get("deadline").is_some()); // deadline is now required
     }
 
     /// Integration test that calls the real 1click API
@@ -530,6 +535,8 @@ mod tests {
         );
 
         // Request a dry run quote for NEAR -> USDT swap
+        // Generate a deadline 10 minutes in the future
+        let deadline = chrono::Utc::now() + chrono::Duration::minutes(10);
         let request = QuoteRequest {
             dry: Some(true), // Important: dry run only
             swap_type: Some("EXACT_INPUT".to_string()),
@@ -542,7 +549,7 @@ mod tests {
             refund_type: Some("ORIGIN_CHAIN".to_string()),
             recipient: Some("test.near".to_string()),
             recipient_type: Some("DESTINATION_CHAIN".to_string()),
-            deadline: None,
+            deadline: deadline.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
             quote_waiting_time_ms: Some(5000),
         };
 
@@ -550,13 +557,41 @@ mod tests {
 
         match result {
             Ok(response) => {
-                println!("Real API response: {}", serde_json::to_string_pretty(&response.0).unwrap());
+                println!(
+                    "Real API response: {}",
+                    serde_json::to_string_pretty(&response.0).unwrap()
+                );
 
-                // Verify expected response fields are present
-                // Based on documentation, these fields should exist
+                // Verify expected response fields are present based on real API response
                 assert!(
-                    response.0.get("amountOut").is_some() || response.0.get("quoteHash").is_some(),
-                    "Response should contain amountOut or quoteHash"
+                    response.0.get("quote").is_some(),
+                    "Response should contain quote object"
+                );
+                let quote = &response.0["quote"];
+                assert!(
+                    quote.get("amountIn").is_some(),
+                    "quote should contain amountIn"
+                );
+                assert!(
+                    quote.get("amountOut").is_some(),
+                    "quote should contain amountOut"
+                );
+                assert!(
+                    quote.get("timeEstimate").is_some(),
+                    "quote should contain timeEstimate"
+                );
+
+                assert!(
+                    response.0.get("signature").is_some(),
+                    "Response should contain signature"
+                );
+                assert!(
+                    response.0.get("timestamp").is_some(),
+                    "Response should contain timestamp"
+                );
+                assert!(
+                    response.0.get("correlationId").is_some(),
+                    "Response should contain correlationId"
                 );
             }
             Err((status, message)) => {
