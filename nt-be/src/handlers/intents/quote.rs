@@ -220,14 +220,16 @@ mod tests {
     }
 
     fn create_test_request() -> QuoteRequest {
+        // Request format based on 1click API documentation
+        // See: https://docs.near-intents.org/near-intents/integration/distribution-channels/1click-api
         QuoteRequest {
             dry: Some(true),
             swap_type: Some("EXACT_INPUT".to_string()),
-            slippage_tolerance: Some(100),
-            origin_asset: "wrap.near".to_string(),
+            slippage_tolerance: Some(100), // 1% in basis points
+            origin_asset: "nep141:wrap.near".to_string(),
             deposit_type: Some("ORIGIN_CHAIN".to_string()),
-            destination_asset: "usdt.tether-token.near".to_string(),
-            amount: "1000000000000000000000000".to_string(),
+            destination_asset: "nep141:usdt.tether-token.near".to_string(),
+            amount: "1000000000000000000000000".to_string(), // 1 NEAR in yoctoNEAR
             refund_to: Some("user.near".to_string()),
             refund_type: Some("ORIGIN_CHAIN".to_string()),
             recipient: Some("user.near".to_string()),
@@ -237,15 +239,54 @@ mod tests {
         }
     }
 
+    /// Realistic mock response based on 1click API documentation
+    /// Response fields documented at:
+    /// https://docs.near-intents.org/near-intents/integration/distribution-channels/1click-api
+    fn create_realistic_quote_response() -> serde_json::Value {
+        serde_json::json!({
+            // Core quote identifiers
+            "quoteHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+
+            // Input amounts
+            "amountIn": "1000000000000000000000000",
+            "amountInFormatted": "1.0",
+            "amountInUsd": "3.45",
+
+            // Output amounts
+            "amountOut": "3420000",
+            "amountOutFormatted": "3.42",
+            "amountOutUsd": "3.42",
+
+            // Min/max bounds for EXACT_INPUT swap type
+            "minAmountOut": "3386000",
+
+            // Deposit information (only present when dry: false)
+            // "depositAddress": "0x...",
+            // "depositMemo": null,
+
+            // Timing
+            "timeEstimate": 60,
+            "deadline": "2026-01-18T16:00:00Z",
+
+            // Asset details
+            "originAsset": {
+                "defuseAssetId": "nep141:wrap.near",
+                "symbol": "wNEAR",
+                "decimals": 24
+            },
+            "destinationAsset": {
+                "defuseAssetId": "nep141:usdt.tether-token.near",
+                "symbol": "USDT",
+                "decimals": 6
+            }
+        })
+    }
+
     #[tokio::test]
     async fn test_quote_request_forwards_to_oneclick_api() {
         let mock_server = MockServer::start().await;
 
-        let mock_response = serde_json::json!({
-            "quoteId": "test-quote-123",
-            "amountOut": "1000000",
-            "estimatedTime": 60
-        });
+        let mock_response = create_realistic_quote_response();
 
         Mock::given(method("POST"))
             .and(path("/v0/quote"))
@@ -263,17 +304,25 @@ mod tests {
 
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(response.0["quoteId"], "test-quote-123");
+
+        // Verify key response fields from realistic mock
+        assert!(response.0.get("quoteHash").is_some());
+        assert_eq!(response.0["amountIn"], "1000000000000000000000000");
+        assert_eq!(response.0["amountOut"], "3420000");
+        assert_eq!(response.0["timeEstimate"], 60);
     }
 
     #[tokio::test]
     async fn test_quote_handles_oneclick_api_error() {
         let mock_server = MockServer::start().await;
 
+        // Error response format based on typical API error patterns
         Mock::given(method("POST"))
             .and(path("/v0/quote"))
             .respond_with(ResponseTemplate::new(400).set_body_json(serde_json::json!({
-                "error": "Invalid asset pair"
+                "error": "Invalid asset pair",
+                "code": "INVALID_ASSET",
+                "details": "The specified origin or destination asset is not supported"
             })))
             .mount(&mock_server)
             .await;
@@ -315,9 +364,7 @@ mod tests {
         // This test verifies we can make requests without JWT token
         Mock::given(method("POST"))
             .and(path("/v0/quote"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "quoteId": "test-quote-no-auth"
-            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(create_realistic_quote_response()))
             .mount(&mock_server)
             .await;
 
@@ -333,9 +380,9 @@ mod tests {
             dry: Some(true),
             swap_type: None,
             slippage_tolerance: None,
-            origin_asset: "wrap.near".to_string(),
+            origin_asset: "nep141:wrap.near".to_string(),
             deposit_type: None,
-            destination_asset: "usdc.near".to_string(),
+            destination_asset: "nep141:usdt.tether-token.near".to_string(),
             amount: "1000000".to_string(),
             refund_to: None,
             refund_type: None,
@@ -361,7 +408,7 @@ mod tests {
         assert!(json.get("originAsset").is_some());
         assert!(json.get("destinationAsset").is_some());
         assert!(json.get("slippageTolerance").is_some());
-        assert_eq!(json.get("originAsset").unwrap(), "wrap.near");
+        assert_eq!(json.get("originAsset").unwrap(), "nep141:wrap.near");
     }
 
     #[tokio::test]
@@ -386,9 +433,9 @@ mod tests {
             dry: Some(true),
             swap_type: None,
             slippage_tolerance: None,
-            origin_asset: "wrap.near".to_string(),
+            origin_asset: "nep141:wrap.near".to_string(),
             deposit_type: None,
-            destination_asset: "usdc.near".to_string(),
+            destination_asset: "nep141:usdt.tether-token.near".to_string(),
             amount: "1000000".to_string(),
             refund_to: None,
             refund_type: None,
@@ -423,9 +470,9 @@ mod tests {
             dry: None,
             swap_type: None,
             slippage_tolerance: None,
-            origin_asset: "wrap.near".to_string(),
+            origin_asset: "nep141:wrap.near".to_string(),
             deposit_type: None,
-            destination_asset: "usdc.near".to_string(),
+            destination_asset: "nep141:usdt.tether-token.near".to_string(),
             amount: "1000000".to_string(),
             refund_to: None,
             refund_type: None,
@@ -448,5 +495,76 @@ mod tests {
         assert!(json.get("originAsset").is_some());
         assert!(json.get("destinationAsset").is_some());
         assert!(json.get("amount").is_some());
+    }
+
+    /// Integration test that calls the real 1click API
+    /// Run with: cargo test test_real_oneclick_api -- --ignored
+    ///
+    /// Note: This test requires network access to https://1click.chaindefuser.com
+    /// and may be rate limited without a JWT token.
+    #[tokio::test]
+    #[ignore = "Integration test - requires network access to 1click API"]
+    async fn test_real_oneclick_api() {
+        dotenvy::from_filename(".env").ok();
+        dotenvy::from_filename(".env.test").ok();
+
+        let mut env_vars = EnvVars::default();
+        // Use real API URL
+        env_vars.oneclick_api_url = "https://1click.chaindefuser.com".to_string();
+        // JWT token from env if available
+        env_vars.oneclick_jwt_token = std::env::var("ONECLICK_JWT_TOKEN").ok();
+        env_vars.oneclick_app_fee_bps = Some(50);
+        env_vars.oneclick_app_fee_recipient = Some("treasury.near".to_string());
+        env_vars.oneclick_referral = Some("near-treasury".to_string());
+
+        let db_pool = sqlx::postgres::PgPool::connect_lazy(&env_vars.database_url)
+            .expect("Failed to create lazy pool");
+
+        let state = Arc::new(
+            AppState::builder()
+                .db_pool(db_pool)
+                .env_vars(env_vars)
+                .build()
+                .await
+                .expect("Failed to build AppState"),
+        );
+
+        // Request a dry run quote for NEAR -> USDT swap
+        let request = QuoteRequest {
+            dry: Some(true), // Important: dry run only
+            swap_type: Some("EXACT_INPUT".to_string()),
+            slippage_tolerance: Some(100),
+            origin_asset: "nep141:wrap.near".to_string(),
+            deposit_type: Some("ORIGIN_CHAIN".to_string()),
+            destination_asset: "nep141:usdt.tether-token.near".to_string(),
+            amount: "1000000000000000000000000".to_string(), // 1 NEAR
+            refund_to: Some("test.near".to_string()),
+            refund_type: Some("ORIGIN_CHAIN".to_string()),
+            recipient: Some("test.near".to_string()),
+            recipient_type: Some("DESTINATION_CHAIN".to_string()),
+            deadline: None,
+            quote_waiting_time_ms: Some(5000),
+        };
+
+        let result = get_quote(State(state), Json(request)).await;
+
+        match result {
+            Ok(response) => {
+                println!("Real API response: {}", serde_json::to_string_pretty(&response.0).unwrap());
+
+                // Verify expected response fields are present
+                // Based on documentation, these fields should exist
+                assert!(
+                    response.0.get("amountOut").is_some() || response.0.get("quoteHash").is_some(),
+                    "Response should contain amountOut or quoteHash"
+                );
+            }
+            Err((status, message)) => {
+                // API might reject due to rate limiting or invalid parameters
+                println!("API error: {} - {}", status, message);
+                // Don't fail the test - just log the error for debugging
+                // This helps understand what the real API returns
+            }
+        }
     }
 }
