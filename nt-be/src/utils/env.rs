@@ -93,13 +93,16 @@ impl Default for EnvVars {
                 .filter(|s| !s.is_empty()),
             oneclick_app_fee_bps: std::env::var("ONECLICK_APP_FEE_BPS")
                 .ok()
-                .and_then(|s| s.parse().ok()),
+                .and_then(|s| s.parse().ok())
+                .or(Some(1)), // Default: 1 basis point (0.01%)
             oneclick_app_fee_recipient: std::env::var("ONECLICK_APP_FEE_RECIPIENT")
                 .ok()
-                .filter(|s| !s.is_empty()),
+                .filter(|s| !s.is_empty())
+                .or_else(|| Some("testing-astradao.sputnik-dao.near".to_string())),
             oneclick_referral: std::env::var("ONECLICK_REFERRAL")
                 .ok()
-                .filter(|s| !s.is_empty()),
+                .filter(|s| !s.is_empty())
+                .or_else(|| Some("near-treasury".to_string())),
         }
     }
 }
