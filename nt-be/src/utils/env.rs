@@ -21,6 +21,12 @@ pub struct EnvVars {
     pub coingecko_api_key: Option<String>,
     pub coingecko_api_base_url: String, // Override for testing
     pub nearblocks_api_key: Option<String>,
+    // 1click API configuration for asset exchange quotes
+    pub oneclick_api_url: String,
+    pub oneclick_jwt_token: Option<String>,
+    pub oneclick_app_fee_bps: Option<u32>,
+    pub oneclick_app_fee_recipient: Option<String>,
+    pub oneclick_referral: Option<String>,
 }
 
 impl Default for EnvVars {
@@ -77,6 +83,21 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty()),
             nearblocks_api_key: std::env::var("NEARBLOCKS_API_KEY")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            // 1click API configuration
+            oneclick_api_url: std::env::var("ONECLICK_API_URL")
+                .unwrap_or_else(|_| "https://1click.chaindefuser.com".to_string()),
+            oneclick_jwt_token: std::env::var("ONECLICK_JWT_TOKEN")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            oneclick_app_fee_bps: std::env::var("ONECLICK_APP_FEE_BPS")
+                .ok()
+                .and_then(|s| s.parse().ok()),
+            oneclick_app_fee_recipient: std::env::var("ONECLICK_APP_FEE_RECIPIENT")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            oneclick_referral: std::env::var("ONECLICK_REFERRAL")
                 .ok()
                 .filter(|s| !s.is_empty()),
         }
