@@ -508,7 +508,6 @@ mod tests {
     /// Note: This test requires network access to https://1click.chaindefuser.com
     /// and may be rate limited without a JWT token.
     #[tokio::test]
-    #[ignore = "Integration test - requires network access to 1click API"]
     async fn test_real_oneclick_api() {
         dotenvy::from_filename(".env").ok();
         dotenvy::from_filename(".env.test").ok();
