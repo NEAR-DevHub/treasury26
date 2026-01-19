@@ -263,8 +263,8 @@ export const useNear = () => {
   ) => {
     const results = await storeCreateProposal(toastMessage, params);
     if (results.length > 0) {
-      // Delay to allow Sputnik DAO indexer to pick up the new proposal
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Delay to allow backend to pick up the new proposal
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       // Invalidate and refetch proposals
       await queryClient.invalidateQueries({
         queryKey: ["proposals", params.treasuryId],
@@ -279,6 +279,8 @@ export const useNear = () => {
   const voteProposals = async (treasuryId: string, votes: Vote[]) => {
     const results = await storeVoteProposals(treasuryId, votes);
     if (results.length > 0) {
+      // Delay to allow backend to pick up the new votes
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       let promises = [];
       // Invalidate proposals list
       promises.push(queryClient.invalidateQueries({
@@ -299,7 +301,6 @@ export const useNear = () => {
       );
       await Promise.all(promises);
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       // Invalidate policy and config since voting can approve proposals that change them
       await queryClient.invalidateQueries({
         queryKey: ["treasuryPolicy", treasuryId],
