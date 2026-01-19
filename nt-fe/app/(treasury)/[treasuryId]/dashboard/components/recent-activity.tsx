@@ -36,7 +36,7 @@ export function RecentActivity() {
   const [total, setTotal] = useState(0);
   const [selectedActivity, setSelectedActivity] = useState<RecentActivityType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   const { data: response, isLoading, isFetching } = useRecentActivity(
     treasuryId,
     ITEMS_PER_PAGE,
@@ -47,7 +47,7 @@ export function RecentActivity() {
   useEffect(() => {
     if (response) {
       setTotal(response.total);
-      
+
       if (page === 0) {
         // First page - replace all
         setAllActivities(response.data);
@@ -88,12 +88,12 @@ export function RecentActivity() {
     receiverId: string | null
   ) => {
     const isReceived = parseFloat(amount) > 0;
-    
+
     // If received → show "From counterparty"
     if (isReceived && counterparty) {
       return `from ${counterparty}`;
     }
-    
+
     // If sent → show "To receiver"
     if (!isReceived && receiverId) {
       return `to ${receiverId}`;
@@ -170,8 +170,8 @@ export function RecentActivity() {
                 }
               >
                 <span className="font-semibold">
-                {formatAmount(activity.amount, activity.token_metadata.decimals)}{" "}
-                {activity.token_metadata.symbol}
+                  {formatAmount(activity.amount, activity.token_metadata.decimals)}{" "}
+                  {activity.token_metadata.symbol}
                 </span>
               </div>
               <div className="text-sm text-muted-foreground">
@@ -194,7 +194,7 @@ export function RecentActivity() {
 
   return (
     <>
-      <Card className="gap-3">
+      <Card className="gap-3 border-none shadow-none">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div className="space-y-1">
             <CardTitle>Recent Activity</CardTitle>

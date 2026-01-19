@@ -10,6 +10,7 @@ import { PendingRequests } from "@/features/proposals/components/pending-request
 import { RecentActivity } from "./components/recent-activity";
 import { OnboardingProgress } from "@/features/onboarding";
 import { DepositModal } from "./components/deposit-modal";
+import { InfoBox } from "@/features/onboarding/components/info-box";
 
 export default function AppPage() {
   const { data } = useTreasuryAssets(undefined, { onlyPositiveBalance: true });
@@ -29,7 +30,8 @@ export default function AppPage() {
           <Assets tokens={tokens} />
           <RecentActivity />
         </div>
-        <div className="w-full lg:w-2/5">
+        <div className="flex flex-col gap-5 w-full lg:w-2/5">
+          <InfoBox />
           <PendingRequests />
         </div>
       </div>
