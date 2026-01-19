@@ -204,6 +204,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/intents/deposit-assets",
             get(handlers::intents::deposit_assets::get_deposit_assets),
         )
+        .route(
+            "/api/intents/quote",
+            post(handlers::intents::quote::get_quote),
+        )
         // Proxy endpoints - catch-all for external API
         .route(
             "/api/proxy/{*path}",
