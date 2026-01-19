@@ -7,7 +7,7 @@ import { StepperHeader, StepProps, StepWizard, InlineNextButton } from "@/compon
 import { Form, FormField, FormMessage } from "@/components/ui/form";
 import { LargeInput } from "@/components/large-input";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, } from "react";
+import { useEffect, useState } from "react";
 import { ArrayPath, useForm, useFormContext } from "react-hook-form";
 import z from "zod";
 import { checkHandleUnused, createTreasury, CreateTreasuryRequest } from "@/lib/api";
@@ -220,6 +220,7 @@ export default function NewTreasuryPage() {
     const { accountId, isInitializing } = useNear();
     const router = useRouter();
     const queryClient = useQueryClient();
+    const [step, setStep] = useState(0);
     const form = useForm<TreasuryFormValues>({
         resolver: zodResolver(treasuryFormSchema),
         defaultValues: {
@@ -293,6 +294,8 @@ export default function NewTreasuryPage() {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 max-w-[600px] mx-auto">
                     <StepWizard
+                        step={step}
+                        onStepChange={setStep}
                         stepTitles={["Details", "Members", "Review"]}
                         steps={[
                             {

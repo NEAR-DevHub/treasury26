@@ -10,7 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ReviewStep, StepperHeader, InlineNextButton, StepProps, StepWizard } from "@/components/step-wizard";
 import { useStorageDepositIsRegistered, useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/textarea";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
@@ -202,6 +202,7 @@ export default function PaymentsPage() {
   const { selectedTreasury } = useTreasury();
   const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const [step, setStep] = useState(0);
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
@@ -269,8 +270,12 @@ export default function PaymentsPage() {
         },
         proposalBond,
         additionalTransactions,
+      }).then(() => {
+        form.reset();
+        setStep(0);
+      }).catch((error) => {
+        console.error("Payments error", error);
       });
-      form.reset(form.getValues());
     } catch (error) {
       console.error("Payments error", error);
     }
@@ -281,6 +286,8 @@ export default function PaymentsPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 max-w-[600px] mx-auto">
           <StepWizard
+            step={step}
+            onStepChange={setStep}
             steps={[
               {
                 component: Step1,

@@ -19,7 +19,7 @@ import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Big from "big.js";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm, useFormContext } from "react-hook-form";
 import z from "zod";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
@@ -237,6 +237,7 @@ export default function VestingPage() {
   const { selectedTreasury } = useTreasury();
   const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const [step, setStep] = useState(0);
 
   const form = useForm<VestingFormValues>({
     resolver: zodResolver(vestingFormSchema),
@@ -256,8 +257,7 @@ export default function VestingPage() {
   });
 
   const onSubmit = async (data: VestingFormValues) => {
-    try {
-      const description = {
+    const description = {
         title: `Create vesting schedule for ${data.vesting.address}`,
         notes: data.vesting.memo || "",
       }
@@ -314,11 +314,12 @@ export default function VestingPage() {
           },
         },
         proposalBond,
+      }).then(() => {
+        form.reset();
+        setStep(0);
+      }).catch((error) => {
+        console.error("Vesting error", error);
       });
-      form.reset(form.getValues());
-    } catch (error) {
-      console.error("Vesting error", error);
-    }
   };
 
   return (
@@ -326,6 +327,8 @@ export default function VestingPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 max-w-[600px] mx-auto">
           <StepWizard
+            step={step}
+            onStepChange={setStep}
             stepTitles={["Details", "Settings", "Review"]}
             steps={[
               {

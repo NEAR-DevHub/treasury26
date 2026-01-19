@@ -49,31 +49,34 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
 interface StepWizardProps {
     steps: Step[];
     stepTitles?: string[];
+    step: number;
+    onStepChange: (step: number) => void;
 }
 
 export function StepWizard({
     steps,
     stepTitles,
+    step,
+    onStepChange,
 }: StepWizardProps) {
-    const [index, setIndex] = useState(0);
     const [direction, setDirection] = useState<1 | -1>(1);
     const isTransitioningRef = useRef(false);
 
-    const CurrentStep = steps[index];
+    const CurrentStep = steps[step];
 
     // Handle next step (validate current step)
     const handleNext = async () => {
-        if (isTransitioningRef.current || index >= steps.length - 1) return;
+        if (isTransitioningRef.current || step >= steps.length - 1) return;
         isTransitioningRef.current = true;
         setDirection(1);
-        setIndex((i) => Math.min(i + 1, steps.length - 1));
+        onStepChange(Math.min(step + 1, steps.length - 1));
     };
 
     const handleBack = () => {
-        if (isTransitioningRef.current || index <= 0) return;
+        if (isTransitioningRef.current || step <= 0) return;
         isTransitioningRef.current = true;
         setDirection(-1);
-        setIndex((i) => Math.max(i - 1, 0));
+        onStepChange(Math.max(step - 1, 0));
     };
 
     const variants = {
@@ -94,11 +97,11 @@ export function StepWizard({
     return (
         <div className="relative overflow-hidden flex flex-col gap-6">
             {stepTitles && stepTitles.length > 0 && (
-                <StepIndicator steps={stepTitles} currentStep={index} />
+                <StepIndicator steps={stepTitles} currentStep={step} />
             )}
             <AnimatePresence initial={false} custom={direction} mode="popLayout">
                 <motion.div
-                    key={index}
+                    key={step}
                     custom={direction}
                     variants={variants}
                     initial="enter"
@@ -111,7 +114,7 @@ export function StepWizard({
                     onAnimationComplete={() => { isTransitioningRef.current = false; }}
                     className="flex flex-col gap-4"
                 >
-                    <CurrentStep.component handleBack={index > 0 ? handleBack : undefined} handleNext={handleNext} />
+                    <CurrentStep.component handleBack={step > 0 ? handleBack : undefined} handleNext={handleNext} />
                 </motion.div>
             </AnimatePresence>
         </div>
