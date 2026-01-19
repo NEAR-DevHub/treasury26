@@ -12,10 +12,14 @@ import Big from "big.js";
 interface AuthButtonProps extends React.ComponentProps<typeof Button> {
     permissionKind: string;
     permissionAction: string;
+    balanceCheck?: {
+        withProposalBond?: boolean;
+    };
 }
 
 const NO_WALLET_MESSAGE = "Connect your wallet";
-const NO_PERMISSION_MESSAGE = "You don’t have permission to perform this action";
+const NO_PERMISSION_MESSAGE = "You don't have permission to perform this action";
+const MIN_BALANCE_BUFFER = "0.03";
 
 interface ErrorMessageProps extends React.ComponentProps<typeof Button> {
     message: string;
@@ -38,15 +42,41 @@ export function AuthButton({
     permissionAction,
     children,
     disabled,
+    balanceCheck,
+    onClick,
     ...props
 }: AuthButtonProps) {
     const { accountId } = useNear();
     const { selectedTreasury } = useTreasury();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
+    const { data: nearBalance } = useTokenBalance(accountId, "near", "near");
+    const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
 
     const hasAccess = useMemo(() => {
         return !!(accountId && hasPermission(policy, accountId, permissionKind, permissionAction));
     }, [policy, accountId, permissionKind, permissionAction]);
+
+    const requiredAmount = useMemo(() => {
+        if (!balanceCheck?.withProposalBond) return MIN_BALANCE_BUFFER;
+        const proposalBond = policy?.proposal_bond || "0";
+        const bondInNear = Big(proposalBond).div(Big(10).pow(24));
+        return bondInNear.plus(MIN_BALANCE_BUFFER).toFixed(2);
+    }, [policy?.proposal_bond]);
+
+    const hasInsufficientBalance = useMemo(() => {
+        if (!nearBalance || !balanceCheck?.withProposalBond) return false;
+        const balanceInNear = Big(nearBalance.balance).div(Big(10).pow(24));
+        return balanceInNear.lt(requiredAmount);
+    }, [nearBalance, requiredAmount]);
+
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+        if (hasInsufficientBalance) {
+            e.preventDefault();
+            setShowInsufficientBalanceModal(true);
+            return;
+        }
+        onClick?.(e);
+    };
 
     if (!accountId) {
         return <ErrorMessage message={NO_WALLET_MESSAGE} {...props}>{children}</ErrorMessage>;
@@ -57,9 +87,17 @@ export function AuthButton({
     }
 
     return (
-        <Button {...props} disabled={disabled}>
-            {children}
-        </Button>
+        <>
+            <Button {...props} disabled={disabled} onClick={handleClick}>
+                {children}
+            </Button>
+            <InsufficientBalanceModal
+                isOpen={showInsufficientBalanceModal}
+                onClose={() => setShowInsufficientBalanceModal(false)}
+                requiredAmount={requiredAmount}
+                actionType="proposal"
+            />
+        </>
     );
 }
 

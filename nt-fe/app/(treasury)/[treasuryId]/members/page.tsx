@@ -17,11 +17,6 @@ import { hasPermission } from "@/lib/config-utils";
 import { useProposals } from "@/hooks/use-proposals";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { encodeToMarkdown } from "@/lib/utils";
 import { MemberModal } from "./components/modals/member-modal";
@@ -43,6 +38,7 @@ import {
 import { useMemberValidation } from "./hooks/use-member-validation";
 import { formatRoleName } from "@/components/role-name";
 import { useTreasuryMembers } from "@/hooks/use-treasury-members";
+import { AuthButton } from "@/components/auth-button";
 
 interface Member {
   accountId: string;
@@ -183,10 +179,8 @@ export default function MembersPage() {
   // Use member validation hook
   const {
     canModifyMember,
-    canEditBulk,
     canDeleteBulk,
     canConfirmEdit,
-    canAddNewMember,
   } = useMemberValidation(existingMembers, {
     accountId: accountId || undefined,
     canAddMember,
@@ -688,49 +682,33 @@ export default function MembersPage() {
                 </TableCell>
                 <TableCell className="pr-6">
                   <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => handleEditMember(member)}
-                          disabled={!validation.canModify}
-                          className={`p-2 rounded transition-colors ${!validation.canModify
-                            ? "text-muted-foreground/40 cursor-not-allowed"
-                            : "text-foreground hover:bg-muted"
-                            }`}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      </TooltipTrigger>
-                      {!validation.canModify && (
-                        <TooltipContent className="max-w-[280px]">
-                          <p>{validation.reason}</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMemberToDelete(member);
-                            setIsDeleteModalOpen(true);
-                          }}
-                          disabled={!validation.canModify}
-                          className={`p-2 rounded transition-colors ${!validation.canModify
-                            ? "text-destructive/40 cursor-not-allowed"
-                            : "text-destructive hover:bg-destructive/10"
-                            }`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </TooltipTrigger>
-                      {!validation.canModify && (
-                        <TooltipContent className="max-w-[280px]">
-                          <p>{validation.reason}</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
+                    <AuthButton
+                      permissionKind="policy"
+                      permissionAction="AddProposal"
+                      balanceCheck={{ withProposalBond: true }}
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditMember(member)}
+                      disabled={hasPendingMemberRequest}
+                      className="h-8 w-8"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </AuthButton>
+                    <AuthButton
+                      permissionKind="policy"
+                      permissionAction="AddProposal"
+                      balanceCheck={{ withProposalBond: true }}
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setMemberToDelete(member);
+                        setIsDeleteModalOpen(true);
+                      }}
+                      disabled={hasPendingMemberRequest}
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </AuthButton>
                   </div>
                 </TableCell>
               </TableRow>
@@ -776,26 +754,17 @@ export default function MembersPage() {
               {isLoading ? (
                 <div className="h-10 w-44 bg-muted rounded-lg animate-pulse" />
               ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span tabIndex={0}>
-                      <Button
-                        type="button"
-                        onClick={handleOpenAddMemberModal}
-                        className="flex items-center gap-2 text-md"
-                        disabled={!canAddNewMember().canModify}
-                      >
-                        <span className="text-lg">+</span>
-                        Add New Member
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {!canAddNewMember().canModify && (
-                    <TooltipContent className="max-w-[280px]">
-                      <p>{canAddNewMember().reason}</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
+                <AuthButton
+                  permissionKind="policy"
+                  permissionAction="AddProposal"
+                  balanceCheck={{ withProposalBond: true }}
+                  onClick={handleOpenAddMemberModal}
+                  disabled={hasPendingMemberRequest}
+                  className="flex items-center gap-2 text-md"
+                >
+                  <span className="text-lg">+</span>
+                  Add New Member
+                </AuthButton>
               )}
             </div>
           </div>
@@ -809,60 +778,32 @@ export default function MembersPage() {
               {selectedMembers.length !== 1 ? "s" : ""} selected
             </span>
             <div className="flex items-center gap-2">
-              {(() => {
-                const membersToModify = activeMembers.filter((m) =>
-                  selectedMembers.includes(m.accountId)
-                );
-                const deleteValidation = canDeleteBulk(membersToModify);
-                const editValidation = canEditBulk();
-
-                return (
-                  <>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleBulkDelete}
-                            disabled={!deleteValidation.canModify}
-                            className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Remove
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      {!deleteValidation.canModify && (
-                        <TooltipContent className="max-w-[280px]">
-                          <p>{deleteValidation.reason}</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleBulkEdit}
-                            disabled={!editValidation.canModify}
-                            className="h-9"
-                          >
-                            <Pencil className="w-4 h-4 mr-1" />
-                            Edit
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      {!editValidation.canModify && (
-                        <TooltipContent className="max-w-[280px]">
-                          <p>{editValidation.reason}</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  </>
-                );
-              })()}
+              <AuthButton
+                permissionKind="policy"
+                permissionAction="AddProposal"
+                balanceCheck={{ withProposalBond: true }}
+                variant="outline"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={hasPendingMemberRequest}
+                className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Remove
+              </AuthButton>
+              <AuthButton
+                permissionKind="policy"
+                permissionAction="AddProposal"
+                balanceCheck={{ withProposalBond: true }}
+                variant="outline"
+                size="sm"
+                onClick={handleBulkEdit}
+                disabled={hasPendingMemberRequest}
+                className="h-9"
+              >
+                <Pencil className="w-4 h-4 mr-1" />
+                Edit
+              </AuthButton>
             </div>
           </div>
         )}
