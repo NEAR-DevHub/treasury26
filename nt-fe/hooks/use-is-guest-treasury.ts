@@ -8,7 +8,7 @@ import { useUserTreasuries, useTreasuryConfig } from "@/hooks/use-treasury-queri
  */
 export function useIsGuestTreasury() {
     const params = useParams();
-    const { accountId } = useNear();
+    const { accountId, isInitializing } = useNear();
     const treasuryId = params?.treasuryId as string | undefined;
 
     const { data: treasuries = [], isLoading: isLoadingTreasuries } = useUserTreasuries(accountId);
@@ -20,7 +20,7 @@ export function useIsGuestTreasury() {
     );
 
     const isGuestTreasury = !!(treasuryId && !currentTreasury && guestTreasuryConfig);
-    const isLoading = isLoadingTreasuries || isLoadingGuestConfig;
+    const isLoading = isLoadingTreasuries || isLoadingGuestConfig || isInitializing;
 
     return {
         isGuestTreasury,

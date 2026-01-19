@@ -30,7 +30,7 @@ function isBatchPaymentProposal(proposal: Proposal): boolean {
 function processFTTransferProposal(proposal: Proposal): "Payment Request" | "Batch Payment Request" | "Exchange" | undefined {
   if (!('FunctionCall' in proposal.kind)) return undefined;
   const functionCall = proposal.kind.FunctionCall;
-  if (isIntentWithdrawProposal(proposal)) {
+  if (isIntentWithdrawProposal(proposal) || isLookupTransferProposal(proposal)) {
     return "Payment Request" as const;
   }
   const proposalType = decodeProposalDescription("proposal action", proposal.description) === "asset-exchange";
@@ -65,6 +65,12 @@ function isIntentWithdrawProposal(proposal: Proposal): boolean {
   if (!('FunctionCall' in proposal.kind)) return false;
   const functionCall = proposal.kind.FunctionCall;
   return functionCall.receiver_id === 'intents.near' && functionCall.actions.some(action => action.method_name === 'ft_withdraw');
+}
+
+function isLookupTransferProposal(proposal: Proposal): boolean {
+  if (!('FunctionCall' in proposal.kind)) return false;
+  const functionCall = proposal.kind.FunctionCall;
+  return functionCall.receiver_id.endsWith('.lockup.near') && functionCall.actions.some(action => action.method_name === 'transfer');
 }
 
 function stakingType(proposal: Proposal): "Earn NEAR" | "Withdraw Earnings" | "Unstake NEAR" | undefined {

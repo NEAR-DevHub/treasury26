@@ -16,6 +16,7 @@ import { User } from "@/components/user";
 import { AuthButtonWithProposal } from "@/components/auth-button";
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
+import { cn } from "@/lib/utils";
 
 interface ProposalSidebarProps {
   proposal: Proposal;
@@ -24,28 +25,42 @@ interface ProposalSidebarProps {
   onDeposit: (tokenSymbol?: string, tokenNetwork?: string) => void;
 }
 
-function StepIcon({ status }: { status: "Success" | "Pending" | "Failed" | "Expired" }) {
+interface StepIconProps {
+  status: "Success" | "Pending" | "Failed" | "Expired";
+  size?: "sm" | "md";
+}
+
+const sizeClass = {
+  sm: "size-4",
+  md: "size-6",
+};
+
+const iconClass = {
+  sm: "size-3",
+  md: "size-4",
+};
+export function StepIcon({ status, size = "md" }: StepIconProps) {
   switch (status) {
     case "Success":
       return (
-        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-general-success-foreground">
-          <Check className="h-4 w-4 text-white" />
+        <div className={cn("flex shrink-0 items-center justify-center rounded-full bg-general-success-foreground", sizeClass[size])}>
+          <Check className={cn(iconClass[size], "text-white shrink-0")} />
         </div>
       );
     case "Pending":
       return (
-        <div className="flex h-6 w-6 items-center justify-center rounded-full border border-muted-foreground/20 bg-card" />
+        <div className={cn("flex shrink-0 items-center justify-center rounded-full border border-muted-foreground/20 bg-card", sizeClass[size])} />
       );
     case "Expired":
       return (
-        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary">
-          <X className="h-4 w-4 text-muted-foreground" />
+        <div className={cn("flex shrink-0 items-center justify-center rounded-full bg-secondary", sizeClass[size])}>
+          <X className={cn(iconClass[size], "text-muted-foreground shrink-0")} />
         </div>
       );
     case "Failed":
       return (
-        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-general-destructive-foreground">
-          <X className="h-4 w-4 text-white" />
+        <div className={cn("flex shrink-0 items-center justify-center rounded-full bg-general-destructive-foreground", sizeClass[size])}>
+          <X className={cn(iconClass[size], "text-white shrink-0")} />
         </div>
       );
   }

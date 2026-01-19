@@ -1,18 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { useTreasury } from "@/stores/treasury-store";
 import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
 
 import Assets from "./components/assets";
 import BalanceWithGraph from "./components/balance-with-graph";
 import { PendingRequests } from "@/features/proposals/components/pending-requests";
 import { RecentActivity } from "./components/recent-activity";
+import { OnboardingProgress } from "@/features/onboarding";
+import { DepositModal } from "./components/deposit-modal";
 
 export default function AppPage() {
-  const { selectedTreasury: accountId } = useTreasury();
-  const { data } = useTreasuryAssets(accountId, { onlyPositiveBalance: true });
+  const { data } = useTreasuryAssets(undefined, { onlyPositiveBalance: true });
   const { tokens, totalBalanceUSD } = data || { tokens: [], totalBalanceUSD: 0 };
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+
 
   return (
     <PageComponentLayout
@@ -21,7 +24,8 @@ export default function AppPage() {
     >
       <div className="flex flex-col lg:flex-row gap-5">
         <div className="flex flex-col gap-5 lg:w-3/5 w-full">
-          <BalanceWithGraph totalBalanceUSD={totalBalanceUSD} tokens={tokens} />
+          <BalanceWithGraph totalBalanceUSD={totalBalanceUSD} tokens={tokens} onDepositClick={() => setIsDepositModalOpen(true)} />
+          <OnboardingProgress onDepositClick={() => setIsDepositModalOpen(true)} />
           <Assets tokens={tokens} />
           <RecentActivity />
         </div>
@@ -29,6 +33,11 @@ export default function AppPage() {
           <PendingRequests />
         </div>
       </div>
+
+      <DepositModal
+        isOpen={isDepositModalOpen}
+        onClose={() => setIsDepositModalOpen(false)}
+      />
     </PageComponentLayout>
   );
 }

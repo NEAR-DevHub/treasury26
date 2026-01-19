@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LogIn, LogOut, ChevronDown } from "lucide-react";
+import { LogIn, LogOut, ChevronDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/button";
 import { useNear } from "@/stores/near-store";
 import { useRouter } from "next/navigation";
@@ -10,12 +10,11 @@ import { User } from "./user";
 export function SignIn() {
   const { accountId: signedAccountId, isInitializing, connect, disconnect } = useNear();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const router = useRouter();
 
   if (isInitializing) {
     return (
-      <Button disabled className="flex items-center gap-2 bg-blue-600 text-white">
-        <LogIn className="h-4 w-4" />
+      <Button disabled className="flex items-center gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
         Loading...
       </Button>
     );
@@ -25,10 +24,10 @@ export function SignIn() {
     return (
       <Button
         onClick={connect}
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+        className="flex items-center gap-2"
       >
         <LogIn className="h-4 w-4" />
-        Sign In
+        Connect Wallet
       </Button>
     );
   }
@@ -68,7 +67,7 @@ export function SignIn() {
                 }}
               >
                 <LogOut className="h-4 w-4" />
-                Sign Out
+                Disconnect
               </Button>
             </div>
           </div>

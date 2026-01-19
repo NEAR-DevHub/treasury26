@@ -29,16 +29,18 @@ import { getKindFromProposal } from "@/lib/config-utils";
 
 function extractFTTransferData(functionCall: FunctionCallKind["FunctionCall"], actions: Action[]): Omit<PaymentRequestData, "notes"> | undefined {
   const action = actions.find(
-    (a) => a.method_name === "ft_transfer" || a.method_name === "ft_transfer_call"
+    (a) => a.method_name === "ft_transfer" || a.method_name === "ft_transfer_call" || a.method_name === "transfer"
   );
   const actionWithdraw = actions.find(
     (a) => a.method_name === "ft_withdraw"
   );
+
   if (action) {
+    if (action.method_name === "transfer" && !functionCall.receiver_id.endsWith(".lockup.near")) { return undefined; }
     const args = decodeArgs(action.args);
     if (args) {
       return {
-        tokenId: functionCall.receiver_id,
+        tokenId: action.method_name === "transfer" ? "near" : functionCall.receiver_id,
         amount: args.amount || "0",
         receiver: args.receiver_id || "",
       };

@@ -4,22 +4,21 @@ import BalanceChart from "./chart";
 import { Button } from "@/components/button";
 import { ArrowLeftRight, ArrowUpRightIcon, Database, Download, Coins } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { useBalanceChart, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useBalanceChart, } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageCard } from "@/components/card";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { DepositModal } from "./deposit-modal";
 import type { ChartInterval } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNear } from "@/stores/near-store";
 import { AuthButton } from "@/components/auth-button";
 
 interface Props {
     totalBalanceUSD: number | Big.Big;
     tokens: TreasuryAsset[];
+    onDepositClick: () => void;
 }
 
 type TimePeriod = "1D" | "1W" | "1M" | "1Y";
@@ -76,16 +75,15 @@ interface GroupedToken {
     tokens: TreasuryAsset[];
     totalBalanceUSD: number;
     icon: string;
-    tokenIds: string[]; // All token contract IDs across networks
+    tokenIds: string[];
 }
 
-export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
+export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositClick }: Props) {
     const params = useParams();
     const treasuryId = params?.treasuryId as string | undefined;
     const { selectedTreasury: accountId } = useTreasury();
     const [selectedToken, setSelectedToken] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1W");
-    const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
 
     // Group tokens by symbol (to handle same token on different networks)
     const groupedTokens = useMemo(() => {
@@ -292,7 +290,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button onClick={() => setIsDepositModalOpen(true)}>
+                <Button onClick={onDepositClick}>
                     <Download className="size-4" /> Deposit
                 </Button>
                 <Link href={treasuryId ? `/${treasuryId}/payments` : "/payments"} className="flex">
@@ -314,12 +312,6 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens }: Props) {
             ) : (
                 <BalanceChart data={chartData.data} showUSD={chartData.showUSD} />
             )}
-
-            {/* Deposit Modal */}
-            <DepositModal
-                isOpen={isDepositModalOpen}
-                onClose={() => setIsDepositModalOpen(false)}
-            />
         </PageCard>
     )
 }
