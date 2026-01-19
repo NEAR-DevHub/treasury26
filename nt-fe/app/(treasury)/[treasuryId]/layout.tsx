@@ -18,7 +18,7 @@ export default function TreasuryLayout({
     <div className="flex h-screen overflow-hidden">
       <PrimaryColorProvider treasuryId={treasuryId} />
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <main className="flex-1 overflow-y-auto bg-background">
+      <main className="flex-1 overflow-y-auto bg-muted">
         {children}
       </main>
     </div>
