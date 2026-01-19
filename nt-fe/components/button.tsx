@@ -20,6 +20,8 @@ export function Button({ variant, className: classNameOverride, size, tooltipCon
             className = "hover:no-underline font-semibold text-foreground/80 hover:text-foreground";
             break;
         case "ghost":
+            className = "hover:bg-muted-foreground/5";
+            break;
         case "outline":
             className = "hover:bg-muted-foreground/5 border";
             break;
