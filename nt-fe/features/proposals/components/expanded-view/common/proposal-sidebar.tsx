@@ -13,7 +13,7 @@ import { useProposalTransaction } from "@/hooks/use-proposals";
 import Link from "next/link";
 import Big from "big.js";
 import { User } from "@/components/user";
-import { AuthButtonWithProposal } from "@/components/auth-button";
+import { AuthButtonWithProposal, NO_VOTE_MESSAGE } from "@/components/auth-button";
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
 import { cn } from "@/lib/utils";
@@ -168,6 +168,7 @@ export function ProposalSidebar({ proposal, policy, onVote, onDeposit }: Proposa
   const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(proposal, selectedTreasury);
 
   const status = getProposalStatus(proposal, policy);
+  const isUserVoter = !!proposal.votes[accountId ?? ""];
 
   const expiresAt = new Date(Big(proposal.submission_time).add(policy.proposal_period).div(1000000).toNumber());
   let timestamp;
@@ -219,6 +220,8 @@ export function ProposalSidebar({ proposal, policy, onVote, onDeposit }: Proposa
             variant="secondary"
             className="flex-1"
             onClick={() => onVote("Reject")}
+            disabled={isUserVoter}
+            disabledTooltip={NO_VOTE_MESSAGE}
           >
             <X className="h-4 w-4 mr-2" />
             Reject
@@ -238,6 +241,8 @@ export function ProposalSidebar({ proposal, policy, onVote, onDeposit }: Proposa
               variant="default"
               className="flex gap-1 flex-1"
               onClick={() => onVote("Approve")}
+              disabled={isUserVoter}
+              disabledTooltip={NO_VOTE_MESSAGE}
             >
               <Check className="h-4 w-4 mr-2" />
               Approve

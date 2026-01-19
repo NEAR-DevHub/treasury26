@@ -15,11 +15,13 @@ interface AuthButtonProps extends React.ComponentProps<typeof Button> {
     balanceCheck?: {
         withProposalBond?: boolean;
     };
+    disabledTooltip?: string;
 }
 
-const NO_WALLET_MESSAGE = "Connect your wallet";
-const NO_PERMISSION_MESSAGE = "You don't have permission to perform this action";
-const MIN_BALANCE_BUFFER = "0.03";
+export const NO_WALLET_MESSAGE = "Connect your wallet";
+export const NO_PERMISSION_MESSAGE = "You don't have permission to perform this action";
+export const NO_VOTE_MESSAGE = "You have already voted on this proposal";
+export const MIN_BALANCE_BUFFER = "0.03";
 
 interface ErrorMessageProps extends React.ComponentProps<typeof Button> {
     message: string;
@@ -104,6 +106,7 @@ export function AuthButton({
 interface AuthButtonWithProposalProps extends React.ComponentProps<typeof Button> {
     proposalKind: ProposalKind;
     isDeleteCheck?: boolean;
+    disabledTooltip?: string;
 }
 
 const MIN_VOTE_BALANCE = "0.03";
@@ -114,6 +117,7 @@ export function AuthButtonWithProposal({
     children,
     disabled,
     onClick,
+    disabledTooltip,
     ...props
 }: AuthButtonWithProposalProps) {
     const { accountId } = useNear();
@@ -149,6 +153,10 @@ export function AuthButtonWithProposal({
 
     if (!hasAccess) {
         return <ErrorMessage message={NO_PERMISSION_MESSAGE} {...props}>{children}</ErrorMessage>;
+    }
+
+    if (disabled && disabledTooltip) {
+        return <ErrorMessage message={disabledTooltip} {...props}>{children}</ErrorMessage>;
     }
 
     return (

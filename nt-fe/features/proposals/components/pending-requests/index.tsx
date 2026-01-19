@@ -1,5 +1,5 @@
 import { Button } from "@/components/button";
-import { AuthButtonWithProposal } from "@/components/auth-button";
+import { AuthButtonWithProposal, NO_VOTE_MESSAGE } from "@/components/auth-button";
 import { PageCard } from "@/components/card";
 import { NumberBadge } from "@/components/number-badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -60,6 +60,8 @@ interface PendingRequestItemProps {
 export function PendingRequestItem({ proposal, treasuryId, onVote, onDeposit }: PendingRequestItemProps) {
     const type = getProposalUIKind(proposal);
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(proposal, treasuryId);
+    const { accountId } = useNear();
+    const isUserVoter = !!proposal.votes[accountId ?? ""];
 
     return (
         <Link href={`/${treasuryId}/requests/${proposal.id}`}>
@@ -76,6 +78,8 @@ export function PendingRequestItem({ proposal, treasuryId, onVote, onDeposit }: 
                                     variant="secondary"
                                     className="flex gap-1 flex-1"
                                     onClick={(e) => { e.preventDefault(); onVote("Reject") }}
+                                    disabledTooltip={NO_VOTE_MESSAGE}
+                                    disabled={isUserVoter}
                                 >
                                     <X className="size-3.5" />
                                     Reject
@@ -95,6 +99,8 @@ export function PendingRequestItem({ proposal, treasuryId, onVote, onDeposit }: 
                                         variant="default"
                                         className="flex gap-1 flex-1"
                                         onClick={(e) => { e.preventDefault(); onVote("Approve") }}
+                                        disabled={isUserVoter}
+                                        disabledTooltip={NO_VOTE_MESSAGE}
                                     >
                                         <Check className="size-3.5" />
                                         Approve
