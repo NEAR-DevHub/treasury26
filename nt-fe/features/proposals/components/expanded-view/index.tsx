@@ -94,7 +94,7 @@ export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVot
   const requestUrl = `${window.location.origin}/${selectedTreasury}/requests/${proposal.id}`;
 
   const ownProposal = proposal.proposer === accountId && getProposalStatus(proposal, policy) === "Pending";
-
+  const isVoted = !!proposal.votes[accountId ?? ""];
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full min-w-0">
       <PageCard className="w-full min-w-0">
@@ -116,7 +116,7 @@ export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVot
                 </Button>
               </Link>
             )}
-            {ownProposal && (
+            {ownProposal && !isVoted && (
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onVote("Remove")}>
                 <Trash className="h-4 w-4" />
               </Button>
