@@ -32,6 +32,10 @@ interface MemberModalProps {
   isValidatingAddresses: boolean;
   mode: "add" | "edit";
   validationError?: string;
+  originalMembers?: Array<{
+    accountId: string;
+    roles: string[];
+  }>;
 }
 
 export function MemberModal({
@@ -43,6 +47,7 @@ export function MemberModal({
   isValidatingAddresses,
   mode,
   validationError,
+  originalMembers,
 }: MemberModalProps) {
   const isEditMode = mode === "edit";
   const title = isEditMode ? "Edit Roles" : "Add New Member";
@@ -51,6 +56,33 @@ export function MemberModal({
       ? "Creating proposal..."
       : "Validating addresses..."
     : "Review Request";
+
+  // Check if any changes have been made in edit mode
+  const hasChanges = (() => {
+    if (!isEditMode || !originalMembers) return true;
+
+    const currentMembers = form.watch("members");
+    
+    // Compare each member's roles with original
+    return currentMembers.some((currentMember) => {
+      const originalMember = originalMembers.find(
+        (m) => m.accountId === currentMember.accountId
+      );
+      if (!originalMember) return true;
+
+      // Sort roles for comparison
+      const currentRolesSorted = [...currentMember.roles].sort();
+      const originalRolesSorted = [...originalMember.roles].sort();
+
+      // Check if roles are different
+      return (
+        currentRolesSorted.length !== originalRolesSorted.length ||
+        currentRolesSorted.some(
+          (role, index) => role !== originalRolesSorted[index]
+        )
+      );
+    });
+  })();
 
   return (
     <Dialog
@@ -99,7 +131,8 @@ export function MemberModal({
                     disabled={
                       !form.formState.isValid ||
                       isValidatingAddresses ||
-                      !!validationError
+                      !!validationError ||
+                      (isEditMode && !hasChanges)
                     }
                     className="w-full"
                   >
@@ -107,9 +140,12 @@ export function MemberModal({
                   </Button>
                 </span>
               </TooltipTrigger>
-              {validationError && (
+              {(validationError || (isEditMode && !hasChanges)) && (
                 <TooltipContent className="max-w-[280px]">
-                  <p>{validationError}</p>
+                  <p>
+                    {validationError ||
+                      "No changes have been made to member roles"}
+                  </p>
                 </TooltipContent>
               )}
             </Tooltip>

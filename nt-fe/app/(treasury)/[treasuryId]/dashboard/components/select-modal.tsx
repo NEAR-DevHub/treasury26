@@ -110,21 +110,29 @@ export function SelectModal({
                     key={option.id}
                     onClick={() => handleSelect(option)}
                     variant="ghost"
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg h-auto justify-start px-1! ${selectedId === option.id ? "bg-muted" : ""
-                      }`}
+                    className={`w-full flex items-center gap-1 p-3 rounded-lg h-auto justify-start px-1! ${
+                      selectedId === option.id ? "bg-muted" : ""
+                    }`}
                   >
                     {option.icon?.startsWith("http") ||
-                      option.icon?.startsWith("data:") ? (
-                      <div className="w-10 h-10 rounded-full object-cover">
-                        <img src={option.icon} alt={option.symbol || option.name} className="w-full h-full p-2" />
+                    option.icon?.startsWith("data:") ? (
+                      <div className="w-12 h-12">
+                        <img
+                          src={option.icon}
+                          alt={option.symbol || option.name}
+                          className="w-full h-full p-2 rounded-full object-cover"
+                        />
                       </div>
                     ) : (
-                      <div
-                        className={`w-10 h-10 rounded-full ${option.gradient ||
-                          "bg-linear-to-br from-blue-500 to-purple-500"
+                      <div className="w-12 h-12 flex items-center justify-center">
+                        <div
+                          className={`w-8 h-8  rounded-full ${
+                            option.gradient ||
+                            "bg-linear-to-br from-blue-500 to-purple-500"
                           } flex items-center justify-center text-white font-bold`}
-                      >
-                        <span>{option.icon}</span>
+                        >
+                          <span>{option.icon}</span>
+                        </div>
                       </div>
                     )}
                     <div className="flex-1 text-left">

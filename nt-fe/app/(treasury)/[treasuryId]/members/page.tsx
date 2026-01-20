@@ -140,6 +140,9 @@ export default function MembersPage() {
     "add"
   );
   const [membersBeingEdited, setMembersBeingEdited] = useState<string[]>([]);
+  const [originalMembersData, setOriginalMembersData] = useState<
+    Array<{ accountId: string; roles: string[] }>
+  >([]);
 
   // Create dynamic schema with access to existing members and mode
   const addMemberSchemaWithContext = useMemo(() => {
@@ -562,6 +565,10 @@ export default function MembersPage() {
     (member: Member) => {
       setCurrentModalMode("edit");
       setMembersBeingEdited([member.accountId]);
+      // Store original member data for comparison
+      setOriginalMembersData([
+        { accountId: member.accountId, roles: member.roles },
+      ]);
       // Reset form with the selected member's data
       form.reset({
         members: [{ accountId: member.accountId, roles: member.roles }],
@@ -578,6 +585,13 @@ export default function MembersPage() {
     );
     setCurrentModalMode("edit");
     setMembersBeingEdited(membersToEdit.map((m) => m.accountId));
+    // Store original member data for comparison
+    setOriginalMembersData(
+      membersToEdit.map((m) => ({
+        accountId: m.accountId,
+        roles: m.roles,
+      }))
+    );
     form.reset({
       members: membersToEdit.map((m) => ({
         accountId: m.accountId,
@@ -914,12 +928,14 @@ export default function MembersPage() {
           setIsEditRolesModalOpen(false);
           setCurrentModalMode("add");
           setMembersBeingEdited([]);
+          setOriginalMembersData([]);
         }}
         form={form}
         availableRoles={availableRoles}
         onReviewRequest={handleEditReviewRequest}
         isValidatingAddresses={false}
         mode="edit"
+        originalMembers={originalMembersData}
       />
 
       {/* Edit Preview Modal */}

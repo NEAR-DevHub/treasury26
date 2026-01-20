@@ -378,7 +378,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
                   <InputBlock
                     title="Asset"
                     invalid={!!fieldState.error}
-                    className="rounded-b-none border-b border-gray-200 dark:border-gray-700 border-l-0! border-r-0! border-t-0!"
+                    className="rounded-b-none border-b border-general-border border-l-0! border-r-0! border-t-0!"
                   >
                     <Button
                       type="button"
