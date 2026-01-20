@@ -34,6 +34,7 @@ interface TokenSelectProps {
     setSelectedToken: (token: TreasuryAsset) => void;
     disabled?: boolean;
     locked?: boolean;
+    iconSize?: "sm" | "md" | "lg";
     classNames?: {
         trigger?: string;
     };
@@ -46,7 +47,7 @@ interface TokenSelectProps {
 }
 
 
-export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData, classNames }: TokenSelectProps) {
+export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, iconSize, lockedTokenData, classNames }: TokenSelectProps) {
     const { selectedTreasury } = useTreasury();
     const { data: { tokens = [] } = {} } = useTreasuryAssets(selectedTreasury, { onlyPositiveBalance: true });
     const aggregatedTokens = useAggregatedTokens(tokens);
@@ -130,6 +131,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                     symbol={lockedTokenData.symbol}
                     icon={lockedTokenData.icon}
                     chainIcons={lockedTokenData.chainIcons}
+                    iconSize={iconSize}
                 />
                 <div className="flex flex-col items-start">
                     <span className="font-semibold text-sm leading-none">{lockedTokenData.symbol}</span>
@@ -145,20 +147,23 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                 <Button variant="outline" className={cn("bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3", classNames?.trigger)}>
                     {displayTokenData ? (
                         <>
-                            <TokenDisplay
-                                symbol={displayTokenData.symbol}
-                                icon={displayTokenData.icon}
-                                chainIcons={displayTokenData.chainIcons}
-                            />
-                            <div className="flex flex-col items-start">
-                                <span className="font-semibold text-sm leading-none">{displayTokenData.symbol}</span>
-                                <span className="text-[10px] font-normal text-muted-foreground uppercase">{displayTokenData.network}</span>
+                            <div className="flex items-center gap-3">
+                                <TokenDisplay
+                                    symbol={displayTokenData.symbol}
+                                    icon={displayTokenData.icon}
+                                    chainIcons={displayTokenData.chainIcons}
+                                    iconSize={iconSize}
+                                />
+                                <div className="flex flex-col items-start">
+                                    <span className="font-semibold text-sm leading-none">{displayTokenData.symbol}</span>
+                                    <span className="text-[10px] font-normal text-muted-foreground uppercase">{displayTokenData.network}</span>
+                                </div>
                             </div>
                         </>
                     ) : (
                         <span className="text-muted-foreground">Select token</span>
                     )}
-                    <ChevronDown className="size-4 text-muted-foreground" />
+                    <ChevronDown className="size-4 text-muted-foreground ml-auto" />
                 </Button>
             </DialogTrigger>
             <DialogContent className="flex flex-col max-w-md ">

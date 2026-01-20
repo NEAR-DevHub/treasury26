@@ -123,7 +123,13 @@ pub async fn get_proposals(
 
     // Apply filters
     let filtered_proposals = filters
-        .filter_proposals_async(proposals, &policy, &state.cache, &state.network)
+        .filter_proposals_async(
+            proposals,
+            &policy,
+            &state.cache,
+            &state.network,
+            &state.bulk_payment_contract_id,
+        )
         .await
         .map_err(|e| {
             log::warn!("Error filtering proposals: {}", e);
