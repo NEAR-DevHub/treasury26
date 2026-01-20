@@ -25,11 +25,17 @@ pub const EPOCH_LENGTH_BLOCKS: u64 = 43_200;
 /// Number of decimals for NEAR token (used for staking balances)
 const NEAR_DECIMALS: u8 = 24;
 
+/// Staking pool parent accounts
+const POOLV1_NEAR: &str = "poolv1.near";
+const POOL_NEAR: &str = "pool.near";
+
 /// Check if an account ID matches a staking pool pattern
 ///
 /// Detects common staking pool naming conventions on NEAR:
 /// - `*.poolv1.near` - NEAR foundation staking pools
 /// - `*.pool.near` - Community staking pools
+///
+/// Uses NEAR's AccountId type for proper subaccount validation.
 ///
 /// # Arguments
 /// * `account_id` - The account ID to check
@@ -37,7 +43,19 @@ const NEAR_DECIMALS: u8 = 24;
 /// # Returns
 /// `true` if the account ID matches a staking pool pattern
 pub fn is_staking_pool(account_id: &str) -> bool {
-    account_id.ends_with(".poolv1.near") || account_id.ends_with(".pool.near")
+    let Ok(account) = AccountId::from_str(account_id) else {
+        return false;
+    };
+
+    // Check if account is a direct subaccount of poolv1.near or pool.near
+    let Ok(poolv1) = AccountId::from_str(POOLV1_NEAR) else {
+        return false;
+    };
+    let Ok(pool) = AccountId::from_str(POOL_NEAR) else {
+        return false;
+    };
+
+    account.is_sub_account_of(&poolv1) || account.is_sub_account_of(&pool)
 }
 
 /// Query staking pool balance for an account at a specific block height
