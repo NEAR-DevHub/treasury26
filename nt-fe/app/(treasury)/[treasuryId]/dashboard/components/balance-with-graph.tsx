@@ -290,18 +290,18 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button onClick={onDepositClick}>
+                <Button onClick={onDepositClick} id="dashboard-step1">
                     <Download className="size-4" /> Deposit
                 </Button>
-                <Link href={treasuryId ? `/${treasuryId}/payments` : "/payments"} className="flex">
+                <Link href={treasuryId ? `/${treasuryId}/payments` : "/payments"} className="flex" id="dashboard-step2">
                     <AuthButton permissionKind="transfer" permissionAction="AddProposal" className="w-full">
                         <ArrowUpRightIcon className="size-4" />Send
                     </AuthButton>
                 </Link>
-                <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
+                <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full" id="dashboard-step3">
                     <ArrowLeftRight className="size-4" /> Exchange
                 </AuthButton>
-                <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
+                <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full" id="dashboard-step4">
                     <Database className="size-4" /> Earn
                 </AuthButton>
             </div>
@@ -312,7 +312,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
             ) : (
                 <BalanceChart data={chartData.data} showUSD={chartData.showUSD} />
             )}
-        </PageCard>
+        </PageCard >
     )
 }
 

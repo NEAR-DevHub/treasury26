@@ -11,6 +11,7 @@ import { RecentActivity } from "./components/recent-activity";
 import { OnboardingProgress } from "@/features/onboarding";
 import { DepositModal } from "./components/deposit-modal";
 import { InfoBox } from "@/features/onboarding/components/info-box";
+import { DashboardTour } from "@/features/onboarding/steps/dashboard";
 
 export default function AppPage() {
   const { data } = useTreasuryAssets(undefined, { onlyPositiveBalance: true });
@@ -40,6 +41,7 @@ export default function AppPage() {
         isOpen={isDepositModalOpen}
         onClose={() => setIsDepositModalOpen(false)}
       />
+      <DashboardTour />
     </PageComponentLayout>
   );
 }

@@ -4,6 +4,8 @@ import "../globals.css";
 import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "@/components/toaster";
+import { Onborda, OnbordaProvider } from 'onborda';
+import { TOURS } from "@/features/onboarding/steps";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,10 +53,16 @@ export default function RootLayout({
       >
         <QueryProvider>
           <NearInitializer />
-          {children}
+          <OnbordaProvider>
+            <Onborda steps={TOURS}
+              showOnborda={true}
+            >
+              {children}
+            </Onborda>
+          </OnbordaProvider>
           <Toaster />
         </QueryProvider>
       </body>
-    </html>
+    </html >
   );
 }
