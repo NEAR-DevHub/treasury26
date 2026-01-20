@@ -24,6 +24,7 @@
   --general-border: rgba(229, 229, 229);
   --input: rgb(229, 229, 229);
   --ring: rgb(161, 161, 161);
+  --general-unofficial-border:rgba(212, 212, 212);
   --general-success-background-faded: rgb(220, 252, 231);
   --general-success-foreground: rgb(21, 128, 61);
   --general-destructive-background-faded: rgb(254, 242, 242);
@@ -117,6 +118,7 @@
   --general-warning-border: rgb(113, 63, 18);
   --general-warning-foreground: rgb(250, 204, 21);
   --general-tertiary: rgb(28, 25, 23);
+  --general-unofficial-border:rgba(64, 64, 64);
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

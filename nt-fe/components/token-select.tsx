@@ -35,6 +35,7 @@ interface TokenSelectProps {
     setSelectedToken: (token: TreasuryAsset) => void;
     disabled?: boolean;
     locked?: boolean;
+    iconSize?: "sm" | "md" | "lg";
     classNames?: {
         trigger?: string;
     };
@@ -131,6 +132,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                     symbol={lockedTokenData.symbol}
                     icon={lockedTokenData.icon}
                     chainIcons={lockedTokenData.chainIcons}
+                    iconSize={iconSize}
                 />
                 <div className="flex flex-col items-start">
                     <span className="font-semibold text-sm leading-none">{lockedTokenData.symbol}</span>
@@ -159,7 +161,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                     ) : (
                         <span className="text-muted-foreground">Select token</span>
                     )}
-                    <ChevronDown className="size-4 text-muted-foreground" />
+                    <ChevronDown className="size-4 text-muted-foreground ml-auto" />
                 </Button>
             </DialogTrigger>
             <DialogContent className="flex flex-col max-w-md ">

@@ -6,7 +6,6 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useRouter } from "next/navigation";
 
 interface PendingButtonProps {
-  /** High-level category types from backend: "Payments", "Exchange", "Change Policy", etc. */
   types?: string[];
   id?: string;
 }
