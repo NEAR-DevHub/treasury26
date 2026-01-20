@@ -14,8 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { RolePermission } from "@/types/policy";
-import { ROLES } from "@/components/role-selector";
-import { formatRoleName } from "@/components/role-name";
+import { getRoleDescription, sortRolesByOrder } from "@/lib/role-utils";
 
 interface MemberFormData {
   members: Array<{
@@ -51,9 +50,7 @@ export function MemberModal({
     ? isEditMode
       ? "Creating proposal..."
       : "Validating addresses..."
-    : isEditMode
-      ? "Confirm Changes"
-      : "Review Request";
+    : "Review Request";
 
   return (
     <Dialog
@@ -71,44 +68,52 @@ export function MemberModal({
               control={form.control}
               name="members"
               mode={mode}
-              availableRoles={availableRoles.map((r) => {
-                const formattedRole = formatRoleName(r.name);
-                return {
+              availableRoles={(() => {
+                // Map roles and sort them in correct order
+                const mappedRoles = availableRoles.map((r) => ({
                   id: r.name,
-                  title: formattedRole,
-                  description: ROLES.find(
-                    (role) => role.id === formattedRole?.toLowerCase()
-                  )?.description,
-                }
-              })}
+                  title: r.name, // Keep original role name (Admin, Approver, etc.)
+                  description: getRoleDescription(r.name),
+                }));
+
+                // Sort by the role names to maintain order: Admin/Governance, Requestor, Approver/Financial
+                const roleNames = mappedRoles.map((r) => r.id);
+                const sortedNames = sortRolesByOrder(roleNames);
+
+                return sortedNames.map(
+                  (name) => mappedRoles.find((r) => r.id === name)!
+                );
+              })()}
             />
           </FormProvider>
         </div>
 
-        <DialogFooter className="w-full">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="block w-full">
-                <Button
-                  type="button"
-                  onClick={onReviewRequest}
-                  disabled={
-                    !form.formState.isValid ||
-                    isValidatingAddresses ||
-                    !!validationError
-                  }
-                  className="w-full"
-                >
-                  {buttonText}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {validationError && (
-              <TooltipContent className="max-w-[280px]">
-                <p>{validationError}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
+        <DialogFooter>
+          <div className="w-full">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="block w-full">
+                  <Button
+                    type="button"
+                    onClick={onReviewRequest}
+                    disabled={
+                      !form.formState.isValid ||
+                      isValidatingAddresses ||
+                      !!validationError
+                    }
+                    className="w-full"
+                  >
+                    {buttonText}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {validationError && (
+                <TooltipContent className="max-w-[280px]">
+                  <p>{validationError}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

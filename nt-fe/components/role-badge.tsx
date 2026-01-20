@@ -3,15 +3,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ROLES } from "@/components/role-selector";
+import { getRoleDescription } from "@/lib/role-utils";
 
 interface RoleBadgeProps {
   role: string;
   variant?: "pill" | "rounded";
+  showTooltip?: boolean;
 }
 
-export function RoleBadge({ role, variant = "pill" }: RoleBadgeProps) {
-  const roleInfo = ROLES.find((r) => r.id === role.toLowerCase());
+export function RoleBadge({ role, variant = "pill", showTooltip = true }: RoleBadgeProps) {
+  const description = getRoleDescription(role);
 
   const badge = (
     <span
@@ -22,21 +23,21 @@ export function RoleBadge({ role, variant = "pill" }: RoleBadgeProps) {
     </span>
   );
 
-  // If we have description, wrap in tooltip
-  if (roleInfo?.description) {
+  // If we have description and tooltip is enabled, wrap in tooltip
+  if (showTooltip && description) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="cursor-help">{badge}</span>
         </TooltipTrigger>
         <TooltipContent className="max-w-[280px]">
-          <p className="text-sm">{roleInfo.description}</p>
+          <p className="text-sm">{description}</p>
         </TooltipContent>
       </Tooltip>
     );
   }
 
-  // No description, just return the badge
+  // No description or tooltip disabled, just return the badge
   return badge;
 }
 
