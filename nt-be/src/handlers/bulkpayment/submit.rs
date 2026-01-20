@@ -161,50 +161,130 @@ async fn verify_dao_proposal(
                 function_call.receiver_id
             );
 
-            // Check if it targets the bulk payment contract
-            if function_call.receiver_id != state.bulk_payment_contract_id.as_str() {
-                log::info!(
-                    "  -> Skipping: receiver is not bulk payment contract (expected {})",
-                    state.bulk_payment_contract_id
-                );
-                continue;
-            }
-
             log::info!("  -> Checking {} actions", function_call.actions.len());
 
-            // Check each action for approve_list with matching list_id
+            // Check each action for bulk payment related methods
             for action in &function_call.actions {
                 log::info!("    -> Action: method_name={}", action.method_name);
 
-                if action.method_name != "approve_list" {
-                    continue;
+                // Case 1: Direct approve_list call (NEAR tokens)
+                if action.method_name == "approve_list"
+                    && function_call.receiver_id == state.bulk_payment_contract_id.as_str()
+                {
+                    log::info!("    -> Found approve_list action, decoding args...");
+
+                    // Decode the base64 args and check for matching list_id
+                    if let Ok(decoded) = base64::Engine::decode(
+                        &base64::engine::general_purpose::STANDARD,
+                        &action.args,
+                    ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                        && let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
+                    {
+                        log::info!("    -> Decoded list_id from args: {}", proposal_list_id);
+                        log::info!("    -> Looking for list_id: {}", list_id);
+
+                        if proposal_list_id == list_id {
+                            log::info!("  -> MATCH FOUND (approve_list)!");
+                            return Ok(true);
+                        } else {
+                            log::info!("    -> No match");
+                        }
+                    } else {
+                        log::warn!("    -> Failed to decode args");
+                    }
                 }
 
-                log::info!("    -> Found approve_list action, decoding args...");
+                // Case 2: ft_transfer_call (FT tokens)
+                if action.method_name == "ft_transfer_call" {
+                    log::info!("    -> Found ft_transfer_call action, decoding args...");
 
-                // Decode the base64 args and check for matching list_id
-                if let Ok(decoded) =
-                    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &action.args)
-                    && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
-                    && let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
-                {
-                    log::info!("    -> Decoded list_id from args: {}", proposal_list_id);
-                    log::info!("    -> Looking for list_id: {}", list_id);
+                    // Decode the base64 args and check for matching list_id in msg field
+                    if let Ok(decoded) = base64::Engine::decode(
+                        &base64::engine::general_purpose::STANDARD,
+                        &action.args,
+                    ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                    {
+                        // Check if receiver_id is the bulk payment contract
+                        if let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
+                        {
+                            log::info!("    -> receiver_id in args: {}", receiver_id);
 
-                    if proposal_list_id == list_id {
-                        log::info!("  -> MATCH FOUND!");
-                        return Ok(true);
+                            if receiver_id == state.bulk_payment_contract_id.as_str() {
+                                // Check the msg field for list_id
+                                if let Some(msg) = args.get("msg").and_then(|v| v.as_str()) {
+                                    log::info!("    -> Decoded msg from args: {}", msg);
+                                    log::info!("    -> Looking for list_id: {}", list_id);
+
+                                    if msg == list_id {
+                                        log::info!("  -> MATCH FOUND (ft_transfer_call)!");
+                                        return Ok(true);
+                                    } else {
+                                        log::info!("    -> No match");
+                                    }
+                                } else {
+                                    log::warn!("    -> No msg field in args");
+                                }
+                            } else {
+                                log::info!(
+                                    "    -> receiver_id does not match bulk payment contract"
+                                );
+                            }
+                        } else {
+                            log::warn!("    -> No receiver_id in args");
+                        }
                     } else {
-                        log::info!("    -> No match");
+                        log::warn!("    -> Failed to decode args for ft_transfer_call");
                     }
-                } else {
-                    log::warn!("    -> Failed to decode args");
+                }
+
+                // Case 3: mt_transfer_call (MT tokens / Intents)
+                if action.method_name == "mt_transfer_call" {
+                    log::info!("    -> Found mt_transfer_call action, decoding args...");
+
+                    // Decode the base64 args and check for matching list_id in msg field
+                    if let Ok(decoded) = base64::Engine::decode(
+                        &base64::engine::general_purpose::STANDARD,
+                        &action.args,
+                    ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                    {
+                        // Check if receiver_id is the bulk payment contract
+                        if let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
+                        {
+                            log::info!("    -> receiver_id in args: {}", receiver_id);
+
+                            if receiver_id == state.bulk_payment_contract_id.as_str() {
+                                // Check the msg field for list_id
+                                if let Some(msg) = args.get("msg").and_then(|v| v.as_str()) {
+                                    log::info!("    -> Decoded msg from args: {}", msg);
+                                    log::info!("    -> Looking for list_id: {}", list_id);
+
+                                    if msg == list_id {
+                                        log::info!("  -> MATCH FOUND (mt_transfer_call)!");
+                                        return Ok(true);
+                                    } else {
+                                        log::info!("    -> No match");
+                                    }
+                                } else {
+                                    log::warn!("    -> No msg field in args");
+                                }
+                            } else {
+                                log::info!(
+                                    "    -> receiver_id does not match bulk payment contract"
+                                );
+                            }
+                        } else {
+                            log::warn!("    -> No receiver_id in args");
+                        }
+                    } else {
+                        log::warn!("    -> Failed to decode args for mt_transfer_call");
+                    }
                 }
             }
         }
 
         // Also check the description for the list_id (fallback)
         if proposal.description.contains(list_id) {
+            log::info!("  -> MATCH FOUND in description (fallback)!");
             return Ok(true);
         }
     }
