@@ -1,7 +1,7 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/modal";
+import { Button } from "@/components/button";
 import { ExternalLink } from "lucide-react";
 import type { RecentActivity } from "@/lib/api";
 import { FormattedDate } from "@/components/formatted-date";
@@ -53,7 +53,7 @@ export function TransactionDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] bg-white p-0">
+      <DialogContent className="sm:max-w-[600px] bg-white">
         <DialogHeader className="border-b border-border">
           <DialogTitle>Transaction Details</DialogTitle>
         </DialogHeader>
