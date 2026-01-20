@@ -378,13 +378,13 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
                   <InputBlock
                     title="Asset"
                     invalid={!!fieldState.error}
-                    className="rounded-b-none border-b border-gray-200"
+                    className="rounded-b-none border-b border-gray-200 dark:border-gray-700 border-l-0! border-r-0! border-t-0!"
                   >
                     <Button
                       type="button"
                       onClick={() => setModalType("asset")}
                       variant="unstyled"
-                      className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0 mt-1"
+                      className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
                     >
                       <div className="w-full flex items-center justify-between py-1">
                         {selectedAsset ? (
@@ -413,8 +413,12 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
                         <ChevronDown className="w-5 h-5" />
                       </div>
                     </Button>
+                    {fieldState.error && (
+                      <p className="text-sm text-destructive mt-2">
+                        {fieldState.error.message}
+                      </p>
+                    )}
                   </InputBlock>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -428,13 +432,13 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
                   <InputBlock
                     title="Network"
                     invalid={!!fieldState.error}
-                    className="rounded-t-none"
+                    className="rounded-t-none border-l-0! border-r-0! border-t-0! border-b-0!"
                   >
                     <Button
                       type="button"
                       onClick={() => setModalType("network")}
                       variant="unstyled"
-                      className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0 mt-1"
+                      className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
                     >
                       <div className="w-full flex items-center justify-between py-1">
                         {selectedNetwork ? (
@@ -478,8 +482,12 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
                         <ChevronDown className="w-5 h-5" />
                       </div>
                     </Button>
+                    {fieldState.error && (
+                      <p className="text-sm text-destructive mt-2">
+                        {fieldState.error.message}
+                      </p>
+                    )}
                   </InputBlock>
-                  <FormMessage />
                 </FormItem>
               )}
             />

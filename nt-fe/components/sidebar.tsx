@@ -153,7 +153,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        <div className="px-3.5 flex flex-col pb-2">
+        <div className="px-3.5 flex flex-col gap-1 pb-2">
           {bottomNavLinks.map((link) => {
             const href = treasuryId
               ? `/${treasuryId}${link.path ? `/${link.path}` : ""}`

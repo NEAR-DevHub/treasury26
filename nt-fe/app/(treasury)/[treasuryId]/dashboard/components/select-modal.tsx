@@ -68,7 +68,7 @@ export function SelectModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md gap-0">
-        <DialogHeader>
+        <DialogHeader centerTitle>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
@@ -110,7 +110,7 @@ export function SelectModal({
                     key={option.id}
                     onClick={() => handleSelect(option)}
                     variant="ghost"
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg h-auto justify-start ${selectedId === option.id ? "bg-muted" : ""
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg h-auto justify-start px-1! ${selectedId === option.id ? "bg-muted" : ""
                       }`}
                   >
                     {option.icon?.startsWith("http") ||
