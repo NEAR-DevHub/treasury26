@@ -7,12 +7,15 @@
 //!
 //! When a gap is detected (balance_after of record N doesn't match balance_before of record N+1),
 //! this service:
-//! 1. Uses binary search to find the exact block where the balance changed
-//! 2. Queries the balance before and after at that block
-//! 3. Gets the block timestamp
-//! 4. Inserts a new balance_change record to fill the gap
+//! 1. Optionally queries external transfer hint providers for known transfer blocks
+//! 2. Uses binary search to find the exact block where the balance changed
+//! 3. Queries the balance before and after at that block
+//! 4. Gets the block timestamp
+//! 5. Inserts a new balance_change record to fill the gap
 //!
-//! This approach uses only RPC queries and doesn't require external APIs.
+//! When transfer hints are available, they can dramatically reduce the number of RPC calls
+//! required (from O(log n) binary search calls to 1 API call + a few verification calls).
+//! The RPC binary search remains available as a fallback when hints are unavailable or incorrect.
 
 use near_api::NetworkConfig;
 use sqlx::PgPool;
@@ -21,11 +24,202 @@ use sqlx::types::BigDecimal;
 use crate::handlers::balance_changes::{
     balance, binary_search, block_info,
     gap_detector::{self, BalanceGap},
+    transfer_hints::TransferHintService,
     utils::block_timestamp_to_datetime,
 };
 
 /// Error type for gap filler operations
 pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
+
+/// Find the block where balance changed using hints with binary search fallback
+///
+/// This function:
+/// 1. Queries the hint service for transfer blocks in the range
+/// 2. For each hint, verifies the balance at that block matches expected
+/// 3. If a valid hint is found, returns that block
+/// 4. If no valid hints found, falls back to binary search
+///
+/// # Arguments
+/// * `pool` - Database connection pool
+/// * `network` - NEAR network configuration (archival RPC)
+/// * `hints` - Transfer hint service to query
+/// * `account_id` - Account to search transfers for
+/// * `token_id` - Token identifier
+/// * `from_block` - Start of search range
+/// * `to_block` - End of search range
+/// * `expected_balance` - Balance we're looking for
+///
+/// # Returns
+/// `Some(block_height)` if found, `None` if not found in range
+async fn find_block_with_hints(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    hint_service: &TransferHintService,
+    account_id: &str,
+    token_id: &str,
+    from_block: u64,
+    to_block: u64,
+    expected_balance: &BigDecimal,
+) -> Result<Option<u64>, GapFillerError> {
+    // Check if hints are available for this token type
+    if !hint_service.supports_token(token_id) {
+        log::debug!(
+            "No hint providers support token {} - using binary search",
+            token_id
+        );
+        return binary_search::find_balance_change_block(
+            pool,
+            network,
+            account_id,
+            token_id,
+            from_block,
+            to_block,
+            expected_balance,
+        )
+        .await
+        .map_err(|e| e.to_string().into());
+    }
+
+    // Get hints from providers
+    let hints = hint_service
+        .get_hints(account_id, token_id, from_block, to_block)
+        .await;
+
+    if hints.is_empty() {
+        log::debug!(
+            "No hints found for {}/{} in blocks {}-{} - using binary search",
+            account_id,
+            token_id,
+            from_block,
+            to_block
+        );
+        return binary_search::find_balance_change_block(
+            pool,
+            network,
+            account_id,
+            token_id,
+            from_block,
+            to_block,
+            expected_balance,
+        )
+        .await
+        .map_err(|e| e.to_string().into());
+    }
+
+    log::info!(
+        "Got {} hints for {}/{} in blocks {}-{}, verifying with RPC",
+        hints.len(),
+        account_id,
+        token_id,
+        from_block,
+        to_block
+    );
+
+    // Try each hint, looking for one where the balance matches
+    for hint in hints {
+        // Verify the balance at this block
+        let balance_at_hint =
+            match balance::get_balance_at_block(pool, network, account_id, token_id, hint.block_height)
+                .await
+            {
+                Ok(b) => b,
+                Err(e) => {
+                    log::warn!(
+                        "Failed to verify hint at block {}: {} - trying next hint",
+                        hint.block_height,
+                        e
+                    );
+                    continue;
+                }
+            };
+
+        if &balance_at_hint == expected_balance {
+            // Verify this is the FIRST block with this balance
+            // Check the block before to ensure balance was different
+            if hint.block_height > from_block {
+                let balance_before = match balance::get_balance_at_block(
+                    pool,
+                    network,
+                    account_id,
+                    token_id,
+                    hint.block_height - 1,
+                )
+                .await
+                {
+                    Ok(b) => b,
+                    Err(e) => {
+                        log::warn!(
+                            "Failed to check balance before hint block {}: {} - accepting hint",
+                            hint.block_height,
+                            e
+                        );
+                        // Accept the hint even if we can't verify the prior block
+                        log::info!(
+                            "Hint verified: balance {} at block {} for {}/{}",
+                            expected_balance,
+                            hint.block_height,
+                            account_id,
+                            token_id
+                        );
+                        return Ok(Some(hint.block_height));
+                    }
+                };
+
+                if &balance_before != expected_balance {
+                    log::info!(
+                        "Hint verified: balance changed from {} to {} at block {} for {}/{}",
+                        balance_before,
+                        expected_balance,
+                        hint.block_height,
+                        account_id,
+                        token_id
+                    );
+                    return Ok(Some(hint.block_height));
+                } else {
+                    log::debug!(
+                        "Hint at block {} has matching balance but it's not the first occurrence - trying next hint",
+                        hint.block_height
+                    );
+                }
+            } else {
+                // hint.block_height == from_block, accept it
+                log::info!(
+                    "Hint verified: balance {} at block {} (start of range) for {}/{}",
+                    expected_balance,
+                    hint.block_height,
+                    account_id,
+                    token_id
+                );
+                return Ok(Some(hint.block_height));
+            }
+        } else {
+            log::debug!(
+                "Hint at block {} has balance {} but expected {} - trying next hint",
+                hint.block_height,
+                balance_at_hint,
+                expected_balance
+            );
+        }
+    }
+
+    // No valid hints found, fall back to binary search
+    log::info!(
+        "No valid hints found for {}/{} - falling back to binary search",
+        account_id,
+        token_id
+    );
+    binary_search::find_balance_change_block(
+        pool,
+        network,
+        account_id,
+        token_id,
+        from_block,
+        to_block,
+        expected_balance,
+    )
+    .await
+    .map_err(|e| e.to_string().into())
+}
 
 /// Result of filling a single gap
 #[derive(Debug, Clone)]
@@ -55,25 +249,64 @@ pub async fn fill_gap(
     network: &NetworkConfig,
     gap: &BalanceGap,
 ) -> Result<FilledGap, GapFillerError> {
+    fill_gap_with_hints(pool, network, gap, None).await
+}
+
+/// Fill a single gap using transfer hints when available
+///
+/// This is the hint-aware version of `fill_gap`. When a `TransferHintService` is provided,
+/// it first queries external providers for known transfer blocks, then verifies the hints
+/// with RPC. If hints are unavailable or incorrect, falls back to binary search.
+///
+/// # Arguments
+/// * `pool` - Database connection pool
+/// * `network` - NEAR network configuration (archival RPC)
+/// * `gap` - The gap to fill
+/// * `hint_service` - Optional transfer hint service for accelerated lookups
+///
+/// # Returns
+/// The filled gap information, or an error if filling failed
+pub async fn fill_gap_with_hints(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    gap: &BalanceGap,
+    hint_service: Option<&TransferHintService>,
+) -> Result<FilledGap, GapFillerError> {
     // Binary search to find the exact block where balance changed
     // Note: gap.expected_balance_before is the balance_before at gap.end_block,
     // which equals the balance at the END of (gap.end_block - 1).
     // The RPC returns balance at the end of a block, so we search up to end_block - 1.
     let search_end_block = (gap.end_block - 1) as u64;
 
-    let change_block = binary_search::find_balance_change_block(
-        pool,
-        network,
-        &gap.account_id,
-        &gap.token_id,
-        gap.start_block as u64,
-        search_end_block,
-        &gap.expected_balance_before,
-    )
-    .await
-    .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+    // Try hints first if available
+    let block_height = if let Some(hints) = hint_service {
+        find_block_with_hints(
+            pool,
+            network,
+            hints,
+            &gap.account_id,
+            &gap.token_id,
+            gap.start_block as u64,
+            search_end_block,
+            &gap.expected_balance_before,
+        )
+        .await?
+    } else {
+        // No hints available, use pure binary search
+        binary_search::find_balance_change_block(
+            pool,
+            network,
+            &gap.account_id,
+            &gap.token_id,
+            gap.start_block as u64,
+            search_end_block,
+            &gap.expected_balance_before,
+        )
+        .await
+        .map_err(|e| -> GapFillerError { e.to_string().into() })?
+    };
 
-    let block_height = change_block.ok_or_else(|| -> GapFillerError {
+    let block_height = block_height.ok_or_else(|| -> GapFillerError {
         format!(
             "Could not find balance change block for gap: {} {} [{}-{}]",
             gap.account_id, gap.token_id, gap.start_block, gap.end_block
@@ -163,11 +396,43 @@ pub async fn fill_gaps(
     token_id: &str,
     up_to_block: i64,
 ) -> Result<Vec<FilledGap>, GapFillerError> {
+    fill_gaps_with_hints(pool, network, account_id, token_id, up_to_block, None).await
+}
+
+/// Fill all gaps using transfer hints when available
+///
+/// This is the hint-aware version of `fill_gaps`. When a `TransferHintService` is provided,
+/// it uses external APIs to accelerate finding transfer blocks before falling back to
+/// binary search.
+///
+/// # Arguments
+/// * `pool` - Database connection pool
+/// * `network` - NEAR network configuration (archival RPC)
+/// * `account_id` - Account to process
+/// * `token_id` - Token to process
+/// * `up_to_block` - Only process gaps up to this block height
+/// * `hint_service` - Optional transfer hint service for accelerated lookups
+///
+/// # Returns
+/// Vector of filled gaps
+pub async fn fill_gaps_with_hints(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    account_id: &str,
+    token_id: &str,
+    up_to_block: i64,
+    hint_service: Option<&TransferHintService>,
+) -> Result<Vec<FilledGap>, GapFillerError> {
     log::info!(
-        "Starting gap detection for {}/{} up to block {}",
+        "Starting gap detection for {}/{} up to block {} (hints: {})",
         account_id,
         token_id,
-        up_to_block
+        up_to_block,
+        if hint_service.is_some() {
+            "enabled"
+        } else {
+            "disabled"
+        }
     );
 
     // Check if there are any records at all - if not, seed initial balance first
@@ -233,7 +498,7 @@ pub async fn fill_gaps(
         );
 
         for gap in &gaps {
-            let filled_gap = fill_gap(pool, network, gap).await?;
+            let filled_gap = fill_gap_with_hints(pool, network, gap, hint_service).await?;
             log::info!(
                 "Filled gap at block {} for {}/{}",
                 filled_gap.block_height,

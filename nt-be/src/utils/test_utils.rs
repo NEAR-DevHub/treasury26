@@ -69,6 +69,21 @@ pub async fn init_test_state() -> AppState {
         crate::services::PriceLookupService::without_provider(db_pool.clone())
     };
 
+    // Create transfer hint service if enabled
+    let transfer_hint_service = if env_vars.transfer_hints_enabled {
+        use crate::handlers::balance_changes::transfer_hints::{
+            fastnear::FastNearProvider, TransferHintService,
+        };
+        let provider = if let Some(base_url) = &env_vars.transfer_hints_base_url {
+            FastNearProvider::with_base_url(base_url.clone())
+        } else {
+            FastNearProvider::new()
+        };
+        Some(TransferHintService::new().with_provider(provider))
+    } else {
+        None
+    };
+
     AppState {
         cache: Cache::new(),
         telegram_client: crate::utils::telegram::TelegramClient::default(),
@@ -98,5 +113,6 @@ pub async fn init_test_state() -> AppState {
         env_vars,
         db_pool,
         price_service,
+        transfer_hint_service,
     }
 }
