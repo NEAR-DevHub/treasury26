@@ -1,8 +1,6 @@
 import {
   Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/components/tooltip";
 import { ROLES } from "@/components/role-selector";
 
 interface RoleBadgeProps {
@@ -25,13 +23,8 @@ export function RoleBadge({ role, variant = "pill" }: RoleBadgeProps) {
   // If we have description, wrap in tooltip
   if (roleInfo?.description) {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="cursor-help">{badge}</span>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-[280px]">
-          <p className="text-sm">{roleInfo.description}</p>
-        </TooltipContent>
+      <Tooltip content={roleInfo.description}>
+        {badge}
       </Tooltip>
     );
   }

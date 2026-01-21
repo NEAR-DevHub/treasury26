@@ -121,9 +121,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <TreasurySelector />
             <div className="px-3">
               {isGuestTreasury && !isLoadingGuestTreasury ? (
-                <Pill variant="info" title="Guest" info="You are a guest of this treasury. You can only view the data. Creating requests, adding members, or making any changes is not allowed because you are not a member of the team." />
+                <Pill variant="info" side="right" title="Guest" info="You are a guest of this treasury. You can only view the data. Creating requests, adding members, or making any changes is not allowed because you are not a member of the team." />
               ) :
-                (<ApprovalInfo variant="pupil" />)}
+                (<ApprovalInfo variant="pupil" side="right" />)}
             </div>
           </div>
         </div>

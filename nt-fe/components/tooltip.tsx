@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
-import { Separator } from "./ui/separator";
 import { Tooltip as TooltipPrimitive, TooltipContent as TooltipContentPrimitive, TooltipTrigger } from "./ui/tooltip";
 
 export interface TooltipProps {
     disabled?: boolean;
+    side?: "top" | "bottom" | "left" | "right";
     children: React.ReactNode;
     content: React.ReactNode;
     contentProps?: Omit<React.ComponentProps<typeof TooltipContent>, 'children'>;
@@ -12,15 +12,15 @@ export interface TooltipProps {
 
 
 
-export function TooltipContent({ children, className, ...props }: React.ComponentProps<typeof TooltipContentPrimitive>) {
+function TooltipContent({ children, className, ...props }: React.ComponentProps<typeof TooltipContentPrimitive>) {
     return (
-        <TooltipContentPrimitive className="max-w-sm bg-card text-foreground border-border border text-sm" {...props}>
+        <TooltipContentPrimitive className="max-w-56 shadow-md bg-card text-foreground border-border border text-xs" {...props}>
             {children}
         </TooltipContentPrimitive>
     );
 }
 
-export function Tooltip({ children, content, contentProps, triggerProps, disabled }: TooltipProps) {
+function Tooltip({ children, content, contentProps, triggerProps, disabled, side }: TooltipProps) {
     const { className, ...contentPropsRest } = contentProps || {};
     if (disabled) {
         return children;
@@ -30,9 +30,11 @@ export function Tooltip({ children, content, contentProps, triggerProps, disable
             <TooltipTrigger asChild {...triggerProps}>
                 {children}
             </TooltipTrigger>
-            <TooltipContent  {...contentPropsRest} className={cn("shadow-md", className)}>
+            <TooltipContent side={side} {...contentPropsRest} className={cn("shadow-md", className)}>
                 {content}
             </TooltipContent>
         </TooltipPrimitive>
     );
 }
+
+export { Tooltip, TooltipContent, TooltipTrigger };

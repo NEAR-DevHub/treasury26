@@ -12,11 +12,10 @@ import { Button } from "@/components/button";
 import { renderDiff, isNullValue } from "../../utils/diff-utils";
 import { formatRoleName } from "@/components/role-name";
 import { Proposal } from "@/lib/proposals-api";
-import { Policy } from "@/types/policy";
-import { getProposalStatus } from "../../utils/proposal-utils";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { computePolicyDiff } from "../../utils/policy-diff-utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ChangePolicyExpandedProps {
   data: ChangePolicyData;
@@ -371,11 +370,11 @@ export function ChangePolicyExpanded({ data, proposal }: ChangePolicyExpandedPro
   allItems.push({
     label: "Transaction Details",
     differentLine: true,
-    value: <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs">
-      <code className="text-foreground/90">
+    value: <ScrollArea className="flex h-96 w-full"> <pre className="overflow-x-auto w-full rounded-md bg-muted/50 p-3 text-xs">
+      <code className="text-foreground/90 w-full">
         {JSON.stringify(data.originalProposalKind, null, 2)}
       </code>
-    </pre>
+    </pre></ScrollArea>
   });
 
   return <InfoDisplay items={allItems} />;
