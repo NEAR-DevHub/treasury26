@@ -128,6 +128,7 @@ export function TreasurySelector() {
         ))}
         <SelectSeparator />
         <Button
+          id="dashboard-step6-create-treasury"
           variant="ghost"
           type="button"
           className="w-full justify-start gap-2"
