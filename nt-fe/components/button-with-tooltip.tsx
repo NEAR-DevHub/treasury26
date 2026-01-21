@@ -1,9 +1,5 @@
 import { Button } from "@/components/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip } from "@/components/tooltip";
 import { ReactNode } from "react";
 
 interface ButtonWithTooltipProps extends React.ComponentProps<typeof Button> {
@@ -27,17 +23,14 @@ export function ButtonWithTooltip({
   ...buttonProps
 }: ButtonWithTooltipProps) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="block w-full">
-          <Button {...buttonProps}>{children}</Button>
-        </span>
-      </TooltipTrigger>
-      {tooltipMessage && (
-        <TooltipContent className="max-w-[280px]">
-          <p>{tooltipMessage}</p>
-        </TooltipContent>
-      )}
+    <Tooltip
+      content={tooltipMessage}
+      disabled={!tooltipMessage}
+      contentProps={{ className: "max-w-[280px]" }}
+    >
+      <span className="block w-full">
+        <Button {...buttonProps}>{children}</Button>
+      </span>
     </Tooltip>
   );
 }

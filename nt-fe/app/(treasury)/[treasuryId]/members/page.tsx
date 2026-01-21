@@ -27,11 +27,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2, Info } from "lucide-react";
 import { PageCard } from "@/components/card";
 import { RoleBadge } from "@/components/role-badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip } from "@/components/tooltip";
 import {
   Table,
   TableBody,
@@ -77,11 +73,8 @@ function PermissionsHeader({ policyRoles }: { policyRoles: RolePermission[] }) {
         Permissions
       </span>
       {sortedDescriptions.length > 0 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent className="max-w-[320px]">
+        <Tooltip
+          content={
             <div className="space-y-3">
               {sortedDescriptions.map((role) => (
                 <div key={role.name}>
@@ -90,7 +83,10 @@ function PermissionsHeader({ policyRoles }: { policyRoles: RolePermission[] }) {
                 </div>
               ))}
             </div>
-          </TooltipContent>
+          }
+          contentProps={{ className: "max-w-[320px]" }}
+        >
+          <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
         </Tooltip>
       )}
     </div>
@@ -849,29 +845,26 @@ export default function MembersPage() {
               {selectedMembers.length !== 1 ? "s" : ""} selected
             </span>
             <div className="flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <AuthButton
-                      permissionKind="policy"
-                      permissionAction="AddProposal"
-                      balanceCheck={{ withProposalBond: true }}
-                      variant="outline"
-                      size="sm"
-                      onClick={handleBulkDelete}
-                      disabled={hasPendingMemberRequest || !bulkDeleteValidation.canModify}
-                      className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Remove
-                    </AuthButton>
-                  </span>
-                </TooltipTrigger>
-                {!bulkDeleteValidation.canModify && bulkDeleteValidation.reason && (
-                  <TooltipContent className="max-w-[280px]">
-                    <p>{bulkDeleteValidation.reason}</p>
-                  </TooltipContent>
-                )}
+              <Tooltip
+                content={bulkDeleteValidation.reason}
+                disabled={bulkDeleteValidation.canModify || !bulkDeleteValidation.reason}
+                contentProps={{ className: "max-w-[280px]" }}
+              >
+                <span>
+                  <AuthButton
+                    permissionKind="policy"
+                    permissionAction="AddProposal"
+                    balanceCheck={{ withProposalBond: true }}
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    disabled={hasPendingMemberRequest || !bulkDeleteValidation.canModify}
+                    className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Remove
+                  </AuthButton>
+                </span>
               </Tooltip>
               <AuthButton
                 permissionKind="policy"
