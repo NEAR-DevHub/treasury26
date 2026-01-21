@@ -29,18 +29,18 @@ async fn main() {
             use near_api::Chain;
             use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 
-            let interval_minutes = state_clone.env_vars.monitor_interval_minutes;
+            let interval_seconds = state_clone.env_vars.monitor_interval_seconds;
 
-            if interval_minutes == 0 {
-                log::info!("Background monitoring disabled (MONITOR_INTERVAL_MINUTES=0)");
+            if interval_seconds == 0 {
+                log::info!("Background monitoring disabled (MONITOR_INTERVAL_SECONDS=0)");
                 return;
             }
 
-            let interval = Duration::from_secs(interval_minutes * 60);
+            let interval = Duration::from_secs(interval_seconds);
 
             log::info!(
-                "Starting background monitoring service (interval: {} minutes)",
-                interval_minutes
+                "Starting background monitoring service (interval: {} seconds)",
+                interval_seconds
             );
 
             // Wait a bit before first run to let server fully start
@@ -59,7 +59,7 @@ async fn main() {
                     Ok(block) => block.header.height as i64,
                     Err(e) => {
                         log::error!("Failed to get current block height: {}", e);
-                        log::info!("Retrying in {} minutes", interval_minutes);
+                        log::info!("Retrying in {} seconds", interval_seconds);
                         continue;
                     }
                 };
@@ -81,7 +81,7 @@ async fn main() {
                     }
                 }
 
-                log::info!("Next monitoring cycle in {} minutes", interval_minutes);
+                log::info!("Next monitoring cycle in {} seconds", interval_seconds);
             }
         });
     }

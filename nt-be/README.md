@@ -11,6 +11,17 @@ The Balance Change Collection system automatically tracks balance changes for NE
 
 ### 1. Register an Account for Monitoring
 
+**Production** (https://near-treasury-backend.onrender.com):
+```bash
+curl -X POST https://near-treasury-backend.onrender.com/api/monitored-accounts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_id": "your-treasury.sputnik-dao.near",
+    "enabled": true
+  }'
+```
+
+**Local development**:
 ```bash
 curl -X POST http://localhost:3000/api/monitored-accounts \
   -H "Content-Type: application/json" \

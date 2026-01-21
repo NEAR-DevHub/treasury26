@@ -65,7 +65,7 @@ impl TestServer {
             .args(["run", "--bin", "nt-be"])
             .env("PORT", "3001")
             .env("RUST_LOG", "info")
-            .env("MONITOR_INTERVAL_MINUTES", "0") // Disable background monitoring
+            .env("MONITOR_INTERVAL_SECONDS", "0") // Disable background monitoring
             .env("DATABASE_URL", &db_url) // Override with test database
             .env(
                 "SIGNER_KEY",
