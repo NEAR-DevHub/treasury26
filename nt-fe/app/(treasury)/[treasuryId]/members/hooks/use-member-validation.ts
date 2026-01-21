@@ -85,12 +85,13 @@ export function useMemberValidation(
         };
       }
 
-      // If newRoles provided, check if removing member from their current roles
-      // would leave those roles empty
-      const rolesToCheck = newRoles
-        ? member.roles.filter((role) => !newRoles.includes(role)) // Roles being removed
-        : member.roles; // All roles (for deletion)
+      // For edit: always allow, but we'll prevent removing critical roles in the UI
+      if (newRoles !== undefined) {
+        return { canModify: true };
+      }
 
+      // For delete: check if removing member would leave roles empty
+      const rolesToCheck = member.roles;
       const criticalRoles: string[] = [];
 
       for (const roleName of rolesToCheck) {
@@ -102,13 +103,15 @@ export function useMemberValidation(
       if (criticalRoles.length > 0) {
         const hasGovernance = hasGovernanceRole(criticalRoles);
         const rolesList = formatRolesList(criticalRoles);
-        const action = newRoles ? "modify" : "remove";
         const reason = hasGovernance
-          ? `Cannot ${action} this member. They are the only person assigned to the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
-          }, which ${criticalRoles.length === 1 ? "is" : "are"
-          } required to manage team members and configure voting.`
-          : `Cannot ${action} this member. They are the only person assigned to the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
-          }.`;
+          ? `Cannot remove this member. They are the only person assigned to the ${rolesList} ${
+              criticalRoles.length === 1 ? "role" : "roles"
+            }, which ${
+              criticalRoles.length === 1 ? "is" : "are"
+            } required to manage team members and configure voting.`
+          : `Cannot remove this member. They are the only person assigned to the ${rolesList} ${
+              criticalRoles.length === 1 ? "role" : "roles"
+            }.`;
 
         return {
           canModify: false,

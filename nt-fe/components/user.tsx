@@ -1,8 +1,7 @@
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Tooltip } from "./tooltip";
-import { TooltipTrigger } from "./ui/tooltip";
+import { Tooltip, TooltipProps } from "./tooltip";
 import { Separator } from "./ui/separator";
 import { CopyButton } from "./copy-button";
 
@@ -24,7 +23,7 @@ const sizeClasses = {
 interface TooltipUserProps {
     accountId: string;
     children: React.ReactNode;
-    triggerProps?: Omit<React.ComponentProps<typeof TooltipTrigger>, 'children'>;
+    triggerProps?: TooltipProps['triggerProps'];
 }
 
 export function TooltipUser({ accountId, children, triggerProps }: TooltipUserProps) {

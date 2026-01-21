@@ -24,9 +24,10 @@ import { PreviewModal } from "./components/modals/preview-modal";
 import { DeleteConfirmationModal } from "./components/modals/delete-confirmation-modal";
 import { User } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Info } from "lucide-react";
 import { PageCard } from "@/components/card";
 import { RoleBadge } from "@/components/role-badge";
+import { Tooltip } from "@/components/tooltip";
 import {
   Table,
   TableBody,
@@ -36,9 +37,11 @@ import {
   TableRow,
 } from "@/components/table";
 import { useMemberValidation } from "./hooks/use-member-validation";
-import { formatRoleName } from "@/components/role-name";
 import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 import { AuthButton } from "@/components/auth-button";
+import { RolePermission } from "@/types/policy";
+import { sortRolesByOrder, getRoleDescription } from "@/lib/role-utils";
+import { formatRoleName } from "@/components/role-name";
 
 interface Member {
   accountId: string;
@@ -52,6 +55,44 @@ interface AddMemberFormData {
   }>;
 }
 
+function PermissionsHeader({ policyRoles }: { policyRoles: RolePermission[] }) {
+  // Get role descriptions and sort them
+  const roleNames = policyRoles.map(r => r.name);
+  const sortedRoleNames = sortRolesByOrder(roleNames);
+  
+  const sortedDescriptions = sortedRoleNames
+    .map(name => ({
+      name,
+      description: getRoleDescription(name) || ""
+    }))
+    .filter(r => r.description); // Only include roles with descriptions
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs font-medium uppercase text-muted-foreground">
+        Permissions
+      </span>
+      {sortedDescriptions.length > 0 && (
+        <Tooltip
+          content={
+            <div className="space-y-3">
+              {sortedDescriptions.map((role) => (
+                <div key={role.name}>
+                  <p className="font-semibold mb-1">{formatRoleName(role.name)}</p>
+                  <p className="text-xs">{role.description}</p>
+                </div>
+              ))}
+            </div>
+          }
+          contentProps={{ className: "max-w-[320px]" }}
+        >
+          <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+        </Tooltip>
+      )}
+    </div>
+  );
+}
+
 export default function MembersPage() {
   const { selectedTreasury } = useTreasury();
   const { data: policy, isLoading } = useTreasuryPolicy(selectedTreasury);
@@ -61,9 +102,8 @@ export default function MembersPage() {
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isEditRolesModalOpen, setIsEditRolesModalOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [isEditPreviewModalOpen, setIsEditPreviewModalOpen] = useState(false);
   const [isValidatingAddresses, setIsValidatingAddresses] = useState(false);
-  const [isCreatingProposal, setIsCreatingProposal] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -96,6 +136,9 @@ export default function MembersPage() {
     "add"
   );
   const [membersBeingEdited, setMembersBeingEdited] = useState<string[]>([]);
+  const [originalMembersData, setOriginalMembersData] = useState<
+    Array<{ accountId: string; roles: string[] }>
+  >([]);
 
   // Create dynamic schema with access to existing members and mode
   const addMemberSchemaWithContext = useMemo(() => {
@@ -420,7 +463,6 @@ export default function MembersPage() {
     if (!policy || !selectedTreasury) return;
 
     try {
-      setIsCreatingProposal(true);
       const membersList = membersData.map((m) => ({
         member: m.accountId,
         roles: m.roles,
@@ -447,17 +489,25 @@ export default function MembersPage() {
         successMessage
       );
 
+      setIsEditPreviewModalOpen(false);
       setIsEditRolesModalOpen(false);
-      setSelectedMember(null);
       setSelectedMembers([]);
       setCurrentModalMode("add");
       setMembersBeingEdited([]);
     } catch (error) {
       // Error already handled in createPolicyChangeProposal
       throw error;
-    } finally {
-      setIsCreatingProposal(false);
     }
+  };
+
+  // Handle edit review request
+  const handleEditReviewRequest = () => {
+    // Validate the form
+    if (!form.formState.isValid) return;
+
+    // Close edit modal and open preview modal
+    setIsEditRolesModalOpen(false);
+    setIsEditPreviewModalOpen(true);
   };
 
   // Handle delete members submission
@@ -509,9 +559,12 @@ export default function MembersPage() {
 
   const handleEditMember = useCallback(
     (member: Member) => {
-      setSelectedMember(member);
       setCurrentModalMode("edit");
       setMembersBeingEdited([member.accountId]);
+      // Store original member data for comparison
+      setOriginalMembersData([
+        { accountId: member.accountId, roles: member.roles },
+      ]);
       // Reset form with the selected member's data
       form.reset({
         members: [{ accountId: member.accountId, roles: member.roles }],
@@ -528,6 +581,13 @@ export default function MembersPage() {
     );
     setCurrentModalMode("edit");
     setMembersBeingEdited(membersToEdit.map((m) => m.accountId));
+    // Store original member data for comparison
+    setOriginalMembersData(
+      membersToEdit.map((m) => ({
+        accountId: m.accountId,
+        roles: m.roles,
+      }))
+    );
     form.reset({
       members: membersToEdit.map((m) => ({
         accountId: m.accountId,
@@ -560,6 +620,17 @@ export default function MembersPage() {
     }
   }, [selectedMembers.length, activeMembers]);
 
+  // Validate bulk delete
+  const bulkDeleteValidation = useMemo(() => {
+    if (selectedMembers.length === 0) return { canModify: true };
+    
+    const membersToDelete = activeMembers.filter((m) =>
+      selectedMembers.includes(m.accountId)
+    );
+    
+    return canDeleteBulk(membersToDelete);
+  }, [selectedMembers, activeMembers, canDeleteBulk]);
+
   // Render members table
   const renderMembersTable = (members: Member[]) => {
     if (isLoading) {
@@ -569,14 +640,12 @@ export default function MembersPage() {
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-12"></TableHead>
               <TableHead>
-                <span className="text-xs font-medium uppercase">
+                <span className="text-xs font-medium uppercase text-muted-foreground">
                   Member
                 </span>
               </TableHead>
               <TableHead>
-                <span className="text-xs font-medium uppercase">
-                  Permissions
-                </span>
+                <PermissionsHeader policyRoles={availableRoles} />
               </TableHead>
               <TableHead className="w-24 pr-6"></TableHead>
             </TableRow>
@@ -641,14 +710,12 @@ export default function MembersPage() {
               />
             </TableHead>
             <TableHead>
-              <span className="text-xs font-medium uppercase">
+              <span className="text-xs font-medium uppercase text-muted-foreground">
                 Member
               </span>
             </TableHead>
             <TableHead>
-              <span className="text-xs font-medium uppercase">
-                Permissions
-              </span>
+              <PermissionsHeader policyRoles={availableRoles} />
             </TableHead>
             <TableHead className="w-24 pr-6"></TableHead>
           </TableRow>
@@ -675,8 +742,8 @@ export default function MembersPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-2">
-                    {member.roles.map((role) => (
-                      <RoleBadge key={role} role={formatRoleName(role)} variant="pill" />
+                    {sortRolesByOrder(member.roles).map((role) => (
+                      <RoleBadge key={role} role={role} variant="pill" showTooltip={false} />
                     ))}
                   </div>
                 </TableCell>
@@ -729,7 +796,7 @@ export default function MembersPage() {
         {!(selectedMembers.length > 0) && (
           <div className="flex items-center justify-between pt-2 pb-2 px-6 border-b">
             <div className="flex items-center gap-3">
-              <h2 className="font-semibold text-lg">Add New Member</h2>
+              <h2 className="font-semibold text-lg">Active Members</h2>
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-sm">
                 {activeMembers.length}
               </span>
@@ -778,19 +845,27 @@ export default function MembersPage() {
               {selectedMembers.length !== 1 ? "s" : ""} selected
             </span>
             <div className="flex items-center gap-2">
-              <AuthButton
-                permissionKind="policy"
-                permissionAction="AddProposal"
-                balanceCheck={{ withProposalBond: true }}
-                variant="outline"
-                size="sm"
-                onClick={handleBulkDelete}
-                disabled={hasPendingMemberRequest}
-                className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+              <Tooltip
+                content={bulkDeleteValidation.reason}
+                disabled={bulkDeleteValidation.canModify || !bulkDeleteValidation.reason}
+                contentProps={{ className: "max-w-[280px]" }}
               >
-                <Trash2 className="w-4 h-4 mr-1" />
-                Remove
-              </AuthButton>
+                <span>
+                  <AuthButton
+                    permissionKind="policy"
+                    permissionAction="AddProposal"
+                    balanceCheck={{ withProposalBond: true }}
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    disabled={hasPendingMemberRequest || !bulkDeleteValidation.canModify}
+                    className="h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Remove
+                  </AuthButton>
+                </span>
+              </Tooltip>
               <AuthButton
                 permissionKind="policy"
                 permissionAction="AddProposal"
@@ -844,18 +919,38 @@ export default function MembersPage() {
         isOpen={isEditRolesModalOpen}
         onClose={() => {
           setIsEditRolesModalOpen(false);
-          setSelectedMember(null);
           setCurrentModalMode("add");
           setMembersBeingEdited([]);
+          setOriginalMembersData([]);
         }}
         form={form}
         availableRoles={availableRoles}
-        onReviewRequest={async () => {
+        onReviewRequest={handleEditReviewRequest}
+        isValidatingAddresses={false}
+        mode="edit"
+        originalMembers={originalMembersData}
+      />
+
+      {/* Edit Preview Modal */}
+      <PreviewModal
+        isOpen={isEditPreviewModalOpen}
+        onClose={() => {
+          setIsEditPreviewModalOpen(false);
+          setSelectedMembers([]);
+          setCurrentModalMode("add");
+          setMembersBeingEdited([]);
+        }}
+        onBack={() => {
+          setIsEditPreviewModalOpen(false);
+          setIsEditRolesModalOpen(true);
+        }}
+        form={form}
+        onSubmit={async () => {
           const membersData = form.getValues("members");
           await handleEditMembersSubmit(membersData);
         }}
-        isValidatingAddresses={isCreatingProposal}
         mode="edit"
+        existingMembers={activeMembers}
         validationError={(() => {
           const membersData = form.watch("members");
 
