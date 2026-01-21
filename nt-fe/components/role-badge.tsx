@@ -4,6 +4,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getRoleDescription } from "@/lib/role-utils";
+import { formatRoleName } from "@/components/role-name";
 
 interface RoleBadgeProps {
   role: string;
@@ -13,13 +14,14 @@ interface RoleBadgeProps {
 
 export function RoleBadge({ role, variant = "pill", showTooltip = true }: RoleBadgeProps) {
   const description = getRoleDescription(role);
+  const displayName = formatRoleName(role);
 
   const badge = (
     <span
       className={`px-3 py-1 bg-muted text-foreground text-sm font-medium ${variant === "pill" ? "rounded-full" : "rounded-md"
         }`}
     >
-      {role}
+      {displayName}
     </span>
   );
 

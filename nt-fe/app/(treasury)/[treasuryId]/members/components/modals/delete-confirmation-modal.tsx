@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Button } from "@/components/button";
 import {
   Dialog,
   DialogContent,
@@ -8,11 +7,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/modal";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ButtonWithTooltip } from "@/components/button-with-tooltip";
 
 interface Member {
   accountId: string;
@@ -73,26 +68,16 @@ export function DeleteConfirmationModal({
 
         <DialogFooter>
           <div className="w-full">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="block">
-                <Button
-                  type="button"
-                  onClick={handleConfirm}
-                  variant="destructive"
-                  className="w-full"
-                  disabled={isSubmitting || !!validationError}
-                >
-                  {isSubmitting ? "Creating Proposal..." : "Remove"}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {validationError && (
-              <TooltipContent className="max-w-[280px]">
-                <p>{validationError}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
+            <ButtonWithTooltip
+              type="button"
+              onClick={handleConfirm}
+              variant="destructive"
+              className="w-full"
+              disabled={isSubmitting || !!validationError}
+              tooltipMessage={validationError}
+            >
+              {isSubmitting ? "Creating Proposal..." : "Remove"}
+            </ButtonWithTooltip>
           </div>
         </DialogFooter>
       </DialogContent>

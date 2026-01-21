@@ -45,6 +45,7 @@ import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 import { AuthButton } from "@/components/auth-button";
 import { RolePermission } from "@/types/policy";
 import { sortRolesByOrder, getRoleDescription } from "@/lib/role-utils";
+import { formatRoleName } from "@/components/role-name";
 
 interface Member {
   accountId: string;
@@ -84,7 +85,7 @@ function PermissionsHeader({ policyRoles }: { policyRoles: RolePermission[] }) {
             <div className="space-y-3">
               {sortedDescriptions.map((role) => (
                 <div key={role.name}>
-                  <p className="font-semibold mb-1">{role.name}</p>
+                  <p className="font-semibold mb-1">{formatRoleName(role.name)}</p>
                   <p className="text-xs">{role.description}</p>
                 </div>
               ))}
