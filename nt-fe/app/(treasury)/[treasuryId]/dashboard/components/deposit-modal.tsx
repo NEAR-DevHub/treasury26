@@ -413,11 +413,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
                         <ChevronDown className="w-5 h-5" />
                       </div>
                     </Button>
-                    {fieldState.error && (
-                      <p className="text-sm text-destructive mt-2">
-                        {fieldState.error.message}
-                      </p>
-                    )}
+                    <FormMessage />
                   </InputBlock>
                 </FormItem>
               )}
@@ -482,11 +478,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
                         <ChevronDown className="w-5 h-5" />
                       </div>
                     </Button>
-                    {fieldState.error && (
-                      <p className="text-sm text-destructive mt-2">
-                        {fieldState.error.message}
-                      </p>
-                    )}
+                    <FormMessage />
                   </InputBlock>
                 </FormItem>
               )}

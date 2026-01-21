@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { ChevronLeft } from "lucide-react";
-import { Button } from "@/components/button";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +8,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/modal";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ButtonWithTooltip } from "@/components/button-with-tooltip";
 import { RoleBadge } from "@/components/role-badge";
 import { sortRolesByOrder } from "@/lib/role-utils";
 
@@ -152,27 +147,17 @@ export function PreviewModal({
 
         <DialogFooter>
           <div className="w-full">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="block">
-                  <Button
-                    type="button"
-                    onClick={handleSubmit}
-                    className="w-full"
-                    disabled={isSubmitting || !!validationError}
-                  >
-                    {isSubmitting
-                      ? "Creating Proposal..."
-                      : "Confirm and Submit Request"}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {validationError && (
-                <TooltipContent className="max-w-[280px]">
-                  <p>{validationError}</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
+            <ButtonWithTooltip
+              type="button"
+              onClick={handleSubmit}
+              className="w-full"
+              disabled={isSubmitting || !!validationError}
+              tooltipMessage={validationError}
+            >
+              {isSubmitting
+                ? "Creating Proposal..."
+                : "Confirm and Submit Request"}
+            </ButtonWithTooltip>
           </div>
         </DialogFooter>
       </DialogContent>

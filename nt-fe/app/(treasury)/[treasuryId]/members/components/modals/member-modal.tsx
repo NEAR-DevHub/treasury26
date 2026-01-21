@@ -1,5 +1,4 @@
 import { UseFormReturn, FormProvider } from "react-hook-form";
-import { Button } from "@/components/button";
 import {
   Dialog,
   DialogContent,
@@ -8,13 +7,10 @@ import {
   DialogFooter,
 } from "@/components/modal";
 import { MemberInput } from "@/components/member-input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ButtonWithTooltip } from "@/components/button-with-tooltip";
 import { RolePermission } from "@/types/policy";
 import { getRoleDescription, sortRolesByOrder } from "@/lib/role-utils";
+import { formatRoleName } from "@/components/role-name";
 
 interface MemberFormData {
   members: Array<{
@@ -104,11 +100,11 @@ export function MemberModal({
                 // Map roles and sort them in correct order
                 const mappedRoles = availableRoles.map((r) => ({
                   id: r.name,
-                  title: r.name, // Keep original role name (Admin, Approver, etc.)
+                  title: formatRoleName(r.name), // Convert old names (Admin, Approver) to new names (Governance, Financial)
                   description: getRoleDescription(r.name),
                 }));
 
-                // Sort by the role names to maintain order: Admin/Governance, Requestor, Approver/Financial
+                // Sort by the role names to maintain order: Governance, Requestor, Financial
                 const roleNames = mappedRoles.map((r) => r.id);
                 const sortedNames = sortRolesByOrder(roleNames);
 
@@ -122,33 +118,25 @@ export function MemberModal({
 
         <DialogFooter>
           <div className="w-full">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="block w-full">
-                  <Button
-                    type="button"
-                    onClick={onReviewRequest}
-                    disabled={
-                      !form.formState.isValid ||
-                      isValidatingAddresses ||
-                      !!validationError ||
-                      (isEditMode && !hasChanges)
-                    }
-                    className="w-full"
-                  >
-                    {buttonText}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {(validationError || (isEditMode && !hasChanges)) && (
-                <TooltipContent className="max-w-[280px]">
-                  <p>
-                    {validationError ||
-                      "No changes have been made to member roles"}
-                  </p>
-                </TooltipContent>
-              )}
-            </Tooltip>
+            <ButtonWithTooltip
+              type="button"
+              onClick={onReviewRequest}
+              disabled={
+                !form.formState.isValid ||
+                isValidatingAddresses ||
+                !!validationError ||
+                (isEditMode && !hasChanges)
+              }
+              className="w-full"
+              tooltipMessage={
+                validationError ||
+                (isEditMode && !hasChanges
+                  ? "No changes have been made to member roles"
+                  : undefined)
+              }
+            >
+              {buttonText}
+            </ButtonWithTooltip>
           </div>
         </DialogFooter>
       </DialogContent>

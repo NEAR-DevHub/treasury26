@@ -17,8 +17,9 @@ export function sortRolesByOrder(roles: string[]): string[] {
 }
 
 /**
- * Map policy role names to ROLES constant IDs for getting descriptions
- * Admin -> governance, Approver -> financial, etc.
+ * Map old policy role names to new ROLES constant IDs for getting descriptions
+ * Admin -> Governance
+ * Approver -> Financial
  */
 function getRoleIdForSorting(roleName: string): string {
   const normalized = roleName.toLowerCase();
@@ -32,7 +33,7 @@ function getRoleIdForSorting(roleName: string): string {
 
 /**
  * Get role description from ROLES constant, handling name mapping
- * Returns descriptions with new role names (Governance, Financial)
+ * Always uses the new role names (Governance, Financial) in descriptions
  */
 export function getRoleDescription(roleName: string): string | undefined {
   const roleId = getRoleIdForSorting(roleName);
