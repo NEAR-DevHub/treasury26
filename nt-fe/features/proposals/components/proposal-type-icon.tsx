@@ -1,4 +1,4 @@
-import { FileText, Shield, Clock, CreditCard, TerminalSquare, Database, ArrowDownToLine, Settings, UsersRound } from "lucide-react";
+import { FileText, Shield, Clock, CreditCard, TerminalSquare, Database, ArrowDownToLine, Settings, UsersRound, ArrowRightLeft } from "lucide-react";
 import { Proposal } from "@/lib/proposals-api";
 import { getProposalUIKind } from "../utils/proposal-utils";
 
@@ -57,7 +57,7 @@ export function ProposalTypeIcon({ proposal }: ProposalTypeIconProps) {
     case "Exchange":
       return (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg dark:bg-pink-500/10 bg-pink-100">
-          <CreditCard className="size-5 shrink-0 dark:text-pink-300 text-pink-800" />
+          <ArrowRightLeft className="size-5 shrink-0 dark:text-pink-300 text-pink-800" />
         </div>
       );
     case "Update General Settings":

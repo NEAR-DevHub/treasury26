@@ -124,9 +124,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <TreasurySelector />
             <div className="px-3">
               {isGuestTreasury && !isLoadingGuestTreasury ? (
-                <Pill variant="info" title="Guest" info="You are a guest of this treasury. You can only view the data. Creating requests, adding members, or making any changes is not allowed because you are not a member of the team." />
+                <Pill variant="info" side="right" title="Guest" info="You are a guest of this treasury. You can only view the data. Creating requests, adding members, or making any changes is not allowed because you are not a member of the team." />
               ) :
-                (<ApprovalInfo variant="pupil" />)}
+                (<ApprovalInfo variant="pupil" side="right" />)}
             </div>
           </div>
         </div>
@@ -156,7 +156,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        <div className="px-3.5 flex flex-col pb-2">
+        <div className="px-3.5 flex flex-col gap-1 pb-2">
           {bottomNavLinks.map((link) => {
             const href = treasuryId
               ? `/${treasuryId}${link.path ? `/${link.path}` : ""}`

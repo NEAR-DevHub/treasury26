@@ -1,5 +1,4 @@
 import { UseFormReturn, FormProvider } from "react-hook-form";
-import { Button } from "@/components/button";
 import {
   Dialog,
   DialogContent,
@@ -8,13 +7,9 @@ import {
   DialogFooter,
 } from "@/components/modal";
 import { MemberInput } from "@/components/member-input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ButtonWithTooltip } from "@/components/button-with-tooltip";
 import { RolePermission } from "@/types/policy";
-import { ROLES } from "@/components/role-selector";
+import { getRoleDescription, sortRolesByOrder } from "@/lib/role-utils";
 import { formatRoleName } from "@/components/role-name";
 
 interface MemberFormData {
@@ -33,6 +28,10 @@ interface MemberModalProps {
   isValidatingAddresses: boolean;
   mode: "add" | "edit";
   validationError?: string;
+  originalMembers?: Array<{
+    accountId: string;
+    roles: string[];
+  }>;
 }
 
 export function MemberModal({
@@ -44,6 +43,7 @@ export function MemberModal({
   isValidatingAddresses,
   mode,
   validationError,
+  originalMembers,
 }: MemberModalProps) {
   const isEditMode = mode === "edit";
   const title = isEditMode ? "Edit Roles" : "Add New Member";
@@ -51,9 +51,34 @@ export function MemberModal({
     ? isEditMode
       ? "Creating proposal..."
       : "Validating addresses..."
-    : isEditMode
-      ? "Confirm Changes"
-      : "Review Request";
+    : "Review Request";
+
+  // Check if any changes have been made in edit mode
+  const hasChanges = (() => {
+    if (!isEditMode || !originalMembers) return true;
+
+    const currentMembers = form.watch("members");
+    
+    // Compare each member's roles with original
+    return currentMembers.some((currentMember) => {
+      const originalMember = originalMembers.find(
+        (m) => m.accountId === currentMember.accountId
+      );
+      if (!originalMember) return true;
+
+      // Sort roles for comparison
+      const currentRolesSorted = [...currentMember.roles].sort();
+      const originalRolesSorted = [...originalMember.roles].sort();
+
+      // Check if roles are different
+      return (
+        currentRolesSorted.length !== originalRolesSorted.length ||
+        currentRolesSorted.some(
+          (role, index) => role !== originalRolesSorted[index]
+        )
+      );
+    });
+  })();
 
   return (
     <Dialog
@@ -71,44 +96,48 @@ export function MemberModal({
               control={form.control}
               name="members"
               mode={mode}
-              availableRoles={availableRoles.map((r) => {
-                const formattedRole = formatRoleName(r.name);
-                return {
+              availableRoles={(() => {
+                // Map roles and sort them in correct order
+                const mappedRoles = availableRoles.map((r) => ({
                   id: r.name,
-                  title: formattedRole,
-                  description: ROLES.find(
-                    (role) => role.id === formattedRole?.toLowerCase()
-                  )?.description,
-                }
-              })}
+                  title: formatRoleName(r.name), // Convert old names (Admin, Approver) to new names (Governance, Financial)
+                  description: getRoleDescription(r.name),
+                }));
+
+                // Sort by the role names to maintain order: Governance, Requestor, Financial
+                const roleNames = mappedRoles.map((r) => r.id);
+                const sortedNames = sortRolesByOrder(roleNames);
+
+                return sortedNames.map(
+                  (name) => mappedRoles.find((r) => r.id === name)!
+                );
+              })()}
             />
           </FormProvider>
         </div>
 
-        <DialogFooter className="w-full">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="block w-full">
-                <Button
-                  type="button"
-                  onClick={onReviewRequest}
-                  disabled={
-                    !form.formState.isValid ||
-                    isValidatingAddresses ||
-                    !!validationError
-                  }
-                  className="w-full"
-                >
-                  {buttonText}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {validationError && (
-              <TooltipContent className="max-w-[280px]">
-                <p>{validationError}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
+        <DialogFooter>
+          <div className="w-full">
+            <ButtonWithTooltip
+              type="button"
+              onClick={onReviewRequest}
+              disabled={
+                !form.formState.isValid ||
+                isValidatingAddresses ||
+                !!validationError ||
+                (isEditMode && !hasChanges)
+              }
+              className="w-full"
+              tooltipMessage={
+                validationError ||
+                (isEditMode && !hasChanges
+                  ? "No changes have been made to member roles"
+                  : undefined)
+              }
+            >
+              {buttonText}
+            </ButtonWithTooltip>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -163,12 +163,12 @@ function ExecutedSection({ status, date, expiresAt }: { status: UIProposalStatus
 export function ProposalSidebar({ proposal, policy, onVote, onDeposit }: ProposalSidebarProps) {
   const { accountId } = useNear();
   const { selectedTreasury } = useTreasury();
-  const isPending = proposal.status === "InProgress";
   const { data: transaction } = useProposalTransaction(selectedTreasury, proposal, policy);
   const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(proposal, selectedTreasury);
 
   const status = getProposalStatus(proposal, policy);
   const isUserVoter = !!proposal.votes[accountId ?? ""];
+  const isPending = status === "Pending";
 
   const expiresAt = new Date(Big(proposal.submission_time).add(policy.proposal_period).div(1000000).toNumber());
   let timestamp;
