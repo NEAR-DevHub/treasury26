@@ -11,9 +11,11 @@ import { RecentActivity } from "./components/recent-activity";
 import { OnboardingProgress } from "@/features/onboarding";
 import { DepositModal } from "./components/deposit-modal";
 import { InfoBox } from "@/features/onboarding/components/info-box";
+import { useTreasury } from "@/stores/treasury-store";
 
 export default function AppPage() {
-  const { data } = useTreasuryAssets(undefined, { onlyPositiveBalance: true });
+  const { selectedTreasury } = useTreasury();
+  const { data } = useTreasuryAssets(selectedTreasury);
   const { tokens, totalBalanceUSD } = data || { tokens: [], totalBalanceUSD: 0 };
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
 

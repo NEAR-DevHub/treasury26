@@ -23,7 +23,7 @@ import {
 } from "@/components/table";
 import { Button } from "@/components/button";
 import { TreasuryAsset } from "@/lib/api";
-import { formatBalance, formatCurrency } from "@/lib/utils";
+import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-aggregated-tokens";
 import Big from "big.js";
 import { NetworkDisplay, BalanceCell } from "./token-display";
@@ -164,30 +164,31 @@ export function AssetsTable({ tokens }: Props) {
             {headerGroup.headers.map((header) => (
               <TableHead
                 key={header.id}
-                className={
+                className={cn(
                   header.id !== "symbol" && header.id !== "expand"
                     ? "text-right text-muted-foreground"
                     : "text-muted-foreground"
-                }
+                )}
               >
                 {header.isPlaceholder ? null : header.id === "expand" ? null : (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={header.column.getToggleSortingHandler()}
-                    className={`flex items-center gap-1 px-0 hover:bg-transparent ${header.id !== "symbol" ? "ml-auto" : ""
-                      }`}
+                    className={cn("flex items-center gap-1 px-0 hover:bg-transparent uppercase text-[10px]",
+                      header.id !== "symbol" ? "ml-auto" : "",
+                    )}
                   >
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()
                     )}
                     {header.column.getIsSorted() === "desc" ? (
-                      <ChevronDown className="h-4 w-4" />
+                      <ChevronDown className="size-3" />
                     ) : header.column.getIsSorted() === "asc" ? (
-                      <ChevronUp className="h-4 w-4" />
+                      <ChevronUp className="size-3" />
                     ) : (
-                      <ArrowUpDown className="h-4 w-4" />
+                      <ArrowUpDown className="size-3" />
                     )}
                   </Button>
                 )}
