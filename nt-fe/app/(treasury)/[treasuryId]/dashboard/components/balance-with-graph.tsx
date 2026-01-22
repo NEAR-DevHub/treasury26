@@ -19,6 +19,7 @@ interface Props {
     totalBalanceUSD: number | Big.Big;
     tokens: TreasuryAsset[];
     onDepositClick: () => void;
+    isLoading?: boolean;
 }
 
 type TimePeriod = "1D" | "1W" | "1M" | "1Y";
@@ -78,7 +79,7 @@ interface GroupedToken {
     tokenIds: string[];
 }
 
-export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositClick }: Props) {
+export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositClick, isLoading: isLoadingTokens }: Props) {
     const params = useParams();
     const treasuryId = params?.treasuryId as string | undefined;
     const { selectedTreasury: accountId } = useTreasury();
@@ -228,6 +229,32 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
             return { data, showUSD: hasAnyUSD };
         }
     }, [balanceChartData, selectedToken, selectedTokenGroup, selectedPeriod]);
+
+    if (isLoadingTokens) {
+        return (
+            <PageCard>
+                <div className="flex justify-around gap-4 mb-6">
+                    <div className="flex-1">
+                        <h3 className="text-xs font-medium text-muted-foreground">Total Balance</h3>
+                        <Skeleton className="h-9 w-40 mt-2" />
+                    </div>
+                    <div className="flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
+                        <Skeleton className="h-8 w-[140px]" />
+                        <Skeleton className="h-8 w-[160px]" />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 md:gap-4">
+                    <Skeleton className="h-9 w-full" />
+                    <Skeleton className="h-9 w-full" />
+                    <Skeleton className="h-9 w-full" />
+                </div>
+                <div className="h-56 w-full space-y-3 p-4">
+                    <Skeleton className="h-50 w-full" />
+                </div>
+            </PageCard>
+        );
+    }
 
     return (
         <PageCard>
