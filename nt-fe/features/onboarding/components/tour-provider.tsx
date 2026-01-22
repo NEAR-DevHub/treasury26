@@ -1,12 +1,22 @@
-"use client";
+"use client"
 
-import { TourProvider as ReactourTourProvider } from '@reactour/tour'
-import { TOURS } from '../steps'
+import { NextStepProvider, NextStep } from "nextstepjs"
+import { useNextAdapter } from "nextstepjs/adapters/next"
+import { TOURS } from "../steps"
+import { TourCard } from "./tour-card"
 
 export function TourProvider({ children }: { children: React.ReactNode }) {
     return (
-        <ReactourTourProvider steps={TOURS} disableDotsNavigation>
-            {children}
-        </ReactourTourProvider>
+        <NextStepProvider>
+            <NextStep
+                steps={TOURS}
+                cardComponent={TourCard}
+                navigationAdapter={useNextAdapter}
+                shadowOpacity="0.5"
+                noInViewScroll
+            >
+                {children}
+            </NextStep>
+        </NextStepProvider>
     )
 }

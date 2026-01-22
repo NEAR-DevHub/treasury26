@@ -120,7 +120,7 @@ export function TreasurySelector() {
 
   return (
     <Select value={treasuryId} onValueChange={handleTreasuryChange}>
-      <SelectTrigger id="dashboard-step6" className="w-full px-3 py-1.5 h-fit border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted!" disabled={!accountId}>
+      <SelectTrigger id="dashboard-step5" className="w-full px-3 py-1.5 h-fit border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted!" disabled={!accountId}>
         <Tooltip content="Connect wallet to view treasuries" disabled={!!accountId}>
           <div className="flex items-center gap-2 w-full max-w-52 truncate h-9">
             <Logo logo={currentTreasury?.config?.metadata?.flagLogo} />
@@ -137,7 +137,7 @@ export function TreasurySelector() {
           </div>
         </Tooltip>
       </SelectTrigger>
-      <SelectContent id="dashboard-step6">
+      <SelectContent>
         {treasuries.map((treasury) => (
           <SelectItem
             key={treasury.daoId}
@@ -155,7 +155,7 @@ export function TreasurySelector() {
         ))}
         <SelectSeparator />
         <Button
-          id="dashboard-step6-create-treasury"
+          id="dashboard-step5-create-treasury"
           variant="ghost"
           type="button"
           className="w-full justify-start gap-2"

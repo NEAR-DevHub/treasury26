@@ -78,7 +78,7 @@ const topNavLinks: { path: string; label: string; icon: LucideIcon; roleRequired
 ];
 
 const bottomNavLinks: { path: string; label: string; icon: LucideIcon; id?: string }[] = [
-  { path: "members", label: "Members", icon: Users, id: "dashboard-step5" },
+  { path: "members", label: "Members", icon: Users, id: "dashboard-step4" },
   { path: "settings", label: "Settings", icon: Settings },
   { path: "help", label: "Help & Support", icon: HelpCircle },
 ];

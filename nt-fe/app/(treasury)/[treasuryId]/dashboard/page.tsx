@@ -13,6 +13,7 @@ import { DepositModal } from "./components/deposit-modal";
 import { InfoBox } from "@/features/onboarding/components/info-box";
 import { DashboardTour } from "@/features/onboarding/steps/dashboard";
 import { useTreasury } from "@/stores/treasury-store";
+import { NextStepViewport } from "nextstepjs";
 
 export default function AppPage() {
   const { selectedTreasury } = useTreasury();

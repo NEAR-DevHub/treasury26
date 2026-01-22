@@ -14,6 +14,7 @@ import { useParams } from "next/navigation";
 import type { ChartInterval } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthButton } from "@/components/auth-button";
+import { NextStepViewport } from "nextstepjs";
 
 interface Props {
     totalBalanceUSD: number | Big.Big;
