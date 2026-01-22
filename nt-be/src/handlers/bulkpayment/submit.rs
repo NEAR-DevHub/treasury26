@@ -103,23 +103,33 @@ async fn verify_dao_proposal(
     dao_contract_id: &str,
     list_id: &str,
 ) -> Result<bool, (StatusCode, String)> {
-    log::info!(
-        "Verifying DAO proposal: dao={}, list_id={}",
-        dao_contract_id,
-        list_id
-    );
-    log::info!(
-        "Using network RPC endpoints: {:?}",
-        state.network.rpc_endpoints
-    );
+    // Get the last proposal ID to know the total number of proposals
+    let last_proposal_id: u64 = near_api::Contract(dao_contract_id.parse().unwrap())
+        .call_function("get_last_proposal_id", ())
+        .read_only::<u64>()
+        .fetch_from(&state.network)
+        .await
+        .map_err(|e| {
+            log::error!("Failed to fetch last proposal ID: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to fetch last proposal ID: {}", e),
+            )
+        })?
+        .data;
+
+    // Calculate the starting index to get the last 100 proposals
+    // If there are fewer than 100 proposals, start from 0
+    let limit = 100u64;
+    let from_index = last_proposal_id.saturating_sub(limit - 1);
 
     // Get the last 100 proposals from the DAO
     let proposals: Vec<Proposal> = near_api::Contract(dao_contract_id.parse().unwrap())
         .call_function(
             "get_proposals",
             serde_json::json!({
-                "from_index": 0,
-                "limit": 100
+                "from_index": from_index,
+                "limit": limit
             }),
         )
         .read_only::<Vec<Proposal>>()
@@ -134,45 +144,25 @@ async fn verify_dao_proposal(
         })?
         .data;
 
-    log::info!("Fetched {} proposals from DAO", proposals.len());
-
     // Look for a pending proposal with this list_id
     for proposal in proposals {
-        log::info!(
-            "Checking proposal {}: status={:?}, kind={:?}",
-            proposal.id,
-            proposal.status,
-            match &proposal.kind {
-                ProposalKind::FunctionCall { function_call } =>
-                    format!("FunctionCall(receiver={})", function_call.receiver_id),
-                _ => format!("{:?}", proposal.kind),
-            }
-        );
-
         if proposal.status != "InProgress" {
-            log::info!("  -> Skipping: status is not InProgress");
             continue;
         }
 
         // Check if this is a FunctionCall proposal
         if let ProposalKind::FunctionCall { function_call } = &proposal.kind {
-            log::info!(
-                "  -> FunctionCall proposal: receiver={}",
-                function_call.receiver_id
-            );
-
-            log::info!("  -> Checking {} actions", function_call.actions.len());
+            // First, check the description for the list_id (fastest check)
+            if proposal.description.contains(list_id) {
+                return Ok(true);
+            }
 
             // Check each action for bulk payment related methods
             for action in &function_call.actions {
-                log::info!("    -> Action: method_name={}", action.method_name);
-
                 // Case 1: Direct approve_list call (NEAR tokens)
                 if action.method_name == "approve_list"
                     && function_call.receiver_id == state.bulk_payment_contract_id.as_str()
                 {
-                    log::info!("    -> Found approve_list action, decoding args...");
-
                     // Decode the base64 args and check for matching list_id
                     if let Ok(decoded) = base64::Engine::decode(
                         &base64::engine::general_purpose::STANDARD,
@@ -180,24 +170,14 @@ async fn verify_dao_proposal(
                     ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
                         && let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
                     {
-                        log::info!("    -> Decoded list_id from args: {}", proposal_list_id);
-                        log::info!("    -> Looking for list_id: {}", list_id);
-
                         if proposal_list_id == list_id {
-                            log::info!("  -> MATCH FOUND (approve_list)!");
                             return Ok(true);
-                        } else {
-                            log::info!("    -> No match");
                         }
-                    } else {
-                        log::warn!("    -> Failed to decode args");
                     }
                 }
 
                 // Case 2: ft_transfer_call (FT tokens)
                 if action.method_name == "ft_transfer_call" {
-                    log::info!("    -> Found ft_transfer_call action, decoding args...");
-
                     // Decode the base64 args and check for matching list_id in msg field
                     if let Ok(decoded) = base64::Engine::decode(
                         &base64::engine::general_purpose::STANDARD,
@@ -207,40 +187,20 @@ async fn verify_dao_proposal(
                         // Check if receiver_id is the bulk payment contract
                         if let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
                         {
-                            log::info!("    -> receiver_id in args: {}", receiver_id);
-
                             if receiver_id == state.bulk_payment_contract_id.as_str() {
                                 // Check the msg field for list_id
                                 if let Some(msg) = args.get("msg").and_then(|v| v.as_str()) {
-                                    log::info!("    -> Decoded msg from args: {}", msg);
-                                    log::info!("    -> Looking for list_id: {}", list_id);
-
                                     if msg == list_id {
-                                        log::info!("  -> MATCH FOUND (ft_transfer_call)!");
                                         return Ok(true);
-                                    } else {
-                                        log::info!("    -> No match");
                                     }
-                                } else {
-                                    log::warn!("    -> No msg field in args");
                                 }
-                            } else {
-                                log::info!(
-                                    "    -> receiver_id does not match bulk payment contract"
-                                );
                             }
-                        } else {
-                            log::warn!("    -> No receiver_id in args");
                         }
-                    } else {
-                        log::warn!("    -> Failed to decode args for ft_transfer_call");
                     }
                 }
 
                 // Case 3: mt_transfer_call (MT tokens / Intents)
                 if action.method_name == "mt_transfer_call" {
-                    log::info!("    -> Found mt_transfer_call action, decoding args...");
-
                     // Decode the base64 args and check for matching list_id in msg field
                     if let Ok(decoded) = base64::Engine::decode(
                         &base64::engine::general_purpose::STANDARD,
@@ -250,42 +210,18 @@ async fn verify_dao_proposal(
                         // Check if receiver_id is the bulk payment contract
                         if let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
                         {
-                            log::info!("    -> receiver_id in args: {}", receiver_id);
-
                             if receiver_id == state.bulk_payment_contract_id.as_str() {
                                 // Check the msg field for list_id
                                 if let Some(msg) = args.get("msg").and_then(|v| v.as_str()) {
-                                    log::info!("    -> Decoded msg from args: {}", msg);
-                                    log::info!("    -> Looking for list_id: {}", list_id);
-
                                     if msg == list_id {
-                                        log::info!("  -> MATCH FOUND (mt_transfer_call)!");
                                         return Ok(true);
-                                    } else {
-                                        log::info!("    -> No match");
                                     }
-                                } else {
-                                    log::warn!("    -> No msg field in args");
                                 }
-                            } else {
-                                log::info!(
-                                    "    -> receiver_id does not match bulk payment contract"
-                                );
                             }
-                        } else {
-                            log::warn!("    -> No receiver_id in args");
                         }
-                    } else {
-                        log::warn!("    -> Failed to decode args for mt_transfer_call");
                     }
                 }
             }
-        }
-
-        // Also check the description for the list_id (fallback)
-        if proposal.description.contains(list_id) {
-            log::info!("  -> MATCH FOUND in description (fallback)!");
-            return Ok(true);
         }
     }
 
@@ -380,6 +316,47 @@ pub async fn submit_list(
 
     match result {
         Ok(_) => {
+            // Step 4: Store in database for usage tracking
+            let recipient_count = request.payments.len() as i32;
+            let total_amount: String = request
+                .payments
+                .iter()
+                .map(|p| p.amount.parse::<u128>().unwrap_or(0))
+                .sum::<u128>()
+                .to_string();
+
+            let db_result = sqlx::query(
+                r#"
+                INSERT INTO bulk_payment_requests 
+                (treasury_id, list_id, recipient_count, token_id, total_amount, created_by)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (list_id) DO NOTHING
+                "#,
+            )
+            .bind(&request.dao_contract_id)
+            .bind(&request.list_id)
+            .bind(recipient_count)
+            .bind(&request.token_id)
+            .bind(&total_amount)
+            .bind(&request.submitter_id)
+            .execute(&state.db_pool)
+            .await;
+
+            match db_result {
+                Ok(_) => {
+                    log::info!(
+                        "Stored bulk payment request in DB: treasury={}, list_id={}, recipients={}",
+                        request.dao_contract_id,
+                        request.list_id,
+                        recipient_count
+                    );
+                }
+                Err(e) => {
+                    log::error!("Failed to insert bulk payment request into DB: {}", e);
+                    // Don't fail the request if DB insert fails - contract submission succeeded
+                }
+            }
+
             // Add the list to the payout worker's pending list
             super::worker::add_pending_list(request.list_id.clone()).await;
 

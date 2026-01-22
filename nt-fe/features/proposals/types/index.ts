@@ -174,6 +174,7 @@ export interface BatchPaymentRequestData {
     tokenId: string;
     totalAmount: string;
     batchId: string;
+    network?: string; // "near", "intents", or token contract network
 }
 
 /**

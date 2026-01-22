@@ -17,7 +17,10 @@ import { PageCard } from "@/components/card";
 import { NEAR_TOKEN } from "@/constants/token";
 import { Textarea } from "@/components/textarea";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { getBatchStorageDepositIsRegistered } from "@/lib/api";
+import {
+  getBatchStorageDepositIsRegistered,
+  getBulkPaymentUsageStats,
+} from "@/lib/api";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
 import { toast } from "sonner";
@@ -29,8 +32,9 @@ import {
   generateListId,
   submitPaymentList,
   buildApproveListProposal,
-  BULK_PAYMENTS_PER_MONTH,
+  TOTAL_FREE_CREDITS,
   MAX_RECIPIENTS_PER_BULK_PAYMENT,
+  BULK_PAYMENT_CONTRACT_ID,
 } from "@/lib/bulk-payment-api";
 import { encodeToMarkdown, formatBalance } from "@/lib/utils";
 import {
@@ -68,6 +72,14 @@ function validateRecipientAddress(address: string): string | null {
   }
 
   return null;
+}
+
+// Helper function to check if storage deposit is needed for a token
+function needsStorageDepositCheck(token: TreasuryAsset): boolean {
+  // Intents tokens don't need storage deposits (they use a different system)
+  // FT tokens need storage deposits
+  // NEAR tokens don't need storage deposits
+  return token.residency === "Ft";
 }
 
 // CSV Parsing Utilities
@@ -184,20 +196,41 @@ export default function BulkPaymentPage() {
 
       setIsLoadingCredits(true);
       try {
-        const credits = await viewStorageCredits(selectedTreasury);
-        const creditsAvailable = Math.floor(
-          credits / MAX_RECIPIENTS_PER_BULK_PAYMENT
-        );
-        const creditsUsed = Math.max(
-          0,
-          BULK_PAYMENTS_PER_MONTH - creditsAvailable
+        // Fetch from both contract and database
+        const [contractCredits, usageStats] = await Promise.all([
+          viewStorageCredits(selectedTreasury),
+          getBulkPaymentUsageStats(selectedTreasury),
+        ]);
+
+        // Contract credits = REMAINING storage records (not total)
+        // This is already reduced by the contract when lists are submitted
+        // So contractCredits already reflects what's available on-chain
+        
+        // Calculate how many bulk payment requests can be made
+        // Each request can have up to MAX_RECIPIENTS_PER_BULK_PAYMENT recipients
+        const maxRequestsFromContract = Math.floor(
+          contractCredits / MAX_RECIPIENTS_PER_BULK_PAYMENT
         );
 
-        setCreditsUsed(creditsUsed);
+        // Database tracks requests we've created through the UI
+        // This helps us show accurate usage even if contract hasn't processed yet
+        const requestsUsedInDB = usageStats.total_requests;
+
+        // Use the minimum to be conservative
+        // (DB might be ahead if some requests are pending approval)
+        const creditsAvailable = Math.min(
+          maxRequestsFromContract,
+          Math.max(0, TOTAL_FREE_CREDITS - requestsUsedInDB)
+        );
+        
+        const creditsUsed = Math.min(requestsUsedInDB, TOTAL_FREE_CREDITS);
+
         setAvailableCredits(creditsAvailable);
+        setCreditsUsed(creditsUsed);
       } catch (error) {
-        console.error("Error fetching storage credits:", error);
+        console.error("Error loading bulk payment credits:", error);
         setAvailableCredits(0);
+        setCreditsUsed(0);
       } finally {
         setIsLoadingCredits(false);
       }
@@ -244,7 +277,7 @@ export default function BulkPaymentPage() {
         );
 
         // Step 2: Check storage registration for FT tokens (only for valid accounts)
-        if (selectedToken.symbol !== "NEAR" && selectedToken.contractId) {
+        if (needsStorageDepositCheck(selectedToken)) {
           // Filter only valid accounts
           const validAccounts = accountValidatedPayments.filter(
             (payment) => !payment.validationError
@@ -381,6 +414,20 @@ export default function BulkPaymentPage() {
       return;
     }
 
+    // Check if exceeds maximum recipients limit
+    if (parsedData.length > MAX_RECIPIENTS_PER_BULK_PAYMENT) {
+      setDataErrors([
+        {
+          row: 0,
+          message: `Maximum limit of ${MAX_RECIPIENTS_PER_BULK_PAYMENT} transactions per request. Remove ${
+            parsedData.length - MAX_RECIPIENTS_PER_BULK_PAYMENT
+          } recipients to proceed.`,
+        },
+      ]);
+      setIsValidating(false);
+      return;
+    }
+
     setDataErrors(null);
     setPaymentData(parsedData);
     setIsValidating(false);
@@ -451,25 +498,71 @@ export default function BulkPaymentPage() {
         continue;
       }
 
+      const recipient = (row[recipientIdx] || "").trim();
       const amountStr = (row[amountIdx] || "").trim();
+
+      // Validate that both recipient and amount exist
+      if (!recipient) {
+        errors.push({
+          row: i + 1,
+          message: "Missing recipient address",
+        });
+        continue;
+      }
+
+      if (!amountStr) {
+        errors.push({
+          row: i + 1,
+          message: "Missing amount",
+        });
+        continue;
+      }
+
       const parsedAmountValue = parseAmount(amountStr);
 
-      const recipient = (row[recipientIdx] || "").trim();
+      // Validate amount is a valid number
+      if (isNaN(parsedAmountValue) || parsedAmountValue <= 0) {
+        errors.push({
+          row: i + 1,
+          message: `Invalid amount: ${amountStr}`,
+        });
+        continue;
+      }
+
       const validationError = validateRecipientAddress(recipient);
 
       const data: BulkPaymentData = {
         recipient,
-        amount: !isNaN(parsedAmountValue)
-          ? String(parsedAmountValue)
-          : amountStr,
+        amount: String(parsedAmountValue),
         validationError: validationError || undefined,
       };
 
       parsedData.push(data);
     }
 
+    // Check if there were any parsing errors
+    if (errors.length > 0) {
+      setDataErrors(errors);
+      setIsValidating(false);
+      return;
+    }
+
     if (parsedData.length === 0) {
       setDataErrors([{ row: 0, message: "No valid data rows found" }]);
+      setIsValidating(false);
+      return;
+    }
+
+    // Check if exceeds maximum recipients limit
+    if (parsedData.length > MAX_RECIPIENTS_PER_BULK_PAYMENT) {
+      setDataErrors([
+        {
+          row: 0,
+          message: `Maximum limit of ${MAX_RECIPIENTS_PER_BULK_PAYMENT} transactions per request. Remove ${
+            parsedData.length - MAX_RECIPIENTS_PER_BULK_PAYMENT
+          } recipients to proceed.`,
+        },
+      ]);
       setIsValidating(false);
       return;
     }
@@ -569,9 +662,9 @@ export default function BulkPaymentPage() {
     if (editingIndex === null || !selectedToken) return;
 
     // The PaymentFormSection already validated the account format and existence
-    // Now check storage registration for FT tokens
+    // Now check storage registration for FT tokens (skip for Intents)
     let isRegistered = true;
-    if (selectedToken.symbol !== "NEAR" && selectedToken.contractId) {
+    if (needsStorageDepositCheck(selectedToken)) {
       try {
         const tokenId = selectedToken.contractId || selectedToken.id;
         const storageResult = await getBatchStorageDepositIsRegistered([
@@ -661,40 +754,101 @@ export default function BulkPaymentPage() {
         daoAccountId: selectedTreasury,
         listId,
         tokenId: tokenIdForProposal,
+        tokenResidency: selectedToken.residency,
         totalAmount: totalAmountInSmallestUnits,
         description,
         proposalBond,
       });
 
-      // Build storage deposit transactions for unregistered recipients (FT tokens only)
+      // Build storage deposit transactions for unregistered recipients (FT tokens only, not Intents)
       const additionalTransactions: any[] = [];
-      if (!isNEAR && selectedToken.contractId) {
+      if (needsStorageDepositCheck(selectedToken)) {
         const gas = "30000000000000";
         const depositInYocto = Big(0.0125).mul(Big(10).pow(24)).toFixed();
 
-        const unregisteredRecipients = paymentData.filter(
-          (payment) => payment.isRegistered === false && !payment.validationError
-        );
+        // First, check if bulk payment contract is registered for this token
+        const bulkPaymentContractRegistration = await getBatchStorageDepositIsRegistered([
+          {
+            accountId: BULK_PAYMENT_CONTRACT_ID,
+            tokenId: selectedToken.contractId || selectedToken.id,
+          },
+        ]);
 
-        for (const payment of unregisteredRecipients) {
-          additionalTransactions.push({
-            receiverId: selectedToken.contractId,
-            actions: [
-              {
-                type: "FunctionCall",
-                params: {
-                  methodName: "storage_deposit",
-                  args: {
-                    account_id: payment.recipient,
-                    registration_only: true,
-                  } as any,
-                  gas,
-                  deposit: depositInYocto,
-                },
+        const isBulkPaymentContractRegistered =
+          bulkPaymentContractRegistration.length > 0 &&
+          bulkPaymentContractRegistration[0].is_registered;
+
+      // Add storage deposit transaction for bulk payment contract if needed (must be first)
+      if (!isBulkPaymentContractRegistered) {
+        additionalTransactions.push({
+          receiverId: selectedToken.contractId,
+          actions: [
+            {
+              type: "FunctionCall",
+              params: {
+                methodName: "storage_deposit",
+                args: {
+                  account_id: BULK_PAYMENT_CONTRACT_ID,
+                  registration_only: true,
+                } as any,
+                gas,
+                deposit: depositInYocto,
+              },
+            } as any,
+          ],
+        });
+      }
+
+      // Add storage deposits for unregistered recipients
+      const unregisteredRecipients = paymentData.filter(
+        (payment) =>
+          payment.isRegistered === false && !payment.validationError
+      );
+
+      for (const payment of unregisteredRecipients) {
+        additionalTransactions.push({
+          receiverId: selectedToken.contractId,
+          actions: [
+            {
+              type: "FunctionCall",
+              params: {
+                methodName: "storage_deposit",
+                args: {
+                  account_id: payment.recipient,
+                  registration_only: true,
+                } as any,
+                gas,
+                deposit: depositInYocto,
+              },
+            } as any,
+          ],
+        });
+      }
+
+      // Add submit_list transaction to bulk payment contract
+      // This stores the payment list in the contract before the DAO proposal is approved
+      additionalTransactions.push({
+        receiverId: BULK_PAYMENT_CONTRACT_ID,
+        actions: [
+          {
+            type: "FunctionCall",
+            params: {
+              methodName: "submit_list",
+              args: {
+                list_id: listId,
+                token_id: tokenIdForHash,
+                payments: payments.map((p) => ({
+                  recipient: p.recipient,
+                  amount: p.amount,
+                })),
+                submitter_id: selectedTreasury,
               } as any,
-            ],
-          });
-        }
+              gas: "50000000000000", // 50 TGas
+              deposit: "0", // No deposit needed for submit_list
+            },
+          } as any,
+        ],
+      });
       }
 
       // Create proposal first (required for backend verification) - suppress toast
@@ -812,7 +966,7 @@ export default function BulkPaymentPage() {
               onClick={() => setShowPreview(false)}
               className="flex items-center gap-2 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
               <span className="text-lg font-semibold">Review Your Payment</span>
             </button>
 
@@ -838,8 +992,8 @@ export default function BulkPaymentPage() {
             </div>
 
             {/* Recipients List */}
-            <div className="space-y-4 mb-6">
-              <h3 className="text-sm text-muted-foreground">Recipients</h3>
+            <div className="space-y-4 mb-2">
+              <h3 className="text-sm text-muted-foreground mb-6">Recipients</h3>
 
               {isValidatingAccounts ? (
                 // Loading skeleton while validating
@@ -884,7 +1038,14 @@ export default function BulkPaymentPage() {
                         : 0;
 
                     return (
-                      <div key={index} className="space-y-3">
+                      <div
+                        key={index}
+                        className={`space-y-3 ${
+                          index < paymentData.length - 1
+                            ? "border-b border-border pb-4"
+                            : ""
+                        }`}
+                      >
                         <div className="flex items-start gap-3">
                           <div
                             className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold shrink-0 ${
@@ -965,10 +1126,23 @@ export default function BulkPaymentPage() {
               )}
             </div>
 
+            {/* Comment */}
+            {!isValidatingAccounts && (
+              <div className="mb-2">
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Add a comment (optional)..."
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+            )}
+
             {/* Storage Deposit Warning */}
             {!isValidatingAccounts && hasUnregisteredRecipients && (
               <WarningAlert
-                className="mb-6"
+                className="mb-2"
                 message={
                   <div>
                     <h4 className="font-semibold">Storage Deposit Required</h4>
@@ -981,19 +1155,6 @@ export default function BulkPaymentPage() {
                   </div>
                 }
               />
-            )}
-
-            {/* Comment */}
-            {!isValidatingAccounts && (
-              <div className="mb-6">
-                <Textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Add a comment (optional)..."
-                  rows={3}
-                  className="resize-none"
-                />
-              </div>
             )}
 
             {/* Submit Button */}
@@ -1059,13 +1220,13 @@ export default function BulkPaymentPage() {
               onClick={() => router.back()}
               className="flex items-center gap-2 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-muted-foreground hover:text-foreground" />
+              <ArrowLeft className="w-4 h-4 text-muted-foreground hover:text-foreground" />
               <span className="text-xl font-semibold">
                 Bulk Payment Requests
               </span>
             </button>
 
-            <p className="text-sm text-muted-foreground font-semibold mb-4">
+            <p className="text-sm text-muted-foreground font-medium mb-4">
               Pay multiple recipients with a single proposal.
             </p>
 
@@ -1128,7 +1289,10 @@ export default function BulkPaymentPage() {
                           ? "border-b-2 border-foreground text-foreground"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
-                      onClick={() => setActiveTab("upload")}
+                      onClick={() => {
+                        setActiveTab("upload");
+                        setDataErrors(null);
+                      }}
                     >
                       Upload File
                     </button>
@@ -1138,7 +1302,10 @@ export default function BulkPaymentPage() {
                           ? "border-b-2 border-foreground text-foreground"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
-                      onClick={() => setActiveTab("paste")}
+                      onClick={() => {
+                        setActiveTab("paste");
+                        setDataErrors(null);
+                      }}
                     >
                       Provide Data
                     </button>
@@ -1163,7 +1330,7 @@ export default function BulkPaymentPage() {
                               <p className="text-base mb-2">
                                 <button
                                   type="button"
-                                  className="font-semibold hover:underline"
+                                  className="font-semibold hover:underline disabled:text-muted-foreground"
                                   onClick={() =>
                                     document
                                       .getElementById("file-upload")
@@ -1228,7 +1395,7 @@ export default function BulkPaymentPage() {
                         <button
                           type="button"
                           onClick={downloadTemplate}
-                          className="font-medium hover:underline"
+                          className="font-medium hover:underline text-general-unofficial-ghost-foreground"
                         >
                           Download a template
                         </button>
@@ -1238,33 +1405,50 @@ export default function BulkPaymentPage() {
 
                   {/* Paste Tab Content */}
                   {activeTab === "paste" && (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       <Textarea
                         value={pasteDataInput}
-                        onChange={(e) => setPasteDataInput(e.target.value)}
+                        onChange={(e) => {
+                          setPasteDataInput(e.target.value);
+                          if (dataErrors && dataErrors.length > 0) {
+                            setDataErrors(null);
+                          }
+                        }}
                         placeholder={`olskik.near, 100.00\nvova.near, 100.00\nmegha.near, 100.00`}
                         rows={8}
-                        className="resize-none font-mono text-sm bg-muted focus:outline-none "
+                        className={`resize-none font-mono text-sm bg-muted focus:outline-none ${
+                          dataErrors && dataErrors.length > 0
+                            ? "border-2 border-destructive focus:border-destructive"
+                            : ""
+                        }`}
                         disabled={availableCredits === 0}
                       />
-                    </div>
-                  )}
-
-                  {/* Errors */}
-                  {dataErrors && dataErrors.length > 0 && (
-                    <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                      <div className="flex gap-3">
-                        <div className="text-red-600 dark:text-red-400">⚠</div>
-                        <div className="text-sm text-red-800 dark:text-red-200">
+                      {dataErrors && dataErrors.length > 0 && (
+                        <div className="text-sm text-destructive">
                           {dataErrors.map((error, i) => (
                             <div key={i}>
-                              Row {error.row}: {error.message}
+                              {error.row > 0 ? `Row ${error.row}: ` : ""}
+                              {error.message}
                             </div>
                           ))}
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
+
+                  {/* Upload Tab Errors */}
+                  {activeTab === "upload" &&
+                    dataErrors &&
+                    dataErrors.length > 0 && (
+                      <div className="text-sm text-destructive">
+                        {dataErrors.map((error, i) => (
+                          <div key={i}>
+                            {error.row > 0 ? `Row ${error.row}: ` : ""}
+                            {error.message}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                 </div>
               </div>
             </div>
@@ -1332,43 +1516,45 @@ export default function BulkPaymentPage() {
                 : { backgroundColor: "var(--color-general-tertiary)" }
             }
           >
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Bulk Payments</h3>
                 <span className="text-sm font-medium border-2 py-1 px-2 rounded-lg">
-                  {BULK_PAYMENTS_PER_MONTH} / month
+                  {TOTAL_FREE_CREDITS} credits
                 </span>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 border-b-[0.2px] border-general-unofficial-border pb-4">
                 <div className="flex items-center justify-between text-sm">
-                  <span
-                    className={availableCredits === 0 ? "font-semibold" : ""}
-                  >
+                  <span className="font-semibold">
                     {availableCredits} Available
                   </span>
-                  <span className="text-muted-foreground">
+                  <span className="text-muted-foreground text-xs">
                     {creditsUsed} Used
                   </span>
                 </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-general-unofficial-accent rounded-full overflow-hidden">
                   <div
                     className="h-full bg-foreground transition-all"
                     style={{
                       width:
                         availableCredits > 0
-                          ? `${(creditsUsed / BULK_PAYMENTS_PER_MONTH) * 100}%`
+                          ? `${(creditsUsed / TOTAL_FREE_CREDITS) * 100}%`
                           : "0%",
                     }}
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center justify-between">
                 <span className="text-sm text-secondary-foreground">
                   Need more credits?
                 </span>
-                <Button variant="link" className="p-0 h-auto">
+                <Button
+                  variant={availableCredits === 0 ? "default" : "outline"}
+                  size="sm"
+                  className="p-3!"
+                >
                   Upgrade Plan
                 </Button>
               </div>

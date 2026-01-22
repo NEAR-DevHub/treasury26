@@ -1,5 +1,5 @@
 // Bulk Payment Contract Configuration
-const BULK_PAYMENT_CONTRACT_ID = process.env.NEXT_PUBLIC_BULK_PAYMENT_CONTRACT_ID || 'bulkpayment.near';
+export const BULK_PAYMENT_CONTRACT_ID = process.env.NEXT_PUBLIC_BULK_PAYMENT_CONTRACT_ID || 'bulkpayment.near';
 
 // Backend API base URL
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:3001";
@@ -7,8 +7,8 @@ const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://loc
 // Maximum number of recipients per bulk payment import
 export const MAX_RECIPIENTS_PER_BULK_PAYMENT = 5;
 
-// Total bulk payment credits available per month
-export const BULK_PAYMENTS_PER_MONTH = 5;
+// Total bulk payment credits available
+export const TOTAL_FREE_CREDITS = 5;
 
 /**
  * Generate a deterministic list_id (SHA-256 hash of canonical JSON)
@@ -122,12 +122,14 @@ export async function submitPaymentList(params: {
  * Supports three types of tokens:
  * 1. NEAR: Uses approve_list with deposit
  * 2. FT (Fungible Tokens): Uses ft_transfer_call
- * 3. Intents (Multi-Tokens): Uses mt_transfer_call for cross-chain assets (starts with "nep141:")
+ * 3. Intents (Multi-Tokens): Uses mt_transfer_call for cross-chain assets
+ *    - Token ID format: "nep141:btc.omft.near" (NEP-245 multi-token standard)
  */
 export async function buildApproveListProposal(params: {
   daoAccountId: string;
   listId: string;
   tokenId: string;
+  tokenResidency: "Near" | "Ft" | "Intents";
   totalAmount: string;
   description: string;
   proposalBond: string;
@@ -138,9 +140,9 @@ export async function buildApproveListProposal(params: {
   gas: string;
   deposit: string;
 }> {
-  const { daoAccountId, listId, tokenId, totalAmount, description, proposalBond } = params;
-  const isNEAR = tokenId.toLowerCase() === "near" || tokenId === "";
-  const isIntents = tokenId.startsWith("nep141:"); // Multi-token format for intents
+  const { daoAccountId, listId, tokenId, tokenResidency, totalAmount, description, proposalBond } = params;
+  const isNEAR = tokenResidency === "Near";
+  const isIntents = tokenResidency === "Intents";
   const gas = "300000000000000"; // 300 TGas
 
   if (isNEAR) {
