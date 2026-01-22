@@ -9,12 +9,13 @@ import { useNear } from "@/stores/near-store";
 interface ApprovalInfoProps {
     variant: "pupil" | "alert";
     requiredVotes?: number;
+    side?: "top" | "bottom" | "left" | "right";
     approverAccounts?: string[];
 }
 
 const infoText = "The number of votes required to approve payment-related requests. You can change this anytime in the Voting tab in the Settings.";
 
-export function ApprovalInfo({ variant, requiredVotes: requiredVotesProp, approverAccounts: approverAccountsProp }: ApprovalInfoProps) {
+export function ApprovalInfo({ variant, requiredVotes: requiredVotesProp, approverAccounts: approverAccountsProp, side }: ApprovalInfoProps) {
     const { selectedTreasury } = useTreasury();
     const { accountId } = useNear();
     const { data: policy } = useTreasuryPolicy(requiredVotesProp && approverAccountsProp ? null : selectedTreasury);
@@ -23,7 +24,7 @@ export function ApprovalInfo({ variant, requiredVotes: requiredVotesProp, approv
 
     if (variant === "pupil") {
         return (
-            <Pill title={`Threshold ${requiredVotes} out of ${approverAccounts?.length ?? 0}`} info={infoText} />
+            <Pill title={`Threshold ${requiredVotes} out of ${approverAccounts?.length ?? 0}`} info={infoText} side={side} />
         );
     }
 

@@ -1,16 +1,18 @@
 //! Balance Query Services
 //!
 //! This module provides a unified interface for querying token balances at specific block heights.
-//! Supports three token types:
+//! Supports four token types:
 //! - NEAR native tokens (via `near` submodule)
 //! - Fungible Tokens/NEP-141 (via `ft` submodule)
 //! - NEAR Intents multi-tokens (via `intents` submodule)
+//! - Staking pool balances (via `staking` submodule)
 //!
 //! Uses the near-api crate with FastNEAR archival RPC for historical queries.
 
 pub mod ft;
 pub mod intents;
 pub mod near;
+pub mod staking;
 
 use bigdecimal::BigDecimal;
 use near_api::NetworkConfig;
