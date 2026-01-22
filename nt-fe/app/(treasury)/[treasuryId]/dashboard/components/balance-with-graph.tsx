@@ -304,7 +304,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                 <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full" id="dashboard-step3">
                     <ArrowLeftRight className="size-4" /> Exchange
                 </AuthButton>
-                {/*<AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full" id="dashboard-step4">
+                {/*<AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
                     <Database className="size-4" /> Earn
                 </AuthButton> */}
             </div>
