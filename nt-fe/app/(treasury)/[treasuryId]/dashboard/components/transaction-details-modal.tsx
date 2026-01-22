@@ -53,8 +53,8 @@ export function TransactionDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] bg-white">
-        <DialogHeader className="border-b border-border">
+      <DialogContent className="sm:max-w-[600px] bg-sidebar">
+        <DialogHeader>
           <DialogTitle>Transaction Details</DialogTitle>
         </DialogHeader>
 

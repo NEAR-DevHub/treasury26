@@ -156,6 +156,7 @@ pub async fn get_recent_activity(
         WHERE account_id = $1
           AND counterparty != 'SNAPSHOT'
           AND counterparty != 'NOT_REGISTERED'
+          AND counterparty != 'STAKING_SNAPSHOT'
         "#,
     )
     .bind(&params.account_id)
@@ -173,6 +174,7 @@ pub async fn get_recent_activity(
         WHERE account_id = $1
           AND counterparty != 'SNAPSHOT'
           AND counterparty != 'NOT_REGISTERED'
+          AND counterparty != 'STAKING_SNAPSHOT'
         ORDER BY block_height DESC, id DESC
         LIMIT $2 OFFSET $3
         "#,

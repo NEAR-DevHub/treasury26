@@ -42,7 +42,6 @@ export function RecentActivity() {
     ITEMS_PER_PAGE,
     page * ITEMS_PER_PAGE
   );
-
   // Accumulate activities as we paginate
   useEffect(() => {
     if (response) {
@@ -78,7 +77,7 @@ export function RecentActivity() {
   };
 
   const getActivityType = (amount: string) => {
-    const isReceived = parseFloat(amount) > 0;
+    const isReceived = parseFloat(amount) >= 0;
     return isReceived ? "Payment Received" : "Payment Sent";
   };
 
@@ -87,7 +86,7 @@ export function RecentActivity() {
     counterparty: string | null,
     receiverId: string | null
   ) => {
-    const isReceived = parseFloat(amount) > 0;
+    const isReceived = parseFloat(amount) >= 0;
 
     // If received → show "From counterparty"
     if (isReceived && counterparty) {
@@ -120,7 +119,7 @@ export function RecentActivity() {
         header: "",
         cell: ({ row }) => {
           const activity = row.original;
-          const isReceived = parseFloat(activity.amount) > 0;
+          const isReceived = parseFloat(activity.amount) >= 0;
           const activityType = getActivityType(activity.amount);
 
           return (
@@ -158,7 +157,7 @@ export function RecentActivity() {
         header: "",
         cell: ({ row }) => {
           const activity = row.original;
-          const isReceived = parseFloat(activity.amount) > 0;
+          const isReceived = parseFloat(activity.amount) >= 0;
 
           return (
             <div className="text-right">
