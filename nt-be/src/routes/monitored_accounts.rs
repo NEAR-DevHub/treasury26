@@ -10,6 +10,10 @@ use std::sync::Arc;
 
 use crate::AppState;
 
+// Default credits granted when a treasury is first registered
+const DEFAULT_EXPORT_CREDITS: i32 = 10;
+const DEFAULT_BATCH_PAYMENT_CREDITS: i32 = 120;
+
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct MonitoredAccount {
     pub account_id: String,
@@ -17,17 +21,25 @@ pub struct MonitoredAccount {
     pub last_synced_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub export_credits: i32,
+    pub batch_payment_credits: i32,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct AddAccountRequest {
     pub account_id: String,
-    #[serde(default = "default_enabled")]
-    pub enabled: bool,
 }
 
-fn default_enabled() -> bool {
-    true
+#[derive(Debug, Serialize)]
+pub struct AddAccountResponse {
+    pub account_id: String,
+    pub enabled: bool,
+    pub last_synced_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub export_credits: i32,
+    pub batch_payment_credits: i32,
+    pub is_new_registration: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -40,11 +52,13 @@ pub struct UpdateAccountRequest {
     pub enabled: bool,
 }
 
-/// Add a new monitored account
+/// Add/register a monitored account
+/// - If not registered: creates new record with default credits (10 export, 120 batch payment)
+/// - If already registered: returns existing record without changes
 pub async fn add_monitored_account(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<AddAccountRequest>,
-) -> Result<Json<MonitoredAccount>, (StatusCode, Json<Value>)> {
+) -> Result<Json<AddAccountResponse>, (StatusCode, Json<Value>)> {
     // Validate that this is a sputnik-dao account to prevent abuse
     if !payload.account_id.ends_with(".sputnik-dao.near") {
         return Err((
@@ -56,18 +70,49 @@ pub async fn add_monitored_account(
         ));
     }
 
-    let account = sqlx::query_as::<_, MonitoredAccount>(
+    // Check if already exists
+    let existing = sqlx::query_as::<_, MonitoredAccount>(
         r#"
-        INSERT INTO monitored_accounts (account_id, enabled)
-        VALUES ($1, $2)
-        ON CONFLICT (account_id) DO UPDATE
-        SET enabled = EXCLUDED.enabled,
-            updated_at = NOW()
-        RETURNING account_id, enabled, last_synced_at, created_at, updated_at
+        SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
+        FROM monitored_accounts
+        WHERE account_id = $1
         "#,
     )
     .bind(&payload.account_id)
-    .bind(payload.enabled)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Database error: {}", e) })),
+        )
+    })?;
+
+    if let Some(account) = existing {
+        // Already registered - return without changes
+        return Ok(Json(AddAccountResponse {
+            account_id: account.account_id,
+            enabled: account.enabled,
+            last_synced_at: account.last_synced_at,
+            created_at: account.created_at,
+            updated_at: account.updated_at,
+            export_credits: account.export_credits,
+            batch_payment_credits: account.batch_payment_credits,
+            is_new_registration: false,
+        }));
+    }
+
+    // New registration - insert with default credits
+    let account = sqlx::query_as::<_, MonitoredAccount>(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits)
+        VALUES ($1, true, $2, $3)
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
+        "#,
+    )
+    .bind(&payload.account_id)
+    .bind(DEFAULT_EXPORT_CREDITS)
+    .bind(DEFAULT_BATCH_PAYMENT_CREDITS)
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
@@ -77,7 +122,16 @@ pub async fn add_monitored_account(
         )
     })?;
 
-    Ok(Json(account))
+    Ok(Json(AddAccountResponse {
+        account_id: account.account_id,
+        enabled: account.enabled,
+        last_synced_at: account.last_synced_at,
+        created_at: account.created_at,
+        updated_at: account.updated_at,
+        export_credits: account.export_credits,
+        batch_payment_credits: account.batch_payment_credits,
+        is_new_registration: true,
+    }))
 }
 
 /// List monitored accounts
@@ -88,7 +142,7 @@ pub async fn list_monitored_accounts(
     let accounts = if let Some(enabled) = params.enabled {
         sqlx::query_as::<_, MonitoredAccount>(
             r#"
-            SELECT account_id, enabled, last_synced_at, created_at, updated_at
+            SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
             FROM monitored_accounts
             WHERE enabled = $1
             ORDER BY account_id
@@ -100,7 +154,7 @@ pub async fn list_monitored_accounts(
     } else {
         sqlx::query_as::<_, MonitoredAccount>(
             r#"
-            SELECT account_id, enabled, last_synced_at, created_at, updated_at
+            SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
             FROM monitored_accounts
             ORDER BY account_id
             "#,
@@ -130,7 +184,7 @@ pub async fn update_monitored_account(
         SET enabled = $2,
             updated_at = NOW()
         WHERE account_id = $1
-        RETURNING account_id, enabled, last_synced_at, created_at, updated_at
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
         "#,
     )
     .bind(&account_id)
