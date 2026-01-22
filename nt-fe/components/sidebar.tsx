@@ -19,6 +19,7 @@ import { useProposals } from "@/hooks/use-proposals";
 import { NumberBadge } from "./number-badge";
 import { Pill } from "./pill";
 import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
+import { useResponsiveSidebar } from "@/stores/sidebar-store";
 
 interface NavLinkProps {
   isActive: boolean;
@@ -28,6 +29,7 @@ interface NavLinkProps {
   showBadge?: boolean;
   badgeCount?: number;
   onClick: () => void;
+  id?: string;
 }
 
 const DISABLED_TOOLTIP_CONTENT = "You are not authorized to access this page. Please contact governance to provide you with Requestor role.";
@@ -40,9 +42,11 @@ function NavLink({
   showBadge = false,
   badgeCount = 0,
   onClick,
+  id,
 }: NavLinkProps) {
   return (
     <Button
+      id={id}
       variant="link"
       disabled={disabled}
       tooltipContent={disabled ? DISABLED_TOOLTIP_CONTENT : undefined}
@@ -65,7 +69,7 @@ function NavLink({
   );
 }
 
-const topNavLinks: { path: string; label: string; icon: LucideIcon; roleRequired?: boolean }[] = [
+const topNavLinks: { path: string; label: string; icon: LucideIcon; roleRequired?: boolean; id?: string }[] = [
   { path: "", label: "Dashboard", icon: ChartColumn },
   { path: "requests", label: "Requests", icon: Send },
   { path: "payments", label: "Payments", icon: CreditCard, roleRequired: true },
@@ -74,10 +78,10 @@ const topNavLinks: { path: string; label: string; icon: LucideIcon; roleRequired
   // { path: "vesting", label: "Vesting", icon: Clock10, roleRequired: true },
 ];
 
-const bottomNavLinks: { path: string; label: string; icon: LucideIcon }[] = [
-  { path: "members", label: "Members", icon: Users },
+const bottomNavLinks: { path: string; label: string; icon: LucideIcon; id?: string }[] = [
+  { path: "members", label: "Members", icon: Users, id: "dashboard-step4" },
   { path: "settings", label: "Settings", icon: Settings },
-  { path: "help", label: "Help & Support", icon: HelpCircle },
+  { path: "help", label: "Help & Support", icon: HelpCircle, id: "help-support-link" },
 ];
 
 interface SidebarProps {
@@ -96,6 +100,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   })
 
   const { isGuestTreasury, isLoading: isLoadingGuestTreasury } = useIsGuestTreasury();
+  const { isMobile } = useResponsiveSidebar();
 
   return (
     <>
@@ -110,8 +115,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 z-40 flex gap-2 h-screen w-56 flex-col bg-card border-r transition-transform duration-300 lg:relative lg:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full",
+          "fixed left-0 top-0 z-40 flex gap-2 h-screen w-56 flex-col bg-card border-r transition-all duration-300 lg:static lg:z-auto",
+          isOpen ? "translate-x-0 lg:opacity-100" : "-translate-x-full lg:hidden",
         )}
       >
         <div className="border-b">
@@ -144,7 +149,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 badgeCount={proposals?.total ?? 0}
                 onClick={() => {
                   router.push(href);
-                  onClose();
+                  if (isMobile) onClose();
                 }}
               />
             );
@@ -160,13 +165,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             return (
               <NavLink
+                id={link.id}
                 key={link.path}
                 isActive={isActive}
                 icon={link.icon}
                 label={link.label}
                 onClick={() => {
                   router.push(href);
-                  onClose();
+                  if (isMobile) onClose();
                 }}
               />
             );

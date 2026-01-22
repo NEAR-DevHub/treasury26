@@ -14,8 +14,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
 import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
 import { useOpenTreasury } from "@/hooks/use-open-treasury";
+import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
+import { formatCurrency } from "@/lib/utils";
 import { Button } from "./button";
 import { Tooltip } from "./tooltip";
+import { Skeleton } from "./ui/skeleton";
 
 export function TreasurySelector() {
   const router = useRouter();
@@ -31,6 +34,9 @@ export function TreasurySelector() {
     guestTreasuryConfig,
     treasuries,
   } = useIsGuestTreasury();
+
+  const { data: assetsData } = useTreasuryAssets(treasuryId);
+  const totalBalanceUSD = assetsData?.totalBalanceUSD;
 
   // Auto-register treasury when it's selected/viewed
   React.useEffect(() => {
@@ -65,10 +71,13 @@ export function TreasurySelector() {
 
   if (isLoading) {
     return (
-      <div className="w-full px-2.5 py-2 h-14 flex items-center">
-        <div className="flex items-center gap-2">
-          <Database className="h-3.5 w-3.5 text-muted-foreground animate-pulse" />
-          <span className="text-sm text-muted-foreground">Loading treasuries...</span>
+      <div className="w-full px-3 py-1.5 h-fit flex items-center">
+        <div className="flex items-center gap-2 h-9">
+          <Skeleton className="size-7 rounded-md" />
+          <div className="flex flex-col gap-1">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-32" />
+          </div>
         </div>
       </div>
     );
@@ -86,7 +95,18 @@ export function TreasurySelector() {
     return <div className="flex items-center justify-center size-7 rounded bg-muted shrink-0">
       <Database className="size-5 text-muted-foreground" />
     </div>;
-  }
+  };
+
+  const TreasuryBalance = ({ daoId }: { daoId: string }) => {
+    const { data, isLoading } = useTreasuryAssets(daoId);
+    if (isLoading) return <Skeleton className="size-4" />;
+    if (data?.totalBalanceUSD === undefined) return null;
+    return (
+      <span className="text-xs text-muted-foreground">
+        {formatCurrency(Number(data.totalBalanceUSD))}
+      </span>
+    );
+  };
 
   const displayTreasury = currentTreasury?.config ?? guestTreasuryConfig;
 
@@ -94,11 +114,13 @@ export function TreasurySelector() {
     ? displayTreasury.name ?? treasuryId
     : "Select treasury";
 
-  const displaySubtext = treasuryId;
+  const displaySubtext = totalBalanceUSD !== undefined
+    ? formatCurrency(Number(totalBalanceUSD))
+    : undefined;
 
   return (
-    <Select value={treasuryId} onValueChange={handleTreasuryChange} >
-      <SelectTrigger className="w-full px-3 py-1.5 h-fit border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted!" disabled={!accountId}>
+    <Select value={treasuryId} onValueChange={handleTreasuryChange}>
+      <SelectTrigger id="dashboard-step5" className="w-full px-3 py-1.5 h-fit border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted!" disabled={!accountId}>
         <Tooltip content="Connect wallet to view treasuries" disabled={!!accountId}>
           <div className="flex items-center gap-2 w-full max-w-52 truncate h-9">
             <Logo logo={currentTreasury?.config?.metadata?.flagLogo} />
@@ -120,21 +142,20 @@ export function TreasurySelector() {
           <SelectItem
             key={treasury.daoId}
             value={treasury.daoId}
-            className=" focus:text-accent-foreground py-3"
+            className=" focus:text-accent-foreground"
           >
             <div className="flex items-center gap-3">
               <Logo logo={treasury.config.metadata?.flagLogo} />
               <div className="flex flex-col items-start">
                 <span className="text-sm font-medium">{treasury.config?.name ?? treasury.daoId}</span>
-                <span className="text-xs text-muted-foreground">
-                  {treasury.daoId}
-                </span>
+                <TreasuryBalance daoId={treasury.daoId} />
               </div>
             </div>
           </SelectItem>
         ))}
         <SelectSeparator />
         <Button
+          id="dashboard-step5-create-treasury"
           variant="ghost"
           type="button"
           className="w-full justify-start gap-2"

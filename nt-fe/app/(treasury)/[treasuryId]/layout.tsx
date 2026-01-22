@@ -1,7 +1,7 @@
 "use client";
 
 import { Sidebar } from "@/components/sidebar";
-import { useSidebar } from "@/stores/sidebar-store";
+import { useSidebarStore } from "@/stores/sidebar-store";
 import { PrimaryColorProvider } from "@/components/primary-color-provider";
 import { useParams } from "next/navigation";
 
@@ -10,7 +10,7 @@ export default function TreasuryLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isSidebarOpen, setSidebarOpen } = useSidebar();
+  const { isSidebarOpen, setSidebarOpen } = useSidebarStore();
   const params = useParams();
   const treasuryId = params?.treasuryId as string | undefined;
 
