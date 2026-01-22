@@ -215,8 +215,6 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     }
                 }
             }
-            console.log(timeMap);
-
             const hasAnyUSD = Array.from(timeMap.values()).some(v => v.hasUSD);
 
             const data = Array.from(timeMap.entries())
@@ -238,9 +236,9 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     <h3 className="text-xs font-medium text-muted-foreground">Total Balance</h3>
                     <p className="text-3xl font-bold mt-2">{formatCurrency(Number(balance))}</p>
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
                     <Select value={selectedToken} onValueChange={setSelectedToken}>
-                        <SelectTrigger size="sm" className="min-w-[140px]">
+                        <SelectTrigger size="sm" className="min-w-[140px] w-full">
                             <SelectValue>
                                 {selectedToken === "all" ? (
                                     <div className="flex items-center gap-2">
@@ -315,7 +313,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     <Skeleton className="h-50 w-full" />
                 </div>
             ) : (
-                <BalanceChart data={chartData.data} />
+                <BalanceChart data={chartData.data} symbol={selectedTokenGroup?.symbol} />
             )}
         </PageCard>
     )
