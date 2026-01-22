@@ -20,6 +20,17 @@ import { Button } from "./button";
 import { Tooltip } from "./tooltip";
 import { Skeleton } from "./ui/skeleton";
 
+const TreasuryBalance = ({ daoId }: { daoId: string }) => {
+  const { data, isLoading } = useTreasuryAssets(daoId);
+  if (isLoading) return <Skeleton className="size-4" />;
+  if (data?.totalBalanceUSD === undefined) return null;
+  return (
+    <span className="text-xs text-muted-foreground">
+      {formatCurrency(Number(data.totalBalanceUSD))}
+    </span>
+  );
+};
+
 export function TreasurySelector() {
   const router = useRouter();
   const pathname = usePathname();
@@ -95,17 +106,6 @@ export function TreasurySelector() {
     return <div className="flex items-center justify-center size-7 rounded bg-muted shrink-0">
       <Database className="size-5 text-muted-foreground" />
     </div>;
-  };
-
-  const TreasuryBalance = ({ daoId }: { daoId: string }) => {
-    const { data, isLoading } = useTreasuryAssets(daoId);
-    if (isLoading) return <Skeleton className="size-4" />;
-    if (data?.totalBalanceUSD === undefined) return null;
-    return (
-      <span className="text-xs text-muted-foreground">
-        {formatCurrency(Number(data.totalBalanceUSD))}
-      </span>
-    );
   };
 
   const displayTreasury = currentTreasury?.config ?? guestTreasuryConfig;
