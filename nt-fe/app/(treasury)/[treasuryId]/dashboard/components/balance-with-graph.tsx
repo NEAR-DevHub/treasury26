@@ -328,9 +328,11 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                         <ArrowUpRightIcon className="size-4" />Send
                     </AuthButton>
                 </Link>
-                <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full" id="dashboard-step3">
-                    <ArrowLeftRight className="size-4" /> Exchange
-                </AuthButton>
+                <Link href={treasuryId ? `/${treasuryId}/exchange` : "/exchange"} className="flex" id="dashboard-step3">
+                    <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full" id="dashboard-step3">
+                        <ArrowLeftRight className="size-4" /> Exchange
+                    </AuthButton>
+                </Link>
                 {/*<AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
                     <Database className="size-4" /> Earn
                 </AuthButton> */}
