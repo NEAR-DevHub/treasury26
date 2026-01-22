@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from "react";
-import { Search } from "lucide-react";
 import { Input } from "@/components/input";
 import { Button } from "@/components/button";
 import {
@@ -74,17 +73,13 @@ export function SelectModal({
 
         <div className="space-y-4">
           {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              type="text"
-              search
-              placeholder={searchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-muted border-0"
-            />
-          </div>
+          <Input
+            type="text"
+            search
+            placeholder={searchPlaceholder}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
 
           {/* Options List */}
           <div className="space-y-1 max-h-[400px] overflow-y-auto">
@@ -110,12 +105,11 @@ export function SelectModal({
                     key={option.id}
                     onClick={() => handleSelect(option)}
                     variant="ghost"
-                    className={`w-full flex items-center gap-1 p-3 rounded-lg h-auto justify-start px-1! ${
-                      selectedId === option.id ? "bg-muted" : ""
-                    }`}
+                    className={`w-full flex items-center gap-1 p-3 rounded-lg h-auto justify-start px-1! ${selectedId === option.id ? "bg-muted" : ""
+                      }`}
                   >
                     {option.icon?.startsWith("http") ||
-                    option.icon?.startsWith("data:") ? (
+                      option.icon?.startsWith("data:") ? (
                       <div className="w-12 h-12">
                         <img
                           src={option.icon}
@@ -126,10 +120,9 @@ export function SelectModal({
                     ) : (
                       <div className="w-12 h-12 flex items-center justify-center">
                         <div
-                          className={`w-8 h-8  rounded-full ${
-                            option.gradient ||
+                          className={`w-8 h-8  rounded-full ${option.gradient ||
                             "bg-linear-to-br from-blue-500 to-purple-500"
-                          } flex items-center justify-center text-white font-bold`}
+                            } flex items-center justify-center text-white font-bold`}
                         >
                           <span>{option.icon}</span>
                         </div>

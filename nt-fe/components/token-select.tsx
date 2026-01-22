@@ -13,6 +13,7 @@ import Big from "big.js";
 import { NetworkDisplay } from "./token-display";
 import { TokenDisplay } from "./token-display-with-network";
 import { Input } from "./input";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface TokenSelectProps {
     selectedToken: string | null;
@@ -151,7 +152,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
-                        <div className="max-h-[400px] overflow-y-auto">
+                        <ScrollArea className="h-[400px]">
                             {filteredTokens.map(token => (
                                 <Button
                                     variant="ghost"
@@ -190,7 +191,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                                     No tokens found
                                 </div>
                             )}
-                        </div>
+                        </ScrollArea>
                     </>
                 )}
                 {step === 'network' && selectedAggregatedToken && (

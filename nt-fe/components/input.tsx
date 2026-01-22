@@ -22,7 +22,7 @@ export function Input({ className, value, onChange, clearable = true, search, ..
             <ShadcnInput
                 value={value}
                 onChange={onChange}
-                className={cn(search && "pl-8", showClear && "pr-8", className)}
+                className={cn("bg-muted border-0", search && "pl-8", showClear && "pr-8", className)}
                 {...props}
             />
             {showClear && (
