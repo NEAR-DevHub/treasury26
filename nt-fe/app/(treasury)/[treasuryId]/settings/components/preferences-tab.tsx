@@ -20,6 +20,7 @@ import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { getTimezones, type Timezone } from "@/lib/api";
 import { Search } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const preferencesSchema = z.object({
   timeFormat: z.enum(["12", "24"]),
@@ -300,23 +301,19 @@ export function PreferencesTab() {
                           )}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent>
-                        <div
-                          className="flex items-center gap-2 px-2 pb-2 border-b sticky top-0 bg-popover z-10"
-                          onPointerDown={(e) => e.stopPropagation()}
-                        >
-                          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <SelectContent className="w-full">
+                        <div className="px-2 pb-2 sticky top-0  z-10">
                           <Input
+                            search
                             placeholder="Search timezones..."
                             value={timezoneSearch}
                             onChange={(e) => setTimezoneSearch(e.target.value)}
-                            className="h-8 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                             onClick={(e) => e.stopPropagation()}
                             onKeyDown={(e) => e.stopPropagation()}
                             autoFocus
                           />
                         </div>
-                        <div className="max-h-[300px] overflow-y-auto">
+                        <ScrollArea className="h-[300px]">
                           {filteredTimezones.length > 0 ? (
                             filteredTimezones.map((tz) => (
                               <SelectItem key={tz.name} value={tz.name}>
@@ -328,7 +325,7 @@ export function PreferencesTab() {
                               No timezones found
                             </div>
                           )}
-                        </div>
+                        </ScrollArea>
                       </SelectContent>
                     </Select>
                   </FormControl>

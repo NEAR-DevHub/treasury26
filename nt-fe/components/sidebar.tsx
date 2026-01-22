@@ -10,8 +10,6 @@ import {
   Settings,
   HelpCircle,
   type LucideIcon,
-  Database,
-  Clock10,
   ArrowRightLeft,
   ChartColumn,
 } from "lucide-react";
@@ -75,8 +73,8 @@ const topNavLinks: { path: string; label: string; icon: LucideIcon; roleRequired
   { path: "requests", label: "Requests", icon: Send },
   { path: "payments", label: "Payments", icon: CreditCard, roleRequired: true },
   { path: "exchange", label: "Exchange", icon: ArrowRightLeft, roleRequired: true },
-  { path: "earn", label: "Earn", icon: Database, roleRequired: true },
-  { path: "vesting", label: "Vesting", icon: Clock10, roleRequired: true },
+  // { path: "earn", label: "Earn", icon: Database, roleRequired: true },
+  // { path: "vesting", label: "Vesting", icon: Clock10, roleRequired: true },
 ];
 
 const bottomNavLinks: { path: string; label: string; icon: LucideIcon; id?: string }[] = [

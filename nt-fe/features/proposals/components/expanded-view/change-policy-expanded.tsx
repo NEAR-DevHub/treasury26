@@ -199,8 +199,8 @@ export function ChangePolicyExpanded({ data, proposal }: ChangePolicyExpandedPro
         </div>
         <InfoDisplay items={[{
           label: "Transaction Details",
-          differentLine: true,
-          value: <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs">
+          value: null,
+          afterValue: <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs">
             <code className="text-foreground/90">
               {JSON.stringify(data.originalProposalKind, null, 2)}
             </code>
@@ -369,8 +369,8 @@ export function ChangePolicyExpanded({ data, proposal }: ChangePolicyExpandedPro
   // 5. Transaction Details
   allItems.push({
     label: "Transaction Details",
-    differentLine: true,
-    value: <ScrollArea className="flex h-96 w-full"> <pre className="overflow-x-auto w-full rounded-md bg-muted/50 p-3 text-xs">
+    value: null,
+    afterValue: <ScrollArea className="flex h-96 w-full"> <pre className="overflow-x-auto w-full rounded-md bg-muted/50 p-3 text-xs">
       <code className="text-foreground/90 w-full">
         {JSON.stringify(data.originalProposalKind, null, 2)}
       </code>

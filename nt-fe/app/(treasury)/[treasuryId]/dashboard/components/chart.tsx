@@ -1,6 +1,6 @@
 "use client"
 
-import { AreaChart, Area, XAxis, YAxis } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Area, AreaChart } from 'recharts';
 import {
     ChartContainer,
     ChartTooltip,
@@ -10,22 +10,27 @@ import {
 
 interface ChartDataPoint {
     name: string;
-    value: number;
+    usdValue?: number;
+    balanceValue?: number;
 }
 
 interface BalanceChartProps {
     data?: ChartDataPoint[];
-    showUSD?: boolean;
+    symbol?: string;
 }
 
 const chartConfig = {
-    value: {
-        label: "Balance",
-        color: "var(--color-chart-1)",
+    usdValue: {
+        label: "USD Value",
+        color: "var(--color-foreground)",
+    },
+    balanceValue: {
+        label: "Token Balance",
+        color: "var(--color-foreground)",
     },
 } satisfies ChartConfig;
 
-export default function BalanceChart({ data = [], showUSD = true }: BalanceChartProps) {
+export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
     if (data.length === 0) {
         return (
             <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
@@ -33,9 +38,10 @@ export default function BalanceChart({ data = [], showUSD = true }: BalanceChart
             </div>
         );
     }
-    
-    const averageValue = data.reduce((acc, item) => acc + item.value, 0) / data.length;
-    
+
+    const averageUSDValue = data.reduce((acc, item) => acc + (item.usdValue || 0), 0) / data.length;
+    const averageBalanceValue = data.reduce((acc, item) => acc + (item.balanceValue || 0), 0) / data.length;
+
     // Calculate optimal interval based on data length
     // Show ~6-8 ticks for good readability
     const calculateInterval = (length: number) => {
@@ -43,7 +49,7 @@ export default function BalanceChart({ data = [], showUSD = true }: BalanceChart
         if (length <= 15) return 1; // Every other point
         return Math.floor(length / 7); // ~7 ticks for larger datasets
     };
-    
+
     const tickInterval = calculateInterval(data.length);
 
     return (
@@ -53,17 +59,16 @@ export default function BalanceChart({ data = [], showUSD = true }: BalanceChart
                     <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
                         <stop
                             offset="5%"
-                            stopOpacity={0.3}
-                            stopColor="var(--color-foreground)"
+                            stopOpacity={0.1}
+                            stopColor="rgb(2,7,6)"
                         />
                         <stop
                             offset="95%"
-                            stopOpacity={0.05}
-                            stopColor="var(--color-foreground)"
+                            stopOpacity={0}
+                            stopColor="rgb(2,7,6)"
                         />
                     </linearGradient>
                 </defs>
-
                 <XAxis
                     dataKey="name"
                     axisLine={false}
@@ -72,36 +77,60 @@ export default function BalanceChart({ data = [], showUSD = true }: BalanceChart
                     padding={{ left: 20, right: 20 }}
                 />
                 <YAxis
+                    yAxisId="usd"
                     hide
-                    domain={[`dataMin - ${averageValue * 0.5}`, `dataMax + ${averageValue * 0.5}`]}
+                    domain={[`dataMin - ${averageUSDValue * 0.5}`, `dataMax + ${averageUSDValue * 0.5}`]}
+                />
+                <YAxis
+                    yAxisId="balance"
+                    hide
+                    orientation="right"
+                    domain={[`dataMin - ${averageBalanceValue * 0.5}`, `dataMax + ${averageBalanceValue * 0.5}`]}
                 />
                 <ChartTooltip
-                    content={<ChartTooltipContent 
-                        formatter={(value) => {
+                    content={<ChartTooltipContent
+                        formatter={(value, name) => {
                             const num = Number(value);
-                            if (showUSD) {
-                                return `$${num.toLocaleString(undefined, { 
+                            if (name === 'usdValue') {
+                                return `$${num.toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2 
+                                    maximumFractionDigits: 2
                                 })}`;
                             } else {
-                                return num.toLocaleString(undefined, { 
+                                return `${num.toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
-                                    maximumFractionDigits: 6 
-                                });
+                                    maximumFractionDigits: 6
+                                })}${symbol ? ` ${symbol.toUpperCase()}` : ''}`;
                             }
                         }}
                     />}
                 />
                 <Area
                     type="monotone"
-                    dataKey="value"
+                    dataKey="usdValue"
+                    yAxisId="usd"
                     stroke="var(--color-foreground)"
                     strokeWidth={2}
                     fill="url(#fillValue)"
                     dot={false}
-                    activeDot={{ 
-                        r: 5, 
+                    activeDot={{
+                        r: 5,
+                        fill: "var(--color-foreground)",
+                        stroke: "white",
+                        strokeWidth: 2
+                    }}
+                />
+                <Area
+                    type="monotone"
+                    dataKey="balanceValue"
+                    yAxisId="balance"
+                    stroke="var(--color-foreground)"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    fill="url(#fillValue)"
+                    dot={false}
+                    activeDot={{
+                        r: 5,
                         fill: "var(--color-foreground)",
                         stroke: "white",
                         strokeWidth: 2
