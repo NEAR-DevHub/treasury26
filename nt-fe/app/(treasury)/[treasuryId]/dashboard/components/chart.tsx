@@ -1,6 +1,6 @@
 "use client"
 
-import { LineChart, Line, XAxis, YAxis } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Area, AreaChart } from 'recharts';
 import {
     ChartContainer,
     ChartTooltip,
@@ -54,7 +54,21 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
 
     return (
         <ChartContainer config={chartConfig} className='h-56'>
-            <LineChart data={data}>
+            <AreaChart data={data}>
+                <defs>
+                    <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                            offset="5%"
+                            stopOpacity={0.1}
+                            stopColor="rgb(2,7,6)"
+                        />
+                        <stop
+                            offset="95%"
+                            stopOpacity={0}
+                            stopColor="rgb(2,7,6)"
+                        />
+                    </linearGradient>
+                </defs>
                 <XAxis
                     dataKey="name"
                     axisLine={false}
@@ -91,12 +105,13 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
                         }}
                     />}
                 />
-                <Line
+                <Area
                     type="monotone"
                     dataKey="usdValue"
                     yAxisId="usd"
                     stroke="var(--color-foreground)"
                     strokeWidth={2}
+                    fill="url(#fillValue)"
                     dot={false}
                     activeDot={{
                         r: 5,
@@ -105,13 +120,14 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
                         strokeWidth: 2
                     }}
                 />
-                <Line
+                <Area
                     type="monotone"
                     dataKey="balanceValue"
                     yAxisId="balance"
                     stroke="var(--color-foreground)"
                     strokeWidth={2}
                     strokeDasharray="5 5"
+                    fill="url(#fillValue)"
                     dot={false}
                     activeDot={{
                         r: 5,
@@ -120,7 +136,7 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
                         strokeWidth: 2
                     }}
                 />
-            </LineChart>
+            </AreaChart>
         </ChartContainer>
     );
 }
