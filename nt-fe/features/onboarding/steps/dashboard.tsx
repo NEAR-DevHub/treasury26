@@ -7,17 +7,38 @@ import { useNextStep } from "nextstepjs"
 import type { Tour } from "nextstepjs"
 import { useState, useEffect } from "react"
 
-const DASHBOARD_TOUR_DISMISSED_KEY = "dashboard-tour-dismissed"
+// Tour names
+export const TOUR_NAMES = {
+    DASHBOARD: "dashboard",
+    INFO_BOX_DISMISSED: "info-box-dismissed",
+} as const
+
+// Local storage keys
+export const LOCAL_STORAGE_KEYS = {
+    DASHBOARD_TOUR_DISMISSED: "dashboard-tour-dismissed",
+    INFO_BOX_TOUR_DISMISSED: "info-box-tour-dismissed",
+} as const
+
+// Selector IDs
+export const SELECTOR_IDS = {
+    DASHBOARD_STEP_1: "#dashboard-step1",
+    DASHBOARD_STEP_2: "#dashboard-step2",
+    DASHBOARD_STEP_3: "#dashboard-step3",
+    DASHBOARD_STEP_4: "#dashboard-step4",
+    DASHBOARD_STEP_5: "dashboard-step5",
+    DASHBOARD_STEP_5_CREATE_TREASURY: "#dashboard-step5-create-treasury",
+    HELP_SUPPORT_LINK: "#help-support-link",
+} as const
 
 export const DASHBOARD_TOUR: Tour = {
-    tour: "dashboard",
+    tour: TOUR_NAMES.DASHBOARD,
     steps: [
         {
             icon: null,
             title: "",
             content: <>Add assets to your Treasury by making a deposit.</>,
-            selector: "#dashboard-step1",
-            side: "bottom",
+            selector: SELECTOR_IDS.DASHBOARD_STEP_1,
+            side: "bottom-left",
             disableInteraction: true,
             showControls: false,
             showSkip: false,
@@ -28,7 +49,7 @@ export const DASHBOARD_TOUR: Tour = {
             icon: null,
             title: "",
             content: <>Make payment requests whenever you need to send assets.</>,
-            selector: "#dashboard-step2",
+            selector: SELECTOR_IDS.DASHBOARD_STEP_2,
             side: "bottom",
             disableInteraction: true,
             showControls: false,
@@ -40,7 +61,7 @@ export const DASHBOARD_TOUR: Tour = {
             icon: null,
             title: "",
             content: <>Here you can exchange your assets.</>,
-            selector: "#dashboard-step3",
+            selector: SELECTOR_IDS.DASHBOARD_STEP_3,
             side: "bottom-right",
             showControls: false,
             disableInteraction: true,
@@ -52,7 +73,7 @@ export const DASHBOARD_TOUR: Tour = {
             icon: null,
             title: "",
             content: <>Add members to your Treasury and assign them roles.</>,
-            selector: "#dashboard-step4",
+            selector: SELECTOR_IDS.DASHBOARD_STEP_4,
             side: "right",
             showControls: false,
             disableInteraction: true,
@@ -64,10 +85,28 @@ export const DASHBOARD_TOUR: Tour = {
             icon: null,
             title: "",
             content: <>Want to set up a new Treasury? You can do it here in just a few clicks.</>,
-            selector: "#dashboard-step5-create-treasury",
+            selector: SELECTOR_IDS.DASHBOARD_STEP_5_CREATE_TREASURY,
             side: "right",
             showControls: false,
             disableInteraction: true,
+            showSkip: false,
+            pointerPadding: 8,
+            pointerRadius: 8,
+        },
+    ],
+}
+
+export const INFO_BOX_TOUR: Tour = {
+    tour: TOUR_NAMES.INFO_BOX_DISMISSED,
+    steps: [
+        {
+            icon: null,
+            title: "",
+            content: <>Get help and support whenever you need it.</>,
+            selector: SELECTOR_IDS.HELP_SUPPORT_LINK,
+            side: "top",
+            disableInteraction: true,
+            showControls: false,
             showSkip: false,
             pointerPadding: 8,
             pointerRadius: 8,
@@ -82,17 +121,17 @@ export function DashboardTour() {
 
     useEffect(() => {
         if (isGuestTreasury) return;
-        setIsDismissed(localStorage.getItem(DASHBOARD_TOUR_DISMISSED_KEY) === "false")
+        setIsDismissed(localStorage.getItem(LOCAL_STORAGE_KEYS.DASHBOARD_TOUR_DISMISSED) === "true")
     }, [isGuestTreasury])
 
     const handleDismiss = () => {
-        localStorage.setItem(DASHBOARD_TOUR_DISMISSED_KEY, "true")
+        localStorage.setItem(LOCAL_STORAGE_KEYS.DASHBOARD_TOUR_DISMISSED, "true")
         setIsDismissed(true)
     }
 
     const handleStartTour = () => {
         handleDismiss()
-        startNextStep("dashboard")
+        startNextStep(TOUR_NAMES.DASHBOARD)
     }
 
     if (isDismissed) return null

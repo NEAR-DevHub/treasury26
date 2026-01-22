@@ -6,10 +6,20 @@ import { X } from "lucide-react"
 import { Button } from "@/components/button"
 import { cn } from "@/lib/utils"
 import { useSidebarStore } from "@/stores/sidebar-store"
+import { TOUR_NAMES, SELECTOR_IDS } from "../steps/dashboard"
 
-// Steps that require the sidebar to be open (0-indexed)
-const SIDEBAR_STEPS = [3, 4]
-const SIDEBAR_ANIMATION_DELAY = 350
+// Steps that require the sidebar to be open (0-indexed) for different tours
+const SIDEBAR_STEPS_MAP: Record<string, readonly number[]> = {
+    [TOUR_NAMES.DASHBOARD]: [3, 4],
+    [TOUR_NAMES.INFO_BOX_DISMISSED]: [0],
+}
+
+// Steps that require clicking the treasury selector (0-indexed) for different tours
+const TREASURY_SELECTOR_MAP: Record<string, readonly number[]> = {
+    [TOUR_NAMES.DASHBOARD]: [4],
+}
+
+export const SIDEBAR_ANIMATION_DELAY = 350
 
 export function TourCard({
     step,
@@ -20,22 +30,25 @@ export function TourCard({
     skipTour,
     arrow,
 }: CardComponentProps) {
-    const { setCurrentStep } = useNextStep()
+    const { setCurrentStep, currentTour } = useNextStep()
     const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen)
 
     const isLastStep = currentStep === totalSteps - 1
+    const tourName = currentTour
+    const sidebarSteps = SIDEBAR_STEPS_MAP[tourName as keyof typeof SIDEBAR_STEPS_MAP] || []
+    const treasurySelectorSteps = TREASURY_SELECTOR_MAP[tourName as keyof typeof TREASURY_SELECTOR_MAP] || []
 
     const handleNext = () => {
         const nextStepIndex = currentStep + 1
 
         // If next step needs sidebar, open it and delay the step change
-        if (SIDEBAR_STEPS.includes(nextStepIndex)) {
+        if (sidebarSteps.includes(nextStepIndex)) {
             setSidebarOpen(true)
 
-            // For step 5 (index 4), click the treasury selector to open dropdown
-            if (nextStepIndex === 4) {
+            // If next step needs treasury selector click, handle it specially
+            if (treasurySelectorSteps.includes(nextStepIndex)) {
                 setTimeout(() => {
-                    const trigger = document.getElementById("dashboard-step5")
+                    const trigger = document.getElementById(SELECTOR_IDS.DASHBOARD_STEP_5)
                     trigger?.click()
                     setCurrentStep(nextStepIndex, SIDEBAR_ANIMATION_DELAY)
                 }, SIDEBAR_ANIMATION_DELAY + 100)
@@ -53,6 +66,9 @@ export function TourCard({
         setSidebarOpen(false)
         skipTour?.()
     }
+
+    const buttonText = totalSteps === 1 ? "Got It"
+        : isLastStep ? "Done" : "Next"
 
     return (
         <div className="relative bg-popover-foreground text-popover rounded-md px-4 py-3 shadow-md min-w-[200px] animate-in fade-in-0 zoom-in-95">
@@ -82,7 +98,7 @@ export function TourCard({
                             className="h-6 px-2 text-xs bg-popover text-popover-foreground"
                             onClick={isLastStep ? handleSkip : handleNext}
                         >
-                            {isLastStep ? "Done" : "Next"}
+                            {buttonText}
                         </Button>
                     </div>
                 </div>

@@ -1,3 +1,3 @@
-import { DASHBOARD_TOUR } from "./dashboard"
+import { DASHBOARD_TOUR, INFO_BOX_TOUR } from "./dashboard"
 
-export const TOURS = [DASHBOARD_TOUR]
+export const TOURS = [DASHBOARD_TOUR, INFO_BOX_TOUR]
