@@ -2,7 +2,7 @@
 
 import { useTreasury } from "@/stores/treasury-store";
 import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { Button } from "./button";
@@ -13,7 +13,21 @@ import Big from "big.js";
 import { NetworkDisplay } from "./token-display";
 import { TokenDisplay } from "./token-display-with-network";
 import { Input } from "./input";
-import { ScrollArea } from "./ui/scroll-area";
+import { SelectList, SelectListItem } from "./select-list";
+
+interface TokenListItem extends SelectListItem {
+    totalBalance: number;
+    totalBalanceUSD: number;
+    networkCount?: number;
+    _original: AggregatedAsset;
+}
+
+interface NetworkListItem extends SelectListItem {
+    balance: string;
+    balanceUSD: number;
+    decimals: number;
+    asset: TreasuryAsset;
+}
 
 interface TokenSelectProps {
     selectedToken: string | null;
@@ -47,22 +61,47 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
         }
     }, [tokens, selectedToken, locked]);
 
-    const filteredTokens = aggregatedTokens.filter(token =>
-        token.symbol.toLowerCase().includes(search.toLowerCase()) ||
-        token.name?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredTokens = useMemo(() => {
+        const filtered = aggregatedTokens.filter(token =>
+            token.symbol.toLowerCase().includes(search.toLowerCase()) ||
+            token.name?.toLowerCase().includes(search.toLowerCase())
+        );
+        return filtered.map((token): TokenListItem => ({
+            id: token.symbol,
+            name: token.name + (token.isAggregated && token.networks.length > 1 ? ` • ${token.networks.length} Networks` : ""),
+            symbol: token.symbol,
+            icon: token.icon,
+            totalBalance: Number(token.totalBalance),
+            totalBalanceUSD: Number(token.totalBalanceUSD),
+            networkCount: token.networks.length,
+            _original: token,
+        }));
+    }, [aggregatedTokens, search]);
+
+    const networkItems = useMemo(() => {
+        if (!selectedAggregatedToken) return [];
+        return selectedAggregatedToken.networks.map((network, idx): NetworkListItem => ({
+            id: `${network.symbol}-${idx}`,
+            name: network.network,
+            symbol: network.symbol,
+            icon: network.icon,
+            balance: network.balance.toString(),
+            balanceUSD: network.balanceUSD,
+            decimals: network.decimals,
+            asset: network,
+        }));
+    }, [selectedAggregatedToken]);
 
     const selectedTokenData = tokens.find(t => t.symbol === selectedToken);
     const displayTokenData = locked && lockedTokenData ? lockedTokenData : selectedTokenData;
 
-    const handleTokenClick = (aggregatedToken: AggregatedAsset) => {
-        // Always go to step 2 to select network
-        setSelectedAggregatedToken(aggregatedToken);
+    const handleTokenClick = (item: TokenListItem) => {
+        setSelectedAggregatedToken(item._original);
         setStep('network');
     };
 
-    const handleNetworkClick = (network: TreasuryAsset) => {
-        setSelectedToken(network);
+    const handleNetworkClick = (item: NetworkListItem) => {
+        setSelectedToken(item.asset);
         setOpen(false);
         setSearch("");
         setStep('token');
@@ -122,7 +161,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                     <ChevronDown className="size-4 text-muted-foreground" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="flex flex-col max-w-md gap-4">
+            <DialogContent className="flex flex-col max-w-md ">
                 <DialogHeader centerTitle={true}>
                     <div className="flex items-center gap-2 w-full">
                         {step === 'network' && (
@@ -143,80 +182,45 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                     </div>
                 </DialogHeader>
                 {step === 'token' && (
-                    <>
-                        <div className="px-4">
-                            <Input
-                                placeholder="Search by name"
-                                search
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
-                        <ScrollArea className="h-[400px]">
-                            {filteredTokens.map(token => (
-                                <Button
-                                    variant="ghost"
-                                    key={token.symbol}
-                                    onClick={() => handleTokenClick(token)}
-                                    className="w-full h-20 rounded-none border-b last:border-b-0 last:rounded-b-md py-0 flex items-center justify-between hover:bg-muted/50"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        {token.icon.startsWith("data:image") || token.icon.startsWith("http") ? (
-                                            <img src={token.icon} alt={token.symbol} className="size-10 rounded-full shrink-0" />
-                                        ) : (
-                                            <div className="size-10 rounded-full bg-blue-600 flex items-center justify-center text-xl shrink-0">
-                                                {token.icon}
-                                            </div>
-                                        )}
-                                        <div className="flex flex-col items-start">
-                                            <span className="font-medium">{token.symbol}</span>
-                                            <span className="text-xs text-muted-foreground">
-                                                {token.name}
-                                                {token.isAggregated && token.networks.length > 1 &&
-                                                    ` • ${token.networks.length} Networks`
-                                                }
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="font-medium">{token.totalBalance.toFixed(2)}</span>
-                                        <span className="text-xs text-muted-foreground">
-                                            ≈${token.totalBalanceUSD.toFixed(2)}
-                                        </span>
-                                    </div>
-                                </Button>
-                            ))}
-                            {filteredTokens.length === 0 && (
-                                <div className="px-6 py-8 text-center text-muted-foreground">
-                                    No tokens found
+                    <div className="space-y-4">
+                        <Input
+                            placeholder="Search by name"
+                            search
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                        <SelectList
+                            items={filteredTokens}
+                            onSelect={handleTokenClick}
+                            emptyMessage="No tokens found"
+                            renderRight={(token) => (
+                                <div className="flex flex-col items-end">
+                                    <span className="font-semibold">{token.totalBalance.toFixed(2)}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                        ≈${token.totalBalanceUSD.toFixed(2)}
+                                    </span>
                                 </div>
                             )}
-                        </ScrollArea>
-                    </>
+                        />
+                    </div>
                 )}
                 {step === 'network' && selectedAggregatedToken && (
-                    <div className="max-h-[400px] overflow-y-auto">
-                        {selectedAggregatedToken.networks.map((network, idx) => (
-                            <Button
-                                variant="ghost"
-                                key={`${network.symbol}-${idx}`}
-                                onClick={() => handleNetworkClick(network)}
-                                className="w-full h-20 rounded-none border-b last:border-b-0 last:rounded-b-md py-0 flex items-center justify-between hover:bg-muted/50"
-                            >
-                                <div className="flex items-center gap-3 flex-1">
-                                    <NetworkDisplay asset={network} />
-                                </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="font-medium">
-                                        {Big(formatBalance(network.balance.toString(), network.decimals)).toFixed(2)}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                        ≈${network.balanceUSD.toFixed(2)}
-                                    </span>
-                                </div>
-                            </Button>
-                        ))}
-                    </div>
+                    <SelectList
+                        items={networkItems}
+                        onSelect={handleNetworkClick}
+                        renderIcon={(item) => <div className="pl-3"><NetworkDisplay asset={item.asset} /></div>}
+                        renderContent={() => <div className="flex-1" />}
+                        renderRight={(item) => (
+                            <div className="flex flex-col items-end">
+                                <span className="font-semibold">
+                                    {Big(formatBalance(item.balance, item.decimals)).toFixed(2)}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                    ≈${item.balanceUSD.toFixed(2)}
+                                </span>
+                            </div>
+                        )}
+                    />
                 )}
             </DialogContent>
         </Dialog>
