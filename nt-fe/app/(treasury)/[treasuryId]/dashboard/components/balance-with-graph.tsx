@@ -8,7 +8,7 @@ import { useBalanceChart, useToken, } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageCard } from "@/components/card";
-import { formatBalance, formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ChartInterval } from "@/lib/api";
@@ -292,7 +292,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 gap-2 md:gap-4">
                 <Button onClick={onDepositClick}>
                     <Download className="size-4" /> Deposit
                 </Button>
