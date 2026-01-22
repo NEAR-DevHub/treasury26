@@ -32,8 +32,8 @@ export function FunctionCallExpanded({ data }: FunctionCallExpandedProps) {
 
   items.push({
     label: "Arguments",
-    differentLine: true,
-    value: <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs">
+    value: null,
+    afterValue: <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs">
       <code className="text-foreground/90">
         {JSON.stringify(data.args, null, 2)}
       </code>

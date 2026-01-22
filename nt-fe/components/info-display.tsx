@@ -11,7 +11,6 @@ export interface InfoItem {
     label: string;
     value: string | number | React.ReactNode;
     info?: string;
-    differentLine?: boolean;
     afterValue?: React.ReactNode;
 
     style?: "default" | "secondary";
@@ -58,7 +57,7 @@ export function InfoDisplay({ items, expandableItems, className, style = "defaul
         <div className={styleVariants({ style, className })}>
             {displayItems.map((item, index) => (
                 <div key={index} className={cn("flex flex-col gap-2", lineVariants({ style, className: !hasExpandableItems && "last:border-b-0" }))}>
-                    <div className={cn("flex justify-between items-center flex-wrap", item.differentLine && "flex-col items-start gap-2")}>
+                    <div className="flex justify-between items-center flex-wrap">
                         <div className="flex items-center gap-2">
                             <p className="text-sm text-muted-foreground">{item.label}</p>
                             {item.info && <Tooltip content={item.info}>
