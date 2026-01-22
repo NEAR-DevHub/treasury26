@@ -16,6 +16,7 @@ interface ChartDataPoint {
 
 interface BalanceChartProps {
     data?: ChartDataPoint[];
+    symbol?: string;
 }
 
 const chartConfig = {
@@ -29,7 +30,7 @@ const chartConfig = {
     },
 } satisfies ChartConfig;
 
-export default function BalanceChart({ data = [] }: BalanceChartProps) {
+export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
     if (data.length === 0) {
         return (
             <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
@@ -82,10 +83,10 @@ export default function BalanceChart({ data = [] }: BalanceChartProps) {
                                     maximumFractionDigits: 2
                                 })}`;
                             } else {
-                                return num.toLocaleString(undefined, {
+                                return `${num.toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 6
-                                });
+                                })}${symbol ? ` ${symbol.toUpperCase()}` : ''}`;
                             }
                         }}
                     />}

@@ -13,6 +13,7 @@ import { Database } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
 import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
+import { useOpenTreasury } from "@/hooks/use-open-treasury";
 import { Button } from "./button";
 import { Tooltip } from "./tooltip";
 
@@ -21,6 +22,7 @@ export function TreasurySelector() {
   const pathname = usePathname();
   const { setSelectedTreasury } = useTreasury();
   const { accountId } = useNear();
+  const { open } = useOpenTreasury();
 
   const {
     isLoading,
@@ -29,6 +31,11 @@ export function TreasurySelector() {
     guestTreasuryConfig,
     treasuries,
   } = useIsGuestTreasury();
+
+  // Auto-register treasury when it's selected/viewed
+  React.useEffect(() => {
+    open(treasuryId);
+  }, [treasuryId, open]);
 
   React.useEffect(() => {
     if (treasuryId) {
