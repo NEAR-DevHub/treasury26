@@ -29,7 +29,7 @@ import {
   PAGE_TOUR_STORAGE_KEYS,
 } from "@/features/onboarding/steps/page-tours";
 import { Button } from "@/components/button";
-import { Download } from "lucide-react";
+import { ArrowDownToLine } from "lucide-react";
 import Link from "next/link";
 
 const paymentFormSchema = z
@@ -70,7 +70,7 @@ function Step1({ handleNext }: StepProps) {
 
   return (
     <PageCard>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">New Payment</h2>
         <div className="flex items-center gap-3">
           <Link href={`/${selectedTreasury}/payments/bulk-payment`}>
@@ -79,7 +79,7 @@ function Step1({ handleNext }: StepProps) {
               className="flex items-center gap-2 bg-transparent"
               style={{ borderColor: "var(--general-unofficial-border)" }}
             >
-              <Download className="w-4 h-4" />
+              <ArrowDownToLine   className="w-4 h-4" />
               Bulk Payments
             </Button>
           </Link>

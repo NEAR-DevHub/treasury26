@@ -25,6 +25,8 @@
   --input: rgb(229, 229, 229);
   --ring: rgb(161, 161, 161);
   --general-unofficial-border:rgba(212, 212, 212);
+  --general-unofficial-ghost-foreground:rgba(64, 64, 64);
+  --general-unofficial-accent:rgba(229, 229, 229);
   --general-success-background-faded: rgb(220, 252, 231);
   --general-success-foreground: rgb(21, 128, 61);
   --general-destructive-background-faded: rgb(254, 242, 242);
@@ -119,6 +121,8 @@
   --general-warning-foreground: rgb(250, 204, 21);
   --general-tertiary: rgb(28, 25, 23);
   --general-unofficial-border:rgba(64, 64, 64);
+  --general-unofficial-ghost-foreground:rgba(229, 229, 229);
+  --general-unofficial-accent:rgba(38, 38, 38);
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -171,6 +175,9 @@
   --color-general-warning-border: var(--general-warning-border);
   --color-general-warning-foreground: var(--general-warning-foreground);
   --color-general-tertiary: var(--general-tertiary);
+  --color-general-unofficial-border: var(--general-unofficial-border);
+  --color-general-unofficial-ghost-foreground: var(--general-unofficial-ghost-foreground);
+  --color-general-unofficial-accent: var(--general-unofficial-accent);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);

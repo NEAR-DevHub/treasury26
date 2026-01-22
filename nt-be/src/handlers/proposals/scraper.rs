@@ -989,18 +989,25 @@ impl ProposalType for StakeDelegationInfo {
 impl ProposalType for BulkPayment {
     fn from_proposal(proposal: &Proposal) -> Option<Self> {
         if let Some(function_call) = proposal.kind.get("FunctionCall") {
+            let receiver_id = function_call
+                .get("receiver_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
             let actions = function_call
                 .get("actions")
                 .and_then(|a| a.as_array())
                 .map(|a| a.as_slice())
                 .unwrap_or(&[]);
 
-            // Find action with ft_transfer_call or approve_list method
+            // Find action with ft_transfer_call, mt_transfer_call, or approve_list method
             let action = actions.iter().find(|a| {
-                a.get("method_name")
-                    .and_then(|m| m.as_str())
-                    .map(|m| m == "ft_transfer_call" || m == "approve_list")
-                    .unwrap_or(false)
+                let method_name = a.get("method_name").and_then(|m| m.as_str()).unwrap_or("");
+                let is_bulk_method = method_name == "ft_transfer_call"
+                    || method_name == "mt_transfer_call"
+                    || method_name == "approve_list";
+
+                is_bulk_method
             })?;
 
             // Decode args
@@ -1029,8 +1036,23 @@ impl ProposalType for BulkPayment {
                     .to_string();
 
                 (token_id, total_amount, batch_id)
-            } else {
-                // For ft_transfer_call
+            } else if method_name == "ft_transfer_call" || method_name == "mt_transfer_call" {
+                // Check if receiver_id in args is the bulk payment contract
+                let args_receiver_id = json_args
+                    .get("receiver_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+
+                // For ft_transfer_call/mt_transfer_call, the receiver_id in args should be bulk payment contract
+                // If not, this is not a bulk payment proposal
+                let bulk_payment_contract_id = std::env::var("BULK_PAYMENT_CONTRACT_ID")
+                    .unwrap_or_else(|_| "bulkpayment.near".to_string());
+
+                if args_receiver_id != bulk_payment_contract_id {
+                    return None;
+                }
+
+                // For ft_transfer_call/mt_transfer_call
                 let token_id = function_call
                     .get("receiver_id")
                     .and_then(|v| v.as_str())
@@ -1048,6 +1070,8 @@ impl ProposalType for BulkPayment {
                     .to_string();
 
                 (token_id, total_amount, batch_id)
+            } else {
+                return None;
             };
 
             Some(BulkPayment {

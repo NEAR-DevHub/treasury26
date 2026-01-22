@@ -366,7 +366,10 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
 
   const functionCall = proposal.kind.FunctionCall;
   const action = functionCall.actions.find(
-    (a) => a.method_name === "ft_transfer_call" || a.method_name === "approve_list" || a.method_name === "mt_transfer_call"
+    (a) => 
+      a.method_name === "ft_transfer_call" || 
+      a.method_name === "approve_list" ||
+      a.method_name === "mt_transfer_call"
   );
 
 
@@ -379,20 +382,34 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
     throw new Error("Proposal is not a Batch Payment Request proposal");
   }
 
+  // Handle NEAR payments (approve_list)
   if (action.method_name === "approve_list") {
     return {
       tokenId: "NEAR",
       totalAmount: action.deposit,
       batchId: args.list_id || "",
+      network: "near",
     }
   }
 
-  const tokenId = action.method_name === "mt_transfer_call" ? args.token_id : functionCall.receiver_id;
+  // Handle Intents tokens (mt_transfer_call)
+  // Token ID is in args.token_id (e.g., "nep141:btc.omft.near")
+  if (action.method_name === "mt_transfer_call") {
+    return {
+      tokenId: args.token_id || functionCall.receiver_id, // Use token_id from args
+      totalAmount: args.amount || "0",
+      batchId: String(args.msg) || "",
+      network: "intents",
+    };
+  }
 
+  // Handle FT tokens (ft_transfer_call)
+  // Token ID is the contract being called (receiver_id)
   return {
-    tokenId,
+    tokenId: functionCall.receiver_id, // This is the FT contract address
     totalAmount: args.amount || "0",
     batchId: String(args.msg) || "",
+    network: "near", // FT tokens are on NEAR network
   };
 }
 
