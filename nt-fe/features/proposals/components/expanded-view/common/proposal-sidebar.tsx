@@ -138,6 +138,7 @@ function ExecutedSection({ status, date, expiresAt }: { status: UIProposalStatus
       statusIcon = <StepIcon status="Failed" />;
       break;
     case "Expired":
+      statusText = "Expired At";
       statusIcon = <StepIcon status="Expired" />;
       break;
     case "Executed":

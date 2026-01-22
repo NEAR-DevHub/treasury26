@@ -10,8 +10,6 @@ import {
   Settings,
   HelpCircle,
   type LucideIcon,
-  Database,
-  Clock10,
   ArrowRightLeft,
   ChartColumn,
 } from "lucide-react";
