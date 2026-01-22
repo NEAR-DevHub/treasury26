@@ -14,7 +14,6 @@ import { useParams } from "next/navigation";
 import type { ChartInterval } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthButton } from "@/components/auth-button";
-import { NextStepViewport } from "nextstepjs";
 
 interface Props {
     totalBalanceUSD: number | Big.Big;
@@ -314,7 +313,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                             ))}
                         </SelectContent>
                     </Select>
-                    <ToggleGroup type="single" size="sm" variant={"outline"} value={selectedPeriod} onValueChange={(e) => setSelectedPeriod(e as TimePeriod)}>
+                    <ToggleGroup type="single" size="sm" variant={"outline"} value={selectedPeriod} onValueChange={(e) => e && setSelectedPeriod(e as TimePeriod)}>
                         {TIME_PERIODS.map((e => <ToggleGroupItem key={e} value={e}>{e}</ToggleGroupItem>))}
                     </ToggleGroup>
                 </div>
@@ -330,7 +329,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     </AuthButton>
                 </Link>
                 <Link href={treasuryId ? `/${treasuryId}/exchange` : "/exchange"} className="flex" id="dashboard-step3">
-                    <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full" id="dashboard-step3">
+                    <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
                         <ArrowLeftRight className="size-4" /> Exchange
                     </AuthButton>
                 </Link>

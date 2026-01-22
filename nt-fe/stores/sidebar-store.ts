@@ -26,17 +26,22 @@ const useSidebar = () => {
 // Hook that provides responsive sidebar behavior
 export const useResponsiveSidebar = () => {
   const { isSidebarOpen, toggleSidebar, setSidebarOpen } = useSidebar();
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+
     const checkIsMobile = () => {
-      setSidebarOpen(window.innerWidth >= 1024);
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      setSidebarOpen(!mobile);
     };
 
     checkIsMobile();
+
     window.addEventListener('resize', checkIsMobile);
     return () => window.removeEventListener('resize', checkIsMobile);
-  }, []);
+  }, [setSidebarOpen, setIsMobile]);
 
-
-  return { isSidebarOpen, toggleSidebar, setSidebarOpen, isMobile: window.innerWidth < 1024 };
+  return { isSidebarOpen, toggleSidebar, setSidebarOpen, isMobile };
 };
+

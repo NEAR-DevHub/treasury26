@@ -9,8 +9,6 @@ interface Props {
 }
 
 export default function Assets({ tokens, isLoading }: Props) {
-    console.log("isLoading", isLoading);
-
     return (
         <PageCard className="flex flex-col gap-5">
             <h2 className="font-semibold">Assets</h2>
