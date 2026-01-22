@@ -12,7 +12,7 @@ use crate::AppState;
 
 // Default credits granted when a treasury is first registered
 const DEFAULT_EXPORT_CREDITS: i32 = 10;
-const DEFAULT_BATCH_PAYMENT_CREDITS: i32 = 120;
+const DEFAULT_BATCH_PAYMENT_CREDITS: i32 = 5;
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct MonitoredAccount {
