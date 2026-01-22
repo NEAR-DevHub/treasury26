@@ -74,7 +74,7 @@ function TransactionCreated({ proposer, date }: { proposer: string, date: Date }
       <div className="flex items-center gap-2">
         <StepIcon status="Success" />
         <div className="flex flex-col gap-0">
-          <p className="text-sm font-semibold">Transaction created</p>
+          <p className="text-sm font-semibold">Transaction Created</p>
           {date && <p className="text-xs text-muted-foreground">{formatDate(date)}</p>}
         </div>
       </div>
@@ -131,7 +131,7 @@ function ExecutedSection({ status, date, expiresAt }: { status: UIProposalStatus
 
   switch (status) {
     case "Pending":
-      statusText = "Expires at";
+      statusText = "Expires At";
       break;
     case "Rejected":
     case "Removed":

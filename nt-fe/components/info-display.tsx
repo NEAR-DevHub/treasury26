@@ -65,7 +65,7 @@ export function InfoDisplay({ items, expandableItems, className, style = "defaul
                                 <Info className="w-4 h-4 text-muted-foreground" />
                             </Tooltip>}
                         </div>
-                        <div className="text-sm font-medium text-wrap w-full">{item.value}</div>
+                        <div className="text-sm font-medium text-wrap">{item.value}</div>
                     </div>
                     {item.afterValue && (
                         <div className="flex flex-col gap-2">
