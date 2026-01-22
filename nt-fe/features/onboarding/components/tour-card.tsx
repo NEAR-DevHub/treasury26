@@ -26,12 +26,12 @@ export function TourCard({
     currentStep,
     totalSteps,
     nextStep,
-    prevStep,
     skipTour,
     arrow,
 }: CardComponentProps) {
     const { setCurrentStep, currentTour } = useNextStep()
     const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen)
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024
 
     const isLastStep = currentStep === totalSteps - 1
     const tourName = currentTour
@@ -57,14 +57,15 @@ export function TourCard({
             }
 
         } else {
-            setSidebarOpen(false)
             nextStep()
         }
     }
 
     const handleSkip = () => {
-        setSidebarOpen(false)
         skipTour?.()
+        if (isMobile) {
+            setSidebarOpen(false)
+        }
     }
 
     const buttonText = totalSteps === 1 ? "Got It"

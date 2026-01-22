@@ -26,27 +26,17 @@ const useSidebar = () => {
 // Hook that provides responsive sidebar behavior
 export const useResponsiveSidebar = () => {
   const { isSidebarOpen, toggleSidebar, setSidebarOpen } = useSidebar();
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+      setSidebarOpen(window.innerWidth >= 1024);
     };
 
     checkIsMobile();
     window.addEventListener('resize', checkIsMobile);
-
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
-  // Set initial state based on screen size
-  useEffect(() => {
-    if (isMobile) {
-      setSidebarOpen(false); // Mobile: starts closed, opens on button click
-    } else {
-      setSidebarOpen(true); // PC: starts open by default
-    }
-  }, [isMobile, setSidebarOpen]);
 
-  return { isSidebarOpen, toggleSidebar, setSidebarOpen, isMobile };
+  return { isSidebarOpen, toggleSidebar, setSidebarOpen, isMobile: window.innerWidth < 1024 };
 };

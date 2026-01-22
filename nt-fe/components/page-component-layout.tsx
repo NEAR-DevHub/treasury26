@@ -1,7 +1,7 @@
 "use client";
 
 import { Sun, Moon, ArrowLeft, PanelLeft } from "lucide-react";
-import { useResponsiveSidebar } from "@/stores/sidebar-store";
+import { useSidebarStore } from "@/stores/sidebar-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { Button } from "@/components/button";
 import { SignIn } from "@/components/sign-in";
@@ -16,7 +16,7 @@ interface PageComponentLayoutProps {
 }
 
 export function PageComponentLayout({ title, description, backButton, children }: PageComponentLayoutProps) {
-  const { toggleSidebar } = useResponsiveSidebar();
+  const { toggleSidebar } = useSidebarStore();
   const { theme, toggleTheme } = useThemeStore();
 
   useEffect(() => {

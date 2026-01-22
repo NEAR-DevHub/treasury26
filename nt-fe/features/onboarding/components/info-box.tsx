@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { PageCard } from "@/components/card";
 import { useNextStep } from "nextstepjs";
 import { LOCAL_STORAGE_KEYS, TOUR_NAMES } from "../steps/dashboard";
-import { useSidebarStore } from "@/stores/sidebar-store";
+import { useSidebarStore, } from "@/stores/sidebar-store";
 import { SIDEBAR_ANIMATION_DELAY } from "./tour-card";
 
 const INFO_BOX_CLOSED_KEY = LOCAL_STORAGE_KEYS.INFO_BOX_TOUR_DISMISSED;
@@ -71,7 +71,7 @@ export function InfoBox() {
         setSidebarOpen(true);
         setTimeout(() => {
             startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
-        }, SIDEBAR_ANIMATION_DELAY);
+        }, SIDEBAR_ANIMATION_DELAY + 100);
     };
 
     if (isClosed) {
