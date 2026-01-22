@@ -1,12 +1,11 @@
 "use client";
 
-import { Menu, Sun, Moon, Bell, ArrowLeft } from "lucide-react";
-import { useSidebar } from "@/stores/sidebar-store";
+import { Sun, Moon, ArrowLeft, PanelLeft } from "lucide-react";
+import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { Button } from "@/components/button";
 import { SignIn } from "@/components/sign-in";
 import { ReactNode, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 interface PageComponentLayoutProps {
@@ -17,7 +16,7 @@ interface PageComponentLayoutProps {
 }
 
 export function PageComponentLayout({ title, description, backButton, children }: PageComponentLayoutProps) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar } = useResponsiveSidebar();
   const { theme, toggleTheme } = useThemeStore();
 
   useEffect(() => {
@@ -36,10 +35,10 @@ export function PageComponentLayout({ title, description, backButton, children }
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="h-9 w-9 hover:bg-muted text-muted-foreground hover:text-foreground lg:hidden"
-            aria-label="Toggle menu"
+            className="h-9 w-9 hover:bg-muted text-muted-foreground hover:text-foreground"
+            aria-label="Toggle sidebar"
           >
-            <Menu className="h-6 w-6" />
+            <PanelLeft className="h-6 w-6" />
           </Button>
           <div className="flex items-center gap-2 md:gap-3">
             {backButton && (

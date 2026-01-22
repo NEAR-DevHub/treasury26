@@ -19,6 +19,7 @@ import { useProposals } from "@/hooks/use-proposals";
 import { NumberBadge } from "./number-badge";
 import { Pill } from "./pill";
 import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
+import { useResponsiveSidebar } from "@/stores/sidebar-store";
 
 interface NavLinkProps {
   isActive: boolean;
@@ -99,6 +100,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   })
 
   const { isGuestTreasury, isLoading: isLoadingGuestTreasury } = useIsGuestTreasury();
+  const { isMobile } = useResponsiveSidebar();
 
   return (
     <>
@@ -113,8 +115,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 z-40 flex gap-2 h-screen w-56 flex-col bg-card border-r transition-transform duration-300 lg:relative lg:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full",
+          "fixed left-0 top-0 z-40 flex gap-2 h-screen w-56 flex-col bg-card border-r transition-all duration-300 lg:static lg:z-auto",
+          isOpen ? "translate-x-0 lg:opacity-100" : "-translate-x-full lg:hidden",
         )}
       >
         <div className="border-b">
@@ -147,7 +149,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 badgeCount={proposals?.total ?? 0}
                 onClick={() => {
                   router.push(href);
-                  onClose();
+                  if (isMobile) onClose();
                 }}
               />
             );
@@ -170,7 +172,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 label={link.label}
                 onClick={() => {
                   router.push(href);
-                  onClose();
+                  if (isMobile) onClose();
                 }}
               />
             );
