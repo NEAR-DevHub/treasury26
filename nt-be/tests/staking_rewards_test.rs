@@ -1037,8 +1037,113 @@ async fn test_track_and_fill_staking_rewards(pool: PgPool) -> sqlx::Result<()> {
     );
     assert!(snapshot_count > 0, "Should have STAKING_SNAPSHOT records");
 
-    // If there are gaps between snapshots with different balances, we should have STAKING_REWARD records
-    // This test verifies the full flow works, but the exact count depends on the blockchain state
+    // Should have STAKING_REWARD records for gaps between snapshots with different balances
+    // The real blockchain data has balance increases between epochs, so we should find gaps
+    assert!(
+        reward_count > 0,
+        "Should have STAKING_REWARD records for filled gaps (found {} snapshots but no rewards)",
+        snapshot_count
+    );
+
+    // Get all STAKING_REWARD records with their amounts
+    let rewards: Vec<(i64, String, String, String)> = sqlx::query_as(
+        r#"
+        SELECT block_height, balance_before::TEXT, balance_after::TEXT, amount::TEXT
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2 AND counterparty = 'STAKING_REWARD'
+        ORDER BY block_height
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_all(&pool)
+    .await?;
+
+    println!("\n=== STAKING_REWARD records (exact blocks where rewards occurred) ===");
+    for (block, balance_before, balance_after, amount) in &rewards {
+        let epoch = block_to_epoch(*block as u64);
+        println!(
+            "  Block {} (epoch {}): {} NEAR staked → {} NEAR (reward: {} NEAR)",
+            block, epoch, balance_before, balance_after, amount
+        );
+    }
+
+    // Hard assertions for the exact blocks and amounts where staking rewards occurred
+    // These are deterministic values from the blockchain
+    assert_eq!(
+        rewards.len(),
+        6,
+        "Should have exactly 6 STAKING_REWARD records"
+    );
+
+    // Epoch 3728 reward (first reward after initial stake)
+    assert_eq!(
+        rewards[0].0, 161064202,
+        "First reward should be at block 161064202"
+    );
+    assert_eq!(
+        rewards[0].1, "1000",
+        "Balance before first reward should be 1000 NEAR"
+    );
+    assert_eq!(
+        rewards[0].2, "1000.081598495096742265936191",
+        "Balance after first reward should be 1000.081598495096742265936191 NEAR"
+    );
+    assert_eq!(
+        rewards[0].3, "0.081598495096742265936191",
+        "First reward amount should be 0.081598495096742265936191 NEAR"
+    );
+
+    // Epoch 3729 reward
+    assert_eq!(
+        rewards[1].0, 161106976,
+        "Second reward should be at block 161106976"
+    );
+    assert_eq!(
+        rewards[1].3, "0.081244782508652378445903",
+        "Second reward amount should be 0.081244782508652378445903 NEAR"
+    );
+
+    // Epoch 3730 reward
+    assert_eq!(
+        rewards[2].0, 161150142,
+        "Third reward should be at block 161150142"
+    );
+    assert_eq!(
+        rewards[2].3, "0.082761529367811984530264",
+        "Third reward amount should be 0.082761529367811984530264 NEAR"
+    );
+
+    // Epoch 3731 reward
+    assert_eq!(
+        rewards[3].0, 161193732,
+        "Fourth reward should be at block 161193732"
+    );
+    assert_eq!(
+        rewards[3].3, "0.082372666744984700065090",
+        "Fourth reward amount should be 0.082372666744984700065090 NEAR"
+    );
+
+    // Epoch 3732 reward
+    assert_eq!(
+        rewards[4].0, 161237043,
+        "Fifth reward should be at block 161237043"
+    );
+    assert_eq!(
+        rewards[4].3, "0.080597028412555679737614",
+        "Fifth reward amount should be 0.080597028412555679737614 NEAR"
+    );
+
+    // Epoch 3733 reward
+    assert_eq!(
+        rewards[5].0, 161280282,
+        "Sixth reward should be at block 161280282"
+    );
+    assert_eq!(
+        rewards[5].3, "0.081549435422138347777227",
+        "Sixth reward amount should be 0.081549435422138347777227 NEAR"
+    );
+
     println!(
         "\n✓ track_and_fill_staking_rewards working correctly ({} snapshots, {} rewards)",
         snapshot_count, reward_count
