@@ -2,6 +2,7 @@
 
 import { usePathname, useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useDebouncedCallback } from "use-debounce";
 import { TreasurySelector } from "./treasury-selector";
 import { cn } from "@/lib/utils";
 import {
@@ -99,8 +100,11 @@ export function Sidebar({ onClose }: SidebarProps) {
   const router = useRouter();
   const params = useParams();
   const treasuryId = params?.treasuryId as string | undefined;
-  const [isHovered, setIsHovered] = useState(false);
+  const [hoverState, setHoverState] = useState<"nohovering" | "hovering" | "nothovering-and-dropdown-open">("nohovering");
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const debouncedSetHoverState = useDebouncedCallback(setHoverState, 100);
 
   const { data: proposals } = useProposals(treasuryId, {
     statuses: ["InProgress"],
@@ -109,7 +113,8 @@ export function Sidebar({ onClose }: SidebarProps) {
   const { isGuestTreasury, isLoading: isLoadingGuestTreasury } = useIsGuestTreasury();
   const { isMobile, mounted, isSidebarOpen: isOpen } = useResponsiveSidebar();
 
-  const isReduced = !isMobile && !isOpen && !isHovered;
+  const isHovering = hoverState === "hovering" || hoverState === "nothovering-and-dropdown-open";
+  const isReduced = !isMobile && !isOpen && !isHovering && !dropdownOpen;
 
   // Mark as initialized after first render with mounted state
   useEffect(() => {
@@ -150,16 +155,25 @@ export function Sidebar({ onClose }: SidebarProps) {
               : "-translate-x-full"
             : isOpen
               ? "w-56"
-              : isHovered
+              : isHovering
                 ? "w-56"
                 : "w-16",
         )}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={() => {
+          debouncedSetHoverState.cancel();
+          setHoverState("hovering");
+        }}
+        onMouseLeave={() => debouncedSetHoverState(dropdownOpen ? "nothovering-and-dropdown-open" : "nohovering")}
       >
         <div className="border-b">
           <div className="p-3.5 flex flex-col gap-2">
-            <TreasurySelector reducedMode={isReduced} />
+            <TreasurySelector reducedMode={isReduced} isOpen={dropdownOpen} onOpenChange={(open) => {
+              setDropdownOpen(open);
+              // Check that mouse is not hovering over the dropdown
+              if (!open && hoverState === "nothovering-and-dropdown-open") {
+                debouncedSetHoverState("nohovering");
+              }
+            }} />
             <div className={cn("px-3", isReduced ? "hidden" : "px-3.5")}>
               {isGuestTreasury && !isLoadingGuestTreasury ? (
                 <Pill variant="info" side="right" title="Guest" info="You are a guest of this treasury. You can only view the data. Creating requests, adding members, or making any changes is not allowed because you are not a member of the team." />
@@ -176,7 +190,7 @@ export function Sidebar({ onClose }: SidebarProps) {
               : `/${link.path ? `/${link.path}` : ""}`;
             const isActive = pathname === href;
             const showBadge = link.path === "requests" && (proposals?.total ?? 0) > 0;
-            const showLabels = isMobile ? isOpen : isOpen || isHovered;
+            const showLabels = isMobile ? isOpen : !isReduced;
 
             return (
               <NavLink

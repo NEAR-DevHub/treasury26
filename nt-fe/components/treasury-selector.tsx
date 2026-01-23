@@ -42,9 +42,11 @@ const Logo = ({ logo }: { logo?: string }) => {
 
 interface TreasurySelectorProps {
   reducedMode?: boolean;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function TreasurySelector({ reducedMode = false }: TreasurySelectorProps) {
+export function TreasurySelector({ reducedMode = false, isOpen, onOpenChange }: TreasurySelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { setSelectedTreasury } = useTreasury();
@@ -131,7 +133,7 @@ export function TreasurySelector({ reducedMode = false }: TreasurySelectorProps)
     : undefined;
 
   return (
-    <Select value={treasuryId} onValueChange={handleTreasuryChange}>
+    <Select value={treasuryId} open={isOpen} onValueChange={handleTreasuryChange} onOpenChange={onOpenChange}>
       <SelectTrigger
         id="dashboard-step5"
         className={cn(

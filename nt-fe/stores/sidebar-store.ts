@@ -99,7 +99,6 @@ export const useResponsiveSidebar = () => {
   const { isSidebarOpen, toggleSidebar, setSidebarOpen } = useSidebar();
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   // Set mounted to true after hydration
   useEffect(() => {
@@ -115,39 +114,10 @@ export const useResponsiveSidebar = () => {
       const wasMobile = isMobile;
       setIsMobile(mobile);
 
-      // On initial check, just set the state without transitions
-      if (!initialCheckDone) {
-        setInitialCheckDone(true);
-        if (mobile) {
-          // On mobile, ensure closed
-          setSidebarOpen(false);
-        } else {
-          // On desktop, restore from localStorage
-          try {
-            const stored = localStorage.getItem("sidebar-open");
-            const shouldBeOpen = stored !== null ? JSON.parse(stored) : true;
-            setSidebarOpen(shouldBeOpen);
-          } catch {
-            setSidebarOpen(true);
-          }
-        }
-        return;
-      }
-
-      // After initial check, handle resize events
+      // Handle responsive behavior on resize
       // When switching from desktop to mobile, close sidebar (hamburger menu style)
       if (!wasMobile && mobile) {
         setSidebarOpen(false);
-      }
-      // When switching from mobile to desktop, restore from localStorage or default to true
-      else if (wasMobile && !mobile) {
-        try {
-          const stored = localStorage.getItem("sidebar-open");
-          const shouldBeOpen = stored !== null ? JSON.parse(stored) : true;
-          setSidebarOpen(shouldBeOpen);
-        } catch {
-          setSidebarOpen(true);
-        }
       }
     };
 
@@ -155,7 +125,7 @@ export const useResponsiveSidebar = () => {
 
     window.addEventListener('resize', checkIsMobile);
     return () => window.removeEventListener('resize', checkIsMobile);
-  }, [setSidebarOpen, isMobile, mounted, initialCheckDone]);
+  }, [setSidebarOpen, isMobile, mounted]);
 
   return { isSidebarOpen, toggleSidebar, setSidebarOpen, isMobile, mounted };
 };
