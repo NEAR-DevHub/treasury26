@@ -43,19 +43,19 @@ export function TourCard({
 
         // If next step needs sidebar, open it and delay the step change
         if (sidebarSteps.includes(nextStepIndex)) {
-            setSidebarOpen(true)
-
+            if (isMobile) {
+                setSidebarOpen(true)
+            }
             // If next step needs treasury selector click, handle it specially
             if (treasurySelectorSteps.includes(nextStepIndex)) {
                 setTimeout(() => {
                     const trigger = document.getElementById(SELECTOR_IDS.DASHBOARD_STEP_5)
                     trigger?.click()
                     setCurrentStep(nextStepIndex, SIDEBAR_ANIMATION_DELAY)
-                }, SIDEBAR_ANIMATION_DELAY + 100)
+                }, SIDEBAR_ANIMATION_DELAY + 200)
             } else {
                 setCurrentStep(nextStepIndex, SIDEBAR_ANIMATION_DELAY)
             }
-
         } else {
             nextStep()
         }

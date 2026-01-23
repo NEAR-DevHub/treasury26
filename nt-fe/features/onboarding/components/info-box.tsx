@@ -59,6 +59,7 @@ export function InfoBox() {
     const [isClosed, setIsClosed] = useState(true);
     const { startNextStep } = useNextStep();
     const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen);
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
     useEffect(() => {
         setIsClosed(localStorage.getItem(INFO_BOX_CLOSED_KEY) === "true");
@@ -68,10 +69,14 @@ export function InfoBox() {
         localStorage.setItem(INFO_BOX_CLOSED_KEY, "true");
         setIsClosed(true);
         // Open sidebar before starting tour since first step needs it
-        setSidebarOpen(true);
-        setTimeout(() => {
+        if (isMobile) {
+            setSidebarOpen(true);
+            setTimeout(() => {
+                startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
+            }, SIDEBAR_ANIMATION_DELAY + 100);
+        } else {
             startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
-        }, SIDEBAR_ANIMATION_DELAY + 100);
+        }
     };
 
     if (isClosed) {

@@ -104,7 +104,7 @@ export const INFO_BOX_TOUR: Tour = {
             title: "",
             content: <>Get help and support whenever you need it.</>,
             selector: SELECTOR_IDS.HELP_SUPPORT_LINK,
-            side: "top",
+            side: "top-left",
             disableInteraction: true,
             showControls: false,
             showSkip: false,
@@ -117,10 +117,10 @@ export const INFO_BOX_TOUR: Tour = {
 export function DashboardTour() {
     const [isDismissed, setIsDismissed] = useState(true)
     const { startNextStep } = useNextStep()
-    const { isGuestTreasury } = useIsGuestTreasury();
+    const { isGuestTreasury, isLoading } = useIsGuestTreasury();
 
     useEffect(() => {
-        if (isGuestTreasury) return;
+        if (isGuestTreasury || isLoading) return;
         setIsDismissed(localStorage.getItem(LOCAL_STORAGE_KEYS.DASHBOARD_TOUR_DISMISSED) === "true")
     }, [isGuestTreasury])
 
