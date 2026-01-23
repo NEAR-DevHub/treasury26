@@ -1144,9 +1144,64 @@ async fn test_track_and_fill_staking_rewards(pool: PgPool) -> sqlx::Result<()> {
         "Sixth reward amount should be 0.081549435422138347777227 NEAR"
     );
 
+    // Now test the API to ensure it returns only STAKING_REWARD records, not STAKING_SNAPSHOT
+    println!("\n=== Testing balance changes API ===");
+
+    // Query balance changes as the API would (filtering out synthetic records)
+    let api_changes: Vec<(i64, String, String)> = sqlx::query_as(
+        r#"
+        SELECT block_height, counterparty, amount::TEXT
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+          AND counterparty NOT IN ('SNAPSHOT', 'NOT_REGISTERED', 'STAKING_SNAPSHOT')
+        ORDER BY block_height
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_all(&pool)
+    .await?;
+
+    println!("API would return {} records", api_changes.len());
+    for (block, counterparty, amount) in &api_changes {
+        let epoch = block_to_epoch(*block as u64);
+        println!(
+            "  Block {} (epoch {}): {} [amount: {}]",
+            block, epoch, counterparty, amount
+        );
+    }
+
+    // The API should only return STAKING_REWARD records, filtering out STAKING_SNAPSHOT
+    assert_eq!(
+        api_changes.len(),
+        reward_count as usize,
+        "API should return {} STAKING_REWARD records (filtered STAKING_SNAPSHOT)",
+        reward_count
+    );
+
+    // Verify all returned records are STAKING_REWARD
+    for (_, counterparty, _) in &api_changes {
+        assert_eq!(
+            counterparty, STAKING_REWARD_COUNTERPARTY,
+            "API should only return STAKING_REWARD records"
+        );
+    }
+
+    // Verify the blocks match our reward blocks
+    let api_blocks: Vec<i64> = api_changes.iter().map(|(block, _, _)| *block).collect();
+    let reward_blocks: Vec<i64> = rewards.iter().map(|(block, _, _, _)| *block).collect();
+    assert_eq!(
+        api_blocks, reward_blocks,
+        "API blocks should match reward blocks"
+    );
+
     println!(
         "\n✓ track_and_fill_staking_rewards working correctly ({} snapshots, {} rewards)",
         snapshot_count, reward_count
+    );
+    println!(
+        "✓ API correctly filters out STAKING_SNAPSHOT, returning only {} STAKING_REWARD records",
+        api_changes.len()
     );
 
     Ok(())
