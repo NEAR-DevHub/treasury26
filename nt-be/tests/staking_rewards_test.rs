@@ -11,8 +11,7 @@ use nt_be::handlers::balance_changes::balance::staking::{
 use nt_be::handlers::balance_changes::staking_rewards::{
     STAKING_REWARD_COUNTERPARTY, STAKING_SNAPSHOT_COUNTERPARTY, discover_staking_pools,
     extract_staking_pool, fill_staking_gaps, find_staking_gaps, insert_staking_reward,
-    insert_staking_snapshot, is_staking_token, staking_token_id, track_and_fill_staking_rewards,
-    track_staking_rewards,
+    insert_staking_snapshot, is_staking_token, staking_token_id, track_staking_rewards,
 };
 use sqlx::{PgPool, Row};
 
