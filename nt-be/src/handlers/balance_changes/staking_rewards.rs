@@ -562,8 +562,9 @@ pub async fn find_staking_gaps(
 
     // Use window function to find gaps between consecutive staking records
     // Exclude records that are already filled gaps (STAKING_REWARD)
-    let gaps: Vec<StakingGap> = sqlx::query_as::<_, (String, String, i64, i64, BigDecimal, BigDecimal)>(
-        r#"
+    let gaps: Vec<StakingGap> =
+        sqlx::query_as::<_, (String, String, i64, i64, BigDecimal, BigDecimal)>(
+            r#"
         WITH staking_chain AS (
             SELECT
                 account_id,
@@ -591,25 +592,27 @@ pub async fn find_staking_gaps(
           AND balance_after != prev_balance_after
         ORDER BY block_height
         "#,
-    )
-    .bind(account_id)
-    .bind(&token_id)
-    .bind(up_to_block)
-    .fetch_all(pool)
-    .await?
-    .into_iter()
-    .map(|(account_id, token_id, start_block, end_block, balance_at_start, balance_at_end)| {
-        StakingGap {
-            account_id,
-            staking_pool: staking_pool.to_string(),
-            token_id,
-            start_block,
-            end_block,
-            balance_at_start,
-            balance_at_end,
-        }
-    })
-    .collect();
+        )
+        .bind(account_id)
+        .bind(&token_id)
+        .bind(up_to_block)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(
+            |(account_id, token_id, start_block, end_block, balance_at_start, balance_at_end)| {
+                StakingGap {
+                    account_id,
+                    staking_pool: staking_pool.to_string(),
+                    token_id,
+                    start_block,
+                    end_block,
+                    balance_at_start,
+                    balance_at_end,
+                }
+            },
+        )
+        .collect();
 
     Ok(gaps)
 }
@@ -684,9 +687,15 @@ pub async fn fill_staking_gap(
         }
     };
 
-    insert_staking_reward(pool, network, &gap.account_id, &gap.staking_pool, block_height)
-        .await
-        .map(|_| Some(block_height as i64))
+    insert_staking_reward(
+        pool,
+        network,
+        &gap.account_id,
+        &gap.staking_pool,
+        block_height,
+    )
+    .await
+    .map(|_| Some(block_height as i64))
 }
 
 /// Binary search to find the exact block where staking balance changed
@@ -864,11 +873,7 @@ pub async fn fill_staking_gaps(
     let gaps = find_staking_gaps(pool, account_id, staking_pool, up_to_block).await?;
 
     if gaps.is_empty() {
-        log::debug!(
-            "No staking gaps found for {}/{}",
-            account_id,
-            staking_pool
-        );
+        log::debug!("No staking gaps found for {}/{}", account_id, staking_pool);
         return Ok(0);
     }
 

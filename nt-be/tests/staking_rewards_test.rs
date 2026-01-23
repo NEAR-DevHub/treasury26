@@ -1035,10 +1035,7 @@ async fn test_track_and_fill_staking_rewards(pool: PgPool) -> sqlx::Result<()> {
         !all_records.is_empty(),
         "Should have created staking records"
     );
-    assert!(
-        snapshot_count > 0,
-        "Should have STAKING_SNAPSHOT records"
-    );
+    assert!(snapshot_count > 0, "Should have STAKING_SNAPSHOT records");
 
     // If there are gaps between snapshots with different balances, we should have STAKING_REWARD records
     // This test verifies the full flow works, but the exact count depends on the blockchain state
