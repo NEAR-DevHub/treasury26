@@ -19,6 +19,7 @@ pub struct BalanceChangesQuery {
     pub token_id: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    pub exclude_snapshots: Option<bool>,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -64,6 +65,7 @@ pub async fn get_balance_changes(
 ) -> Result<Json<Vec<BalanceChange>>, (StatusCode, Json<Value>)> {
     let limit = params.limit.unwrap_or(100).min(1000);
     let offset = params.offset.unwrap_or(0);
+    let exclude_snapshots = params.exclude_snapshots.unwrap_or(false);
 
     let changes = if let Some(token_id) = params.token_id {
         sqlx::query_as::<_, BalanceChange>(
@@ -73,6 +75,7 @@ pub async fn get_balance_changes(
                    amount, balance_before, balance_after, created_at
             FROM balance_changes
             WHERE account_id = $1 AND token_id = $2
+              AND (NOT $5::bool OR counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT'))
             ORDER BY block_height DESC, id DESC
             LIMIT $3 OFFSET $4
             "#,
@@ -81,6 +84,7 @@ pub async fn get_balance_changes(
         .bind(&token_id)
         .bind(limit)
         .bind(offset)
+        .bind(exclude_snapshots)
         .fetch_all(&state.db_pool)
         .await
     } else {
@@ -91,11 +95,13 @@ pub async fn get_balance_changes(
                    amount, balance_before, balance_after, created_at
             FROM balance_changes
             WHERE account_id = $1
+              AND (NOT $2::bool OR counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT'))
             ORDER BY block_height DESC, id DESC
-            LIMIT $2 OFFSET $3
+            LIMIT $3 OFFSET $4
             "#,
         )
         .bind(&params.account_id)
+        .bind(exclude_snapshots)
         .bind(limit)
         .bind(offset)
         .fetch_all(&state.db_pool)
@@ -155,6 +161,7 @@ pub async fn get_recent_activity(
         FROM balance_changes
         WHERE account_id = $1
           AND counterparty != 'SNAPSHOT'
+                    AND counterparty != 'STAKING_SNAPSHOT'
           AND counterparty != 'NOT_REGISTERED'
         "#,
     )
@@ -172,6 +179,7 @@ pub async fn get_recent_activity(
         FROM balance_changes
         WHERE account_id = $1
           AND counterparty != 'SNAPSHOT'
+                    AND counterparty != 'STAKING_SNAPSHOT'
           AND counterparty != 'NOT_REGISTERED'
         ORDER BY block_height DESC, id DESC
         LIMIT $2 OFFSET $3

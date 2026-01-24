@@ -68,9 +68,9 @@ pub async fn run_monitor_cycle(
         .fetch_all(pool)
         .await?;
 
-        // If no tokens are tracked yet, ensure we at least check NEAR balance
-        if tokens.is_empty() {
-            println!("  {}: No known tokens, will seed NEAR balance", account_id);
+        // Always ensure NEAR is in the tokens list - it may not be tracked yet
+        // even if other tokens (like intents tokens) have already been discovered
+        if !tokens.contains(&"near".to_string()) {
             tokens.push("near".to_string());
         }
 
