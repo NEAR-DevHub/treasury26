@@ -665,12 +665,12 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
         .await
         .expect("Third monitor cycle should succeed");
 
-    // Final verification
+    // Final verification: only consider STAKING_SNAPSHOT records here
     let final_snapshots: Vec<(i64, String, String, String)> = sqlx::query_as(
         r#"
         SELECT block_height, balance_before::TEXT, balance_after::TEXT, counterparty
         FROM balance_changes
-        WHERE account_id = $1 AND token_id = $2
+        WHERE account_id = $1 AND token_id = $2 AND counterparty = 'STAKING_SNAPSHOT'
         ORDER BY block_height
         "#,
     )
