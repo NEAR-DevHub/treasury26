@@ -22,7 +22,7 @@ use sqlx::types::BigDecimal;
 use crate::handlers::balance_changes::{
     balance, binary_search, block_info,
     gap_detector::{self, BalanceGap},
-    transfer_hints::{tx_resolver, TransferHintService},
+    transfer_hints::{TransferHintService, tx_resolver},
     utils::block_timestamp_to_datetime,
 };
 

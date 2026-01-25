@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
 
 use crate::{
-    handlers::balance_changes::transfer_hints::{fastnear::FastNearProvider, TransferHintService},
+    handlers::balance_changes::transfer_hints::{TransferHintService, fastnear::FastNearProvider},
     services::{CoinGeckoClient, PriceLookupService},
     utils::{
         cache::{Cache, CacheKey, CacheTier},

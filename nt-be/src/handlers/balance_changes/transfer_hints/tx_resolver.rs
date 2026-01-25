@@ -12,7 +12,7 @@
 //! 5. Return candidate blocks for balance verification
 
 use near_api::NetworkConfig;
-use near_jsonrpc_client::{auth, methods, JsonRpcClient};
+use near_jsonrpc_client::{JsonRpcClient, auth, methods};
 use near_primitives::types::{BlockId, BlockReference};
 use near_primitives::views::FinalExecutionOutcomeViewEnum;
 use std::error::Error;
@@ -121,7 +121,6 @@ pub async fn resolve_transaction_blocks(
     })
 }
 
-
 /// Find candidate blocks where a balance change may have occurred using tx_status
 ///
 /// This is the main entry point for hint resolution. Given a transaction hash,
@@ -204,7 +203,11 @@ mod tests {
         );
 
         // Should include blocks 178148635 and 178148637
-        let block_heights: Vec<u64> = resolved.receipt_blocks.iter().map(|r| r.block_height).collect();
+        let block_heights: Vec<u64> = resolved
+            .receipt_blocks
+            .iter()
+            .map(|r| r.block_height)
+            .collect();
         println!("Receipt blocks: {:?}", block_heights);
 
         assert!(

@@ -89,12 +89,7 @@ impl FastNearProvider {
     ) -> Result<TransfersResponse, Box<dyn Error + Send + Sync>> {
         let url = format!("{}/v0/transfers", self.base_url);
 
-        let response = self
-            .client
-            .post(&url)
-            .json(request)
-            .send()
-            .await?;
+        let response = self.client.post(&url).json(request).send().await?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -105,7 +100,6 @@ impl FastNearProvider {
         let transfers_response: TransfersResponse = response.json().await?;
         Ok(transfers_response)
     }
-
 }
 
 #[async_trait]
@@ -322,9 +316,7 @@ impl Transfer {
                 // asset_id can be "nep141:contract.near" or just "contract.near"
                 if let Some(asset_id) = &self.asset_id {
                     // Strip "nep141:" prefix if present
-                    let contract_id = asset_id
-                        .strip_prefix("nep141:")
-                        .unwrap_or(asset_id);
+                    let contract_id = asset_id.strip_prefix("nep141:").unwrap_or(asset_id);
                     contract_id.eq_ignore_ascii_case(token_id)
                 } else {
                     false
@@ -377,10 +369,7 @@ mod tests {
     fn test_fastnear_provider_new() {
         let provider = FastNearProvider::new();
         assert_eq!(provider.name(), "FastNear");
-        assert_eq!(
-            provider.base_url,
-            "https://transfers.main.fastnear.com"
-        );
+        assert_eq!(provider.base_url, "https://transfers.main.fastnear.com");
     }
 
     #[test]

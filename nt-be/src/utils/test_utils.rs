@@ -72,7 +72,7 @@ pub async fn init_test_state() -> AppState {
     // Create transfer hint service if enabled
     let transfer_hint_service = if env_vars.transfer_hints_enabled {
         use crate::handlers::balance_changes::transfer_hints::{
-            fastnear::FastNearProvider, TransferHintService,
+            TransferHintService, fastnear::FastNearProvider,
         };
         let provider = if let Some(base_url) = &env_vars.transfer_hints_base_url {
             FastNearProvider::with_base_url(base_url.clone())

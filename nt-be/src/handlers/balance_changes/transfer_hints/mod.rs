@@ -263,9 +263,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_hints_no_providers() {
         let service = TransferHintService::new();
-        let hints = service
-            .get_hints("test.near", "near", 1000, 2000)
-            .await;
+        let hints = service.get_hints("test.near", "near", 1000, 2000).await;
         assert!(hints.is_empty());
     }
 
@@ -299,9 +297,7 @@ mod tests {
         };
 
         let service = TransferHintService::new().with_provider(provider);
-        let hints = service
-            .get_hints("test.near", "near", 1000, 2000)
-            .await;
+        let hints = service.get_hints("test.near", "near", 1000, 2000).await;
 
         assert_eq!(hints.len(), 2);
         assert_eq!(hints[0].block_height, 1500);
@@ -348,9 +344,7 @@ mod tests {
         };
 
         let service = TransferHintService::new().with_provider(provider);
-        let hints = service
-            .get_hints("test.near", "near", 1000, 2000)
-            .await;
+        let hints = service.get_hints("test.near", "near", 1000, 2000).await;
 
         assert_eq!(hints.len(), 1);
         assert_eq!(hints[0].block_height, 1500);
@@ -440,9 +434,7 @@ mod tests {
         let service = TransferHintService::new()
             .with_provider(provider1)
             .with_provider(provider2);
-        let hints = service
-            .get_hints("test.near", "near", 1000, 2000)
-            .await;
+        let hints = service.get_hints("test.near", "near", 1000, 2000).await;
 
         // Should have 3 unique blocks (1500 deduplicated)
         assert_eq!(hints.len(), 3);

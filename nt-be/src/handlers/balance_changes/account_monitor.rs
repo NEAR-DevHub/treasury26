@@ -94,7 +94,16 @@ pub async fn run_monitor_cycle(
                 continue;
             }
 
-            match fill_gaps_with_hints(pool, network, account_id, token_id, up_to_block, hint_service).await {
+            match fill_gaps_with_hints(
+                pool,
+                network,
+                account_id,
+                token_id,
+                up_to_block,
+                hint_service,
+            )
+            .await
+            {
                 Ok(filled) => {
                     if !filled.is_empty() {
                         println!("    {}: Filled {} gaps", token_id, filled.len());
@@ -401,7 +410,13 @@ mod tests {
         let network = NetworkConfig::mainnet();
 
         // Should not error with no accounts
-        let result = run_monitor_cycle(&state.db_pool, &network, 177_000_000, state.transfer_hint_service.as_ref()).await;
+        let result = run_monitor_cycle(
+            &state.db_pool,
+            &network,
+            177_000_000,
+            state.transfer_hint_service.as_ref(),
+        )
+        .await;
         assert!(result.is_ok());
     }
 }

@@ -6,7 +6,7 @@
 mod common;
 
 use nt_be::handlers::balance_changes::transfer_hints::{
-    fastnear::FastNearProvider, TransferHintProvider, TransferHintService,
+    TransferHintProvider, TransferHintService, fastnear::FastNearProvider,
 };
 
 /// Test that FastNearProvider can query the real FastNear API
@@ -20,24 +20,19 @@ async fn test_fastnear_provider_real_api() {
     // Query a known account with transfers (petersalomonsen.near)
     // Use a wide block range (1M blocks ≈ 11 days)
     let hints = provider
-        .get_hints(
-            "petersalomonsen.near",
-            "near",
-            180_000_000,
-            182_000_000,
-        )
+        .get_hints("petersalomonsen.near", "near", 180_000_000, 182_000_000)
         .await
         .expect("FastNear API query should succeed");
 
-    println!("Found {} NEAR hints for petersalomonsen.near in block range 180M-182M", hints.len());
+    println!(
+        "Found {} NEAR hints for petersalomonsen.near in block range 180M-182M",
+        hints.len()
+    );
 
     for hint in hints.iter().take(5) {
         println!(
             "  Block {}: amount={:?}, counterparty={:?}, receipt={:?}",
-            hint.block_height,
-            hint.amount,
-            hint.counterparty,
-            hint.receipt_id
+            hint.block_height, hint.amount, hint.counterparty, hint.receipt_id
         );
     }
 
@@ -78,22 +73,22 @@ async fn test_fastnear_provider_ft_token() {
 async fn test_transfer_hint_service_with_fastnear() {
     common::load_test_env();
 
-    let service = TransferHintService::new()
-        .with_provider(FastNearProvider::new());
+    let service = TransferHintService::new().with_provider(FastNearProvider::new());
 
     // Verify service supports the right tokens
     assert!(service.supports_token("near"), "Should support NEAR");
-    assert!(service.supports_token("wrap.near"), "Should support FT tokens");
-    assert!(!service.supports_token("intents.near:nep141:wrap.near"), "Should NOT support intents tokens");
+    assert!(
+        service.supports_token("wrap.near"),
+        "Should support FT tokens"
+    );
+    assert!(
+        !service.supports_token("intents.near:nep141:wrap.near"),
+        "Should NOT support intents tokens"
+    );
 
     // Query for NEAR transfers with a wide range
     let hints = service
-        .get_hints(
-            "petersalomonsen.near",
-            "near",
-            180_000_000,
-            182_000_000,
-        )
+        .get_hints("petersalomonsen.near", "near", 180_000_000, 182_000_000)
         .await;
 
     println!("TransferHintService returned {} hints", hints.len());
@@ -110,8 +105,7 @@ async fn test_fastnear_unsupported_token() {
     // Intents tokens are not supported by FastNear
     assert!(!provider.supports_token("intents.near:nep141:wrap.near"));
 
-    let service = TransferHintService::new()
-        .with_provider(provider);
+    let service = TransferHintService::new().with_provider(provider);
 
     // Service should return empty for unsupported tokens
     let hints = service
@@ -139,12 +133,7 @@ async fn test_hint_verification_with_rpc() {
 
     // Get hints for a known account with wide range
     let hints = provider
-        .get_hints(
-            "petersalomonsen.near",
-            "near",
-            180_000_000,
-            182_000_000,
-        )
+        .get_hints("petersalomonsen.near", "near", 180_000_000, 182_000_000)
         .await
         .expect("FastNear API query should succeed");
 
@@ -199,7 +188,10 @@ async fn test_hint_verification_with_rpc() {
 
         // If hint is valid, balances should be different
         if balance_at_hint != balance_before {
-            println!("✓ Hint verified: balance changed at block {}", hint.block_height);
+            println!(
+                "✓ Hint verified: balance changed at block {}",
+                hint.block_height
+            );
         } else {
             println!("⚠ Balance unchanged at hint block - hint may not be the exact change block");
         }

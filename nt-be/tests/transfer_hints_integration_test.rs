@@ -15,10 +15,10 @@ mod common;
 use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 use nt_be::handlers::balance_changes::gap_filler::insert_snapshot_record;
 use nt_be::handlers::balance_changes::transfer_hints::{
-    fastnear::FastNearProvider, TransferHintService,
+    TransferHintService, fastnear::FastNearProvider,
 };
-use sqlx::types::BigDecimal;
 use sqlx::PgPool;
+use sqlx::types::BigDecimal;
 use std::time::Instant;
 
 const TEST_ACCOUNT: &str = "webassemblymusic-treasury.sputnik-dao.near";
@@ -143,7 +143,11 @@ async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
 
     println!("\n=== Results ===");
     println!("Hints provided: {}", hints.len());
-    println!("Hints resolved: {}/{}", resolved_hints.len(), hint_blocks.len());
+    println!(
+        "Hints resolved: {}/{}",
+        resolved_hints.len(),
+        hint_blocks.len()
+    );
     println!("Total duration: {:?}", duration);
 
     // Assert we detected transfers (the main goal)
@@ -154,14 +158,19 @@ async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
     );
 
     // Check if we detected the known transfer around block 178148637/178148638
-    let found_expected = collected_blocks.iter().any(|b| *b >= 178148635 && *b <= 178148640);
+    let found_expected = collected_blocks
+        .iter()
+        .any(|b| *b >= 178148635 && *b <= 178148640);
     assert!(
         found_expected,
         "Expected to detect transfer around block 178148637, collected: {:?}",
         collected_blocks
     );
 
-    println!("\n✓ Test passed! Detected {} transfers", transfer_changes.len());
+    println!(
+        "\n✓ Test passed! Detected {} transfers",
+        transfer_changes.len()
+    );
 
     Ok(())
 }
@@ -281,7 +290,11 @@ async fn test_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
 
     println!("\n=== Results ===");
     println!("Hints provided: {}", hints.len());
-    println!("Hints resolved: {}/{}", resolved_hints.len(), hint_blocks.len());
+    println!(
+        "Hints resolved: {}/{}",
+        resolved_hints.len(),
+        hint_blocks.len()
+    );
     println!("Total duration: {:?}", duration);
 
     // Assert we detected FT transfers
@@ -293,14 +306,19 @@ async fn test_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     );
 
     // Check if we detected the known FT transfer around block 178148636
-    let found_expected = collected_blocks.iter().any(|b| *b >= 178148630 && *b <= 178148640);
+    let found_expected = collected_blocks
+        .iter()
+        .any(|b| *b >= 178148630 && *b <= 178148640);
     assert!(
         found_expected,
         "Expected to detect FT transfer around block 178148636, collected: {:?}",
         collected_blocks
     );
 
-    println!("\n✓ Test passed! Detected {} FT transfers", transfer_changes.len());
+    println!(
+        "\n✓ Test passed! Detected {} FT transfers",
+        transfer_changes.len()
+    );
 
     Ok(())
 }
@@ -410,7 +428,10 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
         .iter()
         .filter(|(_, before, after)| before != after)
         .collect();
-    println!("✓ Found {} actual intents transfers", transfer_changes.len());
+    println!(
+        "✓ Found {} actual intents transfers",
+        transfer_changes.len()
+    );
 
     // Check hint resolution
     let resolved_hints: Vec<u64> = hint_blocks
@@ -421,7 +442,11 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
 
     println!("\n=== Results ===");
     println!("Hints provided: {}", hints.len());
-    println!("Hints resolved: {}/{}", resolved_hints.len(), hint_blocks.len());
+    println!(
+        "Hints resolved: {}/{}",
+        resolved_hints.len(),
+        hint_blocks.len()
+    );
     println!("Total duration: {:?}", duration);
 
     // For intents, transfers may fail to detect if receipt lookup doesn't work
@@ -431,11 +456,19 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
         println!("  Intents use MT (multi-token) standard which may require different handling");
     } else {
         // Check if we detected the known intents transfer around block 179943999
-        let found_expected = collected_blocks.iter().any(|b| *b >= 179943995 && *b <= 179944005);
+        let found_expected = collected_blocks
+            .iter()
+            .any(|b| *b >= 179943995 && *b <= 179944005);
         if found_expected {
-            println!("\n✓ Test passed! Detected {} intents transfers", transfer_changes.len());
+            println!(
+                "\n✓ Test passed! Detected {} intents transfers",
+                transfer_changes.len()
+            );
         } else {
-            println!("\n⚠ Detected {} transfers but not at expected block", transfer_changes.len());
+            println!(
+                "\n⚠ Detected {} transfers but not at expected block",
+                transfer_changes.len()
+            );
         }
     }
 
