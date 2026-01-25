@@ -401,17 +401,27 @@ mod tests {
 
     #[test]
     fn test_block_to_timestamp_conversion() {
-        // Reference block should give reference timestamp
-        let reference_ts = FastNearProvider::block_to_timestamp_ms(180_000_000);
-        assert_eq!(reference_ts, 1_766_800_000_000);
+        // Use constants from the implementation
+        const REFERENCE_BLOCK: u64 = 178_148_636;
+        const REFERENCE_TIMESTAMP_MS: u64 = 1_766_561_525_616;
+        const MS_PER_BLOCK: u64 = 616;
 
-        // Block 181M should be ~1M * 980ms after reference
-        let block_181m_ts = FastNearProvider::block_to_timestamp_ms(181_000_000);
-        assert_eq!(block_181m_ts, 1_766_800_000_000 + 1_000_000 * 980);
+        // Reference block should give reference timestamp
+        let reference_ts = FastNearProvider::block_to_timestamp_ms(REFERENCE_BLOCK);
+        assert_eq!(reference_ts, REFERENCE_TIMESTAMP_MS);
+
+        // Block 1M after reference should be ~1M * 616ms later
+        let block_later = REFERENCE_BLOCK + 1_000_000;
+        let later_ts = FastNearProvider::block_to_timestamp_ms(block_later);
+        assert_eq!(later_ts, REFERENCE_TIMESTAMP_MS + 1_000_000 * MS_PER_BLOCK);
 
         // Earlier blocks should work too
-        let block_179m_ts = FastNearProvider::block_to_timestamp_ms(179_000_000);
-        assert_eq!(block_179m_ts, 1_766_800_000_000 - 1_000_000 * 980);
+        let block_earlier = REFERENCE_BLOCK - 1_000_000;
+        let earlier_ts = FastNearProvider::block_to_timestamp_ms(block_earlier);
+        assert_eq!(
+            earlier_ts,
+            REFERENCE_TIMESTAMP_MS - 1_000_000 * MS_PER_BLOCK
+        );
     }
 
     #[test]

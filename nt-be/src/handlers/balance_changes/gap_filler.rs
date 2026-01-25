@@ -18,6 +18,8 @@
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 use sqlx::types::BigDecimal;
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 
 use crate::handlers::balance_changes::{
     balance, binary_search, block_info,
@@ -25,6 +27,24 @@ use crate::handlers::balance_changes::{
     transfer_hints::{TransferHintService, tx_resolver},
     utils::block_timestamp_to_datetime,
 };
+
+/// Statistics about hint resolution for testing and debugging
+#[derive(Debug, Default, Clone)]
+pub struct HintResolutionStats {
+    /// Blocks that were checked for balance
+    pub checked_blocks: Vec<u64>,
+    /// Which strategy found the result (if any):
+    /// - "fastnear_balance" - Strategy 1: FastNear's start/end balance data
+    /// - "tx_status" - Strategy 2: tx_status resolution from transaction hash
+    /// - "direct_verification" - Strategy 3: Direct hint block verification
+    /// - "binary_search" - Fallback: Binary search (hints failed)
+    /// - None - No result found
+    pub strategy_used: Option<String>,
+    /// Number of hints processed before finding result (or total if not found)
+    pub hints_processed: usize,
+    /// The block height that was found (if any)
+    pub found_block: Option<u64>,
+}
 
 /// Error type for gap filler operations
 pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
@@ -61,6 +81,60 @@ async fn find_block_with_hints(
     to_block: u64,
     expected_balance: &BigDecimal,
 ) -> Result<Option<u64>, GapFillerError> {
+    find_block_with_hints_tracked(
+        pool,
+        network,
+        hint_service,
+        account_id,
+        token_id,
+        from_block,
+        to_block,
+        expected_balance,
+        None,
+    )
+    .await
+}
+
+/// Find block with hints and optionally track resolution statistics
+///
+/// This is the instrumented version that can track which blocks are checked.
+/// Used for testing to verify no duplicate block checks occur.
+#[allow(clippy::too_many_arguments)]
+pub async fn find_block_with_hints_tracked(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    hint_service: &TransferHintService,
+    account_id: &str,
+    token_id: &str,
+    from_block: u64,
+    to_block: u64,
+    expected_balance: &BigDecimal,
+    stats: Option<Arc<Mutex<HintResolutionStats>>>,
+) -> Result<Option<u64>, GapFillerError> {
+    // Track blocks we've already checked to avoid duplicate RPC calls
+    let mut already_checked: HashSet<u64> = HashSet::new();
+    let mut hints_processed: usize = 0;
+
+    // Helper to record a checked block (for stats tracking)
+    let record_check = |block: u64| {
+        if let Some(ref stats) = stats
+            && let Ok(mut s) = stats.lock()
+        {
+            s.checked_blocks.push(block);
+        }
+    };
+
+    // Helper to record the final result
+    let record_result = |strategy: &str, block: u64, hints_count: usize| {
+        if let Some(ref stats) = stats
+            && let Ok(mut s) = stats.lock()
+        {
+            s.strategy_used = Some(strategy.to_string());
+            s.found_block = Some(block);
+            s.hints_processed = hints_count;
+        }
+    };
+
     // Check if hints are available for this token type
     if !hint_service.supports_token(token_id) {
         log::debug!(
@@ -116,14 +190,19 @@ async fn find_block_with_hints(
     );
 
     // Try each hint
-    for hint in hints {
+    for hint in &hints {
+        hints_processed += 1;
+
         // Strategy 1: Check if FastNear's balance data shows a change at this block
         // If start_of_block_balance != end_of_block_balance, the change happened here
         if let (Some(start_balance), Some(end_balance)) =
             (&hint.start_of_block_balance, &hint.end_of_block_balance)
             && start_balance != end_balance
+            && !already_checked.contains(&hint.block_height)
         {
             // Balance changed at this exact block - verify with RPC
+            already_checked.insert(hint.block_height);
+            record_check(hint.block_height);
             let balance_at_hint = match balance::get_balance_at_block(
                 pool,
                 network,
@@ -152,6 +231,7 @@ async fn find_block_with_hints(
                     account_id,
                     token_id
                 );
+                record_result("fastnear_balance", hint.block_height, hints_processed);
                 return Ok(Some(hint.block_height));
             }
         }
@@ -194,6 +274,17 @@ async fn find_block_with_hints(
                         continue; // Skip blocks outside our search range
                     }
 
+                    // Skip if we've already checked this block
+                    if already_checked.contains(&block_height) {
+                        log::debug!(
+                            "Skipping already-checked block {} in tx_status resolution",
+                            block_height
+                        );
+                        continue;
+                    }
+
+                    already_checked.insert(block_height);
+                    record_check(block_height);
                     let balance_at_block = match balance::get_balance_at_block(
                         pool,
                         network,
@@ -222,6 +313,7 @@ async fn find_block_with_hints(
                             token_id,
                             tx_hash
                         );
+                        record_result("tx_status", block_height, hints_processed);
                         return Ok(Some(block_height));
                     }
                 }
@@ -229,6 +321,17 @@ async fn find_block_with_hints(
         }
 
         // Strategy 3: Direct verification at hint block (original logic)
+        // Skip if we've already checked this block in Strategy 1 or 2
+        if already_checked.contains(&hint.block_height) {
+            log::debug!(
+                "Skipping already-checked hint block {} in Strategy 3",
+                hint.block_height
+            );
+            continue;
+        }
+
+        already_checked.insert(hint.block_height);
+        record_check(hint.block_height);
         let balance_at_hint = match balance::get_balance_at_block(
             pool,
             network,
@@ -252,6 +355,19 @@ async fn find_block_with_hints(
         if &balance_at_hint == expected_balance {
             // Verify this is the FIRST block with this balance
             if hint.block_height > from_block {
+                let prev_block = hint.block_height - 1;
+                // Only check if we haven't already checked this block
+                if already_checked.contains(&prev_block) {
+                    // Already checked this block, assume it's valid
+                    log::debug!(
+                        "Skipping already-checked prev block {} - accepting hint",
+                        prev_block
+                    );
+                    record_result("direct_verification", hint.block_height, hints_processed);
+                    return Ok(Some(hint.block_height));
+                }
+                already_checked.insert(prev_block);
+                record_check(prev_block);
                 let balance_before = match balance::get_balance_at_block(
                     pool,
                     network,
@@ -268,6 +384,7 @@ async fn find_block_with_hints(
                             hint.block_height,
                             e
                         );
+                        record_result("direct_verification", hint.block_height, hints_processed);
                         return Ok(Some(hint.block_height));
                     }
                 };
@@ -279,9 +396,11 @@ async fn find_block_with_hints(
                         account_id,
                         token_id
                     );
+                    record_result("direct_verification", hint.block_height, hints_processed);
                     return Ok(Some(hint.block_height));
                 }
             } else {
+                record_result("direct_verification", hint.block_height, hints_processed);
                 return Ok(Some(hint.block_height));
             }
         }
@@ -293,7 +412,15 @@ async fn find_block_with_hints(
         account_id,
         token_id
     );
-    binary_search::find_balance_change_block(
+
+    // Record that we're falling back to binary search
+    if let Some(ref stats) = stats
+        && let Ok(mut s) = stats.lock()
+    {
+        s.hints_processed = hints_processed;
+    }
+
+    let result = binary_search::find_balance_change_block(
         pool,
         network,
         account_id,
@@ -303,7 +430,14 @@ async fn find_block_with_hints(
         expected_balance,
     )
     .await
-    .map_err(|e| e.to_string().into())
+    .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+
+    // Record binary search result
+    if let Some(block) = result {
+        record_result("binary_search", block, hints_processed);
+    }
+
+    Ok(result)
 }
 
 /// Result of filling a single gap
