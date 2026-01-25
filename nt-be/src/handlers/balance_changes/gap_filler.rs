@@ -1,21 +1,19 @@
 //! Gap Filler Service
 //!
-//! This module implements the core gap filling logic using RPC-based binary search.
+//! This module implements the core gap filling logic using transaction resolution and RPC.
 //! It orchestrates the detection and filling of gaps in balance change chains.
 //!
 //! # Overview
 //!
 //! When a gap is detected (balance_after of record N doesn't match balance_before of record N+1),
 //! this service:
-//! 1. Optionally queries external transfer hint providers for known transfer blocks
-//! 2. Uses binary search to find the exact block where the balance changed
-//! 3. Queries the balance before and after at that block
-//! 4. Gets the block timestamp
-//! 5. Inserts a new balance_change record to fill the gap
+//! 1. Queries external transfer hint providers for known transfer blocks
+//! 2. Uses transaction hash from hints to resolve exact blocks via `experimental_tx_status`
+//! 3. Verifies the balance at resolved blocks matches expected
+//! 4. Falls back to binary search only if hints are unavailable
 //!
-//! When transfer hints are available, they can dramatically reduce the number of RPC calls
-//! required (from O(log n) binary search calls to 1 API call + a few verification calls).
-//! The RPC binary search remains available as a fallback when hints are unavailable or incorrect.
+//! When transfer hints are available with transaction hashes, the exact block is found using
+//! only 2-3 RPC calls (tx_status + block lookups) instead of O(log n) binary search calls.
 
 use near_api::NetworkConfig;
 use sqlx::PgPool;
@@ -24,20 +22,21 @@ use sqlx::types::BigDecimal;
 use crate::handlers::balance_changes::{
     balance, binary_search, block_info,
     gap_detector::{self, BalanceGap},
-    transfer_hints::TransferHintService,
+    transfer_hints::{tx_resolver, TransferHintService},
     utils::block_timestamp_to_datetime,
 };
 
 /// Error type for gap filler operations
 pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
 
-/// Find the block where balance changed using hints with binary search fallback
+/// Find the block where balance changed using hints with tx_status resolution
 ///
-/// This function:
+/// This function uses a multi-step approach to find the exact block:
 /// 1. Queries the hint service for transfer blocks in the range
-/// 2. For each hint, verifies the balance at that block matches expected
-/// 3. If a valid hint is found, returns that block
-/// 4. If no valid hints found, falls back to binary search
+/// 2. For each hint, checks if FastNear's balance data shows a change at that block
+/// 3. If balance unchanged at hint block, uses tx_status to find the actual block
+/// 4. Verifies the balance at resolved block matches expected
+/// 5. Falls back to binary search only if hints are unavailable
 ///
 /// # Arguments
 /// * `pool` - Database connection pool
@@ -107,7 +106,7 @@ async fn find_block_with_hints(
     }
 
     log::info!(
-        "Got {} hints for {}/{} in blocks {}-{}, verifying with RPC",
+        "Got {} hints for {}/{} in blocks {}-{}, resolving exact blocks",
         hints.len(),
         account_id,
         token_id,
@@ -115,27 +114,143 @@ async fn find_block_with_hints(
         to_block
     );
 
-    // Try each hint, looking for one where the balance matches
+    // Try each hint
     for hint in hints {
-        // Verify the balance at this block
-        let balance_at_hint =
-            match balance::get_balance_at_block(pool, network, account_id, token_id, hint.block_height)
+        // Strategy 1: Check if FastNear's balance data shows a change at this block
+        // If start_of_block_balance != end_of_block_balance, the change happened here
+        if let (Some(start_balance), Some(end_balance)) =
+            (&hint.start_of_block_balance, &hint.end_of_block_balance)
+        {
+            if start_balance != end_balance {
+                // Balance changed at this exact block - verify with RPC
+                let balance_at_hint = match balance::get_balance_at_block(
+                    pool,
+                    network,
+                    account_id,
+                    token_id,
+                    hint.block_height,
+                )
                 .await
-            {
-                Ok(b) => b,
-                Err(e) => {
-                    log::warn!(
-                        "Failed to verify hint at block {}: {} - trying next hint",
+                {
+                    Ok(b) => b,
+                    Err(e) => {
+                        log::warn!(
+                            "Failed to verify hint at block {}: {} - trying tx_status",
+                            hint.block_height,
+                            e
+                        );
+                        // Continue to tx_status resolution below
+                        BigDecimal::from(0)
+                    }
+                };
+
+                if &balance_at_hint == expected_balance {
+                    log::info!(
+                        "Hint verified via FastNear balance data: block {} for {}/{}",
                         hint.block_height,
-                        e
+                        account_id,
+                        token_id
                     );
-                    continue;
+                    return Ok(Some(hint.block_height));
                 }
-            };
+            }
+        }
+
+        // Strategy 2: Use tx_status to find exact block from transaction hash
+        if let Some(tx_hash) = &hint.transaction_hash {
+            log::debug!(
+                "Using tx_status to resolve transaction {} for {}/{}",
+                tx_hash,
+                account_id,
+                token_id
+            );
+
+            // Find blocks where receipts executed on our account
+            // The caller verifies actual balance changes using get_balance_at_block
+            let resolved_blocks =
+                match tx_resolver::find_balance_change_blocks(network, tx_hash, account_id).await {
+                    Ok(blocks) => blocks,
+                    Err(e) => {
+                        log::warn!(
+                            "Failed to resolve tx {}: {} - trying direct verification",
+                            tx_hash,
+                            e
+                        );
+                        vec![]
+                    }
+                };
+
+            if !resolved_blocks.is_empty() {
+                log::debug!(
+                    "tx_status resolved {} blocks for tx {}: {:?}",
+                    resolved_blocks.len(),
+                    tx_hash,
+                    resolved_blocks
+                );
+
+                // Check each resolved block for matching balance
+                for block_height in resolved_blocks {
+                    if block_height < from_block || block_height > to_block {
+                        continue; // Skip blocks outside our search range
+                    }
+
+                    let balance_at_block = match balance::get_balance_at_block(
+                        pool,
+                        network,
+                        account_id,
+                        token_id,
+                        block_height,
+                    )
+                    .await
+                    {
+                        Ok(b) => b,
+                        Err(e) => {
+                            log::warn!(
+                                "Failed to verify balance at resolved block {}: {}",
+                                block_height,
+                                e
+                            );
+                            continue;
+                        }
+                    };
+
+                    if &balance_at_block == expected_balance {
+                        log::info!(
+                            "tx_status resolved exact block {} for {}/{} (tx: {})",
+                            block_height,
+                            account_id,
+                            token_id,
+                            tx_hash
+                        );
+                        return Ok(Some(block_height));
+                    }
+                }
+            }
+        }
+
+        // Strategy 3: Direct verification at hint block (original logic)
+        let balance_at_hint = match balance::get_balance_at_block(
+            pool,
+            network,
+            account_id,
+            token_id,
+            hint.block_height,
+        )
+        .await
+        {
+            Ok(b) => b,
+            Err(e) => {
+                log::warn!(
+                    "Failed to verify hint at block {}: {} - trying next hint",
+                    hint.block_height,
+                    e
+                );
+                continue;
+            }
+        };
 
         if &balance_at_hint == expected_balance {
             // Verify this is the FIRST block with this balance
-            // Check the block before to ensure balance was different
             if hint.block_height > from_block {
                 let balance_before = match balance::get_balance_at_block(
                     pool,
@@ -153,58 +268,28 @@ async fn find_block_with_hints(
                             hint.block_height,
                             e
                         );
-                        // Accept the hint even if we can't verify the prior block
-                        log::info!(
-                            "Hint verified: balance {} at block {} for {}/{}",
-                            expected_balance,
-                            hint.block_height,
-                            account_id,
-                            token_id
-                        );
                         return Ok(Some(hint.block_height));
                     }
                 };
 
                 if &balance_before != expected_balance {
                     log::info!(
-                        "Hint verified: balance changed from {} to {} at block {} for {}/{}",
-                        balance_before,
-                        expected_balance,
+                        "Hint verified: balance changed at block {} for {}/{}",
                         hint.block_height,
                         account_id,
                         token_id
                     );
                     return Ok(Some(hint.block_height));
-                } else {
-                    log::debug!(
-                        "Hint at block {} has matching balance but it's not the first occurrence - trying next hint",
-                        hint.block_height
-                    );
                 }
             } else {
-                // hint.block_height == from_block, accept it
-                log::info!(
-                    "Hint verified: balance {} at block {} (start of range) for {}/{}",
-                    expected_balance,
-                    hint.block_height,
-                    account_id,
-                    token_id
-                );
                 return Ok(Some(hint.block_height));
             }
-        } else {
-            log::debug!(
-                "Hint at block {} has balance {} but expected {} - trying next hint",
-                hint.block_height,
-                balance_at_hint,
-                expected_balance
-            );
         }
     }
 
     // No valid hints found, fall back to binary search
     log::info!(
-        "No valid hints found for {}/{} - falling back to binary search",
+        "No valid hints resolved for {}/{} - falling back to binary search",
         account_id,
         token_id
     );

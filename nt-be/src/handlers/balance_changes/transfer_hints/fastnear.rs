@@ -60,15 +60,20 @@ impl FastNearProvider {
     /// NEAR mainnet produces ~1 block per second. This is a rough approximation
     /// used to convert block ranges to timestamp ranges for the FastNear API.
     ///
-    /// Based on actual data:
-    /// - Block 181868330 at timestamp 1768849824554 ms (Jan 2026)
-    /// - This gives approximately 1 block per 980ms
+    /// Based on actual data from FastNear API:
+    /// - Block 178148636 at timestamp 1766561525616 ms
+    /// - Block 182682617 at timestamp 1769354830050 ms
+    /// - This gives approximately 1 block per 616ms average
     fn block_to_timestamp_ms(block_height: u64) -> u64 {
-        // Use a reference point from recent mainnet data
-        // Block 180000000 is approximately at timestamp 1766800000000 ms
-        const REFERENCE_BLOCK: u64 = 180_000_000;
-        const REFERENCE_TIMESTAMP_MS: u64 = 1_766_800_000_000;
-        const MS_PER_BLOCK: u64 = 980; // ~980ms per block on average
+        // Use verified reference points from FastNear API
+        // Block 178148636 at timestamp 1766561525616 ms (from actual API response)
+        const REFERENCE_BLOCK: u64 = 178_148_636;
+        const REFERENCE_TIMESTAMP_MS: u64 = 1_766_561_525_616;
+
+        // Calculate ms per block from two known points:
+        // Block 182682617 at 1769354830050 ms
+        // Difference: 4533981 blocks, 2793304434 ms = ~616ms per block
+        const MS_PER_BLOCK: u64 = 616;
 
         if block_height >= REFERENCE_BLOCK {
             REFERENCE_TIMESTAMP_MS + ((block_height - REFERENCE_BLOCK) * MS_PER_BLOCK)
@@ -149,6 +154,14 @@ impl TransferHintProvider for FastNearProvider {
                         counterparty: transfer.counterparty().map(|s| s.to_string()),
                         receipt_id: transfer.receipt_id.clone(),
                         transaction_hash: transfer.transaction_id.clone(),
+                        start_of_block_balance: transfer
+                            .start_of_block_balance
+                            .as_ref()
+                            .and_then(|b| BigDecimal::from_str(b).ok()),
+                        end_of_block_balance: transfer
+                            .end_of_block_balance
+                            .as_ref()
+                            .and_then(|b| BigDecimal::from_str(b).ok()),
                     };
                     all_hints.push(hint);
                 }
@@ -280,6 +293,10 @@ struct Transfer {
     asset_id: Option<String>,
     /// Transfer amount as string
     amount: Option<String>,
+    /// Balance at start of block (raw amount as string)
+    start_of_block_balance: Option<String>,
+    /// Balance at end of block (raw amount as string)
+    end_of_block_balance: Option<String>,
 }
 
 impl Transfer {
@@ -334,6 +351,8 @@ mod tests {
             asset_type: "Near".to_string(),
             asset_id: None,
             amount: Some("1000000000000000000000000".to_string()),
+            start_of_block_balance: Some("5000000000000000000000000".to_string()),
+            end_of_block_balance: Some("6000000000000000000000000".to_string()),
         }
     }
 
@@ -349,6 +368,8 @@ mod tests {
             asset_type: "Ft".to_string(),
             asset_id: Some(format!("nep141:{}", contract)),
             amount: Some("1000000".to_string()),
+            start_of_block_balance: Some("5000000".to_string()),
+            end_of_block_balance: Some("6000000".to_string()),
         }
     }
 

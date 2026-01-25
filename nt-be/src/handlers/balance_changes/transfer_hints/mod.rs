@@ -19,6 +19,7 @@
 //! - `"intents.near:nep141:token"` - NEAR Intents tokens (future support)
 
 pub mod fastnear;
+pub mod tx_resolver;
 
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
@@ -37,8 +38,12 @@ pub struct TransferHint {
     pub counterparty: Option<String>,
     /// Receipt ID for the transfer (optional)
     pub receipt_id: Option<String>,
-    /// Transaction hash (optional)
+    /// Transaction hash (optional) - used for tx_status lookup
     pub transaction_hash: Option<String>,
+    /// Balance at start of block (from FastNear) - if different from end, change happened at this block
+    pub start_of_block_balance: Option<BigDecimal>,
+    /// Balance at end of block (from FastNear)
+    pub end_of_block_balance: Option<BigDecimal>,
 }
 
 /// Provider that can suggest block heights where transfers occurred
@@ -277,6 +282,8 @@ mod tests {
                     counterparty: Some("alice.near".to_string()),
                     receipt_id: None,
                     transaction_hash: None,
+                    start_of_block_balance: None,
+                    end_of_block_balance: None,
                 },
                 TransferHint {
                     block_height: 1700,
@@ -285,6 +292,8 @@ mod tests {
                     counterparty: Some("bob.near".to_string()),
                     receipt_id: None,
                     transaction_hash: None,
+                    start_of_block_balance: None,
+                    end_of_block_balance: None,
                 },
             ],
         };
@@ -312,6 +321,8 @@ mod tests {
                     counterparty: None,
                     receipt_id: None,
                     transaction_hash: None,
+                    start_of_block_balance: None,
+                    end_of_block_balance: None,
                 },
                 TransferHint {
                     block_height: 1500,
@@ -320,6 +331,8 @@ mod tests {
                     counterparty: None,
                     receipt_id: None,
                     transaction_hash: None,
+                    start_of_block_balance: None,
+                    end_of_block_balance: None,
                 },
                 TransferHint {
                     block_height: 2500,
@@ -328,6 +341,8 @@ mod tests {
                     counterparty: None,
                     receipt_id: None,
                     transaction_hash: None,
+                    start_of_block_balance: None,
+                    end_of_block_balance: None,
                 },
             ],
         };
@@ -353,6 +368,8 @@ mod tests {
                 counterparty: None,
                 receipt_id: None,
                 transaction_hash: None,
+                start_of_block_balance: None,
+                end_of_block_balance: None,
             }],
         };
 
@@ -377,6 +394,8 @@ mod tests {
                     counterparty: Some("alice.near".to_string()),
                     receipt_id: None,
                     transaction_hash: None,
+                    start_of_block_balance: None,
+                    end_of_block_balance: None,
                 },
                 TransferHint {
                     block_height: 1600,
@@ -385,6 +404,8 @@ mod tests {
                     counterparty: None,
                     receipt_id: None,
                     transaction_hash: None,
+                    start_of_block_balance: None,
+                    end_of_block_balance: None,
                 },
             ],
         };
@@ -400,6 +421,8 @@ mod tests {
                     counterparty: Some("bob.near".to_string()),
                     receipt_id: None,
                     transaction_hash: None,
+                    start_of_block_balance: None,
+                    end_of_block_balance: None,
                 },
                 TransferHint {
                     block_height: 1700,
@@ -408,6 +431,8 @@ mod tests {
                     counterparty: None,
                     receipt_id: None,
                     transaction_hash: None,
+                    start_of_block_balance: None,
+                    end_of_block_balance: None,
                 },
             ],
         };
