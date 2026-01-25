@@ -134,21 +134,23 @@ async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
         println!("  Block {}: {} NEAR change", block, change);
     }
 
-    // Check hint resolution
-    let resolved_hints: Vec<u64> = hint_blocks
-        .iter()
-        .filter(|h| collected_blocks.contains(&(**h as i64)))
-        .copied()
+    // Check that hints provided tx_hash (enables fast resolution without binary search)
+    let hints_with_tx_hash: Vec<_> = hints.iter()
+        .filter(|h| h.transaction_hash.is_some())
         .collect();
 
     println!("\n=== Results ===");
     println!("Hints provided: {}", hints.len());
-    println!(
-        "Hints resolved: {}/{}",
-        resolved_hints.len(),
-        hint_blocks.len()
-    );
+    println!("Hints with tx_hash: {}/{} (enables fast tx_status resolution)",
+        hints_with_tx_hash.len(), hints.len());
+    println!("Balance changes found: {}", transfer_changes.len());
     println!("Total duration: {:?}", duration);
+
+    // Assert hints have tx_hash - this proves we can use tx_status instead of binary search
+    assert!(
+        !hints_with_tx_hash.is_empty(),
+        "Expected hints to have transaction hashes for fast resolution"
+    );
 
     // Assert we detected transfers (the main goal)
     assert!(
@@ -281,21 +283,23 @@ async fn test_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
         .collect();
     println!("✓ Found {} actual FT transfers", transfer_changes.len());
 
-    // Check hint resolution
-    let resolved_hints: Vec<u64> = hint_blocks
-        .iter()
-        .filter(|h| collected_blocks.contains(&(**h as i64)))
-        .copied()
+    // Check that hints provided tx_hash (enables fast resolution without binary search)
+    let hints_with_tx_hash: Vec<_> = hints.iter()
+        .filter(|h| h.transaction_hash.is_some())
         .collect();
 
     println!("\n=== Results ===");
     println!("Hints provided: {}", hints.len());
-    println!(
-        "Hints resolved: {}/{}",
-        resolved_hints.len(),
-        hint_blocks.len()
-    );
+    println!("Hints with tx_hash: {}/{} (enables fast tx_status resolution)",
+        hints_with_tx_hash.len(), hints.len());
+    println!("Balance changes found: {}", transfer_changes.len());
     println!("Total duration: {:?}", duration);
+
+    // Assert hints have tx_hash - this proves we can use tx_status instead of binary search
+    assert!(
+        !hints_with_tx_hash.is_empty(),
+        "Expected hints to have transaction hashes for fast resolution"
+    );
 
     // Assert we detected FT transfers
     assert!(
@@ -383,11 +387,7 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
         .get_hints(account_id, token_id, seed_block, up_to_block as u64)
         .await;
 
-    let hint_blocks: Vec<u64> = hints.iter().map(|h| h.block_height).collect();
-    println!("✓ FastNear returned {} intents transfer hints", hints.len());
-    if !hint_blocks.is_empty() {
-        println!("  Hint blocks: {:?}", hint_blocks);
-    }
+    println!("✓ FastNear returned {} intents transfer hints (expected: 0)", hints.len());
 
     // Run monitor cycle
     println!("\n=== Running Monitor Cycle ===");
@@ -433,21 +433,17 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
         transfer_changes.len()
     );
 
-    // Check hint resolution
-    let resolved_hints: Vec<u64> = hint_blocks
-        .iter()
-        .filter(|h| collected_blocks.contains(&(**h as i64)))
-        .copied()
-        .collect();
-
     println!("\n=== Results ===");
-    println!("Hints provided: {}", hints.len());
-    println!(
-        "Hints resolved: {}/{}",
-        resolved_hints.len(),
-        hint_blocks.len()
-    );
+    println!("Hints provided: {} (FastNear doesn't support intents tokens yet)", hints.len());
+    println!("Balance changes found: {}", transfer_changes.len());
     println!("Total duration: {:?}", duration);
+
+    // FastNear doesn't support intents tokens, so hints should be empty
+    // This means we fall back to binary search for intents
+    assert!(
+        hints.is_empty(),
+        "Expected no hints for intents tokens (FastNear doesn't support them yet)"
+    );
 
     // For intents, transfers may fail to detect if receipt lookup doesn't work
     // This is a known limitation - intents use MT (multi-token) standard
@@ -473,7 +469,7 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     }
 
     // Test passes as long as monitor cycle completed without panic
-    println!("\n✓ Intents test completed successfully");
+    println!("\n✓ Intents test completed successfully (used binary search fallback)");
 
     Ok(())
 }
