@@ -50,6 +50,7 @@ pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
 ///
 /// # Returns
 /// `Some(block_height)` if found, `None` if not found in range
+#[allow(clippy::too_many_arguments)]
 async fn find_block_with_hints(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -120,39 +121,38 @@ async fn find_block_with_hints(
         // If start_of_block_balance != end_of_block_balance, the change happened here
         if let (Some(start_balance), Some(end_balance)) =
             (&hint.start_of_block_balance, &hint.end_of_block_balance)
+            && start_balance != end_balance
         {
-            if start_balance != end_balance {
-                // Balance changed at this exact block - verify with RPC
-                let balance_at_hint = match balance::get_balance_at_block(
-                    pool,
-                    network,
-                    account_id,
-                    token_id,
-                    hint.block_height,
-                )
-                .await
-                {
-                    Ok(b) => b,
-                    Err(e) => {
-                        log::warn!(
-                            "Failed to verify hint at block {}: {} - trying tx_status",
-                            hint.block_height,
-                            e
-                        );
-                        // Continue to tx_status resolution below
-                        BigDecimal::from(0)
-                    }
-                };
-
-                if &balance_at_hint == expected_balance {
-                    log::info!(
-                        "Hint verified via FastNear balance data: block {} for {}/{}",
+            // Balance changed at this exact block - verify with RPC
+            let balance_at_hint = match balance::get_balance_at_block(
+                pool,
+                network,
+                account_id,
+                token_id,
+                hint.block_height,
+            )
+            .await
+            {
+                Ok(b) => b,
+                Err(e) => {
+                    log::warn!(
+                        "Failed to verify hint at block {}: {} - trying tx_status",
                         hint.block_height,
-                        account_id,
-                        token_id
+                        e
                     );
-                    return Ok(Some(hint.block_height));
+                    // Continue to tx_status resolution below
+                    BigDecimal::from(0)
                 }
+            };
+
+            if &balance_at_hint == expected_balance {
+                log::info!(
+                    "Hint verified via FastNear balance data: block {} for {}/{}",
+                    hint.block_height,
+                    account_id,
+                    token_id
+                );
+                return Ok(Some(hint.block_height));
             }
         }
 

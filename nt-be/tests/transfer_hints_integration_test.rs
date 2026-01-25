@@ -135,14 +135,18 @@ async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
     }
 
     // Check that hints provided tx_hash (enables fast resolution without binary search)
-    let hints_with_tx_hash: Vec<_> = hints.iter()
+    let hints_with_tx_hash: Vec<_> = hints
+        .iter()
         .filter(|h| h.transaction_hash.is_some())
         .collect();
 
     println!("\n=== Results ===");
     println!("Hints provided: {}", hints.len());
-    println!("Hints with tx_hash: {}/{} (enables fast tx_status resolution)",
-        hints_with_tx_hash.len(), hints.len());
+    println!(
+        "Hints with tx_hash: {}/{} (enables fast tx_status resolution)",
+        hints_with_tx_hash.len(),
+        hints.len()
+    );
     println!("Balance changes found: {}", transfer_changes.len());
     println!("Total duration: {:?}", duration);
 
@@ -284,14 +288,18 @@ async fn test_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     println!("✓ Found {} actual FT transfers", transfer_changes.len());
 
     // Check that hints provided tx_hash (enables fast resolution without binary search)
-    let hints_with_tx_hash: Vec<_> = hints.iter()
+    let hints_with_tx_hash: Vec<_> = hints
+        .iter()
         .filter(|h| h.transaction_hash.is_some())
         .collect();
 
     println!("\n=== Results ===");
     println!("Hints provided: {}", hints.len());
-    println!("Hints with tx_hash: {}/{} (enables fast tx_status resolution)",
-        hints_with_tx_hash.len(), hints.len());
+    println!(
+        "Hints with tx_hash: {}/{} (enables fast tx_status resolution)",
+        hints_with_tx_hash.len(),
+        hints.len()
+    );
     println!("Balance changes found: {}", transfer_changes.len());
     println!("Total duration: {:?}", duration);
 
@@ -387,7 +395,10 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
         .get_hints(account_id, token_id, seed_block, up_to_block as u64)
         .await;
 
-    println!("✓ FastNear returned {} intents transfer hints (expected: 0)", hints.len());
+    println!(
+        "✓ FastNear returned {} intents transfer hints (expected: 0)",
+        hints.len()
+    );
 
     // Run monitor cycle
     println!("\n=== Running Monitor Cycle ===");
@@ -434,7 +445,10 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     );
 
     println!("\n=== Results ===");
-    println!("Hints provided: {} (FastNear doesn't support intents tokens yet)", hints.len());
+    println!(
+        "Hints provided: {} (FastNear doesn't support intents tokens yet)",
+        hints.len()
+    );
     println!("Balance changes found: {}", transfer_changes.len());
     println!("Total duration: {:?}", duration);
 
