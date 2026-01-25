@@ -371,7 +371,8 @@ class LedgerWallet {
 
     try {
       return JSON.parse(accountsJson);
-    } catch {
+    } catch (error) {
+      console.warn("Failed to parse stored accounts:", error);
       return [];
     }
   }
@@ -411,7 +412,7 @@ class LedgerWallet {
       if (action.type === "FunctionCall") {
         return transactions.functionCall(
           action.params.methodName,
-          action.params.args || {},
+          JSON.stringify(action.params.args || {}),
           BigInt(action.params.gas || "30000000000000"),
           BigInt(action.params.deposit || "0")
         );
@@ -524,10 +525,11 @@ class LedgerWallet {
     
     // Create payload: message length (4 bytes) + message + recipient length (4 bytes) + recipient + nonce (32 bytes)
     const payload = new Uint8Array(4 + messageBuffer.length + 4 + recipientBuffer.length + nonce.length);
+    const dataView = new DataView(payload.buffer);
     let offset = 0;
     
     // Write message length
-    new DataView(payload.buffer).setUint32(offset, messageBuffer.length, true);
+    dataView.setUint32(offset, messageBuffer.length, true);
     offset += 4;
     
     // Write message
@@ -535,7 +537,7 @@ class LedgerWallet {
     offset += messageBuffer.length;
     
     // Write recipient length
-    new DataView(payload.buffer).setUint32(offset, recipientBuffer.length, true);
+    dataView.setUint32(offset, recipientBuffer.length, true);
     offset += 4;
     
     // Write recipient
