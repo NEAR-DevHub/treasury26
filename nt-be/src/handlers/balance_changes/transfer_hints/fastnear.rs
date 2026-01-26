@@ -439,12 +439,8 @@ mod tests {
         // Its actual timestamp should be retrieved from RPC
         let timestamp_ms = provider.get_block_timestamp_ms(178148636).await.unwrap();
 
-        // Block 178148636 has a specific timestamp (verify it's reasonable)
-        // The timestamp should be around 2025-12 based on the block height
-        assert!(timestamp_ms > 1_700_000_000_000); // After year 2023
-        assert!(timestamp_ms < 1_900_000_000_000); // Before year 2030
-
-        println!("Block 178148636 timestamp: {} ms", timestamp_ms);
+        // Block 178148636 has a fixed timestamp that will never change
+        assert_eq!(timestamp_ms, 1766561525616);
     }
 
     #[test]

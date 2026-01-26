@@ -404,6 +404,32 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
 
     println!("✓ FastNear returned {} intents transfer hints", hints.len());
 
+    // Assert hints are provided
+    assert!(
+        !hints.is_empty(),
+        "Expected FastNear to return hints for intents token"
+    );
+
+    // Find the specific hint at the known transfer block
+    let expected_block = 179943999u64;
+    let target_hint = hints.iter().find(|h| h.block_height == expected_block);
+    assert!(
+        target_hint.is_some(),
+        "Expected to find hint at block {}",
+        expected_block
+    );
+
+    let hint = target_hint.unwrap();
+    println!("  Hint at block {}: {:?}", expected_block, hint);
+
+    // Assert hint properties
+    assert_eq!(hint.block_height, expected_block);
+    assert!(
+        hint.transaction_hash.is_some(),
+        "Expected hint to have transaction hash"
+    );
+    assert!(hint.amount.is_some(), "Expected hint to have amount");
+
     // Run monitor cycle
     println!("\n=== Running Monitor Cycle ===");
     let start = Instant::now();
@@ -449,45 +475,27 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     );
 
     println!("\n=== Results ===");
-    println!(
-        "Hints provided: {} (FastNear doesn't support intents tokens yet)",
-        hints.len()
-    );
+    println!("Hints provided: {}", hints.len());
     println!("Balance changes found: {}", transfer_changes.len());
     println!("Total duration: {:?}", duration);
 
-    // FastNear doesn't support intents tokens, so hints should be empty
-    // This means we fall back to binary search for intents
+    // Assert transfer changes were found
     assert!(
-        hints.is_empty(),
-        "Expected no hints for intents tokens (FastNear doesn't support them yet)"
+        !transfer_changes.is_empty(),
+        "Expected to find intents transfer changes"
     );
 
-    // For intents, transfers may fail to detect if receipt lookup doesn't work
-    // This is a known limitation - intents use MT (multi-token) standard
-    if transfer_changes.is_empty() {
-        println!("\n⚠ No intents transfers detected - this may be a known limitation");
-        println!("  Intents use MT (multi-token) standard which may require different handling");
-    } else {
-        // Check if we detected the known intents transfer around block 179943999
-        let found_expected = collected_blocks
-            .iter()
-            .any(|b| *b >= 179943995 && *b <= 179944005);
-        if found_expected {
-            println!(
-                "\n✓ Test passed! Detected {} intents transfers",
-                transfer_changes.len()
-            );
-        } else {
-            println!(
-                "\n⚠ Detected {} transfers but not at expected block",
-                transfer_changes.len()
-            );
-        }
-    }
+    // Assert the exact transfer at block 179943999
+    let expected_transfer = changes
+        .iter()
+        .find(|(block, _, _)| *block == expected_block as i64);
+    assert!(
+        expected_transfer.is_some(),
+        "Expected to find balance change at block {}",
+        expected_block
+    );
 
-    // Test passes as long as monitor cycle completed without panic
-    println!("\n✓ Intents test completed successfully (used binary search fallback)");
+    println!("\n✓ Intents test passed!");
 
     Ok(())
 }
@@ -988,7 +996,9 @@ async fn test_hints_strategy_is_used(pool: PgPool) -> sqlx::Result<()> {
     println!("Blocks checked: {:?}", stats_data.checked_blocks);
 
     // We're searching for a balance from a hint, so we expect to find it
-    if let Some(found_block) = result {
+    if let Some(hint_result) = result {
+        let found_block = hint_result.block_height;
+
         // We found a block - verify hints were used
         assert!(
             stats_data.strategy_used.is_some(),

@@ -24,7 +24,7 @@ use std::sync::{Arc, Mutex};
 use crate::handlers::balance_changes::{
     balance, binary_search, block_info,
     gap_detector::{self, BalanceGap},
-    transfer_hints::{TransferHintService, tx_resolver},
+    transfer_hints::{TransferHint, TransferHintService, tx_resolver},
     utils::block_timestamp_to_datetime,
 };
 
@@ -49,6 +49,15 @@ pub struct HintResolutionStats {
 /// Error type for gap filler operations
 pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
 
+/// Result from hint-based block finding, includes the verified hint if available
+#[derive(Debug, Clone)]
+pub struct HintBlockResult {
+    /// The block height where balance changed
+    pub block_height: u64,
+    /// The hint that was verified (if any), contains counterparty and tx info
+    pub hint: Option<TransferHint>,
+}
+
 /// Find the block where balance changed using hints with tx_status resolution
 ///
 /// This function uses a multi-step approach to find the exact block:
@@ -69,7 +78,7 @@ pub type GapFillerError = Box<dyn std::error::Error + Send + Sync>;
 /// * `expected_balance` - Balance we're looking for
 ///
 /// # Returns
-/// `Some(block_height)` if found, `None` if not found in range
+/// `Some(HintBlockResult)` if found, `None` if not found in range
 #[allow(clippy::too_many_arguments)]
 async fn find_block_with_hints(
     pool: &PgPool,
@@ -80,7 +89,7 @@ async fn find_block_with_hints(
     from_block: u64,
     to_block: u64,
     expected_balance: &BigDecimal,
-) -> Result<Option<u64>, GapFillerError> {
+) -> Result<Option<HintBlockResult>, GapFillerError> {
     find_block_with_hints_tracked(
         pool,
         network,
@@ -110,7 +119,7 @@ pub async fn find_block_with_hints_tracked(
     to_block: u64,
     expected_balance: &BigDecimal,
     stats: Option<Arc<Mutex<HintResolutionStats>>>,
-) -> Result<Option<u64>, GapFillerError> {
+) -> Result<Option<HintBlockResult>, GapFillerError> {
     // Track blocks we've already checked to avoid duplicate RPC calls
     let mut already_checked: HashSet<u64> = HashSet::new();
     let mut hints_processed: usize = 0;
@@ -151,6 +160,12 @@ pub async fn find_block_with_hints_tracked(
             expected_balance,
         )
         .await
+        .map(|opt| {
+            opt.map(|block| HintBlockResult {
+                block_height: block,
+                hint: None,
+            })
+        })
         .map_err(|e| e.to_string().into());
     }
 
@@ -177,6 +192,12 @@ pub async fn find_block_with_hints_tracked(
             expected_balance,
         )
         .await
+        .map(|opt| {
+            opt.map(|block| HintBlockResult {
+                block_height: block,
+                hint: None,
+            })
+        })
         .map_err(|e| e.to_string().into());
     }
 
@@ -232,7 +253,10 @@ pub async fn find_block_with_hints_tracked(
                     token_id
                 );
                 record_result("fastnear_balance", hint.block_height, hints_processed);
-                return Ok(Some(hint.block_height));
+                return Ok(Some(HintBlockResult {
+                    block_height: hint.block_height,
+                    hint: Some(hint.clone()),
+                }));
             }
         }
 
@@ -314,7 +338,10 @@ pub async fn find_block_with_hints_tracked(
                             tx_hash
                         );
                         record_result("tx_status", block_height, hints_processed);
-                        return Ok(Some(block_height));
+                        return Ok(Some(HintBlockResult {
+                            block_height,
+                            hint: Some(hint.clone()),
+                        }));
                     }
                 }
             }
@@ -364,7 +391,10 @@ pub async fn find_block_with_hints_tracked(
                         prev_block
                     );
                     record_result("direct_verification", hint.block_height, hints_processed);
-                    return Ok(Some(hint.block_height));
+                    return Ok(Some(HintBlockResult {
+                        block_height: hint.block_height,
+                        hint: Some(hint.clone()),
+                    }));
                 }
                 already_checked.insert(prev_block);
                 record_check(prev_block);
@@ -385,7 +415,10 @@ pub async fn find_block_with_hints_tracked(
                             e
                         );
                         record_result("direct_verification", hint.block_height, hints_processed);
-                        return Ok(Some(hint.block_height));
+                        return Ok(Some(HintBlockResult {
+                            block_height: hint.block_height,
+                            hint: Some(hint.clone()),
+                        }));
                     }
                 };
 
@@ -397,11 +430,17 @@ pub async fn find_block_with_hints_tracked(
                         token_id
                     );
                     record_result("direct_verification", hint.block_height, hints_processed);
-                    return Ok(Some(hint.block_height));
+                    return Ok(Some(HintBlockResult {
+                        block_height: hint.block_height,
+                        hint: Some(hint.clone()),
+                    }));
                 }
             } else {
                 record_result("direct_verification", hint.block_height, hints_processed);
-                return Ok(Some(hint.block_height));
+                return Ok(Some(HintBlockResult {
+                    block_height: hint.block_height,
+                    hint: Some(hint.clone()),
+                }));
             }
         }
     }
@@ -437,7 +476,10 @@ pub async fn find_block_with_hints_tracked(
         record_result("binary_search", block, hints_processed);
     }
 
-    Ok(result)
+    Ok(result.map(|block| HintBlockResult {
+        block_height: block,
+        hint: None,
+    }))
 }
 
 /// Result of filling a single gap
@@ -498,7 +540,7 @@ pub async fn fill_gap_with_hints(
     let search_end_block = (gap.end_block - 1) as u64;
 
     // Try hints first if available
-    let block_height = if let Some(hints) = hint_service {
+    let hint_result = if let Some(hints) = hint_service {
         find_block_with_hints(
             pool,
             network,
@@ -522,16 +564,25 @@ pub async fn fill_gap_with_hints(
             &gap.expected_balance_before,
         )
         .await
+        .map(|opt| {
+            opt.map(|block| HintBlockResult {
+                block_height: block,
+                hint: None,
+            })
+        })
         .map_err(|e| -> GapFillerError { e.to_string().into() })?
     };
 
-    let block_height = block_height.ok_or_else(|| -> GapFillerError {
+    let hint_result = hint_result.ok_or_else(|| -> GapFillerError {
         format!(
             "Could not find balance change block for gap: {} {} [{}-{}]",
             gap.account_id, gap.token_id, gap.start_block, gap.end_block
         )
         .into()
     })?;
+
+    let block_height = hint_result.block_height;
+    let hint = hint_result.hint;
 
     // Try to insert the balance change record with receipts
     match insert_balance_change_record(pool, network, &gap.account_id, &gap.token_id, block_height)
@@ -544,15 +595,38 @@ pub async fn fill_gap_with_hints(
         )
         .into()),
         Err(e) if e.to_string().contains("No receipt found") => {
-            // Balance changed but no receipts found
-            // Try to insert SNAPSHOT (for cases where balance existed before but didn't change at this block)
+            // Balance changed but no receipts found on this account
+            // This happens for intents tokens where receipts execute on intents.near
             log::warn!(
-                "No receipts found at block {} for {}/{} - attempting to insert SNAPSHOT or UNKNOWN record",
+                "No receipts found at block {} for {}/{} - checking for hint data",
                 block_height,
                 gap.account_id,
                 gap.token_id
             );
 
+            // If we have a hint with counterparty, use it
+            if let Some(ref hint) = hint
+                && hint.counterparty.is_some()
+            {
+                log::info!(
+                    "Using hint counterparty {} for {}/{} at block {}",
+                    hint.counterparty.as_ref().unwrap(),
+                    gap.account_id,
+                    gap.token_id,
+                    block_height
+                );
+                return insert_balance_change_with_hint(
+                    pool,
+                    network,
+                    &gap.account_id,
+                    &gap.token_id,
+                    block_height,
+                    hint,
+                )
+                .await;
+            }
+
+            // No hint counterparty available, try SNAPSHOT or UNKNOWN
             match insert_snapshot_record(
                 pool,
                 network,
@@ -575,7 +649,7 @@ pub async fn fill_gap_with_hints(
                     // SNAPSHOT insertion failed because balance actually changed
                     // Insert a record with UNKNOWN counterparty instead
                     log::warn!(
-                        "Balance changed at block {} for {}/{} but no receipts found - inserting UNKNOWN counterparty record",
+                        "Balance changed at block {} for {}/{} but no receipts or hint counterparty found - inserting UNKNOWN counterparty record",
                         block_height,
                         gap.account_id,
                         gap.token_id
@@ -690,8 +764,15 @@ pub async fn fill_gaps_with_hints(
 
     // --- Fill gap to present (virtual end boundary) ---
     // Check if current balance differs from the latest record's balance_after
-    if let Some(gap_record) =
-        fill_gap_to_present(pool, network, account_id, token_id, up_to_block as u64).await?
+    if let Some(gap_record) = fill_gap_to_present(
+        pool,
+        network,
+        account_id,
+        token_id,
+        up_to_block as u64,
+        hint_service,
+    )
+    .await?
     {
         filled.push(gap_record);
     }
@@ -864,6 +945,7 @@ async fn fill_gap_to_present(
     account_id: &str,
     token_id: &str,
     up_to_block: u64,
+    hint_service: Option<&TransferHintService>,
 ) -> Result<Option<FilledGap>, GapFillerError> {
     // Get the latest record
     let latest_record = sqlx::query!(
@@ -911,32 +993,96 @@ async fn fill_gap_to_present(
         up_to_block
     );
 
-    // Binary search to find when the balance changed
-    let change_block = binary_search::find_balance_change_block(
-        pool,
-        network,
-        account_id,
-        token_id,
-        (latest.block_height + 1) as u64, // Start after the latest record
-        up_to_block,
-        &current_balance,
-    )
-    .await
-    .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+    let from_block = (latest.block_height + 1) as u64;
 
-    let Some(block_height) = change_block else {
+    // Try hints first if available, otherwise use binary search
+    let hint_result = if let Some(hints) = hint_service {
+        find_block_with_hints(
+            pool,
+            network,
+            hints,
+            account_id,
+            token_id,
+            from_block,
+            up_to_block,
+            &current_balance,
+        )
+        .await?
+    } else {
+        binary_search::find_balance_change_block(
+            pool,
+            network,
+            account_id,
+            token_id,
+            from_block,
+            up_to_block,
+            &current_balance,
+        )
+        .await
+        .map(|opt| {
+            opt.map(|block| HintBlockResult {
+                block_height: block,
+                hint: None,
+            })
+        })
+        .map_err(|e| -> GapFillerError { e.to_string().into() })?
+    };
+
+    let Some(hint_result) = hint_result else {
         log::warn!(
             "Could not find balance change block for gap to present: {}/{} [{}-{}]",
             account_id,
             token_id,
-            latest.block_height + 1,
+            from_block,
             up_to_block
         );
         return Ok(None);
     };
 
-    // Insert the new record
-    insert_balance_change_record(pool, network, account_id, token_id, block_height).await
+    let block_height = hint_result.block_height;
+
+    // Try to insert the balance change record with receipts
+    match insert_balance_change_record(pool, network, account_id, token_id, block_height).await {
+        Ok(Some(result)) => Ok(Some(result)),
+        Ok(None) => Ok(None),
+        Err(e) if e.to_string().contains("No receipt found") => {
+            // No receipts found - check if we have hint counterparty
+            if let Some(ref hint) = hint_result.hint
+                && hint.counterparty.is_some()
+            {
+                log::info!(
+                    "Using hint counterparty for gap to present at block {} for {}/{}",
+                    block_height,
+                    account_id,
+                    token_id
+                );
+                return insert_balance_change_with_hint(
+                    pool,
+                    network,
+                    account_id,
+                    token_id,
+                    block_height,
+                    hint,
+                )
+                .await
+                .map(Some);
+            }
+            // No hint counterparty, fall back to SNAPSHOT or UNKNOWN
+            match insert_snapshot_record(pool, network, account_id, token_id, block_height).await {
+                Ok(Some(snapshot)) => Ok(Some(snapshot)),
+                Ok(None) | Err(_) => insert_unknown_counterparty_record(
+                    pool,
+                    network,
+                    account_id,
+                    token_id,
+                    block_height,
+                )
+                .await
+                .map(Some),
+            }
+        }
+        Err(e) => Err(e),
+    }
 }
 
 /// Fill gap between the earliest record and zero balance (virtual start boundary)
@@ -1274,6 +1420,105 @@ pub async fn insert_unknown_counterparty_record(
         block_height,
         account_id,
         token_id
+    );
+
+    Ok(FilledGap {
+        account_id: account_id.to_string(),
+        token_id: token_id.to_string(),
+        block_height: block_height as i64,
+        block_timestamp,
+        balance_before,
+        balance_after,
+    })
+}
+
+/// Insert a balance change record using hint data for counterparty and tx info
+///
+/// This is used when receipts can't be found on the user's account (e.g., for intents tokens
+/// where receipts execute on intents.near), but the hint provides the counterparty and tx info.
+pub async fn insert_balance_change_with_hint(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    account_id: &str,
+    token_id: &str,
+    block_height: u64,
+    hint: &TransferHint,
+) -> Result<FilledGap, GapFillerError> {
+    // Get the actual balance change at this block
+    let (balance_before, balance_after) =
+        balance::get_balance_change_at_block(pool, network, account_id, token_id, block_height)
+            .await
+            .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+
+    let amount = &balance_after - &balance_before;
+
+    // Get block timestamp - prefer hint's timestamp if available
+    let block_timestamp = if hint.timestamp_ms > 0 {
+        (hint.timestamp_ms * 1_000_000) as i64 // Convert ms to ns
+    } else {
+        block_info::get_block_timestamp(network, block_height, None)
+            .await
+            .map_err(|e| -> GapFillerError { e.to_string().into() })?
+    };
+
+    // Use hint data
+    let counterparty = hint.counterparty.as_deref().unwrap_or("UNKNOWN");
+    let transaction_hashes: Vec<String> = hint
+        .transaction_hash
+        .as_ref()
+        .map(|h| vec![h.clone()])
+        .unwrap_or_default();
+    let receipt_ids: Vec<String> = hint
+        .receipt_id
+        .as_ref()
+        .map(|r| vec![r.clone()])
+        .unwrap_or_default();
+
+    log::info!(
+        "Inserting balance change with hint data at block {} for {}/{}: {} -> {} (counterparty: {}, tx: {:?})",
+        block_height,
+        account_id,
+        token_id,
+        balance_before,
+        balance_after,
+        counterparty,
+        transaction_hashes
+    );
+
+    let block_time = block_timestamp_to_datetime(block_timestamp);
+
+    sqlx::query!(
+        r#"
+        INSERT INTO balance_changes
+        (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        ON CONFLICT (account_id, block_height, token_id) DO NOTHING
+        "#,
+        account_id,
+        token_id,
+        block_height as i64,
+        block_timestamp,
+        block_time,
+        amount,
+        balance_before,
+        balance_after,
+        &transaction_hashes[..],
+        &receipt_ids[..],
+        None::<String>,         // Signer not available from hint
+        None::<String>,         // Receiver not available from hint
+        counterparty,
+        serde_json::json!({}),
+        serde_json::json!({"source": "transfer_hint", "hint_block": hint.block_height})
+    )
+    .execute(pool)
+    .await?;
+
+    log::info!(
+        "Inserted balance change from hint at block {} for {}/{} with counterparty {}",
+        block_height,
+        account_id,
+        token_id,
+        counterparty
     );
 
     Ok(FilledGap {
