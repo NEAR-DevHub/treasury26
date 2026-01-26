@@ -196,24 +196,36 @@ mod tests {
 
         println!("Resolved transaction: {:?}", resolved);
 
-        // Should find receipts on treasury account
-        assert!(
-            !resolved.receipt_blocks.is_empty(),
-            "Should find receipt blocks for treasury"
+        // Assert transaction hash
+        assert_eq!(
+            resolved.transaction_hash, tx_hash,
+            "Transaction hash should match"
         );
 
-        // Should include blocks 178148635 and 178148637
-        let block_heights: Vec<u64> = resolved
-            .receipt_blocks
-            .iter()
-            .map(|r| r.block_height)
-            .collect();
-        println!("Receipt blocks: {:?}", block_heights);
-
-        assert!(
-            block_heights.contains(&178148635) || block_heights.contains(&178148637),
-            "Should contain one of the expected blocks"
+        // Assert we have exactly 2 receipt blocks
+        assert_eq!(
+            resolved.receipt_blocks.len(),
+            2,
+            "Should have exactly 2 receipt blocks"
         );
+
+        // Assert first receipt block properties
+        assert_eq!(resolved.receipt_blocks[0].block_height, 178148635);
+        assert_eq!(
+            resolved.receipt_blocks[0].receipt_id,
+            "4k8fzeY5VkQmRsseapsPBA2mNReroXdjQVpvHkhWURt1"
+        );
+        assert_eq!(resolved.receipt_blocks[0].executor_id, account);
+        assert_eq!(resolved.receipt_blocks[0].balance_changed, None);
+
+        // Assert second receipt block properties
+        assert_eq!(resolved.receipt_blocks[1].block_height, 178148637);
+        assert_eq!(
+            resolved.receipt_blocks[1].receipt_id,
+            "9VZewnkJcDPFvxgASNKas17DC1u8fhkPaCfVNuZdCZjq"
+        );
+        assert_eq!(resolved.receipt_blocks[1].executor_id, account);
+        assert_eq!(resolved.receipt_blocks[1].balance_changed, None);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -229,13 +241,11 @@ mod tests {
 
         println!("Candidate blocks: {:?}", blocks);
 
-        // Should find blocks where receipts executed on our account
-        assert!(!blocks.is_empty(), "Should find candidate blocks");
+        // Should find exactly 2 blocks (sorted and deduped)
+        assert_eq!(blocks.len(), 2, "Should have exactly 2 candidate blocks");
 
-        // Block 178148635 and 178148637 are where receipts executed on treasury
-        assert!(
-            blocks.contains(&178148635) || blocks.contains(&178148637),
-            "Should contain one of the expected receipt blocks"
-        );
+        // Blocks should be sorted ascending
+        assert_eq!(blocks[0], 178148635);
+        assert_eq!(blocks[1], 178148637);
     }
 }
