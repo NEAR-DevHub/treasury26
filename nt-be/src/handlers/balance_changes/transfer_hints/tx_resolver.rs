@@ -180,7 +180,7 @@ mod tests {
     use super::*;
     use crate::utils::test_utils::init_test_state;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_resolve_outgoing_near_transfer() {
         let state = init_test_state().await;
 
@@ -216,7 +216,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_find_balance_change_blocks() {
         let state = init_test_state().await;
 
