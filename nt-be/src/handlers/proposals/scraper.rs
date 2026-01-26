@@ -580,7 +580,10 @@ impl ProposalType for PaymentInfo {
                     .first()
                     .and_then(|a| a.get("method_name"))
                     .and_then(|m| m.as_str()),
-                Some("ft_transfer") | Some("ft_transfer_call")
+                Some("ft_transfer")
+                    | Some("ft_transfer_call")
+                    | Some("mt_transfer")
+                    | Some("mt_transfer_call")
             ) {
                 let token = receiver_id.to_string();
                 if let Some(args_b64) = actions
@@ -749,7 +752,6 @@ impl ProposalType for AssetExchangeInfo {
             } else if extract_from_description(&proposal.description, "proposalaction")
                 == Some("asset-exchange".to_string())
             {
-                println!("proposal id: {}", proposal.id);
                 // Find mt_transfer or mt_transfer_call action
                 let action = actions.iter().find(|a| {
                     a.get("method_name")
@@ -780,8 +782,10 @@ impl ProposalType for AssetExchangeInfo {
                             .unwrap_or(""),
                     )
                     .to_string();
+                if proposal.id == 457 {
+                    println!("token_in_address: {:?}", token_in_address);
+                }
 
-                println!("token_in_address: {:?}", token_in_address);
                 // Extract amount_in from args or description
                 let amount_in = json_args
                     .get("amount")
@@ -791,6 +795,9 @@ impl ProposalType for AssetExchangeInfo {
                             .map(|s| s.parse::<u128>().unwrap_or(0))
                     })
                     .unwrap_or(0);
+                if proposal.id == 457 {
+                    println!("amount_in: {:?}", amount_in);
+                }
 
                 // Extract token_out from description
                 let token_out_symbol =
@@ -799,12 +806,23 @@ impl ProposalType for AssetExchangeInfo {
                 // Extract amount_out from description
                 let amount_out = extract_from_description(&proposal.description, "amountOut")
                     .unwrap_or_else(|| "0".to_string());
+                if proposal.id == 457 {
+                    println!("json_args: {:?}", json_args);
+                }
 
                 // Extract deposit_address from args
                 let deposit_address = json_args
                     .get("receiver_id")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
+                if proposal.id == 457 {
+                    println!("proposal id: {}", proposal.id);
+                    println!("token_in_address: {:?}", token_in_address);
+                    println!("amount_in: {:?}", amount_in);
+                    println!("token_out_symbol: {:?}", token_out_symbol);
+                    println!("amount_out: {:?}", amount_out);
+                    println!("deposit_address: {:?}", deposit_address);
+                }
 
                 return Some(AssetExchangeInfo {
                     token_in_address,

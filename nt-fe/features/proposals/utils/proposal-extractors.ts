@@ -366,7 +366,7 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
 
   const functionCall = proposal.kind.FunctionCall;
   const action = functionCall.actions.find(
-    (a) => a.method_name === "ft_transfer_call" || a.method_name === "approve_list"
+    (a) => a.method_name === "ft_transfer_call" || a.method_name === "approve_list" || a.method_name === "mt_transfer_call"
   );
 
 
@@ -387,10 +387,10 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
     }
   }
 
-
+  const tokenId = action.method_name === "mt_transfer_call" ? args.token_id : functionCall.receiver_id;
 
   return {
-    tokenId: functionCall.receiver_id,
+    tokenId,
     totalAmount: args.amount || "0",
     batchId: String(args.msg) || "",
   };

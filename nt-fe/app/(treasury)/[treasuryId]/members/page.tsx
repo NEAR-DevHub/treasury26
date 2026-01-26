@@ -1,7 +1,6 @@
 "use client";
 
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { Button } from "@/components/button";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
@@ -16,7 +15,6 @@ import {
 import { hasPermission } from "@/lib/config-utils";
 import { useProposals } from "@/hooks/use-proposals";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { encodeToMarkdown } from "@/lib/utils";
 import { MemberModal } from "./components/modals/member-modal";
@@ -28,6 +26,12 @@ import { Pencil, Trash2, Info } from "lucide-react";
 import { PageCard } from "@/components/card";
 import { RoleBadge } from "@/components/role-badge";
 import { Tooltip } from "@/components/tooltip";
+import { PendingButton } from "@/components/pending-button";
+import {
+  usePageTour,
+  PAGE_TOUR_NAMES,
+  PAGE_TOUR_STORAGE_KEYS,
+} from "@/features/onboarding/steps/page-tours";
 import {
   Table,
   TableBody,
@@ -59,7 +63,7 @@ function PermissionsHeader({ policyRoles }: { policyRoles: RolePermission[] }) {
   // Get role descriptions and sort them
   const roleNames = policyRoles.map(r => r.name);
   const sortedRoleNames = sortRolesByOrder(roleNames);
-  
+
   const sortedDescriptions = sortedRoleNames
     .map(name => ({
       name,
@@ -98,7 +102,8 @@ export default function MembersPage() {
   const { data: policy, isLoading } = useTreasuryPolicy(selectedTreasury);
   const { accountId } = useNear();
   const queryClient = useQueryClient();
-  const router = useRouter();
+
+  usePageTour(PAGE_TOUR_NAMES.MEMBERS_PENDING, PAGE_TOUR_STORAGE_KEYS.MEMBERS_PENDING_SHOWN);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isEditRolesModalOpen, setIsEditRolesModalOpen] = useState(false);
@@ -623,11 +628,11 @@ export default function MembersPage() {
   // Validate bulk delete
   const bulkDeleteValidation = useMemo(() => {
     if (selectedMembers.length === 0) return { canModify: true };
-    
+
     const membersToDelete = activeMembers.filter((m) =>
       selectedMembers.includes(m.accountId)
     );
-    
+
     return canDeleteBulk(membersToDelete);
   }, [selectedMembers, activeMembers, canDeleteBulk]);
 
@@ -803,19 +808,10 @@ export default function MembersPage() {
             </div>
             <div className="flex items-center gap-3">
               {/* Pending Button - navigates to requests page */}
-              <Button
-                type="button"
-                onClick={() =>
-                  router.push(`/${selectedTreasury}/requests?tab=pending`)
-                }
-                variant="ghost"
-                className="flex items-center gap-2 border-2"
-              >
-                Pending
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs">
-                  {pendingProposals?.proposals?.length || 0}
-                </span>
-              </Button>
+              <PendingButton
+                id="members-pending-btn"
+                types={["Change Policy"]}
+              />
 
               {/* Add New Member Button */}
               {isLoading ? (
