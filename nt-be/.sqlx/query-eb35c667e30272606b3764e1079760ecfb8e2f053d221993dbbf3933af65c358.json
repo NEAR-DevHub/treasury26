@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO balance_changes\n        (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, transaction_hashes, receipt_id, signer_id, receiver_id, counterparty, actions, raw_data)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)\n        ON CONFLICT (account_id, block_height, token_id) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Int8",
+        "Int8",
+        "Timestamptz",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "TextArray",
+        "TextArray",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Jsonb",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eb35c667e30272606b3764e1079760ecfb8e2f053d221993dbbf3933af65c358"
+}
