@@ -14,8 +14,9 @@ use nt_be::handlers::balance_changes::transfer_hints::{
 #[tokio::test]
 async fn test_fastnear_provider_real_api() {
     common::load_test_env();
+    let network = common::create_archival_network();
 
-    let provider = FastNearProvider::new();
+    let provider = FastNearProvider::new(network);
 
     // Query a known account with transfers (petersalomonsen.near)
     // Use a wide block range (1M blocks ≈ 11 days)
@@ -44,8 +45,9 @@ async fn test_fastnear_provider_real_api() {
 #[tokio::test]
 async fn test_fastnear_provider_ft_token() {
     common::load_test_env();
+    let network = common::create_archival_network();
 
-    let provider = FastNearProvider::new();
+    let provider = FastNearProvider::new(network);
 
     // Query for FT tokens - use the USDC token which petersalomonsen.near uses
     let hints = provider
@@ -72,8 +74,9 @@ async fn test_fastnear_provider_ft_token() {
 #[tokio::test]
 async fn test_transfer_hint_service_with_fastnear() {
     common::load_test_env();
+    let network = common::create_archival_network();
 
-    let service = TransferHintService::new().with_provider(FastNearProvider::new());
+    let service = TransferHintService::new().with_provider(FastNearProvider::new(network));
 
     // Verify service supports the right tokens
     assert!(service.supports_token("near"), "Should support NEAR");
@@ -99,8 +102,9 @@ async fn test_transfer_hint_service_with_fastnear() {
 #[tokio::test]
 async fn test_fastnear_unsupported_token() {
     common::load_test_env();
+    let network = common::create_archival_network();
 
-    let provider = FastNearProvider::new();
+    let provider = FastNearProvider::new(network);
 
     // Intents tokens are not supported by FastNear
     assert!(!provider.supports_token("intents.near:nep141:wrap.near"));
@@ -127,9 +131,9 @@ async fn test_hint_verification_with_rpc() {
     use nt_be::handlers::balance_changes::balance;
 
     common::load_test_env();
-
-    let provider = FastNearProvider::new();
     let network = common::create_archival_network();
+
+    let provider = FastNearProvider::new(network.clone());
 
     // Get hints for a known account with wide range
     let hints = provider

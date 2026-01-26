@@ -11,8 +11,10 @@
 //! `POST https://transfers.main.fastnear.com/v0/transfers`
 
 use super::{TransferHint, TransferHintProvider};
+use crate::handlers::balance_changes::block_info;
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
+use near_api::NetworkConfig;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -22,64 +24,52 @@ use std::str::FromStr;
 pub struct FastNearProvider {
     client: Client,
     base_url: String,
-}
-
-impl Default for FastNearProvider {
-    fn default() -> Self {
-        Self::new()
-    }
+    /// NEAR network config for querying block timestamps via RPC
+    network: NetworkConfig,
 }
 
 impl FastNearProvider {
-    /// Create a new FastNearProvider with default settings
-    pub fn new() -> Self {
+    /// Create a new FastNearProvider with the given network config
+    pub fn new(network: NetworkConfig) -> Self {
         Self {
             client: Client::new(),
             base_url: "https://transfers.main.fastnear.com".to_string(),
+            network,
         }
     }
 
     /// Create a new FastNearProvider with a custom base URL
-    pub fn with_base_url(base_url: impl Into<String>) -> Self {
+    pub fn with_base_url(network: NetworkConfig, base_url: impl Into<String>) -> Self {
         Self {
             client: Client::new(),
             base_url: base_url.into(),
+            network,
         }
     }
 
     /// Create a new FastNearProvider with a custom HTTP client
-    pub fn with_client(client: Client, base_url: impl Into<String>) -> Self {
+    pub fn with_client(
+        network: NetworkConfig,
+        client: Client,
+        base_url: impl Into<String>,
+    ) -> Self {
         Self {
             client,
             base_url: base_url.into(),
+            network,
         }
     }
 
-    /// Convert block height to approximate timestamp (ms)
-    ///
-    /// NEAR mainnet produces ~1 block per second. This is a rough approximation
-    /// used to convert block ranges to timestamp ranges for the FastNear API.
-    ///
-    /// Based on actual data from FastNear API:
-    /// - Block 178148636 at timestamp 1766561525616 ms
-    /// - Block 182682617 at timestamp 1769354830050 ms
-    /// - This gives approximately 1 block per 616ms average
-    fn block_to_timestamp_ms(block_height: u64) -> u64 {
-        // Use verified reference points from FastNear API
-        // Block 178148636 at timestamp 1766561525616 ms (from actual API response)
-        const REFERENCE_BLOCK: u64 = 178_148_636;
-        const REFERENCE_TIMESTAMP_MS: u64 = 1_766_561_525_616;
-
-        // Calculate ms per block from two known points:
-        // Block 182682617 at 1769354830050 ms
-        // Difference: 4533981 blocks, 2793304434 ms = ~616ms per block
-        const MS_PER_BLOCK: u64 = 616;
-
-        if block_height >= REFERENCE_BLOCK {
-            REFERENCE_TIMESTAMP_MS + ((block_height - REFERENCE_BLOCK) * MS_PER_BLOCK)
-        } else {
-            REFERENCE_TIMESTAMP_MS.saturating_sub((REFERENCE_BLOCK - block_height) * MS_PER_BLOCK)
-        }
+    /// Get the block timestamp in milliseconds by querying RPC
+    async fn get_block_timestamp_ms(
+        &self,
+        block_height: u64,
+    ) -> Result<u64, Box<dyn Error + Send + Sync>> {
+        let timestamp_ns = block_info::get_block_timestamp(&self.network, block_height, None)
+            .await
+            .map_err(|e| -> Box<dyn Error + Send + Sync> { e.to_string().into() })?;
+        // Convert nanoseconds to milliseconds
+        Ok((timestamp_ns as u64) / 1_000_000)
     }
 
     /// Query the transfers API with pagination
@@ -115,9 +105,9 @@ impl TransferHintProvider for FastNearProvider {
         from_block: u64,
         to_block: u64,
     ) -> Result<Vec<TransferHint>, Box<dyn Error + Send + Sync>> {
-        // Convert block range to timestamp range
-        let from_timestamp_ms = Self::block_to_timestamp_ms(from_block);
-        let to_timestamp_ms = Self::block_to_timestamp_ms(to_block);
+        // Convert block range to timestamp range by querying RPC for actual timestamps
+        let from_timestamp_ms = self.get_block_timestamp_ms(from_block).await?;
+        let to_timestamp_ms = self.get_block_timestamp_ms(to_block).await?;
 
         let mut all_hints = Vec::new();
         let mut resume_token: Option<String> = None;
@@ -330,6 +320,7 @@ impl Transfer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::test_utils::init_test_state;
 
     fn make_near_transfer() -> Transfer {
         Transfer {
@@ -365,63 +356,63 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_fastnear_provider_new() {
-        let provider = FastNearProvider::new();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_fastnear_provider_new() {
+        let state = init_test_state().await;
+        let provider = FastNearProvider::new(state.archival_network.clone());
         assert_eq!(provider.name(), "FastNear");
         assert_eq!(provider.base_url, "https://transfers.main.fastnear.com");
     }
 
-    #[test]
-    fn test_fastnear_provider_with_base_url() {
-        let provider = FastNearProvider::with_base_url("https://custom.api.com");
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_fastnear_provider_with_base_url() {
+        let state = init_test_state().await;
+        let provider = FastNearProvider::with_base_url(
+            state.archival_network.clone(),
+            "https://custom.api.com",
+        );
         assert_eq!(provider.base_url, "https://custom.api.com");
     }
 
-    #[test]
-    fn test_supports_token_near() {
-        let provider = FastNearProvider::new();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_supports_token_near() {
+        let state = init_test_state().await;
+        let provider = FastNearProvider::new(state.archival_network.clone());
         assert!(provider.supports_token("near"));
         assert!(provider.supports_token("NEAR"));
     }
 
-    #[test]
-    fn test_supports_token_ft() {
-        let provider = FastNearProvider::new();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_supports_token_ft() {
+        let state = init_test_state().await;
+        let provider = FastNearProvider::new(state.archival_network.clone());
         assert!(provider.supports_token("wrap.near"));
         assert!(provider.supports_token("usdt.tether-token.near"));
     }
 
-    #[test]
-    fn test_supports_token_intents_not_supported() {
-        let provider = FastNearProvider::new();
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_supports_token_intents_not_supported() {
+        let state = init_test_state().await;
+        let provider = FastNearProvider::new(state.archival_network.clone());
         assert!(!provider.supports_token("intents.near:nep141:wrap.near"));
         assert!(!provider.supports_token("intents.near:nep245:token"));
     }
 
-    #[test]
-    fn test_block_to_timestamp_conversion() {
-        // Use constants from the implementation
-        const REFERENCE_BLOCK: u64 = 178_148_636;
-        const REFERENCE_TIMESTAMP_MS: u64 = 1_766_561_525_616;
-        const MS_PER_BLOCK: u64 = 616;
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_block_timestamp_ms() {
+        let state = init_test_state().await;
+        let provider = FastNearProvider::new(state.archival_network.clone());
 
-        // Reference block should give reference timestamp
-        let reference_ts = FastNearProvider::block_to_timestamp_ms(REFERENCE_BLOCK);
-        assert_eq!(reference_ts, REFERENCE_TIMESTAMP_MS);
+        // Test with a known block - 178148636
+        // Its actual timestamp should be retrieved from RPC
+        let timestamp_ms = provider.get_block_timestamp_ms(178148636).await.unwrap();
 
-        // Block 1M after reference should be ~1M * 616ms later
-        let block_later = REFERENCE_BLOCK + 1_000_000;
-        let later_ts = FastNearProvider::block_to_timestamp_ms(block_later);
-        assert_eq!(later_ts, REFERENCE_TIMESTAMP_MS + 1_000_000 * MS_PER_BLOCK);
+        // Block 178148636 has a specific timestamp (verify it's reasonable)
+        // The timestamp should be around 2025-12 based on the block height
+        assert!(timestamp_ms > 1_700_000_000_000); // After year 2023
+        assert!(timestamp_ms < 1_900_000_000_000); // Before year 2030
 
-        // Earlier blocks should work too
-        let block_earlier = REFERENCE_BLOCK - 1_000_000;
-        let earlier_ts = FastNearProvider::block_to_timestamp_ms(block_earlier);
-        assert_eq!(
-            earlier_ts,
-            REFERENCE_TIMESTAMP_MS - 1_000_000 * MS_PER_BLOCK
-        );
+        println!("Block 178148636 timestamp: {} ms", timestamp_ms);
     }
 
     #[test]

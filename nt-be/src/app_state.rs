@@ -253,9 +253,9 @@ impl AppStateBuilder {
             Some(service)
         } else if env_vars.transfer_hints_enabled {
             let provider = if let Some(base_url) = &env_vars.transfer_hints_base_url {
-                FastNearProvider::with_base_url(base_url.clone())
+                FastNearProvider::with_base_url(archival_network.clone(), base_url.clone())
             } else {
-                FastNearProvider::new()
+                FastNearProvider::new(archival_network.clone())
             };
             Some(TransferHintService::new().with_provider(provider))
         } else {
