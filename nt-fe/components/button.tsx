@@ -10,9 +10,10 @@ interface ButtonProps extends React.ComponentProps<typeof ShadcnButton> {
 
 interface ButtonPropsWithTooltip extends ButtonProps {
     tooltipContent?: React.ReactNode;
+    side?: "top" | "bottom" | "left" | "right";
 }
 
-export function Button({ variant, className: classNameOverride, size, tooltipContent, ...props }: ButtonPropsWithTooltip) {
+export function Button({ variant, className: classNameOverride, size, tooltipContent, side, ...props }: ButtonPropsWithTooltip) {
     const { disabled } = props;
     let className = "";
     switch (variant ?? "default") {
@@ -40,7 +41,7 @@ export function Button({ variant, className: classNameOverride, size, tooltipCon
     const button = <ShadcnButton variant={variant} className={cn(className, sizeClassName, classNameOverride)} size={size} {...props} />;
 
     if (tooltipContent) {
-        return <Tooltip content={tooltipContent} triggerProps={{ asChild: !disabled }}>{button}</Tooltip>;
+        return <Tooltip content={tooltipContent} triggerProps={{ asChild: !disabled }} side={side}>{button}</Tooltip>;
     }
 
     return button;
