@@ -175,10 +175,10 @@ impl TransferHintProvider for FastNearProvider {
         Ok(all_hints)
     }
 
-    fn supports_token(&self, token_id: &str) -> bool {
-        // FastNear supports NEAR native and FT tokens
-        // It does not support intents tokens (yet)
-        !token_id.contains("intents.near:")
+    fn supports_token(&self, _token_id: &str) -> bool {
+        // FastNear supports NEAR native, FT tokens, and intents multi-tokens
+        // All token types are supported
+        true
     }
 }
 
@@ -312,6 +312,18 @@ impl Transfer {
                     false
                 }
             }
+            "Mt" => {
+                // Multi-token (NEP-245) - used for intents tokens
+                // FastNear asset_id format: "nep245:intents.near:nep141:eth.omft.near"
+                // Our token_id format: "intents.near:nep141:eth.omft.near"
+                if let Some(asset_id) = &self.asset_id {
+                    // Strip "nep245:" prefix to get the token ID
+                    let mt_token_id = asset_id.strip_prefix("nep245:").unwrap_or(asset_id);
+                    mt_token_id.eq_ignore_ascii_case(token_id)
+                } else {
+                    false
+                }
+            }
             _ => false,
         }
     }
@@ -356,6 +368,25 @@ mod tests {
         }
     }
 
+    fn make_mt_transfer(token_id: &str) -> Transfer {
+        // Multi-token (NEP-245) for intents tokens
+        // FastNear asset_id format: "nep245:intents.near:nep141:token"
+        Transfer {
+            block_height: 1000,
+            block_timestamp: 1739954687907236131,
+            receipt_id: Some("receipt1".to_string()),
+            transaction_id: Some("tx1".to_string()),
+            other_account_id: Some("other.near".to_string()),
+            predecessor_id: Some("sender.near".to_string()),
+            signer_id: Some("signer.near".to_string()),
+            asset_type: "Mt".to_string(),
+            asset_id: Some(format!("nep245:{}", token_id)),
+            amount: Some("1000000".to_string()),
+            start_of_block_balance: Some("5000000".to_string()),
+            end_of_block_balance: Some("6000000".to_string()),
+        }
+    }
+
     #[tokio::test(flavor = "multi_thread")]
     async fn test_fastnear_provider_new() {
         let state = init_test_state().await;
@@ -391,11 +422,12 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_supports_token_intents_not_supported() {
+    async fn test_supports_token_intents() {
         let state = init_test_state().await;
         let provider = FastNearProvider::new(state.archival_network.clone());
-        assert!(!provider.supports_token("intents.near:nep141:wrap.near"));
-        assert!(!provider.supports_token("intents.near:nep245:token"));
+        // FastNear supports intents multi-tokens (asset_type: "Mt")
+        assert!(provider.supports_token("intents.near:nep141:wrap.near"));
+        assert!(provider.supports_token("intents.near:nep141:eth.omft.near"));
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -441,6 +473,17 @@ mod tests {
         ft_transfer.asset_id = Some("wrap.near".to_string()); // No prefix
 
         assert!(ft_transfer.matches_token("wrap.near"));
+    }
+
+    #[test]
+    fn test_transfer_matches_token_mt() {
+        // Test multi-token (intents) matching
+        let mt_transfer = make_mt_transfer("intents.near:nep141:eth.omft.near");
+
+        assert!(mt_transfer.matches_token("intents.near:nep141:eth.omft.near"));
+        assert!(mt_transfer.matches_token("INTENTS.NEAR:NEP141:ETH.OMFT.NEAR")); // Case insensitive
+        assert!(!mt_transfer.matches_token("intents.near:nep141:wrap.near")); // Different token
+        assert!(!mt_transfer.matches_token("near")); // Not NEAR
     }
 
     #[test]

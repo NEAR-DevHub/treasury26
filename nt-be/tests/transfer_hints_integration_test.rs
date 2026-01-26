@@ -402,10 +402,7 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
         .get_hints(account_id, token_id, seed_block, up_to_block as u64)
         .await;
 
-    println!(
-        "✓ FastNear returned {} intents transfer hints (expected: 0)",
-        hints.len()
-    );
+    println!("✓ FastNear returned {} intents transfer hints", hints.len());
 
     // Run monitor cycle
     println!("\n=== Running Monitor Cycle ===");

@@ -85,8 +85,8 @@ async fn test_transfer_hint_service_with_fastnear() {
         "Should support FT tokens"
     );
     assert!(
-        !service.supports_token("intents.near:nep141:wrap.near"),
-        "Should NOT support intents tokens"
+        service.supports_token("intents.near:nep141:wrap.near"),
+        "Should support intents tokens (multi-token via asset_type: Mt)"
     );
 
     // Query for NEAR transfers with a wide range
@@ -98,30 +98,32 @@ async fn test_transfer_hint_service_with_fastnear() {
     // Soft assertion - API call succeeded
 }
 
-/// Test that unsupported token types return empty results gracefully
+/// Test that intents (multi-token) transfers are supported
 #[tokio::test]
-async fn test_fastnear_unsupported_token() {
+async fn test_fastnear_intents_token() {
     common::load_test_env();
     let network = common::create_archival_network();
 
-    let provider = FastNearProvider::new(network);
+    let provider = FastNearProvider::new(network.clone());
 
-    // Intents tokens are not supported by FastNear
-    assert!(!provider.supports_token("intents.near:nep141:wrap.near"));
+    // Intents tokens are now supported by FastNear (asset_type: "Mt")
+    assert!(provider.supports_token("intents.near:nep141:wrap.near"));
+    assert!(provider.supports_token("intents.near:nep141:eth.omft.near"));
 
     let service = TransferHintService::new().with_provider(provider);
 
-    // Service should return empty for unsupported tokens
+    // Query intents token hints for an account known to have intents transfers
     let hints = service
         .get_hints(
             "webassemblymusic-treasury.sputnik-dao.near",
-            "intents.near:nep141:btc.omft.near",
-            165_000_000,
-            166_000_000,
+            "intents.near:nep141:eth.omft.near",
+            148_000_000,
+            152_000_000,
         )
         .await;
 
-    assert!(hints.is_empty(), "Intents tokens should return empty hints");
+    println!("Found {} intents token hints", hints.len());
+    // We should find some hints (based on FastNear API response showing Mt transfers)
 }
 
 /// Test hint verification with actual balance data
