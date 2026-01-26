@@ -96,7 +96,7 @@ export function TourCard({
                     <div className="flex gap-1">
                         <Button
                             size="sm"
-                            className="h-6 px-2 text-xs bg-popover text-popover-foreground"
+                            className="h-6 px-2 text-xs bg-popover text-popover-foreground hover:bg-popover/90 hover:text-popover-foreground/90"
                             onClick={isLastStep ? handleSkip : handleNext}
                         >
                             {buttonText}

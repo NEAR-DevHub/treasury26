@@ -20,7 +20,7 @@ export const NetworkDisplay = ({ asset }: { asset: TreasuryAsset }) => {
         case "Near":
             type = "Native Token";
             if (asset.lockedBalance) {
-                info = <span>Available balance after locking <span className="font-semibold">{formatNearAmount(asset.lockedBalance.toString())} NEAR</span> for account activity</span>;
+                info = <p className="inline-block">Available balance after locking <span className="font-semibold">{formatNearAmount(asset.lockedBalance.toString())} NEAR</span> for account activity</p>;
             }
             break;
     }

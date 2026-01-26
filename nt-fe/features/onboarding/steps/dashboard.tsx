@@ -146,10 +146,10 @@ export function DashboardTour() {
                 See how to make a deposit, create a request, and set up a new account.
             </p>
             <div className="pt-2 flex justify-end gap-1.5">
-                <Button variant="ghost" size="sm" className="text-popover" onClick={handleDismiss}>
+                <Button variant="ghost" size="sm" className="text-popover hover:text-popover/90 hover:bg-transparent!" onClick={handleDismiss}>
                     No, thanks
                 </Button>
-                <Button variant="default" size="sm" className="bg-popover text-popover-foreground" onClick={handleStartTour}>
+                <Button variant="default" size="sm" className="bg-popover text-popover-foreground hover:bg-popover/90 hover:text-popover-foreground/90" onClick={handleStartTour}>
                     Let's go
                 </Button>
             </div>

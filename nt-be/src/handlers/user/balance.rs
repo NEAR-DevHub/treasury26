@@ -31,6 +31,16 @@ pub struct TokenBalanceResponse {
     pub decimals: u8,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TokenBalanceStringResponse {
+    pub account_id: String,
+    pub token_id: String,
+    pub balance: String,
+    #[serde(rename = "lockedBalance")]
+    pub locked_balance: Option<String>,
+    pub decimals: u8,
+}
+
 /// Fetch NEAR balance for an account
 pub async fn fetch_near_balance(
     state: &Arc<AppState>,
@@ -154,9 +164,9 @@ pub async fn get_token_balance(
         let is_near = token_id == "near" || token_id == "NEAR";
 
         if is_near {
-            fetch_near_balance(&state_clone, account_id).await
+            fetch_near_balance(&state_clone, account_id.clone()).await
         } else if token_id.starts_with("nep141:") {
-            fetch_intents_balance(&state_clone, account_id, token_id.to_string()).await
+            fetch_intents_balance(&state_clone, account_id.clone(), token_id.to_string()).await
         } else {
             // Parse token_id as AccountId
             let token_account_id: AccountId = token_id.parse().map_err(|e| {
@@ -164,8 +174,15 @@ pub async fn get_token_balance(
                 format!("Invalid token ID: {}", e)
             })?;
 
-            fetch_ft_balance(&state_clone, account_id, token_account_id).await
+            fetch_ft_balance(&state_clone, account_id.clone(), token_account_id).await
         }
+        .map(|balance| TokenBalanceStringResponse {
+            account_id: account_id.to_string(),
+            token_id: token_id.to_string(),
+            balance: balance.balance.0.to_string(),
+            locked_balance: balance.locked_balance.map(|b| b.0.to_string()),
+            decimals: balance.decimals,
+        })
     })
     .await
 }

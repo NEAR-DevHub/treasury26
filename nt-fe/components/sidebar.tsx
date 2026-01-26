@@ -126,7 +126,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 z-40 flex gap-2 h-screen flex-col bg-card border-r lg:static lg:z-auto transition-all duration-300",
+          "fixed left-0 top-0 z-40 flex gap-2 h-screen flex-col bg-card border-r lg:static lg:z-auto transition-all duration-300 overflow-hidden",
           isMobile
             ? isOpen
               ? "w-56 translate-x-0"
@@ -148,7 +148,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           </div>
         </div>
 
-        <nav className={cn("flex-1 flex flex-col gap-1", isReduced ? "items-center" : "px-3.5")}>
+        <nav className={cn("flex flex-col gap-1 pb-2 flex-1", isReduced ? "px-2" : "px-3.5")}>
           {topNavLinks.map((link) => {
             const href = treasuryId
               ? `/${treasuryId}${link.path ? `/${link.path}` : ""}`
