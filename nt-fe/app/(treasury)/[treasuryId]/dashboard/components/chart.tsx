@@ -89,6 +89,7 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
                 />
                 <ChartTooltip
                     content={<ChartTooltipContent
+                        className="bg-card text-foreground border-border shadow-md"
                         formatter={(value, name) => {
                             const num = Number(value);
                             const color = name === 'usdValue'
