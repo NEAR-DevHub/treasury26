@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TreasurySelector } from "./treasury-selector";
 import { cn } from "@/lib/utils";
 import {
@@ -95,6 +95,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   const params = useParams();
   const treasuryId = params?.treasuryId as string | undefined;
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const { data: proposals } = useProposals(treasuryId, {
     statuses: ["InProgress"],
@@ -104,6 +105,15 @@ export function Sidebar({ onClose }: SidebarProps) {
   const { isMobile, mounted, isSidebarOpen: isOpen } = useResponsiveSidebar();
 
   const isReduced = !isMobile && !isOpen;
+
+  // Mark as initialized after first render with mounted state
+  useEffect(() => {
+    if (mounted && !hasInitialized) {
+      // Small delay to allow state to settle before enabling transitions
+      const timer = setTimeout(() => setHasInitialized(true), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [mounted, hasInitialized]);
 
   // Don't render sidebar content until mounted to prevent hydration issues
   if (!mounted) {
@@ -126,7 +136,8 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 z-40 flex gap-2 h-screen flex-col bg-card border-r lg:static lg:z-auto transition-all duration-300 overflow-hidden",
+          "fixed left-0 top-0 z-40 flex gap-2 h-screen flex-col bg-card border-r lg:static lg:z-auto overflow-hidden",
+          hasInitialized && "transition-all duration-300",
           isMobile
             ? isOpen
               ? "w-56 translate-x-0"
