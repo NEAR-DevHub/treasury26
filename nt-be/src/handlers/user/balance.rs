@@ -25,12 +25,14 @@ pub struct TokenBalanceQuery {
 pub struct TokenBalanceResponse {
     pub account_id: String,
     pub token_id: String,
-    pub balance: String,
+    pub balance: U128,
+    #[serde(rename = "lockedBalance")]
+    pub locked_balance: Option<U128>,
     pub decimals: u8,
 }
 
 /// Fetch NEAR balance for an account
-async fn fetch_near_balance(
+pub async fn fetch_near_balance(
     state: &Arc<AppState>,
     account_id: AccountId,
 ) -> Result<TokenBalanceResponse, String> {
@@ -46,7 +48,12 @@ async fn fetch_near_balance(
     Ok(TokenBalanceResponse {
         account_id: account_id.to_string(),
         token_id: "near".to_string(),
-        balance: balance.total.as_yoctonear().to_string(),
+        balance: balance
+            .total
+            .saturating_sub(balance.storage_locked)
+            .as_yoctonear()
+            .into(),
+        locked_balance: Some(balance.storage_locked.as_yoctonear().into()),
         decimals: 24,
     })
 }
@@ -72,7 +79,8 @@ async fn fetch_ft_balance(
     Ok(TokenBalanceResponse {
         account_id: account_id.to_string(),
         token_id: token_id.to_string(),
-        balance: balance.amount().to_string(),
+        balance: balance.amount().into(),
+        locked_balance: None,
         decimals: balance.decimals(),
     })
 }
@@ -121,7 +129,8 @@ pub async fn fetch_intents_balance(
     Ok(TokenBalanceResponse {
         account_id: account_id.to_string(),
         token_id: token_id.to_string(),
-        balance: balance.0.to_string(),
+        balance,
+        locked_balance: None,
         decimals: metadata.data.decimals,
     })
 }
