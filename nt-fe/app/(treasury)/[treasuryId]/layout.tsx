@@ -1,26 +1,24 @@
-"use client";
+import { notFound } from "next/navigation";
+import { getTreasuryConfig } from "@/lib/api";
+import { TreasuryLayoutClient } from "./treasury-layout-client";
 
-import { Sidebar } from "@/components/sidebar";
-import { useResponsiveSidebar, useSidebarStore } from "@/stores/sidebar-store";
-import { PrimaryColorProvider } from "@/components/primary-color-provider";
-import { useParams } from "next/navigation";
-
-export default function TreasuryLayout({
+export default async function TreasuryLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ treasuryId: string }>;
 }) {
-  const { isSidebarOpen, setSidebarOpen } = useResponsiveSidebar();
-  const params = useParams();
-  const treasuryId = params?.treasuryId as string | undefined;
+  const { treasuryId } = await params;
+
+  const config = await getTreasuryConfig(treasuryId);
+  if (!config) {
+    notFound();
+  }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <PrimaryColorProvider treasuryId={treasuryId} />
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <main className="flex-1 overflow-y-auto bg-muted">
-        {children}
-      </main>
-    </div>
+    <TreasuryLayoutClient treasuryId={treasuryId}>
+      {children}
+    </TreasuryLayoutClient>
   );
 }
