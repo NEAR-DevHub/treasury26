@@ -19,6 +19,7 @@ import { Form, FormField, FormMessage } from "@/components/ui/form";
 interface ExchangeSettingsModalProps {
   slippageTolerance: number;
   onSlippageChange: (value: number) => void;
+  id?: string;
 }
 
 const SLIPPAGE_PRESETS = [0.1, 0.5, 1.0];
@@ -37,6 +38,7 @@ type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 export function ExchangeSettingsModal({
   slippageTolerance,
   onSlippageChange,
+  id,
 }: ExchangeSettingsModalProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -76,6 +78,7 @@ export function ExchangeSettingsModal({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
+          id={id}
           variant="ghost"
           className="flex items-center gap-2 border-2"
           type="button"

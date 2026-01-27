@@ -21,53 +21,6 @@ export function getDepositAndRefundType(network: string): "INTENTS" | "ORIGIN_CH
 }
 
 /**
- * Calculates the exchange rate between two tokens
- * Returns a formatted rate string with USD value
- */
-export function calculateExchangeRate(
-  amountIn: string,
-  amountOut: string,
-  amountInUsd: string,
-  amountOutUsd: string,
-  sellTokenDecimals: number,
-  receiveTokenDecimals: number,
-  sellTokenSymbol: string,
-  receiveTokenSymbol: string,
-  isReversed: boolean = false
-): string {
-  const sellAmount = Big(amountIn).div(Big(10).pow(sellTokenDecimals));
-  const receiveAmount = Big(amountOut).div(Big(10).pow(receiveTokenDecimals));
-  
-  if (sellAmount.lte(0) || receiveAmount.lte(0)) {
-    return "N/A";
-  }
-
-  if (isReversed) {
-    // Show: 1 ReceiveToken ($X) ≈ Y SellToken
-    const usdPerReceiveToken = Big(amountOutUsd).div(receiveAmount).toFixed(2);
-    const sellPerReceive = sellAmount.div(receiveAmount).toFixed(2);
-    return `1 ${receiveTokenSymbol} ($${usdPerReceiveToken}) ≈ ${sellPerReceive} ${sellTokenSymbol}`;
-  } else {
-    // Show: 1 SellToken ($X) ≈ Y ReceiveToken
-    const usdPerSellToken = Big(amountInUsd).div(sellAmount).toFixed(2);
-    const receivePerSell = receiveAmount.div(sellAmount).toFixed(2);
-    return `1 ${sellTokenSymbol} ($${usdPerSellToken}) ≈ ${receivePerSell} ${receiveTokenSymbol}`;
-  }
-}
-
-/**
- * Calculates price difference percentage
- */
-export function calculatePriceDifference(
-  amountOut: string,
-  minAmountOut: string
-): string {
-  const difference =
-    ((Number(amountOut) - Number(minAmountOut)) / Number(amountOut)) * 100;
-  return difference.toFixed(8);
-}
-
-/**
  * Calculates the price difference between expected market rate and quote rate
  * Compares the USD values to determine if the rate is favorable or not
  * @param amountInUsd - USD value of input amount from quote
@@ -168,48 +121,5 @@ export function getUserFriendlyErrorMessage(errorMessage: string): string {
   }
   
   return errorMessage;
-}
-
-/**
- * Calculates the detailed exchange rate for the review screen
- * Returns a formatted rate string with both token amounts and USD values
- */
-export function calculateDetailedExchangeRate(
-  amountIn: string,
-  amountOut: string,
-  amountInUsd: string,
-  amountOutUsd: string,
-  sellTokenDecimals: number,
-  receiveTokenDecimals: number,
-  sellTokenSymbol: string,
-  receiveTokenSymbol: string,
-  isReversed: boolean = false
-): string {
-  const sellAmount = Big(amountIn).div(Big(10).pow(sellTokenDecimals));
-  const receiveAmount = Big(amountOut).div(Big(10).pow(receiveTokenDecimals));
-  
-  if (sellAmount.lte(0) || receiveAmount.lte(0)) {
-    return "N/A";
-  }
-
-  if (isReversed) {
-    // Show: 1 ReceiveToken ($X) ≈ Y SellToken
-    const usdPerReceiveToken = parseFloat(amountOut) > 0
-      ? Big(amountOutUsd).div(receiveAmount).toFixed(2)
-      : "0";
-    const sellPerReceive = receiveAmount.gt(0)
-      ? sellAmount.div(receiveAmount).toFixed(2)
-      : "0";
-    return `1 ${receiveTokenSymbol} ($${usdPerReceiveToken}) ≈ ${sellPerReceive} ${sellTokenSymbol}`;
-  } else {
-    // Show: 1 SellToken ($X) ≈ Y ReceiveToken
-    const usdPerSellToken = parseFloat(amountIn) > 0
-      ? Big(amountInUsd).div(sellAmount).toFixed(2)
-      : "0";
-    const receivePerSell = sellAmount.gt(0)
-      ? receiveAmount.div(sellAmount).toFixed(2)
-      : "0";
-    return `1 ${sellTokenSymbol} ($${usdPerSellToken}) ≈ ${receivePerSell} ${receiveTokenSymbol}`;
-  }
 }
 

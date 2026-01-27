@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ChevronDown } from "lucide-react";
 import QRCode from "react-qr-code";
 import { SelectModal } from "./select-modal";
-import { fetchDepositAssets, fetchDepositAddress } from "@/lib/bridge-api";
+import {fetchBridgeTokens, fetchDepositAddress } from "@/lib/bridge-api";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useThemeStore } from "@/stores/theme-store";
 import { Button } from "@/components/button";
@@ -119,7 +119,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
     form.clearErrors("network");
 
     try {
-      const assets = await fetchDepositAssets(theme);
+      const assets = await fetchBridgeTokens(theme);
       // Add "Other" asset that deposits directly to treasury
       const otherAsset = {
         id: "other",
