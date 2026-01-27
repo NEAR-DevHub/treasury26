@@ -5,10 +5,7 @@ export const BULK_PAYMENT_CONTRACT_ID = process.env.NEXT_PUBLIC_BULK_PAYMENT_CON
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:3001";
 
 // Maximum number of recipients per bulk payment import
-export const MAX_RECIPIENTS_PER_BULK_PAYMENT = 5;
-
-// Total bulk payment credits available
-export const TOTAL_FREE_CREDITS = 5;
+export const MAX_RECIPIENTS_PER_BULK_PAYMENT = 25;
 
 /**
  * Generate a deterministic list_id (SHA-256 hash of canonical JSON)
@@ -44,6 +41,36 @@ export async function generateListId(
   }
 
   throw new Error("SubtleCrypto not available");
+}
+
+/**
+ * Execute payout_batch for an approved bulk payment list
+ * The backend will continuously call the contract until all payments are processed
+ * Returns the total number of batches and payments processed
+ */
+export async function payoutBatch(listId: string): Promise<{
+  success: boolean;
+  total_batches_processed: number;
+  total_payments_processed: number;
+  error?: string;
+}> {
+  const response = await fetch(`${BACKEND_API_BASE}/api/bulk-payment/payout-batch`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      list_id: listId,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to execute payout batch: ${response.statusText}`);
+  }
+
+  return data;
 }
 
 /**

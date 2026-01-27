@@ -17,6 +17,7 @@ import { ProposalPermissionKind } from "@/lib/config-utils";
 import { toast } from "sonner";
 import Big from "big.js";
 import { useQueryClient } from "@tanstack/react-query";
+import { payoutBatch } from "@/lib/bulk-payment-api";
 
 export interface CreateProposalParams {
   treasuryId: string;
@@ -184,20 +185,20 @@ export const useNearStore = create<NearStore>((set, get) => ({
         network: "mainnet",
       });
       if (showToast) {
-        toast.success(toastMessage, {
-          duration: 10000, // 10 seconds
-          action: {
-            label: "View Request",
-            onClick: () =>
-              window.open(`/${params.treasuryId}/requests?tab=pending`),
-          },
-          classNames: {
-            toast: "!p-2 !px-4",
-            actionButton:
-              "!bg-transparent !text-foreground hover:!bg-muted !border-0",
-            title: "!border-r !border-r-border !pr-4",
-          },
-        });
+      toast.success(toastMessage, {
+        duration: 10000, // 10 seconds
+        action: {
+          label: "View Request",
+          onClick: () =>
+            window.open(`/${params.treasuryId}/requests?tab=pending`),
+        },
+        classNames: {
+          toast: "!p-2 !px-4",
+          actionButton:
+            "!bg-transparent !text-foreground hover:!bg-muted !border-0",
+          title: "!border-r !border-r-border !pr-4",
+        },
+      });
       }
       return results;
     } catch (error) {
@@ -305,6 +306,47 @@ export const useNear = () => {
           }))
       );
       await Promise.all(promises);
+
+      // Check if any approved proposals are bulk payments and trigger payout
+      for (const vote of votes) {
+        if (vote.vote === "Approve") {
+          try {
+            // Get the proposal from cache (it was just refetched by invalidateQueries)
+            const proposal = queryClient.getQueryData<any>([
+              "proposal",
+              treasuryId,
+              vote.proposalId.toString(),
+            ]);
+            
+            if (!proposal) continue;
+            
+            // Check if proposal is approved
+            if (proposal.status === "Approved") {
+              // Check if it's a bulk payment proposal by looking at description
+              const descMatch = proposal.description.match(/list_id["\s:]+([a-f0-9]{64})/i);
+              if (descMatch && descMatch[1]) {
+                const listId = descMatch[1];
+                console.log(`Detected approved bulk payment proposal ${vote.proposalId}, triggering payout for list ${listId}`);
+                
+                // Trigger payout batch in background
+                payoutBatch(listId)
+                  .then((result) => {
+                    console.log(`Payout completed for list ${listId}:`, result);
+                    toast.success(
+                      `Bulk payment executed: ${result.total_payments_processed} payments processed in ${result.total_batches_processed} batches`
+                    );
+                  })
+                  .catch((error) => {
+                    console.error(`Failed to execute payout for list ${listId}:`, error);
+                    toast.error(`Failed to execute bulk payment: ${error.message}`);
+                  });
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to check proposal ${vote.proposalId} for bulk payment:`, error);
+          }
+        }
+      }
 
       // Invalidate policy and config since voting can approve proposals that change them
       await queryClient.invalidateQueries({
