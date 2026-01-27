@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "../globals.css";
 
 export const metadata: Metadata = {
-  title: "Access Restricted | NEAR Treasury",
-  description: "This service is not available in your region.",
+  title: "Service Not Available | NEAR Treasury",
+  description: "Due to restrictions, this service is currently unavailable in your region.",
   robots: "noindex, nofollow",
 };
 
