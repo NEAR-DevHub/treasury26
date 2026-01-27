@@ -475,22 +475,16 @@ impl PaymentProposalType for PaymentInfo {
                     }
 
                     // For ft_transfer_call or mt_transfer_call, check if receiver_id in args is bulk payment contract
-                    if method_name == "ft_transfer_call" || method_name == "mt_transfer_call" {
-                        if let Some(args_b64) = action.get("args").and_then(|a| a.as_str()) {
-                            if let Ok(decoded) =
-                                base64::engine::general_purpose::STANDARD.decode(args_b64)
-                            {
-                                if let Ok(json_args) =
-                                    serde_json::from_slice::<serde_json::Value>(&decoded)
-                                {
-                                    if let Some(args_receiver) =
-                                        json_args.get("receiver_id").and_then(|r| r.as_str())
-                                    {
-                                        return args_receiver == bulk_contract_id.as_str();
-                                    }
-                                }
-                            }
-                        }
+                    if (method_name == "ft_transfer_call" || method_name == "mt_transfer_call")
+                        && let Some(args_b64) = action.get("args").and_then(|a| a.as_str())
+                        && let Ok(decoded) =
+                            base64::engine::general_purpose::STANDARD.decode(args_b64)
+                        && let Ok(json_args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                        && let Some(args_receiver) =
+                            json_args.get("receiver_id").and_then(|r| r.as_str())
+                        && args_receiver == bulk_contract_id.as_str()
+                    {
+                        return true;
                     }
 
                     false
@@ -989,11 +983,6 @@ impl ProposalType for StakeDelegationInfo {
 impl ProposalType for BulkPayment {
     fn from_proposal(proposal: &Proposal) -> Option<Self> {
         if let Some(function_call) = proposal.kind.get("FunctionCall") {
-            let receiver_id = function_call
-                .get("receiver_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-
             let actions = function_call
                 .get("actions")
                 .and_then(|a| a.as_array())
@@ -1003,11 +992,9 @@ impl ProposalType for BulkPayment {
             // Find action with ft_transfer_call, mt_transfer_call, or approve_list method
             let action = actions.iter().find(|a| {
                 let method_name = a.get("method_name").and_then(|m| m.as_str()).unwrap_or("");
-                let is_bulk_method = method_name == "ft_transfer_call"
+                method_name == "ft_transfer_call"
                     || method_name == "mt_transfer_call"
-                    || method_name == "approve_list";
-
-                is_bulk_method
+                    || method_name == "approve_list"
             })?;
 
             // Decode args

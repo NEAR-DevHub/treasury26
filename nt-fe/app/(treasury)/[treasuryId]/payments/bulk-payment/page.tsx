@@ -722,13 +722,15 @@ export default function BulkPaymentPage() {
       );
 
       const proposalBond = policy?.proposal_bond || "0";
+      
+      // Only treat as native NEAR if it's actually the native token (not wrapped or intents)
       const isNEAR =
-        selectedToken.id === NEAR_TOKEN.address ||
-        selectedToken.symbol === "NEAR";
+        selectedToken.id === NEAR_TOKEN.address &&
+        selectedToken.residency === "Near";
 
       // For backend hash generation and contract submission:
-      // - NEAR: convert "near" to "native"
-      // - All others: use id as-is (includes "nep141:" prefix for Intents)
+      // - Native NEAR: convert "near" to "native"
+      // - All others: use id as-is (includes "nep141:" prefix for Intents, "wrap.near" for FT)
       const tokenIdForHash = isNEAR ? "native" : selectedToken.id;
 
       const tokenIdForProposal = selectedToken.id;

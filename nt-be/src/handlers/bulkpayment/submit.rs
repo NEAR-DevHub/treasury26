@@ -169,10 +169,9 @@ async fn verify_dao_proposal(
                         &action.args,
                     ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
                         && let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
+                        && proposal_list_id == list_id
                     {
-                        if proposal_list_id == list_id {
-                            return Ok(true);
-                        }
+                        return Ok(true);
                     }
                 }
 
@@ -183,19 +182,12 @@ async fn verify_dao_proposal(
                         &base64::engine::general_purpose::STANDARD,
                         &action.args,
                     ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                        && let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
+                        && receiver_id == state.bulk_payment_contract_id.as_str()
+                        && let Some(msg) = args.get("msg").and_then(|v| v.as_str())
+                        && msg == list_id
                     {
-                        // Check if receiver_id is the bulk payment contract
-                        if let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
-                        {
-                            if receiver_id == state.bulk_payment_contract_id.as_str() {
-                                // Check the msg field for list_id
-                                if let Some(msg) = args.get("msg").and_then(|v| v.as_str()) {
-                                    if msg == list_id {
-                                        return Ok(true);
-                                    }
-                                }
-                            }
-                        }
+                        return Ok(true);
                     }
                 }
 
@@ -206,19 +198,12 @@ async fn verify_dao_proposal(
                         &base64::engine::general_purpose::STANDARD,
                         &action.args,
                     ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                        && let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
+                        && receiver_id == state.bulk_payment_contract_id.as_str()
+                        && let Some(msg) = args.get("msg").and_then(|v| v.as_str())
+                        && msg == list_id
                     {
-                        // Check if receiver_id is the bulk payment contract
-                        if let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
-                        {
-                            if receiver_id == state.bulk_payment_contract_id.as_str() {
-                                // Check the msg field for list_id
-                                if let Some(msg) = args.get("msg").and_then(|v| v.as_str()) {
-                                    if msg == list_id {
-                                        return Ok(true);
-                                    }
-                                }
-                            }
-                        }
+                        return Ok(true);
                     }
                 }
             }
@@ -350,6 +335,10 @@ pub async fn submit_list(
                         }
                     }
 
+                    // Step 5: Add list to the payout worker queue for processing
+                    // This ensures the worker will poll this list and process payments once approved
+                    super::worker::add_pending_list(request.list_id.clone()).await;
+
                     Ok(Json(SubmitListResponse {
                         success: true,
                         list_id: Some(request.list_id),
@@ -358,27 +347,27 @@ pub async fn submit_list(
                 }
                 Err(e) => {
                     log::error!("Contract execution failed: {:?}", e);
-                    return Err((
+                    Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(SubmitListResponse {
                             success: false,
                             list_id: None,
                             error: Some(format!("Contract execution failed: {}", e)),
                         }),
-                    ));
+                    ))
                 }
             }
         }
         Err(e) => {
             log::error!("Failed to submit list to contract: {:?}", e);
-            return Err((
+            Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(SubmitListResponse {
                     success: false,
                     list_id: None,
                     error: Some(format!("Failed to submit list: {}", e)),
                 }),
-            ));
+            ))
         }
     }
 }

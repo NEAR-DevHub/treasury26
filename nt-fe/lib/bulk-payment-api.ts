@@ -74,43 +74,6 @@ export async function payoutBatch(listId: string): Promise<{
 }
 
 /**
- * View storage credits for a DAO in the bulk payment contract
- * 
- * Storage credits represent the number of payment records (recipients) that can be stored.
- * Each credit allows storage for one payment record.
- * 
- * Returns the number of bulk payments available per month (credits / 25).
- * Each bulk payment can contain up to 25 recipients.
- */
-export async function viewStorageCredits(daoAccountId: string): Promise<number> {
-  try {
-    const response = await fetch(
-      `${BACKEND_API_BASE}/api/bulk-payment/storage-credits?account_id=${encodeURIComponent(daoAccountId)}`
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data: { success: boolean; credits?: string; error?: string } = await response.json();
-
-    if (!data.success || !data.credits) {
-      console.warn("Failed to fetch storage credits:", data.error);
-      return 0;
-    }
-    const creditsCount = parseInt(data.credits, 10);
-    
-    // Convert credits to bulk payments per month (each bulk payment = 25 recipients max)
-    const bulkPaymentsPerMonth = Math.floor(creditsCount / MAX_RECIPIENTS_PER_BULK_PAYMENT);
-    
-    return bulkPaymentsPerMonth;
-  } catch (error) {
-    console.warn("Error fetching storage credits:", error);
-    return 0;
-  }
-}
-
-/**
  * Submit payment list to the backend API
  */
 export async function submitPaymentList(params: {
