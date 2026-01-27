@@ -38,13 +38,16 @@ interface TokenInputProps<
         disabled?: boolean;
         locked?: boolean;
     };
+    readOnly?: boolean;
+    loading?: boolean;
+    customValue?: string;
 }
 
 export function TokenInput<
     TFieldValues extends FieldValues = FieldValues,
     TTokenPath extends Path<TFieldValues> = Path<TFieldValues>
->({ control, title, amountName, tokenName, tokenSelect }: TokenInputProps<TFieldValues, TTokenPath>) {
-    const { treasuryId } = useTreasury();
+>({ control, title, amountName, tokenName, tokenSelect, readOnly = false, loading = false, customValue }: TokenInputProps<TFieldValues, TTokenPath>) {
+    const { selectedTreasury } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
     const token = useWatch({ control, name: tokenName }) as Token;
@@ -71,9 +74,11 @@ export function TokenInput<
                                 <p className="text-xs text-muted-foreground">
                                     Balance: {formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals)} {token.symbol.toUpperCase()}
                                 </p>
-                                <Button type="button" variant="secondary" className="bg-muted-foreground/10 hover:bg-muted-foreground/20" size="sm" onClick={() => {
-                                    setValue(amountName, formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals) as PathValue<TFieldValues, Path<TFieldValues>>);
-                                }}>MAX</Button>
+                                {!readOnly && (
+                                    <Button type="button" variant="secondary" className="bg-muted-foreground/10 hover:bg-muted-foreground/20" size="sm" onClick={() => {
+                                        setValue(amountName, formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals) as PathValue<TFieldValues, Path<TFieldValues>>);
+                                    }}>MAX</Button>
+                                )}
                             </>
                         )}
                     </div>
@@ -82,7 +87,16 @@ export function TokenInput<
                     <>
                         <div className="flex justify-between items-center">
                             <div className="flex-1">
-                                <LargeInput type="number" borderless onChange={(e) => field.onChange(e.target.value.replace(/^0+(?=\d)/, ""))} onBlur={field.onBlur} value={field.value} placeholder="0" className="text-3xl!" />
+                                <LargeInput 
+                                    type={readOnly ? "text" : "number"}
+                                    borderless 
+                                    onChange={readOnly ? undefined : (e) => field.onChange(e.target.value.replace(/^0+(?=\d)/, ""))} 
+                                    onBlur={readOnly ? undefined : field.onBlur} 
+                                    value={loading ? "..." : (customValue !== undefined ? customValue : field.value)} 
+                                    placeholder="0" 
+                                    className={cn("text-3xl!", readOnly && "text-muted-foreground")}
+                                    readOnly={readOnly}
+                                />
                             </div>
                             <FormField
                                 control={control}

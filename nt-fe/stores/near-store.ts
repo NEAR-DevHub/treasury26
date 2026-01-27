@@ -477,27 +477,31 @@ export const useNear = () => {
     // accountId is only available when fully authenticated (connected + auth + terms accepted)
     const accountId =
         isAuthenticated && hasAcceptedTerms ? walletAccountId : null;
-
-    const createProposal = async (
-        toastMessage: string,
-        params: CreateProposalParams,
-    ) => {
-        const results = await storeCreateProposal(toastMessage, params);
-        if (results.length > 0) {
-            // Delay to allow backend to pick up the new proposal
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-            // Invalidate and refetch proposals
-            await queryClient.invalidateQueries({
-                queryKey: ["proposals", params.treasuryId],
-            });
-            await queryClient.invalidateQueries({
-                queryKey: ["proposal", params.treasuryId],
-            });
-        } else {
-            throw new Error("Transaction wasn't approved in your wallet.");
-        }
-        return results;
-    };
+  const createProposal = async (
+    toastMessage: string,
+    params: CreateProposalParams
+  ) => {
+    const results = await storeCreateProposal(toastMessage, params);
+    
+    // If successful, invalidate queries after delay in background 
+    if (results.length > 0) {
+      (async () => {
+        // Delay to allow backend to pick up the new proposal
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        // Invalidate and refetch proposals
+        await queryClient.invalidateQueries({
+          queryKey: ["proposals", params.treasuryId],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["proposal", params.treasuryId],
+        });
+      })();
+    } else {
+    throw new Error("Transaction wasn't approved in your wallet.");
+}
+    
+    return results;
+  };
 
     const voteProposals = async (treasuryId: string, votes: Vote[]) => {
         const results = await storeVoteProposals(treasuryId, votes);
