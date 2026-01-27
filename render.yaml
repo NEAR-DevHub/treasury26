@@ -34,11 +34,13 @@ services:
     runtime: node
     plan: starter
     rootDir: nt-fe
-    buildCommand: bun install && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
+    buildCommand: bun install && node ./node_modules/geoip-lite/scripts/updatedb.js license_key=$MAXMIND_LICENSE_KEY && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
     startCommand: node .next/standalone/server.js
     envVars:
       - key: NODE_ENV
         value: production
+      - key: MAXMIND_LICENSE_KEY
+        sync: false
       - key: NEXT_PUBLIC_BACKEND_API_BASE
         fromService:
           type: web
