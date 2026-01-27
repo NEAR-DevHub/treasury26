@@ -3,9 +3,10 @@ use sqlx::PgPool;
 use std::collections::HashSet;
 
 use super::balance::ft::get_balance_at_block as get_ft_balance;
-use super::gap_filler::{fill_gaps, insert_snapshot_record};
+use super::gap_filler::{fill_gaps_with_hints, insert_snapshot_record};
 use super::staking_rewards::{is_staking_token, track_and_fill_staking_rewards};
 use super::token_discovery::snapshot_intents_tokens;
+use super::transfer_hints::TransferHintService;
 
 /// Run one cycle of monitoring for all enabled accounts
 ///
@@ -16,10 +17,17 @@ use super::token_discovery::snapshot_intents_tokens;
 ///    - Runs gap filling for each token up to the specified block
 ///    - Updates last_synced_at timestamp after processing
 /// 3. Handles errors gracefully, continuing with next account if one fails
+///
+/// # Arguments
+/// * `pool` - Database connection pool
+/// * `network` - NEAR network configuration (archival RPC)
+/// * `up_to_block` - Process gaps up to this block height
+/// * `hint_service` - Optional transfer hint service for accelerated gap filling
 pub async fn run_monitor_cycle(
     pool: &PgPool,
     network: &NetworkConfig,
     up_to_block: i64,
+    hint_service: Option<&TransferHintService>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Get all enabled monitored accounts
     let accounts = sqlx::query!(
@@ -86,7 +94,16 @@ pub async fn run_monitor_cycle(
                 continue;
             }
 
-            match fill_gaps(pool, network, account_id, token_id, up_to_block).await {
+            match fill_gaps_with_hints(
+                pool,
+                network,
+                account_id,
+                token_id,
+                up_to_block,
+                hint_service,
+            )
+            .await
+            {
                 Ok(filled) => {
                     if !filled.is_empty() {
                         println!("    {}: Filled {} gaps", token_id, filled.len());
@@ -393,7 +410,13 @@ mod tests {
         let network = NetworkConfig::mainnet();
 
         // Should not error with no accounts
-        let result = run_monitor_cycle(&state.db_pool, &network, 177_000_000).await;
+        let result = run_monitor_cycle(
+            &state.db_pool,
+            &network,
+            177_000_000,
+            state.transfer_hint_service.as_ref(),
+        )
+        .await;
         assert!(result.is_ok());
     }
 }

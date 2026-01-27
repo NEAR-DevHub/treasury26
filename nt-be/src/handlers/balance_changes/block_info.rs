@@ -127,20 +127,9 @@ pub async fn get_block_data(
             }
         };
 
-        // Debug: print chunk info
-        let tx_count = chunk_response.transactions.len();
-        let receipt_count = chunk_response.receipts.len();
-        eprintln!(
-            "Chunk {} has {} transactions and {} receipts",
-            chunk_hash_str, tx_count, receipt_count
-        );
-
         // Look through receipts for ones affecting our account
         for receipt in chunk_response.receipts {
             if receipt.receiver_id.as_str() == account_id {
-                // Debug: print full receipt structure
-                eprintln!("Receipt details: {:#?}", receipt);
-
                 // Store the full receipt - we'll serialize to JSON in raw_data
                 all_receipts.push(receipt);
             }
