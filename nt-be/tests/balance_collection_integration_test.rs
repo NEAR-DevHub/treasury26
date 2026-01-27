@@ -674,7 +674,7 @@ async fn test_near_snapshot_with_existing_intents_tokens(pool: PgPool) -> sqlx::
     let network = common::create_archival_network();
     let up_to_block = 182_490_734i64; // Current block as of Jan 24, 2026
 
-    run_monitor_cycle(&pool, &network, up_to_block)
+    run_monitor_cycle(&pool, &network, up_to_block, None)
         .await
         .map_err(|e| {
             sqlx::Error::Io(std::io::Error::new(
