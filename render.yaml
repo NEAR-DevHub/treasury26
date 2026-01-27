@@ -51,5 +51,5 @@ services:
 databases:
   - name: database
     plan: basic-1gb
-    diskSizeGB: 35
+    diskSizeGB: 1
     ipAllowList: [] # No entries in the IP allow list
