@@ -395,7 +395,7 @@ pub struct BatchPayment {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct BatchPaymentResponse {
-    pub token_id: AccountId,
+    pub token_id: String, // supports Intents format (nep141:xxx)
     pub submitter: AccountId,
     pub status: String,
     pub payments: Vec<BatchPayment>,
