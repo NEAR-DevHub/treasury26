@@ -18,6 +18,7 @@ export const tokenSchema = z.object({
     network: z.string(),
     icon: z.string(),
     decimals: z.number(),
+    networkIcon: z.string().nullable().optional(),
 });
 
 export type Token = z.infer<typeof tokenSchema>;
@@ -38,12 +39,17 @@ interface TokenInputProps<
         disabled?: boolean;
         locked?: boolean;
     };
+    readOnly?: boolean;
+    loading?: boolean;
+    customValue?: string;
+    infoMessage?: string;
+    customTokenSelector?: React.ReactNode;
 }
 
 export function TokenInput<
     TFieldValues extends FieldValues = FieldValues,
     TTokenPath extends Path<TFieldValues> = Path<TFieldValues>
->({ control, title, amountName, tokenName, tokenSelect }: TokenInputProps<TFieldValues, TTokenPath>) {
+>({ control, title, amountName, tokenName, tokenSelect, readOnly = false, loading = false, customValue, infoMessage, customTokenSelector }: TokenInputProps<TFieldValues, TTokenPath>) {
     const { selectedTreasury } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
@@ -71,9 +77,11 @@ export function TokenInput<
                                 <p className="text-xs text-muted-foreground">
                                     Balance: {formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals)} {token.symbol.toUpperCase()}
                                 </p>
-                                <Button type="button" variant="secondary" className="bg-muted-foreground/10 hover:bg-muted-foreground/20" size="sm" onClick={() => {
-                                    setValue(amountName, formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals) as PathValue<TFieldValues, Path<TFieldValues>>);
-                                }}>MAX</Button>
+                                {!readOnly && (
+                                    <Button type="button" variant="secondary" className="bg-muted-foreground/10 hover:bg-muted-foreground/20" size="sm" onClick={() => {
+                                        setValue(amountName, formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals) as PathValue<TFieldValues, Path<TFieldValues>>);
+                                    }}>MAX</Button>
+                                )}
                             </>
                         )}
                     </div>
@@ -82,32 +90,43 @@ export function TokenInput<
                     <>
                         <div className="flex justify-between items-center">
                             <div className="flex-1">
-                                <LargeInput type="number" borderless onChange={(e) => field.onChange(e.target.value.replace(/^0+(?=\d)/, ""))} onBlur={field.onBlur} value={field.value} placeholder="0" className="text-3xl!" />
+                                <LargeInput 
+                                    type={readOnly ? "text" : "number"}
+                                    borderless 
+                                    onChange={readOnly ? undefined : (e) => field.onChange(e.target.value.replace(/^0+(?=\d)/, ""))} 
+                                    onBlur={readOnly ? undefined : field.onBlur} 
+                                    value={loading ? "..." : (customValue !== undefined ? customValue : field.value)} 
+                                    placeholder="0" 
+                                    className={cn("text-3xl!", readOnly && "text-muted-foreground")}
+                                    readOnly={readOnly}
+                                />
                             </div>
-                            <FormField
-                                control={control}
-                                name={`${tokenName}.symbol` as Path<TFieldValues>}
-                                render={({ field }) => (
-                                    <TokenSelect
-                                        disabled={tokenSelect?.disabled}
-                                        locked={tokenSelect?.locked}
-                                        lockedTokenData={tokenSelect?.locked ? {
-                                            symbol: token.symbol,
-                                            icon: token.icon,
-                                            network: token.network,
-                                            chainIcons: tokenData?.chainIcons
-                                        } : undefined}
-                                        selectedToken={field.value}
-                                        setSelectedToken={(selectedToken) => {
-                                            field.onChange(selectedToken.symbol);
-                                            setValue(`${tokenName}.address` as Path<TFieldValues>, selectedToken.id as PathValue<TFieldValues, Path<TFieldValues>>);
-                                            setValue(`${tokenName}.network` as Path<TFieldValues>, selectedToken.network as PathValue<TFieldValues, Path<TFieldValues>>);
-                                            setValue(`${tokenName}.icon` as Path<TFieldValues>, selectedToken.icon as PathValue<TFieldValues, Path<TFieldValues>>);
-                                            setValue(`${tokenName}.decimals` as Path<TFieldValues>, selectedToken.decimals as PathValue<TFieldValues, Path<TFieldValues>>);
-                                        }}
-                                    />
-                                )}
-                            />
+                            {customTokenSelector || (
+                                <FormField
+                                    control={control}
+                                    name={`${tokenName}.symbol` as Path<TFieldValues>}
+                                    render={({ field }) => (
+                                        <TokenSelect
+                                            disabled={tokenSelect?.disabled}
+                                            locked={tokenSelect?.locked}
+                                            lockedTokenData={tokenSelect?.locked ? {
+                                                symbol: token.symbol,
+                                                icon: token.icon,
+                                                network: token.network,
+                                                chainIcons: tokenData?.chainIcons
+                                            } : undefined}
+                                            selectedToken={field.value}
+                                            setSelectedToken={(selectedToken) => {
+                                                field.onChange(selectedToken.symbol);
+                                                setValue(`${tokenName}.address` as Path<TFieldValues>, selectedToken.id as PathValue<TFieldValues, Path<TFieldValues>>);
+                                                setValue(`${tokenName}.network` as Path<TFieldValues>, selectedToken.network as PathValue<TFieldValues, Path<TFieldValues>>);
+                                                setValue(`${tokenName}.icon` as Path<TFieldValues>, selectedToken.icon as PathValue<TFieldValues, Path<TFieldValues>>);
+                                                setValue(`${tokenName}.decimals` as Path<TFieldValues>, selectedToken.decimals as PathValue<TFieldValues, Path<TFieldValues>>);
+                                            }}
+                                        />
+                                    )}
+                                />
+                            )}
                         </div>
                         <p className={cn("text-muted-foreground text-xs invisible", estimatedUSDValue !== null && estimatedUSDValue > 0 && "visible")}>
                             {!isTokenLoading && estimatedUSDValue !== null && estimatedUSDValue > 0
@@ -116,7 +135,13 @@ export function TokenInput<
                                     ? 'Loading price...'
                                     : 'Invisible'}
                         </p>
-                        {fieldState.error ? <FormMessage /> : <p className="text-muted-foreground text-xs invisible">Invisible</p>}
+                        {fieldState.error ? (
+                            <FormMessage />
+                        ) : infoMessage ? (
+                            <p className="text-general-info-foreground text-sm mt-2">{infoMessage}</p>
+                        ) : (
+                            <p className="text-muted-foreground text-xs invisible">Invisible</p>
+                        )}
                     </>
                 </InputBlock>
             )}

@@ -33,6 +33,7 @@ export function CopyButton({
 
   return (
     <Button
+      type="button"
       variant={variant}
       size={size}
       className={className}
