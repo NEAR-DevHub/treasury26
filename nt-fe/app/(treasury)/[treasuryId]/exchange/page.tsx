@@ -13,7 +13,11 @@ import {
   StepProps,
   StepWizard,
 } from "@/components/step-wizard";
-import { useToken, useTreasuryPolicy, useTokenBalance } from "@/hooks/use-treasury-queries";
+import {
+  useToken,
+  useTreasuryPolicy,
+  useTokenBalance,
+} from "@/hooks/use-treasury-queries";
 import { useEffect, useMemo, useState } from "react";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
@@ -88,14 +92,12 @@ function Step1({ handleNext }: StepProps) {
     sellToken.network
   );
 
-  console.log({sellToken, receiveToken})
-
   const slippageTolerance = form.watch("slippageTolerance") || 0.5;
 
   const [quoteData, setQuoteData] = useState<IntentsQuoteResponse | null>(null);
-  
+
   const { fetchQuote, isLoading: isLoadingQuote } = useQuoteFetcher();
-  
+
   const hasValidAmount =
     sellAmount && !isNaN(Number(sellAmount)) && Number(sellAmount) > 0;
 
@@ -160,7 +162,7 @@ function Step1({ handleNext }: StepProps) {
     form.clearErrors("receiveAmount");
     form.setValue("receiveAmount", "");
     setQuoteData(null);
-    
+
     const timer = setTimeout(() => {
       fetchDryQuote();
     }, 500); // Debounce
@@ -171,13 +173,20 @@ function Step1({ handleNext }: StepProps) {
   // Validate tokens when they change
   useEffect(() => {
     form.trigger(["sellToken", "receiveToken"]);
-  }, [sellToken.address, receiveToken.address, sellToken.network, receiveToken.network]);
+  }, [
+    sellToken.address,
+    receiveToken.address,
+    sellToken.network,
+    receiveToken.network,
+  ]);
 
   // Auto-refresh quote every 5 seconds
-  useAutoRefresh(fetchDryQuote, Boolean(quoteData && hasValidAmount), DRY_QUOTE_REFRESH_INTERVAL, [
-    quoteData,
-    hasValidAmount,
-  ]);
+  useAutoRefresh(
+    fetchDryQuote,
+    Boolean(quoteData && hasValidAmount),
+    DRY_QUOTE_REFRESH_INTERVAL,
+    [quoteData, hasValidAmount]
+  );
 
   const handleContinue = () => {
     form.trigger().then((isValid) => {
@@ -191,10 +200,10 @@ function Step1({ handleNext }: StepProps) {
     // Swap sell and receive tokens
     const tempSellToken = { ...sellToken };
     const tempReceiveToken = { ...receiveToken };
-    
+
     form.setValue("sellToken", tempReceiveToken);
     form.setValue("receiveToken", tempSellToken);
-    
+
     // Clear amounts and quote data
     form.setValue("sellAmount", "");
     form.setValue("receiveAmount", "");
@@ -227,8 +236,10 @@ function Step1({ handleNext }: StepProps) {
         />
         {/* Swap Arrow */}
         <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
-          <div className="rounded-full bg-card border p-1.5 z-10 cursor-pointer"  onClick={handleSwapTokens}
-              >
+          <div
+            className="rounded-full bg-card border p-1.5 z-10 cursor-pointer"
+            onClick={handleSwapTokens}
+          >
             {isLoadingQuote ? (
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             ) : (
@@ -281,11 +292,9 @@ function Step1({ handleNext }: StepProps) {
               "bg-muted text-muted-foreground hover:bg-muted"
           )}
         >
-          {hasValidAmount && quoteData ? (
-            "Review Exchange"
-          ) : (
-            "Enter an amount to exchange"
-          )}
+          {hasValidAmount && quoteData
+            ? "Review Exchange"
+            : "Enter an amount to exchange"}
         </Button>
       </div>
 
@@ -293,7 +302,11 @@ function Step1({ handleNext }: StepProps) {
       <div className="flex justify-center items-center gap-2 text-sm text-muted-foreground">
         <span>Powered by</span>
         <span className="font-semibold flex items-center gap-1">
-          NEAR Intents
+          <img
+            src="https://near-intents.org/static/templates/near-intents/logo.svg"
+            alt="NEAR Intents"
+            className="h-5"
+          />
         </span>
       </div>
     </PageCard>
@@ -312,12 +325,11 @@ function Step2({ handleBack }: StepProps) {
   const { data: receiveTokenData } = useToken(receiveToken.address);
   const formatDate = useFormatDate();
 
-
   const [localLiveQuoteData, setLocalLiveQuoteData] =
     useState<IntentsQuoteResponse | null>(null);
 
   const { fetchQuote, isLoading: isLoadingLiveQuote } = useQuoteFetcher();
-  
+
   const timeUntilRefresh = useCountdownTimer(
     !!localLiveQuoteData,
     PROPOSAL_REFRESH_INTERVAL
@@ -351,9 +363,12 @@ function Step2({ handleBack }: StepProps) {
   }, [slippageTolerance]);
 
   // Auto-refresh every 30 seconds
-  useAutoRefresh(fetchLiveQuote, !!localLiveQuoteData, PROPOSAL_REFRESH_INTERVAL, [
-    localLiveQuoteData,
-  ]);
+  useAutoRefresh(
+    fetchLiveQuote,
+    !!localLiveQuoteData,
+    PROPOSAL_REFRESH_INTERVAL,
+    [localLiveQuoteData]
+  );
 
   const sellTotal = useMemo(() => {
     if (!localLiveQuoteData) return 0;
@@ -452,14 +467,12 @@ function Step2({ handleBack }: StepProps) {
                 receiveToken={receiveToken}
                 detailed
               />
-              
+
               {marketPriceDifference && marketPriceDifference.hasMarketData && (
                 <ExchangeDetailRow
                   label="Price Difference"
                   value={
-                    <span
-                      className="font-medium"
-                    >
+                    <span className="font-medium">
                       {marketPriceDifference.isFavorable ? "+" : ""}
                       {marketPriceDifference.percentDifference}%
                     </span>
@@ -537,7 +550,10 @@ function Step2({ handleBack }: StepProps) {
 
       {localLiveQuoteData && (
         <p className="text-center text-sm text-muted-foreground">
-          Exchange rate will refresh in <span className="font-medium text-foreground">{timeUntilRefresh}s</span>
+          Exchange rate will refresh in{" "}
+          <span className="font-medium text-foreground">
+            {timeUntilRefresh}s
+          </span>
         </p>
       )}
     </PageCard>
@@ -618,7 +634,8 @@ export default function ExchangePage() {
     } catch (error: any) {
       console.error("Exchange error", error);
 
-      const errorMessage = error?.message || "Failed to submit exchange request";
+      const errorMessage =
+        error?.message || "Failed to submit exchange request";
 
       if (errorMessage.toLowerCase().includes("user rejected")) {
         console.log("User rejected the transaction");
