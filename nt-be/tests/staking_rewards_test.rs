@@ -984,7 +984,7 @@ async fn test_track_and_fill_staking_rewards(pool: PgPool) -> sqlx::Result<()> {
             cycle_epoch
         );
 
-        run_monitor_cycle(&pool, &network, cycle_block)
+        run_monitor_cycle(&pool, &network, cycle_block, None)
             .await
             .expect("Monitor cycle should succeed");
     }
