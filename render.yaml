@@ -5,7 +5,7 @@ services:
     runtime: rust
     plan: starter
     rootDir: nt-be
-    buildCommand: cargo build --release --bin nt-be
+    buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be
     startCommand: ./target/release/nt-be
     envVars:
       - key: PIKESPEAK_KEY
