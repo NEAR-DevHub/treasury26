@@ -47,6 +47,7 @@ export const SANCTIONED_REGIONS: ReadonlyMap<
     "UA",
     new Set([
       "43", // Crimea
+      "40", // Sevastopol
       "14", // Donetsk
       "09", // Luhansk
       "23", // Zaporizhzhia
