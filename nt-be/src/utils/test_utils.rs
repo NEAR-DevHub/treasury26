@@ -56,18 +56,13 @@ pub async fn init_test_state() -> AppState {
 
     let http_client = reqwest::Client::new();
 
-    // Initialize price service - with CoinGecko provider if API key is available
-    let price_service = if let Some(api_key) = env_vars.coingecko_api_key.as_ref() {
-        let base_url = &env_vars.coingecko_api_base_url;
-        let coingecko_client = crate::services::CoinGeckoClient::with_base_url(
-            http_client.clone(),
-            api_key.clone(),
-            base_url.clone(),
-        );
-        crate::services::PriceLookupService::new(db_pool.clone(), coingecko_client)
-    } else {
-        crate::services::PriceLookupService::without_provider(db_pool.clone())
-    };
+    // Initialize price service with DeFiLlama provider (free, no API key required)
+    let base_url = &env_vars.defillama_api_base_url;
+    let defillama_client = crate::services::DeFiLlamaClient::with_base_url(
+        http_client.clone(),
+        base_url.clone(),
+    );
+    let price_service = crate::services::PriceLookupService::new(db_pool.clone(), defillama_client);
 
     // Create network configs first (needed for transfer hint service)
     let network = NetworkConfig {

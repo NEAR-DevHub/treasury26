@@ -60,11 +60,11 @@ impl TestServer {
         let db_url =
             std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
 
-        // Start mock CoinGecko server
+        // Start mock DeFiLlama server
         let mock_server = MockServer::start().await;
 
         // Load price data from files and setup mock responses
-        setup_coingecko_mocks(&mock_server).await;
+        setup_defillama_mocks(&mock_server).await;
 
         // Start the server in the background with mock CoinGecko URL
         let mut process = Command::new("cargo")
@@ -78,8 +78,7 @@ impl TestServer {
                 "ed25519:3tgdk2wPraJzT4nsTuf86UX41xgPNk3MHnq8epARMdBNs29AFEztAuaQ7iHddDfXG9F2RzV1XNQYgJyAyoW51UBB",
             )
             .env("SIGNER_ID", "sandbox")
-            .env("COINGECKO_API_KEY", "test-api-key") // Enable price service
-            .env("COINGECKO_API_BASE_URL", mock_server.uri()) // Point to mock server
+            .env("DEFILLAMA_API_BASE_URL", mock_server.uri()) // Point to mock DeFiLlama server
             .spawn()
             .expect("Failed to start server");
 
@@ -124,53 +123,131 @@ impl Drop for TestServer {
     }
 }
 
-/// Setup mock responses for CoinGecko API endpoints
-async fn setup_coingecko_mocks(mock_server: &MockServer) {
-    // Load price data from test files
+/// Setup mock responses for DeFiLlama API endpoints
+///
+/// Converts CoinGecko-format test data to DeFiLlama response format.
+/// DeFiLlama historical endpoint: /prices/historical/{timestamp}/{coins}
+/// DeFiLlama chart endpoint: /chart/{coins}?start={timestamp}&span={days}&period=1d
+async fn setup_defillama_mocks(mock_server: &MockServer) {
+    use serde_json::{json, Value};
+
+    // Load price data from test files (CoinGecko format: {"prices": [[timestamp_ms, price], ...]})
     let assets = [
-        ("near", include_str!("../test_data/price_data/near.json")),
-        (
-            "bitcoin",
-            include_str!("../test_data/price_data/bitcoin.json"),
-        ),
-        (
-            "ethereum",
-            include_str!("../test_data/price_data/ethereum.json"),
-        ),
-        (
-            "solana",
-            include_str!("../test_data/price_data/solana.json"),
-        ),
-        (
-            "ripple",
-            include_str!("../test_data/price_data/ripple.json"),
-        ),
-        (
-            "usd-coin",
-            include_str!("../test_data/price_data/usd-coin.json"),
-        ),
+        ("coingecko:near", include_str!("../test_data/price_data/near.json")),
+        ("coingecko:bitcoin", include_str!("../test_data/price_data/bitcoin.json")),
+        ("coingecko:ethereum", include_str!("../test_data/price_data/ethereum.json")),
+        ("coingecko:solana", include_str!("../test_data/price_data/solana.json")),
+        ("coingecko:ripple", include_str!("../test_data/price_data/ripple.json")),
+        ("coingecko:usd-coin", include_str!("../test_data/price_data/usd-coin.json")),
     ];
 
+    // Parse and store price data for each asset
+    let mut price_data: std::collections::HashMap<String, Vec<(i64, f64)>> = std::collections::HashMap::new();
+
     for (asset_id, json_data) in assets {
-        // Mock the market_chart/range endpoint (bulk historical prices)
-        Mock::given(method("GET"))
-            .and(path_regex(format!(
-                r"^/coins/{}/market_chart/range",
-                asset_id
-            )))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_string(json_data)
-                    .insert_header("content-type", "application/json"),
-            )
-            .mount(mock_server)
-            .await;
+        let data: Value = serde_json::from_str(json_data).expect("Invalid JSON in test data");
+        let prices = data["prices"].as_array().expect("prices should be an array");
+
+        let parsed_prices: Vec<(i64, f64)> = prices
+            .iter()
+            .map(|p| {
+                let arr = p.as_array().expect("price entry should be array");
+                let timestamp_ms = arr[0].as_i64().expect("timestamp should be i64");
+                let price = arr[1].as_f64().expect("price should be f64");
+                (timestamp_ms / 1000, price) // Convert ms to seconds
+            })
+            .collect();
+
+        price_data.insert(asset_id.to_string(), parsed_prices);
     }
 
-    // Return 404 for unknown assets
+    // Clone for the closure
+    let price_data_for_historical = price_data.clone();
+    let price_data_for_chart = price_data.clone();
+
+    // Mock the /prices/historical/{timestamp}/{coins} endpoint
     Mock::given(method("GET"))
-        .and(path_regex(r"^/coins/[^/]+/market_chart/range"))
-        .respond_with(ResponseTemplate::new(404))
+        .and(path_regex(r"^/prices/historical/\d+/coingecko:[a-z-]+"))
+        .respond_with(move |req: &wiremock::Request| {
+            let path = req.url.path();
+            let parts: Vec<&str> = path.split('/').collect();
+            // Path format: /prices/historical/{timestamp}/{coin}
+            if parts.len() < 4 {
+                return ResponseTemplate::new(404);
+            }
+
+            let timestamp: i64 = parts[3].parse().unwrap_or(0);
+            let coin = parts[4];
+
+            if let Some(prices) = price_data_for_historical.get(coin) {
+                // Find the closest price to the requested timestamp
+                let mut closest_price = None;
+                let mut closest_diff = i64::MAX;
+
+                for (ts, price) in prices {
+                    let diff = (ts - timestamp).abs();
+                    if diff < closest_diff {
+                        closest_diff = diff;
+                        closest_price = Some((*ts, *price));
+                    }
+                }
+
+                if let Some((ts, price)) = closest_price {
+                    let response = json!({
+                        "coins": {
+                            coin: {
+                                "price": price,
+                                "symbol": coin.split(':').last().unwrap_or("").to_uppercase(),
+                                "timestamp": ts,
+                                "confidence": 0.99
+                            }
+                        }
+                    });
+                    return ResponseTemplate::new(200)
+                        .set_body_json(response)
+                        .insert_header("content-type", "application/json");
+                }
+            }
+
+            // Asset not found
+            ResponseTemplate::new(200)
+                .set_body_json(json!({"coins": {}}))
+                .insert_header("content-type", "application/json")
+        })
+        .mount(mock_server)
+        .await;
+
+    // Mock the /chart/{coins} endpoint for bulk historical prices
+    Mock::given(method("GET"))
+        .and(path_regex(r"^/chart/coingecko:[a-z-]+"))
+        .respond_with(move |req: &wiremock::Request| {
+            let path = req.url.path();
+            let coin = path.strip_prefix("/chart/").unwrap_or("");
+
+            if let Some(prices) = price_data_for_chart.get(coin) {
+                let price_points: Vec<Value> = prices
+                    .iter()
+                    .map(|(ts, price)| json!({"timestamp": ts, "price": price}))
+                    .collect();
+
+                let response = json!({
+                    "coins": {
+                        coin: {
+                            "prices": price_points,
+                            "symbol": coin.split(':').last().unwrap_or("").to_uppercase()
+                        }
+                    }
+                });
+                return ResponseTemplate::new(200)
+                    .set_body_json(response)
+                    .insert_header("content-type", "application/json");
+            }
+
+            // Asset not found
+            ResponseTemplate::new(200)
+                .set_body_json(json!({"coins": {}}))
+                .insert_header("content-type", "application/json")
+        })
         .mount(mock_server)
         .await;
 }
