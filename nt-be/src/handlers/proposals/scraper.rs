@@ -16,7 +16,6 @@ use serde_json::Value;
 use serde_json::json;
 use std::collections::HashMap;
 
-use crate::constants::BATCH_PAYMENT_ACCOUNT_ID;
 use crate::utils::cache::{Cache, CacheKey, CacheTier};
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, Debug)]
@@ -250,8 +249,9 @@ pub async fn fetch_ft_metadata(
 pub async fn fetch_batch_payment_list(
     network: &NetworkConfig,
     batch_id: &str,
+    bulk_payment_contract_id: &AccountId,
 ) -> Result<BatchPaymentResponse, QueryError<RpcQueryError>> {
-    Contract(BATCH_PAYMENT_ACCOUNT_ID.into())
+    Contract(bulk_payment_contract_id.clone())
         .call_function(
             "view_list",
             json!({
@@ -349,6 +349,22 @@ pub trait ProposalType {
     fn category_name() -> &'static str;
 }
 
+/// Trait for payment-related proposals that need to distinguish bulk payments from regular payments
+pub trait PaymentProposalType {
+    /// Attempts to extract proposal-specific information from a proposal.
+    /// Takes the bulk payment contract ID to filter out bulk payment proposals.
+    /// Returns None if the proposal doesn't match this type.
+    fn from_proposal(
+        proposal: &Proposal,
+        bulk_payment_contract_id: Option<&AccountId>,
+    ) -> Option<Self>
+    where
+        Self: Sized;
+
+    /// Returns the category name as a string constant.
+    fn category_name() -> &'static str;
+}
+
 #[derive(Debug, Clone)]
 pub struct PaymentInfo {
     pub receiver: String,
@@ -379,7 +395,7 @@ pub struct BatchPayment {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct BatchPaymentResponse {
-    pub token_id: AccountId,
+    pub token_id: String, // supports Intents format (nep141:xxx)
     pub submitter: AccountId,
     pub status: String,
     pub payments: Vec<BatchPayment>,
@@ -400,8 +416,11 @@ pub struct StakeDelegationInfo {
     pub validator: AccountId,
 }
 
-impl ProposalType for PaymentInfo {
-    fn from_proposal(proposal: &Proposal) -> Option<Self> {
+impl PaymentProposalType for PaymentInfo {
+    fn from_proposal(
+        proposal: &Proposal,
+        bulk_payment_contract_id: Option<&AccountId>,
+    ) -> Option<Self> {
         if proposal.kind.get("Transfer").is_none() && proposal.kind.get("FunctionCall").is_none() {
             return None;
         }
@@ -442,9 +461,40 @@ impl ProposalType for PaymentInfo {
                 .map(|a| a.as_slice())
                 .unwrap_or(&[]);
 
-            if receiver_id == "bulkpayment.near" {
-                return None;
+            // Check for approve_list or ft_transfer_call/mt_transfer_call to bulk payment contract
+            if let Some(bulk_contract_id) = bulk_payment_contract_id {
+                let is_bulk_payment = actions.iter().any(|action| {
+                    let method_name = action
+                        .get("method_name")
+                        .and_then(|m| m.as_str())
+                        .unwrap_or("");
+
+                    // For approve_list to bulk payment contract
+                    if method_name == "approve_list" {
+                        return receiver_id == bulk_contract_id.as_str();
+                    }
+
+                    // For ft_transfer_call or mt_transfer_call, check if receiver_id in args is bulk payment contract
+                    if (method_name == "ft_transfer_call" || method_name == "mt_transfer_call")
+                        && let Some(args_b64) = action.get("args").and_then(|a| a.as_str())
+                        && let Ok(decoded) =
+                            base64::engine::general_purpose::STANDARD.decode(args_b64)
+                        && let Ok(json_args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                        && let Some(args_receiver) =
+                            json_args.get("receiver_id").and_then(|r| r.as_str())
+                        && args_receiver == bulk_contract_id.as_str()
+                    {
+                        return true;
+                    }
+
+                    false
+                });
+
+                if is_bulk_payment {
+                    return None;
+                }
             }
+
             // Intents payment
             if receiver_id == "intents.near"
                 && actions
@@ -939,12 +989,12 @@ impl ProposalType for BulkPayment {
                 .map(|a| a.as_slice())
                 .unwrap_or(&[]);
 
-            // Find action with ft_transfer_call or approve_list method
+            // Find action with ft_transfer_call, mt_transfer_call, or approve_list method
             let action = actions.iter().find(|a| {
-                a.get("method_name")
-                    .and_then(|m| m.as_str())
-                    .map(|m| m == "ft_transfer_call" || m == "approve_list")
-                    .unwrap_or(false)
+                let method_name = a.get("method_name").and_then(|m| m.as_str()).unwrap_or("");
+                method_name == "ft_transfer_call"
+                    || method_name == "mt_transfer_call"
+                    || method_name == "approve_list"
             })?;
 
             // Decode args
@@ -973,8 +1023,23 @@ impl ProposalType for BulkPayment {
                     .to_string();
 
                 (token_id, total_amount, batch_id)
-            } else {
-                // For ft_transfer_call
+            } else if method_name == "ft_transfer_call" || method_name == "mt_transfer_call" {
+                // Check if receiver_id in args is the bulk payment contract
+                let args_receiver_id = json_args
+                    .get("receiver_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+
+                // For ft_transfer_call/mt_transfer_call, the receiver_id in args should be bulk payment contract
+                // If not, this is not a bulk payment proposal
+                let bulk_payment_contract_id = std::env::var("BULK_PAYMENT_CONTRACT_ID")
+                    .unwrap_or_else(|_| "bulkpayment.near".to_string());
+
+                if args_receiver_id != bulk_payment_contract_id {
+                    return None;
+                }
+
+                // For ft_transfer_call/mt_transfer_call
                 let token_id = function_call
                     .get("receiver_id")
                     .and_then(|v| v.as_str())
@@ -992,6 +1057,8 @@ impl ProposalType for BulkPayment {
                     .to_string();
 
                 (token_id, total_amount, batch_id)
+            } else {
+                return None;
             };
 
             Some(BulkPayment {

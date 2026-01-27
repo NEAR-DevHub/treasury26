@@ -8,16 +8,18 @@ import { useRouter } from "next/navigation";
 interface PendingButtonProps {
   /** High-level category types from backend: "Payments", "Exchange", "Change Policy", etc. */
   types?: string[];
+  categories?: string[];
   id?: string;
 }
 
-export function PendingButton({ types, id }: PendingButtonProps) {
+export function PendingButton({ types, categories, id }: PendingButtonProps) {
   const { selectedTreasury } = useTreasury();
   const router = useRouter();
 
   const { data: pendingProposals } = useProposals(selectedTreasury, {
     statuses: ["InProgress"],
     types,
+    category: categories,
     sort_direction: "desc",
     sort_by: "CreationTime",
   });

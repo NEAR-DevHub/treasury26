@@ -593,7 +593,7 @@ export async function getBatchPayment(
   if (!batchId) return null;
 
   try {
-    const url = `${BACKEND_API_BASE}/bulkpayment/get`;
+    const url = `${BACKEND_API_BASE}/bulk-payment/get`;
 
     const response = await axios.get<BatchPaymentResponse>(url, {
       params: { batchId: batchId },
@@ -884,3 +884,29 @@ export async function openTreasury(
     return null;
   }
 }
+
+/**
+ * Bulk Payment Usage Statistics
+ */
+export interface BulkPaymentUsageStats {
+  credits_available: number;
+  credits_used: number;
+  total_credits: number;
+}
+
+/**
+ * Get bulk payment usage statistics for a treasury
+ * Returns credits available, used, and total
+ */
+export async function getBulkPaymentUsageStats(
+  treasuryId: string
+): Promise<BulkPaymentUsageStats> {
+  const response = await axios.get<BulkPaymentUsageStats>(
+    `${BACKEND_API_BASE}/bulk-payment/usage-stats`,
+    {
+      params: { treasury_id: treasuryId },
+    }
+  );
+  return response.data;
+}
+
