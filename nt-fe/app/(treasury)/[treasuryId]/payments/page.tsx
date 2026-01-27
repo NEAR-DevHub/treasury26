@@ -9,7 +9,7 @@ import { Form, FormField } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ReviewStep, StepperHeader, StepProps, StepWizard } from "@/components/step-wizard";
-import { useStorageDepositIsRegistered, useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useStorageDepositIsRegistered, useToken, useTokenBalance, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/textarea";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -52,8 +52,29 @@ const paymentFormSchema = z.object({
 
 function Step1({ handleNext }: StepProps) {
   const form = useFormContext<PaymentFormValues>();
+  const { treasuryId } = useTreasury();
   const token = form.watch("token");
+  const amount = form.watch("amount");
+  
+  const { data: tokenBalance } = useTokenBalance(
+    treasuryId,
+    token.address,
+    token.network
+  );
 
+  // Check for insufficient balance
+  const hasInsufficientBalance = useMemo(() => {
+    if (!amount || !tokenBalance?.balance) return false;
+    try {
+      const amountBig = new Big(amount);
+      const balanceBig = new Big(tokenBalance.balance).div(
+        new Big(10).pow(tokenBalance.decimals)
+      );
+      return amountBig.gt(balanceBig);
+    } catch {
+      return false;
+    }
+  }, [amount, tokenBalance]);
   const handleContinue = () => {
     form.trigger().then((isValid) => {
       if (isValid && handleNext) {
@@ -81,7 +102,17 @@ function Step1({ handleNext }: StepProps) {
           />
         </div>
       </div>
-      <TokenInput title="You send" control={form.control} amountName="amount" tokenName="token" />
+      <TokenInput
+        title="You send"
+        control={form.control}
+        amountName="amount"
+        tokenName="token"
+        infoMessage={
+          hasInsufficientBalance
+            ? "Insufficient tokens. You can submit the request and top up before approval."
+            : undefined
+        }
+      />
       <RecipientInput control={form.control} name="address" />
       <div className="rounded-lg border bg-card p-0 overflow-hidden">
         <CreateRequestButton

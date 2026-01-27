@@ -87,9 +87,7 @@ function Step1({ handleNext }: StepProps) {
 
   const slippageTolerance = form.watch("slippageTolerance") || 0.5;
 
-  const [quoteData, setQuoteData] = useState<IntentsQuoteResponse | null>(null);
-
-  const { fetchQuote, isLoading: isLoadingQuote } = useQuoteFetcher();
+  const { fetchQuote } = useQuoteFetcher();
 
   const hasValidAmount =
     sellAmount && !isNaN(Number(sellAmount)) && Number(sellAmount) > 0;
@@ -117,68 +115,80 @@ function Step1({ handleNext }: StepProps) {
     return !isNaN(amountNum) && !isNaN(balanceNum) && amountNum > balanceNum;
   }, [sellAmount, sellTokenBalance]);
 
-  // Fetch dry quote
-  const fetchDryQuote = async () => {
-    if (!hasValidAmount || !selectedTreasury) return;
+  // Debounce query execution - only control when to fetch, not the values themselves
+  const [isReadyToFetch, setIsReadyToFetch] = useState(false);
 
-    // Don't fetch quote if tokens are the same
-    if (areSameTokens) {
-      setQuoteData(null);
-      form.setValue("receiveAmount", "");
-      return;
-    }
-
-    const result = await fetchQuote(
-      {
-        sellToken,
-        receiveToken,
-        sellAmount,
-        slippageTolerance,
-        treasuryId: selectedTreasury,
-      },
-      true
-    );
-
-    if (result.quote) {
-      setQuoteData(result.quote);
-      form.setValue("receiveAmount", result.quote.quote.amountOutFormatted);
-    } else {
-      const userMessage = result.error
-        ? getUserFriendlyErrorMessage(result.error)
-        : "Unable to fetch quote. Please try again.";
-
-      form.setError("receiveAmount", {
-        type: "manual",
-        message: userMessage,
-      });
-    }
-  };
-
-  // Fetch quote when amount/tokens change
   useEffect(() => {
-    // Clear any existing errors and receive amount immediately when inputs change
+    // Immediately disable fetching when inputs change
+    setIsReadyToFetch(false);
+    
+    // Clear receive amount and errors immediately
+    form.setValue("receiveAmount", "");
     form.clearErrors("sellAmount");
     form.clearErrors("receiveAmount");
-    form.setValue("receiveAmount", "");
-    setQuoteData(null);
 
-    // Don't fetch if tokens are the same
-    if (areSameTokens) {
+    // Don't fetch if tokens are the same or amount is invalid
+    if (areSameTokens || !hasValidAmount) {
       return;
     }
 
+    // Enable fetching after debounce period
     const timer = setTimeout(() => {
-      fetchDryQuote();
-    }, 500); // Debounce
+      setIsReadyToFetch(true);
+    }, 500);
 
     return () => clearTimeout(timer);
-  }, [
-    sellAmount,
-    sellToken.address,
-    receiveToken.address,
-    slippageTolerance,
-    areSameTokens,
-  ]);
+  }, [sellAmount, sellToken.address, receiveToken.address, slippageTolerance, areSameTokens, hasValidAmount]);
+
+  // Fetch dry quote with auto-refresh
+  const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
+    queryKey: [
+      "dryExchangeQuote",
+      selectedTreasury,
+      sellToken.address,
+      receiveToken.address,
+      sellAmount,
+      slippageTolerance,
+    ],
+    queryFn: async (): Promise<IntentsQuoteResponse | null> => {
+      if (!selectedTreasury) return null;
+
+      const result = await fetchQuote(
+        {
+          sellToken,
+          receiveToken,
+          sellAmount,
+          slippageTolerance,
+          treasuryId: selectedTreasury,
+        },
+        true
+      );
+
+      if (result.quote) {
+        form.setValue("receiveAmount", result.quote.quote.amountOutFormatted);
+        form.clearErrors("receiveAmount");
+        return result.quote;
+      } else {
+        const userMessage = result.error
+          ? getUserFriendlyErrorMessage(result.error)
+          : "Unable to fetch quote. Please try again.";
+
+        form.setError("receiveAmount", {
+          type: "manual",
+          message: userMessage,
+        });
+        return null;
+      }
+    },
+    enabled: Boolean(
+      selectedTreasury &&
+      isReadyToFetch &&
+      hasValidAmount &&
+      !areSameTokens
+    ),
+    refetchInterval: DRY_QUOTE_REFRESH_INTERVAL, // Auto-refresh every 15 seconds
+    refetchIntervalInBackground: false, // Don't refetch when tab is not visible
+  });
 
   // Validate tokens when they change
   useEffect(() => {
@@ -206,10 +216,9 @@ function Step1({ handleNext }: StepProps) {
     form.setValue("sellToken", tempReceiveToken);
     form.setValue("receiveToken", tempSellToken);
 
-    // Clear amounts and quote data
+    // Clear amounts
     form.setValue("sellAmount", "");
     form.setValue("receiveAmount", "");
-    setQuoteData(null);
   };
 
   return (
@@ -294,7 +303,7 @@ function Step1({ handleNext }: StepProps) {
       />
 
       {/* Rate and Slippage */}
-      {quoteData && (
+      {quoteData && quoteData.quote && (
         <div className="flex flex-col gap-2 text-sm">
           <Rate
             quote={quoteData.quote}
