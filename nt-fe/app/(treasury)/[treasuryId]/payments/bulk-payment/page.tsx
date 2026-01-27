@@ -85,9 +85,9 @@ function needsStorageDepositCheck(token: TreasuryAsset): boolean {
 function parseCsv(raw: string): string[][] {
   const delimiters = [",", "\t", ";"];
   const lines = raw.trim().split(/\r?\n/);
-  
+
   if (lines.length === 0) return [];
-  
+
   let bestDelimiter = ",";
   let maxColumns = 0;
 
@@ -134,19 +134,19 @@ function splitCsvLine(line: string, delimiter: string): string[] {
 function parseAmount(amountStr: string): number {
   // Remove spaces, currency symbols, and underscores (used as thousand separators)
   let normalized = amountStr.trim().replace(/[$€£¥_\s]/g, "");
-  
+
   // Handle empty or invalid input
   if (!normalized) return NaN;
-  
+
   // Handle different decimal separators
   const hasComma = normalized.includes(",");
   const hasDot = normalized.includes(".");
-  
+
   if (hasComma && hasDot) {
     // Both separators present: last one is decimal, others are thousands
     const lastCommaIndex = normalized.lastIndexOf(",");
     const lastDotIndex = normalized.lastIndexOf(".");
-    
+
     if (lastDotIndex > lastCommaIndex) {
       // Dot is decimal: "1,000.50" -> "1000.50"
       normalized = normalized.replace(/,/g, "");
@@ -166,7 +166,7 @@ function parseAmount(amountStr: string): number {
     }
   }
   // If only dot, keep as-is (standard format)
-  
+
   return parseFloat(normalized);
 }
 
@@ -210,30 +210,31 @@ export default function BulkPaymentPage() {
     amount: "",
   });
 
+  // Fetch credits function (extracted for reusability)
+  const fetchCredits = useCallback(async () => {
+    if (!selectedTreasury) return;
+
+    setIsLoadingCredits(true);
+    try {
+      const usageStats = await getBulkPaymentUsageStats(selectedTreasury);
+
+      setAvailableCredits(usageStats.credits_available);
+      setCreditsUsed(usageStats.credits_used);
+      setTotalCredits(usageStats.total_credits);
+    } catch (error) {
+      console.error("Error loading bulk payment credits:", error);
+      setAvailableCredits(0);
+      setCreditsUsed(0);
+      setTotalCredits(5); // Default fallback
+    } finally {
+      setIsLoadingCredits(false);
+    }
+  }, [selectedTreasury]);
+
   // Calculate available bulk payments (storage credits returns bulk payments per month)
   useEffect(() => {
-    async function fetchCredits() {
-      if (!selectedTreasury) return;
-
-      setIsLoadingCredits(true);
-      try {
-        const usageStats = await getBulkPaymentUsageStats(selectedTreasury);
-
-        setAvailableCredits(usageStats.credits_available);
-        setCreditsUsed(usageStats.credits_used);
-        setTotalCredits(usageStats.total_credits);
-      } catch (error) {
-        console.error("Error loading bulk payment credits:", error);
-        setAvailableCredits(0);
-        setCreditsUsed(0);
-        setTotalCredits(5); // Default fallback
-      } finally {
-        setIsLoadingCredits(false);
-      }
-    }
-
     fetchCredits();
-  }, [selectedTreasury]);
+  }, [fetchCredits]);
 
   // Validate accounts exist on-chain when entering preview mode
   useEffect(() => {
@@ -701,7 +702,7 @@ export default function BulkPaymentPage() {
     if (!selectedTreasury || paymentData.length === 0 || !selectedToken) return;
 
     setIsSubmitting(true);
-    
+
     let loadingToastId: string | number | undefined;
 
     try {
@@ -722,7 +723,7 @@ export default function BulkPaymentPage() {
       );
 
       const proposalBond = policy?.proposal_bond || "0";
-      
+
       // Only treat as native NEAR if it's actually the native token (not wrapped or intents)
       const isNEAR =
         selectedToken.id === NEAR_TOKEN.address &&
@@ -782,66 +783,66 @@ export default function BulkPaymentPage() {
         const depositInYocto = Big(0.0125).mul(Big(10).pow(24)).toFixed();
 
         // First, check if bulk payment contract is registered for this token
-        const bulkPaymentContractRegistration = await getBatchStorageDepositIsRegistered([
-          {
-            accountId: BULK_PAYMENT_CONTRACT_ID,
-            tokenId: selectedToken.id,
-          },
-        ]);
+        const bulkPaymentContractRegistration =
+          await getBatchStorageDepositIsRegistered([
+            {
+              accountId: BULK_PAYMENT_CONTRACT_ID,
+              tokenId: selectedToken.id,
+            },
+          ]);
 
         const isBulkPaymentContractRegistered =
           bulkPaymentContractRegistration.length > 0 &&
           bulkPaymentContractRegistration[0].is_registered;
 
-      // Add storage deposit transaction for bulk payment contract if needed (must be first)
-      if (!isBulkPaymentContractRegistered) {
-        additionalTransactions.push({
-          receiverId: selectedToken.id,
-          actions: [
-            {
-              type: "FunctionCall",
-              params: {
-                methodName: "storage_deposit",
-                args: {
-                  account_id: BULK_PAYMENT_CONTRACT_ID,
-                  registration_only: true,
-                } as any,
-                gas,
-                deposit: depositInYocto,
-              },
-            } as any,
-          ],
-        });
+        // Add storage deposit transaction for bulk payment contract if needed (must be first)
+        if (!isBulkPaymentContractRegistered) {
+          additionalTransactions.push({
+            receiverId: selectedToken.id,
+            actions: [
+              {
+                type: "FunctionCall",
+                params: {
+                  methodName: "storage_deposit",
+                  args: {
+                    account_id: BULK_PAYMENT_CONTRACT_ID,
+                    registration_only: true,
+                  } as any,
+                  gas,
+                  deposit: depositInYocto,
+                },
+              } as any,
+            ],
+          });
+        }
+
+        // Add storage deposits for unregistered recipients
+        const unregisteredRecipients = paymentData.filter(
+          (payment) =>
+            payment.isRegistered === false && !payment.validationError
+        );
+
+        for (const payment of unregisteredRecipients) {
+          additionalTransactions.push({
+            receiverId: selectedToken.id,
+            actions: [
+              {
+                type: "FunctionCall",
+                params: {
+                  methodName: "storage_deposit",
+                  args: {
+                    account_id: payment.recipient,
+                    registration_only: true,
+                  } as any,
+                  gas,
+                  deposit: depositInYocto,
+                },
+              } as any,
+            ],
+          });
+        }
       }
 
-      // Add storage deposits for unregistered recipients
-      const unregisteredRecipients = paymentData.filter(
-        (payment) =>
-          payment.isRegistered === false && !payment.validationError
-      );
-
-      for (const payment of unregisteredRecipients) {
-        additionalTransactions.push({
-          receiverId: selectedToken.id,
-          actions: [
-            {
-              type: "FunctionCall",
-              params: {
-                methodName: "storage_deposit",
-                args: {
-                  account_id: payment.recipient,
-                  registration_only: true,
-                } as any,
-                gas,
-                deposit: depositInYocto,
-              },
-            } as any,
-          ],
-        });
-      }
-      }
-
-    
       // Create proposal first (required for backend verification) - suppress toast
       const proposalResults = await createProposal(
         "Bulk payment proposal submitted",
@@ -888,7 +889,9 @@ export default function BulkPaymentPage() {
 
           // Check if submission was successful
           if (!submitResult.success) {
-            throw new Error(submitResult.error || "Failed to submit payment list");
+            throw new Error(
+              submitResult.error || "Failed to submit payment list"
+            );
           }
 
           // Dismiss loading toast
@@ -909,6 +912,8 @@ export default function BulkPaymentPage() {
               title: "!border-r !border-r-border !pr-4",
             },
           });
+          // Refetch credits after proposal creation (credits are decremented in the backend)
+          fetchCredits();
 
           // Reset and go back to step 1
           setShowPreview(false);
@@ -923,8 +928,8 @@ export default function BulkPaymentPage() {
           console.error("Failed to submit payment list to backend:", error);
           toast.dismiss(loadingToastId);
           toast.error(
-            error instanceof Error 
-              ? error.message 
+            error instanceof Error
+              ? error.message
               : "Failed to submit bulk payment list"
           );
         }
@@ -1249,7 +1254,7 @@ export default function BulkPaymentPage() {
                 <Skeleton className="h-7 w-48" />
               </div>
               <Skeleton className="h-5 w-full max-w-md" />
-              
+
               {/* Step 1 Skeleton */}
               <div className="mb-6 mt-6">
                 <div className="flex gap-2 mb-4">
@@ -1316,217 +1321,233 @@ export default function BulkPaymentPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-[1200px] mx-auto">
-        {/* Left Column - Main Form */}
-        <div className="lg:col-span-2">
-          <PageCard className="gap-2">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-              <span className="text-xl font-semibold">
-                Bulk Payment Requests
-              </span>
-            </button>
+          {/* Left Column - Main Form */}
+          <div className="lg:col-span-2">
+            <PageCard className="gap-2">
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-2 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                <span className="text-xl font-semibold">
+                  Bulk Payment Requests
+                </span>
+              </button>
 
-            <p className="text-sm text-muted-foreground font-medium mb-4">
-              Pay multiple recipients with a single proposal.
-            </p>
+              <p className="text-sm text-muted-foreground font-medium mb-4">
+                Pay multiple recipients with a single proposal.
+              </p>
 
-            {/* Credit Exhaustion Banner */}
-            {availableCredits === 0 && (
-              <div className="mb-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                <div className="flex gap-3">
-                  <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                      You've used all your credits
-                    </p>
-                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                      Upgrade your plan to get more and keep going
-                    </p>
+              {/* Credit Exhaustion Banner */}
+              {availableCredits === 0 && (
+                <div className="mb-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                  <div className="flex gap-3">
+                    <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                        You've used all your credits
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        Upgrade your plan to get more and keep going
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 1: Select Asset */}
+              <div className="mb-6">
+                <div className="flex gap-2 mb-4">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-sm font-semibold">
+                    1
+                  </div>
+                  <div className="flex-1 flex flex-col gap-2">
+                    <h3 className="text-md font-semibold">Select Asset</h3>
+
+                    <TokenSelect
+                      selectedToken={selectedToken?.symbol || null}
+                      setSelectedToken={setSelectedToken}
+                      disabled={availableCredits === 0}
+                      iconSize="lg"
+                      classNames={{
+                        trigger:
+                          "w-full h-14 rounded-lg px-4 bg-muted hover:bg-muted/80 hover:border-none",
+                      }}
+                    />
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* Step 1: Select Asset */}
-            <div className="mb-6">
-              <div className="flex gap-2 mb-4">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-sm font-semibold">
-                  1
-                </div>
-                <div className="flex-1 flex flex-col gap-2">
-                  <h3 className="text-md font-semibold">Select Asset</h3>
-
-                  <TokenSelect
-                    selectedToken={selectedToken?.symbol || null}
-                    setSelectedToken={setSelectedToken}
-                    disabled={availableCredits === 0}
-                    iconSize="lg"
-                    classNames={{
-                      trigger:
-                        "w-full h-14 rounded-lg px-4 bg-muted hover:bg-muted/80 hover:border-none",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2: Provide Payment Data */}
-            <div className="mb-6">
-              <div className="flex gap-2 mb-4">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-sm font-semibold">
-                  2
-                </div>
-                <div className="flex-1 flex flex-col gap-2">
-                  <h3 className="text-md font-semibold">
-                    Provide Payment Data
-                  </h3>
-
-                  {/* Tabs */}
-                  <div className="flex gap-1 border-b">
-                    <button
-                      className={`px-4 py-2 text-sm font-medium transition-colors ${
-                        activeTab === "upload"
-                          ? "border-b-2 border-foreground text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      onClick={() => {
-                        setActiveTab("upload");
-                        setDataErrors(null);
-                      }}
-                    >
-                      Upload File
-                    </button>
-                    <button
-                      className={`px-4 py-2 text-sm font-medium transition-colors ${
-                        activeTab === "paste"
-                          ? "border-b-2 border-foreground text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      onClick={() => {
-                        setActiveTab("paste");
-                        setDataErrors(null);
-                      }}
-                    >
-                      Provide Data
-                    </button>
+              {/* Step 2: Provide Payment Data */}
+              <div className="mb-6">
+                <div className="flex gap-2 mb-4">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-sm font-semibold">
+                    2
                   </div>
-                  {/* Upload Tab Content */}
-                  {activeTab === "upload" && (
-                    <div className="space-y-4">
-                      {!uploadedFile ? (
-                        <div
-                          className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                            isDragging
-                              ? "border-primary bg-primary/5"
-                              : "border-border bg-muted"
-                          }`}
-                          onDrop={handleDrop}
-                          onDragOver={handleDragOver}
-                          onDragLeave={handleDragLeave}
-                        >
-                          <div className="flex flex-col items-center gap-4">
-                            <Upload className="w-12 h-12 text-muted-foreground" />
-                            <div>
-                              <p className="text-base mb-2">
-                                <button
-                                  type="button"
-                                  className="font-semibold hover:underline disabled:text-muted-foreground"
-                                  onClick={() =>
-                                    document
-                                      .getElementById("file-upload")
-                                      ?.click()
-                                  }
-                                  disabled={availableCredits === 0}
-                                >
-                                  Choose File
-                                </button>{" "}
-                                <span className="text-muted-foreground">
-                                  or drag and drop
-                                </span>
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                max 1 file up to 1.5 MB, CSV file only
-                              </p>
+                  <div className="flex-1 flex flex-col gap-2">
+                    <h3 className="text-md font-semibold">
+                      Provide Payment Data
+                    </h3>
+
+                    {/* Tabs */}
+                    <div className="flex gap-1 border-b">
+                      <button
+                        className={`px-4 py-2 text-sm font-medium transition-colors ${
+                          activeTab === "upload"
+                            ? "border-b-2 border-foreground text-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        onClick={() => {
+                          setActiveTab("upload");
+                          setDataErrors(null);
+                        }}
+                      >
+                        Upload File
+                      </button>
+                      <button
+                        className={`px-4 py-2 text-sm font-medium transition-colors ${
+                          activeTab === "paste"
+                            ? "border-b-2 border-foreground text-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        onClick={() => {
+                          setActiveTab("paste");
+                          setDataErrors(null);
+                        }}
+                      >
+                        Provide Data
+                      </button>
+                    </div>
+                    {/* Upload Tab Content */}
+                    {activeTab === "upload" && (
+                      <div className="space-y-4">
+                        {!uploadedFile ? (
+                          <div
+                            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+                              isDragging
+                                ? "border-primary bg-primary/5"
+                                : "border-border bg-muted"
+                            }`}
+                            onDrop={handleDrop}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                          >
+                            <div className="flex flex-col items-center gap-4">
+                              <Upload className="w-12 h-12 text-muted-foreground" />
+                              <div>
+                                <p className="text-base mb-2">
+                                  <button
+                                    type="button"
+                                    className="font-semibold hover:underline disabled:text-muted-foreground"
+                                    onClick={() =>
+                                      document
+                                        .getElementById("file-upload")
+                                        ?.click()
+                                    }
+                                    disabled={availableCredits === 0}
+                                  >
+                                    Choose File
+                                  </button>{" "}
+                                  <span className="text-muted-foreground">
+                                    or drag and drop
+                                  </span>
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  max 1 file up to 1.5 MB, CSV file only
+                                </p>
+                              </div>
+                              <input
+                                id="file-upload"
+                                type="file"
+                                accept=".csv"
+                                className="hidden"
+                                disabled={availableCredits === 0}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleFileUpload(file);
+                                }}
+                              />
                             </div>
-                            <input
-                              id="file-upload"
-                              type="file"
-                              accept=".csv"
-                              className="hidden"
-                              disabled={availableCredits === 0}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleFileUpload(file);
+                          </div>
+                        ) : (
+                          <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <FileText className="w-5 h-5 text-primary" />
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {uploadedFile.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {(uploadedFile.size / 1024).toFixed(0)}KB
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadedFile(null);
+                                setCsvData(null);
+                                setDataErrors(null);
                               }}
-                            />
+                              className="text-sm text-muted-foreground hover:text-foreground"
+                            >
+                              Remove
+                            </button>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <FileText className="w-5 h-5 text-primary" />
-                            <div>
-                              <p className="text-sm font-medium">
-                                {uploadedFile.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {(uploadedFile.size / 1024).toFixed(0)}KB
-                              </p>
-                            </div>
-                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-muted-foreground">
+                            Don't have a file to upload?
+                          </span>
                           <button
                             type="button"
-                            onClick={() => {
-                              setUploadedFile(null);
-                              setCsvData(null);
-                              setDataErrors(null);
-                            }}
-                            className="text-sm text-muted-foreground hover:text-foreground"
+                            onClick={downloadTemplate}
+                            className="font-medium hover:underline text-general-unofficial-ghost-foreground"
                           >
-                            Remove
+                            Download a template
                           </button>
                         </div>
-                      )}
-
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">
-                          Don't have a file to upload?
-                        </span>
-                        <button
-                          type="button"
-                          onClick={downloadTemplate}
-                          className="font-medium hover:underline text-general-unofficial-ghost-foreground"
-                        >
-                          Download a template
-                        </button>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Paste Tab Content */}
-                  {activeTab === "paste" && (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={pasteDataInput}
-                        onChange={(e) => {
-                          setPasteDataInput(e.target.value);
-                          if (dataErrors && dataErrors.length > 0) {
-                            setDataErrors(null);
-                          }
-                        }}
-                        placeholder={`olskik.near, 100.00\nvova.near, 100.00\nmegha.near, 100.00`}
-                        rows={8}
-                        className={`resize-none font-mono text-sm bg-muted focus:outline-none ${
-                          dataErrors && dataErrors.length > 0
-                            ? "border-2 border-destructive focus:border-destructive"
-                            : ""
-                        }`}
-                        disabled={availableCredits === 0}
-                      />
-                      {dataErrors && dataErrors.length > 0 && (
+                    {/* Paste Tab Content */}
+                    {activeTab === "paste" && (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={pasteDataInput}
+                          onChange={(e) => {
+                            setPasteDataInput(e.target.value);
+                            if (dataErrors && dataErrors.length > 0) {
+                              setDataErrors(null);
+                            }
+                          }}
+                          placeholder={`olskik.near, 100.00\nvova.near, 100.00\nmegha.near, 100.00`}
+                          rows={8}
+                          className={`resize-none font-mono text-sm bg-muted focus:outline-none ${
+                            dataErrors && dataErrors.length > 0
+                              ? "border-2 border-destructive focus:border-destructive"
+                              : ""
+                          }`}
+                          disabled={availableCredits === 0}
+                        />
+                        {dataErrors && dataErrors.length > 0 && (
+                          <div className="text-sm text-destructive">
+                            {dataErrors.map((error, i) => (
+                              <div key={i}>
+                                {error.row > 0 ? `Row ${error.row}: ` : ""}
+                                {error.message}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Upload Tab Errors */}
+                    {activeTab === "upload" &&
+                      dataErrors &&
+                      dataErrors.length > 0 && (
                         <div className="text-sm text-destructive">
                           {dataErrors.map((error, i) => (
                             <div key={i}>
@@ -1536,135 +1557,121 @@ export default function BulkPaymentPage() {
                           ))}
                         </div>
                       )}
-                    </div>
-                  )}
-
-                  {/* Upload Tab Errors */}
-                  {activeTab === "upload" &&
-                    dataErrors &&
-                    dataErrors.length > 0 && (
-                      <div className="text-sm text-destructive">
-                        {dataErrors.map((error, i) => (
-                          <div key={i}>
-                            {error.row > 0 ? `Row ${error.row}: ` : ""}
-                            {error.message}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Preview Button */}
-            <Button
-              type="button"
-              className="w-full"
-              size="lg"
-              disabled={
-                !selectedToken ||
-                (activeTab === "upload" && (!uploadedFile || !csvData)) ||
-                (activeTab === "paste" && !pasteDataInput.trim()) ||
-                isValidating ||
-                availableCredits === 0
-              }
-              onClick={() => {
-                setIsValidating(true);
-                parseAndValidateStructure();
+              {/* Preview Button */}
+              <Button
+                type="button"
+                className="w-full"
+                size="lg"
+                disabled={
+                  !selectedToken ||
+                  (activeTab === "upload" && (!uploadedFile || !csvData)) ||
+                  (activeTab === "paste" && !pasteDataInput.trim()) ||
+                  isValidating ||
+                  availableCredits === 0
+                }
+                onClick={() => {
+                  setIsValidating(true);
+                  parseAndValidateStructure();
+                }}
+              >
+                {isValidating ? "Validating..." : "See Preview"}
+              </Button>
+            </PageCard>
+          </div>
+
+          {/* Right Column - Requirements & Credits */}
+          <div className="space-y-4">
+            {/* Requirements */}
+            <PageCard
+              style={{
+                backgroundColor: "var(--color-general-tertiary)",
               }}
             >
-              {isValidating ? "Validating..." : "See Preview"}
-            </Button>
-          </PageCard>
-        </div>
-
-        {/* Right Column - Requirements & Credits */}
-        <div className="space-y-4">
-          {/* Requirements */}
-          <PageCard
-            style={{
-              backgroundColor: "var(--color-general-tertiary)",
-            }}
-          >
-            <h3 className="text-lg font-semibold">Bulk Payment Requirements</h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <FileText className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">
-                    Max {MAX_RECIPIENTS_PER_BULK_PAYMENT} transactions per
-                    import
-                  </p>
+              <h3 className="text-lg font-semibold">
+                Bulk Payment Requirements
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">
+                      Max {MAX_RECIPIENTS_PER_BULK_PAYMENT} transactions per
+                      import
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <DollarSign className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">
+                      Single token and network
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <DollarSign className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">
-                    Single token and network
-                  </p>
-                </div>
-              </div>
-            </div>
-          </PageCard>
+            </PageCard>
 
-          {/* Credits Usage */}
-          <PageCard
-            style={
-              availableCredits === 0
-                ? {
-                    border: "1px solid var(--general-success-foreground)",
-                    background: "var(--general-success-background-faded)",
-                  }
-                : { backgroundColor: "var(--color-general-tertiary)" }
-            }
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Bulk Payments</h3>
-                <span className="text-sm font-medium border-2 py-1 px-2 rounded-lg">
-                  {totalCredits} credits
-                </span>
-              </div>
-
-              <div className="space-y-2 border-b-[0.2px] border-general-unofficial-border pb-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold">
-                    {availableCredits} Available
-                  </span>
-                  <span className="text-muted-foreground text-xs">
-                    {creditsUsed} Used
+            {/* Credits Usage */}
+            <PageCard
+              style={
+                availableCredits === 0
+                  ? {
+                      border: "1px solid var(--general-success-foreground)",
+                      background: "var(--general-success-background-faded)",
+                    }
+                  : { backgroundColor: "var(--color-general-tertiary)" }
+              }
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Bulk Payments</h3>
+                  <span className="text-sm font-medium border-2 py-1 px-2 rounded-lg">
+                    {totalCredits} credits
                   </span>
                 </div>
-                <div className="w-full h-2 bg-general-unofficial-accent rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-foreground transition-all"
-                    style={{
-                      width:
-                        totalCredits > 0
-                          ? `${(creditsUsed / totalCredits) * 100}%`
-                          : "0%",
-                    }}
-                  />
+
+                <div className="space-y-2 border-b-[0.2px] border-general-unofficial-border pb-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-semibold">
+                      {availableCredits} Available
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {creditsUsed} Used
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-general-unofficial-accent rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-foreground transition-all"
+                      style={{
+                        width:
+                          totalCredits > 0
+                            ? `${(creditsUsed / totalCredits) * 100}%`
+                            : "0%",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-secondary-foreground">
+                    Need more credits?
+                  </span>
+                  <Button
+                    variant={availableCredits === 0 ? "default" : "outline"}
+                    size="sm"
+                    className="p-3!"
+                  >
+                    Upgrade Plan
+                  </Button>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-secondary-foreground">
-                  Need more credits?
-                </span>
-                <Button
-                  variant={availableCredits === 0 ? "default" : "outline"}
-                  size="sm"
-                  className="p-3!"
-                >
-                  Upgrade Plan
-                </Button>
-              </div>
-            </div>
-          </PageCard>
+            </PageCard>
+          </div>
         </div>
-      </div>
       )}
     </PageComponentLayout>
   );

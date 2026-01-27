@@ -11,7 +11,7 @@ import {
     EventMap,
     FinalExecutionOutcome,
 } from "@hot-labs/near-connect/build/types";
-import { Vote as ProposalVote, getProposal } from "@/lib/proposals-api";
+import { Vote as ProposalVote } from "@/lib/proposals-api";
 import { ProposalPermissionKind } from "@/lib/config-utils";
 import { toast } from "sonner";
 import Big from "big.js";
