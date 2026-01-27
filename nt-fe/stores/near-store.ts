@@ -262,19 +262,22 @@ export const useNear = () => {
     params: CreateProposalParams
   ) => {
     const results = await storeCreateProposal(toastMessage, params);
+    
+    // If successful, invalidate queries after delay in background 
     if (results.length > 0) {
-      // Delay to allow backend to pick up the new proposal
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      // Invalidate and refetch proposals
-      await queryClient.invalidateQueries({
-        queryKey: ["proposals", params.treasuryId],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["proposal", params.treasuryId],
-      });
-    } else {
-      throw new Error("Transaction wasn’t approved in your wallet.");
+      (async () => {
+        // Delay to allow backend to pick up the new proposal
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        // Invalidate and refetch proposals
+        await queryClient.invalidateQueries({
+          queryKey: ["proposals", params.treasuryId],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["proposal", params.treasuryId],
+        });
+      })();
     }
+    
     return results;
   };
 

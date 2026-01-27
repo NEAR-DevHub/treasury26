@@ -881,6 +881,69 @@ export async function openTreasury(
     return response.data;
   } catch (error) {
     console.error(`Error registering treasury ${treasuryId}`, error);
+
     return null;
+  }
+}
+
+export interface IntentsQuoteRequest {
+  dry?: boolean;
+  swapType?: string;
+  slippageTolerance?: number;
+  originAsset: string;
+  depositType?: string;
+  destinationAsset: string;
+  amount: string;
+  refundTo?: string;
+  refundType?: string;
+  recipient?: string;
+  recipientType?: string;
+  deadline: string;
+  quoteWaitingTimeMs?: number;
+}
+
+export interface IntentsQuote {
+  amountIn: string;
+  amountInFormatted: string;
+  amountInUsd: string;
+  minAmountIn: string;
+  amountOut: string;
+  amountOutFormatted: string;
+  amountOutUsd: string;
+  minAmountOut: string;
+  timeEstimate: number;
+  depositAddress: string;
+  deadline: string;
+  timeWhenInactive: string;
+}
+
+export interface IntentsQuoteResponse {
+  quote: IntentsQuote;
+  quoteRequest: IntentsQuoteRequest;
+  signature: string;
+  timestamp: string;
+  correlationId: string;
+}
+
+/**
+ * Get quote from 1click intents API
+ * @param request - Quote request parameters
+ * @param dry - If true, returns a dry quote without creating a proposal. If false, creates an actual intent proposal
+ */
+export async function getIntentsQuote(
+  request: IntentsQuoteRequest,
+  dry: boolean = true
+): Promise<IntentsQuoteResponse | null> {
+  try {
+    const url = `${BACKEND_API_BASE}/intents/quote`;
+    const response = await axios.post<IntentsQuoteResponse>(url, {
+      ...request,
+      dry,
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error(`Error getting intents ${dry ? 'dry quote' : 'proposal'}:`, error);
+    const message = error.response?.data || error?.message || 'Failed to get quote';
+    throw new Error(message);
   }
 }
