@@ -13,7 +13,7 @@ interface ApprovalInfoProps {
     approverAccounts?: string[];
 }
 
-const infoText = "The number of votes required to approve payment-related requests. You can change this anytime in the Voting tab in the Settings.";
+const infoText = "Votes required to approve payment-related requests. Editable in Voting settings.";
 
 export function ApprovalInfo({ variant, requiredVotes: requiredVotesProp, approverAccounts: approverAccountsProp, side }: ApprovalInfoProps) {
     const { selectedTreasury } = useTreasury();

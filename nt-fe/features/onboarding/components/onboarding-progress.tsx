@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
@@ -252,7 +252,7 @@ export function OnboardingProgress({
   const tokenBalanceIsPositive = (token: TreasuryAsset) => {
     const tokenBalance = Big(token.balance).div(Big(10).pow(token.decimals));
     if (token.symbol === "NEAR") {
-      return tokenBalance.gt(6.1);
+      return tokenBalance.gt(1);
     }
     return true;
   }

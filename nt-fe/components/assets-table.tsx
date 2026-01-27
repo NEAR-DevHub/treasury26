@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { ArrowUpDown, ChevronDown, ChevronUp, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   useReactTable,
   getCoreRowModel,
@@ -23,7 +24,7 @@ import {
 } from "@/components/table";
 import { Button } from "@/components/button";
 import { TreasuryAsset } from "@/lib/api";
-import { formatBalance, formatCurrency } from "@/lib/utils";
+import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-aggregated-tokens";
 import Big from "big.js";
 import { NetworkDisplay, BalanceCell } from "./token-display";
@@ -95,7 +96,7 @@ export function AssetsTable({ tokens }: Props) {
             <div className="flex items-center justify-end gap-3">
               <div className="flex-1 max-w-[100px] bg-muted rounded-full h-2 overflow-hidden">
                 <div
-                  className="bg-blue-500 h-full rounded-full transition-all"
+                  className="bg-primary h-full rounded-full transition-all"
                   style={{ width: `${weight}%` }}
                 />
               </div>
@@ -164,30 +165,31 @@ export function AssetsTable({ tokens }: Props) {
             {headerGroup.headers.map((header) => (
               <TableHead
                 key={header.id}
-                className={
+                className={cn(
                   header.id !== "symbol" && header.id !== "expand"
                     ? "text-right text-muted-foreground"
                     : "text-muted-foreground"
-                }
+                )}
               >
                 {header.isPlaceholder ? null : header.id === "expand" ? null : (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={header.column.getToggleSortingHandler()}
-                    className={`flex items-center gap-1 px-0 hover:bg-transparent ${header.id !== "symbol" ? "ml-auto" : ""
-                      }`}
+                    className={cn("flex items-center gap-1 px-0 hover:bg-transparent uppercase text-[10px]",
+                      header.id !== "symbol" ? "ml-auto" : "",
+                    )}
                   >
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()
                     )}
                     {header.column.getIsSorted() === "desc" ? (
-                      <ChevronDown className="h-4 w-4" />
+                      <ChevronDown className="size-3" />
                     ) : header.column.getIsSorted() === "asc" ? (
-                      <ChevronUp className="h-4 w-4" />
+                      <ChevronUp className="size-3" />
                     ) : (
-                      <ArrowUpDown className="h-4 w-4" />
+                      <ArrowUpDown className="size-3" />
                     )}
                   </Button>
                 )}
@@ -229,6 +231,63 @@ export function AssetsTable({ tokens }: Props) {
               </>
             )}
           </Fragment>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+export function AssetsTableSkeleton() {
+  return (
+    <Table>
+      <TableHeader className="bg-transparent border-t-0">
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="text-muted-foreground">
+            <Skeleton className="h-4 w-12" />
+          </TableHead>
+          <TableHead className="text-right text-muted-foreground">
+            <Skeleton className="h-4 w-16 ml-auto" />
+          </TableHead>
+          <TableHead className="text-right text-muted-foreground">
+            <Skeleton className="h-4 w-20 ml-auto" />
+          </TableHead>
+          <TableHead className="text-right text-muted-foreground">
+            <Skeleton className="h-4 w-14 ml-auto" />
+          </TableHead>
+          <TableHead />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <TableRow key={index}>
+            <TableCell className="p-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div>
+                  <Skeleton className="h-4 w-16 mb-1" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+            </TableCell>
+            <TableCell className="p-4">
+              <div className="flex flex-col items-end">
+                <Skeleton className="h-4 w-20 mb-1" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </TableCell>
+            <TableCell className="p-4">
+              <Skeleton className="h-4 w-16 ml-auto" />
+            </TableCell>
+            <TableCell className="p-4">
+              <div className="flex items-center justify-end gap-3">
+                <Skeleton className="h-2 w-[100px] rounded-full" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            </TableCell>
+            <TableCell className="p-4">
+              <Skeleton className="h-8 w-8 rounded" />
+            </TableCell>
+          </TableRow>
         ))}
       </TableBody>
     </Table>

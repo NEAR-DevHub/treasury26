@@ -86,6 +86,7 @@ export interface TreasuryAsset {
   chainIcons?: ChainIcons;
   symbol: string;
   balance: Big;
+  lockedBalance?: Big;
   decimals: number;
   price: number;
   name: string;
@@ -108,6 +109,7 @@ interface TreasuryAssetRaw {
   chainIcons?: ChainIcons;
   symbol: string;
   balance: string;
+  lockedBalance?: string;
   decimals: number;
   price: string;
   name: string;
@@ -145,6 +147,7 @@ export async function getTreasuryAssets(
         symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
         decimals: token.decimals,
         balance: Big(token.balance),
+        lockedBalance: token.lockedBalance ? Big(token.lockedBalance) : undefined,
         chainName: token.chainName,
         chainIcons: token.chainIcons,
         balanceUSD,
@@ -238,6 +241,7 @@ export interface TokenBalance {
   account_id: string;
   token_id: string;
   balance: string;
+  lockedBalance?: string;
   decimals: number;
 }
 
@@ -793,6 +797,13 @@ export interface BulkPaymentTransactionHashResponse {
   error?: string;
 }
 
+export interface OpenTreasuryResponse {
+  account_id: string;
+  is_new_registration: boolean;
+  export_credits: number;
+  batch_payment_credits: number;
+}
+
 /**
  * Get bulk payment list status
  * Returns the status of a payment list including counts of processed/pending payments
@@ -847,6 +858,29 @@ export async function getBulkPaymentTransactionHash(
     return response.data;
   } catch (error) {
     console.error(`Error getting transaction hash for ${recipient} in ${listId}`, error);
+    return null;
+  }
+}
+
+/**
+ * Register a treasury for monitoring
+ * Called when user visits a treasury to auto-register it
+ * - If not registered: creates new record with default credits (10 export, 120 batch payment)
+ * - If already registered: returns existing record without changes
+ */
+export async function openTreasury(
+  treasuryId: string
+): Promise<OpenTreasuryResponse | null> {
+  if (!treasuryId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/monitored-accounts`;
+    const response = await axios.post<OpenTreasuryResponse>(url, {
+      account_id: treasuryId,
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error registering treasury ${treasuryId}`, error);
     return null;
   }
 }

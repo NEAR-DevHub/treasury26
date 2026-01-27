@@ -21,6 +21,7 @@
   --destructive: rgb(207, 0, 28);
   --destructive-foreground: rgb(255, 255, 255);
   --border: rgb(245, 245, 245);
+  --general-border: rgba(229, 229, 229);
   --input: rgb(229, 229, 229);
   --ring: rgb(161, 161, 161);
   --general-success-background-faded: rgb(220, 252, 231);
@@ -34,6 +35,7 @@
   --general-warning-border: rgb(254, 240, 138);
   --general-warning-foreground: rgb(161, 98, 7);
   --general-tertiary: rgb(250, 250, 249);
+  --chart-area-fill: rgb(2, 7, 6);
   --chart-1: rgb(164, 246, 204);
   --chart-2: rgb(106, 235, 178);
   --chart-3: rgb(10, 191, 122);
@@ -87,6 +89,7 @@
   --destructive: rgb(255, 101, 104);
   --destructive-foreground: rgb(250, 250, 250);
   --border: rgb(40, 40, 40);
+  --general-border: rgba(64, 64, 64);
   --input: rgb(52, 52, 52);
   --ring: rgb(115, 115, 115);
   --chart-1: rgb(146, 197, 255);
@@ -94,6 +97,7 @@
   --chart-3: rgb(39, 100, 237);
   --chart-4: rgb(28, 79, 216);
   --chart-5: rgb(32, 63, 172);
+  --chart-area-fill: rgb(243, 243, 243);
   --sidebar: rgb(25, 25, 26);
   --sidebar-foreground: rgb(250, 250, 250);
   --sidebar-primary: rgb(22, 72, 228);
@@ -151,6 +155,7 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-general-border: var(--general-border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-general-success-background-faded: var(--general-success-background-faded);
@@ -170,6 +175,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-area-fill: var(--chart-area-fill);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);

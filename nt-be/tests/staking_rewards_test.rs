@@ -9,7 +9,8 @@ use nt_be::handlers::balance_changes::balance::staking::{
     block_to_epoch, epoch_to_block, get_staking_balance_at_block, is_staking_pool,
 };
 use nt_be::handlers::balance_changes::staking_rewards::{
-    STAKING_SNAPSHOT_COUNTERPARTY, discover_staking_pools, extract_staking_pool,
+    STAKING_REWARD_COUNTERPARTY, STAKING_SNAPSHOT_COUNTERPARTY, discover_staking_pools,
+    extract_staking_pool, fill_staking_gaps, find_staking_gaps, insert_staking_reward,
     insert_staking_snapshot, is_staking_token, staking_token_id, track_staking_rewards,
 };
 use sqlx::{PgPool, Row};
@@ -664,12 +665,12 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
         .await
         .expect("Third monitor cycle should succeed");
 
-    // Final verification
+    // Final verification: only consider STAKING_SNAPSHOT records here
     let final_snapshots: Vec<(i64, String, String, String)> = sqlx::query_as(
         r#"
         SELECT block_height, balance_before::TEXT, balance_after::TEXT, counterparty
         FROM balance_changes
-        WHERE account_id = $1 AND token_id = $2
+        WHERE account_id = $1 AND token_id = $2 AND counterparty = 'STAKING_SNAPSHOT'
         ORDER BY block_height
         "#,
     )
@@ -792,6 +793,415 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
     );
     println!("  Created {} staking snapshots", final_snapshots.len());
     println!("  Covered epochs: {:?}", epochs);
+
+    Ok(())
+}
+
+/// Test finding staking gaps between snapshots
+#[sqlx::test]
+async fn test_find_staking_gaps(pool: PgPool) -> sqlx::Result<()> {
+    let account_id = "test-gap-account.near";
+    let staking_pool = "test.poolv1.near";
+    let token_id = staking_token_id(staking_pool);
+
+    // Insert staking snapshots with different balances (gaps between them)
+    // Epoch 100 (block 4320000): balance 1000
+    // Epoch 102 (block 4406400): balance 1010 (gap - balance changed)
+    // Epoch 104 (block 4492800): balance 1010 (no gap - balance same)
+    // Epoch 106 (block 4579200): balance 1025 (gap - balance changed)
+    let snapshots = vec![
+        (4320000i64, "1000", "1000"),
+        (4406400i64, "1000", "1010"), // Gap from previous
+        (4492800i64, "1010", "1010"), // No gap
+        (4579200i64, "1010", "1025"), // Gap from previous
+    ];
+
+    for (block_height, before, after) in snapshots {
+        let before_bd: BigDecimal = before.parse().unwrap();
+        let after_bd: BigDecimal = after.parse().unwrap();
+        let amount = &after_bd - &before_bd;
+
+        sqlx::query(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount, balance_before, balance_after, transaction_hashes, receipt_id, counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, 1700000000000000000, NOW(), $4, $5, $6, '{}', '{}', 'STAKING_SNAPSHOT', '{}', '{}')
+            "#,
+        )
+        .bind(account_id)
+        .bind(&token_id)
+        .bind(block_height)
+        .bind(amount)
+        .bind(before_bd)
+        .bind(after_bd)
+        .execute(&pool)
+        .await?;
+    }
+
+    // Find gaps
+    let gaps = find_staking_gaps(&pool, account_id, staking_pool, 5000000)
+        .await
+        .expect("Should find staking gaps");
+
+    println!("Found {} staking gaps:", gaps.len());
+    for gap in &gaps {
+        println!(
+            "  Block {} -> {}: {} -> {}",
+            gap.start_block, gap.end_block, gap.balance_at_start, gap.balance_at_end
+        );
+    }
+
+    // Should find 2 gaps
+    assert_eq!(gaps.len(), 2, "Should find 2 gaps");
+
+    // First gap: 4320000 -> 4406400 (1000 -> 1010)
+    assert_eq!(gaps[0].start_block, 4320000);
+    assert_eq!(gaps[0].end_block, 4406400);
+    assert_eq!(gaps[0].balance_at_start.to_string(), "1000");
+    assert_eq!(gaps[0].balance_at_end.to_string(), "1010");
+
+    // Second gap: 4492800 -> 4579200 (1010 -> 1025)
+    assert_eq!(gaps[1].start_block, 4492800);
+    assert_eq!(gaps[1].end_block, 4579200);
+    assert_eq!(gaps[1].balance_at_start.to_string(), "1010");
+    assert_eq!(gaps[1].balance_at_end.to_string(), "1025");
+
+    println!("✓ Staking gap detection working correctly");
+
+    Ok(())
+}
+
+/// Test inserting staking reward records
+#[sqlx::test]
+async fn test_insert_staking_reward(pool: PgPool) -> sqlx::Result<()> {
+    let network = common::create_archival_network();
+
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    let staking_pool = "astro-stakers.poolv1.near";
+    let token_id = staking_token_id(staking_pool);
+
+    // Use block 161091600 (epoch 3728) where we know there's staked balance
+    let block_height: u64 = 161_091_600;
+
+    println!(
+        "Inserting staking reward for {}/{} at block {}",
+        account_id, staking_pool, block_height
+    );
+
+    let balance = insert_staking_reward(&pool, &network, account_id, staking_pool, block_height)
+        .await
+        .expect("Should insert staking reward");
+
+    println!("Inserted staking reward with balance: {} NEAR", balance);
+
+    // Verify the record was inserted with STAKING_REWARD counterparty
+    let record = sqlx::query(
+        r#"
+        SELECT
+            account_id, token_id, block_height, counterparty,
+            balance_before::TEXT as balance_before,
+            balance_after::TEXT as balance_after,
+            transaction_hashes, raw_data
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2 AND block_height = $3
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .bind(block_height as i64)
+    .fetch_one(&pool)
+    .await?;
+
+    let record_counterparty: String = record.get("counterparty");
+    let record_transaction_hashes: Vec<String> = record.get("transaction_hashes");
+    let raw_data: Option<serde_json::Value> = record.get("raw_data");
+
+    assert_eq!(
+        record_counterparty, STAKING_REWARD_COUNTERPARTY,
+        "Should have STAKING_REWARD counterparty"
+    );
+    assert!(
+        record_transaction_hashes.is_empty(),
+        "Staking rewards should have empty transaction_hashes"
+    );
+
+    // Verify raw_data contains reward metadata
+    let raw_data = raw_data.expect("Should have raw_data");
+    assert!(
+        raw_data.get("staking_pool").is_some(),
+        "Should have staking_pool in raw_data"
+    );
+    assert!(
+        raw_data.get("reward_type").is_some(),
+        "Should have reward_type in raw_data"
+    );
+    assert_eq!(
+        raw_data.get("reward_type").unwrap().as_str().unwrap(),
+        "staking_reward",
+        "Should have correct reward_type"
+    );
+
+    println!("✓ Staking reward insertion working correctly");
+    println!("  Counterparty: {}", record_counterparty);
+
+    Ok(())
+}
+
+/// Test track_and_fill_staking_rewards creates both snapshots and fills gaps
+#[sqlx::test]
+async fn test_track_and_fill_staking_rewards(pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
+
+    let network = common::create_archival_network();
+
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+    let staking_pool = "astro-stakers.poolv1.near";
+    let token_id = staking_token_id(staking_pool);
+
+    // The real staking transaction is at block 161048663 (epoch 3727)
+    let staking_tx_block = 161_048_663i64;
+
+    // Set up the account as monitored
+    sqlx::query(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled, last_synced_at)
+        VALUES ($1, true, NULL)
+        "#,
+    )
+    .bind(account_id)
+    .execute(&pool)
+    .await?;
+
+    // Run multiple monitor cycles to create snapshots and fill gaps
+    // Each cycle creates up to 5 epoch snapshots
+    for cycle in 0..3 {
+        let cycle_epoch = 3730u64 + (cycle as u64 * 2);
+        let cycle_block = epoch_to_block(cycle_epoch) as i64;
+        println!(
+            "\n=== Running monitor cycle {} at block {} (epoch {}) ===",
+            cycle + 1,
+            cycle_block,
+            cycle_epoch
+        );
+
+        run_monitor_cycle(&pool, &network, cycle_block)
+            .await
+            .expect("Monitor cycle should succeed");
+    }
+
+    // Check results: should have both STAKING_SNAPSHOT and STAKING_REWARD records
+    let all_records: Vec<(i64, String, String, String)> = sqlx::query_as(
+        r#"
+        SELECT block_height, balance_after::TEXT, counterparty,
+               CASE WHEN counterparty = 'STAKING_SNAPSHOT' THEN 'snapshot'
+                    WHEN counterparty = 'STAKING_REWARD' THEN 'reward'
+                    ELSE 'other' END as record_type
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        ORDER BY block_height
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_all(&pool)
+    .await?;
+
+    println!("\n=== Final staking records ===");
+    let mut snapshot_count = 0;
+    let mut reward_count = 0;
+
+    for (block, balance, counterparty, record_type) in &all_records {
+        let epoch = block_to_epoch(*block as u64);
+        println!(
+            "  Block {} (epoch {}): balance {} [{}]",
+            block, epoch, balance, counterparty
+        );
+
+        match record_type.as_str() {
+            "snapshot" => snapshot_count += 1,
+            "reward" => reward_count += 1,
+            _ => {}
+        }
+    }
+
+    println!("\nSummary:");
+    println!("  Total records: {}", all_records.len());
+    println!("  STAKING_SNAPSHOT: {}", snapshot_count);
+    println!("  STAKING_REWARD: {}", reward_count);
+
+    // Verify we have some records
+    assert!(
+        !all_records.is_empty(),
+        "Should have created staking records"
+    );
+    assert!(snapshot_count > 0, "Should have STAKING_SNAPSHOT records");
+
+    // Should have STAKING_REWARD records for gaps between snapshots with different balances
+    // The real blockchain data has balance increases between epochs, so we should find gaps
+    assert!(
+        reward_count > 0,
+        "Should have STAKING_REWARD records for filled gaps (found {} snapshots but no rewards)",
+        snapshot_count
+    );
+
+    // Get all STAKING_REWARD records with their amounts
+    let rewards: Vec<(i64, String, String, String)> = sqlx::query_as(
+        r#"
+        SELECT block_height, balance_before::TEXT, balance_after::TEXT, amount::TEXT
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2 AND counterparty = 'STAKING_REWARD'
+        ORDER BY block_height
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_all(&pool)
+    .await?;
+
+    println!("\n=== STAKING_REWARD records (exact blocks where rewards occurred) ===");
+    for (block, balance_before, balance_after, amount) in &rewards {
+        let epoch = block_to_epoch(*block as u64);
+        println!(
+            "  Block {} (epoch {}): {} NEAR staked → {} NEAR (reward: {} NEAR)",
+            block, epoch, balance_before, balance_after, amount
+        );
+    }
+
+    // Hard assertions for the exact blocks and amounts where staking rewards occurred
+    // These are deterministic values from the blockchain
+    assert_eq!(
+        rewards.len(),
+        6,
+        "Should have exactly 6 STAKING_REWARD records"
+    );
+
+    // Epoch 3728 reward (first reward after initial stake)
+    assert_eq!(
+        rewards[0].0, 161064202,
+        "First reward should be at block 161064202"
+    );
+    assert_eq!(
+        rewards[0].1, "1000",
+        "Balance before first reward should be 1000 NEAR"
+    );
+    assert_eq!(
+        rewards[0].2, "1000.081598495096742265936191",
+        "Balance after first reward should be 1000.081598495096742265936191 NEAR"
+    );
+    assert_eq!(
+        rewards[0].3, "0.081598495096742265936191",
+        "First reward amount should be 0.081598495096742265936191 NEAR"
+    );
+
+    // Epoch 3729 reward
+    assert_eq!(
+        rewards[1].0, 161106976,
+        "Second reward should be at block 161106976"
+    );
+    assert_eq!(
+        rewards[1].3, "0.081244782508652378445903",
+        "Second reward amount should be 0.081244782508652378445903 NEAR"
+    );
+
+    // Epoch 3730 reward
+    assert_eq!(
+        rewards[2].0, 161150142,
+        "Third reward should be at block 161150142"
+    );
+    assert_eq!(
+        rewards[2].3, "0.082761529367811984530264",
+        "Third reward amount should be 0.082761529367811984530264 NEAR"
+    );
+
+    // Epoch 3731 reward
+    assert_eq!(
+        rewards[3].0, 161193732,
+        "Fourth reward should be at block 161193732"
+    );
+    assert_eq!(
+        rewards[3].3, "0.082372666744984700065090",
+        "Fourth reward amount should be 0.082372666744984700065090 NEAR"
+    );
+
+    // Epoch 3732 reward
+    assert_eq!(
+        rewards[4].0, 161237043,
+        "Fifth reward should be at block 161237043"
+    );
+    assert_eq!(
+        rewards[4].3, "0.080597028412555679737614",
+        "Fifth reward amount should be 0.080597028412555679737614 NEAR"
+    );
+
+    // Epoch 3733 reward
+    assert_eq!(
+        rewards[5].0, 161280282,
+        "Sixth reward should be at block 161280282"
+    );
+    assert_eq!(
+        rewards[5].3, "0.081549435422138347777227",
+        "Sixth reward amount should be 0.081549435422138347777227 NEAR"
+    );
+
+    // Now test the API to ensure it returns only STAKING_REWARD records, not STAKING_SNAPSHOT
+    println!("\n=== Testing balance changes API ===");
+
+    // Query balance changes as the API would (filtering out synthetic records)
+    let api_changes: Vec<(i64, String, String)> = sqlx::query_as(
+        r#"
+        SELECT block_height, counterparty, amount::TEXT
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+          AND counterparty NOT IN ('SNAPSHOT', 'NOT_REGISTERED', 'STAKING_SNAPSHOT')
+        ORDER BY block_height
+        "#,
+    )
+    .bind(account_id)
+    .bind(&token_id)
+    .fetch_all(&pool)
+    .await?;
+
+    println!("API would return {} records", api_changes.len());
+    for (block, counterparty, amount) in &api_changes {
+        let epoch = block_to_epoch(*block as u64);
+        println!(
+            "  Block {} (epoch {}): {} [amount: {}]",
+            block, epoch, counterparty, amount
+        );
+    }
+
+    // The API should only return STAKING_REWARD records, filtering out STAKING_SNAPSHOT
+    assert_eq!(
+        api_changes.len(),
+        reward_count as usize,
+        "API should return {} STAKING_REWARD records (filtered STAKING_SNAPSHOT)",
+        reward_count
+    );
+
+    // Verify all returned records are STAKING_REWARD
+    for (_, counterparty, _) in &api_changes {
+        assert_eq!(
+            counterparty, STAKING_REWARD_COUNTERPARTY,
+            "API should only return STAKING_REWARD records"
+        );
+    }
+
+    // Verify the blocks match our reward blocks
+    let api_blocks: Vec<i64> = api_changes.iter().map(|(block, _, _)| *block).collect();
+    let reward_blocks: Vec<i64> = rewards.iter().map(|(block, _, _, _)| *block).collect();
+    assert_eq!(
+        api_blocks, reward_blocks,
+        "API blocks should match reward blocks"
+    );
+
+    println!(
+        "\n✓ track_and_fill_staking_rewards working correctly ({} snapshots, {} rewards)",
+        snapshot_count, reward_count
+    );
+    println!(
+        "✓ API correctly filters out STAKING_SNAPSHOT, returning only {} STAKING_REWARD records",
+        api_changes.len()
+    );
 
     Ok(())
 }

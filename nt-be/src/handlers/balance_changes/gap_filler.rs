@@ -917,6 +917,17 @@ pub async fn seed_initial_balance(
         token_id
     );
 
+    // If block_height equals start_block, it means the balance was already at the target
+    // value at the beginning of our search range. In this case, we should insert a SNAPSHOT
+    // record rather than trying to find a transaction (which may not exist at this block).
+    if block_height == start_block {
+        log::info!(
+            "Balance existed before search range, inserting SNAPSHOT at lookback boundary {}",
+            start_block
+        );
+        return insert_snapshot_record(pool, network, account_id, token_id, start_block).await;
+    }
+
     // Use the shared insert helper
     let result =
         insert_balance_change_record(pool, network, account_id, token_id, block_height).await?;

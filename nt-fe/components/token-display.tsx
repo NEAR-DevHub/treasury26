@@ -1,11 +1,15 @@
 import { TreasuryAsset } from "@/lib/api";
 import { useThemeStore } from "@/stores/theme-store";
 import Big from "big.js";
+import { Tooltip } from "./tooltip";
+import { Info } from "lucide-react";
+import { formatNearAmount } from "@/lib/utils";
 
 export const NetworkDisplay = ({ asset }: { asset: TreasuryAsset }) => {
     const { theme } = useThemeStore();
 
     let type;
+    let info = null;
     switch (asset.residency) {
         case "Ft":
             type = "Fungible Token";
@@ -15,6 +19,9 @@ export const NetworkDisplay = ({ asset }: { asset: TreasuryAsset }) => {
             break;
         case "Near":
             type = "Native Token";
+            if (asset.lockedBalance) {
+                info = <p className="inline-block">Available balance after locking <span className="font-semibold">{formatNearAmount(asset.lockedBalance.toString())} NEAR</span> for account activity</p>;
+            }
             break;
     }
 
@@ -29,8 +36,8 @@ export const NetworkDisplay = ({ asset }: { asset: TreasuryAsset }) => {
             <img src={image} alt={`${asset.chainName} network`} className="size-6" />
             <div className="flex flex-col text-left">
                 <span className="font-semibold capitalize">{asset.chainName}</span>
-                <span className="text-xs text-muted-foreground">
-                    {type}
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    {type} {info && <Tooltip content={info} side="bottom" ><Info className="size-3" /></Tooltip>}
                 </span>
             </div>
         </div>

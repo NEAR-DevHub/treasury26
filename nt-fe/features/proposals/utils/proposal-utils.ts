@@ -55,10 +55,18 @@ function processFTTransferProposal(proposal: Proposal): "Payment Request" | "Bat
   return "Payment Request" as const;
 }
 
-function isMTTransferProposal(proposal: Proposal): boolean {
-  if (!('FunctionCall' in proposal.kind)) return false;
+function processMTTransferProposal(proposal: Proposal): "Exchange" | "Batch Payment Request" | undefined {
+  if (!('FunctionCall' in proposal.kind)) return undefined;
   const functionCall = proposal.kind.FunctionCall;
-  return functionCall.actions.some(action => action.method_name === 'mt_transfer' || action.method_name === 'mt_transfer_call');
+  const transfer = functionCall.actions.find(action => action.method_name === 'mt_transfer' || action.method_name === 'mt_transfer_call');
+  if (transfer) {
+    const args = decodeArgs(transfer?.args as string);
+    if (args?.receiver_id === "bulkpayment.near") {
+      return "Batch Payment Request" as const;
+    }
+    return "Exchange" as const;
+  }
+  return undefined;
 }
 
 function isIntentWithdrawProposal(proposal: Proposal): boolean {
@@ -114,8 +122,9 @@ export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
       if (isBatchPaymentProposal(proposal)) {
         return "Batch Payment Request";
       }
-      if (isMTTransferProposal(proposal)) {
-        return "Exchange";
+      const mtTransferResult = processMTTransferProposal(proposal);
+      if (mtTransferResult) {
+        return mtTransferResult;
       }
       const stakingTypeResult = stakingType(proposal);
       if (stakingTypeResult) {
@@ -176,13 +185,12 @@ export function getProposalRequiredFunds(proposal: Proposal): { tokenId: string;
 
     // Check for ft_transfer or ft_transfer_call (Payment Request)
     const ftTransferAction = actions.find(
-      (a) => a.method_name === "ft_transfer" || a.method_name === "ft_transfer_call"
+      (a) => a.method_name === "ft_transfer" || a.method_name === "ft_transfer_call" || a.method_name === "mt_transfer" || a.method_name === "mt_transfer_call"
     );
     if (ftTransferAction) {
       const args = decodeArgs(ftTransferAction.args);
       if (args?.amount) {
-        // For ft_transfer to bulkpayment.near, the token is the receiver_id of the function call
-        return { tokenId: functionCall.receiver_id, amount: args.amount };
+        return { tokenId: ftTransferAction.method_name === "mt_transfer" || ftTransferAction.method_name === "mt_transfer_call" ? args.token_id : functionCall.receiver_id, amount: args.amount };
       }
     }
 

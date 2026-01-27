@@ -262,7 +262,7 @@ export function ProposalsTable({
         {selectedCount > 0 && (
           <div className="flex items-center justify-between pt-6 pb-4 px-5 border-b">
             <span className="font-semibold">
-              {selectedCount} {selectedCount === 1 ? 'request' : 'requests'} selected
+              {selectedCount} {selectedCount === 1 ? 'Request' : 'Requests'} Selected
             </span>
             <div className="flex items-center gap-2">
               <Button

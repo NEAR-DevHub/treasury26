@@ -6,11 +6,23 @@ The Balance Change Collection system automatically tracks balance changes for NE
 - **NEAR** - Native NEAR token
 - **FT Tokens** - NEP-141 fungible tokens (automatically discovered from receipts)
 - **Intents Tokens** - Multi-token balances on intents.near (NEP-141 and NEP-245)
+- **Staking Rewards** - Exact block where staking rewards were earned
 
 ## Quick Start
 
 ### 1. Register an Account for Monitoring
 
+**Production** (https://near-treasury-backend.onrender.com):
+```bash
+curl -X POST https://near-treasury-backend.onrender.com/api/monitored-accounts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_id": "your-treasury.sputnik-dao.near",
+    "enabled": true
+  }'
+```
+
+**Local development**:
 ```bash
 curl -X POST http://localhost:3000/api/monitored-accounts \
   -H "Content-Type: application/json" \
@@ -47,6 +59,31 @@ curl "http://localhost:3000/api/balance-changes?account_id=webassemblymusic-trea
 Paginate results:
 ```bash
 curl "http://localhost:3000/api/balance-changes?account_id=webassemblymusic-treasury.sputnik-dao.near&page=1&limit=50"
+```
+
+Exclude snapshot records (get only actual transactions and staking rewards):
+```bash
+curl "http://localhost:3000/api/balance-changes?account_id=webassemblymusic-treasury.sputnik-dao.near&exclude_snapshots=true"
+```
+
+### 3. Query Staking Rewards
+
+Get staking rewards with exact block where they were earned:
+```bash
+curl "http://localhost:3000/api/balance-changes?account_id=your-account.near&token_id=staking:pool.near&exclude_snapshots=true"
+```
+
+Example staking reward response:
+```json
+{
+  "block_height": 182449384,
+  "block_time": "2026-01-24T00:19:08.761126Z",
+  "token_id": "staking:astro-stakers.poolv1.near",
+  "counterparty": "STAKING_REWARD",
+  "amount": "0.040456086036518156197191",
+  "balance_before": "1029.479523405233304042477556",
+  "balance_after": "1029.519979491269822198674747"
+}
 ```
 
 ## How It Works
@@ -106,6 +143,7 @@ Query parameters:
 - `limit` (optional) - Results per page (default: 100)
 - `from_block` (optional) - Filter from block height
 - `to_block` (optional) - Filter to block height
+- `exclude_snapshots` (optional) - When `true`, excludes `SNAPSHOT` and `STAKING_SNAPSHOT` records
 
 Response:
 ```json
@@ -158,3 +196,20 @@ Simple contract address: `wrap.near`, `token.v2.ref-finance.near`
 Full path format: `intents.near:nep141:btc.omft.near`
 - Preserves the underlying FT contract for metadata queries
 - Format: `intents.near:{standard}:{ft_contract}`
+
+### Staking Tokens
+Full path format: `staking:pool.poolv1.near`
+- Format: `staking:{pool_contract}`
+- Records with `counterparty: STAKING_SNAPSHOT` are epoch boundary snapshots
+- Records with `counterparty: STAKING_REWARD` show exact block where reward was earned
+
+## Record Types
+
+| Token Type | Counterparty | Description |
+|------------|--------------|-------------|
+| `near` | account address | NEAR token transfer with counterparty |
+| `near` | `SNAPSHOT` | Initial balance snapshot (no transaction) |
+| `ft-contract.near` | account address | Fungible token transfer |
+| `intents.near:nep141:*` | account address | Intents token transfer |
+| `staking:pool.near` | `STAKING_SNAPSHOT` | Epoch boundary snapshot |
+| `staking:pool.near` | `STAKING_REWARD` | Exact block of staking reward |

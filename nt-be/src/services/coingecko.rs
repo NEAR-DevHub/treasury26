@@ -161,6 +161,10 @@ impl PriceProvider for CoinGeckoClient {
             .get(&url)
             .header("x-cg-pro-api-key", &self.api_key)
             .header("accept", "application/json")
+            .header(
+                "user-agent",
+                format!("treasury-26/{}", env!("CARGO_PKG_VERSION")),
+            )
             .send()
             .await?;
 

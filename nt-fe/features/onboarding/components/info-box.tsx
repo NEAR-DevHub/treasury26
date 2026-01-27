@@ -6,8 +6,12 @@ import Link from "next/link";
 import { CirclePlay, Eye, File, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { PageCard } from "@/components/card";
+import { useNextStep } from "nextstepjs";
+import { LOCAL_STORAGE_KEYS, TOUR_NAMES } from "../steps/dashboard";
+import { useSidebarStore, } from "@/stores/sidebar-store";
+import { SIDEBAR_ANIMATION_DELAY } from "./tour-card";
 
-const INFO_BOX_CLOSED_KEY = "info-box-closed";
+const INFO_BOX_CLOSED_KEY = LOCAL_STORAGE_KEYS.INFO_BOX_TOUR_DISMISSED;
 
 interface InfoItemProps {
     icon: React.ReactNode;
@@ -53,14 +57,26 @@ const infoItems: InfoItemProps[] = [
 
 export function InfoBox() {
     const [isClosed, setIsClosed] = useState(true);
+    const { startNextStep } = useNextStep();
+    const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen);
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
     useEffect(() => {
         setIsClosed(localStorage.getItem(INFO_BOX_CLOSED_KEY) === "true");
     }, []);
 
-    const handleClose = () => {
+    const handleInfoBoxClick = () => {
         localStorage.setItem(INFO_BOX_CLOSED_KEY, "true");
         setIsClosed(true);
+        // Open sidebar before starting tour since first step needs it
+        if (isMobile) {
+            setSidebarOpen(true);
+            setTimeout(() => {
+                startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
+            }, SIDEBAR_ANIMATION_DELAY + 100);
+        } else {
+            startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
+        }
     };
 
     if (isClosed) {
@@ -68,12 +84,14 @@ export function InfoBox() {
     }
 
     return (
-        <div className="bg-general-tertiary rounded-lg p-5 flex flex-col w-full h-fit gap-5" >
+        <div
+            className="bg-general-tertiary rounded-lg p-5 flex flex-col w-full h-fit gap-5 cursor-pointer hover:bg-general-tertiary/80 transition-colors"
+        >
             <div className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
                     <h1 className="font-semibold">Get more from {NEAR_TREASURY_CONFIG.brandName}</h1>
                     <button
-                        onClick={handleClose}
+                        onClick={handleInfoBoxClick}
                         className="text-muted-foreground hover:text-foreground transition-colors"
                         aria-label="Close"
                     >

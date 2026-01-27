@@ -8,6 +8,7 @@ import { Input } from "@/components/input";
 import { cn } from "@/lib/utils";
 import { fetchDepositAssets } from "@/lib/bridge-api";
 import { useThemeStore } from "@/stores/theme-store";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface TokenOption {
     id: string;
@@ -125,21 +126,15 @@ export function TokenSelectPopover({
             </PopoverTrigger>
             <PopoverContent className="w-64 p-2" align="start">
                 <div className="space-y-2">
-                    {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                            type="text"
-                            placeholder="Search tokens..."
-                            search
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-8 h-8 text-sm bg-muted border-0"
-                        />
-                    </div>
+                    <Input
+                        type="text"
+                        placeholder="Search tokens..."
+                        search
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
 
-                    {/* Token List */}
-                    <div className="max-h-[300px] overflow-y-auto space-y-0.5">
+                    <ScrollArea className="h-[300px]">
                         {isLoading ? (
                             <div className="space-y-1 animate-pulse p-1">
                                 {[...Array(5)].map((_, i) => (
@@ -194,7 +189,7 @@ export function TokenSelectPopover({
                                 )}
                             </>
                         )}
-                    </div>
+                    </ScrollArea>
                 </div>
             </PopoverContent>
         </Popover>

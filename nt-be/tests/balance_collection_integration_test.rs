@@ -647,6 +647,111 @@ async fn test_monitored_accounts(pool: PgPool) -> sqlx::Result<()> {
     Ok(())
 }
 
+/// Test that NEAR balance is tracked even when other tokens (like intents) are discovered first.
+/// This validates the fix for the bug where NEAR was only added to the tokens list when it was empty.
+/// Uses webassemblymusic-treasury.sputnik-dao.near which has intents tokens but no recent NEAR transactions.
+#[sqlx::test]
+async fn test_near_snapshot_with_existing_intents_tokens(pool: PgPool) -> sqlx::Result<()> {
+    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
+
+    // This account has intents tokens but no recent NEAR transactions
+    // The NEAR balance hasn't changed in 30+ days, so it should get a SNAPSHOT record
+    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
+
+    // Insert a monitored account
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, true)
+        "#,
+        account_id
+    )
+    .execute(&pool)
+    .await?;
+
+    // Run monitoring cycle with current block
+    println!("Running monitoring cycle for {}...", account_id);
+    let network = common::create_archival_network();
+    let up_to_block = 182_490_734i64; // Current block as of Jan 24, 2026
+
+    run_monitor_cycle(&pool, &network, up_to_block)
+        .await
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
+    // Verify intents tokens were discovered
+    let intents_tokens: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT token_id
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id LIKE 'intents.near:%'
+        ORDER BY token_id
+        "#,
+    )
+    .bind(account_id)
+    .fetch_all(&pool)
+    .await?;
+
+    println!("Discovered {} intents tokens:", intents_tokens.len());
+    for token in &intents_tokens {
+        println!("  - {}", token);
+    }
+
+    assert!(
+        !intents_tokens.is_empty(),
+        "Should have discovered at least one intents token"
+    );
+
+    // Verify NEAR balance was tracked (should be a SNAPSHOT since no recent transactions)
+    let near_records = sqlx::query!(
+        r#"
+        SELECT block_height, counterparty, balance_before::TEXT as "balance_before!", balance_after::TEXT as "balance_after!"
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = 'near'
+        ORDER BY block_height DESC
+        "#,
+        account_id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    println!("\nNEAR balance records: {}", near_records.len());
+    for record in &near_records {
+        println!(
+            "  Block {}: {} -> {} (counterparty: {})",
+            record.block_height, record.balance_before, record.balance_after, record.counterparty
+        );
+    }
+
+    assert!(
+        !near_records.is_empty(),
+        "Should have at least one NEAR balance record"
+    );
+
+    // The NEAR record should be a SNAPSHOT since the balance hasn't changed recently
+    let near_snapshot = near_records.first().expect("Should have NEAR record");
+    assert_eq!(
+        near_snapshot.counterparty, "SNAPSHOT",
+        "NEAR record should be a SNAPSHOT since balance hasn't changed in lookback window"
+    );
+
+    // Verify balance_before equals balance_after for SNAPSHOT
+    assert_eq!(
+        near_snapshot.balance_before, near_snapshot.balance_after,
+        "SNAPSHOT should have equal balance_before and balance_after"
+    );
+
+    println!("\n✓ NEAR balance tracked as SNAPSHOT (no recent transactions)");
+    println!("✓ Intents tokens discovered: {}", intents_tokens.len());
+    println!("✓ Test validates fix for NEAR tracking with existing intents tokens");
+
+    Ok(())
+}
+
 /// Test continuous monitoring service
 #[sqlx::test]
 async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {

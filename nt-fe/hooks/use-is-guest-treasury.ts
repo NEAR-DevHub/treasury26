@@ -21,6 +21,7 @@ export function useIsGuestTreasury() {
 
     const isGuestTreasury = !!(treasuryId && !currentTreasury && guestTreasuryConfig);
     const isLoading = isLoadingTreasuries || isLoadingGuestConfig || isInitializing;
+    const treasuryNotFound = !isLoading && !!treasuryId && !currentTreasury && !guestTreasuryConfig;
 
     return {
         isGuestTreasury,
@@ -29,6 +30,7 @@ export function useIsGuestTreasury() {
         currentTreasury,
         guestTreasuryConfig,
         treasuries,
+        treasuryNotFound,
     };
 }
 

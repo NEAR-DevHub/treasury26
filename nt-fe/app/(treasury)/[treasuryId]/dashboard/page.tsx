@@ -11,9 +11,14 @@ import { RecentActivity } from "./components/recent-activity";
 import { OnboardingProgress } from "@/features/onboarding";
 import { DepositModal } from "./components/deposit-modal";
 import { InfoBox } from "@/features/onboarding/components/info-box";
+import { DashboardTour } from "@/features/onboarding/steps/dashboard";
+import { useTreasury } from "@/stores/treasury-store";
+import { NextStepViewport } from "nextstepjs";
 
 export default function AppPage() {
-  const { data } = useTreasuryAssets(undefined, { onlyPositiveBalance: true });
+  const { selectedTreasury } = useTreasury();
+  const { data, isLoading, isPending } = useTreasuryAssets(selectedTreasury);
+  const isAssetsLoading = isLoading || isPending;
   const { tokens, totalBalanceUSD } = data || { tokens: [], totalBalanceUSD: 0 };
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
 
@@ -25,9 +30,9 @@ export default function AppPage() {
     >
       <div className="flex flex-col lg:flex-row gap-5">
         <div className="flex flex-col gap-5 lg:w-3/5 w-full">
-          <BalanceWithGraph totalBalanceUSD={totalBalanceUSD} tokens={tokens} onDepositClick={() => setIsDepositModalOpen(true)} />
+          <BalanceWithGraph totalBalanceUSD={totalBalanceUSD} tokens={tokens} onDepositClick={() => setIsDepositModalOpen(true)} isLoading={isAssetsLoading} />
           <OnboardingProgress onDepositClick={() => setIsDepositModalOpen(true)} />
-          <Assets tokens={tokens} />
+          <Assets tokens={tokens} isLoading={isAssetsLoading} />
           <RecentActivity />
         </div>
         <div className="flex flex-col gap-5 w-full lg:w-2/5">
@@ -40,6 +45,7 @@ export default function AppPage() {
         isOpen={isDepositModalOpen}
         onClose={() => setIsDepositModalOpen(false)}
       />
+      <DashboardTour />
     </PageComponentLayout>
   );
 }

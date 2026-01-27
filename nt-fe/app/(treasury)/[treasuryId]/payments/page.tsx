@@ -21,6 +21,14 @@ import { NEAR_TOKEN } from "@/constants/token";
 import { SendingTotal } from "@/components/sending-total";
 import { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
 import { CreateRequestButton } from "@/components/create-request-button";
+import { PendingButton } from "@/components/pending-button";
+import { Button } from "@/components/button";
+import {
+  usePageTour,
+  useManualPageTour,
+  PAGE_TOUR_NAMES,
+  PAGE_TOUR_STORAGE_KEYS,
+} from "@/features/onboarding/steps/page-tours";
 
 const paymentFormSchema = z.object({
   address: z.string().min(2, "Recipient should be at least 2 characters").max(64, "Recipient must be less than 64 characters"),
@@ -56,7 +64,23 @@ function Step1({ handleNext }: StepProps) {
 
   return (
     <PageCard>
-      <StepperHeader title="New Payment" />
+      <div className="flex items-center justify-between">
+        <StepperHeader title="New Payment" />
+        <div className="flex items-center gap-3">
+          <Button
+            id="payments-bulk-btn"
+            type="button"
+            variant="ghost"
+            className="flex items-center gap-2 border-2"
+          >
+            Bulk Payments
+          </Button>
+          <PendingButton
+            id="payments-pending-btn"
+            types={["Payments"]}
+          />
+        </div>
+      </div>
       <TokenInput title="You send" control={form.control} amountName="amount" tokenName="token" />
       <RecipientInput control={form.control} name="address" />
       <div className="rounded-lg border bg-card p-0 overflow-hidden">
@@ -204,6 +228,13 @@ export default function PaymentsPage() {
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const [step, setStep] = useState(0);
 
+  // Onboarding tours
+  usePageTour(PAGE_TOUR_NAMES.PAYMENTS_BULK, PAGE_TOUR_STORAGE_KEYS.PAYMENTS_BULK_SHOWN);
+  const { triggerTour: triggerPendingTour } = useManualPageTour(
+    PAGE_TOUR_NAMES.PAYMENTS_PENDING,
+    PAGE_TOUR_STORAGE_KEYS.PAYMENTS_PENDING_SHOWN
+  );
+
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
@@ -273,6 +304,7 @@ export default function PaymentsPage() {
       }).then(() => {
         form.reset();
         setStep(0);
+        triggerPendingTour();
       }).catch((error) => {
         console.error("Payments error", error);
       });
