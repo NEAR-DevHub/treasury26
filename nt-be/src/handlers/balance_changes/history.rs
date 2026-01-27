@@ -475,7 +475,10 @@ async fn generate_csv<P: crate::services::PriceProvider>(
     // Collect all unique (token_id, date) pairs
     let mut token_dates: HashMap<String, HashSet<NaiveDate>> = HashMap::new();
     for change in &changes {
-        if change.counterparty == "SNAPSHOT" || change.counterparty == "NOT_REGISTERED" {
+        if change.counterparty == "SNAPSHOT"
+            || change.counterparty == "NOT_REGISTERED"
+            || change.counterparty == "STAKING_SNAPSHOT"
+        {
             continue;
         }
         token_dates
@@ -504,9 +507,12 @@ async fn generate_csv<P: crate::services::PriceProvider>(
     // Header (with price columns)
     csv.push_str("block_height,block_time,token_id,token_symbol,counterparty,amount,balance_before,balance_after,price_usd,value_usd,transaction_hashes,receipt_id\n");
 
-    // Rows (exclude SNAPSHOT and NOT_REGISTERED)
+    // Rows (exclude SNAPSHOT, NOT_REGISTERED, and STAKING_SNAPSHOT)
     for change in changes {
-        if change.counterparty == "SNAPSHOT" || change.counterparty == "NOT_REGISTERED" {
+        if change.counterparty == "SNAPSHOT"
+            || change.counterparty == "NOT_REGISTERED"
+            || change.counterparty == "STAKING_SNAPSHOT"
+        {
             continue;
         }
 

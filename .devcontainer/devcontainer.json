@@ -10,7 +10,8 @@
     "ghcr.io/devcontainers/features/git-lfs:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/node:1": {
-      "version": "20"
+      "version": "lts",
+      "installYarnUsingApt": false
     }
   },
   "customizations": {
@@ -20,6 +21,11 @@
         "vadimcn.vscode-lldb"
       ]
     }
+  },
+  "hostRequirements": {
+    "cpus": 8,
+    "memory": "32gb",
+    "storage": "64gb"
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "remoteUser": "vscode"

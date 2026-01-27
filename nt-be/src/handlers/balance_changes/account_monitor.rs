@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use super::balance::ft::get_balance_at_block as get_ft_balance;
 use super::gap_filler::{fill_gaps, insert_snapshot_record};
-use super::staking_rewards::{is_staking_token, track_staking_rewards};
+use super::staking_rewards::{is_staking_token, track_and_fill_staking_rewards};
 use super::token_discovery::snapshot_intents_tokens;
 
 /// Run one cycle of monitoring for all enabled accounts
@@ -68,9 +68,9 @@ pub async fn run_monitor_cycle(
         .fetch_all(pool)
         .await?;
 
-        // If no tokens are tracked yet, ensure we at least check NEAR balance
-        if tokens.is_empty() {
-            println!("  {}: No known tokens, will seed NEAR balance", account_id);
+        // Always ensure NEAR is in the tokens list - it may not be tracked yet
+        // even if other tokens (like intents tokens) have already been discovered
+        if !tokens.contains(&"near".to_string()) {
             tokens.push("near".to_string());
         }
 
@@ -160,13 +160,13 @@ pub async fn run_monitor_cycle(
             }
         }
 
-        // Track staking rewards - discover staking pools and create epoch snapshots
-        match track_staking_rewards(pool, network, account_id, up_to_block).await {
-            Ok(snapshots_created) => {
-                if snapshots_created > 0 {
+        // Track staking rewards - discover staking pools, create epoch snapshots, and fill gaps
+        match track_and_fill_staking_rewards(pool, network, account_id, up_to_block).await {
+            Ok(records_created) => {
+                if records_created > 0 {
                     println!(
-                        "  {}: Created {} staking reward snapshots",
-                        account_id, snapshots_created
+                        "  {}: Created {} staking reward records (snapshots + filled gaps)",
+                        account_id, records_created
                     );
                 }
             }
