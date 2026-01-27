@@ -233,6 +233,9 @@ export const useNearStore = create<NearStore>((set, get) => ({
           },
         ],
       });
+      toast.success(
+        `Your vote${votes.length > 1 ? "s" : ""} have been submitted`
+      );
       return results;
     } catch (error) {
       console.error("Failed to vote proposals:", error);
@@ -302,11 +305,6 @@ export const useNear = () => {
           }))
       );
       await Promise.all(promises);
-
-      // Show success toast for votes
-      toast.success(
-        `Your vote${votes.length > 1 ? "s" : ""} have been submitted`
-      );
 
       // Invalidate policy and config since voting can approve proposals that change them
       await queryClient.invalidateQueries({
