@@ -31,7 +31,6 @@ export async function generateListId(
     token_id: tokenId,
   });
 
-  // For browser compatibility, use SubtleCrypto
   if (typeof window !== "undefined" && window.crypto?.subtle) {
     const encoder = new TextEncoder();
     const data = encoder.encode(canonical);
@@ -41,36 +40,6 @@ export async function generateListId(
   }
 
   throw new Error("SubtleCrypto not available");
-}
-
-/**
- * Execute payout_batch for an approved bulk payment list
- * The backend will continuously call the contract until all payments are processed
- * Returns the total number of batches and payments processed
- */
-export async function payoutBatch(listId: string): Promise<{
-  success: boolean;
-  total_batches_processed: number;
-  total_payments_processed: number;
-  error?: string;
-}> {
-  const response = await fetch(`${BACKEND_API_BASE}/api/bulk-payment/payout-batch`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      list_id: listId,
-    }),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || `Failed to execute payout batch: ${response.statusText}`);
-  }
-
-  return data;
 }
 
 /**

@@ -12,12 +12,11 @@ import {
   EventMap,
   FinalExecutionOutcome,
 } from "@hot-labs/near-connect/build/types";
-import { Vote as ProposalVote, getProposal } from "@/lib/proposals-api";
+import { Vote as ProposalVote } from "@/lib/proposals-api";
 import { ProposalPermissionKind } from "@/lib/config-utils";
 import { toast } from "sonner";
 import Big from "big.js";
 import { useQueryClient } from "@tanstack/react-query";
-import { payoutBatch } from "@/lib/bulk-payment-api";
 
 export interface CreateProposalParams {
   treasuryId: string;
@@ -304,78 +303,10 @@ export const useNear = () => {
       );
       await Promise.all(promises);
 
-      // Check if any approved proposals are bulk payments
-      let hasBulkPayment = false;
-      
-      for (const vote of votes) {
-        if (vote.vote === "Approve") {
-          try {
-
-            const proposal = await getProposal(treasuryId, vote.proposalId.toString());
-                        
-            if (!proposal) {
-              continue;
-            }
-            
-            // Check if proposal is approved
-            if (proposal.status === "Approved") {
-              // Check if it's a bulk payment proposal by looking at description
-              const descMatch = proposal.description.match(/list[\s_]*id["\s:]+([a-f0-9]{64})/i);
-              if (descMatch && descMatch[1]) {
-                const listId = descMatch[1];
-                hasBulkPayment = true;
-                console.log(`Detected approved bulk payment proposal ${vote.proposalId}, triggering payout for list ${listId}`);
-                
-                // Show processing toast
-                const processingToastId = toast.loading(
-                  "Processing bulk payments...",
-                  {
-                    duration: Infinity, // Keep showing until we dismiss it
-                  }
-                );
-                
-                // Trigger payout batch
-                try {
-                  const result = await payoutBatch(listId);
-                  console.log(`Payout completed for list ${listId}:`, result);
-                  
-                  // Dismiss processing toast
-                  toast.dismiss(processingToastId);
-                  
-                  // Show success toast
-                  toast.success(
-                    `Bulk payment executed`,
-                    {
-                      duration: 5000,
-                    }
-                  );
-                } catch (error: any) {
-                  console.error(`Failed to execute payout for list ${listId}:`, error);
-                  
-                  // Dismiss processing toast
-                  toast.dismiss(processingToastId);
-                  
-                  // Show error toast
-                  toast.error(`Failed to execute bulk payment: ${error.message}`);
-                }
-              } else {
-                console.log(`Proposal ${vote.proposalId} is not a bulk payment (no list_id in description)`);
-              }
-            } else {
-              console.log(`Proposal ${vote.proposalId} is not yet approved, status is: ${proposal.status}`);
-            }
-          } catch (error) {
-            console.error(`Failed to check proposal ${vote.proposalId} for bulk payment:`, error);
-          }
-        }
-      }
-      
-      // Show success toast for regular votes (non-bulk payments)
-      if (!hasBulkPayment) {
-        toast.success(
-          `Your vote${votes.length > 1 ? "s" : ""} have been submitted`
-        );
-      }
+      // Show success toast for votes
+      toast.success(
+        `Your vote${votes.length > 1 ? "s" : ""} have been submitted`
+      );
 
       // Invalidate policy and config since voting can approve proposals that change them
       await queryClient.invalidateQueries({
