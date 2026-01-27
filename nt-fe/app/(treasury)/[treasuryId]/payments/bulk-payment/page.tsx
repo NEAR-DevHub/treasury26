@@ -60,13 +60,11 @@ interface BulkPaymentData {
   validationError?: string;
 }
 
-// Validation wrapper to match existing function signature
 function validateRecipientAddress(address: string): string | null {
   if (!address || address.trim() === "") {
     return "Recipient address is required";
   }
 
-  // Use the imported validation function (format-only check)
   if (!isValidNearAddressFormat(address)) {
     return "Invalid recipient address.";
   }
@@ -74,11 +72,78 @@ function validateRecipientAddress(address: string): string | null {
   return null;
 }
 
-// Helper function to check if storage deposit is needed for a token
 function needsStorageDepositCheck(token: TreasuryAsset): boolean {
   // Intents, Near tokens don't need storage deposits
   // FT tokens need storage deposits
   return token.residency === "Ft";
+}
+
+/**
+ * Detect if the first row/line is a header and return parsing configuration
+ * Handles both paste data (string array) and CSV data (2D array)
+ */
+function detectHeaderAndGetConfig(data: string[] | string[][]): {
+  hasHeader: boolean;
+  startRow: number;
+  recipientIdx: number;
+  amountIdx: number;
+} {
+  if (data.length === 0) {
+    return { hasHeader: false, startRow: 0, recipientIdx: 0, amountIdx: 1 };
+  }
+
+  const firstItem = data[0];
+
+  // Case 1: Array of strings (paste data - raw lines)
+  if (typeof firstItem === "string") {
+    const firstLine = firstItem.toLowerCase().trim();
+    const hasHeader =
+      firstLine.includes("recipient") &&
+      (firstLine.includes("amount") || firstLine.includes("value"));
+    return {
+      hasHeader,
+      startRow: hasHeader ? 1 : 0,
+      recipientIdx: 0,
+      amountIdx: 1,
+    };
+  }
+
+  // Case 2: Array of arrays (CSV data - parsed cells)
+  if (Array.isArray(firstItem)) {
+    const firstRow = firstItem as string[];
+    const hasHeader = firstRow.some((cell) => {
+      const cellLower = (cell || "").trim().toLowerCase();
+      return (
+        cellLower.startsWith("recipient") || cellLower.startsWith("amount")
+      );
+    });
+
+    if (hasHeader) {
+      const colIdx = (name: string) =>
+        firstRow.findIndex((h) =>
+          (h || "").trim().toLowerCase().startsWith(name.toLowerCase())
+        );
+
+      const recipientIdx = colIdx("Recipient");
+      const amountIdx = colIdx("Amount");
+
+      return {
+        hasHeader: true,
+        startRow: 1,
+        recipientIdx,
+        amountIdx,
+      };
+    }
+
+    return {
+      hasHeader: false,
+      startRow: 0,
+      recipientIdx: 0,
+      amountIdx: 1,
+    };
+  }
+
+  return { hasHeader: false, startRow: 0, recipientIdx: 0, amountIdx: 1 };
 }
 
 // CSV Parsing Utilities
@@ -91,7 +156,6 @@ function parseCsv(raw: string): string[][] {
   let bestDelimiter = ",";
   let maxColumns = 0;
 
-  // Detect the best delimiter based on max column count in the header
   for (const delimiter of delimiters) {
     const cols = splitCsvLine(lines[0], delimiter).length;
     if (cols > maxColumns) {
@@ -210,7 +274,6 @@ export default function BulkPaymentPage() {
     amount: "",
   });
 
-  // Fetch credits function (extracted for reusability)
   const fetchCredits = useCallback(async () => {
     if (!selectedTreasury) return;
 
@@ -231,12 +294,10 @@ export default function BulkPaymentPage() {
     }
   }, [selectedTreasury]);
 
-  // Calculate available bulk payments (storage credits returns bulk payments per month)
   useEffect(() => {
     fetchCredits();
   }, [fetchCredits]);
 
-  // Validate accounts exist on-chain when entering preview mode
   useEffect(() => {
     if (
       !showPreview ||
@@ -250,11 +311,10 @@ export default function BulkPaymentPage() {
       setIsValidatingAccounts(true);
 
       try {
-        // Step 1: Validate account existence first
+        // Step 1: Validate account existence
         const accountValidatedPayments = await Promise.all(
           paymentData.map(async (payment) => {
             try {
-              // Use validateNearAddress which checks both format and existence
               const validationError = await validateNearAddress(
                 payment.recipient
               );
@@ -283,17 +343,14 @@ export default function BulkPaymentPage() {
           if (validAccounts.length > 0) {
             const tokenId = selectedToken.contractId || selectedToken.id;
 
-            // Build storage deposit requests
             const storageRequests = validAccounts.map((payment) => ({
               accountId: payment.recipient,
               tokenId: tokenId,
             }));
 
-            // Call the API directly
             const storageRegistrations =
               await getBatchStorageDepositIsRegistered(storageRequests);
 
-            // Create a map for quick lookup
             const registrationMap = new Map<string, boolean>();
             storageRegistrations.forEach((reg) => {
               registrationMap.set(
@@ -302,7 +359,6 @@ export default function BulkPaymentPage() {
               );
             });
 
-            // Apply storage registration results
             const finalPayments = accountValidatedPayments.map((payment) => {
               if (payment.validationError) {
                 return payment;
@@ -319,11 +375,9 @@ export default function BulkPaymentPage() {
 
             setPaymentData(finalPayments);
           } else {
-            // No valid accounts, just update with validation errors
             setPaymentData(accountValidatedPayments);
           }
         } else {
-          // NEAR token or no storage check needed
           setPaymentData(accountValidatedPayments);
         }
 
@@ -338,12 +392,7 @@ export default function BulkPaymentPage() {
   }, [showPreview]);
 
   const parsePasteData = useCallback(() => {
-    const errors: Array<{ row: number; message: string }> = [];
-    const parsedData: BulkPaymentData[] = [];
-
-    // Replace literal \n with actual newlines (for when users paste escaped strings)
     const normalizedInput = pasteDataInput.replace(/\\n/g, "\n").trim();
-
     const lines = normalizedInput.split(/\r?\n/);
 
     if (lines.length === 0 || lines.every((line) => !line.trim())) {
@@ -352,94 +401,134 @@ export default function BulkPaymentPage() {
       return;
     }
 
-    let startRow = 0;
+    // Parse paste data: convert lines to rows format
+    const { startRow } = detectHeaderAndGetConfig(lines);
+    const rows: string[][] = [];
 
-    // Check if first line is a header (case-insensitive)
-    if (lines.length > 0) {
-      const firstLine = lines[0].toLowerCase().trim();
-      if (
-        firstLine.includes("recipient") &&
-        (firstLine.includes("amount") || firstLine.includes("value"))
-      ) {
-        startRow = 1; // Skip header row
-      }
-    }
-
-    // Parse each line as "recipient, amount"
     for (let i = startRow; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
 
       // Split by comma, tab, or multiple spaces
       const parts = line.split(/[,\t]+/).map((p) => p.trim());
+      rows.push(parts);
+    }
 
-      if (parts.length < 2) {
-        errors.push({
-          row: i + 1,
-          message: `Invalid format. Expected: recipient, amount`,
+    // Use unified parser with column indices 0 and 1
+    parsePaymentData(rows, 0, 1, startRow);
+  }, [pasteDataInput]);
+
+
+  const parsePaymentData = useCallback(
+    (
+      rows: string[][],
+      recipientIdx: number,
+      amountIdx: number,
+      startRow: number
+    ) => {
+      const errors: Array<{ row: number; message: string }> = [];
+      const parsedData: BulkPaymentData[] = [];
+
+      // Parse all rows
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const actualRowNumber = i + startRow + 1; // Adjust for display
+
+        // Skip empty rows
+        if (row.every((cell) => !cell || !cell.trim())) {
+          continue;
+        }
+
+        // Check if row has enough columns
+        if (row.length < 2) {
+          errors.push({
+            row: actualRowNumber,
+            message: `Invalid format. Expected: recipient, amount`,
+          });
+          continue;
+        }
+
+        const recipient = (row[recipientIdx] || "").trim();
+        const amountStr = (row[amountIdx] || "").trim();
+
+        // Validate that both recipient and amount exist
+        if (!recipient) {
+          errors.push({
+            row: actualRowNumber,
+            message: "Missing recipient address",
+          });
+          continue;
+        }
+
+        if (!amountStr) {
+          errors.push({
+            row: actualRowNumber,
+            message: "Missing amount",
+          });
+          continue;
+        }
+
+        const parsedAmountValue = parseAmount(amountStr);
+
+        // Validate amount is a valid number
+        if (isNaN(parsedAmountValue) || parsedAmountValue <= 0) {
+          errors.push({
+            row: actualRowNumber,
+            message: `Invalid amount: ${amountStr}`,
+          });
+          continue;
+        }
+
+        const validationError = validateRecipientAddress(recipient);
+
+        parsedData.push({
+          recipient,
+          amount: String(parsedAmountValue),
+          validationError: validationError || undefined,
         });
-        continue;
       }
 
-      const recipient = parts[0];
-      const amountStr = parts[1];
-      const parsedAmountValue = parseAmount(amountStr);
-
-      if (isNaN(parsedAmountValue) || parsedAmountValue <= 0) {
-        errors.push({ row: i + 1, message: `Invalid amount: ${amountStr}` });
-        continue;
+      // Check if there were any parsing errors
+      if (errors.length > 0) {
+        setDataErrors(errors);
+        setIsValidating(false);
+        return;
       }
 
-      const validationError = validateRecipientAddress(recipient);
+      if (parsedData.length === 0) {
+        setDataErrors([{ row: 0, message: "No valid data found" }]);
+        setIsValidating(false);
+        return;
+      }
 
-      parsedData.push({
-        recipient,
-        amount: String(parsedAmountValue),
-        validationError: validationError || undefined,
-      });
-    }
+      // Check if exceeds maximum recipients limit
+      if (parsedData.length > MAX_RECIPIENTS_PER_BULK_PAYMENT) {
+        setDataErrors([
+          {
+            row: 0,
+            message: `Maximum limit of ${MAX_RECIPIENTS_PER_BULK_PAYMENT} transactions per request. Remove ${
+              parsedData.length - MAX_RECIPIENTS_PER_BULK_PAYMENT
+            } recipients to proceed.`,
+          },
+        ]);
+        setIsValidating(false);
+        return;
+      }
 
-    if (errors.length > 0) {
-      setDataErrors(errors);
+      setDataErrors(null);
+      setPaymentData(parsedData);
       setIsValidating(false);
-      return;
-    }
-
-    if (parsedData.length === 0) {
-      setDataErrors([{ row: 0, message: "No valid data found" }]);
-      setIsValidating(false);
-      return;
-    }
-
-    // Check if exceeds maximum recipients limit
-    if (parsedData.length > MAX_RECIPIENTS_PER_BULK_PAYMENT) {
-      setDataErrors([
-        {
-          row: 0,
-          message: `Maximum limit of ${MAX_RECIPIENTS_PER_BULK_PAYMENT} transactions per request. Remove ${
-            parsedData.length - MAX_RECIPIENTS_PER_BULK_PAYMENT
-          } recipients to proceed.`,
-        },
-      ]);
-      setIsValidating(false);
-      return;
-    }
-
-    setDataErrors(null);
-    setPaymentData(parsedData);
-    setIsValidating(false);
-    setValidationComplete(false); // Reset validation
-    setShowPreview(true);
-  }, [pasteDataInput, availableCredits, creditsUsed, availableCredits]);
+      setValidationComplete(false); // Reset validation
+      setShowPreview(true);
+    },
+    []
+  );
 
   const parseAndValidateStructure = useCallback(() => {
     if (activeTab === "paste") {
       parsePasteData();
       return;
     }
-
-    const errors: Array<{ row: number; message: string }> = [];
-    const parsedData: BulkPaymentData[] = [];
 
     const rows = parseCsv(csvData || "");
 
@@ -449,126 +538,27 @@ export default function BulkPaymentPage() {
       return;
     }
 
-    const firstRow = rows[0];
+    // Detect header and get column configuration
+    const { hasHeader, startRow, recipientIdx, amountIdx } =
+      detectHeaderAndGetConfig(rows);
 
-    // Check if first row is a header
-    const hasHeader = firstRow.some((cell) => {
-      const cellLower = (cell || "").trim().toLowerCase();
-      return (
-        cellLower.startsWith("recipient") || cellLower.startsWith("amount")
-      );
-    });
-
-    let recipientIdx: number, amountIdx: number, startRow: number;
-
-    if (hasHeader) {
-      const colIdx = (name: string) =>
-        firstRow.findIndex((h) =>
-          (h || "").trim().toLowerCase().startsWith(name.toLowerCase())
-        );
-
-      recipientIdx = colIdx("Recipient");
-      amountIdx = colIdx("Amount");
-
-      if (recipientIdx === -1 || amountIdx === -1) {
-        errors.push({
-          row: 0,
-          message: "Missing one or more required columns: Recipient, Amount",
-        });
-        setDataErrors(errors);
-        setIsValidating(false);
-        return;
-      }
-
-      startRow = 1;
-    } else {
-      recipientIdx = 0;
-      amountIdx = 1;
-      startRow = 0;
-    }
-
-    // Parse all rows
-    for (let i = startRow; i < rows.length; i++) {
-      const row = rows[i];
-
-      if (row.every((cell) => !cell || !cell.trim())) {
-        continue;
-      }
-
-      const recipient = (row[recipientIdx] || "").trim();
-      const amountStr = (row[amountIdx] || "").trim();
-
-      // Validate that both recipient and amount exist
-      if (!recipient) {
-        errors.push({
-          row: i + 1,
-          message: "Missing recipient address",
-        });
-        continue;
-      }
-
-      if (!amountStr) {
-        errors.push({
-          row: i + 1,
-          message: "Missing amount",
-        });
-        continue;
-      }
-
-      const parsedAmountValue = parseAmount(amountStr);
-
-      // Validate amount is a valid number
-      if (isNaN(parsedAmountValue) || parsedAmountValue <= 0) {
-        errors.push({
-          row: i + 1,
-          message: `Invalid amount: ${amountStr}`,
-        });
-        continue;
-      }
-
-      const validationError = validateRecipientAddress(recipient);
-
-      const data: BulkPaymentData = {
-        recipient,
-        amount: String(parsedAmountValue),
-        validationError: validationError || undefined,
-      };
-
-      parsedData.push(data);
-    }
-
-    // Check if there were any parsing errors
-    if (errors.length > 0) {
-      setDataErrors(errors);
-      setIsValidating(false);
-      return;
-    }
-
-    if (parsedData.length === 0) {
-      setDataErrors([{ row: 0, message: "No valid data rows found" }]);
-      setIsValidating(false);
-      return;
-    }
-
-    // Check if exceeds maximum recipients limit
-    if (parsedData.length > MAX_RECIPIENTS_PER_BULK_PAYMENT) {
+    // If header detected but columns are missing, show error
+    if (hasHeader && (recipientIdx === -1 || amountIdx === -1)) {
       setDataErrors([
         {
           row: 0,
-          message: `Maximum limit of ${MAX_RECIPIENTS_PER_BULK_PAYMENT} transactions per request. Remove ${
-            parsedData.length - MAX_RECIPIENTS_PER_BULK_PAYMENT
-          } recipients to proceed.`,
+          message: "Missing one or more required columns: Recipient, Amount",
         },
       ]);
       setIsValidating(false);
       return;
     }
 
-    setDataErrors(null);
-    setPaymentData(parsedData);
-    setIsValidating(false);
-    setValidationComplete(false); // Reset validation
-    setShowPreview(true);
+    // Extract data rows (skip header if present)
+    const dataRows = rows.slice(startRow);
+
+    // Use unified parser
+    parsePaymentData(dataRows, recipientIdx, amountIdx, startRow);
   }, [
     csvData,
     availableCredits,
@@ -576,6 +566,7 @@ export default function BulkPaymentPage() {
     availableCredits,
     activeTab,
     parsePasteData,
+    parsePaymentData,
   ]);
 
   const handleFileUpload = (file: File) => {
