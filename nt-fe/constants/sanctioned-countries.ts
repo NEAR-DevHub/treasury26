@@ -9,22 +9,31 @@
  * geoip-lite uses these same ISO codes.
  */
 export const SANCTIONED_COUNTRY_CODES: ReadonlySet<string> = new Set([
+  "AF", // Afghanistan
+  "BY", // Belarus
+  "CF", // Central African Republic
+  "CD", // Democratic Republic of Congo
   "CU", // Cuba
+  "GW", // Guinea-Bissau
+  "HT", // Haiti
   "IR", // Iran
   "KP", // North Korea (DPRK)
+  "LY", // Libya
+  "ML", // Mali
+  "MM", // Myanmar (Burma)
+  "NI", // Nicaragua
+  "RU", // Russia
+  "SD", // Sudan
+  "SO", // Somalia
+  "SS", // South Sudan
   "SY", // Syria
   "VE", // Venezuela
-  "RU", // Russia
-  "BY", // Belarus
+  "YE", // Yemen
+  "ZW", // Zimbabwe
 ]);
 
 /**
  * Sanctioned sub-national regions keyed by country code.
- *
- * geoip-lite region codes for Ukraine:
- * - "43" = Crimea (Autonomous Republic of Crimea)
- * - "14" = Donetsk Oblast
- * - "09" = Luhansk Oblast
  *
  * IPs assigned from Russian blocks to these territories will resolve as "RU"
  * and be caught by SANCTIONED_COUNTRY_CODES. This map catches IPs that
@@ -40,6 +49,8 @@ export const SANCTIONED_REGIONS: ReadonlyMap<
       "43", // Crimea
       "14", // Donetsk
       "09", // Luhansk
+      "23", // Zaporizhzhia
+      "65", // Kherson
     ]),
   ],
 ]);
