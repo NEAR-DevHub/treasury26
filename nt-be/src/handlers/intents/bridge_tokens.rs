@@ -16,7 +16,7 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-pub struct DepositAssetsQuery {
+pub struct BridgeTokensQuery {
     #[serde(default = "default_theme")]
     pub theme: String,
 }
@@ -28,10 +28,10 @@ fn default_theme() -> String {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkOption {
-    pub id: String,
+    pub id: String, // This will be the intents_token_id
     pub name: String,
     pub icon: Option<String>,
-    pub chain_id: String,
+    pub chain_id: String, // This will be like "eth:1"
     pub decimals: u8,
 }
 
@@ -51,9 +51,9 @@ pub struct DepositAssetsResponse {
     pub assets: Vec<AssetOption>,
 }
 
-pub async fn get_deposit_assets(
+pub async fn get_bridge_tokens(
     State(state): State<Arc<AppState>>,
-    Query(query): Query<DepositAssetsQuery>,
+    Query(query): Query<BridgeTokensQuery>,
 ) -> Result<Json<DepositAssetsResponse>, (StatusCode, String)> {
     let cache_key = format!("deposit-assets:{}", query.theme);
     let state_clone = state.clone();
@@ -169,11 +169,11 @@ pub async fn get_deposit_assets(
                 let decimals = meta.decimals;
 
                 if let Some(asset) = asset_map.get_mut(&canonical_symbol) {
-                    // Check if network with this chain_id already exists
-                    let network_exists = asset.networks.iter().any(|n| n.id == chain_id);
+                    // Check if network with this intents_token_id already exists
+                    let network_exists = asset.networks.iter().any(|n| n.id == intents_id);
                     if !network_exists {
                         asset.networks.push(NetworkOption {
-                            id: chain_id.clone(),
+                            id: intents_id.to_string(), // Use intents_token_id as the network ID
                             name: net_name,
                             icon: net_icon,
                             chain_id,

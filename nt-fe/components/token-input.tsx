@@ -18,6 +18,7 @@ export const tokenSchema = z.object({
     network: z.string(),
     icon: z.string(),
     decimals: z.number(),
+    networkIcon: z.string().nullable().optional(),
 });
 
 export type Token = z.infer<typeof tokenSchema>;
@@ -42,12 +43,13 @@ interface TokenInputProps<
     loading?: boolean;
     customValue?: string;
     infoMessage?: string;
+    customTokenSelector?: React.ReactNode;
 }
 
 export function TokenInput<
     TFieldValues extends FieldValues = FieldValues,
     TTokenPath extends Path<TFieldValues> = Path<TFieldValues>
->({ control, title, amountName, tokenName, tokenSelect, readOnly = false, loading = false, customValue, infoMessage }: TokenInputProps<TFieldValues, TTokenPath>) {
+>({ control, title, amountName, tokenName, tokenSelect, readOnly = false, loading = false, customValue, infoMessage, customTokenSelector }: TokenInputProps<TFieldValues, TTokenPath>) {
     const { selectedTreasury } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
@@ -99,30 +101,32 @@ export function TokenInput<
                                     readOnly={readOnly}
                                 />
                             </div>
-                            <FormField
-                                control={control}
-                                name={`${tokenName}.symbol` as Path<TFieldValues>}
-                                render={({ field }) => (
-                                    <TokenSelect
-                                        disabled={tokenSelect?.disabled}
-                                        locked={tokenSelect?.locked}
-                                        lockedTokenData={tokenSelect?.locked ? {
-                                            symbol: token.symbol,
-                                            icon: token.icon,
-                                            network: token.network,
-                                            chainIcons: tokenData?.chainIcons
-                                        } : undefined}
-                                        selectedToken={field.value}
-                                        setSelectedToken={(selectedToken) => {
-                                            field.onChange(selectedToken.symbol);
-                                            setValue(`${tokenName}.address` as Path<TFieldValues>, selectedToken.id as PathValue<TFieldValues, Path<TFieldValues>>);
-                                            setValue(`${tokenName}.network` as Path<TFieldValues>, selectedToken.network as PathValue<TFieldValues, Path<TFieldValues>>);
-                                            setValue(`${tokenName}.icon` as Path<TFieldValues>, selectedToken.icon as PathValue<TFieldValues, Path<TFieldValues>>);
-                                            setValue(`${tokenName}.decimals` as Path<TFieldValues>, selectedToken.decimals as PathValue<TFieldValues, Path<TFieldValues>>);
-                                        }}
-                                    />
-                                )}
-                            />
+                            {customTokenSelector || (
+                                <FormField
+                                    control={control}
+                                    name={`${tokenName}.symbol` as Path<TFieldValues>}
+                                    render={({ field }) => (
+                                        <TokenSelect
+                                            disabled={tokenSelect?.disabled}
+                                            locked={tokenSelect?.locked}
+                                            lockedTokenData={tokenSelect?.locked ? {
+                                                symbol: token.symbol,
+                                                icon: token.icon,
+                                                network: token.network,
+                                                chainIcons: tokenData?.chainIcons
+                                            } : undefined}
+                                            selectedToken={field.value}
+                                            setSelectedToken={(selectedToken) => {
+                                                field.onChange(selectedToken.symbol);
+                                                setValue(`${tokenName}.address` as Path<TFieldValues>, selectedToken.id as PathValue<TFieldValues, Path<TFieldValues>>);
+                                                setValue(`${tokenName}.network` as Path<TFieldValues>, selectedToken.network as PathValue<TFieldValues, Path<TFieldValues>>);
+                                                setValue(`${tokenName}.icon` as Path<TFieldValues>, selectedToken.icon as PathValue<TFieldValues, Path<TFieldValues>>);
+                                                setValue(`${tokenName}.decimals` as Path<TFieldValues>, selectedToken.decimals as PathValue<TFieldValues, Path<TFieldValues>>);
+                                            }}
+                                        />
+                                    )}
+                                />
+                            )}
                         </div>
                         <p className={cn("text-muted-foreground text-xs invisible", estimatedUSDValue !== null && estimatedUSDValue > 0 && "visible")}>
                             {!isTokenLoading && estimatedUSDValue !== null && estimatedUSDValue > 0

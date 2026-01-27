@@ -21,6 +21,8 @@ interface InfoDisplayProps {
     expandableItems?: InfoItem[];
     className?: string;
     style?: "default" | "secondary";
+    showBorders?: boolean;
+    spacing?: "default" | "compact"; 
 }
 
 const styleVariants = cva("flex flex-col gap-2", {
@@ -35,28 +37,38 @@ const styleVariants = cva("flex flex-col gap-2", {
     }
 })
 
-const lineVariants = cva("border-b border-border p-1 pb-4", {
+const lineVariants = cva("", {
     variants: {
         style: {
             default: "",
             secondary: "border-foreground/10",
+        },
+        showBorders: {
+            true: "border-b border-border",
+            false: "",
+        },
+        spacing: {
+            default: "p-1 pb-4",
+            compact: "p-1 pb-2",
         }
     },
     defaultVariants: {
         style: "default",
+        showBorders: true,
+        spacing: "default",
     }
 })
 
-export function InfoDisplay({ items, expandableItems, className, style = "default" }: InfoDisplayProps) {
+export function InfoDisplay({ items, expandableItems, className, style = "default", showBorders = true, spacing = "default" }: InfoDisplayProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const hasExpandableItems = expandableItems && expandableItems.length > 0;
 
     const displayItems = isExpanded ? [...items, ...expandableItems!] : items;
 
     return (
-        <div className={styleVariants({ style, className })}>
+        <div className={cn(styleVariants({ style }), className)}>
             {displayItems.map((item, index) => (
-                <div key={index} className={cn("flex flex-col gap-2", lineVariants({ style, className: !hasExpandableItems && "last:border-b-0" }))}>
+                <div key={index} className={cn("flex flex-col gap-2", lineVariants({ style, showBorders, spacing, className: !hasExpandableItems && showBorders && "last:border-b-0" }))}>
                     <div className="flex justify-between items-center flex-wrap">
                         <div className="flex items-center gap-2">
                             <p className="text-sm text-muted-foreground">{item.label}</p>

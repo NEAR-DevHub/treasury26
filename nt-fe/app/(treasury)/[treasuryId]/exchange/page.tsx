@@ -18,6 +18,8 @@ import {
   useTreasuryPolicy,
   useTokenBalance,
 } from "@/hooks/use-treasury-queries";
+import { useQuery } from "@tanstack/react-query";
+import BridgeTokenSelect from "@/components/bridge-token-select";
 import { useEffect, useMemo, useState } from "react";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
@@ -43,15 +45,19 @@ import {
   getUserFriendlyErrorMessage,
 } from "./utils";
 import { useCountdownTimer } from "./hooks/use-countdown-timer";
-import { useAutoRefresh } from "./hooks/use-auto-refresh";
 import { useQuoteFetcher } from "./hooks/use-quote-fetcher";
 import { ExchangeSummaryCard } from "./components/exchange-summary-card";
-import { ExchangeDetailRow } from "./components/exchange-detail-row";
-import { ExchangeRateDisplay } from "./components/exchange-rate-display";
+import { Rate } from "./components/rate";
+import { InfoDisplay } from "@/components/info-display";
 import {
   buildNativeNEARProposal,
   buildFungibleTokenProposal,
 } from "./utils/proposal-builder";
+import {
+  usePageTour,
+  PAGE_TOUR_NAMES,
+  PAGE_TOUR_STORAGE_KEYS,
+} from "@/features/onboarding/steps/page-tours";
 
 const exchangeFormSchema = z.object({
   sellAmount: z
@@ -94,7 +100,12 @@ function Step1({ handleNext }: StepProps) {
       sellToken.address === receiveToken.address &&
       sellToken.network === receiveToken.network
     );
-  }, [sellToken.address, sellToken.network, receiveToken.address, receiveToken.network]);
+  }, [
+    sellToken.address,
+    sellToken.network,
+    receiveToken.address,
+    receiveToken.network,
+  ]);
 
   // Check for insufficient balance
   const hasInsufficientBalance = useMemo(() => {
@@ -161,7 +172,13 @@ function Step1({ handleNext }: StepProps) {
     }, 500); // Debounce
 
     return () => clearTimeout(timer);
-  }, [sellAmount, sellToken.address, receiveToken.address, slippageTolerance, areSameTokens]);
+  }, [
+    sellAmount,
+    sellToken.address,
+    receiveToken.address,
+    slippageTolerance,
+    areSameTokens,
+  ]);
 
   // Validate tokens when they change
   useEffect(() => {
@@ -172,13 +189,6 @@ function Step1({ handleNext }: StepProps) {
     sellToken.network,
     receiveToken.network,
   ]);
-
-  useAutoRefresh(
-    fetchDryQuote,
-    Boolean(quoteData && hasValidAmount && !areSameTokens),
-    DRY_QUOTE_REFRESH_INTERVAL,
-    [quoteData, hasValidAmount, areSameTokens]
-  );
 
   const handleContinue = () => {
     form.trigger().then((isValid) => {
@@ -207,8 +217,9 @@ function Step1({ handleNext }: StepProps) {
       <div className="flex items-center justify-between gap-2">
         <StepperHeader title="Exchange" />
         <div className="flex items-center gap-2">
-          <PendingButton types={["Exchange"]} />
+          <PendingButton id="exchange-pending-btn" types={["Exchange"]} />
           <ExchangeSettingsModal
+            id="exchange-settings-btn"
             slippageTolerance={slippageTolerance}
             onSlippageChange={(value) =>
               form.setValue("slippageTolerance", value)
@@ -232,8 +243,10 @@ function Step1({ handleNext }: StepProps) {
         />
         {/* Swap Arrow */}
         <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
-          <div
-            className="rounded-full bg-card border p-1.5 z-10 cursor-pointer"
+          <Button
+            type="button"
+            variant="unstyled"
+            className="rounded-full bg-card border p-1.5! z-10 cursor-pointer"
             onClick={handleSwapTokens}
           >
             {isLoadingQuote ? (
@@ -241,7 +254,7 @@ function Step1({ handleNext }: StepProps) {
             ) : (
               <ArrowDown className="size-5" />
             )}
-          </div>
+          </Button>
         </div>
       </div>
 
@@ -254,12 +267,36 @@ function Step1({ handleNext }: StepProps) {
         readOnly={true}
         loading={isLoadingQuote}
         customValue={quoteData?.quote.amountOutFormatted || ""}
+        customTokenSelector={
+          <BridgeTokenSelect
+            selectedToken={{
+              id: receiveToken.address,
+              symbol: receiveToken.symbol,
+              name: receiveToken.symbol,
+              icon: receiveToken.icon,
+              network: receiveToken.network,
+              networkIcon: receiveToken.networkIcon || null,
+              chainId: receiveToken.network,
+              decimals: receiveToken.decimals,
+            }}
+            setSelectedToken={(token) => {
+              form.setValue("receiveToken", {
+                symbol: token.symbol,
+                address: token.id,
+                network: token.network,
+                icon: token.icon,
+                decimals: token.decimals,
+                networkIcon: token.networkIcon,
+              });
+            }}
+          />
+        }
       />
 
       {/* Rate and Slippage */}
       {quoteData && (
         <div className="flex flex-col gap-2 text-sm">
-          <ExchangeRateDisplay
+          <Rate
             quote={quoteData.quote}
             sellToken={sellToken}
             receiveToken={receiveToken}
@@ -285,9 +322,9 @@ function Step1({ handleNext }: StepProps) {
         >
           {areSameTokens
             ? "Tokens must be different"
-            : hasValidAmount && quoteData
-            ? "Review Exchange"
-            : "Enter an amount to exchange"}
+            : !hasValidAmount
+            ? "Enter an amount to exchange "
+            : "Review Exchange"}
         </Button>
       </div>
 
@@ -316,48 +353,47 @@ function Step2({ handleBack }: StepProps) {
   const { data: receiveTokenData } = useToken(receiveToken.address);
   const formatDate = useFormatDate();
 
-  const [localLiveQuoteData, setLocalLiveQuoteData] =
-    useState<IntentsQuoteResponse | null>(null);
+  const { fetchQuote } = useQuoteFetcher();
 
-  const { fetchQuote, isLoading: isLoadingLiveQuote } = useQuoteFetcher();
+  const { data: localLiveQuoteData, isLoading: isLoadingLiveQuote } = useQuery({
+    queryKey: [
+      "liveExchangeQuote",
+      selectedTreasury,
+      sellToken.address,
+      receiveToken.address,
+      sellAmount,
+      slippageTolerance,
+    ],
+    queryFn: async () => {
+      if (!selectedTreasury) return null;
+
+      const result = await fetchQuote(
+        {
+          sellToken,
+          receiveToken,
+          sellAmount,
+          slippageTolerance,
+          treasuryId: selectedTreasury,
+        },
+        false
+      );
+
+      if (result.quote) {
+        // Store in form context for submission
+        form.setValue("proposalData" as any, result.quote);
+        return result.quote;
+      }
+      return null;
+    },
+    enabled: !!selectedTreasury && !!sellAmount,
+    refetchInterval: PROPOSAL_REFRESH_INTERVAL, // Auto-refresh every interval
+    refetchIntervalInBackground: false, // Don't refetch when tab is not visible
+  });
 
   const timeUntilRefresh = useCountdownTimer(
-    !!localLiveQuoteData,
-    PROPOSAL_REFRESH_INTERVAL
-  );
-
-  // Fetch live quote
-  const fetchLiveQuote = async () => {
-    if (!selectedTreasury) return;
-
-    const result = await fetchQuote(
-      {
-        sellToken,
-        receiveToken,
-        sellAmount,
-        slippageTolerance,
-        treasuryId: selectedTreasury,
-      },
-      false
-    );
-
-    if (result.quote) {
-      setLocalLiveQuoteData(result.quote);
-      // Store in form context for submission
-      form.setValue("proposalData" as any, result.quote);
-    }
-  };
-
-  // Fetch on mount and when slippage changes
-  useEffect(() => {
-    fetchLiveQuote();
-  }, [slippageTolerance]);
-
-  useAutoRefresh(
-    fetchLiveQuote,
-    !!localLiveQuoteData,
+    !!localLiveQuoteData && !isLoadingLiveQuote,
     PROPOSAL_REFRESH_INTERVAL,
-    [localLiveQuoteData]
+    localLiveQuoteData?.quote.depositAddress
   );
 
   const sellTotal = useMemo(() => {
@@ -454,72 +490,81 @@ function Step2({ handleBack }: StepProps) {
             </div>
 
             {/* Exchange Details */}
-            <div className="flex flex-col gap-2 text-sm">
-              <ExchangeRateDisplay
+            <div className="flex flex-col gap-1 text-sm">
+              <Rate
                 quote={localLiveQuoteData.quote}
                 sellToken={sellToken}
                 receiveToken={receiveToken}
                 detailed
+                className="p-1"
               />
 
-              {marketPriceDifference && marketPriceDifference.hasMarketData && (
-                <ExchangeDetailRow
-                  label="Price Difference"
-                  value={
-                    <span className="font-medium">
-                      {marketPriceDifference.isFavorable ? "+" : ""}
-                      {marketPriceDifference.percentDifference}%
-                    </span>
-                  }
-                  tooltip="Difference between the quote rate and the current market rate. Positive values indicate a better rate than market."
-                />
-              )}
-
-              <ExchangeDetailRow
-                label="Estimated Time"
-                value={`${localLiveQuoteData.quote.timeEstimate} seconds`}
-                tooltip="Approximate time to complete the exchange."
-              />
-
-              <ExchangeDetailRow
-                label="Minimum Received"
-                value={`${formatBalance(
-                  localLiveQuoteData.quote.minAmountOut,
-                  receiveToken.decimals
-                )} ${receiveToken.symbol}`}
-                tooltip="This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request."
-              />
-
-              <ExchangeDetailRow
-                label="Deposit Address"
-                value={
-                  <div className="flex items-center gap-2">
-                    {`${localLiveQuoteData.quote.depositAddress.slice(
-                      0,
-                      8
-                    )}....${localLiveQuoteData.quote.depositAddress.slice(-6)}`}
-                    <CopyButton
-                      text={localLiveQuoteData.quote.depositAddress}
-                      toastMessage="Deposit address copied"
-                      variant="unstyled"
-                      size="icon"
-                      className="h-6 w-6 p-0!"
-                      iconClassName="h-3 w-3"
-                    />
-                  </div>
-                }
-              />
-
-              <ExchangeDetailRow
-                label="Quote Expires"
-                value={
-                  <span className="text-destructive">
-                    {formatDate(localLiveQuoteData.quoteRequest.deadline, {
-                      includeTime: true,
-                      includeTimezone: true,
-                    })}
-                  </span>
-                }
+              <InfoDisplay
+                className="gap-0"
+                showBorders={false}
+                spacing="compact"
+                items={[
+                  ...(marketPriceDifference &&
+                  marketPriceDifference.hasMarketData
+                    ? [
+                        {
+                          label: "Price Difference",
+                          value: (
+                            <span className="font-medium">
+                              {marketPriceDifference.isFavorable ? "+" : ""}
+                              {marketPriceDifference.percentDifference}%
+                            </span>
+                          ),
+                          info: "Difference between the quote rate and the current market rate. Positive values indicate a better rate than market.",
+                        },
+                      ]
+                    : []),
+                  {
+                    label: "Estimated Time",
+                    value: `${localLiveQuoteData.quote.timeEstimate} seconds`,
+                    info: "Approximate time to complete the exchange.",
+                  },
+                  {
+                    label: "Minimum Received",
+                    value: `${formatBalance(
+                      localLiveQuoteData.quote.minAmountOut,
+                      receiveToken.decimals
+                    )} ${receiveToken.symbol}`,
+                    info: "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request.",
+                  },
+                  {
+                    label: "Deposit Address",
+                    value: (
+                      <div className="flex items-center gap-2">
+                        {`${localLiveQuoteData.quote.depositAddress.slice(
+                          0,
+                          8
+                        )}....${localLiveQuoteData.quote.depositAddress.slice(
+                          -6
+                        )}`}
+                        <CopyButton
+                          text={localLiveQuoteData.quote.depositAddress}
+                          toastMessage="Deposit address copied"
+                          variant="unstyled"
+                          size="icon"
+                          className="h-6 w-6 p-0!"
+                          iconClassName="h-3 w-3"
+                        />
+                      </div>
+                    ),
+                  },
+                  {
+                    label: "Quote Expires",
+                    value: (
+                      <span className="text-destructive">
+                        {formatDate(localLiveQuoteData.quoteRequest.deadline, {
+                          includeTime: true,
+                          includeTimezone: true,
+                        })}
+                      </span>
+                    ),
+                  },
+                ]}
               />
             </div>
           </>
@@ -542,7 +587,7 @@ function Step2({ handleBack }: StepProps) {
         />
       </div>
 
-      {localLiveQuoteData && (
+      {localLiveQuoteData && !isLoadingLiveQuote && (
         <p className="text-center text-sm text-muted-foreground">
           Exchange rate will refresh in{" "}
           <span className="font-medium text-foreground">
@@ -561,6 +606,12 @@ export default function ExchangePage() {
   const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const [step, setStep] = useState(0);
+
+  // Onboarding tour
+  usePageTour(
+    PAGE_TOUR_NAMES.EXCHANGE_SETTINGS,
+    PAGE_TOUR_STORAGE_KEYS.EXCHANGE_SETTINGS_SHOWN
+  );
 
   const form = useForm<ExchangeFormValues>({
     resolver: zodResolver(exchangeFormSchema),
