@@ -304,9 +304,6 @@ export const useNear = () => {
       );
       await Promise.all(promises);
 
-      // Wait a bit for queries to refetch before checking proposal status
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
       // Check if any approved proposals are bulk payments
       let hasBulkPayment = false;
       
@@ -321,12 +318,9 @@ export const useNear = () => {
             }
             
             // Check if proposal is approved
-            console.log(`Proposal ${vote.proposalId} status:`, proposal.status);
             if (proposal.status === "Approved") {
               // Check if it's a bulk payment proposal by looking at description
-              // Match various formats: "list_id:", "List Id:", "listId:", etc.
               const descMatch = proposal.description.match(/list[\s_]*id["\s:]+([a-f0-9]{64})/i);
-              console.log(`Proposal ${vote.proposalId} description match:`, descMatch);
               if (descMatch && descMatch[1]) {
                 const listId = descMatch[1];
                 hasBulkPayment = true;
