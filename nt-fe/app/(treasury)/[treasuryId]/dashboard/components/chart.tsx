@@ -60,12 +60,12 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
                         <stop
                             offset="0%"
                             stopOpacity={0.1}
-                            stopColor="rgb(2,7,6)"
+                            stopColor="var(--color-chart-area-fill)"
                         />
                         <stop
                             offset="100%"
                             stopOpacity={0}
-                            stopColor="rgb(2,7,6)"
+                            stopColor="var(--color-chart-area-fill)"
                         />
                     </linearGradient>
                 </defs>

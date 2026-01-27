@@ -12,10 +12,11 @@ interface PageComponentLayoutProps {
   title: string;
   description?: string;
   backButton?: boolean | string;
+  hideCollapseButton?: boolean;
   children: ReactNode;
 }
 
-export function PageComponentLayout({ title, description, backButton, children }: PageComponentLayoutProps) {
+export function PageComponentLayout({ title, description, backButton, hideCollapseButton, children }: PageComponentLayoutProps) {
   const { toggleSidebar } = useSidebarStore();
   const { theme, toggleTheme } = useThemeStore();
 
@@ -31,15 +32,17 @@ export function PageComponentLayout({ title, description, backButton, children }
     <div className="flex flex-col h-full">
       <header className="flex items-center min-h-14 justify-between bg-card px-2 md:px-6 border-b border-border">
         <div className="flex items-center gap-2 md:gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="h-9 w-9 hover:bg-muted text-muted-foreground hover:text-foreground"
-            aria-label="Toggle sidebar"
-          >
-            <PanelLeft className="h-6 w-6" />
-          </Button>
+          {!hideCollapseButton && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="h-9 w-9 hover:bg-muted text-muted-foreground hover:text-foreground"
+              aria-label="Toggle sidebar"
+            >
+              <PanelLeft className="h-6 w-6" />
+            </Button>
+          )}
           <div className="flex items-center gap-2 md:gap-3">
             {backButton && (
               <Button

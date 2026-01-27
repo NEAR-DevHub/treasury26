@@ -456,7 +456,6 @@ export default function MembersPage() {
       });
     } catch (error) {
       console.error("Failed to create proposal:", error);
-      toast.error("Failed to create proposal");
       throw error;
     }
   };

@@ -362,7 +362,6 @@ export function VotingTab() {
       form.reset(form.getValues());
     } catch (error) {
       console.error("Error creating proposal:", error);
-      toast.error("Failed to create proposal");
     } finally {
       setIsSubmittingDuration(false);
     }

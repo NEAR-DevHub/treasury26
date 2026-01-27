@@ -137,7 +137,6 @@ export function GeneralTab() {
       form.reset(data);
     } catch (error) {
       console.error("Error creating proposal:", error);
-      toast.error("Failed to create proposal");
     } finally {
       setIsSubmitting(false);
     }
