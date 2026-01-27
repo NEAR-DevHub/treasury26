@@ -50,4 +50,6 @@ services:
 
 databases:
   - name: database
-    plan: free
+    plan: basic-1gb
+    diskSizeGB: 35
+    ipAllowList: [] # No entries in the IP allow list
