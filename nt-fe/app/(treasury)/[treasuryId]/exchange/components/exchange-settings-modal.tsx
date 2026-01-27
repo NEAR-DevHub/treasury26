@@ -90,11 +90,9 @@ export function ExchangeSettingsModal({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 py-2">
-            {/* Slippage Tolerance Section */}
             <div className="flex flex-col gap-3">
               <h3 className="text-sm font-semibold">Slippage Tolerance</h3>
 
-              {/* Slippage Presets */}
               <div className="flex gap-2">
                 {SLIPPAGE_PRESETS.map((preset) => (
                   <button
@@ -125,7 +123,6 @@ export function ExchangeSettingsModal({
                 </button>
               </div>
 
-              {/* Custom Input Field */}
               {isCustom && (
                 <FormField
                   control={form.control}
@@ -159,13 +156,11 @@ export function ExchangeSettingsModal({
                 />
               )}
 
-              {/* Description */}
               <p className="text-sm text-muted-foreground mt-2">
                 If the price changes by more than this percentage, the transaction will be cancelled to protect your funds.
               </p>
             </div>
 
-            {/* Save Button */}
             <Button
               type="submit"
               className="w-full h-12 font-medium bg-foreground text-background hover:bg-foreground/90 mt-5"

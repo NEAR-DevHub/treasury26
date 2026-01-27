@@ -41,12 +41,13 @@ interface TokenInputProps<
     readOnly?: boolean;
     loading?: boolean;
     customValue?: string;
+    infoMessage?: string;
 }
 
 export function TokenInput<
     TFieldValues extends FieldValues = FieldValues,
     TTokenPath extends Path<TFieldValues> = Path<TFieldValues>
->({ control, title, amountName, tokenName, tokenSelect, readOnly = false, loading = false, customValue }: TokenInputProps<TFieldValues, TTokenPath>) {
+>({ control, title, amountName, tokenName, tokenSelect, readOnly = false, loading = false, customValue, infoMessage }: TokenInputProps<TFieldValues, TTokenPath>) {
     const { selectedTreasury } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
@@ -130,7 +131,13 @@ export function TokenInput<
                                     ? 'Loading price...'
                                     : 'Invisible'}
                         </p>
-                        {fieldState.error ? <FormMessage /> : <p className="text-muted-foreground text-xs invisible">Invisible</p>}
+                        {fieldState.error ? (
+                            <FormMessage />
+                        ) : infoMessage ? (
+                            <p className="text-general-info-foreground text-sm mt-2">{infoMessage}</p>
+                        ) : (
+                            <p className="text-muted-foreground text-xs invisible">Invisible</p>
+                        )}
                     </>
                 </InputBlock>
             )}

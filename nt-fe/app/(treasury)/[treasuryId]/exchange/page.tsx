@@ -25,7 +25,7 @@ import { cn, formatBalance } from "@/lib/utils";
 import Big from "big.js";
 import { NEAR_TOKEN } from "@/constants/token";
 import { CreateRequestButton } from "@/components/create-request-button";
-import { ArrowDown, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowDown, ChevronRight, Loader2 } from "lucide-react";
 import { ExchangeSettingsModal } from "./components/exchange-settings-modal";
 import { Button } from "@/components/button";
 import { IntentsQuoteResponse } from "@/lib/api";
@@ -53,30 +53,17 @@ import {
   buildFungibleTokenProposal,
 } from "./utils/proposal-builder";
 
-const exchangeFormSchema = z
-  .object({
-    sellAmount: z
-      .string()
-      .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-        message: "Amount must be greater than 0",
-      }),
-    sellToken: tokenSchema,
-    receiveAmount: z.string().optional(),
-    receiveToken: tokenSchema,
-    slippageTolerance: z.number().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (
-      data.sellToken.address === data.receiveToken.address &&
-      data.sellToken.network === data.receiveToken.network
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["receiveAmount"],
-        message: "Sell and receive tokens must be different",
-      });
-    }
-  });
+const exchangeFormSchema = z.object({
+  sellAmount: z
+    .string()
+    .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+      message: "Amount must be greater than 0",
+    }),
+  sellToken: tokenSchema,
+  receiveAmount: z.string().optional(),
+  receiveToken: tokenSchema,
+  slippageTolerance: z.number().optional(),
+});
 
 function Step1({ handleNext }: StepProps) {
   const form = useFormContext<
@@ -101,6 +88,14 @@ function Step1({ handleNext }: StepProps) {
   const hasValidAmount =
     sellAmount && !isNaN(Number(sellAmount)) && Number(sellAmount) > 0;
 
+  // Check if tokens are the same
+  const areSameTokens = useMemo(() => {
+    return (
+      sellToken.address === receiveToken.address &&
+      sellToken.network === receiveToken.network
+    );
+  }, [sellToken.address, sellToken.network, receiveToken.address, receiveToken.network]);
+
   // Check for insufficient balance
   const hasInsufficientBalance = useMemo(() => {
     if (!sellAmount || !sellTokenBalance?.balance) return false;
@@ -115,19 +110,12 @@ function Step1({ handleNext }: StepProps) {
   const fetchDryQuote = async () => {
     if (!hasValidAmount || !selectedTreasury) return;
 
-    // Don't fetch quote if tokens are the same - let Zod validation handle the error
-    if (
-      sellToken.address === receiveToken.address &&
-      sellToken.network === receiveToken.network
-    ) {
+    // Don't fetch quote if tokens are the same
+    if (areSameTokens) {
       setQuoteData(null);
       form.setValue("receiveAmount", "");
-      // Trigger validation to show the error
-      form.trigger("receiveAmount");
       return;
     }
-
-    form.clearErrors("receiveAmount");
 
     const result = await fetchQuote(
       {
@@ -163,12 +151,17 @@ function Step1({ handleNext }: StepProps) {
     form.setValue("receiveAmount", "");
     setQuoteData(null);
 
+    // Don't fetch if tokens are the same
+    if (areSameTokens) {
+      return;
+    }
+
     const timer = setTimeout(() => {
       fetchDryQuote();
     }, 500); // Debounce
 
     return () => clearTimeout(timer);
-  }, [sellAmount, sellToken.address, receiveToken.address, slippageTolerance]);
+  }, [sellAmount, sellToken.address, receiveToken.address, slippageTolerance, areSameTokens]);
 
   // Validate tokens when they change
   useEffect(() => {
@@ -180,12 +173,11 @@ function Step1({ handleNext }: StepProps) {
     receiveToken.network,
   ]);
 
-  // Auto-refresh quote every 5 seconds
   useAutoRefresh(
     fetchDryQuote,
-    Boolean(quoteData && hasValidAmount),
+    Boolean(quoteData && hasValidAmount && !areSameTokens),
     DRY_QUOTE_REFRESH_INTERVAL,
-    [quoteData, hasValidAmount]
+    [quoteData, hasValidAmount, areSameTokens]
   );
 
   const handleContinue = () => {
@@ -212,7 +204,6 @@ function Step1({ handleNext }: StepProps) {
 
   return (
     <PageCard className="relative">
-      {/* Pending Badge and Settings - Top Right */}
       <div className="flex items-center justify-between gap-2">
         <StepperHeader title="Exchange" />
         <div className="flex items-center gap-2">
@@ -233,6 +224,11 @@ function Step1({ handleNext }: StepProps) {
           control={form.control}
           amountName="sellAmount"
           tokenName="sellToken"
+          infoMessage={
+            hasInsufficientBalance
+              ? "Insufficient tokens. You can submit the request and top up before approval."
+              : undefined
+          }
         />
         {/* Swap Arrow */}
         <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
@@ -275,12 +271,6 @@ function Step1({ handleNext }: StepProps) {
         </div>
       )}
 
-      {/* Insufficient Balance Warning */}
-      {hasInsufficientBalance && (
-        <WarningAlert message="The treasury balance is insufficient to cover the exchange. You can create the request, but it won't be approved until the balance is topped up." />
-      )}
-
-      {/* Exchange Button */}
       <div className="rounded-lg border bg-card p-0 overflow-hidden">
         <Button
           type="button"
@@ -288,17 +278,19 @@ function Step1({ handleNext }: StepProps) {
           variant="default"
           className={cn(
             "w-full h-10 rounded-none font-medium",
-            (!hasValidAmount || !quoteData) &&
+            (areSameTokens || !hasValidAmount || !quoteData) &&
               "bg-muted text-muted-foreground hover:bg-muted"
           )}
+          disabled={areSameTokens || !hasValidAmount || !quoteData}
         >
-          {hasValidAmount && quoteData
+          {areSameTokens
+            ? "Tokens must be different"
+            : hasValidAmount && quoteData
             ? "Review Exchange"
             : "Enter an amount to exchange"}
         </Button>
       </div>
 
-      {/* Powered by NEAR Intents */}
       <div className="flex justify-center items-center gap-2 text-sm text-muted-foreground">
         <span>Powered by</span>
         <span className="font-semibold flex items-center gap-1">
@@ -319,7 +311,6 @@ function Step2({ handleBack }: StepProps) {
   const sellToken = form.watch("sellToken");
   const receiveToken = form.watch("receiveToken");
   const sellAmount = form.watch("sellAmount");
-  const receiveAmount = form.watch("receiveAmount") || "0";
   const slippageTolerance = form.watch("slippageTolerance") || 0.5;
   const { data: sellTokenData } = useToken(sellToken.address);
   const { data: receiveTokenData } = useToken(receiveToken.address);
@@ -362,7 +353,6 @@ function Step2({ handleBack }: StepProps) {
     fetchLiveQuote();
   }, [slippageTolerance]);
 
-  // Auto-refresh every 30 seconds
   useAutoRefresh(
     fetchLiveQuote,
     !!localLiveQuoteData,
@@ -407,19 +397,21 @@ function Step2({ handleBack }: StepProps) {
           // Loading skeleton for entire review section
           <>
             {/* Summary Cards Skeleton */}
-            <div className="flex gap-5">
-              <div className="flex-1 rounded-lg border bg-muted p-4 flex flex-col items-center gap-2">
+            <div className="relative flex justify-center items-center gap-4 mb-6">
+              <div className="w-full max-w-[280px] rounded-lg border bg-muted p-4 flex flex-col items-center gap-2 h-[180px] justify-center">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="size-10 rounded-full" />
                 <Skeleton className="h-6 w-32" />
                 <Skeleton className="h-3 w-20" />
               </div>
 
-              <div className="flex items-center">
-                <ArrowRight className="size-6 text-muted-foreground" />
+              <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
+                <div className="rounded-full bg-card border p-1.5 shadow-sm">
+                  <ChevronRight className="size-6 text-muted-foreground" />
+                </div>
               </div>
 
-              <div className="flex-1 rounded-lg border bg-muted p-4 flex flex-col items-center gap-2">
+              <div className="w-full max-w-[280px] rounded-lg border bg-muted p-4 flex flex-col items-center gap-2 h-[180px] justify-center">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="size-10 rounded-full" />
                 <Skeleton className="h-6 w-32" />
@@ -438,7 +430,7 @@ function Step2({ handleBack }: StepProps) {
           // Actual content when loaded
           <>
             {/* Exchange Summary Cards */}
-            <div className="flex gap-5">
+            <div className="relative flex justify-center items-center gap-4 mb-6">
               <ExchangeSummaryCard
                 title="Sell amount"
                 token={sellToken}
@@ -446,9 +438,11 @@ function Step2({ handleBack }: StepProps) {
                 usdValue={estimatedSellUSDValue}
               />
 
-              {/* Arrow */}
-              <div className="flex items-center">
-                <ArrowRight className="size-6 text-muted-foreground" />
+              {/* Arrow - absolutely positioned */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
+                <div className="rounded-full bg-card border p-1.5 shadow-sm">
+                  <ChevronRight className="size-6 text-muted-foreground" />
+                </div>
               </div>
 
               <ExchangeSummaryCard
@@ -574,13 +568,7 @@ export default function ExchangePage() {
       sellAmount: "",
       sellToken: NEAR_TOKEN,
       receiveAmount: "0",
-      receiveToken: {
-        symbol: "USDC",
-        address: "usdc.near",
-        network: "near",
-        icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
-        decimals: 6,
-      },
+      receiveToken: NEAR_TOKEN,
       slippageTolerance: 0.5,
     },
   });
@@ -633,17 +621,6 @@ export default function ExchangePage() {
       }
     } catch (error: any) {
       console.error("Exchange error", error);
-
-      const errorMessage =
-        error?.message || "Failed to submit exchange request";
-
-      if (errorMessage.toLowerCase().includes("user rejected")) {
-        console.log("User rejected the transaction");
-      } else if (errorMessage.toLowerCase().includes("insufficient")) {
-        console.error("Insufficient balance or funds");
-      } else {
-        console.error("Unexpected error:", errorMessage);
-      }
     }
   };
 
