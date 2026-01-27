@@ -12,7 +12,7 @@ import {
   EventMap,
   FinalExecutionOutcome,
 } from "@hot-labs/near-connect/build/types";
-import { Vote as ProposalVote } from "@/lib/proposals-api";
+import { Vote as ProposalVote, getProposal } from "@/lib/proposals-api";
 import { ProposalPermissionKind } from "@/lib/config-utils";
 import { toast } from "sonner";
 import Big from "big.js";
@@ -234,9 +234,6 @@ export const useNearStore = create<NearStore>((set, get) => ({
           },
         ],
       });
-      toast.success(
-        `Your vote${votes.length > 1 ? "s" : ""} have been submitted`
-      );
       return results;
     } catch (error) {
       console.error("Failed to vote proposals:", error);
@@ -307,45 +304,83 @@ export const useNear = () => {
       );
       await Promise.all(promises);
 
-      // Check if any approved proposals are bulk payments and trigger payout
+      // Wait a bit for queries to refetch before checking proposal status
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Check if any approved proposals are bulk payments
+      let hasBulkPayment = false;
+      
       for (const vote of votes) {
         if (vote.vote === "Approve") {
           try {
-            // Get the proposal from cache (it was just refetched by invalidateQueries)
-            const proposal = queryClient.getQueryData<any>([
-              "proposal",
-              treasuryId,
-              vote.proposalId.toString(),
-            ]);
-            
-            if (!proposal) continue;
+
+            const proposal = await getProposal(treasuryId, vote.proposalId.toString());
+                        
+            if (!proposal) {
+              continue;
+            }
             
             // Check if proposal is approved
+            console.log(`Proposal ${vote.proposalId} status:`, proposal.status);
             if (proposal.status === "Approved") {
               // Check if it's a bulk payment proposal by looking at description
-              const descMatch = proposal.description.match(/list_id["\s:]+([a-f0-9]{64})/i);
+              // Match various formats: "list_id:", "List Id:", "listId:", etc.
+              const descMatch = proposal.description.match(/list[\s_]*id["\s:]+([a-f0-9]{64})/i);
+              console.log(`Proposal ${vote.proposalId} description match:`, descMatch);
               if (descMatch && descMatch[1]) {
                 const listId = descMatch[1];
+                hasBulkPayment = true;
                 console.log(`Detected approved bulk payment proposal ${vote.proposalId}, triggering payout for list ${listId}`);
                 
-                // Trigger payout batch in background
-                payoutBatch(listId)
-                  .then((result) => {
-                    console.log(`Payout completed for list ${listId}:`, result);
-                    toast.success(
-                      `Bulk payment executed: ${result.total_payments_processed} payments processed in ${result.total_batches_processed} batches`
-                    );
-                  })
-                  .catch((error) => {
-                    console.error(`Failed to execute payout for list ${listId}:`, error);
-                    toast.error(`Failed to execute bulk payment: ${error.message}`);
-                  });
+                // Show processing toast
+                const processingToastId = toast.loading(
+                  "Processing bulk payments...",
+                  {
+                    duration: Infinity, // Keep showing until we dismiss it
+                  }
+                );
+                
+                // Trigger payout batch
+                try {
+                  const result = await payoutBatch(listId);
+                  console.log(`Payout completed for list ${listId}:`, result);
+                  
+                  // Dismiss processing toast
+                  toast.dismiss(processingToastId);
+                  
+                  // Show success toast
+                  toast.success(
+                    `Bulk payment executed`,
+                    {
+                      duration: 5000,
+                    }
+                  );
+                } catch (error: any) {
+                  console.error(`Failed to execute payout for list ${listId}:`, error);
+                  
+                  // Dismiss processing toast
+                  toast.dismiss(processingToastId);
+                  
+                  // Show error toast
+                  toast.error(`Failed to execute bulk payment: ${error.message}`);
+                }
+              } else {
+                console.log(`Proposal ${vote.proposalId} is not a bulk payment (no list_id in description)`);
               }
+            } else {
+              console.log(`Proposal ${vote.proposalId} is not yet approved, status is: ${proposal.status}`);
             }
           } catch (error) {
             console.error(`Failed to check proposal ${vote.proposalId} for bulk payment:`, error);
           }
         }
+      }
+      
+      // Show success toast for regular votes (non-bulk payments)
+      if (!hasBulkPayment) {
+        toast.success(
+          `Your vote${votes.length > 1 ? "s" : ""} have been submitted`
+        );
       }
 
       // Invalidate policy and config since voting can approve proposals that change them

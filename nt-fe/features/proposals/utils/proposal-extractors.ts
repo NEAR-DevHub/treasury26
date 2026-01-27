@@ -388,7 +388,6 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
       tokenId: "NEAR",
       totalAmount: action.deposit,
       batchId: args.list_id || "",
-      network: "near",
     }
   }
 
@@ -399,7 +398,6 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
       tokenId: args.token_id || functionCall.receiver_id, // Use token_id from args
       totalAmount: args.amount || "0",
       batchId: String(args.msg) || "",
-      network: "intents",
     };
   }
 
@@ -409,7 +407,6 @@ export function extractBatchPaymentRequestData(proposal: Proposal): BatchPayment
     tokenId: functionCall.receiver_id, // This is the FT contract address
     totalAmount: args.amount || "0",
     batchId: String(args.msg) || "",
-    network: "near", // FT tokens are on NEAR network
   };
 }
 
