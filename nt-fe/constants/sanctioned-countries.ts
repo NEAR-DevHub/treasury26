@@ -2,19 +2,20 @@
  * ISO 3166-1 alpha-2 country codes for sanctioned/restricted jurisdictions.
  *
  * Sources:
- * - OFAC (U.S. Office of Foreign Assets Control) sanctions programs
+ * - OFAC (U.S. Office of Foreign Assets Control) — comprehensive sanctions programs
+ *   https://ofac.treasury.gov/sanctions-programs-and-country-information
  * - EU restrictive measures
  *
- * Both Cloudflare CF-IPCountry header and geoip-lite use these same ISO codes.
+ * geoip-lite uses these same ISO codes.
  */
 export const SANCTIONED_COUNTRY_CODES: ReadonlySet<string> = new Set([
+  "CU", // Cuba
+  "IR", // Iran
+  "KP", // North Korea (DPRK)
+  "SY", // Syria
+  "VE", // Venezuela
   "RU", // Russia
   "BY", // Belarus
-  "KP", // North Korea (DPRK)
-  "IR", // Iran
-  "SY", // Syria
-  "CU", // Cuba,
-  "UA", // Ukraine
 ]);
 
 /**
