@@ -110,7 +110,6 @@ export function buildNativeNEARProposal(params: ProposalBuilderParams): Proposal
 export function buildFungibleTokenProposal(params: ProposalBuilderParams): ProposalResult {
   const { proposalData, sellToken, receiveToken, slippageTolerance } = params;
   const amountInSmallestUnit = proposalData.quote.amountIn;
-  console.log(sellToken)
   const originAsset = sellToken.address;
   const isNearToken = sellToken.network === "near" && !sellToken.address.startsWith("nep141:");
 
