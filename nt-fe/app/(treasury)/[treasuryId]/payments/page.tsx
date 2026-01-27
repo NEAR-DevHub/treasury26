@@ -75,11 +75,10 @@ function Step1({ handleNext }: StepProps) {
         <div className="flex items-center gap-3">
           <Link href={`/${selectedTreasury}/payments/bulk-payment`}>
             <Button
-              variant="outline"
-              className="flex items-center gap-2 bg-transparent"
-              style={{ borderColor: "var(--general-unofficial-border)" }}
+              variant="ghost"
+              className="flex items-center gap-2 border-2"
             >
-              <ArrowDownToLine   className="w-4 h-4" />
+              <ArrowDownToLine className="w-4 h-4" />
               Bulk Payments
             </Button>
           </Link>

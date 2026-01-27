@@ -299,7 +299,7 @@ pub async fn submit_list(
         })
         .collect();
 
-    let result = near_api::Contract(state.bulk_payment_contract_id.clone())
+    let execution_result = near_api::Contract(state.bulk_payment_contract_id.clone())
         .call_function(
             "submit_list",
             serde_json::json!({
@@ -310,70 +310,76 @@ pub async fn submit_list(
             }),
         )
         .transaction()
+        .max_gas()
+        .deposit(near_api::types::NearToken::from_yoctonear(0))
         .with_signer(state.signer_id.clone(), state.signer.clone())
         .send_to(&state.network)
         .await;
 
-    match result {
-        Ok(_) => {
-            // Step 4: Store in database for usage tracking
-            let recipient_count = request.payments.len() as i32;
-            let total_amount: String = request
-                .payments
-                .iter()
-                .map(|p| p.amount.parse::<u128>().unwrap_or(0))
-                .sum::<u128>()
-                .to_string();
-
-            let db_result = sqlx::query(
-                r#"
-                INSERT INTO bulk_payment_requests 
-                (treasury_id, list_id, recipient_count, token_id, total_amount, created_by)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (list_id) DO NOTHING
-                "#,
-            )
-            .bind(&request.dao_contract_id)
-            .bind(&request.list_id)
-            .bind(recipient_count)
-            .bind(&request.token_id)
-            .bind(&total_amount)
-            .bind(&request.submitter_id)
-            .execute(&state.db_pool)
-            .await;
-
-            match db_result {
+    match execution_result {
+        Ok(result) => {
+            // Check if the transaction execution succeeded
+            match result.into_result() {
                 Ok(_) => {
-                    log::info!(
-                        "Stored bulk payment request in DB: treasury={}, list_id={}, recipients={}",
-                        request.dao_contract_id,
-                        request.list_id,
-                        recipient_count
-                    );
+                    // Step 4: Decrement credits in monitored_accounts table
+                    let db_result = sqlx::query(
+                        r#"
+                UPDATE monitored_accounts
+                SET batch_payment_credits = GREATEST(batch_payment_credits - 1, 0),
+                    updated_at = NOW()
+                WHERE account_id = $1
+                "#,
+                    )
+                    .bind(&request.dao_contract_id)
+                    .execute(&state.db_pool)
+                    .await;
+
+                    match db_result {
+                        Ok(result) => {
+                            if result.rows_affected() > 0 {
+                            } else {
+                                log::warn!(
+                                    "Treasury {} not found in monitored_accounts, credits not decremented",
+                                    request.dao_contract_id
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("Failed to decrement batch payment credits: {}", e);
+                            // Don't fail the request if DB update fails - contract submission succeeded
+                        }
+                    }
+
+                    Ok(Json(SubmitListResponse {
+                        success: true,
+                        list_id: Some(request.list_id),
+                        error: None,
+                    }))
                 }
                 Err(e) => {
-                    log::error!("Failed to insert bulk payment request into DB: {}", e);
-                    // Don't fail the request if DB insert fails - contract submission succeeded
+                    log::error!("Contract execution failed: {:?}", e);
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(SubmitListResponse {
+                            success: false,
+                            list_id: None,
+                            error: Some(format!("Contract execution failed: {}", e)),
+                        }),
+                    ));
                 }
             }
-
-            // Add the list to the payout worker's pending list
-            super::worker::add_pending_list(request.list_id.clone()).await;
-
-            Ok(Json(SubmitListResponse {
-                success: true,
-                list_id: Some(request.list_id),
-                error: None,
-            }))
         }
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(SubmitListResponse {
-                success: false,
-                list_id: None,
-                error: Some(format!("Failed to submit list: {}", e)),
-            }),
-        )),
+        Err(e) => {
+            log::error!("Failed to submit list to contract: {:?}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(SubmitListResponse {
+                    success: false,
+                    list_id: None,
+                    error: Some(format!("Failed to submit list: {}", e)),
+                }),
+            ));
+        }
     }
 }
 

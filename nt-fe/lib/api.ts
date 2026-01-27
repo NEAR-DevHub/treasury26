@@ -976,13 +976,14 @@ export async function markDaoDirty(daoId: string): Promise<void> {
  * Bulk Payment Usage Statistics
  */
 export interface BulkPaymentUsageStats {
-  total_requests: number;
-  total_recipients: number;
+  credits_available: number;
+  credits_used: number;
+  total_credits: number;
 }
 
 /**
  * Get bulk payment usage statistics for a treasury
- * Returns total number of requests and recipients
+ * Returns credits available, used, and total
  */
 export async function getBulkPaymentUsageStats(
   treasuryId: string
@@ -995,3 +996,4 @@ export async function getBulkPaymentUsageStats(
   );
   return response.data;
 }
+

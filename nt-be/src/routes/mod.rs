@@ -169,6 +169,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             post(handlers::bulkpayment::submit::submit_list),
         )
         .route(
+            "/api/bulk-payment/payout-batch",
+            post(handlers::bulkpayment::payout::payout_batch),
+        )
+        .route(
             "/api/bulk-payment/storage-credits",
             get(handlers::bulkpayment::storage_credits::get_storage_credits),
         )

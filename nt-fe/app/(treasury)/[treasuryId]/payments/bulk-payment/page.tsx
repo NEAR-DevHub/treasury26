@@ -28,11 +28,9 @@ import Big from "big.js";
 import { PaymentFormSection } from "../components/payment-form-section";
 import { WarningAlert } from "@/components/warning-alert";
 import {
-  viewStorageCredits,
   generateListId,
   submitPaymentList,
   buildApproveListProposal,
-  TOTAL_FREE_CREDITS,
   MAX_RECIPIENTS_PER_BULK_PAYMENT,
   BULK_PAYMENT_CONTRACT_ID,
 } from "@/lib/bulk-payment-api";
@@ -51,6 +49,8 @@ import {
   isValidNearAddressFormat,
 } from "@/lib/near-validation";
 import { DialogDescription } from "@radix-ui/react-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BulkPaymentToast } from "../components/bulk-payment-toast";
 
 interface BulkPaymentData {
   recipient: string;
@@ -76,16 +76,18 @@ function validateRecipientAddress(address: string): string | null {
 
 // Helper function to check if storage deposit is needed for a token
 function needsStorageDepositCheck(token: TreasuryAsset): boolean {
-  // Intents tokens don't need storage deposits (they use a different system)
+  // Intents, Near tokens don't need storage deposits
   // FT tokens need storage deposits
-  // NEAR tokens don't need storage deposits
   return token.residency === "Ft";
 }
 
 // CSV Parsing Utilities
-function parseCsv(raw: string) {
+function parseCsv(raw: string): string[][] {
   const delimiters = [",", "\t", ";"];
   const lines = raw.trim().split(/\r?\n/);
+  
+  if (lines.length === 0) return [];
+  
   let bestDelimiter = ",";
   let maxColumns = 0;
 
@@ -101,7 +103,7 @@ function parseCsv(raw: string) {
   return lines.map((line) => splitCsvLine(line, bestDelimiter));
 }
 
-function splitCsvLine(line: string, delimiter: string) {
+function splitCsvLine(line: string, delimiter: string): string[] {
   const result: string[] = [];
   let field = "";
   let insideQuotes = false;
@@ -113,40 +115,58 @@ function splitCsvLine(line: string, delimiter: string) {
     if (char === '"') {
       if (insideQuotes && nextChar === '"') {
         field += '"'; // Escaped quote
-        i++;
+        i++; // Skip next quote
       } else {
         insideQuotes = !insideQuotes;
       }
     } else if (char === delimiter && !insideQuotes) {
-      result.push(field);
+      result.push(field.trim());
       field = "";
     } else {
       field += char;
     }
   }
 
-  result.push(field);
-  return result.map((f) => f.trim());
+  result.push(field.trim());
+  return result;
 }
 
 function parseAmount(amountStr: string): number {
-  // Remove any spaces and currency symbols
-  let normalized = amountStr.trim().replace(/[$€£¥]/g, "");
-  // Handle different decimal separators (convert European format to standard)
-  // If there's both comma and dot, assume comma is thousands separator
-  if (normalized.includes(",") && normalized.includes(".")) {
-    normalized = normalized.replace(/,/g, "");
-  } else if (normalized.includes(",")) {
-    // Check if comma is likely a decimal separator (e.g., "10,5" not "1,000")
+  // Remove spaces, currency symbols, and underscores (used as thousand separators)
+  let normalized = amountStr.trim().replace(/[$€£¥_\s]/g, "");
+  
+  // Handle empty or invalid input
+  if (!normalized) return NaN;
+  
+  // Handle different decimal separators
+  const hasComma = normalized.includes(",");
+  const hasDot = normalized.includes(".");
+  
+  if (hasComma && hasDot) {
+    // Both separators present: last one is decimal, others are thousands
+    const lastCommaIndex = normalized.lastIndexOf(",");
+    const lastDotIndex = normalized.lastIndexOf(".");
+    
+    if (lastDotIndex > lastCommaIndex) {
+      // Dot is decimal: "1,000.50" -> "1000.50"
+      normalized = normalized.replace(/,/g, "");
+    } else {
+      // Comma is decimal: "1.000,50" -> "1000.50"
+      normalized = normalized.replace(/\./g, "").replace(",", ".");
+    }
+  } else if (hasComma) {
+    // Only comma: check if it's decimal or thousands separator
     const parts = normalized.split(",");
     if (parts.length === 2 && parts[1].length <= 8) {
-      // Likely decimal separator
+      // Likely decimal separator: "10,5" or "10,50"
       normalized = normalized.replace(",", ".");
     } else {
-      // Likely thousands separator
+      // Likely thousands separator: "1,000" or "1,000,000"
       normalized = normalized.replace(/,/g, "");
     }
   }
+  // If only dot, keep as-is (standard format)
+  
   return parseFloat(normalized);
 }
 
@@ -176,6 +196,7 @@ export default function BulkPaymentPage() {
   const [validationComplete, setValidationComplete] = useState(false);
   const [availableCredits, setAvailableCredits] = useState(0); // Bulk payments per month
   const [creditsUsed, setCreditsUsed] = useState(0);
+  const [totalCredits, setTotalCredits] = useState(5);
   const [isLoadingCredits, setIsLoadingCredits] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pasteDataInput, setPasteDataInput] = useState("");
@@ -196,41 +217,16 @@ export default function BulkPaymentPage() {
 
       setIsLoadingCredits(true);
       try {
-        // Fetch from both contract and database
-        const [contractCredits, usageStats] = await Promise.all([
-          viewStorageCredits(selectedTreasury),
-          getBulkPaymentUsageStats(selectedTreasury),
-        ]);
+        const usageStats = await getBulkPaymentUsageStats(selectedTreasury);
 
-        // Contract credits = REMAINING storage records (not total)
-        // This is already reduced by the contract when lists are submitted
-        // So contractCredits already reflects what's available on-chain
-        
-        // Calculate how many bulk payment requests can be made
-        // Each request can have up to MAX_RECIPIENTS_PER_BULK_PAYMENT recipients
-        const maxRequestsFromContract = Math.floor(
-          contractCredits / MAX_RECIPIENTS_PER_BULK_PAYMENT
-        );
-
-        // Database tracks requests we've created through the UI
-        // This helps us show accurate usage even if contract hasn't processed yet
-        const requestsUsedInDB = usageStats.total_requests;
-
-        // Use the minimum to be conservative
-        // (DB might be ahead if some requests are pending approval)
-        const creditsAvailable = Math.min(
-          maxRequestsFromContract,
-          Math.max(0, TOTAL_FREE_CREDITS - requestsUsedInDB)
-        );
-        
-        const creditsUsed = Math.min(requestsUsedInDB, TOTAL_FREE_CREDITS);
-
-        setAvailableCredits(creditsAvailable);
-        setCreditsUsed(creditsUsed);
+        setAvailableCredits(usageStats.credits_available);
+        setCreditsUsed(usageStats.credits_used);
+        setTotalCredits(usageStats.total_credits);
       } catch (error) {
         console.error("Error loading bulk payment credits:", error);
         setAvailableCredits(0);
         setCreditsUsed(0);
+        setTotalCredits(5); // Default fallback
       } finally {
         setIsLoadingCredits(false);
       }
@@ -662,7 +658,7 @@ export default function BulkPaymentPage() {
     if (editingIndex === null || !selectedToken) return;
 
     // The PaymentFormSection already validated the account format and existence
-    // Now check storage registration for FT tokens (skip for Intents)
+    // Now check storage registration for FT tokens
     let isRegistered = true;
     if (needsStorageDepositCheck(selectedToken)) {
       try {
@@ -705,8 +701,26 @@ export default function BulkPaymentPage() {
     if (!selectedTreasury || paymentData.length === 0 || !selectedToken) return;
 
     setIsSubmitting(true);
+    
+    let loadingToastId: string | number | undefined;
 
     try {
+      // Show loading toast with first step
+      loadingToastId = toast(
+        <BulkPaymentToast
+          steps={[
+            { label: "Submitting proposal", status: "loading" },
+            { label: "Submitting bulk payment list", status: "pending" },
+          ]}
+        />,
+        {
+          duration: Infinity,
+          classNames: {
+            toast: "!p-3",
+          },
+        }
+      );
+
       const proposalBond = policy?.proposal_bond || "0";
       const isNEAR =
         selectedToken.id === NEAR_TOKEN.address ||
@@ -823,33 +837,9 @@ export default function BulkPaymentPage() {
           ],
         });
       }
-
-      // Add submit_list transaction to bulk payment contract
-      // This stores the payment list in the contract before the DAO proposal is approved
-      additionalTransactions.push({
-        receiverId: BULK_PAYMENT_CONTRACT_ID,
-        actions: [
-          {
-            type: "FunctionCall",
-            params: {
-              methodName: "submit_list",
-              args: {
-                list_id: listId,
-                token_id: tokenIdForHash,
-                payments: payments.map((p) => ({
-                  recipient: p.recipient,
-                  amount: p.amount,
-                })),
-                submitter_id: selectedTreasury,
-              } as any,
-              gas: "50000000000000", // 50 TGas
-              deposit: "0", // No deposit needed for submit_list
-            },
-          } as any,
-        ],
-      });
       }
 
+    
       // Create proposal first (required for backend verification) - suppress toast
       const proposalResults = await createProposal(
         "Bulk payment proposal submitted",
@@ -867,9 +857,26 @@ export default function BulkPaymentPage() {
 
       // Only submit payment list if proposal creation was successful
       if (proposalResults && proposalResults.length > 0) {
+        // Update toast to show proposal complete, list in progress
+        toast(
+          <BulkPaymentToast
+            steps={[
+              { label: "Submitting proposal", status: "completed" },
+              { label: "Submitting bulk payment list", status: "loading" },
+            ]}
+          />,
+          {
+            id: loadingToastId,
+            duration: Infinity,
+            classNames: {
+              toast: "!p-3",
+            },
+          }
+        );
+
         // Submit payment list to backend (must be after proposal creation)
         try {
-          await submitPaymentList({
+          const submitResult = await submitPaymentList({
             listId,
             submitterId: selectedTreasury,
             daoContractId: selectedTreasury,
@@ -877,7 +884,15 @@ export default function BulkPaymentPage() {
             payments,
           });
 
-          // Show success toast after list submission
+          // Check if submission was successful
+          if (!submitResult.success) {
+            throw new Error(submitResult.error || "Failed to submit payment list");
+          }
+
+          // Dismiss loading toast
+          toast.dismiss(loadingToastId);
+
+          // Show success toast
           toast.success("Bulk Payment Request submitted", {
             duration: 10000, // 10 seconds
             action: {
@@ -893,16 +908,27 @@ export default function BulkPaymentPage() {
             },
           });
 
-          // Reset and close only on success
+          // Reset and go back to step 1
           setShowPreview(false);
           setPaymentData([]);
-          setCsvData(null);
-          setUploadedFile(null);
+          setSelectedToken(null);
           setComment("");
+          setCsvData("");
+          setPasteDataInput("");
+          setActiveTab("upload");
+          setValidationComplete(false);
         } catch (error) {
           console.error("Failed to submit payment list to backend:", error);
-          toast.error("Failed to submit bulk payment list");
+          toast.dismiss(loadingToastId);
+          toast.error(
+            error instanceof Error 
+              ? error.message 
+              : "Failed to submit bulk payment list"
+          );
         }
+      } else {
+        toast.dismiss(loadingToastId);
+        toast.error("Failed to create proposal");
       }
     } catch (error) {
       console.error("Failed to submit bulk payment:", error);
@@ -1211,7 +1237,83 @@ export default function BulkPaymentPage() {
   // Upload Screen
   return (
     <PageComponentLayout title="Bulk Payment Requests">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-[1200px] mx-auto">
+      {isLoadingCredits ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-[1200px] mx-auto">
+          {/* Left Column - Main Form Skeleton */}
+          <div className="lg:col-span-2">
+            <PageCard className="gap-2">
+              <div className="flex items-center gap-2">
+                <Skeleton className="w-4 h-4" />
+                <Skeleton className="h-7 w-48" />
+              </div>
+              <Skeleton className="h-5 w-full max-w-md" />
+              
+              {/* Step 1 Skeleton */}
+              <div className="mb-6 mt-6">
+                <div className="flex gap-2 mb-4">
+                  <Skeleton className="w-6 h-6 rounded-full" />
+                  <div className="flex-1 flex flex-col gap-2">
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="w-full h-14 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 Skeleton */}
+              <div className="mb-6">
+                <div className="flex gap-2 mb-4">
+                  <Skeleton className="w-6 h-6 rounded-full" />
+                  <div className="flex-1 flex flex-col gap-2">
+                    <Skeleton className="h-6 w-48" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-10 flex-1" />
+                      <Skeleton className="h-10 flex-1" />
+                    </div>
+                    <Skeleton className="w-full h-32 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+
+              <Skeleton className="w-full h-12 rounded-lg" />
+            </PageCard>
+          </div>
+
+          {/* Right Column Skeleton */}
+          <div className="space-y-6">
+            {/* Benefits Skeleton */}
+            <PageCard>
+              <Skeleton className="h-6 w-32 mb-4" />
+              <div className="space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            </PageCard>
+
+            {/* Credits Skeleton */}
+            <PageCard>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-7 w-32" />
+                  <Skeleton className="h-8 w-24" />
+                </div>
+                <div className="space-y-2 border-b-[0.2px] border-general-unofficial-border pb-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <Skeleton className="w-full h-2 rounded-full" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-9 w-28" />
+                </div>
+              </div>
+            </PageCard>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-[1200px] mx-auto">
         {/* Left Column - Main Form */}
         <div className="lg:col-span-2">
           <PageCard className="gap-2">
@@ -1509,8 +1611,8 @@ export default function BulkPaymentPage() {
             style={
               availableCredits === 0
                 ? {
-                    border: "1px solid #34D6A4",
-                    background: "#ECFDF5",
+                    border: "1px solid var(--general-success-foreground)",
+                    background: "var(--general-success-background-faded)",
                   }
                 : { backgroundColor: "var(--color-general-tertiary)" }
             }
@@ -1519,7 +1621,7 @@ export default function BulkPaymentPage() {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Bulk Payments</h3>
                 <span className="text-sm font-medium border-2 py-1 px-2 rounded-lg">
-                  {TOTAL_FREE_CREDITS} credits
+                  {totalCredits} credits
                 </span>
               </div>
 
@@ -1537,8 +1639,8 @@ export default function BulkPaymentPage() {
                     className="h-full bg-foreground transition-all"
                     style={{
                       width:
-                        availableCredits > 0
-                          ? `${(creditsUsed / TOTAL_FREE_CREDITS) * 100}%`
+                        totalCredits > 0
+                          ? `${(creditsUsed / totalCredits) * 100}%`
                           : "0%",
                     }}
                   />
@@ -1561,6 +1663,7 @@ export default function BulkPaymentPage() {
           </PageCard>
         </div>
       </div>
+      )}
     </PageComponentLayout>
   );
 }
