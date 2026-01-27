@@ -6,7 +6,7 @@ import { Button } from "@/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/input";
 import { cn } from "@/lib/utils";
-import { fetchDepositAssets } from "@/lib/bridge-api";
+import { fetchBridgeTokens } from "@/lib/bridge-api";
 import { useThemeStore } from "@/stores/theme-store";
 import { ScrollArea } from "./ui/scroll-area";
 
@@ -39,7 +39,7 @@ export function TokenSelectPopover({
         const loadTokens = async () => {
             setIsLoading(true);
             try {
-                const assets = await fetchDepositAssets(theme);
+                const assets = await fetchBridgeTokens(theme);
 
                 // Format and deduplicate tokens by symbol (network-agnostic)
                 const tokenMap = new Map<string, TokenOption>();
