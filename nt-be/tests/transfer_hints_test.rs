@@ -16,7 +16,7 @@ async fn test_fastnear_provider_real_api() {
     common::load_test_env();
     let network = common::create_archival_network();
 
-    let provider = FastNearProvider::new(network);
+    let provider = FastNearProvider::new(network).with_api_key(common::get_fastnear_api_key());
 
     // Query a known account with transfers (petersalomonsen.near)
     // Use a wide block range (1M blocks ≈ 11 days)
@@ -47,7 +47,7 @@ async fn test_fastnear_provider_ft_token() {
     common::load_test_env();
     let network = common::create_archival_network();
 
-    let provider = FastNearProvider::new(network);
+    let provider = FastNearProvider::new(network).with_api_key(common::get_fastnear_api_key());
 
     // Query for FT tokens - use the USDC token which petersalomonsen.near uses
     let hints = provider
@@ -76,7 +76,8 @@ async fn test_transfer_hint_service_with_fastnear() {
     common::load_test_env();
     let network = common::create_archival_network();
 
-    let service = TransferHintService::new().with_provider(FastNearProvider::new(network));
+    let service = TransferHintService::new()
+        .with_provider(FastNearProvider::new(network).with_api_key(common::get_fastnear_api_key()));
 
     // Verify service supports the right tokens
     assert!(service.supports_token("near"), "Should support NEAR");
@@ -104,7 +105,8 @@ async fn test_fastnear_intents_token() {
     common::load_test_env();
     let network = common::create_archival_network();
 
-    let provider = FastNearProvider::new(network.clone());
+    let provider =
+        FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key());
 
     // Intents tokens are now supported by FastNear (asset_type: "Mt")
     assert!(provider.supports_token("intents.near:nep141:wrap.near"));
@@ -135,7 +137,8 @@ async fn test_hint_verification_with_rpc() {
     common::load_test_env();
     let network = common::create_archival_network();
 
-    let provider = FastNearProvider::new(network.clone());
+    let provider =
+        FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key());
 
     // Get hints for a known account with wide range
     let hints = provider

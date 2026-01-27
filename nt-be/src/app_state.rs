@@ -256,7 +256,8 @@ impl AppStateBuilder {
                 FastNearProvider::with_base_url(archival_network.clone(), base_url.clone())
             } else {
                 FastNearProvider::new(archival_network.clone())
-            };
+            }
+            .with_api_key(&env_vars.fastnear_api_key);
             Some(TransferHintService::new().with_provider(provider))
         } else {
             None

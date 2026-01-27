@@ -80,8 +80,9 @@ async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
     println!("✓ Seeded initial balance at block {}", seed_block);
 
     // Query hints
-    let hint_service =
-        TransferHintService::new().with_provider(FastNearProvider::new(network.clone()));
+    let hint_service = TransferHintService::new().with_provider(
+        FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
+    );
     let hints = hint_service
         .get_hints(account_id, token_id, seed_block, up_to_block as u64)
         .await;
@@ -240,8 +241,9 @@ async fn test_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     println!("✓ Seeded initial balance at block {}", seed_block);
 
     // Query hints for FT
-    let hint_service =
-        TransferHintService::new().with_provider(FastNearProvider::new(network.clone()));
+    let hint_service = TransferHintService::new().with_provider(
+        FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
+    );
     let hints = hint_service
         .get_hints(account_id, token_id, seed_block, up_to_block as u64)
         .await;
@@ -396,8 +398,9 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     println!("✓ Seeded initial balance at block {}", seed_block);
 
     // Query hints
-    let hint_service =
-        TransferHintService::new().with_provider(FastNearProvider::new(network.clone()));
+    let hint_service = TransferHintService::new().with_provider(
+        FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
+    );
     let hints = hint_service
         .get_hints(account_id, token_id, seed_block, up_to_block as u64)
         .await;
@@ -557,8 +560,9 @@ async fn test_shitzu_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
     println!("✓ Seeded initial balance at block {}", seed_block);
 
     // Query hints
-    let hint_service =
-        TransferHintService::new().with_provider(FastNearProvider::new(network.clone()));
+    let hint_service = TransferHintService::new().with_provider(
+        FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
+    );
     let hints = hint_service
         .get_hints(account_id, token_id, seed_block, up_to_block as u64)
         .await;
@@ -700,8 +704,9 @@ async fn test_no_duplicate_block_checks(pool: PgPool) -> sqlx::Result<()> {
     .await?;
 
     // Set up hint service
-    let hint_service =
-        TransferHintService::new().with_provider(FastNearProvider::new(network.clone()));
+    let hint_service = TransferHintService::new().with_provider(
+        FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
+    );
 
     // Use the same range as the working shitzu test
     let from_block = 179_074_315u64;
@@ -904,8 +909,9 @@ async fn test_hints_strategy_is_used(pool: PgPool) -> sqlx::Result<()> {
     .await?;
 
     // Set up hint service
-    let hint_service =
-        TransferHintService::new().with_provider(FastNearProvider::new(network.clone()));
+    let hint_service = TransferHintService::new().with_provider(
+        FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
+    );
 
     // Use the same range as other tests
     let from_block = 179_074_315u64;

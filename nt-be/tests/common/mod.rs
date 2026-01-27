@@ -41,6 +41,12 @@ pub fn create_archival_network() -> NetworkConfig {
     }
 }
 
+/// Get the FastNear API key for authenticated requests
+pub fn get_fastnear_api_key() -> String {
+    load_test_env();
+    std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env")
+}
+
 pub struct TestServer {
     process: Child,
     port: u16,

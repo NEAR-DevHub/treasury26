@@ -26,6 +26,8 @@ pub struct FastNearProvider {
     base_url: String,
     /// NEAR network config for querying block timestamps via RPC
     network: NetworkConfig,
+    /// Optional API key for authenticated requests (avoids rate limiting)
+    api_key: Option<String>,
 }
 
 impl FastNearProvider {
@@ -35,6 +37,7 @@ impl FastNearProvider {
             client: Client::new(),
             base_url: "https://transfers.main.fastnear.com".to_string(),
             network,
+            api_key: None,
         }
     }
 
@@ -44,6 +47,7 @@ impl FastNearProvider {
             client: Client::new(),
             base_url: base_url.into(),
             network,
+            api_key: None,
         }
     }
 
@@ -57,7 +61,14 @@ impl FastNearProvider {
             client,
             base_url: base_url.into(),
             network,
+            api_key: None,
         }
+    }
+
+    /// Set the API key for authenticated requests (avoids rate limiting)
+    pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.api_key = Some(api_key.into());
+        self
     }
 
     /// Get the block timestamp in milliseconds by querying RPC
@@ -79,7 +90,14 @@ impl FastNearProvider {
     ) -> Result<TransfersResponse, Box<dyn Error + Send + Sync>> {
         let url = format!("{}/v0/transfers", self.base_url);
 
-        let response = self.client.post(&url).json(request).send().await?;
+        let mut req = self.client.post(&url).json(request);
+
+        // Add API key header if configured (avoids rate limiting)
+        if let Some(api_key) = &self.api_key {
+            req = req.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = req.send().await?;
 
         if !response.status().is_success() {
             let status = response.status();
