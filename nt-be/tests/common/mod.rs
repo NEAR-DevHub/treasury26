@@ -218,7 +218,7 @@ async fn setup_defillama_mocks(mock_server: &MockServer) {
                         "coins": {
                             coin: {
                                 "price": price,
-                                "symbol": coin.split(':').last().unwrap_or("").to_uppercase(),
+                                "symbol": coin.split(':').next_back().unwrap_or("").to_uppercase(),
                                 "timestamp": ts,
                                 "confidence": 0.99
                             }
@@ -255,7 +255,7 @@ async fn setup_defillama_mocks(mock_server: &MockServer) {
                     "coins": {
                         coin: {
                             "prices": price_points,
-                            "symbol": coin.split(':').last().unwrap_or("").to_uppercase()
+                            "symbol": coin.split(':').next_back().unwrap_or("").to_uppercase()
                         }
                     }
                 });

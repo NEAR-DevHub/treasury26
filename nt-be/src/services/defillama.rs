@@ -116,6 +116,7 @@ struct CoinPrice {
     price: f64,
     #[allow(dead_code)]
     symbol: Option<String>,
+    #[allow(dead_code)]
     timestamp: i64,
     #[allow(dead_code)]
     confidence: Option<f64>,
