@@ -333,6 +333,12 @@ pub fn token_id_to_unified_asset_id(token_id: &str) -> Option<String> {
         return Some("near".to_string());
     }
 
+    // Special case: staking pools (staked NEAR is still NEAR)
+    // e.g., "staking:astro-stakers.poolv1.near" → "near"
+    if token_id.starts_with("staking:") {
+        return Some("near".to_string());
+    }
+
     let normalized = normalize_token_id(token_id);
     let defuse_map = get_defuse_tokens_map();
 
@@ -397,6 +403,19 @@ mod tests {
     fn test_token_id_to_unified_asset_id_wrapped_near() {
         assert_eq!(
             token_id_to_unified_asset_id("intents.near:nep141:wrap.near"),
+            Some("near".to_string())
+        );
+    }
+
+    #[test]
+    fn test_token_id_to_unified_asset_id_staking_pool() {
+        // Staking pools should map to NEAR (staked NEAR is still NEAR)
+        assert_eq!(
+            token_id_to_unified_asset_id("staking:astro-stakers.poolv1.near"),
+            Some("near".to_string())
+        );
+        assert_eq!(
+            token_id_to_unified_asset_id("staking:any-pool.near"),
             Some("near".to_string())
         );
     }
