@@ -11,6 +11,15 @@ export const NetworkDisplay = ({ asset }: { asset: TreasuryAsset }) => {
     let type;
     let info = null;
     switch (asset.residency) {
+        case "Lockup":
+            type = "Lockup";
+            if (asset.lockedBalance) {
+                info = <p className="inline-block">Available balance after deducting unvested <span className="font-semibold">{formatNearAmount(asset.lockedBalance.toString())} NEAR</span> </p>;
+            }
+            break;
+        case "Staked":
+            type = "Staked";
+            break;
         case "Ft":
             type = "Fungible Token";
             break;
@@ -24,6 +33,8 @@ export const NetworkDisplay = ({ asset }: { asset: TreasuryAsset }) => {
             }
             break;
     }
+
+
 
     const image = asset.chainIcons ?
         theme === "light" ? asset.chainIcons.light

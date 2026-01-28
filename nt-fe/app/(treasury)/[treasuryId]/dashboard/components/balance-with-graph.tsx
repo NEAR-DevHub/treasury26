@@ -99,6 +99,9 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
             if (token.residency === "Intents" && !token.id.startsWith("intents.near:")) {
                 tokenIdForHistory = `intents.near:${token.id}`;
             }
+            else if (token.residency === "Staked" && !token.id.startsWith("staking:")) {
+                tokenIdForHistory = `staking:${token.id}`;
+            }
 
             if (existing) {
                 existing.tokens.push(token);

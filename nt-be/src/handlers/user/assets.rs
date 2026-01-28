@@ -1,4 +1,7 @@
-use crate::{handlers::user::balance::TokenBalanceResponse, utils::cache::CacheTier};
+use crate::{
+    handlers::user::{balance::TokenBalanceResponse, lockup::fetch_lockup_balance_of_account},
+    utils::cache::CacheTier,
+};
 use axum::{
     Json,
     extract::{Query, State},
@@ -47,6 +50,8 @@ pub enum TokenResidency {
     Near,
     Ft,
     Intents,
+    Lockup,
+    Staked,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -301,8 +306,9 @@ pub async fn get_user_assets(
                 let tokens_future = fetch_whitelisted_tokens(&state_clone);
                 let balances_future = fetch_user_balances(&state_clone, &account);
                 let near_balance = fetch_near_balance(&state_clone, &account);
+                let lockup_balance = fetch_lockup_balance_of_account(&state_clone, &account);
 
-                tokio::try_join!(tokens_future, balances_future, near_balance)
+                tokio::try_join!(tokens_future, balances_future, near_balance, lockup_balance)
             };
 
             // Fetch intents balances
@@ -330,7 +336,7 @@ pub async fn get_user_assets(
                 tokio::join!(ref_data_future, intents_data_future);
 
             // Get whitelisted tokens and user balances
-            let (whitelist_set, user_balances, near_balance) = ref_data_result?;
+            let (whitelist_set, user_balances, near_balance, lockup_balance) = ref_data_result?;
 
             // Get intents balances (already filtered to non-zero)
             let intents_balances = intents_data_result.unwrap_or_else(|e| {
@@ -432,6 +438,31 @@ pub async fn get_user_assets(
             // Build intents tokens with metadata
             let intents_tokens = build_intents_tokens(intents_balances, &tokens_metadata);
             all_simplified_tokens.extend(intents_tokens);
+
+            // Add lockup balance if exists
+            if let Some(lockup) = lockup_balance {
+                all_simplified_tokens.push((
+                    SimplifiedToken {
+                        id: "near".to_string(),
+                        contract_id: None,
+                        decimals: near_token_meta.decimals,
+                        balance: lockup.available.as_yoctonear().to_string(),
+                        locked_balance: Some(lockup.locked.as_yoctonear().to_string()),
+                        price: near_token_meta.price.unwrap_or(0.0).to_string(),
+                        symbol: near_token_meta.symbol.clone(),
+                        name: near_token_meta.name.clone(),
+                        icon: near_token_meta.icon.clone(),
+                        network: near_token_meta.network.clone().unwrap_or_default(),
+                        residency: TokenResidency::Lockup,
+                        chain_name: near_token_meta
+                            .chain_name
+                            .clone()
+                            .unwrap_or(near_token_meta.name.clone()),
+                        chain_icons: near_token_meta.chain_icons.clone(),
+                    },
+                    U128::from(lockup.available.as_yoctonear()),
+                ));
+            }
             all_simplified_tokens.push((
                 SimplifiedToken {
                     id: "near".to_string(),

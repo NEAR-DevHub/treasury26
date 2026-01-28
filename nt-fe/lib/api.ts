@@ -75,7 +75,7 @@ export async function getUserTreasuries(
   }
 }
 
-export type TokenResidency = "Near" | "Ft" | "Intents";
+export type TokenResidency = "Near" | "Ft" | "Intents" | "Lockup" | "Staked";
 
 export interface TreasuryAsset {
   id: string;
