@@ -2,74 +2,29 @@
 //!
 //! This service runs periodically to fetch and cache historical prices from DeFiLlama.
 //! API endpoints only read from the cache - they never block on price fetches.
+//!
+//! The list of assets to sync is derived from the balance_changes table - we only
+//! fetch prices for tokens that users actually have in their treasuries.
 
 use chrono::{NaiveDate, Utc};
 use sqlx::PgPool;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
+use super::price_lookup::token_id_to_unified_asset_id;
 use super::price_provider::PriceProvider;
 use bigdecimal::BigDecimal;
 
 /// Interval between price sync checks (1 minute)
 const SYNC_CHECK_INTERVAL_SECS: u64 = 60;
 
-/// List of assets to sync prices for
-/// These are the DeFiLlama asset IDs (coingecko:{id} format)
-const ASSETS_TO_SYNC: &[&str] = &[
-    "coingecko:bitcoin",
-    "coingecko:ethereum",
-    "coingecko:near",
-    "coingecko:solana",
-    "coingecko:ripple",
-    "coingecko:usd-coin",
-    "coingecko:tether",
-    "coingecko:dai",
-    "coingecko:dogecoin",
-    "coingecko:cardano",
-    "coingecko:avalanche-2",
-    "coingecko:polkadot",
-    "coingecko:chainlink",
-    "coingecko:uniswap",
-    "coingecko:litecoin",
-    "coingecko:bitcoin-cash",
-    "coingecko:shiba-inu",
-    "coingecko:tron",
-    "coingecko:the-open-network",
-    "coingecko:sui",
-    "coingecko:aptos",
-    "coingecko:arbitrum",
-    "coingecko:optimism",
-    "coingecko:pepe",
-    "coingecko:stellar",
-    "coingecko:binancecoin",
-    "coingecko:polygon-ecosystem-token",
-    "coingecko:starknet",
-    "coingecko:zcash",
-    "coingecko:aave",
-    "coingecko:gmx",
-    "coingecko:gnosis",
-    "coingecko:kyber-network-crystal",
-    "coingecko:cow-protocol",
-    "coingecko:aurora-near",
-    "coingecko:sweatcoin",
-    "coingecko:hapi",
-    "coingecko:turbo",
-    "coingecko:dogwifhat",
-    "coingecko:book-of-meme",
-    "coingecko:mog-coin",
-    "coingecko:official-trump",
-    "coingecko:melania-meme",
-    "coingecko:brett",
-    "coingecko:safe",
-    "coingecko:okb",
-    "coingecko:frax",
-];
-
 /// Run the background price sync service
 ///
 /// This function runs in a loop, checking every minute for assets that need
 /// price data. It only fetches for assets that don't have recent data.
+///
+/// The list of assets is derived from the balance_changes table - we only sync
+/// prices for tokens that users actually have in their treasuries.
 pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool, provider: P) {
     log::info!(
         "Starting background price sync service (check interval: {} seconds)",
@@ -87,7 +42,7 @@ pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool
         // Find assets that need syncing (don't have yesterday's price)
         // We sync end-of-day prices, so we only sync completed days (yesterday and earlier)
         let yesterday = (Utc::now() - chrono::Duration::days(1)).date_naive();
-        let assets_needing_sync = match get_assets_needing_sync(&pool, yesterday).await {
+        let assets_needing_sync = match get_assets_needing_sync(&pool, &provider, yesterday).await {
             Ok(assets) => assets,
             Err(e) => {
                 log::error!("Failed to check which assets need sync: {}", e);
@@ -121,11 +76,49 @@ pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool
     }
 }
 
-/// Get list of assets that need syncing (latest price is before target date)
-async fn get_assets_needing_sync(
+/// Get list of provider asset IDs that need syncing (latest price is before target date)
+///
+/// This function:
+/// 1. Queries distinct token_ids from balance_changes table
+/// 2. Maps them to unified asset IDs using token_id_to_unified_asset_id
+/// 3. Maps unified IDs to provider-specific asset IDs
+/// 4. Filters to those missing yesterday's price
+async fn get_assets_needing_sync<P: PriceProvider>(
     pool: &PgPool,
+    provider: &P,
     target_date: NaiveDate,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
+    // Get all unique token_ids from balance_changes
+    let token_ids: Vec<(String,)> = sqlx::query_as(
+        r#"
+        SELECT DISTINCT token_id
+        FROM balance_changes
+        "#,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    // Map token_ids to provider asset IDs
+    let mut provider_asset_ids: HashSet<String> = HashSet::new();
+    for (token_id,) in token_ids {
+        // Map token_id to unified asset ID
+        if let Some(unified_id) = token_id_to_unified_asset_id(&token_id) {
+            // Map unified ID to provider-specific asset ID
+            if let Some(provider_id) = provider.translate_asset_id(&unified_id) {
+                provider_asset_ids.insert(provider_id);
+            }
+        }
+    }
+
+    if provider_asset_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    log::debug!(
+        "Found {} unique provider asset IDs from balance_changes",
+        provider_asset_ids.len()
+    );
+
     // Get the latest price date for each asset
     let latest_dates: Vec<(String, NaiveDate)> = sqlx::query_as(
         r#"
@@ -142,15 +135,14 @@ async fn get_assets_needing_sync(
     // Return assets that either:
     // 1. Don't exist in the database yet
     // 2. Have a latest price date older than target date (yesterday)
-    let needing_sync: Vec<String> = ASSETS_TO_SYNC
-        .iter()
-        .filter(|&asset| {
-            match latest_map.get(*asset) {
+    let needing_sync: Vec<String> = provider_asset_ids
+        .into_iter()
+        .filter(|asset| {
+            match latest_map.get(asset) {
                 None => true,                          // Asset not in DB yet
                 Some(latest) => *latest < target_date, // Latest price is older than target
             }
         })
-        .map(|s| (*s).to_string())
         .collect();
 
     Ok(needing_sync)
@@ -212,7 +204,7 @@ async fn cache_prices_batch(
     Ok(())
 }
 
-/// Perform an immediate price sync for all assets
+/// Perform an immediate price sync for all assets in balance_changes
 ///
 /// This is useful for initial startup or manual triggers.
 /// Returns the number of assets successfully synced.
@@ -220,14 +212,15 @@ pub async fn sync_all_prices_now<P: PriceProvider + Send + Sync>(
     pool: &PgPool,
     provider: &P,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    log::info!(
-        "Running immediate price sync for {} assets",
-        ASSETS_TO_SYNC.len()
-    );
+    // Get all assets that need syncing (using a far future date to get all)
+    let far_future = NaiveDate::from_ymd_opt(2099, 12, 31).unwrap();
+    let assets = get_assets_needing_sync(pool, provider, far_future).await?;
+
+    log::info!("Running immediate price sync for {} assets", assets.len());
 
     let mut success_count = 0;
 
-    for asset_id in ASSETS_TO_SYNC {
+    for asset_id in &assets {
         match sync_asset_prices(pool, provider, asset_id).await {
             Ok(count) => {
                 log::info!("Synced {} prices for {}", count, asset_id);
