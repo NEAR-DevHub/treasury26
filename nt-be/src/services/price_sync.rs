@@ -70,10 +70,7 @@ const ASSETS_TO_SYNC: &[&str] = &[
 ///
 /// This function runs in a loop, checking every minute for assets that need
 /// price data. It only fetches for assets that don't have recent data.
-pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(
-    pool: PgPool,
-    provider: P,
-) {
+pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool, provider: P) {
     log::info!(
         "Starting background price sync service (check interval: {} seconds)",
         SYNC_CHECK_INTERVAL_SECS
@@ -149,7 +146,7 @@ async fn get_assets_needing_sync(
         .iter()
         .filter(|&asset| {
             match latest_map.get(*asset) {
-                None => true, // Asset not in DB yet
+                None => true,                          // Asset not in DB yet
                 Some(latest) => *latest < target_date, // Latest price is older than target
             }
         })
@@ -223,7 +220,10 @@ pub async fn sync_all_prices_now<P: PriceProvider + Send + Sync>(
     pool: &PgPool,
     provider: &P,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    log::info!("Running immediate price sync for {} assets", ASSETS_TO_SYNC.len());
+    log::info!(
+        "Running immediate price sync for {} assets",
+        ASSETS_TO_SYNC.len()
+    );
 
     let mut success_count = 0;
 

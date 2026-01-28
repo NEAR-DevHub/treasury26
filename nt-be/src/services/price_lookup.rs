@@ -204,7 +204,6 @@ impl<P: PriceProvider> PriceLookupService<P> {
             .filter_map(|r| bigdecimal_to_f64(&r.price_usd).map(|p| (r.price_date, p)))
             .collect())
     }
-
 }
 
 /// Convert BigDecimal to f64
