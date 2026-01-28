@@ -58,10 +58,8 @@ pub async fn init_test_state() -> AppState {
 
     // Initialize price service with DeFiLlama provider (free, no API key required)
     let base_url = &env_vars.defillama_api_base_url;
-    let defillama_client = crate::services::DeFiLlamaClient::with_base_url(
-        http_client.clone(),
-        base_url.clone(),
-    );
+    let defillama_client =
+        crate::services::DeFiLlamaClient::with_base_url(http_client.clone(), base_url.clone());
     let price_service = crate::services::PriceLookupService::new(db_pool.clone(), defillama_client);
 
     // Create network configs first (needed for transfer hint service)

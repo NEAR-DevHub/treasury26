@@ -196,9 +196,7 @@ impl PriceProvider for DeFiLlamaClient {
         // The unified_asset_id is lowercase (e.g., "btc", "eth", "usdc")
         // Convert to uppercase for symbol lookup
         let upper = unified_asset_id.to_uppercase();
-        get_symbol_map()
-            .get(upper.as_str())
-            .map(|s| s.to_string())
+        get_symbol_map().get(upper.as_str()).map(|s| s.to_string())
     }
 
     async fn get_price_at_date(
@@ -207,9 +205,7 @@ impl PriceProvider for DeFiLlamaClient {
         date: NaiveDate,
     ) -> Result<Option<f64>, Box<dyn std::error::Error + Send + Sync>> {
         // Convert date to Unix timestamp (midnight UTC)
-        let datetime = date
-            .and_hms_opt(0, 0, 0)
-            .ok_or("Invalid date")?;
+        let datetime = date.and_hms_opt(0, 0, 0).ok_or("Invalid date")?;
         let timestamp = Utc.from_utc_datetime(&datetime).timestamp();
 
         let url = format!(
@@ -425,10 +421,7 @@ mod tests {
         );
 
         // Unknown symbol - no contract
-        assert_eq!(
-            DeFiLlamaClient::symbol_to_asset_id("UNKNOWN", None),
-            None
-        );
+        assert_eq!(DeFiLlamaClient::symbol_to_asset_id("UNKNOWN", None), None);
     }
 
     #[test]

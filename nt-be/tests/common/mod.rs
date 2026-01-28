@@ -129,24 +129,45 @@ impl Drop for TestServer {
 /// DeFiLlama historical endpoint: /prices/historical/{timestamp}/{coins}
 /// DeFiLlama chart endpoint: /chart/{coins}?start={timestamp}&span={days}&period=1d
 async fn setup_defillama_mocks(mock_server: &MockServer) {
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     // Load price data from test files (CoinGecko format: {"prices": [[timestamp_ms, price], ...]})
     let assets = [
-        ("coingecko:near", include_str!("../test_data/price_data/near.json")),
-        ("coingecko:bitcoin", include_str!("../test_data/price_data/bitcoin.json")),
-        ("coingecko:ethereum", include_str!("../test_data/price_data/ethereum.json")),
-        ("coingecko:solana", include_str!("../test_data/price_data/solana.json")),
-        ("coingecko:ripple", include_str!("../test_data/price_data/ripple.json")),
-        ("coingecko:usd-coin", include_str!("../test_data/price_data/usd-coin.json")),
+        (
+            "coingecko:near",
+            include_str!("../test_data/price_data/near.json"),
+        ),
+        (
+            "coingecko:bitcoin",
+            include_str!("../test_data/price_data/bitcoin.json"),
+        ),
+        (
+            "coingecko:ethereum",
+            include_str!("../test_data/price_data/ethereum.json"),
+        ),
+        (
+            "coingecko:solana",
+            include_str!("../test_data/price_data/solana.json"),
+        ),
+        (
+            "coingecko:ripple",
+            include_str!("../test_data/price_data/ripple.json"),
+        ),
+        (
+            "coingecko:usd-coin",
+            include_str!("../test_data/price_data/usd-coin.json"),
+        ),
     ];
 
     // Parse and store price data for each asset
-    let mut price_data: std::collections::HashMap<String, Vec<(i64, f64)>> = std::collections::HashMap::new();
+    let mut price_data: std::collections::HashMap<String, Vec<(i64, f64)>> =
+        std::collections::HashMap::new();
 
     for (asset_id, json_data) in assets {
         let data: Value = serde_json::from_str(json_data).expect("Invalid JSON in test data");
-        let prices = data["prices"].as_array().expect("prices should be an array");
+        let prices = data["prices"]
+            .as_array()
+            .expect("prices should be an array");
 
         let parsed_prices: Vec<(i64, f64)> = prices
             .iter()

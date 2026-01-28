@@ -331,11 +331,12 @@ impl AppState {
 
         // Initialize price service with DeFiLlama provider (free, no API key required)
         let base_url = &env_vars.defillama_api_base_url;
-        log::info!("Initializing DeFiLlama price provider with base URL: {}", base_url);
-        let defillama_client = DeFiLlamaClient::with_base_url(
-            http_client.clone(),
-            base_url.clone(),
+        log::info!(
+            "Initializing DeFiLlama price provider with base URL: {}",
+            base_url
         );
+        let defillama_client =
+            DeFiLlamaClient::with_base_url(http_client.clone(), base_url.clone());
         let price_service = PriceLookupService::new(db_pool.clone(), defillama_client);
 
         let telegram_client = TelegramClient::new(
