@@ -20,7 +20,8 @@ use super::price_provider::PriceProvider;
 const DEFAULT_DEFILLAMA_API_BASE: &str = "https://coins.llama.fi";
 
 /// How far back to fetch historical prices (in days)
-const HISTORICAL_DAYS: i64 = 365;
+/// DeFiLlama's /chart endpoint supports up to ~1825 days (5 years)
+const HISTORICAL_DAYS: i64 = 1825;
 
 /// Static mapping from symbols to DeFiLlama asset IDs
 /// For major coins, we use coingecko:{id} format

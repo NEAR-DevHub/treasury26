@@ -87,6 +87,17 @@ async fn main() {
         });
     }
 
+    // Spawn background price sync service
+    {
+        let pool = state.db_pool.clone();
+        let http_client = state.http_client.clone();
+        let base_url = state.env_vars.defillama_api_base_url.clone();
+        tokio::spawn(async move {
+            let provider = nt_be::services::DeFiLlamaClient::with_base_url(http_client, base_url);
+            nt_be::services::run_price_sync_service(pool, provider).await;
+        });
+    }
+
     // Spawn bulk payment payout worker
     {
         let state_clone = state.clone();
