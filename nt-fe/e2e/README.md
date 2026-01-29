@@ -61,33 +61,31 @@ docker rm -f sandbox
 
 ```
 e2e/
-├── fixtures/
-│   └── ledger-mock.ts    # WebHID mock for Ledger testing
-├── wallet-selection.spec.ts  # Wallet selector UI tests
-└── ledger-login.spec.ts      # Ledger wallet login flow tests
+├── README.md             # This documentation
+└── ledger-login.spec.ts  # Ledger wallet login flow tests
 ```
 
 ## Ledger Testing
 
-Testing Ledger hardware wallet requires mocking the WebHID API since actual hardware cannot be used in automated tests.
+The Ledger login test verifies the UI flow for connecting a Ledger hardware wallet:
 
-The `ledger-mock.ts` fixture provides:
-- Mock WebHID `navigator.hid` API
-- Mock Ledger device responses for APDU commands
-- Test helpers for injecting the mock device
+1. Navigates to `/app`
+2. Clicks the "Connect Wallet" button
+3. Verifies the wallet selector modal appears
+4. Clicks on the Ledger option to initiate the flow
 
 ### Limitations
 
-Due to the sandboxed iframe architecture of hot-connect:
-1. WebHID mocking in the main page doesn't fully propagate to the iframe
-2. Full end-to-end Ledger flow testing requires additional iframe handling
-3. Current tests verify the UI flow up to the point of device connection
+Due to hardware requirements and the sandboxed iframe architecture:
+- Full end-to-end Ledger flow requires actual hardware device
+- WebHID API cannot be fully tested without real USB device
+- Current tests verify the UI flow up to the point of device connection
 
 ### Future Improvements
 
-- Add iframe communication mocking for complete flow testing
+- Add WebHID mocking for more complete flow testing
+- Add iframe communication testing for Ledger executor
 - Add visual regression tests for Ledger dialogs
-- Add transaction signing tests with mocked responses
 
 ## CI/CD
 
