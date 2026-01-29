@@ -68,10 +68,7 @@ services:
       - key: NC_GOOGLE_CLIENT_SECRET
         sync: false
       - key: NC_PUBLIC_URL
-        fromService:
-          name: nt-nocodb
-          type: web
-          property: host
+        sync: false
     healthCheckPath: /
 
 databases:
