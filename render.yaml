@@ -48,6 +48,32 @@ services:
           envVarKey: RENDER_EXTERNAL_URL
     healthCheckPath: /
 
+  - type: web
+    name: nt-nocodb
+    runtime: image
+    plan: starter
+    image:
+      url: docker.io/nocodb/nocodb:0.301.2
+    disk: 
+      name: nocodb-disk
+      mountPath: /usr/app/data/
+      sizeGB: 1
+    envVars:
+      - key: NC_CONNECTION_ENCRYPT_KEY
+        generateValue: true
+      - key: NC_AUTH_JWT_SECRET
+        generateValue: true
+      - key: NC_GOOGLE_CLIENT_ID
+        sync: false
+      - key: NC_GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: NC_PUBLIC_URL
+        fromService:
+          name: nt-nocodb
+          type: web
+          property: host
+    healthCheckPath: /
+
 databases:
   - name: database
     plan: basic-1gb
