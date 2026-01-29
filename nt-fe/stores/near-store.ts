@@ -17,6 +17,7 @@ import { ProposalPermissionKind } from "@/lib/config-utils";
 import { toast } from "sonner";
 import Big from "big.js";
 import { useQueryClient } from "@tanstack/react-query";
+import { ledgerWalletManifest } from "@/lib/ledger-manifest";
 
 export interface CreateProposalParams {
   treasuryId: string;
@@ -92,6 +93,19 @@ export const useNearStore = create<NearStore>((set, get) => ({
     );
 
     set({ connector: newConnector });
+
+    // Register Ledger wallet after connector is initialized
+    newConnector.whenManifestLoaded.then(async () => {
+      // Check if WebHID is supported (not on mobile, requires secure context)
+      if (typeof navigator !== "undefined" && "hid" in navigator) {
+        try {
+          await newConnector.registerWallet(ledgerWalletManifest);
+          console.log("Ledger wallet registered successfully");
+        } catch (e) {
+          console.warn("Failed to register Ledger wallet:", e);
+        }
+      }
+    });
 
     try {
       const wallet = await newConnector.wallet();
