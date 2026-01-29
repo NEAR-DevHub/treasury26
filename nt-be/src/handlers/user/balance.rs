@@ -25,12 +25,24 @@ pub struct TokenBalanceQuery {
 pub struct TokenBalanceResponse {
     pub account_id: String,
     pub token_id: String,
+    pub balance: U128,
+    #[serde(rename = "lockedBalance")]
+    pub locked_balance: Option<U128>,
+    pub decimals: u8,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TokenBalanceStringResponse {
+    pub account_id: String,
+    pub token_id: String,
     pub balance: String,
+    #[serde(rename = "lockedBalance")]
+    pub locked_balance: Option<String>,
     pub decimals: u8,
 }
 
 /// Fetch NEAR balance for an account
-async fn fetch_near_balance(
+pub async fn fetch_near_balance(
     state: &Arc<AppState>,
     account_id: AccountId,
 ) -> Result<TokenBalanceResponse, String> {
@@ -46,7 +58,12 @@ async fn fetch_near_balance(
     Ok(TokenBalanceResponse {
         account_id: account_id.to_string(),
         token_id: "near".to_string(),
-        balance: balance.total.as_yoctonear().to_string(),
+        balance: balance
+            .total
+            .saturating_sub(balance.storage_locked)
+            .as_yoctonear()
+            .into(),
+        locked_balance: Some(balance.storage_locked.as_yoctonear().into()),
         decimals: 24,
     })
 }
@@ -72,7 +89,8 @@ async fn fetch_ft_balance(
     Ok(TokenBalanceResponse {
         account_id: account_id.to_string(),
         token_id: token_id.to_string(),
-        balance: balance.amount().to_string(),
+        balance: balance.amount().into(),
+        locked_balance: None,
         decimals: balance.decimals(),
     })
 }
@@ -121,7 +139,8 @@ pub async fn fetch_intents_balance(
     Ok(TokenBalanceResponse {
         account_id: account_id.to_string(),
         token_id: token_id.to_string(),
-        balance: balance.0.to_string(),
+        balance,
+        locked_balance: None,
         decimals: metadata.data.decimals,
     })
 }
@@ -145,9 +164,9 @@ pub async fn get_token_balance(
         let is_near = token_id == "near" || token_id == "NEAR";
 
         if is_near {
-            fetch_near_balance(&state_clone, account_id).await
+            fetch_near_balance(&state_clone, account_id.clone()).await
         } else if token_id.starts_with("nep141:") {
-            fetch_intents_balance(&state_clone, account_id, token_id.to_string()).await
+            fetch_intents_balance(&state_clone, account_id.clone(), token_id.to_string()).await
         } else {
             // Parse token_id as AccountId
             let token_account_id: AccountId = token_id.parse().map_err(|e| {
@@ -155,8 +174,15 @@ pub async fn get_token_balance(
                 format!("Invalid token ID: {}", e)
             })?;
 
-            fetch_ft_balance(&state_clone, account_id, token_account_id).await
+            fetch_ft_balance(&state_clone, account_id.clone(), token_account_id).await
         }
+        .map(|balance| TokenBalanceStringResponse {
+            account_id: account_id.to_string(),
+            token_id: token_id.to_string(),
+            balance: balance.balance.0.to_string(),
+            locked_balance: balance.locked_balance.map(|b| b.0.to_string()),
+            decimals: balance.decimals,
+        })
     })
     .await
 }

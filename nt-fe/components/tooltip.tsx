@@ -27,7 +27,7 @@ function Tooltip({ children, content, contentProps, triggerProps, disabled, side
     }
     return (
         <TooltipPrimitive disableHoverableContent={disabled}>
-            <TooltipTrigger asChild {...triggerProps}>
+            <TooltipTrigger type="button" asChild {...triggerProps}>
                 {children}
             </TooltipTrigger>
             <TooltipContent side={side} {...contentPropsRest} className={cn("shadow-md", className)}>

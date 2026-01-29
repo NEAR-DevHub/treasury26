@@ -5,6 +5,7 @@ use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
 
 use crate::{
+    handlers::balance_changes::transfer_hints::{TransferHintService, fastnear::FastNearProvider},
     services::{CoinGeckoClient, PriceLookupService},
     utils::{
         cache::{Cache, CacheKey, CacheTier},
@@ -25,6 +26,8 @@ pub struct AppState {
     pub price_service: PriceLookupService<CoinGeckoClient>,
     pub bulk_payment_contract_id: AccountId,
     pub telegram_client: TelegramClient,
+    /// Optional transfer hint service for accelerated balance change detection
+    pub transfer_hint_service: Option<TransferHintService>,
 }
 
 /// Builder for constructing AppState instances
@@ -58,6 +61,7 @@ pub struct AppStateBuilder {
     price_service: Option<PriceLookupService<CoinGeckoClient>>,
     bulk_payment_contract_id: Option<AccountId>,
     telegram_client: Option<TelegramClient>,
+    transfer_hint_service: Option<TransferHintService>,
 }
 
 impl AppStateBuilder {
@@ -75,6 +79,7 @@ impl AppStateBuilder {
             price_service: None,
             bulk_payment_contract_id: None,
             telegram_client: None,
+            transfer_hint_service: None,
         }
     }
 
@@ -135,6 +140,12 @@ impl AppStateBuilder {
     /// Set the price service
     pub fn price_service(mut self, price_service: PriceLookupService<CoinGeckoClient>) -> Self {
         self.price_service = Some(price_service);
+        self
+    }
+
+    /// Set the transfer hint service
+    pub fn transfer_hint_service(mut self, service: TransferHintService) -> Self {
+        self.transfer_hint_service = Some(service);
         self
     }
 
@@ -237,6 +248,21 @@ impl AppStateBuilder {
             .bulk_payment_contract_id
             .unwrap_or_else(|| env_vars.bulk_payment_contract_id.clone());
 
+        // Create transfer hint service if enabled (and not explicitly provided)
+        let transfer_hint_service = if let Some(service) = self.transfer_hint_service {
+            Some(service)
+        } else if env_vars.transfer_hints_enabled {
+            let provider = if let Some(base_url) = &env_vars.transfer_hints_base_url {
+                FastNearProvider::with_base_url(archival_network.clone(), base_url.clone())
+            } else {
+                FastNearProvider::new(archival_network.clone())
+            }
+            .with_api_key(&env_vars.fastnear_api_key);
+            Some(TransferHintService::new().with_provider(provider))
+        } else {
+            None
+        };
+
         Ok(AppState {
             http_client: self.http_client.unwrap_or_default(),
             cache: self.cache.unwrap_or_default(),
@@ -249,6 +275,7 @@ impl AppStateBuilder {
             db_pool,
             price_service,
             bulk_payment_contract_id,
+            transfer_hint_service,
         })
     }
 }

@@ -14,7 +14,7 @@ import { checkHandleUnused, createTreasury, CreateTreasuryRequest } from "@/lib/
 import { Member, MemberInput, memberSchema } from "@/components/member-input";
 import { useNear } from "@/stores/near-store";
 import { ThresholdSlider } from "@/components/threshold";
-import { CircleCheck, Database, Info, UsersRound, Vote } from "lucide-react";
+import { CircleCheck, Database, UsersRound, Vote } from "lucide-react";
 import { InfoAlert } from "@/components/info-alert";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -288,6 +288,7 @@ export default function NewTreasuryPage() {
     return (
         <PageComponentLayout
             title="Create Treasury"
+            hideCollapseButton
             description="Set up a new multisig treasury for your team"
             backButton="/"
         >

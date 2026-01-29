@@ -69,6 +69,43 @@ pub async fn init_test_state() -> AppState {
         crate::services::PriceLookupService::without_provider(db_pool.clone())
     };
 
+    // Create network configs first (needed for transfer hint service)
+    let network = NetworkConfig {
+        rpc_endpoints: vec![
+            RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
+                .with_api_key(env_vars.fastnear_api_key.clone()),
+        ],
+        ..NetworkConfig::mainnet()
+    };
+
+    let archival_network = NetworkConfig {
+        rpc_endpoints: vec![
+            RPCEndpoint::new(
+                "https://archival-rpc.mainnet.fastnear.com/"
+                    .parse()
+                    .unwrap(),
+            )
+            .with_api_key(env_vars.fastnear_api_key.clone()),
+        ],
+        ..NetworkConfig::mainnet()
+    };
+
+    // Create transfer hint service if enabled
+    let transfer_hint_service = if env_vars.transfer_hints_enabled {
+        use crate::handlers::balance_changes::transfer_hints::{
+            TransferHintService, fastnear::FastNearProvider,
+        };
+        let provider = if let Some(base_url) = &env_vars.transfer_hints_base_url {
+            FastNearProvider::with_base_url(archival_network.clone(), base_url.clone())
+        } else {
+            FastNearProvider::new(archival_network.clone())
+        }
+        .with_api_key(&env_vars.fastnear_api_key);
+        Some(TransferHintService::new().with_provider(provider))
+    } else {
+        None
+    };
+
     AppState {
         cache: Cache::new(),
         telegram_client: crate::utils::telegram::TelegramClient::default(),
@@ -76,27 +113,12 @@ pub async fn init_test_state() -> AppState {
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
         signer_id: env_vars.signer_id.clone(),
-        network: NetworkConfig {
-            rpc_endpoints: vec![
-                RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
-                    .with_api_key(env_vars.fastnear_api_key.clone()),
-            ],
-            ..NetworkConfig::mainnet()
-        },
-        archival_network: NetworkConfig {
-            rpc_endpoints: vec![
-                RPCEndpoint::new(
-                    "https://archival-rpc.mainnet.fastnear.com/"
-                        .parse()
-                        .unwrap(),
-                )
-                .with_api_key(env_vars.fastnear_api_key.clone()),
-            ],
-            ..NetworkConfig::mainnet()
-        },
+        network,
+        archival_network,
         bulk_payment_contract_id: env_vars.bulk_payment_contract_id.clone(),
         env_vars,
         db_pool,
         price_service,
+        transfer_hint_service,
     }
 }

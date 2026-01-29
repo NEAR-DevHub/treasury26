@@ -1,10 +1,13 @@
-use crate::utils::cache::CacheTier;
+use crate::{
+    handlers::user::{balance::TokenBalanceResponse, lockup::fetch_lockup_balance_of_account},
+    utils::cache::CacheTier,
+};
 use axum::{
     Json,
     extract::{Query, State},
     http::StatusCode,
 };
-use near_api::Contract;
+use near_api::{AccountId, Contract, types::json::U128};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -20,7 +23,7 @@ use crate::{
 #[derive(Deserialize)]
 pub struct UserAssetsQuery {
     #[serde(rename = "accountId")]
-    pub account_id: String,
+    pub account_id: AccountId,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -47,6 +50,8 @@ pub enum TokenResidency {
     Near,
     Ft,
     Intents,
+    Lockup,
+    Staked,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -61,6 +66,9 @@ pub struct SimplifiedToken {
     pub symbol: String,
 
     pub balance: String,
+    #[serde(rename = "lockedBalance")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locked_balance: Option<String>,
     pub decimals: u8,
     pub price: String,
     pub name: String,
@@ -72,18 +80,12 @@ pub struct SimplifiedToken {
 #[derive(Deserialize, Debug)]
 struct FastNearToken {
     contract_id: String,
-    balance: String,
+    balance: U128,
 }
 
 #[derive(Deserialize, Debug)]
 struct FastNearResponse {
     tokens: Option<Vec<FastNearToken>>,
-    state: Option<FastNearState>,
-}
-
-#[derive(Deserialize, Debug)]
-struct FastNearState {
-    balance: String,
 }
 
 /// Fetches whitelisted token IDs from the Ref Finance contract via RPC
@@ -124,7 +126,7 @@ async fn fetch_whitelisted_tokens(
 /// Fetches user balances from FastNear API
 async fn fetch_user_balances(
     state: &Arc<AppState>,
-    account: &str,
+    account: &AccountId,
 ) -> Result<FastNearResponse, (StatusCode, String)> {
     let response = state
         .http_client
@@ -156,7 +158,7 @@ async fn fetch_user_balances(
 }
 
 /// Builds a map of token balances from FastNear response
-fn build_balance_map(user_balances: &FastNearResponse) -> HashMap<String, String> {
+fn build_balance_map(user_balances: &FastNearResponse) -> HashMap<String, U128> {
     let mut balance_map = HashMap::new();
     if let Some(tokens) = &user_balances.tokens {
         for token in tokens {
@@ -164,26 +166,6 @@ fn build_balance_map(user_balances: &FastNearResponse) -> HashMap<String, String
         }
     }
     balance_map
-}
-
-/// Gets the balance for a specific token
-fn get_token_balance(
-    token_id: &str,
-    user_balances: &FastNearResponse,
-    balance_map: &HashMap<String, String>,
-) -> String {
-    if token_id == "nep141:wrap.near" {
-        user_balances
-            .state
-            .as_ref()
-            .map(|s| s.balance.clone())
-            .unwrap_or_else(|| "0".to_string())
-    } else {
-        balance_map
-            .get(token_id)
-            .cloned()
-            .unwrap_or_else(|| "0".to_string())
-    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -194,7 +176,7 @@ struct IntentsToken {
 /// Fetches tokens owned by an account from intents.near
 async fn fetch_intents_owned_tokens(
     state: &Arc<AppState>,
-    account_id: &str,
+    account_id: &AccountId,
 ) -> Result<Vec<String>, (StatusCode, String)> {
     let owned_tokens = Contract(INTENTS_CONTRACT_ID.into())
         .call_function(
@@ -220,7 +202,7 @@ async fn fetch_intents_owned_tokens(
 /// Fetches balances for multiple tokens from intents.near
 async fn fetch_intents_balances(
     state: &Arc<AppState>,
-    account_id: &str,
+    account_id: &AccountId,
     token_ids: &[String],
 ) -> Result<Vec<String>, (StatusCode, String)> {
     if token_ids.is_empty() {
@@ -253,7 +235,7 @@ async fn fetch_intents_balances(
 fn build_intents_tokens(
     tokens_with_balances: Vec<(String, String)>,
     tokens_metadata: &[TokenMetadataResponse],
-) -> Vec<SimplifiedToken> {
+) -> Vec<(SimplifiedToken, U128)> {
     tokens_with_balances
         .into_iter()
         .filter_map(|(token_id, balance)| {
@@ -266,26 +248,45 @@ fn build_intents_tokens(
             } else {
                 token_id.clone()
             };
+            let balance_raw: U128 = balance.parse::<u128>().unwrap_or(0).into();
 
-            Some(SimplifiedToken {
-                id: metadata.token_id.clone(),
-                contract_id: Some(contract_id),
-                decimals: metadata.decimals,
-                balance,
-                price: metadata
-                    .price
-                    .map(|p| p.to_string())
-                    .unwrap_or_else(|| "0".to_string()),
-                symbol: metadata.symbol.clone(),
-                name: metadata.name.clone(),
-                icon: metadata.icon.clone(),
-                network: metadata.network.clone().unwrap_or_default(),
-                residency: TokenResidency::Intents,
-                chain_icons: metadata.chain_icons.clone(),
-                chain_name: metadata.chain_name.clone().unwrap_or(metadata.name.clone()),
-            })
+            Some((
+                SimplifiedToken {
+                    id: metadata.token_id.clone(),
+                    contract_id: Some(contract_id),
+                    decimals: metadata.decimals,
+                    balance: balance_raw.0.to_string(),
+                    price: metadata
+                        .price
+                        .map(|p| p.to_string())
+                        .unwrap_or_else(|| "0".to_string()),
+                    locked_balance: None,
+                    symbol: metadata.symbol.clone(),
+                    name: metadata.name.clone(),
+                    icon: metadata.icon.clone(),
+                    network: metadata.network.clone().unwrap_or_default(),
+                    residency: TokenResidency::Intents,
+                    chain_icons: metadata.chain_icons.clone(),
+                    chain_name: metadata.chain_name.clone().unwrap_or(metadata.name.clone()),
+                },
+                balance_raw,
+            ))
         })
         .collect()
+}
+
+pub async fn fetch_near_balance(
+    state: &Arc<AppState>,
+    account_id: &AccountId,
+) -> Result<TokenBalanceResponse, (StatusCode, String)> {
+    crate::handlers::user::balance::fetch_near_balance(state, account_id.clone())
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to fetch NEAR balance: {}", e),
+            )
+        })
 }
 
 pub async fn get_user_assets(
@@ -293,10 +294,6 @@ pub async fn get_user_assets(
     Query(params): Query<UserAssetsQuery>,
 ) -> Result<Json<Vec<SimplifiedToken>>, (StatusCode, String)> {
     let account = params.account_id.clone();
-
-    if account.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "account is required".to_string()));
-    }
 
     let cache_key = format!("{}-user-assets", account);
 
@@ -308,8 +305,10 @@ pub async fn get_user_assets(
             let ref_data_future = async {
                 let tokens_future = fetch_whitelisted_tokens(&state_clone);
                 let balances_future = fetch_user_balances(&state_clone, &account);
+                let near_balance = fetch_near_balance(&state_clone, &account);
+                let lockup_balance = fetch_lockup_balance_of_account(&state_clone, &account);
 
-                tokio::try_join!(tokens_future, balances_future)
+                tokio::try_join!(tokens_future, balances_future, near_balance, lockup_balance)
             };
 
             // Fetch intents balances
@@ -337,7 +336,7 @@ pub async fn get_user_assets(
                 tokio::join!(ref_data_future, intents_data_future);
 
             // Get whitelisted tokens and user balances
-            let (whitelist_set, user_balances) = ref_data_result?;
+            let (whitelist_set, user_balances, near_balance, lockup_balance) = ref_data_result?;
 
             // Get intents balances (already filtered to non-zero)
             let intents_balances = intents_data_result.unwrap_or_else(|e| {
@@ -347,11 +346,14 @@ pub async fn get_user_assets(
 
             // Build balance map and filter REF Finance tokens to only those with positive balances
             let balance_map = build_balance_map(&user_balances);
-            let ref_tokens_with_balances: Vec<(String, String)> = whitelist_set
+            let ref_tokens_with_balances: Vec<(String, U128)> = whitelist_set
                 .into_iter()
                 .filter_map(|token_id| {
-                    let balance = get_token_balance(&token_id, &user_balances, &balance_map);
-                    if balance != "0" {
+                    let balance = balance_map
+                        .get(&token_id)
+                        .cloned()
+                        .unwrap_or_else(|| U128::from(0));
+                    if balance != U128::from(0) {
                         Some((token_id, balance))
                     } else {
                         None
@@ -399,7 +401,7 @@ pub async fn get_user_assets(
                 });
 
             // Build simplified tokens for REF Finance tokens
-            let mut all_simplified_tokens: Vec<SimplifiedToken> = ref_tokens_with_balances
+            let mut all_simplified_tokens: Vec<(SimplifiedToken, U128)> = ref_tokens_with_balances
                 .into_iter()
                 .filter_map(|(token_id, balance)| {
                     let intents_token_id = format!("nep141:{}", token_id.clone());
@@ -409,23 +411,27 @@ pub async fn get_user_assets(
 
                     let price = token_meta.price.unwrap_or(0.0).to_string();
 
-                    Some(SimplifiedToken {
-                        id: token_id.clone(),
-                        contract_id: Some(token_id),
-                        decimals: token_meta.decimals,
-                        balance,
-                        price,
-                        symbol: token_meta.symbol.clone(),
-                        name: token_meta.name.clone(),
-                        icon: token_meta.icon.clone(),
-                        network: "near".to_string(),
-                        residency: TokenResidency::Ft,
-                        chain_icons: token_meta.chain_icons.clone(),
-                        chain_name: token_meta
-                            .chain_name
-                            .clone()
-                            .unwrap_or_else(|| "Near Protocol".to_string()),
-                    })
+                    Some((
+                        SimplifiedToken {
+                            id: token_id.clone(),
+                            contract_id: Some(token_id),
+                            decimals: token_meta.decimals,
+                            balance: balance.0.to_string(),
+                            locked_balance: None,
+                            price,
+                            symbol: token_meta.symbol.clone(),
+                            name: token_meta.name.clone(),
+                            icon: token_meta.icon.clone(),
+                            network: "near".to_string(),
+                            residency: TokenResidency::Ft,
+                            chain_icons: token_meta.chain_icons.clone(),
+                            chain_name: token_meta
+                                .chain_name
+                                .clone()
+                                .unwrap_or_else(|| "Near Protocol".to_string()),
+                        },
+                        balance.clone(),
+                    ))
                 })
                 .collect();
 
@@ -433,42 +439,70 @@ pub async fn get_user_assets(
             let intents_tokens = build_intents_tokens(intents_balances, &tokens_metadata);
             all_simplified_tokens.extend(intents_tokens);
 
-            all_simplified_tokens.push(SimplifiedToken {
-                id: "near".to_string(),
-                contract_id: None,
-                decimals: near_token_meta.decimals,
-                balance: user_balances
-                    .state
-                    .as_ref()
-                    .map(|s| s.balance.clone())
-                    .unwrap_or_else(|| "0".to_string()),
-                price: near_token_meta.price.unwrap_or(0.0).to_string(),
-                symbol: near_token_meta.symbol.clone(),
-                name: near_token_meta.name.clone(),
-                icon: near_token_meta.icon.clone(),
-                network: near_token_meta.network.clone().unwrap_or_default(),
-                residency: TokenResidency::Near,
-                chain_name: near_token_meta
-                    .chain_name
-                    .clone()
-                    .unwrap_or(near_token_meta.name.clone()),
-                chain_icons: near_token_meta.chain_icons.clone(),
-            });
+            // Add lockup balance if exists
+            if let Some(lockup) = lockup_balance {
+                all_simplified_tokens.push((
+                    SimplifiedToken {
+                        id: "near".to_string(),
+                        contract_id: None,
+                        decimals: near_token_meta.decimals,
+                        balance: lockup.available.as_yoctonear().to_string(),
+                        locked_balance: Some(lockup.locked.as_yoctonear().to_string()),
+                        price: near_token_meta.price.unwrap_or(0.0).to_string(),
+                        symbol: near_token_meta.symbol.clone(),
+                        name: near_token_meta.name.clone(),
+                        icon: near_token_meta.icon.clone(),
+                        network: near_token_meta.network.clone().unwrap_or_default(),
+                        residency: TokenResidency::Lockup,
+                        chain_name: near_token_meta
+                            .chain_name
+                            .clone()
+                            .unwrap_or(near_token_meta.name.clone()),
+                        chain_icons: near_token_meta.chain_icons.clone(),
+                    },
+                    U128::from(lockup.available.as_yoctonear()),
+                ));
+            }
+            all_simplified_tokens.push((
+                SimplifiedToken {
+                    id: "near".to_string(),
+                    contract_id: None,
+                    decimals: near_token_meta.decimals,
+                    balance: near_balance.balance.0.to_string(),
+                    locked_balance: near_balance.locked_balance.map(|b| b.0.to_string()),
+                    price: near_token_meta.price.unwrap_or(0.0).to_string(),
+                    symbol: near_token_meta.symbol.clone(),
+                    name: near_token_meta.name.clone(),
+                    icon: near_token_meta.icon.clone(),
+                    network: near_token_meta.network.clone().unwrap_or_default(),
+                    residency: TokenResidency::Near,
+                    chain_name: near_token_meta
+                        .chain_name
+                        .clone()
+                        .unwrap_or(near_token_meta.name.clone()),
+                    chain_icons: near_token_meta.chain_icons.clone(),
+                },
+                near_balance.balance,
+            ));
 
             // Sort combined list by balance (highest first)
             all_simplified_tokens = all_simplified_tokens
                 .into_iter()
-                .filter(|t| t.balance.parse::<u128>().unwrap_or(0) > 0)
-                .collect::<Vec<_>>();
-            all_simplified_tokens.sort_by(|a, b| {
-                let a_val: u128 = a.balance.parse().unwrap_or(0);
-                let b_val: u128 = b.balance.parse().unwrap_or(0);
-                b_val
-                    .partial_cmp(&a_val)
+                .filter(|(_, balance)| balance.0 > 0)
+                .collect::<Vec<(SimplifiedToken, U128)>>();
+            all_simplified_tokens.sort_by(|(_, a_balance), (_, b_balance)| {
+                b_balance
+                    .0
+                    .partial_cmp(&a_balance.0)
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
 
-            Ok::<_, (StatusCode, String)>(all_simplified_tokens)
+            Ok::<_, (StatusCode, String)>(
+                all_simplified_tokens
+                    .into_iter()
+                    .map(|(token, _)| token)
+                    .collect(),
+            )
         })
         .await?;
 

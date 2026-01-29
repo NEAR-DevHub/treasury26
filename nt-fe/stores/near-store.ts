@@ -212,7 +212,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
       return results;
     } catch (error) {
       console.error("Failed to create proposal:", error);
-      toast.error("Failed to create proposal");
+      toast.error("Transaction wasn’t approved in your wallet.");
       return [];
     }
   },
@@ -286,6 +286,8 @@ export const useNear = () => {
       await queryClient.invalidateQueries({
         queryKey: ["proposal", params.treasuryId],
       });
+    } else {
+      throw new Error("Transaction wasn’t approved in your wallet.");
     }
     return results;
   };

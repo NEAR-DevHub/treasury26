@@ -26,7 +26,7 @@ const chartConfig = {
     },
     balanceValue: {
         label: "Token Balance",
-        color: "var(--color-foreground)",
+        color: "var(--muted-foreground)",
     },
 } satisfies ChartConfig;
 
@@ -56,16 +56,16 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
         <ChartContainer config={chartConfig} className='h-56'>
             <AreaChart data={data}>
                 <defs>
-                    <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="fillValue" x1="0" y1="0" x2="100%" y2="100%">
                         <stop
-                            offset="5%"
+                            offset="0%"
                             stopOpacity={0.1}
-                            stopColor="rgb(2,7,6)"
+                            stopColor="var(--color-chart-area-fill)"
                         />
                         <stop
-                            offset="95%"
+                            offset="100%"
                             stopOpacity={0}
-                            stopColor="rgb(2,7,6)"
+                            stopColor="var(--color-chart-area-fill)"
                         />
                     </linearGradient>
                 </defs>
@@ -89,19 +89,35 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
                 />
                 <ChartTooltip
                     content={<ChartTooltipContent
+                        className="bg-card text-foreground border-border shadow-md"
                         formatter={(value, name) => {
                             const num = Number(value);
-                            if (name === 'usdValue') {
-                                return `$${num.toLocaleString(undefined, {
+                            const color = name === 'usdValue'
+                                ? 'var(--color-foreground)'
+                                : 'var(--muted-foreground)';
+                            const formatted = name === 'usdValue'
+                                ? `$${num.toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2
-                                })}`;
-                            } else {
-                                return `${num.toLocaleString(undefined, {
+                                })}`
+                                : `${num.toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 6
                                 })}${symbol ? ` ${symbol.toUpperCase()}` : ''}`;
-                            }
+
+                            return (
+                                <>
+                                    <div
+                                        className="h-2.5 w-2.5 shrink-0 rounded"
+                                        style={{ backgroundColor: color }}
+                                    />
+                                    <div className="flex flex-1 justify-between items-center leading-none">
+                                        <span className="font-medium text-xs text-foreground">
+                                            {formatted}
+                                        </span>
+                                    </div>
+                                </>
+                            );
                         }}
                     />}
                 />
@@ -124,7 +140,7 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
                     type="monotone"
                     dataKey="balanceValue"
                     yAxisId="balance"
-                    stroke="var(--color-foreground)"
+                    stroke="var(--muted-foreground)"
                     strokeWidth={2}
                     strokeDasharray="5 5"
                     fill="url(#fillValue)"

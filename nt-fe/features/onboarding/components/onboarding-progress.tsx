@@ -252,7 +252,7 @@ export function OnboardingProgress({
   const tokenBalanceIsPositive = (token: TreasuryAsset) => {
     const tokenBalance = Big(token.balance).div(Big(10).pow(token.decimals));
     if (token.symbol === "NEAR") {
-      return tokenBalance.gt(6.1);
+      return tokenBalance.gt(1);
     }
     return true;
   }

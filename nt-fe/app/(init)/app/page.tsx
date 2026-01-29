@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useNear } from "@/stores/near-store";
+import { useTreasury } from "@/stores/treasury-store";
 import { useUserTreasuries } from "@/hooks/use-treasury-queries";
 import { Button } from "@/components/button";
 import { GradFlow } from 'gradflow'
@@ -26,15 +27,16 @@ function GradientTitle() {
 export default function AppRedirect() {
   const router = useRouter();
   const { accountId, connect, isInitializing } = useNear();
+  const { selectedTreasury } = useTreasury();
   const { data: treasuries = [], isLoading, isError } = useUserTreasuries(accountId);
 
   useEffect(() => {
     if (!isLoading && treasuries.length > 0) {
-      router.push(`/${treasuries[0].daoId}`);
+      router.push(`/${selectedTreasury ?? treasuries[0].daoId}`);
     } else if (accountId && treasuries.length === 0 && !isLoading && !isError && !isInitializing) {
       router.push(`/app/new`);
     }
-  }, [treasuries, isLoading, router]);
+  }, [treasuries, isLoading, router, selectedTreasury]);
 
   return (
     <div className="relative h-screen w-screen">

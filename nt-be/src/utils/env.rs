@@ -21,6 +21,9 @@ pub struct EnvVars {
     pub coingecko_api_key: Option<String>,
     pub coingecko_api_base_url: String, // Override for testing
     pub nearblocks_api_key: Option<String>,
+    // Transfer hints configuration (FastNear transfers-api)
+    pub transfer_hints_enabled: bool,
+    pub transfer_hints_base_url: Option<String>, // Override FastNear API URL for testing
     // 1click API configuration for asset exchange quotes
     pub oneclick_api_url: String,
     pub oneclick_jwt_token: Option<String>,
@@ -83,6 +86,14 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty()),
             nearblocks_api_key: std::env::var("NEARBLOCKS_API_KEY")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            // Transfer hints configuration
+            transfer_hints_enabled: std::env::var("TRANSFER_HINTS_ENABLED")
+                .unwrap_or_else(|_| "true".to_string()) // Enabled by default
+                .parse()
+                .unwrap_or(true),
+            transfer_hints_base_url: std::env::var("TRANSFER_HINTS_BASE_URL")
                 .ok()
                 .filter(|s| !s.is_empty()),
             // 1click API configuration

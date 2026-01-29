@@ -75,7 +75,7 @@ export async function getUserTreasuries(
   }
 }
 
-export type TokenResidency = "Near" | "Ft" | "Intents";
+export type TokenResidency = "Near" | "Ft" | "Intents" | "Lockup" | "Staked";
 
 export interface TreasuryAsset {
   id: string;
@@ -86,6 +86,7 @@ export interface TreasuryAsset {
   chainIcons?: ChainIcons;
   symbol: string;
   balance: Big;
+  lockedBalance?: Big;
   decimals: number;
   price: number;
   name: string;
@@ -108,6 +109,7 @@ interface TreasuryAssetRaw {
   chainIcons?: ChainIcons;
   symbol: string;
   balance: string;
+  lockedBalance?: string;
   decimals: number;
   price: string;
   name: string;
@@ -145,6 +147,7 @@ export async function getTreasuryAssets(
         symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
         decimals: token.decimals,
         balance: Big(token.balance),
+        lockedBalance: token.lockedBalance ? Big(token.lockedBalance) : undefined,
         chainName: token.chainName,
         chainIcons: token.chainIcons,
         balanceUSD,
@@ -238,6 +241,7 @@ export interface TokenBalance {
   account_id: string;
   token_id: string;
   balance: string;
+  lockedBalance?: string;
   decimals: number;
 }
 

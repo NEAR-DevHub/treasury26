@@ -1,8 +1,7 @@
 "use client";
 
 import { usePathname, useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { useDebouncedCallback } from "use-debounce";
+import { useEffect, useState } from "react";
 import { TreasurySelector } from "./treasury-selector";
 import { cn } from "@/lib/utils";
 import {
@@ -27,7 +26,6 @@ interface NavLinkProps {
   isActive: boolean;
   icon: LucideIcon;
   label: string;
-  disabled?: boolean;
   showBadge?: boolean;
   badgeCount?: number;
   onClick: () => void;
@@ -35,13 +33,10 @@ interface NavLinkProps {
   showLabels?: boolean;
 }
 
-const DISABLED_TOOLTIP_CONTENT = "You are not authorized to access this page. Please contact governance to provide you with Requestor role.";
-
 function NavLink({
   isActive,
   icon: Icon,
   label,
-  disabled = false,
   showBadge = false,
   badgeCount = 0,
   onClick,
@@ -52,9 +47,8 @@ function NavLink({
     <Button
       id={id}
       variant="link"
-      size={showLabels ? "default" : "icon-sm"}
-      disabled={disabled}
-      tooltipContent={disabled ? DISABLED_TOOLTIP_CONTENT : undefined}
+      tooltipContent={!showLabels ? label : undefined}
+      side="right"
       onClick={onClick}
       className={cn(
         "flex relative items-center justify-between gap-3 text-sm font-medium transition-colors",
@@ -100,11 +94,8 @@ export function Sidebar({ onClose }: SidebarProps) {
   const router = useRouter();
   const params = useParams();
   const treasuryId = params?.treasuryId as string | undefined;
-  const [hoverState, setHoverState] = useState<"nohovering" | "hovering" | "nothovering-and-dropdown-open">("nohovering");
-  const [hasInitialized, setHasInitialized] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  const debouncedSetHoverState = useDebouncedCallback(setHoverState, 100);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const { data: proposals } = useProposals(treasuryId, {
     statuses: ["InProgress"],
@@ -113,8 +104,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   const { isGuestTreasury, isLoading: isLoadingGuestTreasury } = useIsGuestTreasury();
   const { isMobile, mounted, isSidebarOpen: isOpen } = useResponsiveSidebar();
 
-  const isHovering = hoverState === "hovering" || hoverState === "nothovering-and-dropdown-open";
-  const isReduced = !isMobile && !isOpen && !isHovering && !dropdownOpen;
+  const isReduced = !isMobile && !isOpen;
 
   // Mark as initialized after first render with mounted state
   useEffect(() => {
@@ -146,8 +136,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 z-40 flex gap-2 h-screen flex-col bg-card border-r lg:static lg:z-auto",
-          // Only add transitions after initialization to prevent flash
+          "fixed left-0 top-0 z-40 flex gap-2 h-screen flex-col bg-card border-r lg:static lg:z-auto overflow-hidden",
           hasInitialized && "transition-all duration-300",
           isMobile
             ? isOpen
@@ -155,25 +144,12 @@ export function Sidebar({ onClose }: SidebarProps) {
               : "-translate-x-full"
             : isOpen
               ? "w-56"
-              : isHovering
-                ? "w-56"
-                : "w-16",
+              : "w-16",
         )}
-        onMouseEnter={() => {
-          debouncedSetHoverState.cancel();
-          setHoverState("hovering");
-        }}
-        onMouseLeave={() => debouncedSetHoverState(dropdownOpen ? "nothovering-and-dropdown-open" : "nohovering")}
       >
         <div className="border-b">
           <div className="p-3.5 flex flex-col gap-2">
-            <TreasurySelector reducedMode={isReduced} isOpen={dropdownOpen} onOpenChange={(open) => {
-              setDropdownOpen(open);
-              // Check that mouse is not hovering over the dropdown
-              if (!open && hoverState === "nothovering-and-dropdown-open") {
-                debouncedSetHoverState("nohovering");
-              }
-            }} />
+            <TreasurySelector reducedMode={isReduced} isOpen={dropdownOpen} onOpenChange={setDropdownOpen} />
             <div className={cn("px-3", isReduced ? "hidden" : "px-3.5")}>
               {isGuestTreasury && !isLoadingGuestTreasury ? (
                 <Pill variant="info" side="right" title="Guest" info="You are a guest of this treasury. You can only view the data. Creating requests, adding members, or making any changes is not allowed because you are not a member of the team." />
@@ -183,7 +159,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           </div>
         </div>
 
-        <nav className={cn("flex-1 flex flex-col gap-1", isReduced ? "items-center" : "px-3.5")}>
+        <nav className={cn("flex flex-col gap-1 pb-2 flex-1", isReduced ? "px-2" : "px-3.5")}>
           {topNavLinks.map((link) => {
             const href = treasuryId
               ? `/${treasuryId}${link.path ? `/${link.path}` : ""}`

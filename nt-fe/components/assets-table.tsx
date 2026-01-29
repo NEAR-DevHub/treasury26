@@ -96,7 +96,7 @@ export function AssetsTable({ tokens }: Props) {
             <div className="flex items-center justify-end gap-3">
               <div className="flex-1 max-w-[100px] bg-muted rounded-full h-2 overflow-hidden">
                 <div
-                  className="bg-blue-500 h-full rounded-full transition-all"
+                  className="bg-primary h-full rounded-full transition-all"
                   style={{ width: `${weight}%` }}
                 />
               </div>
