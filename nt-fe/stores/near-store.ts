@@ -114,7 +114,14 @@ export const useNearStore = create<NearStore>((set, get) => ({
       if (accountId) {
         set({ accountId });
       }
-    } catch { } // No existing wallet connection found
+    } catch (e) {
+      // Silently handle errors - common cases:
+      // - No existing wallet connection found
+      // - Ledger wallet requires user gesture to reconnect (WebHID restriction)
+      if (e instanceof Error && e.message.includes("user gesture")) {
+        console.log("Ledger requires user interaction to reconnect");
+      }
+    }
 
     set({ isInitializing: false });
     return newConnector;

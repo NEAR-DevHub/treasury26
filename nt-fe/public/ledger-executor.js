@@ -9,9 +9,26 @@ import {
 } from "https://esm.sh/@near-js/utils@0.2.2";
 import {
   Signature,
-  transactions,
+  createTransaction,
+  encodeTransaction,
+  SignedTransaction,
+  actionCreators,
 } from "https://esm.sh/@near-js/transactions@1.3.3";
 import { PublicKey } from "https://esm.sh/@near-js/crypto@1.4.1";
+
+// Destructure action creators for convenience
+const {
+  functionCall,
+  transfer,
+  addKey,
+  deleteKey,
+  createAccount,
+  deleteAccount,
+  stake,
+  deployContract,
+  fullAccessKey,
+  functionCallAccessKey,
+} = actionCreators;
 
 // Ledger APDU constants
 const CLA = 0x80; // Always the same for Ledger
@@ -91,8 +108,18 @@ class LedgerClient {
   }
 
   async connect() {
+    // Request new device (requires user gesture)
     this.transport = await TransportWebHID.create();
-    
+    this._setupDisconnectHandler();
+  }
+
+  async connectWithDevice(device) {
+    // Connect to a specific already-authorized device
+    this.transport = await TransportWebHID.open(device);
+    this._setupDisconnectHandler();
+  }
+
+  _setupDisconnectHandler() {
     const handleDisconnect = () => {
       if (this.transport) {
         this.transport.off("disconnect", handleDisconnect);
@@ -187,6 +214,73 @@ class LedgerClient {
 }
 
 /**
+ * Helper function to prompt user to connect Ledger device
+ * This shows a button inside the sandbox iframe that provides the user gesture context
+ * required by WebHID API
+ */
+async function promptForLedgerConnect(ledgerClient) {
+  // First check if we already have device access (doesn't require user gesture)
+  const existingDevices = await navigator.hid.getDevices();
+  const ledgerDevice = existingDevices.find(
+    (d) => d.vendorId === 0x2c97 // Ledger vendor ID
+  );
+
+  if (ledgerDevice) {
+    // We already have permission, connect directly
+    await ledgerClient.connectWithDevice(ledgerDevice);
+    return;
+  }
+
+  // Need to request device access - show UI with button for user gesture
+  await window.selector.ui.showIframe();
+
+  const root = document.getElementById("root");
+  root.style.display = "flex";
+  
+  root.innerHTML = `
+    <div class="prompt-container" style="max-width: 400px; padding: 24px; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 16px;">🔐</div>
+      <h1 style="margin-bottom: 16px;">Connect Ledger</h1>
+      <p style="margin-bottom: 24px; color: #aaa;">
+        Make sure your Ledger is connected via USB and the NEAR app is open.
+      </p>
+      <div style="display: flex; gap: 8px; justify-content: center;">
+        <button id="cancelBtn" style="background: #444;">Cancel</button>
+        <button id="connectBtn" style="background: #4c8bf5;">Connect Ledger</button>
+      </div>
+    </div>
+  `;
+
+  return new Promise((resolve, reject) => {
+    const connectBtn = document.getElementById("connectBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+
+    connectBtn.addEventListener("click", async () => {
+      try {
+        // This click provides the user gesture context for WebHID
+        await ledgerClient.connect();
+        root.innerHTML = "";
+        root.style.display = "none";
+        window.selector.ui.hideIframe();
+        resolve();
+      } catch (error) {
+        root.innerHTML = "";
+        root.style.display = "none";
+        window.selector.ui.hideIframe();
+        reject(error);
+      }
+    });
+
+    cancelBtn.addEventListener("click", () => {
+      root.innerHTML = "";
+      root.style.display = "none";
+      window.selector.ui.hideIframe();
+      reject(new Error("User cancelled"));
+    });
+  });
+}
+
+/**
  * Helper function to show account ID input dialog
  */
 async function promptForAccountId() {
@@ -253,7 +347,14 @@ async function promptForAccountId() {
  * Helper function to fetch from RPC
  */
 async function rpcRequest(network, method, params) {
-  const rpcUrl = window.selector.providers[network];
+  // Use FastNEAR RPC endpoints
+  const rpcUrls = {
+    mainnet: "https://rpc.mainnet.fastnear.com",
+    testnet: "https://rpc.testnet.fastnear.com",
+  };
+  
+  // Always use our known-good RPC endpoints
+  const rpcUrl = rpcUrls[network] || rpcUrls.mainnet;
   
   const response = await fetch(rpcUrl, {
     method: "POST",
@@ -317,8 +418,8 @@ class LedgerWallet {
    */
   async signIn(params) {
     try {
-      // Connect to Ledger
-      await this.ledger.connect();
+      // Prompt user to connect Ledger (provides user gesture for WebHID)
+      await promptForLedgerConnect(this.ledger);
 
       // Get public key from Ledger
       const publicKeyString = await this.ledger.getPublicKey(this.derivationPath);
@@ -393,7 +494,7 @@ class LedgerWallet {
 
     // Connect to Ledger if not already connected
     if (!this.ledger.isConnected()) {
-      await this.ledger.connect();
+      await promptForLedgerConnect(this.ledger);
     }
 
     // Get current nonce and block hash
@@ -410,24 +511,24 @@ class LedgerWallet {
     // Build transaction actions
     const txActions = actions.map((action) => {
       if (action.type === "FunctionCall") {
-        return transactions.functionCall(
+        return functionCall(
           action.params.methodName,
           JSON.stringify(action.params.args || {}),
           BigInt(action.params.gas || "30000000000000"),
           BigInt(action.params.deposit || "0")
         );
       } else if (action.type === "Transfer") {
-        return transactions.transfer(BigInt(action.params.deposit));
+        return transfer(BigInt(action.params.deposit));
       } else if (action.type === "AddKey") {
         const publicKey = PublicKey.from(action.params.publicKey);
         const accessKey = action.params.accessKey;
         
         if (accessKey.permission === "FullAccess") {
-          return transactions.addKey(publicKey, transactions.fullAccessKey());
+          return addKey(publicKey, fullAccessKey());
         } else {
-          return transactions.addKey(
+          return addKey(
             publicKey,
-            transactions.functionCallAccessKey(
+            functionCallAccessKey(
               accessKey.permission.receiverId,
               accessKey.permission.methodNames || [],
               BigInt(accessKey.permission.allowance || "0")
@@ -436,23 +537,23 @@ class LedgerWallet {
         }
       } else if (action.type === "DeleteKey") {
         const publicKey = PublicKey.from(action.params.publicKey);
-        return transactions.deleteKey(publicKey);
+        return deleteKey(publicKey);
       } else if (action.type === "CreateAccount") {
-        return transactions.createAccount();
+        return createAccount();
       } else if (action.type === "DeleteAccount") {
-        return transactions.deleteAccount(action.params.beneficiaryId);
+        return deleteAccount(action.params.beneficiaryId);
       } else if (action.type === "Stake") {
         const publicKey = PublicKey.from(action.params.publicKey);
-        return transactions.stake(BigInt(action.params.stake), publicKey);
+        return stake(BigInt(action.params.stake), publicKey);
       } else if (action.type === "DeployContract") {
-        return transactions.deployContract(action.params.code);
+        return deployContract(action.params.code);
       }
       
       throw new Error(`Unsupported action type: ${action.type}`);
     });
 
     // Create transaction
-    const transaction = transactions.createTransaction(
+    const transaction = createTransaction(
       signerId,
       PublicKey.from(accounts[0].publicKey),
       receiverId,
@@ -462,11 +563,11 @@ class LedgerWallet {
     );
 
     // Serialize and sign with Ledger
-    const serializedTx = transactions.encodeTransaction(transaction);
+    const serializedTx = encodeTransaction(transaction);
     const signature = await this.ledger.sign(serializedTx, this.derivationPath);
 
     // Create signed transaction
-    const signedTx = new transactions.SignedTransaction({
+    const signedTx = new SignedTransaction({
       transaction,
       signature: new Signature({
         keyType: transaction.publicKey.keyType,
@@ -511,7 +612,7 @@ class LedgerWallet {
 
     // Connect to Ledger if not already connected
     if (!this.ledger.isConnected()) {
-      await this.ledger.connect();
+      await promptForLedgerConnect(this.ledger);
     }
 
     // Build NEP-413 message payload
