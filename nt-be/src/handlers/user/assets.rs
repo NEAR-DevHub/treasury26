@@ -69,6 +69,9 @@ pub struct SimplifiedToken {
     #[serde(rename = "lockedBalance")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locked_balance: Option<String>,
+    #[serde(rename = "stakedBalance")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub staked_balance: Option<String>,
     pub decimals: u8,
     pub price: String,
     pub name: String,
@@ -261,6 +264,7 @@ fn build_intents_tokens(
                         .map(|p| p.to_string())
                         .unwrap_or_else(|| "0".to_string()),
                     locked_balance: None,
+                    staked_balance: None,
                     symbol: metadata.symbol.clone(),
                     name: metadata.name.clone(),
                     icon: metadata.icon.clone(),
@@ -423,6 +427,7 @@ pub async fn get_user_assets(
                             name: token_meta.name.clone(),
                             icon: token_meta.icon.clone(),
                             network: "near".to_string(),
+                            staked_balance: None,
                             residency: TokenResidency::Ft,
                             chain_icons: token_meta.chain_icons.clone(),
                             chain_name: token_meta
@@ -447,11 +452,12 @@ pub async fn get_user_assets(
                         contract_id: None,
                         decimals: near_token_meta.decimals,
                         balance: lockup.available.as_yoctonear().to_string(),
-                        locked_balance: Some(lockup.locked.as_yoctonear().to_string()),
+                        locked_balance: Some(lockup.not_vested.as_yoctonear().to_string()),
                         price: near_token_meta.price.unwrap_or(0.0).to_string(),
                         symbol: near_token_meta.symbol.clone(),
                         name: near_token_meta.name.clone(),
                         icon: near_token_meta.icon.clone(),
+                        staked_balance: Some(lockup.staked.as_yoctonear().to_string()),
                         network: near_token_meta.network.clone().unwrap_or_default(),
                         residency: TokenResidency::Lockup,
                         chain_name: near_token_meta
@@ -476,6 +482,7 @@ pub async fn get_user_assets(
                     icon: near_token_meta.icon.clone(),
                     network: near_token_meta.network.clone().unwrap_or_default(),
                     residency: TokenResidency::Near,
+                    staked_balance: None,
                     chain_name: near_token_meta
                         .chain_name
                         .clone()

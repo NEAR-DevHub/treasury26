@@ -9,6 +9,10 @@ export interface AggregatedAsset {
   icon: string;
   totalBalanceUSD: number;
   totalBalance: Big;
+  totalLockedBalance: Big;
+  totalLockedBalanceUSD: number;
+  totalStakedBalance: Big;
+  totalStakedBalanceUSD: number;
   price: number;
   weight: number;
   networks: TreasuryAsset[];
@@ -32,6 +36,10 @@ export function useAggregatedTokens(tokens: TreasuryAsset[]): AggregatedAsset[] 
           icon: token.icon,
           totalBalanceUSD: 0,
           totalBalance: Big(0),
+          totalLockedBalance: Big(0),
+          totalLockedBalanceUSD: 0,
+          totalStakedBalance: Big(0),
+          totalStakedBalanceUSD: 0,
           price: token.price,
           weight: 0,
           networks: [],
@@ -46,6 +54,22 @@ export function useAggregatedTokens(tokens: TreasuryAsset[]): AggregatedAsset[] 
       acc[symbol].totalBalance = acc[symbol].totalBalance.add(
         Big(formatBalance(token.balance.toString(), token.decimals))
       );
+
+      // Aggregate locked balance
+      if (token.lockedBalance) {
+        acc[symbol].totalLockedBalance = acc[symbol].totalLockedBalance.add(
+          Big(formatBalance(token.lockedBalance.toString(), token.decimals))
+        );
+        acc[symbol].totalLockedBalanceUSD += token.lockedBalanceUSD ?? 0;
+      }
+
+      // Aggregate staked balance
+      if (token.stakedBalance) {
+        acc[symbol].totalStakedBalance = acc[symbol].totalStakedBalance.add(
+          Big(formatBalance(token.stakedBalance.toString(), token.decimals))
+        );
+        acc[symbol].totalStakedBalanceUSD += token.stakedBalanceUSD ?? 0;
+      }
 
       // Track all network instances
       acc[symbol].networks.push(token);

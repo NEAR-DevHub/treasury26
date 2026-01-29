@@ -82,6 +82,26 @@ export function AssetsTable({ tokens }: Props) {
           return <BalanceCell balance={asset.totalBalance} symbol={asset.symbol} balanceUSD={asset.totalBalanceUSD} />;
         },
       }),
+      columnHelper.accessor("totalLockedBalanceUSD", {
+        header: "Locked",
+        cell: (info) => {
+          const asset = info.row.original;
+          if (asset.totalLockedBalance.eq(0)) {
+            return <div className="text-right text-muted-foreground">-</div>;
+          }
+          return <BalanceCell balance={asset.totalLockedBalance} symbol={asset.symbol} balanceUSD={asset.totalLockedBalanceUSD} />;
+        },
+      }),
+      columnHelper.accessor("totalStakedBalanceUSD", {
+        header: "Staked",
+        cell: (info) => {
+          const asset = info.row.original;
+          if (asset.totalStakedBalance.eq(0)) {
+            return <div className="text-right text-muted-foreground">-</div>;
+          }
+          return <BalanceCell balance={asset.totalStakedBalance} symbol={asset.symbol} balanceUSD={asset.totalStakedBalanceUSD} />;
+        },
+      }),
       columnHelper.accessor("price", {
         header: "Coin Price",
         cell: (info) => (
@@ -223,6 +243,20 @@ export function AssetsTable({ tokens }: Props) {
                     <TableCell className="p-4">
                       <BalanceCell balance={Big(formatBalance(network.balance.toString(), network.decimals))} symbol={network.symbol} balanceUSD={network.balanceUSD} />
                     </TableCell>
+                    <TableCell className="p-4">
+                      {network.lockedBalance && network.lockedBalanceUSD ? (
+                        <BalanceCell balance={Big(formatBalance(network.lockedBalance.toString(), network.decimals))} symbol={network.symbol} balanceUSD={network.lockedBalanceUSD} />
+                      ) : (
+                        <div className="text-right text-muted-foreground">-</div>
+                      )}
+                    </TableCell>
+                    <TableCell className="p-4">
+                      {network.stakedBalance && network.stakedBalanceUSD ? (
+                        <BalanceCell balance={Big(formatBalance(network.stakedBalance.toString(), network.decimals))} symbol={network.symbol} balanceUSD={network.stakedBalanceUSD} />
+                      ) : (
+                        <div className="text-right text-muted-foreground">-</div>
+                      )}
+                    </TableCell>
                     <TableCell className="p-4 text-right text-muted-foreground">-</TableCell>
                     <TableCell className="p-4 text-right text-muted-foreground">-</TableCell>
                     <TableCell className="p-4"></TableCell>
@@ -244,6 +278,12 @@ export function AssetsTableSkeleton() {
         <TableRow className="hover:bg-transparent">
           <TableHead className="text-muted-foreground">
             <Skeleton className="h-4 w-12" />
+          </TableHead>
+          <TableHead className="text-right text-muted-foreground">
+            <Skeleton className="h-4 w-16 ml-auto" />
+          </TableHead>
+          <TableHead className="text-right text-muted-foreground">
+            <Skeleton className="h-4 w-16 ml-auto" />
           </TableHead>
           <TableHead className="text-right text-muted-foreground">
             <Skeleton className="h-4 w-16 ml-auto" />
@@ -273,6 +313,18 @@ export function AssetsTableSkeleton() {
               <div className="flex flex-col items-end">
                 <Skeleton className="h-4 w-20 mb-1" />
                 <Skeleton className="h-3 w-16" />
+              </div>
+            </TableCell>
+            <TableCell className="p-4">
+              <div className="flex flex-col items-end">
+                <Skeleton className="h-4 w-16 mb-1" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            </TableCell>
+            <TableCell className="p-4">
+              <div className="flex flex-col items-end">
+                <Skeleton className="h-4 w-16 mb-1" />
+                <Skeleton className="h-3 w-12" />
               </div>
             </TableCell>
             <TableCell className="p-4">

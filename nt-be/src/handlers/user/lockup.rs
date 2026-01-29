@@ -133,10 +133,9 @@ pub async fn fetch_lockup_contract(
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LockupBalanceOfAccountResponse {
-    /// Available balance: vested + staking rewards
     pub available: NearToken,
-    /// Locked balance: unvested amount (not yet vested)
-    pub locked: NearToken,
+    pub staked: NearToken,
+    pub not_vested: NearToken,
 }
 
 pub async fn fetch_lockup_balance_of_account(
@@ -151,12 +150,6 @@ pub async fn fetch_lockup_balance_of_account(
         return Ok(None);
     };
 
-    let total_allocated = lockup_contract.lockup_information.lockup_amount;
-    let known_deposited = lockup_contract
-        .staking_information
-        .as_ref()
-        .map(|s| s.deposit_amount)
-        .unwrap_or(NearToken::from_yoctonear(0));
     let staking_pool_id = lockup_contract
         .staking_information
         .as_ref()
@@ -169,6 +162,18 @@ pub async fn fetch_lockup_balance_of_account(
         async move {
             near_api::Contract(lockup_account_id)
                 .call_function("get_locked_amount", ())
+                .read_only::<NearToken>()
+                .fetch_from(&network)
+                .await
+        }
+    };
+
+    let balance_future = {
+        let lockup_account_id = lockup_account_id.clone();
+        let network = network.clone();
+        async move {
+            near_api::Contract(lockup_account_id)
+                .call_function("get_liquid_owners_balance", ())
                 .read_only::<NearToken>()
                 .fetch_from(&network)
                 .await
@@ -211,7 +216,8 @@ pub async fn fetch_lockup_balance_of_account(
         }
     };
 
-    let (locked_result, pool_balance_result) = tokio::join!(locked_future, pool_balance_future);
+    let (locked_result, pool_balance_result, balance_result) =
+        tokio::join!(locked_future, pool_balance_future, balance_future);
 
     let locked = locked_result
         .map_err(|e| {
@@ -222,16 +228,22 @@ pub async fn fetch_lockup_balance_of_account(
         })?
         .data;
 
+    let balance = balance_result
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("get_balance: {}", e),
+            )
+        })?
+        .data;
+
     let pool_balance = pool_balance_result?;
-
-    // Calculate staking rewards: actual pool balance - known deposited amount
-    let staking_rewards = pool_balance.saturating_sub(known_deposited);
-
-    // vested = total_allocated - locked (unvested)
-    let vested = total_allocated.saturating_sub(locked);
-
-    // available = vested + staking rewards
-    let available = vested.saturating_add(staking_rewards);
-
-    Ok(Some(LockupBalanceOfAccountResponse { available, locked }))
+    println!("pool_balance: {}", pool_balance);
+    println!("locked: {}", locked);
+    println!("balance: {}", balance);
+    Ok(Some(LockupBalanceOfAccountResponse {
+        available: balance,
+        not_vested: locked,
+        staked: pool_balance,
+    }))
 }

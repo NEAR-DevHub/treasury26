@@ -87,11 +87,14 @@ export interface TreasuryAsset {
   symbol: string;
   balance: Big;
   lockedBalance?: Big;
+  stakedBalance?: Big;
   decimals: number;
   price: number;
   name: string;
   icon: string;
   balanceUSD: number;
+  stakedBalanceUSD?: number;
+  lockedBalanceUSD?: number;
   weight: number;
 }
 
@@ -109,6 +112,7 @@ interface TreasuryAssetRaw {
   chainIcons?: ChainIcons;
   symbol: string;
   balance: string;
+  stakedBalance?: string;
   lockedBalance?: string;
   decimals: number;
   price: string;
@@ -136,8 +140,12 @@ export async function getTreasuryAssets(
     // Transform raw tokens with USD values
     const tokensWithUSD = response.data.map((token) => {
       const balance = Big(token.balance).div(Big(10).pow(token.decimals));
+      const stakedBalance = token.stakedBalance ? Big(token.stakedBalance).div(Big(10).pow(token.decimals)) : undefined;
+      const lockedBalance = token.lockedBalance ? Big(token.lockedBalance).div(Big(10).pow(token.decimals)) : undefined;
       const price = parseFloat(token.price);
       const balanceUSD = balance.mul(price).toNumber();
+      const stakedBalanceUSD = stakedBalance ? stakedBalance.mul(price).toNumber() : 0;
+      const lockedBalanceUSD = lockedBalance ? lockedBalance.mul(price).toNumber() : 0;
 
       return {
         id: token.id,
@@ -148,9 +156,12 @@ export async function getTreasuryAssets(
         decimals: token.decimals,
         balance: Big(token.balance),
         lockedBalance: token.lockedBalance ? Big(token.lockedBalance) : undefined,
+        stakedBalance: token.stakedBalance ? Big(token.stakedBalance) : undefined,
         chainName: token.chainName,
         chainIcons: token.chainIcons,
         balanceUSD,
+        stakedBalanceUSD,
+        lockedBalanceUSD,
         price,
         name: token.name,
         icon: token.icon,
