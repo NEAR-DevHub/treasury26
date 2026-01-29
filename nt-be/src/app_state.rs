@@ -6,7 +6,7 @@ use std::{sync::Arc, time::Duration};
 
 use crate::{
     handlers::balance_changes::transfer_hints::{TransferHintService, fastnear::FastNearProvider},
-    services::{CoinGeckoClient, PriceLookupService},
+    services::{DeFiLlamaClient, PriceLookupService},
     utils::{
         cache::{Cache, CacheKey, CacheTier},
         env::EnvVars,
@@ -23,7 +23,7 @@ pub struct AppState {
     pub archival_network: NetworkConfig,
     pub env_vars: EnvVars,
     pub db_pool: PgPool,
-    pub price_service: PriceLookupService<CoinGeckoClient>,
+    pub price_service: PriceLookupService<DeFiLlamaClient>,
     pub bulk_payment_contract_id: AccountId,
     pub telegram_client: TelegramClient,
     /// Optional transfer hint service for accelerated balance change detection
@@ -58,7 +58,7 @@ pub struct AppStateBuilder {
     archival_network: Option<NetworkConfig>,
     env_vars: Option<EnvVars>,
     db_pool: Option<PgPool>,
-    price_service: Option<PriceLookupService<CoinGeckoClient>>,
+    price_service: Option<PriceLookupService<DeFiLlamaClient>>,
     bulk_payment_contract_id: Option<AccountId>,
     telegram_client: Option<TelegramClient>,
     transfer_hint_service: Option<TransferHintService>,
@@ -138,7 +138,7 @@ impl AppStateBuilder {
     }
 
     /// Set the price service
-    pub fn price_service(mut self, price_service: PriceLookupService<CoinGeckoClient>) -> Self {
+    pub fn price_service(mut self, price_service: PriceLookupService<DeFiLlamaClient>) -> Self {
         self.price_service = Some(price_service);
         self
     }
@@ -329,20 +329,15 @@ impl AppState {
 
         let http_client = reqwest::Client::new();
 
-        // Initialize price service - with CoinGecko provider if API key is available
-        let price_service = if let Some(api_key) = env_vars.coingecko_api_key.as_ref() {
-            let base_url = &env_vars.coingecko_api_base_url;
-            log::info!("CoinGecko API key found, using base URL: {}", base_url);
-            let coingecko_client = CoinGeckoClient::with_base_url(
-                http_client.clone(),
-                api_key.clone(),
-                base_url.clone(),
-            );
-            PriceLookupService::new(db_pool.clone(), coingecko_client)
-        } else {
-            log::info!("No CoinGecko API key found, price enrichment will use cache only");
-            PriceLookupService::without_provider(db_pool.clone())
-        };
+        // Initialize price service with DeFiLlama provider (free, no API key required)
+        let base_url = &env_vars.defillama_api_base_url;
+        log::info!(
+            "Initializing DeFiLlama price provider with base URL: {}",
+            base_url
+        );
+        let defillama_client =
+            DeFiLlamaClient::with_base_url(http_client.clone(), base_url.clone());
+        let price_service = PriceLookupService::new(db_pool.clone(), defillama_client);
 
         let telegram_client = TelegramClient::new(
             env_vars.telegram_bot_token.clone(),

@@ -21,9 +21,16 @@ async fn load_test_data() {
         .await
         .expect("Failed to connect to test database");
 
-    // Check if data is already loaded
+    // Always clear historical prices to ensure fresh fetch from DeFiLlama
+    // This must be done even if balance_changes data already exists
+    sqlx::query("DELETE FROM historical_prices")
+        .execute(&pool)
+        .await
+        .expect("Failed to clear historical_prices test data");
+
+    // Check if balance_changes data is already loaded
     let existing_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM balance_changes 
+        "SELECT COUNT(*) FROM balance_changes
          WHERE account_id = 'webassemblymusic-treasury.sputnik-dao.near'",
     )
     .fetch_one(&pool)
@@ -32,7 +39,7 @@ async fn load_test_data() {
 
     if existing_count > 0 {
         println!(
-            "✓ Test data already loaded ({} records), skipping load",
+            "✓ Test data already loaded ({} records), historical_prices cleared for fresh sync",
             existing_count
         );
         pool.close().await;
@@ -131,6 +138,71 @@ async fn load_test_data() {
     pool.close().await;
 }
 
+/// Wait for the background price sync service to fetch prices from DeFiLlama
+/// This polls the database until we have prices for all expected assets.
+/// The background sync fetches ~1500 prices per asset sequentially, which takes time.
+async fn wait_for_price_sync() {
+    let db_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
+
+    let pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&db_url)
+        .await
+        .expect("Failed to connect to test database");
+
+    // We need prices for these assets: NEAR, BTC, ETH, SOL, XRP, USDC
+    // Wait for at least 6 distinct assets to have prices
+    let required_assets = 6;
+    let timeout = std::time::Duration::from_secs(300); // 5 minutes - DeFiLlama sync takes time
+    let poll_interval = std::time::Duration::from_secs(2);
+    let start = std::time::Instant::now();
+
+    loop {
+        let asset_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(DISTINCT asset_id) FROM historical_prices")
+                .fetch_one(&pool)
+                .await
+                .expect("Failed to count assets");
+
+        let price_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM historical_prices")
+            .fetch_one(&pool)
+            .await
+            .expect("Failed to count prices");
+
+        if asset_count >= required_assets {
+            println!(
+                "✓ Price sync complete ({} assets, {} prices cached in {:?})",
+                asset_count,
+                price_count,
+                start.elapsed()
+            );
+            break;
+        }
+
+        if start.elapsed() > timeout {
+            panic!(
+                "Price sync timed out after {:?}. Only {} assets synced (need {}). \
+                 Check that DeFiLlama API is accessible.",
+                timeout, asset_count, required_assets
+            );
+        }
+
+        if start.elapsed().as_secs() % 30 == 0 && start.elapsed().as_secs() > 0 {
+            println!(
+                "Still syncing prices... {} assets, {} prices so far ({:?})",
+                asset_count,
+                price_count,
+                start.elapsed()
+            );
+        }
+
+        tokio::time::sleep(poll_interval).await;
+    }
+
+    pool.close().await;
+}
+
 /// Test the chart API with webassemblymusic-treasury data
 #[tokio::test]
 #[serial]
@@ -140,15 +212,20 @@ async fn test_balance_chart_with_real_data() {
 
     // Start the server
     let server = TestServer::start().await;
+
+    // Wait for the background price sync to complete
+    wait_for_price_sync().await;
+
     let client = reqwest::Client::new();
 
-    // Test Chart API with specific date range
+    // Test Chart API with specific date range (Dec 1-4, 2025)
+    // Note: Dec 5 is not included because the mock data has a gap (jumps from Dec 4 to Dec 6)
     let response = client
         .get(server.url("/api/balance-history/chart"))
         .query(&[
             ("account_id", "webassemblymusic-treasury.sputnik-dao.near"),
             ("start_time", "2025-12-01T00:00:00Z"),
-            ("end_time", "2025-12-05T20:14:00Z"),
+            ("end_time", "2025-12-04T23:59:59Z"),
             ("interval", "daily"),
         ])
         .send()
@@ -177,60 +254,60 @@ async fn test_balance_chart_with_real_data() {
 
     let token_map = chart_data.as_object().unwrap();
 
-    // Expected tokens, their balances on Dec 5 (last day of the test range), and USD prices
+    // Expected tokens, their balances on Dec 4 (last day of the test range), and USD prices
     // Values are decimal-formatted strings from the API (BigDecimal includes trailing zeros)
-    // Prices are from CoinGecko mock data for Dec 5, 2025
+    // Prices are from DeFiLlama mock data for Dec 4, 2025 ~00:00 UTC (beginning of day)
     let expected_tokens: Vec<(&str, &str, Option<f64>)> = vec![
         (
             "near",
-            "26.470207505625583899999977",
-            Some(1.796074794371314),
+            "26.606689957078532199999977", // Balance on Dec 4
+            Some(1.8515041134),            // NEAR price at Dec 4 00:00:03 UTC
         ),
         (
             "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
             "9.99998000",
-            Some(0.9998048293821208), // USDC
+            Some(0.9999063684), // USDC at Dec 3 23:59:56 UTC
         ),
         (
             "intents.near:nep141:btc.omft.near",
             "0.00544253",
-            Some(92140.70419795792),
+            Some(93500.8157276086), // BTC price at Dec 4 00:00:03 UTC
         ),
         (
             "intents.near:nep141:xrp.omft.near",
             "16.69236700",
-            Some(2.0971829811461946),
+            Some(2.2011030105), // XRP price at Dec 4 00:00:05 UTC
         ),
         (
             "intents.near:nep141:eth.omft.near",
             "0.03501508842977613200",
-            Some(3133.698235618616),
+            Some(3190.0526253427), // ETH price at Dec 4 00:00:03 UTC
         ),
         (
             "intents.near:nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
             "22.54364600",
-            Some(0.9998048293821208), // USDC on Solana
+            Some(0.9999063684), // USDC on Solana
         ),
         (
             "intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
             "124.83302000",
-            Some(0.9998048293821208), // USDC on Ethereum
+            Some(0.9999063684), // USDC on Ethereum
         ),
         (
             "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
             "119",
-            Some(0.9998048293821208), // USDC on NEAR
+            Some(0.9999063684), // USDC on NEAR
         ),
         (
             "intents.near:nep141:sol.omft.near",
             "0.08342401",
-            Some(139.0035856702843),
+            Some(139.01050291113424), // SOL price from mock data
         ),
         (
             "intents.near:nep141:wrap.near",
             "0.8000",
-            Some(1.796074794371314),
-        ), // wNEAR = NEAR price
+            Some(1.8515041134), // wNEAR = NEAR price at Dec 4 00:00:03 UTC
+        ),
         ("arizcredits.near", "3", None), // Unknown token - no price data
     ];
 
@@ -257,13 +334,13 @@ async fn test_balance_chart_with_real_data() {
         let snapshots = token_data.as_array().unwrap();
         assert_eq!(
             snapshots.len(),
-            5,
-            "Should have 5 daily snapshots for {}",
+            4,
+            "Should have 4 daily snapshots for {}",
             token_id
         );
 
-        // Check the last day (Dec 5) has the expected balance
-        let last_snapshot = &snapshots[4]; // Index 4 = Dec 5
+        // Check the last day (Dec 4) has the expected balance
+        let last_snapshot = &snapshots[3]; // Index 3 = Dec 4
         let balance = last_snapshot
             .get("balance")
             .and_then(|b| b.as_str())
@@ -271,11 +348,12 @@ async fn test_balance_chart_with_real_data() {
 
         assert_eq!(
             balance, *expected_balance,
-            "Balance mismatch for token {} on Dec 5: expected {}, got {}",
+            "Balance mismatch for token {} on Dec 4: expected {}, got {}",
             token_id, expected_balance, balance
         );
 
         // Check the price_usd field
+        // Note: Mock data uses DeFiLlama prices from Dec 4, 2025 23:59:55 UTC
         let actual_price = last_snapshot.get("price_usd").and_then(|p| p.as_f64());
         match expected_price {
             Some(expected) => {
@@ -285,9 +363,11 @@ async fn test_balance_chart_with_real_data() {
                     token_id
                 );
                 let actual = actual_price.unwrap();
+                // Mock data is deterministic, so prices should match exactly
+                // (allowing tiny float precision differences)
                 assert!(
                     (actual - expected).abs() < 0.0001,
-                    "Price mismatch for token {} on Dec 5: expected {}, got {}",
+                    "Price mismatch for token {} on Dec 4: expected {}, got {}",
                     token_id,
                     expected,
                     actual
@@ -320,6 +400,11 @@ async fn test_csv_export_with_real_data() {
 
     // Start the server
     let server = TestServer::start().await;
+
+    // Wait for the background price sync to complete
+    // The price sync service has a 5 second startup delay, then syncs prices from the mock DeFiLlama server
+    wait_for_price_sync().await;
+
     let client = reqwest::Client::new();
 
     // Test CSV Export
@@ -415,6 +500,10 @@ async fn test_chart_api_intervals() {
 
     // Start the server
     let server = TestServer::start().await;
+
+    // Wait for the background price sync to complete
+    wait_for_price_sync().await;
+
     let client = reqwest::Client::new();
 
     let generate_snapshots = std::env::var("GENERATE_NEW_TEST_SNAPSHOTS").is_ok();

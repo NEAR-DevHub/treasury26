@@ -20,6 +20,7 @@ pub struct EnvVars {
     pub telegram_chat_id: Option<String>,
     pub coingecko_api_key: Option<String>,
     pub coingecko_api_base_url: String, // Override for testing
+    pub defillama_api_base_url: String, // DeFiLlama API base URL (override for testing)
     pub nearblocks_api_key: Option<String>,
     // Transfer hints configuration (FastNear transfers-api)
     pub transfer_hints_enabled: bool,
@@ -79,6 +80,8 @@ impl Default for EnvVars {
                 .filter(|s| !s.is_empty()),
             coingecko_api_base_url: std::env::var("COINGECKO_API_BASE_URL")
                 .unwrap_or_else(|_| "https://pro-api.coingecko.com/api/v3".to_string()),
+            defillama_api_base_url: std::env::var("DEFILLAMA_API_BASE_URL")
+                .unwrap_or_else(|_| "https://coins.llama.fi".to_string()),
             telegram_bot_token: std::env::var("TELEGRAM_BOT_TOKEN")
                 .ok()
                 .filter(|s| !s.is_empty()),

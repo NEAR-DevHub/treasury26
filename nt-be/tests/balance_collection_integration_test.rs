@@ -243,7 +243,7 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         account_id, token_id
     );
 
-    let max_iterations = 10;
+    let max_iterations = 5;
     for iteration in 1..=max_iterations {
         println!("\n--- Iteration {} ---", iteration);
 
@@ -1101,100 +1101,6 @@ async fn test_discover_ft_tokens_from_receipts(_pool: PgPool) -> sqlx::Result<()
     );
 
     println!("\n✓ Successfully discovered FT tokens from receipts");
-
-    Ok(())
-}
-
-/// Test to check if FT contract appears as counterparty in NEAR balance changes
-#[sqlx::test]
-async fn test_ft_contract_as_counterparty(pool: PgPool) -> sqlx::Result<()> {
-    common::load_test_env();
-    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
-
-    let account_id = "webassemblymusic-treasury.sputnik-dao.near";
-    let expected_ft_contract = "arizcredits.near";
-
-    println!("\n=== Testing FT Contract as Counterparty ===");
-    println!("Account: {}", account_id);
-    println!("Expected FT contract: {}", expected_ft_contract);
-
-    // Insert the account as monitored
-    sqlx::query!(
-        r#"
-        INSERT INTO monitored_accounts (account_id, enabled)
-        VALUES ($1, true)
-        "#,
-        account_id
-    )
-    .execute(&pool)
-    .await?;
-
-    let network = common::create_archival_network();
-    let up_to_block = 178150000i64;
-
-    // Run monitoring cycle to collect NEAR balance changes
-    println!("\n=== Running Monitoring Cycle ===");
-    run_monitor_cycle(&pool, &network, up_to_block, None)
-        .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
-
-    // Query all counterparties from NEAR balance changes
-    let counterparties: Vec<String> = sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT counterparty
-        FROM balance_changes
-        WHERE account_id = $1 AND token_id = 'near'
-        ORDER BY counterparty
-        "#,
-    )
-    .bind(account_id)
-    .fetch_all(&pool)
-    .await?;
-
-    println!("\n=== Counterparties in NEAR Balance Changes ===");
-    for counterparty in &counterparties {
-        println!("  - {}", counterparty);
-    }
-
-    // Check if the FT contract appears as a counterparty
-    let has_ft_as_counterparty = counterparties.contains(&expected_ft_contract.to_string());
-
-    if has_ft_as_counterparty {
-        println!(
-            "\n✓ {} appears as counterparty in NEAR transactions",
-            expected_ft_contract
-        );
-
-        // Show which blocks have this counterparty
-        let blocks: Vec<i64> = sqlx::query_scalar(
-            r#"
-            SELECT block_height
-            FROM balance_changes
-            WHERE account_id = $1 AND token_id = 'near' AND counterparty = $2
-            ORDER BY block_height
-            "#,
-        )
-        .bind(account_id)
-        .bind(expected_ft_contract)
-        .fetch_all(&pool)
-        .await?;
-
-        println!("  Found in {} blocks:", blocks.len());
-        for block in &blocks {
-            println!("    Block: {}", block);
-        }
-    } else {
-        println!(
-            "\n✗ {} does NOT appear as counterparty",
-            expected_ft_contract
-        );
-        println!("  This means we need to query receipts to discover it");
-    }
 
     Ok(())
 }

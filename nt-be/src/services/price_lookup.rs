@@ -1,10 +1,12 @@
-//! Price lookup service with caching
+//! Price lookup service (cache-only)
 //!
 //! This module provides the main interface for looking up historical prices.
+//! It only reads from the database cache - prices are populated by the
+//! background price sync service.
+//!
 //! It handles:
 //! - Mapping NEAR token IDs to unified asset IDs
-//! - Caching prices in the database
-//! - Fetching from price providers when cache misses occur
+//! - Reading cached prices from the database
 
 use bigdecimal::BigDecimal;
 use chrono::NaiveDate;
@@ -48,20 +50,23 @@ impl<P: PriceProvider> PriceLookupService<P> {
 
     /// Get the price for a token at a specific date
     ///
+    /// This method only reads from the cache. Prices are populated by the
+    /// background price sync service.
+    ///
     /// # Arguments
     /// * `token_id` - The NEAR token ID (e.g., "near", "intents.near:nep141:btc.omft.near")
     /// * `date` - The date to get the price for
     ///
     /// # Returns
-    /// * `Ok(Some(price))` - The USD price if available
-    /// * `Ok(None)` - If no price is available for this token
+    /// * `Ok(Some(price))` - The USD price if available in cache
+    /// * `Ok(None)` - If no price is cached for this token/date
     /// * `Err(_)` - If there was an error
     pub async fn get_price(
         &self,
         token_id: &str,
         date: NaiveDate,
     ) -> Result<Option<f64>, Box<dyn std::error::Error + Send + Sync>> {
-        // If no provider, we can't look up prices
+        // If no provider, we can't translate asset IDs
         let provider = match &self.provider {
             Some(p) => p,
             None => return Ok(None),
@@ -89,47 +94,33 @@ impl<P: PriceProvider> PriceLookupService<P> {
             }
         };
 
-        // Check cache first
-        if let Some(cached_price) = self.get_cached_price(&provider_asset_id, date).await? {
+        // Check cache only (no fetching - background service populates cache)
+        let cached_price = self.get_cached_price(&provider_asset_id, date).await?;
+
+        if cached_price.is_none() {
             log::debug!(
-                "Cache hit for {} on {}: ${}",
+                "Cache miss for {} on {} (background sync should populate)",
                 provider_asset_id,
-                date,
-                cached_price
+                date
             );
-            return Ok(Some(cached_price));
         }
 
-        // Fetch from provider
-        log::debug!(
-            "Cache miss for {} on {}, fetching from provider",
-            provider_asset_id,
-            date
-        );
-        let price = provider.get_price_at_date(&provider_asset_id, date).await?;
-
-        // Cache the result if we got a price
-        if let Some(p) = price {
-            self.cache_price(&provider_asset_id, date, p, provider.source_name())
-                .await?;
-        }
-
-        Ok(price)
+        Ok(cached_price)
     }
 
     /// Get prices for multiple dates (batch operation)
     ///
-    /// When cache misses occur, this method fetches ALL historical prices for the asset
-    /// in a single API call, then caches them all. This is more efficient than fetching
-    /// each date individually.
+    /// This method only reads from the cache. Prices are populated by the
+    /// background price sync service. Missing prices are logged but not fetched
+    /// to avoid blocking API calls.
     pub async fn get_prices_batch(
         &self,
         token_id: &str,
         dates: &[NaiveDate],
     ) -> Result<HashMap<NaiveDate, f64>, Box<dyn std::error::Error + Send + Sync>> {
-        let mut result = HashMap::new();
+        let result = HashMap::new();
 
-        // If no provider, we can't look up prices
+        // If no provider, we can't translate asset IDs
         let provider = match &self.provider {
             Some(p) => p,
             None => return Ok(result),
@@ -147,58 +138,23 @@ impl<P: PriceProvider> PriceLookupService<P> {
             None => return Ok(result),
         };
 
-        // Get all cached prices first
+        // Get all cached prices (cache-only, no fetching)
         let cached = self
             .get_batch_cached_prices(&provider_asset_id, dates)
             .await?;
-        result.extend(cached);
 
-        // Find dates that need fetching
-        let missing_dates: Vec<_> = dates
-            .iter()
-            .filter(|d| !result.contains_key(*d))
-            .cloned()
-            .collect();
-
-        if missing_dates.is_empty() {
-            return Ok(result);
+        // Log if there are missing prices (background service should fill them)
+        let missing_count = dates.len() - cached.len();
+        if missing_count > 0 {
+            log::debug!(
+                "Cache miss for {} ({} of {} dates not cached)",
+                provider_asset_id,
+                missing_count,
+                dates.len()
+            );
         }
 
-        // Fetch ALL historical prices for this asset in one API call
-        // This is more efficient than fetching each date individually
-        log::debug!(
-            "Cache miss for {} ({} dates), fetching all historical prices",
-            provider_asset_id,
-            missing_dates.len()
-        );
-
-        match provider.get_all_historical_prices(&provider_asset_id).await {
-            Ok(all_prices) => {
-                // Cache all fetched prices in a single batch insert
-                if let Err(e) = self
-                    .cache_prices_batch(&provider_asset_id, &all_prices, provider.source_name())
-                    .await
-                {
-                    log::warn!("Failed to cache prices for {}: {}", provider_asset_id, e);
-                }
-
-                // Add the prices we need to our result
-                for date in missing_dates {
-                    if let Some(&price) = all_prices.get(&date) {
-                        result.insert(date, price);
-                    }
-                }
-            }
-            Err(e) => {
-                log::warn!(
-                    "Failed to fetch historical prices for {}: {}",
-                    provider_asset_id,
-                    e
-                );
-            }
-        }
-
-        Ok(result)
+        Ok(cached)
     }
 
     /// Get cached price from database
@@ -248,68 +204,6 @@ impl<P: PriceProvider> PriceLookupService<P> {
             .filter_map(|r| bigdecimal_to_f64(&r.price_usd).map(|p| (r.price_date, p)))
             .collect())
     }
-
-    /// Cache a single price in the database
-    async fn cache_price(
-        &self,
-        asset_id: &str,
-        date: NaiveDate,
-        price: f64,
-        source: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let price_decimal = BigDecimal::try_from(price)?;
-
-        sqlx::query!(
-            r#"
-            INSERT INTO historical_prices (asset_id, price_date, price_usd, source)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (asset_id, price_date, source) DO NOTHING
-            "#,
-            asset_id,
-            date,
-            price_decimal,
-            source
-        )
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
-    /// Cache multiple prices in the database using a batch insert
-    async fn cache_prices_batch(
-        &self,
-        asset_id: &str,
-        prices: &HashMap<NaiveDate, f64>,
-        source: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        if prices.is_empty() {
-            return Ok(());
-        }
-
-        // Build batch insert using UNNEST for efficiency
-        let dates: Vec<NaiveDate> = prices.keys().cloned().collect();
-        let price_values: Vec<BigDecimal> = prices
-            .values()
-            .map(|&p| BigDecimal::try_from(p))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        sqlx::query(
-            r#"
-            INSERT INTO historical_prices (asset_id, price_date, price_usd, source)
-            SELECT $1, unnest($2::date[]), unnest($3::numeric[]), $4
-            ON CONFLICT (asset_id, price_date, source) DO NOTHING
-            "#,
-        )
-        .bind(asset_id)
-        .bind(&dates)
-        .bind(&price_values)
-        .bind(source)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
 }
 
 /// Convert BigDecimal to f64
@@ -330,6 +224,12 @@ fn bigdecimal_to_f64(bd: &BigDecimal) -> Option<f64> {
 pub fn token_id_to_unified_asset_id(token_id: &str) -> Option<String> {
     // Special case: native NEAR
     if token_id == "near" {
+        return Some("near".to_string());
+    }
+
+    // Special case: staking pools (staked NEAR is still NEAR)
+    // e.g., "staking:astro-stakers.poolv1.near" → "near"
+    if token_id.starts_with("staking:") {
         return Some("near".to_string());
     }
 
@@ -397,6 +297,19 @@ mod tests {
     fn test_token_id_to_unified_asset_id_wrapped_near() {
         assert_eq!(
             token_id_to_unified_asset_id("intents.near:nep141:wrap.near"),
+            Some("near".to_string())
+        );
+    }
+
+    #[test]
+    fn test_token_id_to_unified_asset_id_staking_pool() {
+        // Staking pools should map to NEAR (staked NEAR is still NEAR)
+        assert_eq!(
+            token_id_to_unified_asset_id("staking:astro-stakers.poolv1.near"),
+            Some("near".to_string())
+        );
+        assert_eq!(
+            token_id_to_unified_asset_id("staking:any-pool.near"),
             Some("near".to_string())
         );
     }
