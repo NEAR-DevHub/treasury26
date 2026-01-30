@@ -198,6 +198,29 @@ test("Ledger login flow", async ({ page, context }) => {
   // This is critical because TransportWebHID from the CDN will access navigator.hid
   await context.addInitScript(mockWebHID);
 
+  // Intercept RPC calls to FastNEAR and redirect to local sandbox
+  // The ledger-executor.js calls mainnet RPC for access key verification
+  await context.route('**/rpc.*.fastnear.com/**', async (route) => {
+    const request = route.request();
+    const postData = request.postData();
+
+    console.log('Intercepting FastNEAR RPC, redirecting to sandbox');
+
+    // Forward the request to local sandbox
+    const response = await fetch('http://localhost:3030', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: postData,
+    });
+
+    const body = await response.text();
+    await route.fulfill({
+      status: response.status,
+      contentType: 'application/json',
+      body,
+    });
+  });
+
   // Navigate to the app
   await page.goto("/app");
 
@@ -264,6 +287,11 @@ test("Ledger login flow", async ({ page, context }) => {
   console.log('Mock was used:', mockWasUsed);
   console.log('Relevant logs:', logs.filter(l => l.includes('[Mock')));
 
-  // The flow should complete - wait a moment for it to process
+  // Wait for the login to complete and redirect
   await page.waitForTimeout(2000);
+
+  // Verify login succeeded - should be on the Create Treasury page or similar
+  // The URL should have changed from /app to /app/new or similar
+  await expect(page).toHaveURL(/\/app\/(new|dashboard|treasury)/, { timeout: 10000 });
+  console.log('Login successful - redirected to:', page.url());
 });
