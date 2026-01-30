@@ -7,6 +7,8 @@ services:
     rootDir: nt-be
     buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be
     startCommand: ./target/release/nt-be
+    domains:
+      - api.trezu.app
     envVars:
       - key: PIKESPEAK_KEY
         sync: false
@@ -37,8 +39,8 @@ services:
     buildCommand: bun install && node ./node_modules/geoip-lite/scripts/updatedb.js license_key=$MAXMIND_LICENSE_KEY && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
     startCommand: node .next/standalone/server.js
     domains:
-      - www.trezu.app
       - trezu.app
+      - www.trezu.app
     envVars:
       - key: NODE_ENV
         value: production
@@ -62,8 +64,8 @@ services:
       mountPath: /usr/app/data/
       sizeGB: 1
     domains:
-      - www.nocodb.trezu.app
       - nocodb.trezu.app
+      - www.nocodb.trezu.app
     envVars:
       - key: NC_CONNECTION_ENCRYPT_KEY
         generateValue: true
