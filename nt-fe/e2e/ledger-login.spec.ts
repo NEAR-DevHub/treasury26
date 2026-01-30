@@ -223,17 +223,22 @@ test("Ledger login flow", async ({ page, context }) => {
 
   // Navigate to the app
   await page.goto("/app");
+  await page.waitForTimeout(1500); // Pause to show the initial page
 
   // Click Connect Wallet button
   await page.getByRole("button", { name: /connect wallet/i }).click();
+  await page.waitForTimeout(1000); // Pause to show the button
 
   // Verify wallet selector appears
   await expect(page.getByText("Select wallet")).toBeVisible();
+  await page.waitForTimeout(1500); // Pause to show the wallet selector modal
 
   // Verify Ledger option is visible and click it
   const ledgerOption = page.getByText("Ledger", { exact: true });
   await expect(ledgerOption).toBeVisible();
+  await page.waitForTimeout(1000); // Pause before clicking Ledger
   await ledgerOption.click();
+  await page.waitForTimeout(1500); // Pause to show Ledger iframe loading
 
   // Wait for the iframe to load
   const iframe = page.frameLocator('iframe[sandbox*="allow-scripts"]').first();
@@ -241,6 +246,7 @@ test("Ledger login flow", async ({ page, context }) => {
   // Assert the "Connect Ledger" button appears (mock returns empty from getDevices)
   const connectLedgerButton = iframe.getByRole("button", { name: /connect ledger/i });
   await expect(connectLedgerButton).toBeVisible({ timeout: 10000 });
+  await page.waitForTimeout(1500); // Pause to show the Connect Ledger button
 
   // Click the Connect Ledger button - the mock will handle requestDevice()
   // Wait a moment for the iframe to stabilize before clicking
@@ -248,6 +254,7 @@ test("Ledger login flow", async ({ page, context }) => {
   console.log('About to click Connect Ledger button...');
   await connectLedgerButton.click();
   console.log('Clicked Connect Ledger button');
+  await page.waitForTimeout(2000); // Pause to show the device connection happening
 
   // After clicking, the flow:
   // 1. Gets public key from Ledger (mock handles this)
@@ -257,30 +264,68 @@ test("Ledger login flow", async ({ page, context }) => {
   const accountIdInput = iframe.getByPlaceholder("example.near");
 
   // The iframe is hidden after Connect Ledger, then re-shown for account ID input
-  // The input may be hidden (iframe not visible) but we can still interact via evaluate
-  // Wait for the element to exist in the DOM (not necessarily visible)
+  // Wait for the input to exist in the DOM
   await accountIdInput.waitFor({ state: 'attached', timeout: 30000 });
   console.log('Account ID input is attached to DOM');
 
-  // Use evaluate to fill and click in a single JS execution
-  // This works even if the iframe is hidden
+  // The iframe is hidden by the parent app - force it to be visible for the video
   const iframeElement = page.locator('iframe[sandbox*="allow-scripts"]').first();
+  await iframeElement.evaluate((el) => {
+    (el as HTMLElement).style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; width: 400px !important; height: 300px !important; position: fixed !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 99999 !important; background: white !important; border: 2px solid #333 !important;';
+  });
+
+  // Get the frame handle for direct interaction
   const iframeHandle = await iframeElement.elementHandle();
   const frame = await iframeHandle?.contentFrame();
 
-  if (frame) {
-    await frame.evaluate(() => {
-      const input = document.getElementById('accountIdInput') as HTMLInputElement;
-      const confirmBtn = document.getElementById('confirmBtn') as HTMLButtonElement;
-      if (input && confirmBtn) {
-        input.value = 'test.near';
-        confirmBtn.click();
-      }
-    });
-    console.log('Filled and clicked confirm via evaluate');
-  } else {
+  if (!frame) {
     throw new Error('Could not get iframe frame');
   }
+
+  // Make the input and button visible inside the iframe
+  await frame.evaluate(() => {
+    const input = document.getElementById('accountIdInput') as HTMLInputElement;
+    const confirmBtn = document.getElementById('confirmBtn') as HTMLButtonElement;
+    const container = input?.parentElement;
+    // Make everything visible
+    if (container) {
+      container.style.cssText = 'display: block !important; visibility: visible !important;';
+    }
+    if (input) {
+      input.style.cssText = 'display: block !important; visibility: visible !important; width: 300px !important; padding: 10px !important; font-size: 16px !important;';
+    }
+    if (confirmBtn) {
+      confirmBtn.style.cssText = 'display: block !important; visibility: visible !important; margin-top: 10px !important; padding: 10px 20px !important;';
+    }
+  });
+
+  await page.waitForTimeout(1000); // Pause to show the empty input field
+
+  // Type the account ID using keyboard after focusing (for visual effect in video)
+  await frame.focus('#accountIdInput');
+  await page.keyboard.type('test.near', { delay: 100 }); // 100ms delay between keystrokes
+  console.log('Typed account ID: test.near');
+
+  // Also set the value programmatically to ensure it's correctly set for JS
+  await frame.evaluate(() => {
+    const input = document.getElementById('accountIdInput') as HTMLInputElement;
+    if (input) {
+      input.value = 'test.near';
+      // Dispatch input event to trigger any listeners
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+
+  await page.waitForTimeout(1500); // Pause to show the account ID entered
+
+  // Click the confirm button via evaluate (since it may still not be "clickable" by Playwright)
+  await frame.evaluate(() => {
+    const confirmBtn = document.getElementById('confirmBtn') as HTMLButtonElement;
+    if (confirmBtn) {
+      confirmBtn.click();
+    }
+  });
+  console.log('Clicked confirm button');
 
   // Verify the mock was used by checking logs
   const mockWasUsed = logs.some(log => log.includes('[Mock HID]') || log.includes('[Mock Ledger]'));
@@ -294,4 +339,7 @@ test("Ledger login flow", async ({ page, context }) => {
   // The URL should have changed from /app to /app/new or similar
   await expect(page).toHaveURL(/\/app\/(new|dashboard|treasury)/, { timeout: 10000 });
   console.log('Login successful - redirected to:', page.url());
+
+  // Pause at the end to clearly show the successful login result
+  await page.waitForTimeout(3000);
 });
