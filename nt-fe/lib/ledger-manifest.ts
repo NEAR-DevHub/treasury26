@@ -12,7 +12,7 @@ export const ledgerWalletManifest = {
   version: "1.0.0",
   executor: "/ledger-executor.js", // Relative URL served from public folder
   type: "sandbox" as const,
-  platform: {},
+  platform: [],
   features: {
     signMessage: true,
     signInWithoutAddKey: false,
