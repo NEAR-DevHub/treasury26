@@ -7,6 +7,8 @@ export interface LockupBalance {
     unvested: Big;
     staked: Big;
     storageLocked: Big;
+    unstakedBalance: Big;
+    canWithdraw: boolean;
 }
 
 export type Balance =
@@ -21,6 +23,8 @@ interface LockupBalanceRaw {
     storageLocked: string;
     unvested: string;
     staked: string;
+    unstakedBalance: string;
+    canWithdraw: boolean;
 }
 
 export type BalanceRaw =
@@ -43,6 +47,8 @@ export function transformBalance(raw: BalanceRaw): { balance: Balance; total: Bi
             storageLocked: Big(raw.Vested.storageLocked),
             unvested: Big(raw.Vested.unvested),
             staked: Big(raw.Vested.staked),
+            unstakedBalance: Big(raw.Vested.unstakedBalance),
+            canWithdraw: raw.Vested.canWithdraw,
         };
         return {
             balance: { type: "Vested", lockup },

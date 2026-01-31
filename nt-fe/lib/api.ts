@@ -514,6 +514,45 @@ export async function getLockupPool(accountId: string): Promise<string | null> {
   }
 }
 
+export interface VestingSchedule {
+  startTimestamp: number;
+  cliffTimestamp: number;
+  endTimestamp: number;
+}
+
+export interface LockupContractInfo {
+  ownerAccountId: string;
+  vestingSchedule: VestingSchedule | null;
+  lockupTimestamp: number | null;
+  lockupDuration: number;
+  releaseDuration: number | null;
+  stakingPoolAccountId: string | null;
+}
+
+/**
+ * Get lockup contract information including vesting schedule
+ * Fetches from backend which queries the lockup contract on the blockchain
+ * Returns detailed lockup info including vesting dates if available
+ */
+export async function getLockupContract(
+  accountId: string
+): Promise<LockupContractInfo | null> {
+  if (!accountId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/user/lockup`;
+
+    const response = await axios.get<LockupContractInfo | null>(url, {
+      params: { accountId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting lockup contract for ${accountId}`, error);
+    return null;
+  }
+}
+
 export interface ProfileData {
   name?: string;
   image?: string;

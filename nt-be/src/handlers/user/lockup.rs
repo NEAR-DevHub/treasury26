@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use axum::extract::{Query, State};
 use base64::Engine;
 use borsh::{BorshDeserialize, BorshSerialize};
 use near_account_id::AccountIdRef;
@@ -140,6 +141,19 @@ pub async fn fetch_lockup_contract(
 }
 
 pub const GENERIC_POOL_ID: &AccountIdRef = AccountIdRef::new_or_panic("allnodes.poolv1.near");
+
+/// Response from staking pool's get_account method
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct StakingPoolAccount {
+    pub account_id: String,
+    #[serde(rename = "unstaked_balance")]
+    pub unstaked_balance: NearToken,
+    #[serde(rename = "staked_balance")]
+    pub staked_balance: NearToken,
+    #[serde(rename = "can_withdraw")]
+    pub can_withdraw: bool,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LockupBalance {
     pub total: NearToken,
@@ -149,6 +163,10 @@ pub struct LockupBalance {
     pub total_allocated: NearToken,
     pub unvested: NearToken,
     pub staked: NearToken,
+    #[serde(rename = "unstakedBalance")]
+    pub unstaked_balance: NearToken,
+    #[serde(rename = "canWithdraw")]
+    pub can_withdraw: bool,
 }
 
 #[allow(clippy::type_complexity)]
@@ -162,7 +180,7 @@ pub fn blockchain_lockup_builder(
         MultiQueryHandler<(
             AccountViewHandler,
             CallResultHandler<NearToken>,
-            CallResultHandler<NearToken>,
+            CallResultHandler<StakingPoolAccount>,
         )>,
     >,
 > {
@@ -177,23 +195,31 @@ pub fn blockchain_lockup_builder(
         .add_query_builder(
             near_api::Contract(pool_account_id)
                 .call_function(
-                    "get_account_total_balance",
+                    "get_account",
                     serde_json::json!({ "account_id": lockup_account_id.to_string() }),
                 )
-                .read_only::<NearToken>(),
+                .read_only::<StakingPoolAccount>(),
         )
         .map(
-            move |(account_view, unvested_amount, staked_balance): (
+            move |(account_view, unvested_amount, staking_account): (
                 Data<Account>,
                 Data<NearToken>,
-                Data<NearToken>,
-            )| LockupBalance {
-                total: account_view.data.amount.saturating_add(staked_balance.data),
-                storage_locked: STORAGE_COST_PER_BYTE
-                    .saturating_mul(account_view.data.storage_usage as u128),
-                unvested: unvested_amount.data,
-                staked: staked_balance.data,
-                total_allocated: lockup_original_amount,
+                Data<StakingPoolAccount>,
+            )| {
+                let total_staked = staking_account
+                    .data
+                    .staked_balance
+                    .saturating_add(staking_account.data.unstaked_balance);
+                LockupBalance {
+                    total: account_view.data.amount.saturating_add(total_staked),
+                    storage_locked: STORAGE_COST_PER_BYTE
+                        .saturating_mul(account_view.data.storage_usage as u128),
+                    unvested: unvested_amount.data,
+                    staked: staking_account.data.staked_balance,
+                    unstaked_balance: staking_account.data.unstaked_balance,
+                    can_withdraw: staking_account.data.can_withdraw,
+                    total_allocated: lockup_original_amount,
+                }
             },
         )
 }
@@ -239,4 +265,69 @@ pub async fn fetch_lockup_balance_of_account(
             .map(Some)
         })
         .await
+}
+
+// API endpoint types and handler
+
+#[derive(Deserialize)]
+pub struct LockupQuery {
+    #[serde(rename = "accountId")]
+    pub account_id: AccountId,
+}
+
+#[derive(Serialize)]
+pub struct VestingScheduleResponse {
+    #[serde(rename = "startTimestamp")]
+    pub start_timestamp: u64,
+    #[serde(rename = "cliffTimestamp")]
+    pub cliff_timestamp: u64,
+    #[serde(rename = "endTimestamp")]
+    pub end_timestamp: u64,
+}
+
+#[derive(Serialize)]
+pub struct LockupContractResponse {
+    #[serde(rename = "ownerAccountId")]
+    pub owner_account_id: String,
+    #[serde(rename = "vestingSchedule")]
+    pub vesting_schedule: Option<VestingScheduleResponse>,
+    #[serde(rename = "lockupTimestamp")]
+    pub lockup_timestamp: Option<u64>,
+    #[serde(rename = "lockupDuration")]
+    pub lockup_duration: u64,
+    #[serde(rename = "releaseDuration")]
+    pub release_duration: Option<u64>,
+    #[serde(rename = "stakingPoolAccountId")]
+    pub staking_pool_account_id: Option<String>,
+}
+
+pub async fn get_user_lockup(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<LockupQuery>,
+) -> Result<axum::Json<Option<LockupContractResponse>>, (StatusCode, String)> {
+    let lockup_contract = fetch_lockup_contract(&state, &params.account_id).await?;
+
+    let response = lockup_contract.map(|contract| {
+        let vesting_schedule = match contract.vesting_information {
+            VestingInformation::VestingSchedule { schedule } => Some(VestingScheduleResponse {
+                start_timestamp: schedule.start_timestamp,
+                cliff_timestamp: schedule.cliff_timestamp,
+                end_timestamp: schedule.end_timestamp,
+            }),
+            _ => None,
+        };
+
+        LockupContractResponse {
+            owner_account_id: contract.owner_account_id,
+            vesting_schedule,
+            lockup_timestamp: contract.lockup_information.lockup_timestamp,
+            lockup_duration: contract.lockup_information.lockup_duration,
+            release_duration: contract.lockup_information.release_duration,
+            staking_pool_account_id: contract
+                .staking_information
+                .map(|s| s.staking_pool_account_id),
+        }
+    });
+
+    Ok(axum::Json(response))
 }

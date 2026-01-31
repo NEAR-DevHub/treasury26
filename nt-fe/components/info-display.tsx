@@ -21,17 +21,24 @@ interface InfoDisplayProps {
     expandableItems?: InfoItem[];
     className?: string;
     style?: "default" | "secondary";
+    size?: "default" | "sm"
+    hideSeparator?: boolean;
 }
 
-const styleVariants = cva("flex flex-col gap-2", {
+const styleVariants = cva("flex flex-col", {
     variants: {
         style: {
             default: "",
             secondary: "bg-general-tertiary text-secondary-foreground",
-        }
+        },
+        size: {
+            default: "gap-2",
+            sm: "gap-0",
+        },
     },
     defaultVariants: {
         style: "default",
+        size: "default",
     }
 })
 
@@ -40,23 +47,28 @@ const lineVariants = cva("border-b border-border p-1 pb-4", {
         style: {
             default: "",
             secondary: "border-foreground/10",
-        }
+        },
+        size: {
+            default: "",
+            sm: "p-0 py-1.5",
+        },
     },
     defaultVariants: {
         style: "default",
+        size: "default",
     }
 })
 
-export function InfoDisplay({ items, expandableItems, className, style = "default" }: InfoDisplayProps) {
+export function InfoDisplay({ items, expandableItems, className, style = "default", size = "default", hideSeparator = false }: InfoDisplayProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const hasExpandableItems = expandableItems && expandableItems.length > 0;
 
     const displayItems = isExpanded ? [...items, ...expandableItems!] : items;
 
     return (
-        <div className={styleVariants({ style, className })}>
+        <div className={styleVariants({ style, size, className })}>
             {displayItems.map((item, index) => (
-                <div key={index} className={cn("flex flex-col gap-2", lineVariants({ style, className: !hasExpandableItems && "last:border-b-0" }))}>
+                <div key={index} className={cn("flex flex-col gap-2", lineVariants({ style, size, className: !hasExpandableItems && "last:border-b-0" }), hideSeparator && "border-b-0")}>
                     <div className="flex justify-between items-center flex-wrap">
                         <div className="flex items-center gap-2">
                             <p className="text-sm text-muted-foreground">{item.label}</p>

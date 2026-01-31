@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { ArrowUpDown, ChevronDown, ChevronUp, ChevronRight, Lock } from "lucide-react";
+import { ArrowUpDown, ChevronDown, ChevronUp, ChevronRight, Lock, ArrowUpRight, Info } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useReactTable,
@@ -29,6 +29,9 @@ import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-assets";
 import Big from "big.js";
 import { NetworkDisplay, BalanceCell } from "./token-display";
 import { availableBalance, totalBalance, lockedBalance } from "@/lib/balance";
+import { VestingDetailsModal } from "./vesting-details-modal";
+import { Tooltip } from "./tooltip";
+import { useTreasury } from "@/stores/treasury-store";
 
 const columnHelper = createColumnHelper<AggregatedAsset>();
 
@@ -40,7 +43,10 @@ export function AssetsTable({ tokens }: Props) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "totalBalanceUSD", desc: true },
   ]);
+  const { selectedTreasury } = useTreasury();
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [selectedVestingNetwork, setSelectedVestingNetwork] = useState<TreasuryAsset | null>(null);
+  const [isVestingModalOpen, setIsVestingModalOpen] = useState(false);
 
   // Aggregate tokens by symbol using custom hook
   const aggregatedTokens = useAggregatedTokens(tokens);
@@ -133,9 +139,9 @@ export function AssetsTable({ tokens }: Props) {
               className="h-8 w-8 p-0"
             >
               {row.getIsExpanded() ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 text-primary" />
               ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4 text-primary" />
               )}
             </Button>
           );
@@ -245,7 +251,7 @@ export function AssetsTable({ tokens }: Props) {
                             <TableCell className="p-2 pl-16 text-xxs">Source</TableCell>
                             <TableCell className="p-2"></TableCell>
                             <TableCell className="p-2 text-right text-xxs">Available to Use</TableCell>
-                            <TableCell className="p-2 text-right text-xxs">Frozen</TableCell>
+                            <TableCell className="p-2 text-xxs flex items-center justify-end gap-1">Frozen <Tooltip content="Frozen tokens are locked and cannot be used. They might be locked due to being used for storage, staked, or not yet vested."><Info className="size-3 shrink-0" /></Tooltip></TableCell>
                             <TableCell className="p-2"></TableCell>
                           </TableRow>
                           {sourceNetworks.map((network, idx) => {
@@ -324,9 +330,15 @@ export function AssetsTable({ tokens }: Props) {
                           {vestingNetworks.map((network, idx) => {
                             const total = totalBalance(network.balance);
                             const available = availableBalance(network.balance);
-                            const locked = lockedBalance(network.balance);
                             return (
-                              <TableRow key={`${row.id}-vesting-${idx}`} className="bg-muted/30">
+                              <TableRow
+                                key={`${row.id}-vesting-${idx}`}
+                                className="bg-muted/30 group cursor-pointer"
+                                onClick={() => {
+                                  setSelectedVestingNetwork(network);
+                                  setIsVestingModalOpen(true);
+                                }}
+                              >
                                 <TableCell className="p-4 pl-16">
                                   <NetworkDisplay asset={network} />
                                 </TableCell>
@@ -345,11 +357,32 @@ export function AssetsTable({ tokens }: Props) {
                                   />
                                 </TableCell>
                                 <TableCell className="p-4">
-                                  <BalanceCell
-                                    balance={Big(formatBalance(locked, network.decimals))}
-                                    symbol={network.symbol}
-                                    balanceUSD={calculateBalanceUSD(locked, network.price, network.decimals)}
-                                  />
+                                  <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Tooltip content="Coming soon">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        disabled
+                                        tooltipContent="Coming soon"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <ArrowUpRight className="size-4 text-primary" />
+                                      </Button>
+                                    </Tooltip>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedVestingNetwork(network);
+                                        setIsVestingModalOpen(true);
+                                      }}
+                                    >
+                                      <ChevronRight className="size-4 text-primary" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                                 <TableCell className="p-4"></TableCell>
                               </TableRow>
@@ -365,6 +398,15 @@ export function AssetsTable({ tokens }: Props) {
           </Fragment>
         ))}
       </TableBody>
+      <VestingDetailsModal
+        isOpen={isVestingModalOpen}
+        onClose={() => {
+          setIsVestingModalOpen(false);
+          setSelectedVestingNetwork(null);
+        }}
+        asset={selectedVestingNetwork ?? null}
+        treasuryId={selectedTreasury ?? null}
+      />
     </Table>
   );
 }

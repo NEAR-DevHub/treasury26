@@ -41,7 +41,7 @@ export function Button({ variant, className: classNameOverride, size, tooltipCon
     const button = <ShadcnButton variant={variant} className={cn(className, sizeClassName, classNameOverride)} size={size} {...props} />;
 
     if (tooltipContent) {
-        return <Tooltip content={tooltipContent} triggerProps={{ asChild: !disabled }} side={side}>{button}</Tooltip>;
+        return <Tooltip content={tooltipContent} triggerProps={{ asChild: !disabled, className: classNameOverride }} side={side}>{button}</Tooltip>;
     }
 
     return button;
