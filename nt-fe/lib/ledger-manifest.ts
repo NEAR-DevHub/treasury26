@@ -15,6 +15,7 @@ export const ledgerWalletManifest = {
   platform: [],
   features: {
     signMessage: true,
+    signTransaction: true,
     signInWithoutAddKey: false,
     signAndSendTransaction: true,
     signAndSendTransactions: true,
