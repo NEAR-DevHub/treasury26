@@ -14,14 +14,14 @@ import { useRouter, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
 import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
 import { useOpenTreasury } from "@/hooks/use-open-treasury";
-import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
+import { useAssets } from "@/hooks/use-assets";
 import { formatCurrency, cn } from "@/lib/utils";
 import { Button } from "./button";
 import { Tooltip } from "./tooltip";
 import { Skeleton } from "./ui/skeleton";
 
 const TreasuryBalance = ({ daoId }: { daoId: string }) => {
-  const { data, isLoading } = useTreasuryAssets(daoId);
+  const { data, isLoading } = useAssets(daoId);
   if (isLoading) return <Skeleton className="size-4" />;
   if (data?.totalBalanceUSD === undefined) return null;
   return (
@@ -61,7 +61,7 @@ export function TreasurySelector({ reducedMode = false, isOpen, onOpenChange }: 
     treasuries,
   } = useIsGuestTreasury();
 
-  const { data: assetsData } = useTreasuryAssets(treasuryId);
+  const { data: assetsData } = useAssets(treasuryId);
   const totalBalanceUSD = assetsData?.totalBalanceUSD;
 
   // Auto-register treasury when it's selected/viewed

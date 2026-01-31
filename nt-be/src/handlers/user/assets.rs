@@ -1,5 +1,8 @@
 use crate::{
-    handlers::user::{balance::TokenBalanceResponse, lockup::fetch_lockup_balance_of_account},
+    handlers::user::{
+        balance::TokenBalanceResponse,
+        lockup::{LockupBalance, fetch_lockup_balance_of_account},
+    },
     utils::cache::CacheTier,
 };
 use axum::{
@@ -19,6 +22,13 @@ use crate::{
     },
     handlers::token::{TokenMetadata as TokenMetadataResponse, fetch_tokens_metadata},
 };
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum Balance {
+    Standard { total: String, locked: String },
+    Staked(),
+    Vested(LockupBalance),
+}
 
 #[derive(Deserialize)]
 pub struct UserAssetsQuery {
@@ -65,13 +75,7 @@ pub struct SimplifiedToken {
     pub chain_name: String,
     pub symbol: String,
 
-    pub balance: String,
-    #[serde(rename = "lockedBalance")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub locked_balance: Option<String>,
-    #[serde(rename = "stakedBalance")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub staked_balance: Option<String>,
+    pub balance: Balance,
     pub decimals: u8,
     pub price: String,
     pub name: String,
@@ -258,13 +262,14 @@ fn build_intents_tokens(
                     id: metadata.token_id.clone(),
                     contract_id: Some(contract_id),
                     decimals: metadata.decimals,
-                    balance: balance_raw.0.to_string(),
+                    balance: Balance::Standard {
+                        total: balance_raw.0.to_string(),
+                        locked: "0".to_string(),
+                    },
                     price: metadata
                         .price
                         .map(|p| p.to_string())
                         .unwrap_or_else(|| "0".to_string()),
-                    locked_balance: None,
-                    staked_balance: None,
                     symbol: metadata.symbol.clone(),
                     name: metadata.name.clone(),
                     icon: metadata.icon.clone(),
@@ -420,14 +425,15 @@ pub async fn get_user_assets(
                             id: token_id.clone(),
                             contract_id: Some(token_id),
                             decimals: token_meta.decimals,
-                            balance: balance.0.to_string(),
-                            locked_balance: None,
+                            balance: Balance::Standard {
+                                total: balance.0.to_string(),
+                                locked: "0".to_string(),
+                            },
                             price,
                             symbol: token_meta.symbol.clone(),
                             name: token_meta.name.clone(),
                             icon: token_meta.icon.clone(),
                             network: "near".to_string(),
-                            staked_balance: None,
                             residency: TokenResidency::Ft,
                             chain_icons: token_meta.chain_icons.clone(),
                             chain_name: token_meta
@@ -446,18 +452,17 @@ pub async fn get_user_assets(
 
             // Add lockup balance if exists
             if let Some(lockup) = lockup_balance {
+                let total = lockup.total.as_yoctonear().into();
                 all_simplified_tokens.push((
                     SimplifiedToken {
                         id: "near".to_string(),
                         contract_id: None,
                         decimals: near_token_meta.decimals,
-                        balance: lockup.available.as_yoctonear().to_string(),
-                        locked_balance: Some(lockup.not_vested.as_yoctonear().to_string()),
+                        balance: Balance::Vested(lockup),
                         price: near_token_meta.price.unwrap_or(0.0).to_string(),
                         symbol: near_token_meta.symbol.clone(),
                         name: near_token_meta.name.clone(),
                         icon: near_token_meta.icon.clone(),
-                        staked_balance: Some(lockup.staked.as_yoctonear().to_string()),
                         network: near_token_meta.network.clone().unwrap_or_default(),
                         residency: TokenResidency::Lockup,
                         chain_name: near_token_meta
@@ -466,23 +471,30 @@ pub async fn get_user_assets(
                             .unwrap_or(near_token_meta.name.clone()),
                         chain_icons: near_token_meta.chain_icons.clone(),
                     },
-                    U128::from(lockup.available.as_yoctonear()),
+                    total,
                 ));
             }
+            let locked_near_balance = near_balance.locked_balance.clone().unwrap_or(U128::from(0));
             all_simplified_tokens.push((
                 SimplifiedToken {
                     id: "near".to_string(),
                     contract_id: None,
                     decimals: near_token_meta.decimals,
-                    balance: near_balance.balance.0.to_string(),
-                    locked_balance: near_balance.locked_balance.map(|b| b.0.to_string()),
+                    balance: Balance::Standard {
+                        total: near_balance
+                            .balance
+                            .0
+                            .saturating_add(locked_near_balance.0)
+                            .to_string(),
+
+                        locked: locked_near_balance.0.to_string(),
+                    },
                     price: near_token_meta.price.unwrap_or(0.0).to_string(),
                     symbol: near_token_meta.symbol.clone(),
                     name: near_token_meta.name.clone(),
                     icon: near_token_meta.icon.clone(),
                     network: near_token_meta.network.clone().unwrap_or_default(),
                     residency: TokenResidency::Near,
-                    staked_balance: None,
                     chain_name: near_token_meta
                         .chain_name
                         .clone()

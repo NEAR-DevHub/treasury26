@@ -2,7 +2,15 @@ use std::sync::Arc;
 
 use base64::Engine;
 use borsh::{BorshDeserialize, BorshSerialize};
-use near_api::{AccountId, NearToken};
+use near_account_id::AccountIdRef;
+use near_api::{
+    Account as AccountAPI, AccountId, Data, NearToken, Reference,
+    advanced::{
+        AccountViewHandler, CallResultHandler, MultiQueryHandler, MultiRequestBuilder,
+        PostprocessHandler,
+    },
+    types::{Account, tokens::STORAGE_COST_PER_BYTE},
+};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
@@ -131,17 +139,69 @@ pub async fn fetch_lockup_contract(
     Ok(lockup_contract)
 }
 
+pub const GENERIC_POOL_ID: &AccountIdRef = AccountIdRef::new_or_panic("allnodes.poolv1.near");
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LockupBalanceOfAccountResponse {
-    pub available: NearToken,
+pub struct LockupBalance {
+    pub total: NearToken,
+    #[serde(rename = "storageLocked")]
+    pub storage_locked: NearToken,
+    #[serde(rename = "totalAllocated")]
+    pub total_allocated: NearToken,
+    pub unvested: NearToken,
     pub staked: NearToken,
-    pub not_vested: NearToken,
+}
+
+#[allow(clippy::type_complexity)]
+pub fn blockchain_lockup_builder(
+    lockup_original_amount: NearToken,
+    lockup_account_id: AccountId,
+    pool_account_id: AccountId,
+) -> MultiRequestBuilder<
+    PostprocessHandler<
+        LockupBalance,
+        MultiQueryHandler<(
+            AccountViewHandler,
+            CallResultHandler<NearToken>,
+            CallResultHandler<NearToken>,
+        )>,
+    >,
+> {
+    let postprocess = MultiQueryHandler::default();
+    MultiRequestBuilder::new(postprocess, Reference::Final)
+        .add_query_builder(AccountAPI(lockup_account_id.clone()).view())
+        .add_query_builder(
+            near_api::Contract(lockup_account_id.clone())
+                .call_function("get_locked_amount", ())
+                .read_only::<NearToken>(),
+        )
+        .add_query_builder(
+            near_api::Contract(pool_account_id)
+                .call_function(
+                    "get_account_total_balance",
+                    serde_json::json!({ "account_id": lockup_account_id.to_string() }),
+                )
+                .read_only::<NearToken>(),
+        )
+        .map(
+            move |(account_view, unvested_amount, staked_balance): (
+                Data<Account>,
+                Data<NearToken>,
+                Data<NearToken>,
+            )| LockupBalance {
+                total: account_view.data.amount.saturating_add(staked_balance.data),
+                storage_locked: STORAGE_COST_PER_BYTE
+                    .saturating_mul(account_view.data.storage_usage as u128),
+                unvested: unvested_amount.data,
+                staked: staked_balance.data,
+                total_allocated: lockup_original_amount,
+            },
+        )
 }
 
 pub async fn fetch_lockup_balance_of_account(
     state: &Arc<AppState>,
     account_id: &AccountId,
-) -> Result<Option<LockupBalanceOfAccountResponse>, (StatusCode, String)> {
+) -> Result<Option<LockupBalance>, (StatusCode, String)> {
     let lockup_account_id = derive_lockup_account_id(account_id);
     let network = state.network.clone();
 
@@ -149,101 +209,34 @@ pub async fn fetch_lockup_balance_of_account(
     let Some(lockup_contract) = fetch_lockup_contract(state, account_id).await? else {
         return Ok(None);
     };
-
+    // If pool is not set, we will fetch from predefined and it will return 0
     let staking_pool_id = lockup_contract
         .staking_information
         .as_ref()
-        .map(|s| s.staking_pool_account_id.clone());
+        .and_then(|s| s.staking_pool_account_id.parse::<AccountId>().ok())
+        .unwrap_or(GENERIC_POOL_ID.into());
 
-    // Fetch locked amount from lockup contract
-    let locked_future = {
-        let lockup_account_id = lockup_account_id.clone();
-        let network = network.clone();
-        async move {
-            near_api::Contract(lockup_account_id)
-                .call_function("get_locked_amount", ())
-                .read_only::<NearToken>()
-                .fetch_from(&network)
-                .await
-        }
-    };
+    let cache_key = CacheKey::new("lockup-balance")
+        .with(account_id.clone())
+        .build();
 
-    let balance_future = {
-        let lockup_account_id = lockup_account_id.clone();
-        let network = network.clone();
-        async move {
-            near_api::Contract(lockup_account_id)
-                .call_function("get_liquid_owners_balance", ())
-                .read_only::<NearToken>()
-                .fetch_from(&network)
-                .await
-        }
-    };
-
-    // Fetch actual staked balance from staking pool (if exists)
-    let pool_balance_future = {
-        let staking_pool_id = staking_pool_id.clone();
-        let lockup_account_id = lockup_account_id.clone();
-        let network = network.clone();
-        async move {
-            let Some(pool_id) = staking_pool_id else {
-                return Ok::<_, (StatusCode, String)>(NearToken::from_yoctonear(0));
-            };
-            let pool_account_id: AccountId = pool_id.parse().map_err(|e| {
+    state
+        .cache
+        .cached(CacheTier::ShortTerm, cache_key, async move {
+            blockchain_lockup_builder(
+                lockup_contract.lockup_information.lockup_amount,
+                lockup_account_id.clone(),
+                staking_pool_id.clone(),
+            )
+            .fetch_from(&network)
+            .await
+            .map_err(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Invalid staking pool ID: {}", e),
+                    format!("fetch_lockup_balance_of_account: {}", e),
                 )
-            })?;
-
-            // Call get_account_total_balance on the staking pool
-            let result = near_api::Contract(pool_account_id)
-                .call_function(
-                    "get_account_total_balance",
-                    serde_json::json!({ "account_id": lockup_account_id.to_string() }),
-                )
-                .read_only::<NearToken>()
-                .fetch_from(&network)
-                .await
-                .map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("get_account_total_balance: {}", e),
-                    )
-                })?;
-
-            Ok(result.data)
-        }
-    };
-
-    let (locked_result, pool_balance_result, balance_result) =
-        tokio::join!(locked_future, pool_balance_future, balance_future);
-
-    let locked = locked_result
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("get_locked_amount: {}", e),
-            )
-        })?
-        .data;
-
-    let balance = balance_result
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("get_balance: {}", e),
-            )
-        })?
-        .data;
-
-    let pool_balance = pool_balance_result?;
-    println!("pool_balance: {}", pool_balance);
-    println!("locked: {}", locked);
-    println!("balance: {}", balance);
-    Ok(Some(LockupBalanceOfAccountResponse {
-        available: balance,
-        not_vested: locked,
-        staked: pool_balance,
-    }))
+            })
+            .map(Some)
+        })
+        .await
 }

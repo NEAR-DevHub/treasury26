@@ -26,7 +26,7 @@ function useDataState<T extends HTMLElement = HTMLElement>(
 
   const subscribe = (callback: () => void) => {
     const el = localRef.current;
-    if (!el) return () => {};
+    if (!el) return () => { };
     const observer = new MutationObserver((records) => {
       for (const record of records) {
         if (record.attributeName === `data-${key}`) {

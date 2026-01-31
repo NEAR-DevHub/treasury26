@@ -1,14 +1,14 @@
 "use client";
 
 import { useTreasury } from "@/stores/treasury-store";
-import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
+import { useAssets } from "@/hooks/use-assets";
 import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
 import { ChevronDown, ChevronLeft } from "lucide-react";
 import { Button } from "./button";
 import { cn, formatBalance } from "@/lib/utils";
 import { TreasuryAsset, ChainIcons } from "@/lib/api";
-import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-aggregated-tokens";
+import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-assets";
 import Big from "big.js";
 import { NetworkDisplay } from "./token-display";
 import { TokenDisplay } from "./token-display-with-network";
@@ -48,7 +48,7 @@ interface TokenSelectProps {
 
 export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData, classNames }: TokenSelectProps) {
     const { selectedTreasury } = useTreasury();
-    const { data: { tokens = [] } = {} } = useTreasuryAssets(selectedTreasury, { onlyPositiveBalance: true });
+    const { data: { tokens = [] } = {} } = useAssets(selectedTreasury, { onlyPositiveBalance: true });
     const aggregatedTokens = useAggregatedTokens(tokens);
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -133,7 +133,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                 />
                 <div className="flex flex-col items-start">
                     <span className="font-semibold text-sm leading-none">{lockedTokenData.symbol}</span>
-                    <span className="text-[10px] font-normal text-muted-foreground uppercase">{lockedTokenData.network}</span>
+                    <span className="text-xxs font-normal text-muted-foreground uppercase">{lockedTokenData.network}</span>
                 </div>
             </div>
         );
@@ -152,7 +152,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
                             />
                             <div className="flex flex-col items-start">
                                 <span className="font-semibold text-sm leading-none">{displayTokenData.symbol}</span>
-                                <span className="text-[10px] font-normal text-muted-foreground uppercase">{displayTokenData.network}</span>
+                                <span className="text-xxs font-normal text-muted-foreground uppercase">{displayTokenData.network}</span>
                             </div>
                         </>
                     ) : (

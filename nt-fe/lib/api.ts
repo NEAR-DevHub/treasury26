@@ -1,6 +1,7 @@
 import { Policy } from "@/types/policy";
 import axios from "axios";
 import Big from "big.js";
+import { Balance, BalanceRaw, LockupBalance, transformBalance } from "./balance";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -85,16 +86,12 @@ export interface TreasuryAsset {
   chainName: string;
   chainIcons?: ChainIcons;
   symbol: string;
-  balance: Big;
-  lockedBalance?: Big;
-  stakedBalance?: Big;
+  balance: Balance;
   decimals: number;
   price: number;
   name: string;
   icon: string;
   balanceUSD: number;
-  stakedBalanceUSD?: number;
-  lockedBalanceUSD?: number;
   weight: number;
 }
 
@@ -111,9 +108,7 @@ interface TreasuryAssetRaw {
   chainName: string;
   chainIcons?: ChainIcons;
   symbol: string;
-  balance: string;
-  stakedBalance?: string;
-  lockedBalance?: string;
+  balance: BalanceRaw;
   decimals: number;
   price: string;
   name: string;
@@ -137,15 +132,14 @@ export async function getTreasuryAssets(
       params: { accountId: treasuryId },
     });
 
+
+
     // Transform raw tokens with USD values
     const tokensWithUSD = response.data.map((token) => {
-      const balance = Big(token.balance).div(Big(10).pow(token.decimals));
-      const stakedBalance = token.stakedBalance ? Big(token.stakedBalance).div(Big(10).pow(token.decimals)) : undefined;
-      const lockedBalance = token.lockedBalance ? Big(token.lockedBalance).div(Big(10).pow(token.decimals)) : undefined;
+      const { balance, total } = transformBalance(token.balance);
       const price = parseFloat(token.price);
-      const balanceUSD = balance.mul(price).toNumber();
-      const stakedBalanceUSD = stakedBalance ? stakedBalance.mul(price).toNumber() : 0;
-      const lockedBalanceUSD = lockedBalance ? lockedBalance.mul(price).toNumber() : 0;
+      const totalDecimalAdjusted = total.div(Big(10).pow(token.decimals));
+      const balanceUSD = totalDecimalAdjusted.mul(price).toNumber();
 
       return {
         id: token.id,
@@ -154,14 +148,10 @@ export async function getTreasuryAssets(
         network: token.network,
         symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
         decimals: token.decimals,
-        balance: Big(token.balance),
-        lockedBalance: token.lockedBalance ? Big(token.lockedBalance) : undefined,
-        stakedBalance: token.stakedBalance ? Big(token.stakedBalance) : undefined,
+        balance,
         chainName: token.chainName,
         chainIcons: token.chainIcons,
         balanceUSD,
-        stakedBalanceUSD,
-        lockedBalanceUSD,
         price,
         name: token.name,
         icon: token.icon,

@@ -133,7 +133,7 @@ function Step2({ handleBack }: StepProps) {
                 <img src={token.icon} alt={token.symbol} className="size-5 rounded-full" />
                 <div className="flex flex-col gap-[3px] items-end">
                   <p className="text-xs font-semibold">{amount} {token.symbol}</p>
-                  <p className="text-[10px] text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
+                  <p className="text-xxs text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                   })}</p>

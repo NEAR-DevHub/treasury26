@@ -8,7 +8,7 @@ export const NetworkDisplay = ({ asset }: { asset: TreasuryAsset }) => {
     let type;
     switch (asset.residency) {
         case "Lockup":
-            type = "Lockup";
+            type = "Vested Token";
             break;
         case "Staked":
             type = "Staked";
