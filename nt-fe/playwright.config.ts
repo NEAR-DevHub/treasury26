@@ -16,6 +16,7 @@ export default defineConfig({
   
   use: {
     baseURL: "http://localhost:3000",
+    video: process.env.CI ? "retry-with-video": "on",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },

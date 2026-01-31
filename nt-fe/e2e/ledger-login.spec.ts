@@ -90,8 +90,9 @@ const mockWebHID = `
           responseData = new Uint8Array([0x6E, 0x00]); // SW_CLA_NOT_SUPPORTED
         }
         
-        // Send response after small delay (simulating device processing)
-        setTimeout(() => this._sendResponse(responseData), 10);
+        // Send response after realistic delay (real Ledger devices take 500ms-2s)
+        // Using 500ms to avoid race condition with wallet selector's iframe hide/show transitions
+        setTimeout(() => this._sendResponse(responseData), 500);
       }
     }
 
@@ -161,6 +162,8 @@ const mockWebHID = `
 `;
 
 test("Ledger login flow", async ({ page, context }) => {
+  // Increase timeout for this test due to pauses for video recording
+  test.setTimeout(120000);
   // Capture console logs from the iframe
   const logs: string[] = [];
   page.on('console', msg => {
@@ -200,7 +203,8 @@ test("Ledger login flow", async ({ page, context }) => {
 
   // Intercept RPC calls to FastNEAR and redirect to local sandbox
   // The ledger-executor.js calls mainnet RPC for access key verification
-  await context.route('**/rpc.*.fastnear.com/**', async (route) => {
+  // The sandbox already has test.near with our mock public key
+  await context.route(/rpc\.(mainnet|testnet)\.fastnear\.com/, async (route) => {
     const request = route.request();
     const postData = request.postData();
 
@@ -256,39 +260,14 @@ test("Ledger login flow", async ({ page, context }) => {
   console.log('Clicked Connect Ledger button');
   await page.waitForTimeout(2000); // Pause to show the device connection happening
 
-  // After clicking, the flow:
+  // After clicking Connect Ledger:
   // 1. Gets public key from Ledger (mock handles this)
-  // 2. Hides iframe briefly
-  // 3. Shows iframe again with account ID input prompt
-  // Wait for the account ID input to appear and be visible
+  // 2. Shows account ID input prompt
+  // Note: The 500ms mock delay prevents race condition with iframe hide/show transitions
+
+  // Wait for account ID input to appear
   const accountIdInput = iframe.getByPlaceholder("example.near");
-
-  // Wait for the input to exist in DOM
-  await accountIdInput.waitFor({ state: 'attached', timeout: 30000 });
-  console.log('Account ID input is attached to DOM');
-
-  // The wallet selector hides/shows the iframe. In Playwright, we need to ensure
-  // the iframe is visible by making parent elements visible (minimal CSS fix)
-  await page.evaluate(() => {
-    const iframe = document.querySelector('iframe[sandbox*="allow-scripts"]') as HTMLIFrameElement;
-    if (iframe) {
-      // Make parent chain visible
-      let parent = iframe.parentElement;
-      while (parent && parent !== document.body) {
-        (parent as HTMLElement).style.display = 'block';
-        (parent as HTMLElement).style.visibility = 'visible';
-        (parent as HTMLElement).style.opacity = '1';
-        parent = parent.parentElement;
-      }
-      // Ensure iframe itself is visible
-      iframe.style.display = 'block';
-      iframe.style.visibility = 'visible';
-      iframe.style.opacity = '1';
-    }
-  });
-
-  // Wait for input to be visible now
-  await expect(accountIdInput).toBeVisible({ timeout: 5000 });
+  await expect(accountIdInput).toBeVisible({ timeout: 10000 });
   console.log('Account ID input is visible');
   await page.waitForTimeout(1000); // Pause to show the dialog
 
@@ -308,7 +287,7 @@ test("Ledger login flow", async ({ page, context }) => {
   console.log('Mock was used:', mockWasUsed);
   console.log('Relevant logs:', logs.filter(l => l.includes('[Mock')));
 
-  // Wait for the login to complete and redirect
+  // Wait for login to complete
   await page.waitForTimeout(2000);
 
   // Verify login succeeded - should be on the Create Treasury page or similar
