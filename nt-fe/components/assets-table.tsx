@@ -330,6 +330,7 @@ export function AssetsTable({ tokens }: Props) {
                           {vestingNetworks.map((network, idx) => {
                             const total = totalBalance(network.balance);
                             const available = availableBalance(network.balance);
+                            const locked = lockedBalance(network.balance);
                             return (
                               <TableRow
                                 key={`${row.id}-vesting-${idx}`}
@@ -357,31 +358,40 @@ export function AssetsTable({ tokens }: Props) {
                                   />
                                 </TableCell>
                                 <TableCell className="p-4">
-                                  <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Tooltip content="Coming soon">
+                                  <div className="relative">
+                                    <div className="group-hover:opacity-0 transition-opacity">
+                                      <BalanceCell
+                                        balance={Big(formatBalance(locked, network.decimals))}
+                                        symbol={network.symbol}
+                                        balanceUSD={calculateBalanceUSD(locked, network.price, network.decimals)}
+                                      />
+                                    </div>
+                                    <div className="absolute inset-0 flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Tooltip content="Coming soon">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          disabled
+                                          tooltipContent="Coming soon"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <ArrowUpRight className="size-4 text-primary" />
+                                        </Button>
+                                      </Tooltip>
                                       <Button
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8"
-                                        disabled
-                                        tooltipContent="Coming soon"
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedVestingNetwork(network);
+                                          setIsVestingModalOpen(true);
+                                        }}
                                       >
-                                        <ArrowUpRight className="size-4 text-primary" />
+                                        <ChevronRight className="size-4 text-primary" />
                                       </Button>
-                                    </Tooltip>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedVestingNetwork(network);
-                                        setIsVestingModalOpen(true);
-                                      }}
-                                    >
-                                      <ChevronRight className="size-4 text-primary" />
-                                    </Button>
+                                    </div>
                                   </div>
                                 </TableCell>
                                 <TableCell className="p-4"></TableCell>

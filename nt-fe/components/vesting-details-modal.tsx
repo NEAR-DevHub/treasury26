@@ -11,7 +11,7 @@ import { formatBalance } from "@/lib/utils";
 import Big from "big.js";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 
 interface VestingDetailsModalProps {
     isOpen: boolean;
@@ -81,6 +81,7 @@ export function VestingDetailsModal({
         },
         {
             label: "Reserved For Storage",
+            info: "A small amount of tokens required to keep the vesting active and cover storage costs.",
             value: `${formatTokenBalance(lockup.storageLocked)} ${asset.symbol}`,
         },
         {
@@ -188,11 +189,16 @@ export function VestingDetailsModal({
                             {hasStake ? (
                                 <InfoDisplay items={earningOverviewItems} hideSeparator size="sm" />
                             ) : (
-                                <div className="bg-muted/50 rounded-lg p-6 text-center border border-dashed">
-                                    <p className="text-sm font-medium">Earn is almost ready!</p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        We're finalizing this feature so you can start earning tokens.
-                                    </p>
+                                <div className="py-1.5 text-center flex flex-col items-center gap-2">
+                                    <div className="bg-muted rounded-full p-2 text-center">
+                                        <Clock className="size-5 text-muted-foreground" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">Earn is almost ready!</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            We're finalizing this feature<br />so you can start earning tokens shortly.
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </CollapsibleContent>
