@@ -29,8 +29,8 @@ export default function AppPage() {
     >
       <div className="flex flex-col lg:flex-row gap-5">
         <div className="flex flex-col gap-5 lg:w-3/5 w-full">
-          <BalanceWithGraph totalBalanceUSD={totalBalanceUSD} tokens={tokens} onDepositClick={() => setIsDepositModalOpen(true)} isLoading={isAssetsLoading} />
           <OnboardingProgress onDepositClick={() => setIsDepositModalOpen(true)} />
+          <BalanceWithGraph totalBalanceUSD={totalBalanceUSD} tokens={tokens} onDepositClick={() => setIsDepositModalOpen(true)} isLoading={isAssetsLoading} />
           <Assets tokens={tokens} isLoading={isAssetsLoading} />
           <RecentActivity />
         </div>

@@ -186,10 +186,12 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     usdValue: usdValue,
                 }));
 
-            data.push({
-                name: "Now",
-                usdValue: Number(totalBalanceUSD),
-            });
+            if (data.length > 0) {
+                data.push({
+                    name: "Now",
+                    usdValue: Number(totalBalanceUSD),
+                });
+            }
 
             // Check if any snapshot has USD values
             const hasAnyUSD = Array.from(timeMap.values()).some(v => v.hasUSD);
@@ -230,11 +232,13 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     usdValue: hasUSD ? usdValue : undefined,
                     balanceValue: balanceValue,
                 }));
-            data.push({
-                name: "Now",
-                usdValue: Number(selectedTokenGroup?.totalBalanceUSD),
-                balanceValue: selectedTokenGroup?.totalBalance.toNumber() || 0,
-            });
+            if (data.length > 0) {
+                data.push({
+                    name: "Now",
+                    usdValue: Number(selectedTokenGroup?.totalBalanceUSD),
+                    balanceValue: selectedTokenGroup?.totalBalance.toNumber() || 0,
+                });
+            }
             return { data, showUSD: hasAnyUSD };
         }
     }, [balanceChartData, selectedToken, selectedTokenGroup, selectedPeriod]);
