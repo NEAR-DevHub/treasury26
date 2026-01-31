@@ -268,10 +268,22 @@ test("Ledger login flow", async ({ page, context }) => {
   await accountIdInput.waitFor({ state: 'attached', timeout: 30000 });
   console.log('Account ID input is attached to DOM');
 
-  // The iframe is hidden by the parent app - force it to be visible for the video
+  // The iframe is hidden by the parent app - we need to make it AND its parents visible
   const iframeElement = page.locator('iframe[sandbox*="allow-scripts"]').first();
-  await iframeElement.evaluate((el) => {
-    (el as HTMLElement).style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; width: 400px !important; height: 300px !important; position: fixed !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -50%) !important; z-index: 99999 !important; background: white !important; border: 2px solid #333 !important;';
+
+  // Make all parent elements visible and position the iframe prominently in the CENTER
+  await page.evaluate(() => {
+    // Find the iframe and make all its ancestors visible
+    const iframe = document.querySelector('iframe[sandbox*="allow-scripts"]') as HTMLIFrameElement;
+    if (iframe) {
+      let parent = iframe.parentElement;
+      while (parent && parent !== document.body) {
+        (parent as HTMLElement).style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; overflow: visible !important; position: static !important;';
+        parent = parent.parentElement;
+      }
+      // Style the iframe itself - CENTERED on screen with enough height for content
+      iframe.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; width: 500px !important; height: 320px !important; position: fixed !important; top: 150px !important; left: calc(50% - 250px) !important; z-index: 999999 !important; background: #1a1a1a !important; border: 4px solid #22c55e !important; border-radius: 16px !important; box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;';
+    }
   });
 
   // Get the frame handle for direct interaction
@@ -282,43 +294,73 @@ test("Ledger login flow", async ({ page, context }) => {
     throw new Error('Could not get iframe frame');
   }
 
-  // Make the input and button visible inside the iframe
+  // Make everything inside the iframe visible with clear styling
   await frame.evaluate(() => {
+    // Make document body visible with centered content
+    document.body.style.cssText = 'display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; visibility: visible !important; opacity: 1 !important; background: white !important; padding: 20px !important; min-height: 100% !important;';
+
+    // Hide everything first, then show only what we need
+    document.querySelectorAll('*').forEach((el) => {
+      (el as HTMLElement).style.visibility = 'visible';
+    });
+
     const input = document.getElementById('accountIdInput') as HTMLInputElement;
     const confirmBtn = document.getElementById('confirmBtn') as HTMLButtonElement;
-    const container = input?.parentElement;
-    // Make everything visible
-    if (container) {
-      container.style.cssText = 'display: block !important; visibility: visible !important;';
+
+    // Add a title
+    let title = document.getElementById('typingTitle');
+    if (!title) {
+      title = document.createElement('div');
+      title.id = 'typingTitle';
+      title.textContent = '🔐 Enter Account ID';
+      title.style.cssText = 'font-size: 22px; font-weight: bold; text-align: center; margin-bottom: 15px; color: #333; font-family: sans-serif;';
+      document.body.insertBefore(title, document.body.firstChild);
     }
+
+    // Style the input prominently with HIGH CONTRAST for video visibility
     if (input) {
-      input.style.cssText = 'display: block !important; visibility: visible !important; width: 300px !important; padding: 10px !important; font-size: 16px !important;';
+      input.style.cssText = 'display: block !important; visibility: visible !important; width: 90% !important; padding: 16px !important; font-size: 28px !important; font-family: monospace !important; font-weight: bold !important; border: 4px solid #22c55e !important; border-radius: 8px !important; margin: 20px auto !important; background: #ffffff !important; color: #000000 !important; text-align: center !important; letter-spacing: 2px !important;';
+      input.placeholder = '';
+      input.value = '';
     }
+
+    // Style the button
     if (confirmBtn) {
-      confirmBtn.style.cssText = 'display: block !important; visibility: visible !important; margin-top: 10px !important; padding: 10px 20px !important;';
+      confirmBtn.style.cssText = 'display: block !important; visibility: visible !important; padding: 12px 40px !important; font-size: 16px !important; background: #22c55e !important; color: white !important; border: none !important; border-radius: 8px !important; cursor: pointer !important; margin: 15px auto !important; font-weight: bold !important;';
+      confirmBtn.textContent = 'Confirm';
     }
   });
 
-  await page.waitForTimeout(1000); // Pause to show the empty input field
+  await page.waitForTimeout(2000); // Pause to show the empty input field clearly
 
-  // Type the account ID using keyboard after focusing (for visual effect in video)
-  await frame.focus('#accountIdInput');
-  await page.keyboard.type('test.near', { delay: 100 }); // 100ms delay between keystrokes
+  // Type each character with visible delay
+  const accountId = 'test.near';
+  for (let i = 0; i < accountId.length; i++) {
+    const currentValue = accountId.substring(0, i + 1);
+    await frame.evaluate((val) => {
+      const input = document.getElementById('accountIdInput') as HTMLInputElement;
+      if (input) {
+        input.value = val;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }, currentValue);
+    await page.waitForTimeout(200); // Slower delay for visibility
+  }
   console.log('Typed account ID: test.near');
 
-  // Also set the value programmatically to ensure it's correctly set for JS
+  await page.waitForTimeout(2000); // Longer pause to show the completed text
+
+  // Visual feedback before clicking
   await frame.evaluate(() => {
-    const input = document.getElementById('accountIdInput') as HTMLInputElement;
-    if (input) {
-      input.value = 'test.near';
-      // Dispatch input event to trigger any listeners
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+    const confirmBtn = document.getElementById('confirmBtn') as HTMLButtonElement;
+    if (confirmBtn) {
+      confirmBtn.style.background = '#16a34a';
+      confirmBtn.style.transform = 'scale(1.05)';
     }
   });
+  await page.waitForTimeout(500);
 
-  await page.waitForTimeout(1500); // Pause to show the account ID entered
-
-  // Click the confirm button via evaluate (since it may still not be "clickable" by Playwright)
+  // Click the confirm button
   await frame.evaluate(() => {
     const confirmBtn = document.getElementById('confirmBtn') as HTMLButtonElement;
     if (confirmBtn) {
