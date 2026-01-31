@@ -511,9 +511,11 @@ class LedgerWallet {
     // Build transaction actions
     const txActions = actions.map((action) => {
       if (action.type === "FunctionCall") {
+        // Args should be passed as object or Uint8Array, not pre-stringified
+        const args = action.params.args || {};
         return functionCall(
           action.params.methodName,
-          JSON.stringify(action.params.args || {}),
+          args,
           BigInt(action.params.gas || "30000000000000"),
           BigInt(action.params.deposit || "0")
         );
@@ -575,10 +577,10 @@ class LedgerWallet {
       }),
     });
 
-    // Broadcast transaction
-    const result = await rpcRequest(network, "broadcast_tx_commit", [
-      Array.from(signedTx.encode()),
-    ]);
+    // Broadcast transaction (RPC expects base64 encoded signed transaction)
+    const signedTxBytes = signedTx.encode();
+    const base64Tx = btoa(String.fromCharCode(...signedTxBytes));
+    const result = await rpcRequest(network, "broadcast_tx_commit", [base64Tx]);
 
     return result;
   }
