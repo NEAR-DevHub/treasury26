@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
+import { useAssets } from "@/hooks/use-assets";
 
 import Assets from "./components/assets";
 import BalanceWithGraph from "./components/balance-with-graph";
@@ -13,11 +13,10 @@ import { DepositModal } from "./components/deposit-modal";
 import { InfoBox } from "@/features/onboarding/components/info-box";
 import { DashboardTour } from "@/features/onboarding/steps/dashboard";
 import { useTreasury } from "@/stores/treasury-store";
-import { NextStepViewport } from "nextstepjs";
 
 export default function AppPage() {
   const { selectedTreasury } = useTreasury();
-  const { data, isLoading, isPending } = useTreasuryAssets(selectedTreasury);
+  const { data, isLoading, isPending } = useAssets(selectedTreasury);
   const isAssetsLoading = isLoading || isPending;
   const { tokens, totalBalanceUSD } = data || { tokens: [], totalBalanceUSD: 0 };
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);

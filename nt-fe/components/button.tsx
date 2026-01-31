@@ -41,7 +41,9 @@ export function Button({ variant, className: classNameOverride, size, tooltipCon
     const button = <ShadcnButton variant={variant} className={cn(className, sizeClassName, classNameOverride)} size={size} {...props} />;
 
     if (tooltipContent) {
-        return <Tooltip content={tooltipContent} triggerProps={{ asChild: !disabled }} side={side}>{button}</Tooltip>;
+        // When disabled, wrap in a span to avoid nested <button> elements (TooltipTrigger renders a button when asChild=false)
+        const triggerChild = disabled ? <span className={cn("inline-flex", classNameOverride)}>{button}</span> : button;
+        return <Tooltip content={tooltipContent} triggerProps={{ asChild: true }} side={side}>{triggerChild}</Tooltip>;
     }
 
     return button;

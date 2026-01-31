@@ -1,6 +1,7 @@
 import { Policy } from "@/types/policy";
 import axios from "axios";
 import Big from "big.js";
+import { Balance, BalanceRaw, LockupBalance, transformBalance } from "./balance";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -85,8 +86,7 @@ export interface TreasuryAsset {
   chainName: string;
   chainIcons?: ChainIcons;
   symbol: string;
-  balance: Big;
-  lockedBalance?: Big;
+  balance: Balance;
   decimals: number;
   price: number;
   name: string;
@@ -108,8 +108,7 @@ interface TreasuryAssetRaw {
   chainName: string;
   chainIcons?: ChainIcons;
   symbol: string;
-  balance: string;
-  lockedBalance?: string;
+  balance: BalanceRaw;
   decimals: number;
   price: string;
   name: string;
@@ -133,11 +132,14 @@ export async function getTreasuryAssets(
       params: { accountId: treasuryId },
     });
 
+
+
     // Transform raw tokens with USD values
     const tokensWithUSD = response.data.map((token) => {
-      const balance = Big(token.balance).div(Big(10).pow(token.decimals));
+      const { balance, total } = transformBalance(token.balance);
       const price = parseFloat(token.price);
-      const balanceUSD = balance.mul(price).toNumber();
+      const totalDecimalAdjusted = total.div(Big(10).pow(token.decimals));
+      const balanceUSD = totalDecimalAdjusted.mul(price).toNumber();
 
       return {
         id: token.id,
@@ -146,8 +148,7 @@ export async function getTreasuryAssets(
         network: token.network,
         symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
         decimals: token.decimals,
-        balance: Big(token.balance),
-        lockedBalance: token.lockedBalance ? Big(token.lockedBalance) : undefined,
+        balance,
         chainName: token.chainName,
         chainIcons: token.chainIcons,
         balanceUSD,
@@ -509,6 +510,45 @@ export async function getLockupPool(accountId: string): Promise<string | null> {
     return response.data;
   } catch (error) {
     console.error(`Error getting lockup pool for ${accountId}`, error);
+    return null;
+  }
+}
+
+export interface VestingSchedule {
+  startTimestamp: number;
+  cliffTimestamp: number;
+  endTimestamp: number;
+}
+
+export interface LockupContractInfo {
+  ownerAccountId: string;
+  vestingSchedule: VestingSchedule | null;
+  lockupTimestamp: number | null;
+  lockupDuration: number;
+  releaseDuration: number | null;
+  stakingPoolAccountId: string | null;
+}
+
+/**
+ * Get lockup contract information including vesting schedule
+ * Fetches from backend which queries the lockup contract on the blockchain
+ * Returns detailed lockup info including vesting dates if available
+ */
+export async function getLockupContract(
+  accountId: string
+): Promise<LockupContractInfo | null> {
+  if (!accountId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/user/lockup`;
+
+    const response = await axios.get<LockupContractInfo | null>(url, {
+      params: { accountId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting lockup contract for ${accountId}`, error);
     return null;
   }
 }

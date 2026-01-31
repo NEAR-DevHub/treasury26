@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { ArrowUpDown, ChevronDown, ChevronUp, ChevronRight } from "lucide-react";
+import { ArrowUpDown, ChevronDown, ChevronUp, ChevronRight, Lock, ArrowUpRight, Info } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useReactTable,
@@ -25,9 +25,13 @@ import {
 import { Button } from "@/components/button";
 import { TreasuryAsset } from "@/lib/api";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
-import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-aggregated-tokens";
+import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-assets";
 import Big from "big.js";
 import { NetworkDisplay, BalanceCell } from "./token-display";
+import { availableBalance, totalBalance, lockedBalance } from "@/lib/balance";
+import { VestingDetailsModal } from "./vesting-details-modal";
+import { Tooltip } from "./tooltip";
+import { useTreasury } from "@/stores/treasury-store";
 
 const columnHelper = createColumnHelper<AggregatedAsset>();
 
@@ -39,7 +43,10 @@ export function AssetsTable({ tokens }: Props) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "totalBalanceUSD", desc: true },
   ]);
+  const { selectedTreasury } = useTreasury();
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [selectedVestingNetwork, setSelectedVestingNetwork] = useState<TreasuryAsset | null>(null);
+  const [isVestingModalOpen, setIsVestingModalOpen] = useState(false);
 
   // Aggregate tokens by symbol using custom hook
   const aggregatedTokens = useAggregatedTokens(tokens);
@@ -51,6 +58,7 @@ export function AssetsTable({ tokens }: Props) {
         header: "Token",
         cell: (info) => {
           const asset = info.row.original;
+          const isPartiallyLocked = asset.networks.some((token) => lockedBalance(token.balance).gt(0));
           return (
             <div className="flex items-center gap-3">
               {asset.icon.startsWith("data:image") ||
@@ -66,7 +74,17 @@ export function AssetsTable({ tokens }: Props) {
                 </div>
               )}
               <div>
-                <div className="font-semibold">{asset.symbol}</div>
+                <div className="font-semibold flex gap-2">
+                  {asset.symbol}
+                  {isPartiallyLocked && (
+                    <div className="flex gap-1.5 px-1 py-0.5 bg-secondary rounded-[4px] text-secondary-foreground font-medium">
+                      <Lock className="size-2.5 shrink-0 mt-0.5" />
+                      <span className="text-xxs">
+                        Partially Locked
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {asset.name}
                 </div>
@@ -85,7 +103,7 @@ export function AssetsTable({ tokens }: Props) {
       columnHelper.accessor("price", {
         header: "Coin Price",
         cell: (info) => (
-          <div className="text-right">{formatCurrency(info.getValue())}</div>
+          <div className="text-right font-medium">{formatCurrency(info.getValue())}</div>
         ),
       }),
       columnHelper.accessor("weight", {
@@ -121,9 +139,9 @@ export function AssetsTable({ tokens }: Props) {
               className="h-8 w-8 p-0"
             >
               {row.getIsExpanded() ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 text-primary" />
               ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4 text-primary" />
               )}
             </Button>
           );
@@ -176,7 +194,7 @@ export function AssetsTable({ tokens }: Props) {
                     variant="ghost"
                     size="sm"
                     onClick={header.column.getToggleSortingHandler()}
-                    className={cn("flex items-center gap-1 px-0 hover:bg-transparent uppercase text-[10px]",
+                    className={cn("flex items-center gap-1 px-0 hover:bg-transparent uppercase text-xxs",
                       header.id !== "symbol" ? "ml-auto" : "",
                     )}
                   >
@@ -215,24 +233,188 @@ export function AssetsTable({ tokens }: Props) {
             </TableRow>
             {row.getIsExpanded() && (
               <>
-                {row.original.networks.map((network, idx) => (
-                  <TableRow key={`${row.id}-${idx}`} className="bg-muted/30">
-                    <TableCell className="p-4 pl-16">
-                      <NetworkDisplay asset={network} />
-                    </TableCell>
-                    <TableCell className="p-4">
-                      <BalanceCell balance={Big(formatBalance(network.balance.toString(), network.decimals))} symbol={network.symbol} balanceUSD={network.balanceUSD} />
-                    </TableCell>
-                    <TableCell className="p-4 text-right text-muted-foreground">-</TableCell>
-                    <TableCell className="p-4 text-right text-muted-foreground">-</TableCell>
-                    <TableCell className="p-4"></TableCell>
-                  </TableRow>
-                ))}
+                {(() => {
+                  const sourceNetworks = row.original.networks.filter(n => n.residency !== "Lockup");
+                  const vestingNetworks = row.original.networks.filter(n => n.residency === "Lockup");
+
+                  const calculateBalanceUSD = (balance: Big, price: number, decimals: number) => {
+                    const decimalAdjusted = balance.div(Big(10).pow(decimals));
+                    return decimalAdjusted.mul(price).toNumber();
+                  };
+
+                  return (
+                    <>
+                      {/* SOURCE Section */}
+                      {sourceNetworks.length > 0 && (
+                        <>
+                          <TableRow className="bg-muted/30 uppercase text-muted-foreground font-medium hover:bg-muted/30">
+                            <TableCell className="p-2 pl-16 text-xxs">Source</TableCell>
+                            <TableCell className="p-2"></TableCell>
+                            <TableCell className="p-2 text-right text-xxs">Available to Use</TableCell>
+                            <TableCell className="p-2 text-xxs flex items-center justify-end gap-1">Frozen <Tooltip content="Frozen tokens are locked and cannot be used. They might be locked due to being used for storage, staked, or not yet vested."><Info className="size-3 shrink-0" /></Tooltip></TableCell>
+                            <TableCell className="p-2"></TableCell>
+                          </TableRow>
+                          {sourceNetworks.map((network, idx) => {
+                            const total = totalBalance(network.balance);
+                            const available = availableBalance(network.balance);
+                            const locked = lockedBalance(network.balance);
+                            return (
+                              <TableRow key={`${row.id}-source-${idx}`} className="bg-muted/30">
+                                <TableCell className="p-4 pl-16">
+                                  <NetworkDisplay asset={network} />
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  <BalanceCell
+                                    balance={Big(formatBalance(total, network.decimals))}
+                                    symbol={network.symbol}
+                                    balanceUSD={calculateBalanceUSD(total, network.price, network.decimals)}
+                                  />
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  <BalanceCell
+                                    balance={Big(formatBalance(available, network.decimals))}
+                                    symbol={network.symbol}
+                                    balanceUSD={calculateBalanceUSD(available, network.price, network.decimals)}
+                                  />
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  <BalanceCell
+                                    balance={Big(formatBalance(locked, network.decimals))}
+                                    symbol={network.symbol}
+                                    balanceUSD={calculateBalanceUSD(locked, network.price, network.decimals)}
+                                  />
+                                </TableCell>
+                                <TableCell className="p-4"></TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </>
+                      )}
+
+                      {/* VESTING Section */}
+                      {vestingNetworks.length > 0 && (
+                        <>
+                          <TableRow className="bg-muted/30 uppercase text-muted-foreground font-medium hover:bg-muted/30">
+                            <TableCell className="p-2 pl-16 flex gap-2 items-center text-xxs">
+                              Vesting <Lock className="size-3 shrink-0" />
+                            </TableCell>
+                            <TableCell className="p-2"></TableCell>
+                            <TableCell className="p-2"></TableCell>
+                            <TableCell className="p-2 text-right text-xxs">
+                              {(() => {
+                                const vestingNetwork = vestingNetworks[0];
+                                if (vestingNetwork.balance.type === "Vested") {
+                                  const { totalAllocated, unvested } = vestingNetwork.balance.lockup;
+                                  const vestedPercent = totalAllocated.gt(0)
+                                    ? totalAllocated.sub(unvested).div(totalAllocated).mul(100).toNumber()
+                                    : 0;
+                                  return (
+                                    <div className="flex items-center justify-end gap-2">
+                                      <div className="w-20 bg-muted rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                          className="bg-primary h-full rounded-full transition-all"
+                                          style={{ width: `${vestedPercent}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-xxs text-muted-foreground">
+                                        {vestedPercent.toFixed(0)}% Vested
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </TableCell>
+                            <TableCell className="p-2"></TableCell>
+                          </TableRow>
+                          {vestingNetworks.map((network, idx) => {
+                            const total = totalBalance(network.balance);
+                            const available = availableBalance(network.balance);
+                            const locked = lockedBalance(network.balance);
+                            return (
+                              <TableRow
+                                key={`${row.id}-vesting-${idx}`}
+                                className="bg-muted/30 group cursor-pointer"
+                                onClick={() => {
+                                  setSelectedVestingNetwork(network);
+                                  setIsVestingModalOpen(true);
+                                }}
+                              >
+                                <TableCell className="p-4 pl-16">
+                                  <NetworkDisplay asset={network} />
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  <BalanceCell
+                                    balance={Big(formatBalance(total, network.decimals))}
+                                    symbol={network.symbol}
+                                    balanceUSD={calculateBalanceUSD(total, network.price, network.decimals)}
+                                  />
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  <BalanceCell
+                                    balance={Big(formatBalance(available, network.decimals))}
+                                    symbol={network.symbol}
+                                    balanceUSD={calculateBalanceUSD(available, network.price, network.decimals)}
+                                  />
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  <div className="relative">
+                                    <div className="group-hover:opacity-0 transition-opacity">
+                                      <BalanceCell
+                                        balance={Big(formatBalance(locked, network.decimals))}
+                                        symbol={network.symbol}
+                                        balanceUSD={calculateBalanceUSD(locked, network.price, network.decimals)}
+                                      />
+                                    </div>
+                                    <div className="absolute inset-0 flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        disabled
+                                        tooltipContent="Coming soon"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <ArrowUpRight className="size-4 text-primary" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedVestingNetwork(network);
+                                          setIsVestingModalOpen(true);
+                                        }}
+                                      >
+                                        <ChevronRight className="size-4 text-primary" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="p-4"></TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
               </>
             )}
           </Fragment>
         ))}
       </TableBody>
+      <VestingDetailsModal
+        isOpen={isVestingModalOpen}
+        onClose={() => {
+          setIsVestingModalOpen(false);
+          setSelectedVestingNetwork(null);
+        }}
+        asset={selectedVestingNetwork ?? null}
+        treasuryId={selectedTreasury ?? null}
+      />
     </Table>
   );
 }
@@ -244,6 +426,12 @@ export function AssetsTableSkeleton() {
         <TableRow className="hover:bg-transparent">
           <TableHead className="text-muted-foreground">
             <Skeleton className="h-4 w-12" />
+          </TableHead>
+          <TableHead className="text-right text-muted-foreground">
+            <Skeleton className="h-4 w-16 ml-auto" />
+          </TableHead>
+          <TableHead className="text-right text-muted-foreground">
+            <Skeleton className="h-4 w-16 ml-auto" />
           </TableHead>
           <TableHead className="text-right text-muted-foreground">
             <Skeleton className="h-4 w-16 ml-auto" />
@@ -273,6 +461,18 @@ export function AssetsTableSkeleton() {
               <div className="flex flex-col items-end">
                 <Skeleton className="h-4 w-20 mb-1" />
                 <Skeleton className="h-3 w-16" />
+              </div>
+            </TableCell>
+            <TableCell className="p-4">
+              <div className="flex flex-col items-end">
+                <Skeleton className="h-4 w-16 mb-1" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            </TableCell>
+            <TableCell className="p-4">
+              <div className="flex flex-col items-end">
+                <Skeleton className="h-4 w-16 mb-1" />
+                <Skeleton className="h-3 w-12" />
               </div>
             </TableCell>
             <TableCell className="p-4">

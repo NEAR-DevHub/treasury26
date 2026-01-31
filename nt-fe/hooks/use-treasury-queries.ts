@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getUserTreasuries,
   getTreasuryConfig,
-  getTreasuryAssets,
   getBalanceChart,
   BalanceChartRequest,
   getTokenBalance,
@@ -45,36 +44,6 @@ export function useTreasuryConfig(treasuryId: string | null | undefined, before:
     queryFn: () => getTreasuryConfig(treasuryId!, before),
     enabled: !!treasuryId,
     staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-}
-
-/**
- * Query hook to get whitelisted tokens with balances and prices
- * Fetches from backend which aggregates data from Ref Finance and FastNear
- */
-export function useTreasuryAssets(
-  treasuryId: string | null | undefined,
-  options?: {
-    onlyPositiveBalance?: boolean;
-  },
-) {
-  return useQuery({
-    queryKey: ["treasuryAssets", treasuryId, options?.onlyPositiveBalance],
-    queryFn: () => getTreasuryAssets(treasuryId!),
-    enabled: !!treasuryId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    select: (data) => {
-      if (options?.onlyPositiveBalance) {
-        const filteredTokens = data.tokens.filter(
-          (asset) => Number(asset.balance) > 0,
-        );
-        return {
-          ...data,
-          tokens: filteredTokens,
-        };
-      }
-      return data;
-    },
   });
 }
 

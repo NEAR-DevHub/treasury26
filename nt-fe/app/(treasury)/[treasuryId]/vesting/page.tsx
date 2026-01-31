@@ -13,7 +13,7 @@ import { Form, FormField } from "@/components/ui/form";
 import { Textarea } from "@/components/textarea";
 import { NEAR_TOKEN } from "@/constants/token";
 import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { encodeToMarkdown, formatUserDate, formatTimestamp, toBase64 } from "@/lib/utils";
+import { encodeToMarkdown, formatUserDate, formatTimestamp, toBase64, formatCurrency } from "@/lib/utils";
 import { useFormatDate } from "@/components/formatted-date";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";
@@ -213,10 +213,7 @@ function Step3({ handleBack }: StepProps) {
       <ReviewStep reviewingTitle="Review Your Vesting Schedule" handleBack={handleBack}>
         <div className="flex flex-col gap-6">
           <SendingTotal total={Number(vesting.amount)} token={vesting.token}>
-            <p>≈ ${estimatedUSDValue.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })}</p>
+            <p>≈ {formatCurrency(estimatedUSDValue)}</p>
           </SendingTotal>
           <InfoDisplay items={infoItems} />
         </div>
@@ -258,68 +255,68 @@ export default function VestingPage() {
 
   const onSubmit = async (data: VestingFormValues) => {
     const description = {
-        title: `Create vesting schedule for ${data.vesting.address}`,
-        notes: data.vesting.memo || "",
-      }
-      const proposalBond = policy?.proposal_bond || "0";
-      const deposit = Big(data.vesting.amount)
-        .mul(Big(10).pow(data.vesting.token.decimals))
-        .toFixed();
-      const vestingArgs = data.vesting.allowCancel
-        ? {
-          vesting_schedule: {
-            VestingSchedule: {
-              cliff_timestamp: formatTimestamp(data.vesting.cliffDate || data.vesting.startDate).toString(),
-              end_timestamp: formatTimestamp(data.vesting.endDate).toString(),
-              start_timestamp: formatTimestamp(data.vesting.startDate).toString(),
-            },
-          },
-        }
-        : {
-          lockup_timestamp: formatTimestamp(data.vesting.startDate).toString(),
-          release_duration: (
-            formatTimestamp(data.vesting.endDate) - formatTimestamp(data.vesting.startDate)
-          ).toString(),
-        };
-
-      const cancellableArgs = data.vesting.allowCancel ? {
-        foundation_account_id: selectedTreasury!,
-      } : {};
-      const stakingArgs = !data.vesting.allowEarn ? {
-        whitelist_account_id: LOCKUP_NO_WHITELIST_ACCOUNT_ID,
-      } : {};
-
-      await createProposal("Request to create vesting schedule submitted", {
-        treasuryId: selectedTreasury!,
-        proposal: {
-          description: encodeToMarkdown(description),
-          kind: {
-            FunctionCall: {
-              receiver_id: "lockup.near",
-              actions: [
-                {
-                  method_name: "create",
-                  args: toBase64({
-                    lockup_duration: "0",
-                    owner_account_id: data.vesting.address,
-                    ...vestingArgs,
-                    ...cancellableArgs,
-                    ...stakingArgs,
-                  }),
-                  deposit,
-                  gas: "150000000000000",
-                },
-              ],
-            },
+      title: `Create vesting schedule for ${data.vesting.address}`,
+      notes: data.vesting.memo || "",
+    }
+    const proposalBond = policy?.proposal_bond || "0";
+    const deposit = Big(data.vesting.amount)
+      .mul(Big(10).pow(data.vesting.token.decimals))
+      .toFixed();
+    const vestingArgs = data.vesting.allowCancel
+      ? {
+        vesting_schedule: {
+          VestingSchedule: {
+            cliff_timestamp: formatTimestamp(data.vesting.cliffDate || data.vesting.startDate).toString(),
+            end_timestamp: formatTimestamp(data.vesting.endDate).toString(),
+            start_timestamp: formatTimestamp(data.vesting.startDate).toString(),
           },
         },
-        proposalBond,
-      }).then(() => {
-        form.reset();
-        setStep(0);
-      }).catch((error) => {
-        console.error("Vesting error", error);
-      });
+      }
+      : {
+        lockup_timestamp: formatTimestamp(data.vesting.startDate).toString(),
+        release_duration: (
+          formatTimestamp(data.vesting.endDate) - formatTimestamp(data.vesting.startDate)
+        ).toString(),
+      };
+
+    const cancellableArgs = data.vesting.allowCancel ? {
+      foundation_account_id: selectedTreasury!,
+    } : {};
+    const stakingArgs = !data.vesting.allowEarn ? {
+      whitelist_account_id: LOCKUP_NO_WHITELIST_ACCOUNT_ID,
+    } : {};
+
+    await createProposal("Request to create vesting schedule submitted", {
+      treasuryId: selectedTreasury!,
+      proposal: {
+        description: encodeToMarkdown(description),
+        kind: {
+          FunctionCall: {
+            receiver_id: "lockup.near",
+            actions: [
+              {
+                method_name: "create",
+                args: toBase64({
+                  lockup_duration: "0",
+                  owner_account_id: data.vesting.address,
+                  ...vestingArgs,
+                  ...cancellableArgs,
+                  ...stakingArgs,
+                }),
+                deposit,
+                gas: "150000000000000",
+              },
+            ],
+          },
+        },
+      },
+      proposalBond,
+    }).then(() => {
+      form.reset();
+      setStep(0);
+    }).catch((error) => {
+      console.error("Vesting error", error);
+    });
   };
 
   return (

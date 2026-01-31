@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/textarea";
 import { useTreasury } from "@/stores/treasury-store";
 import { useNear } from "@/stores/near-store";
-import { encodeToMarkdown } from "@/lib/utils";
+import { encodeToMarkdown, formatCurrency } from "@/lib/utils";
 import Big from "big.js";
 import { ConnectorAction } from "@hot-labs/near-connect";
 import { NEAR_TOKEN } from "@/constants/token";
@@ -133,10 +133,7 @@ function Step2({ handleBack }: StepProps) {
                 <img src={token.icon} alt={token.symbol} className="size-5 rounded-full" />
                 <div className="flex flex-col gap-[3px] items-end">
                   <p className="text-xs font-semibold">{amount} {token.symbol}</p>
-                  <p className="text-[10px] text-muted-foreground">≈ ${estimatedUSDValue.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}</p>
+                  <p className="text-xxs text-muted-foreground">≈ {formatCurrency(estimatedUSDValue)}</p>
                 </div>
               </div>
             </div>

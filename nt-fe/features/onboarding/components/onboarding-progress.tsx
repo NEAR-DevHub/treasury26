@@ -7,12 +7,13 @@ import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/button";
 import { StepIcon } from "@/features/proposals/components/expanded-view/common/proposal-sidebar";
 import { useTreasury } from "@/stores/treasury-store";
-import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
+import { useAssets } from "@/hooks/use-assets";
 import { TreasuryAsset } from "@/lib/api";
 import Big from "big.js";
 import { useProposals } from "@/hooks/use-proposals";
 import { SparklesCore } from "@/components/ui/sparkles";
 import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
+import { availableBalance } from "@/lib/balance";
 
 export type OnboardingStep = {
   id: string;
@@ -240,7 +241,7 @@ export function OnboardingProgress({
   const treasuryId = params?.treasuryId as string | undefined;
   const { selectedTreasury: accountId } = useTreasury();
   const { isGuestTreasury, isLoading: isLoadingGuestTreasury } = useIsGuestTreasury();
-  const { data, isLoading: isLoadingAssets } = useTreasuryAssets(accountId);
+  const { data, isLoading: isLoadingAssets } = useAssets(accountId);
   const { tokens } = data || { tokens: [] };
   const { data: proposals, isLoading: isLoadingProposals } = useProposals(accountId, {
     types: ["Payments"],
@@ -250,7 +251,7 @@ export function OnboardingProgress({
 
 
   const tokenBalanceIsPositive = (token: TreasuryAsset) => {
-    const tokenBalance = Big(token.balance).div(Big(10).pow(token.decimals));
+    const tokenBalance = Big(availableBalance(token.balance)).div(Big(10).pow(token.decimals));
     if (token.symbol === "NEAR") {
       return tokenBalance.gt(1);
     }

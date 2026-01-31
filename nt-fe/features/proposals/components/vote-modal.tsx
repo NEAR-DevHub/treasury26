@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/modal";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/button";
 import { ProposalPermissionKind } from "@/lib/config-utils";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/stores/treasury-store";

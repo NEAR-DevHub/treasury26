@@ -133,6 +133,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/user/check-account-exists",
             get(handlers::user::check_account_exists::check_account_exists),
         )
+        .route(
+            "/api/user/lockup",
+            get(handlers::user::lockup::get_user_lockup),
+        )
         // Proposals endpoints
         .route(
             "/api/proposals/{dao_id}",

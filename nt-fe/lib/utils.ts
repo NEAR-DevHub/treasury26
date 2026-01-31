@@ -88,7 +88,7 @@ export function formatUserDate(
     }
 
     // Add timezone name if requested
-    if (includeTimezone) {
+    if (includeTimezone && includeTime) {
       formatOptions.timeZoneName = "short";
     }
 
