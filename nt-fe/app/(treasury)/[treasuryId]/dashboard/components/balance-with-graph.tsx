@@ -8,12 +8,14 @@ import { useBalanceChart, } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/stores/treasury-store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageCard } from "@/components/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatBalance, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ChartInterval } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthButton } from "@/components/auth-button";
+import Big from "big.js";
+import { totalBalance } from "@/lib/balance";
 
 interface Props {
     totalBalanceUSD: number | Big.Big;
@@ -68,6 +70,7 @@ interface GroupedToken {
     symbol: string;
     tokens: TreasuryAsset[];
     totalBalanceUSD: number;
+    totalBalance: Big;
     icon: string;
     tokenIds: string[];
 }
@@ -99,6 +102,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
             if (existing) {
                 existing.tokens.push(token);
                 existing.totalBalanceUSD += token.balanceUSD;
+                existing.totalBalance = existing.totalBalance.add(Big(formatBalance(totalBalance(token.balance), token.decimals)));
                 // Only add if it's not already in the array (deduplicate)
                 if (!existing.tokenIds.includes(tokenIdForHistory)) {
                     existing.tokenIds.push(tokenIdForHistory);
@@ -108,6 +112,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     symbol: token.symbol,
                     tokens: [token],
                     totalBalanceUSD: token.balanceUSD,
+                    totalBalance: Big(formatBalance(totalBalance(token.balance), token.decimals)),
                     icon: token.icon,
                     tokenIds: [tokenIdForHistory],
                 });
@@ -218,7 +223,6 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                 }
             }
             const hasAnyUSD = Array.from(timeMap.values()).some(v => v.hasUSD);
-
             const data = Array.from(timeMap.entries())
                 .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
                 .map(([timestamp, { usdValue, balanceValue, hasUSD }]) => ({
@@ -226,7 +230,11 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     usdValue: hasUSD ? usdValue : undefined,
                     balanceValue: balanceValue,
                 }));
-
+            data.push({
+                name: "Now",
+                usdValue: Number(selectedTokenGroup?.totalBalanceUSD),
+                balanceValue: selectedTokenGroup?.totalBalance.toNumber() || 0,
+            });
             return { data, showUSD: hasAnyUSD };
         }
     }, [balanceChartData, selectedToken, selectedTokenGroup, selectedPeriod]);
