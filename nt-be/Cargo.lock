@@ -2354,6 +2354,7 @@ dependencies = [
  "near-openapi-types",
  "near-primitives 0.34.3",
  "once_cell",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

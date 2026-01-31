@@ -48,3 +48,4 @@ tower = { version = "0.5", features = ["util"] }
 reqwest = { version = "0.12", features = ["json"] }
 serial_test = "3.2"
 wiremock = "0.6"
+regex = "1.11"
