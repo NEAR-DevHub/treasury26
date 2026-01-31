@@ -71,8 +71,6 @@ export function VestingDetailsModal({
         });
     }
 
-    console.log(lockupContract)
-
     // Token Breakdown items
     const tokenBreakdownItems: InfoItem[] = [
         {
