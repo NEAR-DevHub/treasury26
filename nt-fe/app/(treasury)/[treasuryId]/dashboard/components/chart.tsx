@@ -7,6 +7,7 @@ import {
     ChartTooltipContent,
     type ChartConfig
 } from '@/components/ui/chart';
+import { formatCurrency } from '@/lib/utils';
 
 interface ChartDataPoint {
     name: string;
@@ -96,10 +97,7 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
                                 ? 'var(--color-foreground)'
                                 : 'var(--muted-foreground)';
                             const formatted = name === 'usdValue'
-                                ? `$${num.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                })}`
+                                ? formatCurrency(num)
                                 : `${num.toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 6

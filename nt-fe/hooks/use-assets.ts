@@ -4,7 +4,20 @@ import { useMemo } from "react";
 import { TreasuryAsset } from "@/lib/api";
 import { formatBalance } from "@/lib/utils";
 import Big from "big.js";
-import { totalBalance } from "@/lib/balance";
+import { availableBalance, totalBalance } from "@/lib/balance";
+
+const isTokenValidByOptions = (token: TreasuryAsset, options?: {
+    onlyPositiveBalance?: boolean;
+    onlySupportedTokens?: boolean;
+}) => {
+    if (options?.onlyPositiveBalance && availableBalance(token.balance).eq(0)) {
+        return true;
+    }
+    if (options?.onlySupportedTokens && (token.residency === "Lockup" || token.residency === "Staked")) {
+        return false;
+    }
+    return true;
+}
 
 /**
  * Query hook to get whitelisted tokens with balances and prices
@@ -14,6 +27,7 @@ export function useAssets(
     treasuryId: string | null | undefined,
     options?: {
         onlyPositiveBalance?: boolean;
+        onlySupportedTokens?: boolean;
     },
 ) {
     return useQuery({
@@ -22,16 +36,10 @@ export function useAssets(
         enabled: !!treasuryId,
         staleTime: 1000 * 60 * 5, // 5 minutes
         select: (data) => {
-            if (options?.onlyPositiveBalance) {
-                const filteredTokens = data.tokens.filter(
-                    (asset) => Number(asset.balance) > 0,
-                );
-                return {
-                    ...data,
-                    tokens: filteredTokens,
-                };
-            }
-            return data;
+            return {
+                ...data,
+                tokens: data.tokens.filter(token => isTokenValidByOptions(token, options)),
+            };
         },
     });
 }

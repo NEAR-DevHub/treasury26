@@ -94,7 +94,8 @@ export function lockedBalance(balance: Balance): Big {
     } else if (balance.type === "Staked") {
         return Big(0);
     } else if (balance.type === "Vested") {
-        return balance.lockup.unvested.add(balance.lockup.staked);
+        const largestLockup = balance.lockup.unvested.gt(balance.lockup.staked) ? balance.lockup.unvested : balance.lockup.staked;
+        return largestLockup.add(balance.lockup.storageLocked);
     }
     return Big(0);
 }

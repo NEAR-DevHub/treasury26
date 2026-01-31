@@ -1,4 +1,5 @@
 import { TreasuryAsset } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 import { useThemeStore } from "@/stores/theme-store";
 import Big from "big.js";
 
@@ -46,7 +47,7 @@ export const BalanceCell = ({ balance, symbol, balanceUSD }: { balance: Big; sym
     return (
         <div className="text-right">
             <div className="font-semibold">
-                ${balanceUSD.toFixed(2)}
+                {formatCurrency(balanceUSD)}
             </div>
             <div className="text-xs text-muted-foreground">
                 {balance.toString()} {symbol}

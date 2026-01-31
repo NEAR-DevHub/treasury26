@@ -103,7 +103,7 @@ export function AssetsTable({ tokens }: Props) {
       columnHelper.accessor("price", {
         header: "Coin Price",
         cell: (info) => (
-          <div className="text-right">{formatCurrency(info.getValue())}</div>
+          <div className="text-right font-medium">{formatCurrency(info.getValue())}</div>
         ),
       }),
       columnHelper.accessor("weight", {
@@ -367,18 +367,16 @@ export function AssetsTable({ tokens }: Props) {
                                       />
                                     </div>
                                     <div className="absolute inset-0 flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Tooltip content="Coming soon">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          disabled
-                                          tooltipContent="Coming soon"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <ArrowUpRight className="size-4 text-primary" />
-                                        </Button>
-                                      </Tooltip>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        disabled
+                                        tooltipContent="Coming soon"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <ArrowUpRight className="size-4 text-primary" />
+                                      </Button>
                                       <Button
                                         variant="ghost"
                                         size="icon"

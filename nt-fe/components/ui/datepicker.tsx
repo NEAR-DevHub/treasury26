@@ -26,7 +26,7 @@ import {
     XCircle,
 } from 'lucide-react';
 import * as React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DayPicker, type DateRange, type Matcher, TZDate } from 'react-day-picker';
 
 import { Button, buttonVariants } from '@/components/ui/button';

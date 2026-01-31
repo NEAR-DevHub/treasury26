@@ -14,6 +14,7 @@ import { NetworkDisplay } from "./token-display";
 import { TokenDisplay } from "./token-display-with-network";
 import { Input } from "./input";
 import { SelectList, SelectListItem } from "./select-list";
+import { availableBalance } from "@/lib/balance";
 
 interface TokenListItem extends SelectListItem {
     totalBalance: number;
@@ -48,7 +49,7 @@ interface TokenSelectProps {
 
 export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData, classNames }: TokenSelectProps) {
     const { selectedTreasury } = useTreasury();
-    const { data: { tokens = [] } = {} } = useAssets(selectedTreasury, { onlyPositiveBalance: true });
+    const { data: { tokens = [] } = {} } = useAssets(selectedTreasury, { onlyPositiveBalance: true, onlySupportedTokens: true });
     const aggregatedTokens = useAggregatedTokens(tokens);
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -85,7 +86,7 @@ export default function TokenSelect({ selectedToken, setSelectedToken, disabled,
             name: network.network,
             symbol: network.symbol,
             icon: network.icon,
-            balance: network.balance.toString(),
+            balance: availableBalance(network.balance).toString(),
             balanceUSD: network.balanceUSD,
             decimals: network.decimals,
             asset: network,
