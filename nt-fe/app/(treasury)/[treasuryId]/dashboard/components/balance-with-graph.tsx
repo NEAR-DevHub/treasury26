@@ -22,23 +22,23 @@ interface Props {
     isLoading?: boolean;
 }
 
-type TimePeriod = "1D" | "1W" | "1M" | "1Y";
+type TimePeriod = "1W" | "1M" | "3M" | "1Y";
 
-const TIME_PERIODS: TimePeriod[] = ["1D", "1W", "1M", "1Y"];
+const TIME_PERIODS: TimePeriod[] = ["1W", "1M", "3M", "1Y"];
 
 // Map frontend time periods to backend intervals
 const PERIOD_TO_INTERVAL: Record<TimePeriod, ChartInterval> = {
-    "1D": "hourly",
     "1W": "daily",
     "1M": "daily",
+    "3M": "daily",
     "1Y": "weekly",
 };
 
 // Calculate hours back for each period
 const PERIOD_TO_HOURS: Record<TimePeriod, number> = {
-    "1D": 24,
     "1W": 24 * 7,
     "1M": 24 * 30,
+    "3M": 24 * 90,
     "1Y": 24 * 365,
 };
 
@@ -47,13 +47,6 @@ const formatTimestampForPeriod = (timestamp: string, period: TimePeriod): string
     const date = new Date(timestamp);
 
     switch (period) {
-        case "1D":
-            // Show time only: "3:00 PM"
-            return date.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
         case "1W":
         case "1M":
             // Show date: "6 Jan"
@@ -187,6 +180,11 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     name: formatTimestampForPeriod(timestamp, selectedPeriod),
                     usdValue: usdValue,
                 }));
+
+            data.push({
+                name: "Now",
+                usdValue: Number(totalBalanceUSD),
+            });
 
             // Check if any snapshot has USD values
             const hasAnyUSD = Array.from(timeMap.values()).some(v => v.hasUSD);
