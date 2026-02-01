@@ -91,21 +91,25 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
 
             // Convert token ID to balance-history format
             // Intents tokens need "intents.near:" prefix for balance-history API
-            let tokenIdForHistory = token.id;
+            // Staked tokens need "staking:" prefix with pool IDs
+            let tokenIdsForHistory: string[] = [];
             if (token.residency === "Intents" && !token.id.startsWith("intents.near:")) {
-                tokenIdForHistory = `intents.near:${token.id}`;
-            }
-            else if (token.residency === "Staked" && !token.id.startsWith("staking:")) {
-                tokenIdForHistory = `staking:${token.id}`;
+                tokenIdsForHistory = [`intents.near:${token.id}`];
+            } else if (token.residency === "Staked" && 'staking' in token.balance) {
+                tokenIdsForHistory = token.balance.staking.pools.map(p => `staking:${p.poolId}`);
+            } else {
+                tokenIdsForHistory = [token.id];
             }
 
             if (existing) {
                 existing.tokens.push(token);
                 existing.totalBalanceUSD += token.balanceUSD;
                 existing.totalBalance = existing.totalBalance.add(Big(formatBalance(totalBalance(token.balance), token.decimals)));
-                // Only add if it's not already in the array (deduplicate)
-                if (!existing.tokenIds.includes(tokenIdForHistory)) {
-                    existing.tokenIds.push(tokenIdForHistory);
+                // Add all token IDs, deduplicating
+                for (const tokenId of tokenIdsForHistory) {
+                    if (!existing.tokenIds.includes(tokenId)) {
+                        existing.tokenIds.push(tokenId);
+                    }
                 }
             } else {
                 grouped.set(token.symbol, {
@@ -114,7 +118,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     totalBalanceUSD: token.balanceUSD,
                     totalBalance: Big(formatBalance(totalBalance(token.balance), token.decimals)),
                     icon: token.icon,
-                    tokenIds: [tokenIdForHistory],
+                    tokenIds: tokenIdsForHistory,
                 });
             }
         }
@@ -122,6 +126,8 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
         // Sort by total USD value descending
         return Array.from(grouped.values()).sort((a, b) => b.totalBalanceUSD - a.totalBalanceUSD);
     }, [tokens]);
+
+    console.log(groupedTokens);
 
     // Get the selected token group
     const selectedTokenGroup = selectedToken === "all"
