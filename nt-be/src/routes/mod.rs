@@ -110,10 +110,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::user::balance::get_token_balance),
         )
         .route(
-            "/api/user/balance/history",
-            get(handlers::user::balance_history::get_token_balance_history),
-        )
-        .route(
             "/api/user/treasuries",
             get(handlers::user::treasuries::get_user_treasuries),
         )
