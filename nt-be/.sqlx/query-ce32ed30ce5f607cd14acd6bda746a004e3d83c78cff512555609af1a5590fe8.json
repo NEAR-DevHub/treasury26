@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE daos SET is_dirty = true WHERE dao_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ce32ed30ce5f607cd14acd6bda746a004e3d83c78cff512555609af1a5590fe8"
+}

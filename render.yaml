@@ -10,8 +10,6 @@ services:
     domains:
       - api.trezu.app
     envVars:
-      - key: PIKESPEAK_KEY
-        sync: false
       - key: FASTNEAR_API_KEY
         sync: false
       - key: SIGNER_KEY

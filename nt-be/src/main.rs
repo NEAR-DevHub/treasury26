@@ -134,6 +134,24 @@ async fn main() {
         });
     }
 
+    // Spawn DAO list sync service (fetches DAOs from sputnik-dao.near every 5 minutes)
+    {
+        let pool = state.db_pool.clone();
+        let network = state.network.clone();
+        tokio::spawn(async move {
+            nt_be::services::run_dao_list_sync_service(pool, network).await;
+        });
+    }
+
+    // Spawn DAO policy sync service (processes dirty/stale DAOs to extract members)
+    {
+        let pool = state.db_pool.clone();
+        let network = state.network.clone();
+        tokio::spawn(async move {
+            nt_be::services::run_dao_policy_sync_service(pool, network).await;
+        });
+    }
+
     // Configure CORS - must specify exact origins, methods, and headers when using credentials
     let origins: Vec<HeaderValue> = state
         .env_vars

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE daos\n        SET sync_failed = true, is_dirty = false\n        WHERE dao_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "99b1026f12dc673ec0c0e3ac48a99ab13b606eb5b3495daad5c9d0a113424415"
+}

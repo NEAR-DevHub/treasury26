@@ -1,12 +1,14 @@
 //! Services module for external integrations and business logic
 
 pub mod coingecko;
+pub mod dao_sync;
 pub mod defillama;
 pub mod price_lookup;
 pub mod price_provider;
 pub mod price_sync;
 
 pub use coingecko::CoinGeckoClient;
+pub use dao_sync::{mark_dao_dirty, register_new_dao, run_dao_list_sync_service, run_dao_policy_sync_service};
 pub use defillama::DeFiLlamaClient;
 pub use price_lookup::PriceLookupService;
 pub use price_provider::PriceProvider;

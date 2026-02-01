@@ -85,7 +85,6 @@ jobs:
         cat > .env << EOF
         DATABASE_URL=postgres://treasury_test:test_password@localhost:5433/treasury_test_db
         PORT=3000
-        PIKESPEAK_KEY=${{ secrets.PIKESPEAK_KEY }}
         FASTNEAR_API_KEY=${{ secrets.FASTNEAR_API_KEY }}
         EOF
 

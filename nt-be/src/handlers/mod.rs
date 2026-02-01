@@ -1,5 +1,6 @@
 pub mod balance_changes;
 pub mod bulkpayment;
+pub mod dao;
 pub mod intents;
 pub mod lookup;
 pub mod proposals;

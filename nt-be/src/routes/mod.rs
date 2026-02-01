@@ -229,5 +229,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         )
         .route("/api/auth/me", get(auth::handlers::get_me))
         .route("/api/auth/logout", post(auth::handlers::logout))
+        // DAO endpoints
+        .route(
+            "/api/dao/mark-dirty",
+            post(handlers::dao::mark_dirty),
+        )
         .with_state(state)
 }
