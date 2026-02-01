@@ -199,7 +199,7 @@ pub async fn insert_staking_snapshot(
         };
 
     // Skip if balance is zero
-    if balance == BigDecimal::from(0) {
+    if balance == 0 {
         log::debug!(
             "Staking balance is 0 for {}/{} at block {}, skipping",
             account_id,

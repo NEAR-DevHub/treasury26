@@ -870,7 +870,7 @@ pub async fn seed_initial_balance(
     );
 
     // If balance is 0, nothing to seed
-    if current_balance == BigDecimal::from(0) {
+    if current_balance == 0 {
         log::info!("Balance is 0, nothing to seed");
         return Ok(None);
     }
@@ -1297,7 +1297,7 @@ pub async fn insert_snapshot_record(
     let amount = &balance_after - &balance_before;
 
     // Verify this is actually a snapshot (no balance change)
-    if amount != BigDecimal::from(0) {
+    if amount != 0 {
         log::warn!(
             "Block {} has balance change {} -> {} (amount: {}), not inserting as SNAPSHOT",
             block_height,
