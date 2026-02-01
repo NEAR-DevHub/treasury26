@@ -270,15 +270,11 @@ export default function BalanceWithGraph({
             for (const [tokenIdString, snapshots] of Object.entries(
                 balanceChartData,
             )) {
-                const tokenId = tokenIdString
-                    .replace("intents.near:", "")
-                    .replace("staking:", "");
-                const token = selectedTokenGroup?.tokens.find(
-                    (t) => t.id === tokenId,
-                );
+                const isPartOfSelectedTokenGroup =
+                    selectedTokenGroup?.tokenIds.includes(tokenIdString);
 
                 // Only include token IDs that belong to the selected token group
-                if (token) {
+                if (isPartOfSelectedTokenGroup) {
                     for (const snapshot of snapshots) {
                         const existing = timeMap.get(snapshot.timestamp) || {
                             usdValue: 0,
