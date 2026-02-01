@@ -125,9 +125,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
 
         // Sort by total USD value descending
         return Array.from(grouped.values()).sort((a, b) => b.totalBalanceUSD - a.totalBalanceUSD);
-    }, [tokens]);
-
-    console.log(groupedTokens);
+    }, [tokens, totalBalanceUSD]);
 
     // Get the selected token group
     const selectedTokenGroup = selectedToken === "all"

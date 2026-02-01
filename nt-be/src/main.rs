@@ -1,7 +1,10 @@
-use axum::Router;
+use axum::{
+    Router,
+    http::{HeaderValue, Method, header},
+};
 use std::sync::Arc;
 use std::time::Duration;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
 #[tokio::main]
 async fn main() {
@@ -131,10 +134,32 @@ async fn main() {
         });
     }
 
+    // Configure CORS - must specify exact origins, methods, and headers when using credentials
+    let origins: Vec<HeaderValue> = state
+        .env_vars
+        .cors_allowed_origins
+        .iter()
+        .filter_map(|s| s.parse().ok())
+        .collect();
+
     let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_origin(AllowOrigin::list(origins))
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::AUTHORIZATION,
+            header::ACCEPT,
+            header::ORIGIN,
+            header::COOKIE,
+        ])
+        .allow_credentials(true);
 
     let app = Router::new()
         .merge(nt_be::routes::create_routes(state))

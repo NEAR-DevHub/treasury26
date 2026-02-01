@@ -80,7 +80,12 @@ async fn fetch_staking_pools_fastnear(
         )
     })?;
 
-    Ok(data.pools.unwrap_or_default().into_iter().map(|p| p.pool_id).collect())
+    Ok(data
+        .pools
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| p.pool_id)
+        .collect())
 }
 
 /// Fetch staking pools from NearTreasury staking pools API
@@ -112,7 +117,12 @@ async fn fetch_staking_pools_neartreasury(
         )
     })?;
 
-    Ok(data.pools.unwrap_or_default().into_iter().map(|p| p.pool_id).collect())
+    Ok(data
+        .pools
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| p.pool_id)
+        .collect())
 }
 
 /// Fetch and merge staking pools from both APIs (with deduplication)
@@ -248,7 +258,9 @@ pub async fn fetch_staking_balances(
                         total_staked = total_staked.saturating_add(pool_balance.staked_balance);
                         total_unstaked =
                             total_unstaked.saturating_add(pool_balance.unstaked_balance);
-                        if pool_balance.can_withdraw && pool_balance.unstaked_balance.as_yoctonear() > 0 {
+                        if pool_balance.can_withdraw
+                            && pool_balance.unstaked_balance.as_yoctonear() > 0
+                        {
                             any_can_withdraw = true;
                         }
                         pool_balances.push(pool_balance);

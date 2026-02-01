@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT account_id, terms_accepted_at FROM users\n        WHERE account_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "account_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "terms_accepted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "07c6e9418807363f5ebe1ba70d63f1f05d05d15f6a13c311458187ecfd519351"
+}

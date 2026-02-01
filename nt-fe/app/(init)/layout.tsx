@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
 import { QueryProvider } from "@/components/query-provider";
 import { NearInitializer } from "@/components/near-initializer";
+import { AuthProvider } from "@/components/auth-provider";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -32,9 +33,11 @@ export default function RootLayout({
             >
                 <QueryProvider>
                     <NearInitializer />
-                    {children}
+                    <AuthProvider>
+                        {children}
+                    </AuthProvider>
                 </QueryProvider>
             </body>
-        </html>
+        </html >
     );
 }

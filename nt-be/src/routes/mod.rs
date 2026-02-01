@@ -7,7 +7,7 @@ use axum::{
 use serde_json::{Value, json};
 use std::sync::Arc;
 
-use crate::{AppState, handlers};
+use crate::{AppState, auth, handlers};
 
 mod balance_changes;
 mod monitored_accounts;
@@ -217,5 +217,17 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/proxy/{*path}",
             get(handlers::proxy::external::proxy_external_api),
         )
+        // Auth endpoints
+        .route(
+            "/api/auth/challenge",
+            post(auth::handlers::create_challenge),
+        )
+        .route("/api/auth/login", post(auth::handlers::login))
+        .route(
+            "/api/auth/accept-terms",
+            post(auth::handlers::accept_terms),
+        )
+        .route("/api/auth/me", get(auth::handlers::get_me))
+        .route("/api/auth/logout", post(auth::handlers::logout))
         .with_state(state)
 }

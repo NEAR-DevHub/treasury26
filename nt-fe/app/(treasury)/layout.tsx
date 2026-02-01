@@ -6,6 +6,7 @@ import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "@/components/toaster";
 import { TOURS } from "@/features/onboarding/steps";
 import { TourProvider } from "@/features/onboarding/components/tour-provider";
+import { AuthProvider } from "@/components/auth-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,9 +54,11 @@ export default function RootLayout({
       >
         <QueryProvider>
           <NearInitializer />
-          <TourProvider>
-            {children}
-          </TourProvider>
+          <AuthProvider>
+            <TourProvider>
+              {children}
+            </TourProvider>
+          </AuthProvider>
           <Toaster />
         </QueryProvider>
       </body>

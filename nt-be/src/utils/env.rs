@@ -31,6 +31,11 @@ pub struct EnvVars {
     pub oneclick_app_fee_bps: Option<u32>,
     pub oneclick_app_fee_recipient: Option<String>,
     pub oneclick_referral: Option<String>,
+    // JWT authentication configuration
+    pub jwt_secret: String,
+    pub jwt_expiry_hours: u64,
+    // CORS configuration
+    pub cors_allowed_origins: Vec<String>,
 }
 
 impl Default for EnvVars {
@@ -117,6 +122,19 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty())
                 .or_else(|| Some("near-treasury".to_string())),
+            // JWT configuration
+            jwt_secret: std::env::var("JWT_SECRET").expect("JWT_SECRET is not set"),
+            jwt_expiry_hours: std::env::var("JWT_EXPIRY_HOURS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(72), // Default: 72 hours
+            // CORS configuration
+            cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
+                .unwrap_or_else(|_| "http://localhost:3001,http://localhost:3000".to_string())
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect(),
         }
     }
 }

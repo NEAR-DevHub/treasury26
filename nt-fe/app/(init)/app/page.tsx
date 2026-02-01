@@ -9,6 +9,7 @@ import { Button } from "@/components/button";
 import { GradFlow } from 'gradflow'
 import Image from "next/image";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 function GradientTitle() {
   return (
@@ -26,7 +27,7 @@ function GradientTitle() {
 
 export default function AppRedirect() {
   const router = useRouter();
-  const { accountId, connect, isInitializing } = useNear();
+  const { accountId, connect, isInitializing, isAuthenticating } = useNear();
   const { selectedTreasury } = useTreasury();
   const { data: treasuries = [], isLoading, isError } = useUserTreasuries(accountId);
 
@@ -37,6 +38,8 @@ export default function AppRedirect() {
       router.push(`/app/new`);
     }
   }, [treasuries, isLoading, router, selectedTreasury]);
+  const buttonText = isInitializing ? "Loading..." :
+    isAuthenticating || isLoading ? "Authenticating..." : "Connect Wallet";
 
   return (
     <div className="relative h-screen w-screen">
@@ -66,9 +69,10 @@ export default function AppRedirect() {
                   Use your wallet to sign in into your treasury.
                 </p>
               </div>
-              <div className="flex flex-col w-full px-4 lg:px-16 px gap-3">
-                <Button className="w-full" onClick={connect}>
-                  Connect Wallet
+              <div className="flex flex-col w-full px-4 lg:px-16 px gap-3 items-center justify-center">
+                <Button size="default" className="w-full max-w-md" onClick={connect} disabled={isAuthenticating || isInitializing}>
+                  {(isAuthenticating || isInitializing) && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {buttonText}
                 </Button>
                 <p className="text-center text-sm">
                   Don't have a wallet? <Link href="https://wallet.near.org" className="hover:underline" target="_blank">Create one</Link>
