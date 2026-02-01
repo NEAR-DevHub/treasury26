@@ -4,7 +4,7 @@ import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import { useProposals } from "@/hooks/use-proposals";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { getProposals, ProposalStatus } from "@/lib/proposals-api";
 import { useSearchParams, useRouter, usePathname, useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
@@ -26,9 +26,8 @@ const SEARCH_DEBOUNCE_MS = 300;
 const FILTER_PANEL_MAX_HEIGHT = '500px';
 
 function ProposalsList({ status, onSelectionChange }: { status?: ProposalStatus[]; onSelectionChange?: (count: number) => void }) {
-  const { selectedTreasury } = useTreasury();
-  const { data: policy } = useTreasuryPolicy(selectedTreasury);
-  const { data: config } = useTreasuryConfig(selectedTreasury);
+  const { treasuryId, config } = useTreasury();
+  const { data: policy } = useTreasuryPolicy(treasuryId);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -65,22 +64,22 @@ function ProposalsList({ status, onSelectionChange }: { status?: ProposalStatus[
     router.push(`${pathname}?${params.toString()}`);
   }, [searchParams, router, pathname]);
 
-  const { data, isLoading, error } = useProposals(selectedTreasury, filters);
+  const { data, isLoading, error } = useProposals(treasuryId, filters);
 
   // Prefetch the next page
   useEffect(() => {
-    if (selectedTreasury && data && data.proposals.length === pageSize && (page + 1) * pageSize < data.total) {
+    if (treasuryId && data && data.proposals.length === pageSize && (page + 1) * pageSize < data.total) {
       const nextFilters = {
         ...filters,
         page: page + 1,
       };
 
       queryClient.prefetchQuery({
-        queryKey: ["proposals", selectedTreasury, nextFilters],
-        queryFn: () => getProposals(selectedTreasury, nextFilters),
+        queryKey: ["proposals", treasuryId, nextFilters],
+        queryFn: () => getProposals(treasuryId, nextFilters),
       });
     }
-  }, [data, page, selectedTreasury, filters, queryClient, pageSize]);
+  }, [data, page, treasuryId, filters, queryClient, pageSize]);
 
   if (isLoading) {
     return <TableSkeleton rows={12} columns={7} />;
@@ -114,7 +113,7 @@ function ProposalsList({ status, onSelectionChange }: { status?: ProposalStatus[
 }
 
 function NoRequestsFound() {
-  const { selectedTreasury: treasuryId } = useTreasury();
+  const { treasuryId: treasuryId } = useTreasury();
   return (
     <PageCard className="py-[100px] flex flex-col items-center justify-center w-full h-fit gap-4">
       <div className="flex flex-col items-center justify-center gap-0.5">

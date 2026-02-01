@@ -16,7 +16,7 @@ import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { encodeToMarkdown, formatUserDate, formatTimestamp, toBase64, formatCurrency } from "@/lib/utils";
 import { useFormatDate } from "@/components/formatted-date";
 import { useNear } from "@/stores/near-store";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Big from "big.js";
 import { useMemo, useState } from "react";
@@ -231,9 +231,9 @@ function Step3({ handleBack }: StepProps) {
 }
 
 export default function VestingPage() {
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
   const { createProposal } = useNear();
-  const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const { data: policy } = useTreasuryPolicy(treasuryId);
   const [step, setStep] = useState(0);
 
   const form = useForm<VestingFormValues>({
@@ -280,14 +280,14 @@ export default function VestingPage() {
       };
 
     const cancellableArgs = data.vesting.allowCancel ? {
-      foundation_account_id: selectedTreasury!,
+      foundation_account_id: treasuryId!,
     } : {};
     const stakingArgs = !data.vesting.allowEarn ? {
       whitelist_account_id: LOCKUP_NO_WHITELIST_ACCOUNT_ID,
     } : {};
 
     await createProposal("Request to create vesting schedule submitted", {
-      treasuryId: selectedTreasury!,
+      treasuryId: treasuryId!,
       proposal: {
         description: encodeToMarkdown(description),
         kind: {

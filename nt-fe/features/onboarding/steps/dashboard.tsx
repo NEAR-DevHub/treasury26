@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/button"
-import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury"
+import { useTreasury } from "@/hooks/use-treasury"
 import { XIcon } from "lucide-react"
 import { useNextStep } from "nextstepjs"
 import type { Tour } from "nextstepjs"
@@ -117,7 +117,7 @@ export const INFO_BOX_TOUR: Tour = {
 export function DashboardTour() {
     const [isDismissed, setIsDismissed] = useState(true)
     const { startNextStep } = useNextStep()
-    const { isGuestTreasury, isLoading } = useIsGuestTreasury();
+    const { isGuestTreasury, isLoading } = useTreasury();
 
     useEffect(() => {
         if (isGuestTreasury || isLoading) return;

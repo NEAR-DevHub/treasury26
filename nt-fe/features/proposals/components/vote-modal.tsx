@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/button";
 import { ProposalPermissionKind } from "@/lib/config-utils";
 import { useNear } from "@/stores/near-store";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
@@ -18,14 +18,14 @@ interface VoteModalProps {
 }
 
 export function VoteModal({ isOpen, onClose, onSuccess, proposalIds, vote }: VoteModalProps) {
-    const { selectedTreasury } = useTreasury();
+    const { treasuryId } = useTreasury();
     const { voteProposals } = useNear();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleVote = async () => {
         setIsSubmitting(true);
         try {
-            await voteProposals(selectedTreasury ?? "", proposalIds.map(proposal => ({
+            await voteProposals(treasuryId ?? "", proposalIds.map(proposal => ({
                 proposalId: proposal.proposalId,
                 vote: vote,
                 proposalKind: proposal.kind,

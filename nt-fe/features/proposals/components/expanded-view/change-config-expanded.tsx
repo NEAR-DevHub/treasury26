@@ -2,11 +2,8 @@ import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { ChangeConfigData } from "../../types/index";
 import { isNullValue, renderDiff } from "../../utils/diff-utils";
 import { Proposal } from "@/lib/proposals-api";
-import { Policy } from "@/types/policy";
-import { TreasuryConfig } from "@/lib/api";
-import { getProposalStatus } from "../../utils/proposal-utils";
 import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { computeConfigDiff } from "../../utils/config-diff-utils";
 import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
@@ -17,13 +14,13 @@ interface ChangeConfigExpandedProps {
 }
 
 export function ChangeConfigExpanded({ data, proposal }: ChangeConfigExpandedProps) {
-    const { selectedTreasury } = useTreasury();
+    const { treasuryId } = useTreasury();
 
     const isPending = proposal.status === "InProgress";
 
     // If not pending, fetch the config at the time of submission
     const { data: daoConfig, isLoading: isLoadingTimestamped } = useTreasuryConfig(
-        selectedTreasury,
+        treasuryId,
         !isPending ? proposal.submission_time : null
     );
 

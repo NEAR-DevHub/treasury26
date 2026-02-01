@@ -19,7 +19,7 @@ import { Button } from "./button";
 import { useProposals } from "@/hooks/use-proposals";
 import { NumberBadge } from "./number-badge";
 import { Pill } from "./pill";
-import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 
 interface NavLinkProps {
@@ -101,7 +101,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     statuses: ["InProgress"],
   })
 
-  const { isGuestTreasury, isLoading: isLoadingGuestTreasury } = useIsGuestTreasury();
+  const { isGuestTreasury, isLoading: isLoadingGuestTreasury } = useTreasury();
   const { isMobile, mounted, isSidebarOpen: isOpen } = useResponsiveSidebar();
 
   const isReduced = !isMobile && !isOpen;

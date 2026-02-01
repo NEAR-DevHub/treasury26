@@ -5,7 +5,7 @@ import { PageCard } from "@/components/card";
 import { Policy } from "@/types/policy";
 import { getApproversAndThreshold, } from "@/lib/config-utils";
 import { useNear } from "@/stores/near-store";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { getProposalStatus, UIProposalStatus } from "@/features/proposals/utils/proposal-utils";
 import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
 import { UserVote } from "../../user-vote";
@@ -163,9 +163,9 @@ function ExecutedSection({ status, date, expiresAt }: { status: UIProposalStatus
 
 export function ProposalSidebar({ proposal, policy, onVote, onDeposit }: ProposalSidebarProps) {
   const { accountId } = useNear();
-  const { selectedTreasury } = useTreasury();
-  const { data: transaction } = useProposalTransaction(selectedTreasury, proposal, policy);
-  const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(proposal, selectedTreasury);
+  const { treasuryId } = useTreasury();
+  const { data: transaction } = useProposalTransaction(treasuryId, proposal, policy);
+  const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(proposal, treasuryId);
 
   const status = getProposalStatus(proposal, policy);
   const isUserVoter = !!proposal.votes[accountId ?? ""];

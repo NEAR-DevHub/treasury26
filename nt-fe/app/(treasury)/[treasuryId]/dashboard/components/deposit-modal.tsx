@@ -3,7 +3,7 @@ import { ChevronDown } from "lucide-react";
 import QRCode from "react-qr-code";
 import { SelectModal } from "./select-modal";
 import { fetchDepositAssets, fetchDepositAddress } from "@/lib/bridge-api";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useThemeStore } from "@/stores/theme-store";
 import { Button } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
@@ -79,7 +79,7 @@ type DepositFormValues = {
 };
 
 export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetworkId }: DepositModalProps) {
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
   const { theme } = useThemeStore();
 
   const form = useForm<DepositFormValues>({
@@ -296,7 +296,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
   // Fetch deposit address when both asset and network are selected
   useEffect(() => {
     const fetchAddress = async () => {
-      if (!selectedTreasury || !selectedNetwork || !selectedAsset) {
+      if (!treasuryId || !selectedNetwork || !selectedAsset) {
         setDepositAddress(null);
         return;
       }
@@ -304,7 +304,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
       // All NEAR networks deposit directly to treasury account ID
       const isNearNetwork = selectedNetwork.id.toLowerCase().includes("near");
       if (isNearNetwork) {
-        setDepositAddress(selectedTreasury);
+        setDepositAddress(treasuryId);
         return;
       }
 
@@ -313,7 +313,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
 
       try {
         const result = await fetchDepositAddress(
-          selectedTreasury,
+          treasuryId,
           selectedNetwork.id
         );
 
@@ -340,12 +340,12 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
       }
     };
 
-    if (selectedAsset && selectedNetwork && selectedTreasury) {
+    if (selectedAsset && selectedNetwork && treasuryId) {
       fetchAddress();
     } else {
       setDepositAddress(null);
     }
-  }, [selectedAsset, selectedNetwork, selectedTreasury]);
+  }, [selectedAsset, selectedNetwork, treasuryId]);
 
   // Reset all state when modal closes
   const handleClose = useCallback(() => {

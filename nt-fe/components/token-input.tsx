@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Button } from "./button";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import TokenSelect from "./token-select";
 import { LargeInput } from "./large-input";
@@ -44,12 +44,12 @@ export function TokenInput<
     TFieldValues extends FieldValues = FieldValues,
     TTokenPath extends Path<TFieldValues> = Path<TFieldValues>
 >({ control, title, amountName, tokenName, tokenSelect }: TokenInputProps<TFieldValues, TTokenPath>) {
-    const { selectedTreasury } = useTreasury();
+    const { treasuryId } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
     const token = useWatch({ control, name: tokenName }) as Token;
 
-    const { data: tokenBalanceData, isLoading: isBalanceLoading } = useTokenBalance(selectedTreasury, token.address, token.network);
+    const { data: tokenBalanceData, isLoading: isBalanceLoading } = useTokenBalance(treasuryId, token.address, token.network);
     const { data: tokenData, isLoading: isTokenLoading } = useToken(token.address);
 
     const estimatedUSDValue = useMemo(() => {

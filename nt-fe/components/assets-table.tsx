@@ -32,7 +32,7 @@ import { availableBalance, totalBalance, lockedBalance } from "@/lib/balance";
 import { VestingDetailsModal } from "./vesting-details-modal";
 import { EarningDetailsModal } from "./earning-details-modal";
 import { Tooltip } from "./tooltip";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 
 const columnHelper = createColumnHelper<AggregatedAsset>();
 
@@ -44,7 +44,7 @@ export function AssetsTable({ tokens }: Props) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "totalBalanceUSD", desc: true },
   ]);
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [selectedVestingNetwork, setSelectedVestingNetwork] = useState<TreasuryAsset | null>(null);
   const [isVestingModalOpen, setIsVestingModalOpen] = useState(false);
@@ -486,7 +486,7 @@ export function AssetsTable({ tokens }: Props) {
           setSelectedVestingNetwork(null);
         }}
         asset={selectedVestingNetwork ?? null}
-        treasuryId={selectedTreasury ?? null}
+        treasuryId={treasuryId ?? null}
       />
       <EarningDetailsModal
         isOpen={isStakingModalOpen}

@@ -16,7 +16,7 @@ import {
     SelectItem,
 } from "@/components/ui/select";
 import { useBalanceChart } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageCard } from "@/components/card";
 import { formatBalance, formatCurrency } from "@/lib/utils";
@@ -95,9 +95,7 @@ export default function BalanceWithGraph({
     onDepositClick,
     isLoading: isLoadingTokens,
 }: Props) {
-    const params = useParams();
-    const treasuryId = params?.treasuryId as string | undefined;
-    const { selectedTreasury: accountId } = useTreasury();
+    const { treasuryId } = useTreasury();
     const [selectedToken, setSelectedToken] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1W");
 
@@ -180,7 +178,7 @@ export default function BalanceWithGraph({
 
     // Calculate time range for chart API
     const chartParams = useMemo(() => {
-        if (!accountId) return null;
+        if (!treasuryId) return null;
 
         const endTime = new Date();
         const hoursBack = PERIOD_TO_HOURS[selectedPeriod];
@@ -194,7 +192,7 @@ export default function BalanceWithGraph({
         }
 
         const params = {
-            accountId,
+            accountId: treasuryId,
             startTime: startTime.toISOString(),
             endTime: endTime.toISOString(),
             interval: PERIOD_TO_INTERVAL[selectedPeriod],
@@ -202,7 +200,7 @@ export default function BalanceWithGraph({
         };
 
         return params;
-    }, [accountId, selectedPeriod, selectedTokenGroup]);
+    }, [treasuryId, selectedPeriod, selectedTokenGroup]);
 
     // Fetch balance chart data with USD values
     const { data: balanceChartData, isLoading } = useBalanceChart(chartParams);

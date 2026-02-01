@@ -3,13 +3,13 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useNear } from "@/stores/near-store";
-import { useTreasury } from "@/stores/treasury-store";
 import { useUserTreasuries } from "@/hooks/use-treasury-queries";
 import { Button } from "@/components/button";
 import { GradFlow } from 'gradflow'
 import Image from "next/image";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import { useTreasury } from "@/hooks/use-treasury";
 
 function GradientTitle() {
   return (
@@ -28,16 +28,16 @@ function GradientTitle() {
 export default function AppRedirect() {
   const router = useRouter();
   const { accountId, connect, isInitializing, isAuthenticating } = useNear();
-  const { selectedTreasury } = useTreasury();
   const { data: treasuries = [], isLoading, isError } = useUserTreasuries(accountId);
+  const { lastTreasuryId } = useTreasury();
 
   useEffect(() => {
     if (!isLoading && treasuries.length > 0) {
-      router.push(`/${selectedTreasury ?? treasuries[0].daoId}`);
+      router.push(`/${lastTreasuryId || treasuries[0].daoId}`);
     } else if (accountId && treasuries.length === 0 && !isLoading && !isError && !isInitializing) {
       router.push(`/app/new`);
     }
-  }, [treasuries, isLoading, router, selectedTreasury]);
+  }, [treasuries, isLoading, router]);
   const buttonText = isInitializing ? "Loading..." :
     isAuthenticating || isLoading ? "Authenticating..." : "Connect Wallet";
 

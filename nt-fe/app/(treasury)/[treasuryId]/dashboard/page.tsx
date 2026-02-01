@@ -12,11 +12,11 @@ import { OnboardingProgress } from "@/features/onboarding";
 import { DepositModal } from "./components/deposit-modal";
 import { InfoBox } from "@/features/onboarding/components/info-box";
 import { DashboardTour } from "@/features/onboarding/steps/dashboard";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 
 export default function AppPage() {
-  const { selectedTreasury } = useTreasury();
-  const { data, isLoading, isPending } = useAssets(selectedTreasury);
+  const { treasuryId } = useTreasury();
+  const { data, isLoading, isPending } = useAssets(treasuryId);
   const isAssetsLoading = isLoading || isPending;
   const { tokens, totalBalanceUSD } = data || { tokens: [], totalBalanceUSD: 0 };
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);

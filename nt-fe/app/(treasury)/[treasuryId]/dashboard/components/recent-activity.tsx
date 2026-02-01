@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowDownToLine, ArrowUpToLine, Upload } from "lucide-react";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
 import type { RecentActivity as RecentActivityType } from "@/lib/api";
@@ -30,7 +30,7 @@ const ITEMS_PER_PAGE = 10;
 const columnHelper = createColumnHelper<RecentActivityType>();
 
 export function RecentActivity() {
-  const { selectedTreasury: treasuryId } = useTreasury();
+  const { treasuryId } = useTreasury();
   const [page, setPage] = useState(0);
   const [allActivities, setAllActivities] = useState<RecentActivityType[]>([]);
   const [total, setTotal] = useState(0);

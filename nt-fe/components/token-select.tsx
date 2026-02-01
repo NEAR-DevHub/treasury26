@@ -1,6 +1,6 @@
 "use client";
 
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useAssets } from "@/hooks/use-assets";
 import { useEffect, useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
@@ -48,8 +48,8 @@ interface TokenSelectProps {
 
 
 export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData, classNames }: TokenSelectProps) {
-    const { selectedTreasury } = useTreasury();
-    const { data: { tokens = [] } = {} } = useAssets(selectedTreasury, { onlyPositiveBalance: true, onlySupportedTokens: true });
+    const { treasuryId } = useTreasury();
+    const { data: { tokens = [] } = {} } = useAssets(treasuryId, { onlyPositiveBalance: true, onlySupportedTokens: true });
     const aggregatedTokens = useAggregatedTokens(tokens);
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");

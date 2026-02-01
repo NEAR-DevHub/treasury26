@@ -6,12 +6,11 @@ import { cn } from "@/lib/utils";
 import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/button";
 import { StepIcon } from "@/features/proposals/components/expanded-view/common/proposal-sidebar";
-import { useTreasury } from "@/stores/treasury-store";
 import { useAssets } from "@/hooks/use-assets";
 import { TreasuryAsset } from "@/lib/api";
 import Big from "big.js";
 import { useProposals } from "@/hooks/use-proposals";
-import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
+import { useTreasury } from "@/hooks/use-treasury";
 import { availableBalance } from "@/lib/balance";
 
 export type OnboardingStep = {
@@ -170,13 +169,10 @@ export function OnboardingProgress({
   onDepositClick,
 }: OnboardingProgressProps) {
   const router = useRouter();
-  const params = useParams();
-  const treasuryId = params?.treasuryId as string | undefined;
-  const { selectedTreasury: accountId } = useTreasury();
-  const { isGuestTreasury, isLoading: isLoadingGuestTreasury } = useIsGuestTreasury();
-  const { data, isLoading: isLoadingAssets } = useAssets(accountId);
+  const { isGuestTreasury, isLoading: isLoadingGuestTreasury, treasuryId } = useTreasury();
+  const { data, isLoading: isLoadingAssets } = useAssets(treasuryId);
   const { tokens } = data || { tokens: [] };
-  const { data: proposals, isLoading: isLoadingProposals } = useProposals(accountId, {
+  const { data: proposals, isLoading: isLoadingProposals } = useProposals(treasuryId, {
     types: ["Payments"],
   });
 

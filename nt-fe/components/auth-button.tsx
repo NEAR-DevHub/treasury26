@@ -3,7 +3,7 @@ import { Tooltip } from "./tooltip";
 import { hasPermission, getApproversAndThreshold } from "@/lib/config-utils";
 import { ProposalKind } from "@/lib/proposals-api";
 import { useNear } from "@/stores/near-store";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { useMemo, useState } from "react";
 import { InsufficientBalanceModal } from "@/features/proposals/components/insufficient-balance-modal";
@@ -49,8 +49,8 @@ export function AuthButton({
     ...props
 }: AuthButtonProps) {
     const { accountId } = useNear();
-    const { selectedTreasury } = useTreasury();
-    const { data: policy } = useTreasuryPolicy(selectedTreasury);
+    const { treasuryId } = useTreasury();
+    const { data: policy } = useTreasuryPolicy(treasuryId);
     const { data: nearBalance } = useTokenBalance(accountId, "near", "near");
     const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
 
@@ -121,8 +121,8 @@ export function AuthButtonWithProposal({
     ...props
 }: AuthButtonWithProposalProps) {
     const { accountId } = useNear();
-    const { selectedTreasury } = useTreasury();
-    const { data: policy } = useTreasuryPolicy(selectedTreasury);
+    const { treasuryId } = useTreasury();
+    const { data: policy } = useTreasuryPolicy(treasuryId);
     const { data: nearBalance } = useTokenBalance(accountId, "near", "near");
     const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
 

@@ -5,13 +5,12 @@ import { NumberBadge } from "@/components/number-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { ChevronRight, Check, X, Download } from "lucide-react";
 import Link from "next/link";
 import { ProposalTypeIcon } from "../proposal-type-icon";
 import { TransactionCell } from "../transaction-cell";
-import { Policy } from "@/types/policy";
-import { useTreasuryConfig, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { getProposalUIKind } from "../../utils/proposal-utils";
 import { useProposalInsufficientBalance } from "../../hooks/use-proposal-insufficient-balance";
 import { VoteModal } from "../vote-modal";
@@ -117,13 +116,13 @@ export function PendingRequestItem({ proposal, treasuryId, onVote, onDeposit }: 
 }
 
 export function PendingRequests() {
-    const { selectedTreasury } = useTreasury();
-    const { data: policy, isLoading: isPolicyLoading } = useTreasuryPolicy(selectedTreasury);
+    const { treasuryId } = useTreasury();
+    const { data: policy, isLoading: isPolicyLoading } = useTreasuryPolicy(treasuryId);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
     const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
     const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{ tokenSymbol?: string, tokenNetwork?: string }>({});
     const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
-    const { data: pendingRequests, isLoading: isRequestsLoading } = useProposals(selectedTreasury, {
+    const { data: pendingRequests, isLoading: isRequestsLoading } = useProposals(treasuryId, {
         statuses: ["InProgress"],
     });
 
@@ -147,7 +146,7 @@ export function PendingRequests() {
                     </div>
 
                     {hasPendingRequests && (
-                        <Link href={`/${selectedTreasury}/requests`}>
+                        <Link href={`/${treasuryId}/requests`}>
                             <Button variant="ghost" className="flex gap-2">
                                 View All
                                 <ChevronRight className="size-4" />
@@ -162,7 +161,7 @@ export function PendingRequests() {
                             <PendingRequestItem
                                 key={proposal.id}
                                 proposal={proposal}
-                                treasuryId={selectedTreasury!}
+                                treasuryId={treasuryId!}
                                 onVote={(vote) => {
                                     setVoteInfo({ vote, proposalIds: [{ proposalId: proposal.id, kind: getKindFromProposal(proposal.kind) ?? "call" }] });
                                     setIsVoteModalOpen(true);

@@ -8,11 +8,11 @@ import { useForm, useFormContext } from "react-hook-form";
 import { Form, FormField } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ReviewStep, StepperHeader, InlineNextButton, StepProps, StepWizard } from "@/components/step-wizard";
+import { ReviewStep, StepperHeader, StepProps, StepWizard } from "@/components/step-wizard";
 import { useStorageDepositIsRegistered, useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/textarea";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { encodeToMarkdown, formatCurrency } from "@/lib/utils";
 import Big from "big.js";
@@ -220,9 +220,9 @@ const buildTransferProposal = (
 };
 
 export default function PaymentsPage() {
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
   const { createProposal } = useNear();
-  const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const { data: policy } = useTreasuryPolicy(treasuryId);
   const [step, setStep] = useState(0);
 
   // Onboarding tours
@@ -291,7 +291,7 @@ export default function PaymentsPage() {
         : buildTransferProposal(data, parsedAmount);
 
       await createProposal("Request to send payment submitted", {
-        treasuryId: selectedTreasury!,
+        treasuryId: treasuryId!,
         proposal: {
           description: encodeToMarkdown(description),
           kind: proposalKind,

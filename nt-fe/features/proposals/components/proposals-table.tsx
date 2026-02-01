@@ -27,7 +27,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Pagination } from "@/components/pagination";
 import { ProposalStatusPill } from "./proposal-status-pill";
 import { useNear } from "@/stores/near-store";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { getApproversAndThreshold, getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
 
 import {
@@ -71,7 +71,7 @@ export function ProposalsTable({
   const [rowSelection, setRowSelection] = useState({});
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const { accountId } = useNear();
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
   const formatDate = useFormatDate();
 
   const columns = useMemo<ColumnDef<Proposal, any>[]>(
@@ -99,7 +99,7 @@ export function ProposalsTable({
           const proposalKind = getKindFromProposal(proposal.kind) ?? "call";
           const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposalKind, false);
           const proposalStatus = getProposalStatus(proposal, policy);
-          const canVote = approverAccounts.includes(accountId ?? "") && accountId && selectedTreasury && proposal.status === "InProgress" && proposalStatus !== "Expired";
+          const canVote = approverAccounts.includes(accountId ?? "") && accountId && treasuryId && proposal.status === "InProgress" && proposalStatus !== "Expired";
 
           if (!canVote) {
             return null;
@@ -191,7 +191,7 @@ export function ProposalsTable({
         ),
       }),
     ],
-    [policy, accountId, selectedTreasury, formatDate]
+    [policy, accountId, treasuryId, formatDate]
   );
 
   const table = useReactTable({
@@ -216,7 +216,7 @@ export function ProposalsTable({
       const proposal = row.original;
       const { approverAccounts } = getApproversAndThreshold(policy, accountId ?? "", proposal.kind, false);
       const proposalStatus = getProposalStatus(proposal, policy);
-      return approverAccounts.includes(accountId ?? "") && !!accountId && !!selectedTreasury && proposal.status === "InProgress" && proposalStatus !== "Expired";
+      return approverAccounts.includes(accountId ?? "") && !!accountId && !!treasuryId && proposal.status === "InProgress" && proposalStatus !== "Expired";
     },
   });
 
@@ -250,7 +250,7 @@ export function ProposalsTable({
   const selectedProposals = table.getFilteredSelectedRowModel().rows.map(row => row.original);
 
   const handleBulkVote = async (vote: "Approve" | "Reject") => {
-    if (!selectedTreasury || !accountId) return;
+    if (!treasuryId || !accountId) return;
 
     setVoteInfo({ vote, proposalIds: selectedProposals.map(proposal => ({ proposalId: proposal.id, kind: getKindFromProposal(proposal.kind) ?? "call" })) });
     setIsVoteModalOpen(true);
