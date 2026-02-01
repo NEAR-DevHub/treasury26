@@ -30,6 +30,7 @@ import Big from "big.js";
 import { NetworkDisplay, BalanceCell } from "./token-display";
 import { availableBalance, totalBalance, lockedBalance } from "@/lib/balance";
 import { VestingDetailsModal } from "./vesting-details-modal";
+import { EarningDetailsModal } from "./earning-details-modal";
 import { Tooltip } from "./tooltip";
 import { useTreasury } from "@/stores/treasury-store";
 
@@ -47,6 +48,8 @@ export function AssetsTable({ tokens }: Props) {
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [selectedVestingNetwork, setSelectedVestingNetwork] = useState<TreasuryAsset | null>(null);
   const [isVestingModalOpen, setIsVestingModalOpen] = useState(false);
+  const [selectedStakingNetwork, setSelectedStakingNetwork] = useState<TreasuryAsset | null>(null);
+  const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
 
   // Aggregate tokens by symbol using custom hook
   const aggregatedTokens = useAggregatedTokens(tokens);
@@ -234,7 +237,8 @@ export function AssetsTable({ tokens }: Props) {
             {row.getIsExpanded() && (
               <>
                 {(() => {
-                  const sourceNetworks = row.original.networks.filter(n => n.residency !== "Lockup");
+                  const sourceNetworks = row.original.networks.filter(n => n.residency !== "Lockup" && n.residency !== "Staked");
+                  const stakingNetworks = row.original.networks.filter(n => n.residency === "Staked");
                   const vestingNetworks = row.original.networks.filter(n => n.residency === "Lockup");
 
                   const calculateBalanceUSD = (balance: Big, price: number, decimals: number) => {
@@ -271,6 +275,57 @@ export function AssetsTable({ tokens }: Props) {
                                   />
                                 </TableCell>
                                 <TableCell className="p-4">
+                                  {locked.gt(0) && (
+                                    <BalanceCell
+                                      balance={Big(formatBalance(available, network.decimals))}
+                                      symbol={network.symbol}
+                                      balanceUSD={calculateBalanceUSD(available, network.price, network.decimals)}
+                                    />
+                                  )}
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  {locked.gt(0) && (
+                                    <BalanceCell
+                                      balance={Big(formatBalance(locked, network.decimals))}
+                                      symbol={network.symbol}
+                                      balanceUSD={calculateBalanceUSD(locked, network.price, network.decimals)}
+                                    />
+                                  )}
+                                </TableCell>
+                                <TableCell className="p-4"></TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </>
+                      )}
+
+                      {/* STAKING Section */}
+                      {stakingNetworks.length > 0 && (
+                        <>
+                          {stakingNetworks.map((network, idx) => {
+                            const total = totalBalance(network.balance);
+                            const available = availableBalance(network.balance);
+                            const locked = lockedBalance(network.balance);
+                            return (
+                              <TableRow
+                                key={`${row.id}-staking-${idx}`}
+                                className="bg-muted/30 group cursor-pointer"
+                                onClick={() => {
+                                  setSelectedStakingNetwork(network);
+                                  setIsStakingModalOpen(true);
+                                }}
+                              >
+                                <TableCell className="p-4 pl-16">
+                                  <NetworkDisplay asset={network} />
+                                </TableCell>
+                                <TableCell className="p-4">
+                                  <BalanceCell
+                                    balance={Big(formatBalance(total, network.decimals))}
+                                    symbol={network.symbol}
+                                    balanceUSD={calculateBalanceUSD(total, network.price, network.decimals)}
+                                  />
+                                </TableCell>
+                                <TableCell className="p-4">
                                   <BalanceCell
                                     balance={Big(formatBalance(available, network.decimals))}
                                     symbol={network.symbol}
@@ -278,11 +333,29 @@ export function AssetsTable({ tokens }: Props) {
                                   />
                                 </TableCell>
                                 <TableCell className="p-4">
-                                  <BalanceCell
-                                    balance={Big(formatBalance(locked, network.decimals))}
-                                    symbol={network.symbol}
-                                    balanceUSD={calculateBalanceUSD(locked, network.price, network.decimals)}
-                                  />
+                                  <div className="relative">
+                                    <div className="group-hover:opacity-0 transition-opacity">
+                                      <BalanceCell
+                                        balance={Big(formatBalance(locked, network.decimals))}
+                                        symbol={network.symbol}
+                                        balanceUSD={calculateBalanceUSD(locked, network.price, network.decimals)}
+                                      />
+                                    </div>
+                                    <div className="absolute inset-0 flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedStakingNetwork(network);
+                                          setIsStakingModalOpen(true);
+                                        }}
+                                      >
+                                        <ChevronRight className="size-4 text-primary" />
+                                      </Button>
+                                    </div>
+                                  </div>
                                 </TableCell>
                                 <TableCell className="p-4"></TableCell>
                               </TableRow>
@@ -414,6 +487,14 @@ export function AssetsTable({ tokens }: Props) {
         }}
         asset={selectedVestingNetwork ?? null}
         treasuryId={selectedTreasury ?? null}
+      />
+      <EarningDetailsModal
+        isOpen={isStakingModalOpen}
+        onClose={() => {
+          setIsStakingModalOpen(false);
+          setSelectedStakingNetwork(null);
+        }}
+        asset={selectedStakingNetwork ?? null}
       />
     </Table>
   );

@@ -2,6 +2,7 @@ use crate::{
     handlers::user::{
         balance::TokenBalanceResponse,
         lockup::{LockupBalance, fetch_lockup_balance_of_account},
+        staking::{StakingBalance, fetch_staking_balances},
     },
     utils::cache::CacheTier,
 };
@@ -26,7 +27,7 @@ use crate::{
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Balance {
     Standard { total: String, locked: String },
-    Staked(),
+    Staked(StakingBalance),
     Vested(LockupBalance),
 }
 
@@ -316,8 +317,15 @@ pub async fn get_user_assets(
                 let balances_future = fetch_user_balances(&state_clone, &account);
                 let near_balance = fetch_near_balance(&state_clone, &account);
                 let lockup_balance = fetch_lockup_balance_of_account(&state_clone, &account);
+                let staking_balance = fetch_staking_balances(&state_clone, &account);
 
-                tokio::try_join!(tokens_future, balances_future, near_balance, lockup_balance)
+                tokio::try_join!(
+                    tokens_future,
+                    balances_future,
+                    near_balance,
+                    lockup_balance,
+                    staking_balance
+                )
             };
 
             // Fetch intents balances
@@ -345,7 +353,8 @@ pub async fn get_user_assets(
                 tokio::join!(ref_data_future, intents_data_future);
 
             // Get whitelisted tokens and user balances
-            let (whitelist_set, user_balances, near_balance, lockup_balance) = ref_data_result?;
+            let (whitelist_set, user_balances, near_balance, lockup_balance, staking_balance) =
+                ref_data_result?;
 
             // Get intents balances (already filtered to non-zero)
             let intents_balances = intents_data_result.unwrap_or_else(|e| {
@@ -474,6 +483,36 @@ pub async fn get_user_assets(
                     total,
                 ));
             }
+
+            // Add staking balance if exists
+            if let Some(staking) = staking_balance {
+                let total: U128 = staking
+                    .staked_balance
+                    .saturating_add(staking.unstaked_balance)
+                    .as_yoctonear()
+                    .into();
+                all_simplified_tokens.push((
+                    SimplifiedToken {
+                        id: "near".to_string(),
+                        contract_id: None,
+                        decimals: near_token_meta.decimals,
+                        balance: Balance::Staked(staking),
+                        price: near_token_meta.price.unwrap_or(0.0).to_string(),
+                        symbol: near_token_meta.symbol.clone(),
+                        name: near_token_meta.name.clone(),
+                        icon: near_token_meta.icon.clone(),
+                        network: near_token_meta.network.clone().unwrap_or_default(),
+                        residency: TokenResidency::Staked,
+                        chain_name: near_token_meta
+                            .chain_name
+                            .clone()
+                            .unwrap_or(near_token_meta.name.clone()),
+                        chain_icons: near_token_meta.chain_icons.clone(),
+                    },
+                    total,
+                ));
+            }
+
             let locked_near_balance = near_balance.locked_balance.clone().unwrap_or(U128::from(0));
             all_simplified_tokens.push((
                 SimplifiedToken {

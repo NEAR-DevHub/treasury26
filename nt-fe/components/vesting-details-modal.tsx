@@ -8,6 +8,7 @@ import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { useTreasuryLockup } from "@/hooks/use-lockup";
 import { availableBalance } from "@/lib/balance";
 import { formatBalance } from "@/lib/utils";
+import { buildEarningOverviewItems, hasStakingActivity } from "@/lib/earning-utils";
 import Big from "big.js";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -34,7 +35,7 @@ export function VestingDetailsModal({
 
     const lockup = asset.balance.lockup;
     const available = availableBalance(asset.balance);
-    const hasStake = lockup.staked.gt(0) || lockup.unstakedBalance.gt(0);
+    const hasStake = hasStakingActivity(lockup.staked, lockup.unstakedBalance);
 
     // Calculate vested percentage
     const vestedPercent = lockup.totalAllocated.gt(0)
@@ -97,26 +98,14 @@ export function VestingDetailsModal({
     ];
 
     // Earning Overview items (only shown if has stake)
-    // Pending Release = unstaked balance that cannot be withdrawn yet
-    // Available for Withdraw = unstaked balance that can be withdrawn
-    const pendingRelease = lockup.canWithdraw ? Big(0) : lockup.unstakedBalance;
-    const availableForWithdraw = lockup.canWithdraw ? lockup.unstakedBalance : Big(0);
-
-    const earningOverviewItems: InfoItem[] = hasStake
-        ? [
-            {
-                label: "Staked",
-                value: `${formatTokenBalance(lockup.staked)} ${asset.symbol}`,
-            },
-            {
-                label: "Pending Release",
-                value: `${formatTokenBalance(pendingRelease)} ${asset.symbol}`,
-            },
-            {
-                label: "Available for Withdraw",
-                value: `${formatTokenBalance(availableForWithdraw)} ${asset.symbol}`,
-            },
-        ]
+    const earningOverviewItems = hasStake
+        ? buildEarningOverviewItems({
+            staked: lockup.staked,
+            unstakedBalance: lockup.unstakedBalance,
+            canWithdraw: lockup.canWithdraw,
+            symbol: asset.symbol,
+            formatTokenBalance,
+        })
         : [];
 
     return (

@@ -11,9 +11,23 @@ export interface LockupBalance {
     canWithdraw: boolean;
 }
 
+export interface StakingPoolAccountInfo {
+    poolId: string;
+    stakedBalance: Big;
+    unstakedBalance: Big;
+    canWithdraw: boolean;
+}
+
+export interface StakingBalance {
+    stakedBalance: Big;
+    unstakedBalance: Big;
+    canWithdraw: boolean;
+    pools: StakingPoolAccountInfo[];
+}
+
 export type Balance =
     | { type: "Standard"; total: Big; locked: Big }
-    | { type: "Staked" }
+    | { type: "Staked"; staking: StakingBalance }
     | { type: "Vested"; lockup: LockupBalance };
 
 
@@ -27,9 +41,23 @@ interface LockupBalanceRaw {
     canWithdraw: boolean;
 }
 
+interface StakingPoolAccountInfoRaw {
+    poolId: string;
+    stakedBalance: string;
+    unstakedBalance: string;
+    canWithdraw: boolean;
+}
+
+interface StakingBalanceRaw {
+    stakedBalance: string;
+    unstakedBalance: string;
+    canWithdraw: boolean;
+    pools: StakingPoolAccountInfoRaw[];
+}
+
 export type BalanceRaw =
     | { Standard: { total: string; locked: string } }
-    | { Staked: [] }
+    | { Staked: StakingBalanceRaw }
     | { Vested: LockupBalanceRaw };
 
 export function transformBalance(raw: BalanceRaw): { balance: Balance; total: Big } {
@@ -54,19 +82,37 @@ export function transformBalance(raw: BalanceRaw): { balance: Balance; total: Bi
             balance: { type: "Vested", lockup },
             total: lockup.total,
         };
-    } else {
+    } else if ("Staked" in raw) {
+        const staking: StakingBalance = {
+            stakedBalance: Big(raw.Staked.stakedBalance),
+            unstakedBalance: Big(raw.Staked.unstakedBalance),
+            canWithdraw: raw.Staked.canWithdraw,
+            pools: raw.Staked.pools.map((pool) => ({
+                poolId: pool.poolId,
+                stakedBalance: Big(pool.stakedBalance),
+                unstakedBalance: Big(pool.unstakedBalance),
+                canWithdraw: pool.canWithdraw,
+            })),
+        };
+        const total = staking.stakedBalance.add(staking.unstakedBalance);
         return {
-            balance: { type: "Staked" },
+            balance: { type: "Staked", staking },
+            total,
+        };
+    } else {
+        // Fallback for unknown types
+        return {
+            balance: { type: "Standard", total: Big(0), locked: Big(0) },
             total: Big(0),
         };
     }
-};
+}
 
 export function totalBalance(balance: Balance): Big {
     if (balance.type === "Standard") {
         return balance.total;
     } else if (balance.type === "Staked") {
-        return Big(0);
+        return balance.staking.stakedBalance.add(balance.staking.unstakedBalance);
     } else if (balance.type === "Vested") {
         return balance.lockup.total;
     }
@@ -77,7 +123,8 @@ export function availableBalance(balance: Balance): Big {
     if (balance.type === "Standard") {
         return balance.total.sub(balance.locked);
     } else if (balance.type === "Staked") {
-        return Big(0);
+        // Available for withdraw if canWithdraw is true
+        return balance.staking.canWithdraw ? balance.staking.unstakedBalance : Big(0);
     } else if (balance.type === "Vested") {
         const restriction = balance.lockup.unvested.lt(balance.lockup.staked) ? balance.lockup.staked : balance.lockup.unvested;
         const available = balance.lockup.total
@@ -92,7 +139,9 @@ export function lockedBalance(balance: Balance): Big {
     if (balance.type === "Standard") {
         return balance.locked;
     } else if (balance.type === "Staked") {
-        return Big(0);
+        // Staked balance + pending unstaked (not yet withdrawable)
+        const pendingUnstaked = balance.staking.canWithdraw ? Big(0) : balance.staking.unstakedBalance;
+        return balance.staking.stakedBalance.add(pendingUnstaked);
     } else if (balance.type === "Vested") {
         const largestLockup = balance.lockup.unvested.gt(balance.lockup.staked) ? balance.lockup.unvested : balance.lockup.staked;
         return largestLockup.add(balance.lockup.storageLocked);
