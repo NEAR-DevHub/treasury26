@@ -49,10 +49,7 @@ services:
       - key: MAXMIND_LICENSE_KEY
         sync: false
       - key: NEXT_PUBLIC_BACKEND_API_BASE
-        fromService:
-          type: web
-          name: near-treasury-backend
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://api.trezu.app
     healthCheckPath: /
 
   - type: web

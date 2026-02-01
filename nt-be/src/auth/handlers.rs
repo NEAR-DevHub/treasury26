@@ -187,7 +187,7 @@ pub async fn login(
         .path("/")
         .http_only(true)
         .secure(true) // Only send over HTTPS
-        .same_site(SameSite::Lax)
+        .same_site(SameSite::Strict)
         .max_age(time::Duration::hours(
             state.env_vars.jwt_expiry_hours as i64,
         ))
