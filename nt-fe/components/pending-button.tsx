@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/button";
 import { useProposals } from "@/hooks/use-proposals";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useRouter } from "next/navigation";
 
 interface PendingButtonProps {
@@ -12,10 +12,10 @@ interface PendingButtonProps {
 }
 
 export function PendingButton({ types, id }: PendingButtonProps) {
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
   const router = useRouter();
 
-  const { data: pendingProposals } = useProposals(selectedTreasury, {
+  const { data: pendingProposals } = useProposals(treasuryId, {
     statuses: ["InProgress"],
     types,
     sort_direction: "desc",
@@ -27,7 +27,7 @@ export function PendingButton({ types, id }: PendingButtonProps) {
       id={id}
       type="button"
       onClick={() =>
-        router.push(`/${selectedTreasury}/requests?tab=pending`)
+        router.push(`/${treasuryId}/requests?tab=pending`)
       }
       variant="ghost"
       className="flex items-center gap-2 border-2"

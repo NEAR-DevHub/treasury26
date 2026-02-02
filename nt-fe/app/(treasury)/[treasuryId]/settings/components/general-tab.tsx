@@ -6,7 +6,7 @@ import { Button } from "@/components/button";
 import { Database, Loader2 } from "lucide-react";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { PageCard } from "@/components/card";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import {
   useTreasuryConfig,
   useTreasuryPolicy,
@@ -18,7 +18,6 @@ import { Form, FormField, FormControl, FormItem } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useNear } from "@/stores/near-store";
 import { encodeToMarkdown } from "@/lib/utils";
-import { hasPermission } from "@/lib/config-utils";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -55,16 +54,13 @@ const generalSchema = z.object({
 type GeneralFormValues = z.infer<typeof generalSchema>;
 
 export function GeneralTab() {
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId, config } = useTreasury();
   const { createProposal } = useNear();
-  const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const { data: policy } = useTreasuryPolicy(treasuryId);
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Fetch the treasury config directly by treasuryId
-  const { data: currentTreasury } = useTreasuryConfig(selectedTreasury);
 
   const form = useForm<GeneralFormValues>({
     resolver: zodResolver(generalSchema),
@@ -78,20 +74,20 @@ export function GeneralTab() {
 
   // Update form when treasury data loads
   useEffect(() => {
-    if (currentTreasury) {
+    if (config) {
       const treasuryData = {
-        displayName: currentTreasury.name || "",
-        accountName: selectedTreasury || "",
+        displayName: config?.name || "",
+        accountName: treasuryId || "",
         primaryColor:
-          currentTreasury.metadata?.primaryColor || "#3B82F6",
-        logo: currentTreasury.metadata?.flagLogo || null,
+          config.metadata?.primaryColor || "#3B82F6",
+        logo: config.metadata?.flagLogo || null,
       };
       form.reset(treasuryData);
     }
-  }, [currentTreasury, selectedTreasury, form]);
+  }, [config, treasuryId, form]);
 
   const onSubmit = async (data: GeneralFormValues) => {
-    if (!selectedTreasury || !currentTreasury) {
+    if (!treasuryId || !config) {
       toast.error("Treasury not found");
       return;
     }
@@ -110,14 +106,14 @@ export function GeneralTab() {
       };
 
       await createProposal("Request to update configuration submitted", {
-        treasuryId: selectedTreasury,
+        treasuryId: treasuryId,
         proposal: {
           description: encodeToMarkdown(description),
           kind: {
             ChangeConfig: {
               config: {
                 name: data.displayName,
-                purpose: currentTreasury.purpose,
+                purpose: config.purpose,
                 metadata: Buffer.from(JSON.stringify(metadata)).toString(
                   "base64"
                 ),
@@ -130,7 +126,7 @@ export function GeneralTab() {
 
       // Refetch proposals to show the newly created proposal
       queryClient.invalidateQueries({
-        queryKey: ["proposals", selectedTreasury],
+        queryKey: ["proposals", treasuryId],
       });
 
       // Reset form to mark as not dirty

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO daos (dao_id, is_dirty, source)\n        VALUES ($1, true, 'manual')\n        ON CONFLICT (dao_id) DO UPDATE SET\n            is_dirty = true,\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "35e866c6f8bcce1ee32d88563c52dbaa83cb233b0763300c66714743e5074b91"
+}

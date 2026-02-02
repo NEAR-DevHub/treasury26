@@ -3,8 +3,10 @@ use std::process::{Child, Command};
 use std::sync::Once;
 use std::time::Duration;
 use tokio::time::sleep;
-use wiremock::matchers::{method, path_regex};
-use wiremock::{Mock, MockServer, ResponseTemplate};
+use wiremock::{
+    Mock, MockServer, ResponseTemplate,
+    matchers::{method, path_regex},
+};
 
 static INIT: Once = Once::new();
 
@@ -47,26 +49,90 @@ pub fn get_fastnear_api_key() -> String {
     std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env")
 }
 
+/// Start a mock DeFiLlama server with test data
+///
+/// This function sets up wiremock to respond to DeFiLlama API requests with deterministic test data.
+/// The mock data is stored in `tests/test_data/defillama_mocks/` directory.
+///
+/// ## Mock Data Generation
+///
+/// The mock files were generated using real DeFiLlama API queries (365 days of data):
+///
+/// ```bash
+/// # Example queries used to generate mock data (from 2024-12-06 to 2025-12-05):
+/// # https://coins.llama.fi/chart/coingecko:near?start=1733443200&span=365&period=1d
+/// # https://coins.llama.fi/chart/coingecko:bitcoin?start=1733443200&span=365&period=1d
+/// # https://coins.llama.fi/chart/coingecko:ethereum?start=1733443200&span=365&period=1d
+/// # https://coins.llama.fi/chart/coingecko:solana?start=1733443200&span=365&period=1d
+/// # https://coins.llama.fi/chart/coingecko:ripple?start=1733443200&span=365&period=1d
+/// # https://coins.llama.fi/chart/coingecko:usd-coin?start=1733443200&span=365&period=1d
+/// ```
+///
+/// Each mock file contains the JSON response from DeFiLlama's `/chart` endpoint.
+pub async fn start_mock_defillama_server() -> MockServer {
+    let mock_server = MockServer::start().await;
+
+    // Map of asset IDs to their mock response files
+    let assets = vec![
+        "coingecko:near",
+        "coingecko:bitcoin",
+        "coingecko:ethereum",
+        "coingecko:solana",
+        "coingecko:ripple",
+        "coingecko:usd-coin",
+    ];
+
+    for asset_id in assets {
+        // Extract the coin name from the coingecko:coin-name format
+        let coin_name = asset_id.strip_prefix("coingecko:").unwrap();
+        let mock_file = format!("tests/test_data/defillama_mocks/{}.json", coin_name);
+
+        let mock_data = std::fs::read_to_string(&mock_file).unwrap_or_else(|_| {
+            panic!(
+                "Failed to read mock DeFiLlama data from {}.\n\
+                 See function docs for how to generate this file from real DeFiLlama API.",
+                mock_file
+            )
+        });
+
+        // Mock the /chart/{coin} endpoint used by background price sync
+        // Example: /chart/coingecko:near?start=1733443200&span=365&period=1d
+        // The background sync service bulk-loads all historical prices using this endpoint,
+        // then the API reads from the database cache (no need to mock /prices/historical)
+        Mock::given(method("GET"))
+            .and(path_regex(format!(
+                r"^/chart/{}(\?.*)?$",
+                regex::escape(asset_id)
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_string(mock_data))
+            .mount(&mock_server)
+            .await;
+    }
+
+    println!("✓ Mock DeFiLlama server started at {}", mock_server.uri());
+
+    mock_server
+}
+
 pub struct TestServer {
     process: Child,
     port: u16,
-    _mock_server: MockServer, // Keep mock server alive
+    _mock_server: Option<MockServer>,
 }
 
 impl TestServer {
+    /// Start the test server with a mock DeFiLlama server for deterministic tests
     pub async fn start() -> Self {
         load_test_env();
 
         let db_url =
             std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
 
-        // Start mock CoinGecko server
-        let mock_server = MockServer::start().await;
+        // Start mock DeFiLlama server
+        let mock_server = start_mock_defillama_server().await;
+        let mock_uri = mock_server.uri();
 
-        // Load price data from files and setup mock responses
-        setup_coingecko_mocks(&mock_server).await;
-
-        // Start the server in the background with mock CoinGecko URL
+        // Start the server in the background, pointing to the mock DeFiLlama API
         let mut process = Command::new("cargo")
             .args(["run", "--bin", "nt-be"])
             .env("PORT", "3001")
@@ -78,8 +144,7 @@ impl TestServer {
                 "ed25519:3tgdk2wPraJzT4nsTuf86UX41xgPNk3MHnq8epARMdBNs29AFEztAuaQ7iHddDfXG9F2RzV1XNQYgJyAyoW51UBB",
             )
             .env("SIGNER_ID", "sandbox")
-            .env("COINGECKO_API_KEY", "test-api-key") // Enable price service
-            .env("COINGECKO_API_BASE_URL", mock_server.uri()) // Point to mock server
+            .env("DEFILLAMA_API_BASE_URL", &mock_uri) // Point to mock server
             .spawn()
             .expect("Failed to start server");
 
@@ -102,7 +167,7 @@ impl TestServer {
                 return TestServer {
                     process,
                     port,
-                    _mock_server: mock_server,
+                    _mock_server: Some(mock_server),
                 };
             }
         }
@@ -122,55 +187,4 @@ impl Drop for TestServer {
     fn drop(&mut self) {
         let _ = self.process.kill();
     }
-}
-
-/// Setup mock responses for CoinGecko API endpoints
-async fn setup_coingecko_mocks(mock_server: &MockServer) {
-    // Load price data from test files
-    let assets = [
-        ("near", include_str!("../test_data/price_data/near.json")),
-        (
-            "bitcoin",
-            include_str!("../test_data/price_data/bitcoin.json"),
-        ),
-        (
-            "ethereum",
-            include_str!("../test_data/price_data/ethereum.json"),
-        ),
-        (
-            "solana",
-            include_str!("../test_data/price_data/solana.json"),
-        ),
-        (
-            "ripple",
-            include_str!("../test_data/price_data/ripple.json"),
-        ),
-        (
-            "usd-coin",
-            include_str!("../test_data/price_data/usd-coin.json"),
-        ),
-    ];
-
-    for (asset_id, json_data) in assets {
-        // Mock the market_chart/range endpoint (bulk historical prices)
-        Mock::given(method("GET"))
-            .and(path_regex(format!(
-                r"^/coins/{}/market_chart/range",
-                asset_id
-            )))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_string(json_data)
-                    .insert_header("content-type", "application/json"),
-            )
-            .mount(mock_server)
-            .await;
-    }
-
-    // Return 404 for unknown assets
-    Mock::given(method("GET"))
-        .and(path_regex(r"^/coins/[^/]+/market_chart/range"))
-        .respond_with(ResponseTemplate::new(404))
-        .mount(mock_server)
-        .await;
 }

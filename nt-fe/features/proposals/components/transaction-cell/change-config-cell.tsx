@@ -1,8 +1,7 @@
 import { TitleSubtitleCell } from "./title-subtitle-cell";
 import { Proposal } from "@/lib/proposals-api";
-import { getProposalStatus } from "../../utils/proposal-utils";
 import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { extractChangeConfigData } from "../../utils/proposal-extractors";
 import { computeConfigDiff } from "../../utils/config-diff-utils";
 import { useMemo } from "react";
@@ -14,13 +13,13 @@ interface ChangeConfigCellProps {
 }
 
 export function ChangeConfigCell({ proposal, timestamp }: ChangeConfigCellProps) {
-    const { selectedTreasury } = useTreasury();
+    const { treasuryId } = useTreasury();
 
     const isPending = proposal.status === "InProgress";
 
     // If not pending, fetch the config at the time of submission
     const { data: oldConfig, isLoading: isLoadingTimestamped } = useTreasuryConfig(
-        selectedTreasury,
+        treasuryId,
         !isPending ? proposal.submission_time : null
     );
 

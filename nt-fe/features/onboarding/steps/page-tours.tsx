@@ -3,7 +3,7 @@
 import { useNextStep } from "nextstepjs"
 import type { Tour } from "nextstepjs"
 import { useEffect, useCallback, useRef } from "react"
-import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury"
+import { useTreasury } from "@/hooks/use-treasury"
 
 // Tour names
 export const PAGE_TOUR_NAMES = {
@@ -93,7 +93,7 @@ export const MEMBERS_PENDING_TOUR: Tour = {
  */
 export function usePageTour(tourName: string, storageKey: string) {
     const { startNextStep } = useNextStep()
-    const { isGuestTreasury, isLoading } = useIsGuestTreasury()
+    const { isGuestTreasury, isLoading } = useTreasury()
     const hasTriggered = useRef(false)
 
     const triggerTour = useCallback(() => {
@@ -130,7 +130,7 @@ export function usePageTour(tourName: string, storageKey: string) {
  */
 export function useManualPageTour(tourName: string, storageKey: string) {
     const { startNextStep } = useNextStep()
-    const { isGuestTreasury } = useIsGuestTreasury()
+    const { isGuestTreasury } = useTreasury()
 
     const triggerTour = useCallback(() => {
         if (isGuestTreasury) return

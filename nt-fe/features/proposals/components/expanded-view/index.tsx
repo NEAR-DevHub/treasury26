@@ -12,7 +12,7 @@ import { Policy } from "@/types/policy";
 import { StakingExpanded } from "./staking-expanded";
 import { ChangeConfigExpanded } from "./change-config-expanded";
 import { SwapExpanded } from "./swap-expanded";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import Link from "next/link";
 import { extractProposalData } from "../../utils/proposal-extractors";
 import {
@@ -87,11 +87,11 @@ interface ExpandedViewProps {
 }
 
 export function ExpandedView({ proposal, policy, hideOpenInNewTab = false, onVote, onDeposit }: ExpandedViewProps) {
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
   const { accountId } = useNear();
 
   const component = ExpandedViewInternal({ proposal });
-  const requestUrl = `${window.location.origin}/${selectedTreasury}/requests/${proposal.id}`;
+  const requestUrl = `${window.location.origin}/${treasuryId}/requests/${proposal.id}`;
 
   const ownProposal = proposal.proposer === accountId && getProposalStatus(proposal, policy) === "Pending";
   const isVoted = !!proposal.votes[accountId ?? ""];

@@ -1,7 +1,10 @@
-use axum::Router;
+use axum::{
+    Router,
+    http::{HeaderValue, Method, header},
+};
 use std::sync::Arc;
 use std::time::Duration;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
 #[tokio::main]
 async fn main() {
@@ -87,6 +90,17 @@ async fn main() {
         });
     }
 
+    // Spawn background price sync service
+    {
+        let pool = state.db_pool.clone();
+        let http_client = state.http_client.clone();
+        let base_url = state.env_vars.defillama_api_base_url.clone();
+        tokio::spawn(async move {
+            let provider = nt_be::services::DeFiLlamaClient::with_base_url(http_client, base_url);
+            nt_be::services::run_price_sync_service(pool, provider).await;
+        });
+    }
+
     // Spawn bulk payment payout worker
     {
         let state_clone = state.clone();
@@ -120,10 +134,50 @@ async fn main() {
         });
     }
 
+    // Spawn DAO list sync service (fetches DAOs from sputnik-dao.near every 5 minutes)
+    {
+        let pool = state.db_pool.clone();
+        let network = state.network.clone();
+        tokio::spawn(async move {
+            nt_be::services::run_dao_list_sync_service(pool, network).await;
+        });
+    }
+
+    // Spawn DAO policy sync service (processes dirty/stale DAOs to extract members)
+    {
+        let pool = state.db_pool.clone();
+        let network = state.network.clone();
+        tokio::spawn(async move {
+            nt_be::services::run_dao_policy_sync_service(pool, network).await;
+        });
+    }
+
+    // Configure CORS - must specify exact origins, methods, and headers when using credentials
+    let origins: Vec<HeaderValue> = state
+        .env_vars
+        .cors_allowed_origins
+        .iter()
+        .filter_map(|s| s.parse().ok())
+        .collect();
+
     let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_origin(AllowOrigin::list(origins))
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::AUTHORIZATION,
+            header::ACCEPT,
+            header::ORIGIN,
+            header::COOKIE,
+        ])
+        .allow_credentials(true);
 
     let app = Router::new()
         .merge(nt_be::routes::create_routes(state))

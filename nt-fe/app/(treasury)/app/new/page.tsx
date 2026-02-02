@@ -290,7 +290,7 @@ export default function NewTreasuryPage() {
             title="Create Treasury"
             hideCollapseButton
             description="Set up a new multisig treasury for your team"
-            backButton="/"
+            backButton="/app"
         >
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 max-w-[600px] mx-auto">

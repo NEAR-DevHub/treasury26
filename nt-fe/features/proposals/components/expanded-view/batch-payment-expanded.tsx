@@ -7,12 +7,13 @@ import { BatchPayment, BatchPaymentResponse, PaymentStatus } from "@/lib/api";
 import { Button } from "@/components/button";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ArrowUpRight, ChevronDown, } from "lucide-react";
+import { ArrowUpRight, ChevronDown, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Address } from "@/components/address";
 import { User } from "@/components/user";
 import Link from "next/link";
 import { ProposalStatusPill } from "../proposal-status-pill";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PaymentDisplayProps {
     number: number;
@@ -88,13 +89,52 @@ interface BatchPaymentRequestExpandedProps {
     data: BatchPaymentRequestData;
 }
 
-function recipientsDisplay({ batchData, tokenId, batchId }: { batchData?: BatchPaymentResponse | null, tokenId: string, batchId: string }): InfoItem {
+export function BatchPaymentRequestExpanded({ data }: BatchPaymentRequestExpandedProps) {
+    const { data: batchData, isLoading, isError } = useBatchPayment(data.batchId);
     const [expanded, setExpanded] = useState<number[]>([]);
-    if (!batchData) {
-        return {
-            label: "Recipients",
-            value: <span>Loading...</span>
-        };
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="space-y-6 py-4">
+                <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-6 w-48" />
+                </div>
+                <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-6 w-32" />
+                    <div className="flex flex-col gap-2 mt-4">
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (isError || !batchData) {
+        return (
+            <div className="py-8 flex flex-col items-center justify-center gap-4 text-center">
+                <AlertCircle className="h-12 w-12 text-destructive" />
+                <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-destructive">Unable to Load Payment Details</h3>
+                    <p className="text-sm text-muted-foreground">
+                        The batch payment information could not be retrieved.
+                    </p>
+                    <p className="text-xs text-muted-foreground font-mono">
+                        Batch ID: {data.batchId}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    let tokenId = data.tokenId;
+    if (batchData?.token_id?.toLowerCase() === "native") {
+        tokenId = "near";
     }
 
     const onExpandedChanged = (index: number) => {
@@ -106,7 +146,7 @@ function recipientsDisplay({ batchData, tokenId, batchId }: { batchData?: BatchP
         });
     };
 
-    const isAllExpanded = expanded.length === batchData?.payments.length;
+    const isAllExpanded = expanded.length === batchData.payments.length;
     const toggleAllExpanded = () => {
         if (isAllExpanded) {
             setExpanded([]);
@@ -115,42 +155,31 @@ function recipientsDisplay({ batchData, tokenId, batchId }: { batchData?: BatchP
         }
     };
 
-    return {
-        label: "Recipients",
-        value: <div className="flex gap-3 items-baseline">
-            <p className="text-sm font-medium">{batchData.payments.length} recipient{batchData.payments.length > 1 ? "s" : ""}</p>
-            <Button variant="ghost" size="sm" onClick={toggleAllExpanded}>{isAllExpanded ? "Collapse all" : "Expand all"}</Button>
-        </div>,
-        afterValue: <div className="flex flex-col gap-1">
-            {batchData.payments.map((payment, index) => (
-                <PaymentDisplay
-                    tokenId={tokenId}
-                    number={index + 1}
-                    key={index}
-                    payment={payment}
-                    expanded={expanded.includes(index)}
-                    onExpandedClick={() => onExpandedChanged(index)}
-                    batchId={batchId}
-                />
-            ))}
-        </div>
-    };
-}
-
-export function BatchPaymentRequestExpanded({ data }: BatchPaymentRequestExpandedProps) {
-    const { data: batchData } = useBatchPayment(data.batchId);
-
-    let tokenId = data.tokenId;
-    if (batchData?.token_id?.toLowerCase() === "native") {
-        tokenId = "near";
-    }
-
     const items: InfoItem[] = [
         {
             label: "Total Amount",
             value: <Amount showNetwork amount={data.totalAmount} tokenId={tokenId} />
         },
-        recipientsDisplay({ batchData, tokenId, batchId: data.batchId })
+        {
+            label: "Recipients",
+            value: <div className="flex gap-3 items-baseline">
+                <p className="text-sm font-medium">{batchData.payments.length} recipient{batchData.payments.length > 1 ? "s" : ""}</p>
+                <Button variant="ghost" size="sm" onClick={toggleAllExpanded}>{isAllExpanded ? "Collapse all" : "Expand all"}</Button>
+            </div>,
+            afterValue: <div className="flex flex-col gap-1">
+                {batchData.payments.map((payment, index) => (
+                    <PaymentDisplay
+                        tokenId={tokenId}
+                        number={index + 1}
+                        key={index}
+                        payment={payment}
+                        expanded={expanded.includes(index)}
+                        onExpandedClick={() => onExpandedChanged(index)}
+                        batchId={data.batchId}
+                    />
+                ))}
+            </div>
+        }
     ];
 
     return (

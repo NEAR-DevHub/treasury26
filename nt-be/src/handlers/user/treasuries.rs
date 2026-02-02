@@ -1,4 +1,4 @@
-use crate::utils::base64json::Base64Json;
+use crate::handlers::treasury::config::{TreasuryConfig, fetch_treasury_config};
 use crate::utils::cache::CacheTier;
 use axum::{
     Json,
@@ -7,7 +7,6 @@ use axum::{
 };
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use std::sync::Arc;
 
 use crate::AppState;
@@ -16,32 +15,6 @@ use crate::AppState;
 pub struct UserTreasuriesQuery {
     #[serde(rename = "accountId")]
     pub account_id: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TreasuryMetadata {
-    #[serde(rename = "primaryColor", default)]
-    pub primary_color: Option<String>,
-    #[serde(rename = "flagLogo", default)]
-    pub flag_logo: Option<String>,
-}
-
-#[serde_as]
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TreasuryConfigFromContract {
-    #[serde_as(as = "Base64Json<TreasuryMetadata>")]
-    pub metadata: Option<TreasuryMetadata>,
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default)]
-    pub purpose: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TreasuryConfig {
-    pub metadata: Option<TreasuryMetadata>,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -70,71 +43,46 @@ pub async fn get_user_treasuries(
     let treasuries = state
         .cache
         .cached(CacheTier::ShortTerm, cache_key, async move {
-            let response = state_clone
-                .http_client
-                .get("https://api.pikespeak.ai/daos/members")
-                .header("x-api-key", state_clone.env_vars.pikespeak_key.clone())
-                .send()
-                .await
-                .map_err(|e| {
-                    eprintln!("Error fetching user daos: {}", e);
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Failed to fetch user daos".to_string(),
-                    )
-                })?;
-
-            let data: serde_json::Value = response.json().await.map_err(|e| {
-                eprintln!("Error parsing response: {}", e);
+            // Query local database for user's DAO memberships
+            let dao_ids: Vec<String> = sqlx::query_scalar(
+                r#"
+                SELECT DISTINCT dao_id
+                FROM dao_members
+                WHERE account_id = $1
+                ORDER BY dao_id
+                "#,
+            )
+            .bind(&account_id)
+            .fetch_all(&state_clone.db_pool)
+            .await
+            .map_err(|e| {
+                log::error!("Error fetching user DAOs from database: {}", e);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to parse response".to_string(),
+                    "Failed to fetch user DAOs".to_string(),
                 )
             })?;
 
-            let user_daos = data
-                .get(&account_id)
-                .and_then(|v| v.get("daos"))
-                .and_then(|v| v.as_array())
-                .ok_or((StatusCode::NOT_FOUND, "No DAOs found for user".to_string()))?;
+            if dao_ids.is_empty() {
+                return Ok(Vec::new());
+            }
 
             let mut treasuries = Vec::new();
 
-            for dao in user_daos {
-                let dao_id: AccountId = match dao.as_str() {
-                    Some(id) => id.parse().map_err(|e| {
-                        eprintln!("Error parsing DAO ID: {}", e);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "Failed to parse DAO ID".to_string(),
-                        )
-                    })?,
-                    None => continue,
+            for dao_id_str in dao_ids {
+                let dao_id: AccountId = match dao_id_str.parse() {
+                    Ok(id) => id,
+                    Err(e) => {
+                        log::warn!("Invalid DAO ID in database: {} - {}", dao_id_str, e);
+                        continue;
+                    }
                 };
-                let result = near_api::Contract(dao_id.clone())
-                    .call_function("get_config", ())
-                    .read_only::<TreasuryConfigFromContract>()
-                    .fetch_from(&state_clone.network)
-                    .await
-                    .map_err(|e| {
-                        eprintln!("Error fetching DAO config: {}", e);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "Failed to fetch DAO config".to_string(),
-                        )
-                    })?
-                    .data;
 
-                let dao_config: TreasuryConfig = TreasuryConfig {
-                    metadata: result.metadata,
-                    name: result.name,
-                    purpose: result.purpose,
-                };
-                treasuries.push(Treasury {
-                    dao_id,
-                    config: dao_config,
-                });
+                let config = fetch_treasury_config(&state_clone, &dao_id, None).await?;
+
+                treasuries.push(Treasury { dao_id, config });
             }
+
             Ok::<_, (StatusCode, String)>(treasuries)
         })
         .await?;

@@ -7,7 +7,7 @@ use axum::{
 use serde_json::{Value, json};
 use std::sync::Arc;
 
-use crate::{AppState, handlers};
+use crate::{AppState, auth, handlers};
 
 mod balance_changes;
 mod monitored_accounts;
@@ -110,10 +110,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::user::balance::get_token_balance),
         )
         .route(
-            "/api/user/balance/history",
-            get(handlers::user::balance_history::get_token_balance_history),
-        )
-        .route(
             "/api/user/treasuries",
             get(handlers::user::treasuries::get_user_treasuries),
         )
@@ -132,6 +128,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/user/check-account-exists",
             get(handlers::user::check_account_exists::check_account_exists),
+        )
+        .route(
+            "/api/user/lockup",
+            get(handlers::user::lockup::get_user_lockup),
         )
         // Proposals endpoints
         .route(
@@ -161,12 +161,24 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         )
         // Bulk payment endpoints
         .route(
-            "/api/bulkpayment/get",
+            "/api/bulk-payment/get",
             get(handlers::bulkpayment::get::get_batch_payment),
         )
         .route(
             "/api/bulk-payment/submit-list",
             post(handlers::bulkpayment::submit::submit_list),
+        )
+        .route(
+            "/api/bulk-payment/storage-credits",
+            get(handlers::bulkpayment::storage_credits::get_storage_credits),
+        )
+        .route(
+            "/api/bulk-payment/usage-stats",
+            get(handlers::bulkpayment::usage_stats::get_usage_stats),
+        )
+        .route(
+            "/api/plan/details",
+            get(handlers::plan::details::get_plan_details),
         )
         .route(
             "/api/bulk-payment/list/{list_id}",
@@ -201,8 +213,8 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             post(handlers::intents::deposit_address::get_deposit_address),
         )
         .route(
-            "/api/intents/deposit-assets",
-            get(handlers::intents::deposit_assets::get_deposit_assets),
+            "/api/intents/bridge-tokens",
+            get(handlers::intents::bridge_tokens::get_bridge_tokens),
         )
         .route(
             "/api/intents/quote",
@@ -212,6 +224,23 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/proxy/{*path}",
             get(handlers::proxy::external::proxy_external_api),
+        )
+        // Auth endpoints
+        .route(
+            "/api/auth/challenge",
+            post(auth::handlers::create_challenge),
+        )
+        .route("/api/auth/login", post(auth::handlers::login))
+        .route(
+            "/api/auth/accept-terms",
+            post(auth::handlers::accept_terms),
+        )
+        .route("/api/auth/me", get(auth::handlers::get_me))
+        .route("/api/auth/logout", post(auth::handlers::logout))
+        // DAO endpoints
+        .route(
+            "/api/dao/mark-dirty",
+            post(handlers::dao::mark_dirty),
         )
         .with_state(state)
 }

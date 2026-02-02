@@ -8,20 +8,19 @@ import {
   SelectSeparator,
   SelectTrigger,
 } from "@/components/ui/select";
-import { useTreasury } from "@/stores/treasury-store";
 import { Database } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useNear } from "@/stores/near-store";
-import { useIsGuestTreasury } from "@/hooks/use-is-guest-treasury";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useOpenTreasury } from "@/hooks/use-open-treasury";
-import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
+import { useAssets } from "@/hooks/use-assets";
 import { formatCurrency, cn } from "@/lib/utils";
 import { Button } from "./button";
 import { Tooltip } from "./tooltip";
 import { Skeleton } from "./ui/skeleton";
 
 const TreasuryBalance = ({ daoId }: { daoId: string }) => {
-  const { data, isLoading } = useTreasuryAssets(daoId);
+  const { data, isLoading } = useAssets(daoId);
   if (isLoading) return <Skeleton className="size-4" />;
   if (data?.totalBalanceUSD === undefined) return null;
   return (
@@ -49,45 +48,23 @@ interface TreasurySelectorProps {
 export function TreasurySelector({ reducedMode = false, isOpen, onOpenChange }: TreasurySelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { setSelectedTreasury } = useTreasury();
   const { accountId } = useNear();
   const { open } = useOpenTreasury();
 
   const {
     isLoading,
     treasuryId,
-    currentTreasury,
-    guestTreasuryConfig,
+    config,
     treasuries,
-  } = useIsGuestTreasury();
+  } = useTreasury();
 
-  const { data: assetsData } = useTreasuryAssets(treasuryId);
+  const { data: assetsData } = useAssets(treasuryId);
   const totalBalanceUSD = assetsData?.totalBalanceUSD;
 
   // Auto-register treasury when it's selected/viewed
   React.useEffect(() => {
     open(treasuryId);
   }, [treasuryId, open]);
-
-  React.useEffect(() => {
-    if (treasuryId) {
-      if (currentTreasury) {
-        // User owns this treasury
-        setSelectedTreasury({
-          daoId: treasuryId,
-          name: currentTreasury.config?.name || "",
-          flagLogo: currentTreasury.config?.metadata?.flagLogo || ""
-        });
-      } else if (guestTreasuryConfig) {
-        // Guest viewing a treasury
-        setSelectedTreasury({
-          daoId: treasuryId,
-          name: guestTreasuryConfig.name || "",
-          flagLogo: guestTreasuryConfig.metadata?.flagLogo || ""
-        });
-      }
-    }
-  }, [treasuryId, currentTreasury, guestTreasuryConfig, setSelectedTreasury]);
 
   React.useEffect(() => {
     if (treasuries.length > 0 && !treasuryId) {
@@ -122,10 +99,9 @@ export function TreasurySelector({ reducedMode = false, isOpen, onOpenChange }: 
     router.push(`/${newTreasuryId}/${pathAfterTreasury}`);
   };
 
-  const displayTreasury = currentTreasury?.config ?? guestTreasuryConfig;
 
-  const displayName = displayTreasury
-    ? displayTreasury.name ?? treasuryId
+  const displayName = config
+    ? config.name ?? treasuryId
     : "Select treasury";
 
   const displaySubtext = totalBalanceUSD !== undefined
@@ -147,7 +123,7 @@ export function TreasurySelector({ reducedMode = false, isOpen, onOpenChange }: 
             "flex items-center w-full truncate",
             reducedMode ? "justify-center h-7" : "gap-2 max-w-52 h-9"
           )}>
-            <Logo logo={currentTreasury?.config?.metadata?.flagLogo} />
+            <Logo logo={config?.metadata?.flagLogo} />
             {!reducedMode && (
               <div className="flex flex-col items-start min-w-0">
                 <span className="text-xs font-medium truncate max-w-full ">

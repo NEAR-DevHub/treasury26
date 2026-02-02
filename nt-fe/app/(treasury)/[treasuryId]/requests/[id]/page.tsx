@@ -5,7 +5,7 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { ExpandedView } from "@/features/proposals";
 import { useProposal } from "@/hooks/use-proposals";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { VoteModal } from "@/features/proposals/components/vote-modal";
 import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
 import { getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
@@ -39,9 +39,9 @@ function RequestPageSkeleton() {
 
 export default function RequestPage({ params }: RequestPageProps) {
     const { id } = use(params);
-    const { selectedTreasury } = useTreasury();
-    const { data: proposal, isLoading: isLoadingProposal, } = useProposal(selectedTreasury, id);
-    const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(selectedTreasury, proposal?.submission_time);
+    const { treasuryId } = useTreasury();
+    const { data: proposal, isLoading: isLoadingProposal, } = useProposal(treasuryId, id);
+    const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(treasuryId, proposal?.submission_time);
 
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
     const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
@@ -50,14 +50,14 @@ export default function RequestPage({ params }: RequestPageProps) {
 
     if (isLoadingProposal || isLoadingPolicy || !proposal || !policy) {
         return (
-            <PageComponentLayout title={`Request #${id}`} description="Details for Request" backButton={`/${selectedTreasury}/requests`}>
+            <PageComponentLayout title={`Request #${id}`} description="Details for Request" backButton={`/${treasuryId}/requests`}>
                 <RequestPageSkeleton />
             </PageComponentLayout>
         );
     }
 
     return (
-        <PageComponentLayout title={`Request #${proposal?.id}`} description="Details for Request" backButton={`/${selectedTreasury}/requests`}>
+        <PageComponentLayout title={`Request #${proposal?.id}`} description="Details for Request" backButton={`/${treasuryId}/requests`}>
             <ExpandedView
                 proposal={proposal}
                 policy={policy}

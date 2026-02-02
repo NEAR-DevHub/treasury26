@@ -4,7 +4,7 @@ import { Input } from "@/components/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useMemo, useState } from "react";
 import { PageCard } from "@/components/card";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import {
   Tabs,
@@ -100,14 +100,14 @@ function VotingRequestAction({
 }
 
 export function VotingTab() {
-  const { selectedTreasury } = useTreasury();
-  const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const { treasuryId } = useTreasury();
+  const { data: policy } = useTreasuryPolicy(treasuryId);
   const { accountId, createProposal } = useNear();
   const queryClient = useQueryClient();
   const router = useRouter();
 
   // Fetch pending proposals to check for active voting change requests
-  const { data: pendingProposals } = useProposals(selectedTreasury, {
+  const { data: pendingProposals } = useProposals(treasuryId, {
     statuses: ["InProgress"],
     proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
   });
@@ -243,7 +243,7 @@ export function VotingTab() {
     : "Define how many votes are required to approve requests. Configure thresholds for each role based on their responsibilities.";
 
   const handleThresholdChange = async () => {
-    if (!selectedTreasury || !policy || !activeTab) {
+    if (!treasuryId || !policy || !activeTab) {
       toast.error("Missing required data");
       return;
     }
@@ -261,7 +261,7 @@ export function VotingTab() {
       const proposalBond = policy?.proposal_bond || "0";
 
       await createProposal("Request to update voting threshold submitted", {
-        treasuryId: selectedTreasury,
+        treasuryId: treasuryId,
         proposal: {
           description: encodeToMarkdown(description),
           kind: {
@@ -297,7 +297,7 @@ export function VotingTab() {
 
       // Refetch proposals to show the newly created proposal
       queryClient.invalidateQueries({
-        queryKey: ["proposals", selectedTreasury],
+        queryKey: ["proposals", treasuryId],
       });
 
       // Update original thresholds
@@ -314,7 +314,7 @@ export function VotingTab() {
   };
 
   const handleDurationChange = async () => {
-    if (!selectedTreasury || !policy) {
+    if (!treasuryId || !policy) {
       toast.error("Missing required data");
       return;
     }
@@ -339,7 +339,7 @@ export function VotingTab() {
       const proposalBond = policy?.proposal_bond || "0";
 
       await createProposal("Request created successfully", {
-        treasuryId: selectedTreasury,
+        treasuryId: treasuryId,
         proposal: {
           description: encodeToMarkdown(description),
           kind: {
@@ -355,7 +355,7 @@ export function VotingTab() {
 
       // Refetch proposals to show the newly created proposal
       queryClient.invalidateQueries({
-        queryKey: ["proposals", selectedTreasury],
+        queryKey: ["proposals", treasuryId],
       });
 
       // Mark as not dirty
@@ -389,7 +389,7 @@ export function VotingTab() {
 
             <Button
               onClick={() =>
-                router.push(`/${selectedTreasury}/requests?tab=pending`)
+                router.push(`/${treasuryId}/requests?tab=pending`)
               }
               variant="default"
               className="w-full"

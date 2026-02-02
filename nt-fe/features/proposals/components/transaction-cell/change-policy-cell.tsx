@@ -1,10 +1,8 @@
 import { PolicyChange, RoleChange, VotePolicyChange } from "../../types/index";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
 import { Proposal } from "@/lib/proposals-api";
-import { Policy } from "@/types/policy";
-import { getProposalStatus } from "../../utils/proposal-utils";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { extractChangePolicyData } from "../../utils/proposal-extractors";
 import { computePolicyDiff } from "../../utils/policy-diff-utils";
 import { useMemo } from "react";
@@ -93,13 +91,13 @@ function getSummary(diff: {
 }
 
 export function ChangePolicyCell({ proposal, timestamp }: ChangePolicyCellProps) {
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
 
   const isPending = proposal.status === "InProgress";
 
   // If not pending, fetch the policy at the time of submission
   const { data: oldPolicy, isLoading: isLoadingTimestamped } = useTreasuryPolicy(
-    selectedTreasury,
+    treasuryId,
     !isPending ? proposal.submission_time : null
   );
 

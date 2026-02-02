@@ -52,22 +52,27 @@ pub struct Treasury {
     pub config: TreasuryConfig,
 }
 
-pub async fn get_treasury_config(
-    State(state): State<Arc<AppState>>,
-    Query(params): Query<GetTreasuryConfigQuery>,
-) -> Result<axum::Json<TreasuryConfig>, (StatusCode, String)> {
-    let treasury_id = params.treasury_id.clone();
-    let at_before = params.at_before.map(|at| at.0).unwrap_or(0);
+/// Fetch treasury config from contract with caching
+///
+/// - `at_before`: Optional timestamp in nanoseconds. If provided, fetches historical config.
+pub async fn fetch_treasury_config(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+    at_before: Option<u64>,
+) -> Result<TreasuryConfig, (StatusCode, String)> {
+    let at_before = at_before.unwrap_or(0);
     let cache_key = CacheKey::new("treasury-config")
-        .with(&treasury_id)
+        .with(treasury_id)
         .with(at_before)
         .build();
 
     let network = if at_before > 0 {
-        &state.archival_network
+        state.archival_network.clone()
     } else {
-        &state.network
+        state.network.clone()
     };
+
+    let treasury_id = treasury_id.clone();
     let state_clone = state.clone();
 
     let result = state
@@ -84,19 +89,28 @@ pub async fn get_treasury_config(
             } else {
                 Reference::Optimistic
             };
-            Contract(treasury_id.clone())
+            Contract(treasury_id)
                 .call_function("get_config", ())
                 .read_only::<TreasuryConfigFromContract>()
                 .at(at)
-                .fetch_from(network)
+                .fetch_from(&network)
                 .await
                 .map(|r| r.data)
         })
         .await?;
 
-    Ok(axum::Json(TreasuryConfig {
+    Ok(TreasuryConfig {
         metadata: result.metadata,
         name: result.name,
         purpose: result.purpose,
-    }))
+    })
+}
+
+pub async fn get_treasury_config(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<GetTreasuryConfigQuery>,
+) -> Result<axum::Json<TreasuryConfig>, (StatusCode, String)> {
+    let at_before = params.at_before.map(|at| at.0);
+    let config = fetch_treasury_config(&state, &params.treasury_id, at_before).await?;
+    Ok(axum::Json(config))
 }

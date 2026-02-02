@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO daos (dao_id, is_dirty, source)\n        SELECT unnest($1::text[]), true, 'factory'\n        ON CONFLICT (dao_id) DO UPDATE SET\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "55ea1fb35ffbe0e1d228742081d97b3a60496b5925a4a43ae973feaaa086ac45"
+}

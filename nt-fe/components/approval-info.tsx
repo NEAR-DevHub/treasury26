@@ -1,5 +1,5 @@
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import { Info } from "lucide-react";
 import { Pill } from "@/components/pill";
@@ -16,9 +16,9 @@ interface ApprovalInfoProps {
 const infoText = "Votes required to approve payment-related requests. Editable in Voting settings.";
 
 export function ApprovalInfo({ variant, requiredVotes: requiredVotesProp, approverAccounts: approverAccountsProp, side }: ApprovalInfoProps) {
-    const { selectedTreasury } = useTreasury();
+    const { treasuryId } = useTreasury();
     const { accountId } = useNear();
-    const { data: policy } = useTreasuryPolicy(requiredVotesProp && approverAccountsProp ? null : selectedTreasury);
+    const { data: policy } = useTreasuryPolicy(requiredVotesProp && approverAccountsProp ? null : treasuryId);
 
     const { requiredVotes, approverAccounts } = requiredVotesProp && approverAccountsProp ? { requiredVotes: requiredVotesProp, approverAccounts: approverAccountsProp } : policy ? getApproversAndThreshold(policy, accountId ?? "", "call", false) : { requiredVotes: 0, approverAccounts: [] };
 
