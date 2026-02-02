@@ -21,7 +21,7 @@ interface InfoDisplayProps {
     expandableItems?: InfoItem[];
     className?: string;
     style?: "default" | "secondary";
-    size?: "default" | "sm"
+    size?: "default" | "sm";
     hideSeparator?: boolean;
 }
 
