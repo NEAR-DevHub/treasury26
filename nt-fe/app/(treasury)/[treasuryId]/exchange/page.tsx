@@ -46,6 +46,7 @@ import {
 } from "./utils";
 import { useCountdownTimer } from "./hooks/use-countdown-timer";
 import { useQuoteFetcher } from "./hooks/use-quote-fetcher";
+import { useExchangeQuote } from "./hooks/use-exchange-quote";
 import { ExchangeSummaryCard } from "./components/exchange-summary-card";
 import { Rate } from "./components/rate";
 import { InfoDisplay } from "@/components/info-display";
@@ -86,8 +87,6 @@ function Step1({ handleNext }: StepProps) {
   );
 
   const slippageTolerance = form.watch("slippageTolerance") || 0.5;
-
-  const { fetchQuote } = useQuoteFetcher();
 
   const hasValidAmount =
     sellAmount && !isNaN(Number(sellAmount)) && Number(sellAmount) > 0;
@@ -140,54 +139,21 @@ function Step1({ handleNext }: StepProps) {
     return () => clearTimeout(timer);
   }, [sellAmount, sellToken.address, receiveToken.address, slippageTolerance, areSameTokens, hasValidAmount]);
 
-  // Fetch dry quote with auto-refresh
-  const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
-    queryKey: [
-      "dryExchangeQuote",
-      selectedTreasury,
-      sellToken.address,
-      receiveToken.address,
-      sellAmount,
-      slippageTolerance,
-    ],
-    queryFn: async (): Promise<IntentsQuoteResponse | null> => {
-      if (!selectedTreasury) return null;
-
-      const result = await fetchQuote(
-        {
-          sellToken,
-          receiveToken,
-          sellAmount,
-          slippageTolerance,
-          treasuryId: selectedTreasury,
-        },
-        true
-      );
-
-      if (result.quote) {
-        form.setValue("receiveAmount", result.quote.quote.amountOutFormatted);
-        form.clearErrors("receiveAmount");
-        return result.quote;
-      } else {
-        const userMessage = result.error
-          ? getUserFriendlyErrorMessage(result.error)
-          : "Unable to fetch quote. Please try again.";
-
-        form.setError("receiveAmount", {
-          type: "manual",
-          message: userMessage,
-        });
-        return null;
-      }
-    },
+  const { data: quoteData, isLoading: isLoadingQuote } = useExchangeQuote({
+    selectedTreasury,
+    sellToken,
+    receiveToken,
+    sellAmount,
+    slippageTolerance,
+    form,
     enabled: Boolean(
       selectedTreasury &&
       isReadyToFetch &&
       hasValidAmount &&
       !areSameTokens
     ),
-    refetchInterval: DRY_QUOTE_REFRESH_INTERVAL, // Auto-refresh every 15 seconds
-    refetchIntervalInBackground: false, // Don't refetch when tab is not visible
+    isDryRun: true,
+    refetchInterval: DRY_QUOTE_REFRESH_INTERVAL,
   });
 
   // Validate tokens when they change
@@ -338,45 +304,20 @@ function Step2({ handleBack }: StepProps) {
   const { data: receiveTokenData } = useToken(receiveToken.address);
   const formatDate = useFormatDate();
 
-  const { fetchQuote } = useQuoteFetcher();
-
-  const { data: localLiveQuoteData, isLoading: isLoadingLiveQuote } = useQuery({
-    queryKey: [
-      "liveExchangeQuote",
-      selectedTreasury,
-      sellToken.address,
-      receiveToken.address,
-      sellAmount,
-      slippageTolerance,
-    ],
-    queryFn: async () => {
-      if (!selectedTreasury) return null;
-
-      const result = await fetchQuote(
-        {
-          sellToken,
-          receiveToken,
-          sellAmount,
-          slippageTolerance,
-          treasuryId: selectedTreasury,
-        },
-        false
-      );
-
-      if (result.quote) {
-        // Store in form context for submission
-        form.setValue("proposalData" as any, result.quote);
-        return result.quote;
-      }
-      return null;
-    },
-    enabled: !!selectedTreasury && !!sellAmount,
-    refetchInterval: PROPOSAL_REFRESH_INTERVAL, // Auto-refresh every interval
-    refetchIntervalInBackground: false, // Don't refetch when tab is not visible
+  const { data: localLiveQuoteData, isLoading: isLoadingLiveQuote, isFetching: isFetchingLiveQuote } = useExchangeQuote({
+    selectedTreasury,
+    sellToken,
+    receiveToken,
+    sellAmount,
+    slippageTolerance,
+    form,
+    enabled: Boolean(selectedTreasury && sellAmount),
+    isDryRun: false,
+    refetchInterval: PROPOSAL_REFRESH_INTERVAL,
   });
 
   const timeUntilRefresh = useCountdownTimer(
-    !!localLiveQuoteData && !isLoadingLiveQuote,
+    !!localLiveQuoteData && !isFetchingLiveQuote,
     PROPOSAL_REFRESH_INTERVAL,
     localLiveQuoteData?.quote.depositAddress
   );
