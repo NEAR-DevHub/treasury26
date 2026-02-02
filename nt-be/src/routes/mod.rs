@@ -161,12 +161,24 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         )
         // Bulk payment endpoints
         .route(
-            "/api/bulkpayment/get",
+            "/api/bulk-payment/get",
             get(handlers::bulkpayment::get::get_batch_payment),
         )
         .route(
             "/api/bulk-payment/submit-list",
             post(handlers::bulkpayment::submit::submit_list),
+        )
+        .route(
+            "/api/bulk-payment/storage-credits",
+            get(handlers::bulkpayment::storage_credits::get_storage_credits),
+        )
+        .route(
+            "/api/bulk-payment/usage-stats",
+            get(handlers::bulkpayment::usage_stats::get_usage_stats),
+        )
+        .route(
+            "/api/plan/details",
+            get(handlers::plan::details::get_plan_details),
         )
         .route(
             "/api/bulk-payment/list/{list_id}",

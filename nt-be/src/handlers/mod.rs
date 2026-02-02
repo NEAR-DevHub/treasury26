@@ -3,6 +3,7 @@ pub mod bulkpayment;
 pub mod dao;
 pub mod intents;
 pub mod lookup;
+pub mod plan;
 pub mod proposals;
 pub mod proxy;
 pub mod subscription;

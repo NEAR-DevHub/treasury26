@@ -77,7 +77,8 @@ interface NearStore {
   ) => Promise<Array<FinalExecutionOutcome>>;
   createProposal: (
     toastMessage: string,
-    params: CreateProposalParams
+    params: CreateProposalParams,
+    showToast: boolean
   ) => Promise<Array<FinalExecutionOutcome>>;
   voteProposals: (
     treasuryId: string,
@@ -336,7 +337,8 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
   createProposal: async (
     toastMessage: string,
-    params: CreateProposalParams
+    params: CreateProposalParams,
+    showToast: boolean = true
   ) => {
     const state = get();
     if (!isFullyAuthenticated(state)) {
@@ -376,6 +378,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         transactions,
         network: "mainnet",
       });
+      if (showToast) {
       toast.success(toastMessage, {
         duration: 10000,
         action: {
@@ -387,9 +390,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
           toast: "!p-2 !px-4",
           actionButton:
             "!bg-transparent !text-foreground hover:!bg-muted !border-0",
-          title: "!border-r !border-r-border !pr-4",
-        },
-      });
+            title: "!border-r !border-r-border !pr-4",
+          },
+        });
+      }
       return results;
     } catch (error) {
       console.error("Failed to create proposal:", error);
@@ -471,9 +475,10 @@ export const useNear = () => {
     isAuthenticated && hasAcceptedTerms ? walletAccountId : null;
   const createProposal = async (
     toastMessage: string,
-    params: CreateProposalParams
+    params: CreateProposalParams,
+    showToast: boolean = true
   ) => {
-    const results = await storeCreateProposal(toastMessage, params);
+    const results = await storeCreateProposal(toastMessage, params, showToast);
 
     // If successful, invalidate queries after delay in background
     if (results.length > 0) {

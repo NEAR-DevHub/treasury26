@@ -8,8 +8,8 @@ import { useForm, useFormContext } from "react-hook-form";
 import { Form, FormField } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ReviewStep, StepperHeader, StepProps, StepWizard } from "@/components/step-wizard";
-import { useStorageDepositIsRegistered, useToken, useTokenBalance, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { ReviewStep, StepProps, StepWizard } from "@/components/step-wizard";
+import { useStorageDepositIsRegistered, useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/textarea";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -22,59 +22,43 @@ import { SendingTotal } from "@/components/sending-total";
 import { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { PendingButton } from "@/components/pending-button";
-import { Button } from "@/components/button";
 import {
   usePageTour,
   useManualPageTour,
   PAGE_TOUR_NAMES,
   PAGE_TOUR_STORAGE_KEYS,
 } from "@/features/onboarding/steps/page-tours";
+import { Button } from "@/components/button";
+import { ArrowDownToLine } from "lucide-react";
+import Link from "next/link";
 
-const paymentFormSchema = z.object({
-  address: z.string().min(2, "Recipient should be at least 2 characters").max(64, "Recipient must be less than 64 characters"),
-  amount: z
-    .string()
-    .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+const paymentFormSchema = z
+  .object({
+    address: z
+      .string()
+      .min(2, "Recipient should be at least 2 characters")
+      .max(64, "Recipient must be less than 64 characters"),
+    amount: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
       message: "Amount must be greater than 0",
     }),
-  memo: z.string().optional(),
-  isRegistered: z.boolean().optional(),
-  token: tokenSchema,
-}).superRefine((data, ctx) => {
-  if (data.address === data.token.address) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["address"],
-      message: "Recipient and token address cannot be the same",
-    });
-  }
-});
+    memo: z.string().optional(),
+    isRegistered: z.boolean().optional(),
+    token: tokenSchema,
+  })
+  .superRefine((data, ctx) => {
+    if (data.address === data.token.address) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["address"],
+        message: "Recipient and token address cannot be the same",
+      });
+    }
+  });
 
 function Step1({ handleNext }: StepProps) {
   const form = useFormContext<PaymentFormValues>();
   const { treasuryId } = useTreasury();
-  const token = form.watch("token");
-  const amount = form.watch("amount");
-  
-  const { data: tokenBalance } = useTokenBalance(
-    treasuryId,
-    token.address,
-    token.network
-  );
 
-  // Check for insufficient balance
-  const hasInsufficientBalance = useMemo(() => {
-    if (!amount || !tokenBalance?.balance) return false;
-    try {
-      const amountBig = new Big(amount);
-      const balanceBig = new Big(tokenBalance.balance).div(
-        new Big(10).pow(tokenBalance.decimals)
-      );
-      return amountBig.gt(balanceBig);
-    } catch {
-      return false;
-    }
-  }, [amount, tokenBalance]);
   const handleContinue = () => {
     form.trigger().then((isValid) => {
       if (isValid && handleNext) {
@@ -85,17 +69,18 @@ function Step1({ handleNext }: StepProps) {
 
   return (
     <PageCard>
-      <div className="flex items-center justify-between">
-        <StepperHeader title="New Payment" />
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">New Payment</h2>
         <div className="flex items-center gap-3">
-          <Button
-            id="payments-bulk-btn"
-            type="button"
-            variant="ghost"
-            className="flex items-center gap-2 border-2"
-          >
-            Bulk Payments
-          </Button>
+          <Link href={`/${treasuryId}/payments/bulk-payment`}>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 border-2"
+            >
+              <ArrowDownToLine className="w-4 h-4" />
+              Bulk Payments
+            </Button>
+          </Link>
           <PendingButton
             id="payments-pending-btn"
             types={["Payments"]}
@@ -107,11 +92,7 @@ function Step1({ handleNext }: StepProps) {
         control={form.control}
         amountName="amount"
         tokenName="token"
-        infoMessage={
-          hasInsufficientBalance
-            ? "Insufficient tokens. You can submit the request and top up before approval."
-            : undefined
-        }
+        showInsufficientBalance={true}
       />
       <RecipientInput control={form.control} name="address" />
       <div className="rounded-lg border bg-card p-0 overflow-hidden">
@@ -134,7 +115,10 @@ function Step2({ handleBack }: StepProps) {
   const token = form.watch("token");
   const address = form.watch("address");
   const amount = form.watch("amount");
-  const { data: storageDepositData } = useStorageDepositIsRegistered(address, token.address);
+  const { data: storageDepositData } = useStorageDepositIsRegistered(
+    address,
+    token.address
+  );
   const { data: tokenData } = useToken(token.address);
 
   useEffect(() => {
@@ -161,21 +145,29 @@ function Step2({ handleBack }: StepProps) {
             <div className="flex justify-between items-center w-full text-xs ">
               <p className=" font-semibold">{address}</p>
               <div className="flex items-center gap-2">
-                <img src={token.icon} alt={token.symbol} className="size-5 rounded-full" />
+                <img
+                  src={token.icon}
+                  alt={token.symbol}
+                  className="size-5 rounded-full"
+                />
                 <div className="flex flex-col gap-[3px] items-end">
                   <p className="text-xs font-semibold">{amount} {token.symbol}</p>
                   <p className="text-xxs text-muted-foreground">≈ {formatCurrency(estimatedUSDValue)}</p>
                 </div>
               </div>
             </div>
-            <FormField control={form.control} name="memo" render={({ field }) => (
-              <Textarea
-                value={field.value}
-                onChange={field.onChange}
-                rows={2}
-                placeholder="Add a comment (optional)..."
-              />
-            )} />
+            <FormField
+              control={form.control}
+              name="memo"
+              render={({ field }) => (
+                <Textarea
+                  value={field.value}
+                  onChange={field.onChange}
+                  rows={2}
+                  placeholder="Add a comment (optional)..."
+                />
+              )}
+            />
           </div>
         </div>
         <></>
@@ -209,16 +201,16 @@ const buildIntentProposal = (
 
   const ftWithdrawArgs = isNetworkWithdrawal
     ? {
-      token: tokenContract,
-      receiver_id: tokenContract,
-      amount: parsedAmount,
-      memo: `WITHDRAW_TO:${data.address}`,
-    }
+        token: tokenContract,
+        receiver_id: tokenContract,
+        amount: parsedAmount,
+        memo: `WITHDRAW_TO:${data.address}`,
+      }
     : {
-      token: tokenContract,
-      receiver_id: data.address,
-      amount: parsedAmount,
-    };
+        token: tokenContract,
+        receiver_id: data.address,
+        amount: parsedAmount,
+      };
 
   return {
     FunctionCall: {
@@ -290,7 +282,8 @@ export default function PaymentsPage() {
       }> = [];
       const isSelectedTokenIntents = data.token.address.startsWith("nep141:");
 
-      const needsStorageDeposit = !data.isRegistered && !isNEAR && !isSelectedTokenIntents;
+      const needsStorageDeposit =
+        !data.isRegistered && !isNEAR && !isSelectedTokenIntents;
 
       if (needsStorageDeposit) {
         const depositInYocto = Big(0.125).mul(Big(10).pow(24)).toFixed();
@@ -329,22 +322,29 @@ export default function PaymentsPage() {
         },
         proposalBond,
         additionalTransactions,
-      }).then(() => {
-        form.reset();
-        setStep(0);
-        triggerPendingTour();
-      }).catch((error) => {
-        console.error("Payments error", error);
-      });
+      })
+        .then(() => {
+          form.reset();
+          setStep(0);
+        })
+        .catch((error) => {
+          console.error("Payments error", error);
+        });
     } catch (error) {
       console.error("Payments error", error);
     }
   };
 
   return (
-    <PageComponentLayout title="Payments" description="Send and receive funds securely">
+    <PageComponentLayout
+      title="Payments"
+      description="Send and receive funds securely"
+    >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 max-w-[600px] mx-auto">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-col gap-4 max-w-[600px] mx-auto"
+        >
           <StepWizard
             step={step}
             onStepChange={setStep}
@@ -354,12 +354,11 @@ export default function PaymentsPage() {
               },
               {
                 component: Step2,
-              }
+              },
             ]}
           />
         </form>
       </Form>
-    </PageComponentLayout >
+    </PageComponentLayout>
   );
 }
-

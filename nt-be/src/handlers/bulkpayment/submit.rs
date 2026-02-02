@@ -103,23 +103,33 @@ async fn verify_dao_proposal(
     dao_contract_id: &str,
     list_id: &str,
 ) -> Result<bool, (StatusCode, String)> {
-    log::info!(
-        "Verifying DAO proposal: dao={}, list_id={}",
-        dao_contract_id,
-        list_id
-    );
-    log::info!(
-        "Using network RPC endpoints: {:?}",
-        state.network.rpc_endpoints
-    );
+    // Get the last proposal ID to know the total number of proposals
+    let last_proposal_id: u64 = near_api::Contract(dao_contract_id.parse().unwrap())
+        .call_function("get_last_proposal_id", ())
+        .read_only::<u64>()
+        .fetch_from(&state.network)
+        .await
+        .map_err(|e| {
+            log::error!("Failed to fetch last proposal ID: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to fetch last proposal ID: {}", e),
+            )
+        })?
+        .data;
+
+    // Calculate the starting index to get the last 100 proposals
+    // If there are fewer than 100 proposals, start from 0
+    let limit = 100u64;
+    let from_index = last_proposal_id.saturating_sub(limit - 1);
 
     // Get the last 100 proposals from the DAO
     let proposals: Vec<Proposal> = near_api::Contract(dao_contract_id.parse().unwrap())
         .call_function(
             "get_proposals",
             serde_json::json!({
-                "from_index": 0,
-                "limit": 100
+                "from_index": from_index,
+                "limit": limit
             }),
         )
         .read_only::<Vec<Proposal>>()
@@ -134,78 +144,69 @@ async fn verify_dao_proposal(
         })?
         .data;
 
-    log::info!("Fetched {} proposals from DAO", proposals.len());
-
     // Look for a pending proposal with this list_id
     for proposal in proposals {
-        log::info!(
-            "Checking proposal {}: status={:?}, kind={:?}",
-            proposal.id,
-            proposal.status,
-            match &proposal.kind {
-                ProposalKind::FunctionCall { function_call } =>
-                    format!("FunctionCall(receiver={})", function_call.receiver_id),
-                _ => format!("{:?}", proposal.kind),
-            }
-        );
-
         if proposal.status != "InProgress" {
-            log::info!("  -> Skipping: status is not InProgress");
             continue;
         }
 
         // Check if this is a FunctionCall proposal
         if let ProposalKind::FunctionCall { function_call } = &proposal.kind {
-            log::info!(
-                "  -> FunctionCall proposal: receiver={}",
-                function_call.receiver_id
-            );
-
-            // Check if it targets the bulk payment contract
-            if function_call.receiver_id != state.bulk_payment_contract_id.as_str() {
-                log::info!(
-                    "  -> Skipping: receiver is not bulk payment contract (expected {})",
-                    state.bulk_payment_contract_id
-                );
-                continue;
+            // First, check the description for the list_id (fastest check)
+            if proposal.description.contains(list_id) {
+                return Ok(true);
             }
 
-            log::info!("  -> Checking {} actions", function_call.actions.len());
-
-            // Check each action for approve_list with matching list_id
+            // Check each action for bulk payment related methods
             for action in &function_call.actions {
-                log::info!("    -> Action: method_name={}", action.method_name);
-
-                if action.method_name != "approve_list" {
-                    continue;
+                // Case 1: Direct approve_list call (NEAR tokens)
+                if action.method_name == "approve_list"
+                    && function_call.receiver_id == state.bulk_payment_contract_id.as_str()
+                {
+                    // Decode the base64 args and check for matching list_id
+                    if let Ok(decoded) = base64::Engine::decode(
+                        &base64::engine::general_purpose::STANDARD,
+                        &action.args,
+                    ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                        && let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
+                        && proposal_list_id == list_id
+                    {
+                        return Ok(true);
+                    }
                 }
 
-                log::info!("    -> Found approve_list action, decoding args...");
-
-                // Decode the base64 args and check for matching list_id
-                if let Ok(decoded) =
-                    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &action.args)
-                    && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
-                    && let Some(proposal_list_id) = args.get("list_id").and_then(|v| v.as_str())
-                {
-                    log::info!("    -> Decoded list_id from args: {}", proposal_list_id);
-                    log::info!("    -> Looking for list_id: {}", list_id);
-
-                    if proposal_list_id == list_id {
-                        log::info!("  -> MATCH FOUND!");
+                // Case 2: ft_transfer_call (FT tokens)
+                if action.method_name == "ft_transfer_call" {
+                    // Decode the base64 args and check for matching list_id in msg field
+                    if let Ok(decoded) = base64::Engine::decode(
+                        &base64::engine::general_purpose::STANDARD,
+                        &action.args,
+                    ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                        && let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
+                        && receiver_id == state.bulk_payment_contract_id.as_str()
+                        && let Some(msg) = args.get("msg").and_then(|v| v.as_str())
+                        && msg == list_id
+                    {
                         return Ok(true);
-                    } else {
-                        log::info!("    -> No match");
                     }
-                } else {
-                    log::warn!("    -> Failed to decode args");
+                }
+
+                // Case 3: mt_transfer_call (MT tokens / Intents)
+                if action.method_name == "mt_transfer_call" {
+                    // Decode the base64 args and check for matching list_id in msg field
+                    if let Ok(decoded) = base64::Engine::decode(
+                        &base64::engine::general_purpose::STANDARD,
+                        &action.args,
+                    ) && let Ok(args) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                        && let Some(receiver_id) = args.get("receiver_id").and_then(|v| v.as_str())
+                        && receiver_id == state.bulk_payment_contract_id.as_str()
+                        && let Some(msg) = args.get("msg").and_then(|v| v.as_str())
+                        && msg == list_id
+                    {
+                        return Ok(true);
+                    }
                 }
             }
-        }
-
-        // Also check the description for the list_id (fallback)
-        if proposal.description.contains(list_id) {
-            return Ok(true);
         }
     }
 
@@ -283,7 +284,7 @@ pub async fn submit_list(
         })
         .collect();
 
-    let result = near_api::Contract(state.bulk_payment_contract_id.clone())
+    let execution_result = near_api::Contract(state.bulk_payment_contract_id.clone())
         .call_function(
             "submit_list",
             serde_json::json!({
@@ -294,29 +295,129 @@ pub async fn submit_list(
             }),
         )
         .transaction()
+        .max_gas()
+        .deposit(near_api::types::NearToken::from_yoctonear(0))
         .with_signer(state.signer_id.clone(), state.signer.clone())
         .send_to(&state.network)
         .await;
 
-    match result {
-        Ok(_) => {
-            // Add the list to the payout worker's pending list
-            super::worker::add_pending_list(request.list_id.clone()).await;
+    match execution_result {
+        Ok(result) => {
+            // Check if the transaction execution succeeded
+            match result.into_result() {
+                Ok(_) => {
+                    // Step 4: Decrement credits in monitored_accounts table
+                    log::info!(
+                        "Bulk payment submitted successfully for treasury {}. Decrementing credits...",
+                        request.dao_contract_id
+                    );
 
-            Ok(Json(SubmitListResponse {
-                success: true,
-                list_id: Some(request.list_id),
-                error: None,
-            }))
+                    // First, check current credits
+                    let current_credits_result = sqlx::query_as::<_, (i32,)>(
+                        r#"
+                        SELECT batch_payment_credits
+                        FROM monitored_accounts
+                        WHERE account_id = $1
+                        "#,
+                    )
+                    .bind(&request.dao_contract_id)
+                    .fetch_optional(&state.db_pool)
+                    .await;
+
+                    match current_credits_result {
+                        Ok(Some((current_credits,))) => {
+                            log::info!(
+                                "Treasury {} currently has {} credits before decrement",
+                                request.dao_contract_id,
+                                current_credits
+                            );
+                        }
+                        Ok(None) => {
+                            log::warn!(
+                                "Treasury {} not found in monitored_accounts table",
+                                request.dao_contract_id
+                            );
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "Failed to check current credits for {}: {}",
+                                request.dao_contract_id,
+                                e
+                            );
+                        }
+                    }
+
+                    let db_result = sqlx::query_as::<_, (i32,)>(
+                        r#"
+                UPDATE monitored_accounts
+                SET batch_payment_credits = GREATEST(batch_payment_credits - 1, 0),
+                    updated_at = NOW()
+                WHERE account_id = $1
+                RETURNING batch_payment_credits
+                "#,
+                    )
+                    .bind(&request.dao_contract_id)
+                    .fetch_optional(&state.db_pool)
+                    .await;
+
+                    match db_result {
+                        Ok(Some((new_credits,))) => {
+                            log::info!(
+                                "Successfully decremented credits for treasury {}. New balance: {}",
+                                request.dao_contract_id,
+                                new_credits
+                            );
+                        }
+                        Ok(None) => {
+                            log::warn!(
+                                "Treasury {} not found in monitored_accounts, credits not decremented",
+                                request.dao_contract_id
+                            );
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "Failed to decrement batch payment credits for {}: {}",
+                                request.dao_contract_id,
+                                e
+                            );
+                            // Don't fail the request if DB update fails - contract submission succeeded
+                        }
+                    }
+
+                    // Step 5: Add list to the payout worker queue for processing
+                    // This ensures the worker will poll this list and process payments once approved
+                    super::worker::add_pending_list(request.list_id.clone()).await;
+
+                    Ok(Json(SubmitListResponse {
+                        success: true,
+                        list_id: Some(request.list_id),
+                        error: None,
+                    }))
+                }
+                Err(e) => {
+                    log::error!("Contract execution failed: {:?}", e);
+                    Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(SubmitListResponse {
+                            success: false,
+                            list_id: None,
+                            error: Some(format!("Contract execution failed: {}", e)),
+                        }),
+                    ))
+                }
+            }
         }
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(SubmitListResponse {
-                success: false,
-                list_id: None,
-                error: Some(format!("Failed to submit list: {}", e)),
-            }),
-        )),
+        Err(e) => {
+            log::error!("Failed to submit list to contract: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(SubmitListResponse {
+                    success: false,
+                    list_id: None,
+                    error: Some(format!("Failed to submit list: {}", e)),
+                }),
+            ))
+        }
     }
 }
 

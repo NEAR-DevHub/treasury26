@@ -24,6 +24,9 @@
   --general-border: rgba(229, 229, 229);
   --input: rgb(229, 229, 229);
   --ring: rgb(161, 161, 161);
+  --general-unofficial-border:rgba(212, 212, 212);
+  --general-unofficial-ghost-foreground:rgba(64, 64, 64);
+  --general-unofficial-accent:rgba(229, 229, 229);
   --general-success-background-faded: rgb(220, 252, 231);
   --general-success-foreground: rgb(21, 128, 61);
   --general-destructive-background-faded: rgb(254, 242, 242);
@@ -121,6 +124,9 @@
   --general-warning-border: rgb(113, 63, 18);
   --general-warning-foreground: rgb(250, 204, 21);
   --general-tertiary: rgb(28, 25, 23);
+  --general-unofficial-border:rgba(64, 64, 64);
+  --general-unofficial-ghost-foreground:rgba(229, 229, 229);
+  --general-unofficial-accent:rgba(38, 38, 38);
   --general-unofficial-border-3: rgb(64, 64, 64);
   --general-unofficial-border-5: rgb(115, 115, 115);
   --general-secondary: rgba(38, 38, 38);
@@ -177,6 +183,9 @@
   --color-general-warning-border: var(--general-warning-border);
   --color-general-warning-foreground: var(--general-warning-foreground);
   --color-general-tertiary: var(--general-tertiary);
+  --color-general-unofficial-border: var(--general-unofficial-border);
+  --color-general-unofficial-ghost-foreground: var(--general-unofficial-ghost-foreground);
+  --color-general-unofficial-accent: var(--general-unofficial-accent);
   --color-general-unofficial-border-3: var(--general-unofficial-border-3);
   --color-general-unofficial-border-5: var(--general-unofficial-border-5);
   --color-general-secondary: var(--general-secondary);
