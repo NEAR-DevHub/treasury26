@@ -119,13 +119,13 @@ function StepCard({ step, index }: { step: OnboardingStep; index: number }) {
     return (
         <div
             className={cn(
-                "flex flex-col gap-2 lg:flex-row lg:items-center items-start p-3 rounded-[10.5px] w-full",
+                "flex flex-col gap-2 xl:flex-row xl:items-center items-start p-3 rounded-[10.5px] w-full",
                 isActive
                     ? "bg-linear-to-r from-[#E2F2FF] to-[#D4EBFF] dark:from-[rgba(23,81,132,0.55)] dark:to-[rgba(23,81,132,0.71)]"
-                    : "bg-secondary dark:bg-linear-to-r dark:from-[rgba(13,39,62,0.5)] dark:to-[rgba(4,25,17,0.5)] ",
+                    : "bg-secondary dark:bg-linear-to-r dark:from-[rgba(13,39,62,0.5)] dark:to-[rgba(4,25,17,0.5)] justify-center xl:justify-start",
             )}
         >
-            <div className="flex flex-1 gap-3 items-start">
+            <div className="flex flex-1 gap-3 items-center xl:items-start">
                 <div className="pt-0.5">
                     <StepIcon
                         status={isCompleted ? "Success" : "Pending"}
@@ -152,6 +152,7 @@ function StepCard({ step, index }: { step: OnboardingStep; index: number }) {
                 <Button
                     variant={isActive ? "default" : "ghost"}
                     onClick={step.action.onClick}
+                    className="ml-6 xl:mx-0 w-[90%] xl:w-auto"
                 >
                     {step.action.icon === "deposit" ? (
                         <ArrowDownToLine className="size-3.5" />
