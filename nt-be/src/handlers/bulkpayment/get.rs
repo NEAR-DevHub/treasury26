@@ -1,4 +1,5 @@
 use axum::{
+    Json,
     extract::{Query, State},
     http::StatusCode,
 };
@@ -20,7 +21,7 @@ pub struct BatchPaymentQuery {
 pub async fn get_batch_payment(
     State(state): State<Arc<AppState>>,
     Query(params): Query<BatchPaymentQuery>,
-) -> Result<axum::Json<BatchPaymentResponse>, (StatusCode, String)> {
+) -> Result<Json<BatchPaymentResponse>, (StatusCode, String)> {
     let batch_id = params.batch_id.clone();
     let cache_key = CacheKey::new("batch-payment").with(&batch_id).build();
 
@@ -28,9 +29,10 @@ pub async fn get_batch_payment(
         .cache
         .clone()
         .cached_contract_call(CacheTier::LongTerm, cache_key, async move {
-            fetch_batch_payment_list(&state.network, &batch_id).await
+            fetch_batch_payment_list(&state.network, &batch_id, &state.bulk_payment_contract_id)
+                .await
         })
         .await?;
 
-    Ok(axum::Json(result))
+    Ok(Json(result))
 }

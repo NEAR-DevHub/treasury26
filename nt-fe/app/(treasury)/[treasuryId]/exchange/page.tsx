@@ -16,10 +16,7 @@ import {
 import {
   useToken,
   useTreasuryPolicy,
-  useTokenBalance,
 } from "@/hooks/use-treasury-queries";
-import { useQuery } from "@tanstack/react-query";
-import BridgeTokenSelect from "@/components/bridge-token-select";
 import { useEffect, useMemo, useState } from "react";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
@@ -79,16 +76,8 @@ function Step1({ handleNext }: StepProps) {
   const sellToken = form.watch("sellToken");
   const receiveToken = form.watch("receiveToken");
   const sellAmount = form.watch("sellAmount");
-  const { data: sellTokenBalance } = useTokenBalance(
-    selectedTreasury,
-    sellToken.address,
-    sellToken.network
-  );
 
   const slippageTolerance = form.watch("slippageTolerance") || 0.5;
-
-  const hasValidAmount =
-    sellAmount && !isNaN(Number(sellAmount)) && Number(sellAmount) > 0;
 
   // Check if tokens are the same
   const areSameTokens = useMemo(() => {
@@ -103,57 +92,37 @@ function Step1({ handleNext }: StepProps) {
     receiveToken.network,
   ]);
 
-  // Check for insufficient balance
-  const hasInsufficientBalance = useMemo(() => {
-    if (!sellAmount || !sellTokenBalance?.balance) return false;
-    const amountNum = Number(sellAmount);
-    const balanceNum = Number(
-      formatBalance(sellTokenBalance.balance, sellTokenBalance.decimals)
-    );
-    return !isNaN(amountNum) && !isNaN(balanceNum) && amountNum > balanceNum;
-  }, [sellAmount, sellTokenBalance]);
-
-  // Debounce query execution - only control when to fetch, not the values themselves
-  const [isReadyToFetch, setIsReadyToFetch] = useState(false);
+  const [debouncedSellAmount, setDebouncedSellAmount] = useState(sellAmount);
 
   useEffect(() => {
-    // Immediately disable fetching when inputs change
-    setIsReadyToFetch(false);
-
-    // Clear receive amount and errors immediately
-    form.setValue("receiveAmount", "");
-    form.clearErrors("sellAmount");
-    form.clearErrors("receiveAmount");
-
-    // Don't fetch if tokens are the same or amount is invalid
-    if (areSameTokens || !hasValidAmount) {
-      return;
-    }
-
-    // Enable fetching after debounce period
     const timer = setTimeout(() => {
-      setIsReadyToFetch(true);
+      setDebouncedSellAmount(sellAmount);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [
-    sellAmount,
-    sellToken.address,
-    receiveToken.address,
-    slippageTolerance,
-    areSameTokens,
-    hasValidAmount,
-  ]);
+  }, [sellAmount]);
+
+  // Clear receive amount and errors when inputs change
+  useEffect(() => {
+    form.setValue("receiveAmount", "");
+    form.clearErrors("sellAmount");
+    form.clearErrors("receiveAmount");
+  }, [sellToken.address, receiveToken.address, sellAmount, slippageTolerance, form]);
+
+  const hasValidAmount =
+    debouncedSellAmount &&
+    !isNaN(Number(debouncedSellAmount)) &&
+    Number(debouncedSellAmount) > 0;
 
   const { data: quoteData, isLoading: isLoadingQuote } = useExchangeQuote({
     selectedTreasury,
     sellToken,
     receiveToken,
-    sellAmount,
+    sellAmount: debouncedSellAmount,
     slippageTolerance,
     form,
     enabled: Boolean(
-      selectedTreasury && isReadyToFetch && hasValidAmount && !areSameTokens
+      selectedTreasury && hasValidAmount && !areSameTokens
     ),
     isDryRun: true,
     refetchInterval: DRY_QUOTE_REFRESH_INTERVAL,
@@ -213,11 +182,7 @@ function Step1({ handleNext }: StepProps) {
           control={form.control}
           amountName="sellAmount"
           tokenName="sellToken"
-          infoMessage={
-            hasInsufficientBalance
-              ? "Insufficient tokens. You can submit the request and top up before approval."
-              : undefined
-          }
+          showInsufficientBalance={true}
         />
         {/* Swap Arrow */}
         <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
@@ -286,9 +251,9 @@ function Step1({ handleNext }: StepProps) {
         <span>Powered by</span>
         <span className="font-semibold flex items-center gap-1">
           <img
-            src="https://near-intents.org/static/templates/near-intents/logo.svg"
+            src="/near-intents.svg"
             alt="NEAR Intents"
-            className="h-5"
+            className="h-3"
           />
         </span>
       </div>

@@ -4,6 +4,8 @@ import { Policy } from "@/types/policy";
 import { ProposalUIKind } from "../types/index";
 import { decodeArgs, decodeProposalDescription } from "@/lib/utils";
 
+const BULK_PAYMENT_CONTRACT_ID = process.env.NEXT_PUBLIC_BULK_PAYMENT_CONTRACT_ID || "bulkpayment.near";
+
 function isVestingProposal(proposal: Proposal): boolean {
     if (!("FunctionCall" in proposal.kind)) return false;
     const functionCall = proposal.kind.FunctionCall;
@@ -18,17 +20,35 @@ function isBatchPaymentProposal(proposal: Proposal): boolean {
     if (!("FunctionCall" in proposal.kind)) return false;
     const functionCall = proposal.kind.FunctionCall;
 
-    if (functionCall.receiver_id !== "bulkpayment.near") {
-        return false;
+    // Check if calling bulk payment contract directly (NEAR payments)
+    if (functionCall.receiver_id === BULK_PAYMENT_CONTRACT_ID) {
+        if (functionCall.actions.some(action => action.method_name === 'approve_list')) {
+            return true;
+        }
     }
 
-    if (
-        functionCall.actions.some(
-            (action) => action.method_name === "approve_list",
-        )
-    ) {
-        return true;
+    // Check if calling intents contract
+    if (functionCall.actions.some(action => action.method_name === 'mt_transfer_call')) {
+        const mtTransferAction = functionCall.actions.find(action => action.method_name === 'mt_transfer_call');
+        if (mtTransferAction) {
+            const args = decodeArgs(mtTransferAction.args);
+            if (args?.receiver_id === BULK_PAYMENT_CONTRACT_ID) {
+                return true;
+            }
+        }
     }
+
+    // Check if calling ft contract
+    if (functionCall.actions.some(action => action.method_name === 'ft_transfer_call')) {
+        const ftTransferAction = functionCall.actions.find(action => action.method_name === 'ft_transfer_call');
+        if (ftTransferAction) {
+            const args = decodeArgs(ftTransferAction.args);
+            if (args?.receiver_id === BULK_PAYMENT_CONTRACT_ID) {
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 
@@ -72,7 +92,7 @@ function processFTTransferProposal(
     }
     const args = decodeArgs(action.args);
     if (!args) return undefined;
-    if (args.receiver_id === "bulkpayment.near") {
+    if (args.receiver_id === BULK_PAYMENT_CONTRACT_ID) {
         return "Batch Payment Request" as const;
     }
     return "Payment Request" as const;
@@ -90,7 +110,7 @@ function processMTTransferProposal(
     );
     if (transfer) {
         const args = decodeArgs(transfer?.args as string);
-        if (args?.receiver_id === "bulkpayment.near") {
+        if (args?.receiver_id === BULK_PAYMENT_CONTRACT_ID) {
             return "Batch Payment Request" as const;
         }
         return "Exchange" as const;
@@ -326,7 +346,7 @@ export function getProposalRequiredFunds(
         );
         if (
             approveListAction &&
-            functionCall.receiver_id === "bulkpayment.near"
+            functionCall.receiver_id === BULK_PAYMENT_CONTRACT_ID
         ) {
             if (
                 approveListAction.deposit &&
