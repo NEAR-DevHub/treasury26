@@ -8,14 +8,14 @@ import { StepProps, StepperHeader } from "@/components/step-wizard";
 import { PaymentFormSection } from "../../components/payment-form-section";
 import type { EditPaymentFormValues, BulkPaymentData } from "../schemas";
 import { editPaymentSchema } from "../schemas";
-import type { TreasuryAsset } from "@/lib/api";
+import type { SelectedTokenData } from "@/components/token-select";
 import { needsStorageDepositCheck } from "../utils";
 import { getBatchStorageDepositIsRegistered } from "@/lib/api";
 
 interface EditPaymentStepProps extends StepProps {
   payment: BulkPaymentData;
   paymentIndex: number;
-  selectedToken: TreasuryAsset;
+  selectedToken: SelectedTokenData;
   onSave: (index: number, data: EditPaymentFormValues, isRegistered: boolean) => void;
   onCancel: () => void;
 }
@@ -50,7 +50,7 @@ export function EditPaymentStep({
       let isRegistered = true;
       if (needsStorageDepositCheck(selectedToken)) {
         try {
-          const tokenId = selectedToken.contractId || selectedToken.id;
+          const tokenId = selectedToken.address;
           const storageResult = await getBatchStorageDepositIsRegistered([
             {
               accountId: data.recipient,

@@ -131,11 +131,11 @@ export default function BulkPaymentPage() {
 
       // Determine token IDs
       const isNEAR =
-        selectedToken.id === NEAR_TOKEN.address &&
-        selectedToken.residency.toLowerCase() === "near";
+        selectedToken.address === NEAR_TOKEN.address &&
+        selectedToken.residency?.toLowerCase() === "near";
 
-      const tokenIdForHash = isNEAR ? "native" : selectedToken.id;
-      const tokenIdForProposal = selectedToken.id;
+      const tokenIdForHash = isNEAR ? "native" : selectedToken.address;
+      const tokenIdForProposal = selectedToken.address;
 
       // Convert amounts to smallest units
       const payments = paymentData.map((payment) => ({
@@ -188,7 +188,7 @@ export default function BulkPaymentPage() {
           await getBatchStorageDepositIsRegistered([
             {
               accountId: BULK_PAYMENT_CONTRACT_ID,
-              tokenId: selectedToken.id,
+              tokenId: selectedToken.address,
             },
           ]);
 
@@ -199,7 +199,7 @@ export default function BulkPaymentPage() {
         // Add storage deposit for bulk payment contract if needed
         if (!isBulkPaymentContractRegistered) {
           additionalTransactions.push({
-            receiverId: selectedToken.id,
+            receiverId: selectedToken.address,
             actions: [
               {
                 type: "FunctionCall",
@@ -225,7 +225,7 @@ export default function BulkPaymentPage() {
 
         for (const payment of unregisteredRecipients) {
           additionalTransactions.push({
-            receiverId: selectedToken.id,
+            receiverId: selectedToken.address,
             actions: [
               {
                 type: "FunctionCall",

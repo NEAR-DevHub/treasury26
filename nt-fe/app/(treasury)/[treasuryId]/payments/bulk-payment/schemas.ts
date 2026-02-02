@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { TreasuryAsset } from "@/lib/api";
+import type { SelectedTokenData } from "@/components/token-select";
 
 export interface BulkPaymentData {
   recipient: string;
@@ -10,7 +10,7 @@ export interface BulkPaymentData {
 }
 
 // Schema for the token selection
-export const tokenSchema = z.custom<TreasuryAsset>(
+export const tokenSchema = z.custom<SelectedTokenData>(
   (val) => val !== null && typeof val === "object",
   {
     message: "Please select a token",

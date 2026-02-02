@@ -6,7 +6,7 @@ import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
 import { Textarea } from "@/components/textarea";
 import { Upload, FileText, ArrowLeft, DollarSign, Info, X } from "lucide-react";
-import TokenSelect from "@/components/token-select";
+import TokenSelect, { SelectedTokenData } from "@/components/token-select";
 import { NumberBadge } from "@/components/number-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePlanDetails } from "@/hooks/use-plan-details";
@@ -290,7 +290,7 @@ export function UploadDataStep({
                   <h3 className="text-sm font-semibold">Select Asset</h3>
 
                   <TokenSelect
-                    selectedToken={selectedToken?.symbol || null}
+                    selectedToken={selectedToken as SelectedTokenData | null}
                     setSelectedToken={(token) =>
                       form.setValue("selectedToken", token)
                     }

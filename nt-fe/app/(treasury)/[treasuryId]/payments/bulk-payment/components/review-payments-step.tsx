@@ -8,6 +8,7 @@ import { Textarea } from "@/components/textarea";
 import { Edit2, Trash2 } from "lucide-react";
 import { StepProps, ReviewStep } from "@/components/step-wizard";
 import { WarningAlert } from "@/components/warning-alert";
+import Big from "big.js";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +19,7 @@ import {
 } from "@/components/modal";
 import type { BulkPaymentFormValues, BulkPaymentData } from "../schemas";
 import { formatBalance } from "@/lib/utils";
-import { totalBalance } from "@/lib/balance";
+import { availableBalance } from "@/lib/balance";
 import { validateAccountsAndStorage } from "../utils";
 
 interface ReviewPaymentsStepProps extends StepProps {
@@ -103,16 +104,24 @@ export function ReviewPaymentsStep({
     (payment) => payment.validationError
   );
 
-  // Calculate total USD value
+  // Calculate total USD value and check insufficient balance
   let totalUSDValue = 0;
-  if (selectedToken?.balanceUSD && selectedToken.balance) {
+  let hasInsufficientBalance = false;
+  
+  if (selectedToken?.balance) {
     try {
-      const balanceBig = totalBalance(selectedToken.balance);
-      const balanceFormatted = Number(
-        formatBalance(balanceBig.toString(), selectedToken.decimals)
+      const balanceBig = availableBalance(selectedToken.balance);
+      const balanceFormattedString = formatBalance(
+        balanceBig.toString(),
+        selectedToken.decimals
       );
-      if (balanceFormatted > 0) {
-        const pricePerToken = selectedToken.balanceUSD / balanceFormatted;
+      const balanceFormattedBig = Big(balanceFormattedString);
+      
+      hasInsufficientBalance = Big(totalAmount).gt(balanceFormattedBig);
+      
+      // Calculate USD value only if price is available
+      if (selectedToken?.balanceUSD && balanceFormattedBig.gt(0)) {
+        const pricePerToken = selectedToken.balanceUSD / Number(balanceFormattedString);
         totalUSDValue = totalAmount * pricePerToken;
       }
     } catch (error) {
@@ -144,6 +153,12 @@ export function ReviewPaymentsStep({
                 </p>
               )}
             </p>
+
+            {hasInsufficientBalance && (
+              <p className="text-general-info-foreground text-sm">
+                Insufficient tokens. You can submit the request and top up before approval.
+              </p>
+            )}
 
             <div>
               <p>
@@ -195,7 +210,7 @@ export function ReviewPaymentsStep({
                 let estimatedUSDValue = 0;
                 if (selectedToken?.balanceUSD && selectedToken.balance) {
                   try {
-                    const balanceBig = totalBalance(selectedToken.balance);
+                    const balanceBig = availableBalance(selectedToken.balance);
                     const balanceFormatted = Number(
                       formatBalance(
                         balanceBig.toString(),

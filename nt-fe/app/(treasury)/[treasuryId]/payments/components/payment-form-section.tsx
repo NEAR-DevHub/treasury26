@@ -1,22 +1,22 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/button";
-import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
+import { useToken } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
-import TokenSelect from "@/components/token-select";
+import TokenSelect, { SelectedTokenData } from "@/components/token-select";
 import { LargeInput } from "@/components/large-input";
 import { InputBlock } from "@/components/input-block";
-import type { TreasuryAsset } from "@/lib/api";
 import { validateNearAddress, isValidNearAddressFormat } from "@/lib/near-validation";
+import { totalBalance } from "@/lib/balance";
 
 interface PaymentFormSectionProps {
   // Token and amount
-  selectedToken: TreasuryAsset | null;
+  selectedToken: SelectedTokenData | null;
   amount: string;
   onAmountChange: (amount: string) => void;
-  onTokenChange?: (token: TreasuryAsset) => void;
+  onTokenChange?: (token: SelectedTokenData) => void;
   
   // Recipient
   recipient: string;
@@ -47,13 +47,17 @@ export function PaymentFormSection({
   const [recipientError, setRecipientError] = useState<string | undefined>();
   const [isValidating, setIsValidating] = useState(false);
 
-  const { data: tokenBalanceData, isLoading: isBalanceLoading } = useTokenBalance(
-    treasuryId,
-    selectedToken?.id || "",
-    selectedToken?.network || "NEAR"
-  );
-  
-  const { data: tokenData, isLoading: isTokenLoading } = useToken(selectedToken?.id || "");
+  // Get token price for USD estimation
+  const { data: tokenData, isLoading: isTokenLoading } = useToken(selectedToken?.address || "");
+
+  const tokenBalance = useMemo(() => {
+    if (!selectedToken?.balance) return null;
+    try {
+      return totalBalance(selectedToken.balance);
+    } catch {
+      return null;
+    }
+  }, [selectedToken?.balance]);
 
   const estimatedUSDValue = useMemo(() => {
     if (!tokenData?.price || !amount || isNaN(Number(amount)) || Number(amount) <= 0) {
@@ -126,10 +130,10 @@ export function PaymentFormSection({
         title="You send"
         invalid={false}
         topRightContent={
-          showBalance && tokenBalanceData?.balance && !isBalanceLoading ? (
+          showBalance && tokenBalance && selectedToken?.decimals ? (
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground">
-                Balance: {formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals)}{" "}
+                Balance: {formatBalance(tokenBalance.toFixed(0), selectedToken.decimals)}{" "}
                 {selectedToken?.symbol?.toUpperCase()}
               </p>
               <Button
@@ -138,8 +142,8 @@ export function PaymentFormSection({
                 className="bg-muted-foreground/10 hover:bg-muted-foreground/20"
                 size="sm"
                 onClick={() => {
-                  if (tokenBalanceData?.balance && tokenBalanceData?.decimals) {
-                    onAmountChange(formatBalance(tokenBalanceData.balance, tokenBalanceData.decimals));
+                  if (tokenBalance && selectedToken.decimals) {
+                    onAmountChange(formatBalance(tokenBalance.toFixed(0), selectedToken.decimals));
                   }
                 }}
               >
@@ -163,17 +167,7 @@ export function PaymentFormSection({
           <TokenSelect
             disabled={tokenLocked || !onTokenChange}
             locked={tokenLocked}
-            lockedTokenData={
-              tokenLocked && selectedToken
-                ? {
-                    symbol: selectedToken.symbol,
-                    icon: selectedToken.icon,
-                    network: selectedToken.network,
-                    chainIcons: tokenData?.chainIcons,
-                  }
-                : undefined
-            }
-            selectedToken={selectedToken?.symbol || null}
+            selectedToken={selectedToken}
             setSelectedToken={(token) => {
               if (onTokenChange) {
                 onTokenChange(token);

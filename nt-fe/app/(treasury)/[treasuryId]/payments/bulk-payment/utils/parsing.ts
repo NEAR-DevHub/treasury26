@@ -354,7 +354,7 @@ export function parseAndValidatePasteData(pasteData: string): {
 /**
  * Check if token needs storage deposit check
  */
-export function needsStorageDepositCheck(token: TreasuryAsset): boolean {
+export function needsStorageDepositCheck(token: { residency?: string }): boolean {
   // Intents, Near tokens don't need storage deposits
   // FT tokens need storage deposits
   return token.residency === "Ft";
@@ -365,7 +365,7 @@ export function needsStorageDepositCheck(token: TreasuryAsset): boolean {
  */
 export async function validateAccountsAndStorage(
   payments: BulkPaymentData[],
-  selectedToken: TreasuryAsset
+  selectedToken: { address: string; residency?: string; }
 ): Promise<BulkPaymentData[]> {
   // Step 1: Validate account existence
   const accountValidatedPayments = await Promise.all(
@@ -401,7 +401,7 @@ export async function validateAccountsAndStorage(
     return accountValidatedPayments;
   }
 
-  const tokenId = selectedToken.contractId || selectedToken.id;
+  const tokenId = selectedToken.address;
 
   const storageRequests = validAccounts.map((payment) => ({
     accountId: payment.recipient,
