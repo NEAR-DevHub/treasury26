@@ -276,30 +276,6 @@ function Step1({ handleNext }: StepProps) {
         readOnly={true}
         loading={isLoadingQuote}
         customValue={quoteData?.quote.amountOutFormatted || ""}
-        customTokenSelector={
-          <BridgeTokenSelect
-            selectedToken={{
-              id: receiveToken.address,
-              symbol: receiveToken.symbol,
-              name: receiveToken.symbol,
-              icon: receiveToken.icon,
-              network: receiveToken.network,
-              networkIcon: receiveToken.networkIcon || null,
-              chainId: receiveToken.network,
-              decimals: receiveToken.decimals,
-            }}
-            setSelectedToken={(token) => {
-              form.setValue("receiveToken", {
-                symbol: token.symbol,
-                address: token.id,
-                network: token.network,
-                icon: token.icon,
-                decimals: token.decimals,
-                networkIcon: token.networkIcon,
-              });
-            }}
-          />
-        }
       />
 
       {/* Rate and Slippage */}

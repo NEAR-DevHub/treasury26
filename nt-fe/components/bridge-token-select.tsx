@@ -8,16 +8,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./modal";
-import { ChevronDown, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronLeft, Info } from "lucide-react";
 import { Button } from "./button";
-import { cn, formatBalance } from "@/lib/utils";
+import { cn, formatBalance, formatNearAmount } from "@/lib/utils";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
 import { useThemeStore } from "@/stores/theme-store";
 import { useTreasury } from "@/stores/treasury-store";
 import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
+import { useAggregatedTokens } from "@/hooks/use-aggregated-tokens";
 import { Input } from "./input";
-import { SelectList, SelectListItem } from "./select-list";
+import { SelectListIcon } from "./select-list";
+import { Tooltip } from "./tooltip";
+import { ScrollArea } from "./ui/scroll-area";
 import Big from "big.js";
+
+interface SelectListItem {
+  id: string;
+  name: string;
+  symbol?: string;
+  icon: string;
+  gradient?: string;
+}
 
 // Core data types
 interface Network {
@@ -26,6 +37,8 @@ interface Network {
   icon: string | null;
   chainId: string;
   decimals: number;
+  residency?: string; // "Ft", "Intents", or "Near" - optional since bridge API networks is Intents
+  lockedBalance?: string; // For Native Token - optional
 }
 
 interface Asset {
@@ -66,30 +79,50 @@ interface NetworkListItem extends SelectListItem {
   decimals: number;
   balance?: string;
   balanceUSD?: number;
+  residency?: string;
+  lockedBalance?: string;
 }
 
 interface BridgeTokenSelectProps {
   selectedToken: BridgeToken | null;
   setSelectedToken: (token: BridgeToken) => void;
   disabled?: boolean;
+  locked?: boolean;
   classNames?: {
     trigger?: string;
   };
+  /**
+   * When true, only shows assets that the user owns (has balance > 0).
+   * When false, shows all assets with separation between "Your Asset" and "Other Asset".
+   * Default: false
+   */
+  showOnlyOwnedAssets?: boolean;
 }
 
 // Helper to check if icon is an image URL
 const isImageIcon = (icon: string): boolean =>
   icon.startsWith("data:image") || icon.startsWith("http");
 
+/**
+ * BridgeTokenSelect - A token selector for bridge/cross-chain assets
+ *
+ * @param selectedToken - Currently selected token (or null)
+ * @param setSelectedToken - Callback when a token is selected
+ * @param disabled - Whether the selector is disabled
+ * @param classNames - Optional CSS classes for styling
+ */
 export default function BridgeTokenSelect({
   selectedToken,
   setSelectedToken,
   disabled,
+  locked,
   classNames,
+  showOnlyOwnedAssets = false,
 }: BridgeTokenSelectProps) {
   const { selectedTreasury } = useTreasury();
   const { data: { tokens: treasuryAssets = [] } = {} } =
     useTreasuryAssets(selectedTreasury);
+  const aggregatedTreasuryTokens = useAggregatedTokens(treasuryAssets);
   const { theme } = useThemeStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -98,27 +131,15 @@ export default function BridgeTokenSelect({
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [step, setStep] = useState<"token" | "network">("token");
 
-  // Create balance map from treasury assets
-  const balanceMap = useMemo(() => {
-    const map = new Map<
-      string,
-      { balance: string; balanceUSD: number; decimals: number }
-    >();
-
-    treasuryAssets.forEach((token) => {
-      const tokenId = token.id;
-      map.set(tokenId, {
-        balance: token.balance.toString(),
-        balanceUSD: token.balanceUSD,
-        decimals: token.decimals,
-      });
-    });
-    return map;
-  }, [treasuryAssets]);
-
   // Fetch all available assets from bridge API
   useEffect(() => {
     const fetchAssets = async () => {
+      // Skip fetching bridge assets if we only need owned assets
+      if (showOnlyOwnedAssets) {
+        setIsLoading(false);
+        return;
+      }
+
       if (!open) return;
 
       setIsLoading(true);
@@ -149,59 +170,177 @@ export default function BridgeTokenSelect({
     };
 
     fetchAssets();
-  }, [open, theme]);
+  }, [open, theme, showOnlyOwnedAssets]);
 
-  const filteredTokens = useMemo(() => {
-    const filtered = assets.filter(
-      (token) =>
-        token.symbol.toLowerCase().includes(search.toLowerCase()) ||
-        token.name?.toLowerCase().includes(search.toLowerCase())
+  const { yourAssets, otherAssets, hasAnyBalance } = useMemo(() => {
+    const searchLower = search.toLowerCase();
+
+    const ownedTokensMap = new Map(
+      aggregatedTreasuryTokens.map((token) => [token.symbol, token])
     );
-    return filtered.map((token): TokenListItem => {
-      // Calculate total balance across all networks for this token
-      let totalBalance = 0;
-      let totalBalanceUSD = 0;
+    const bridgeAssetsMap = new Map(
+      assets.map((asset) => [asset.symbol, asset])
+    );
 
-      if (balanceMap) {
-        token.networks.forEach((network) => {
-          const balanceData = balanceMap.get(network.id);
-          if (balanceData) {
-            const formattedBalance = Number(
-              formatBalance(balanceData.balance, balanceData.decimals)
-            );
-            totalBalance += formattedBalance;
-            totalBalanceUSD += balanceData.balanceUSD;
-          } else {
+    // Helper function to map treasury network to Network object
+    const mapTreasuryNetwork = (n: any) => ({
+      id: n.id,
+      name: n.network,
+      icon: n.chainIcons?.light || null,
+      chainId: n.network,
+      decimals: n.decimals,
+      residency: n.residency,
+      lockedBalance: n.lockedBalance?.toFixed(0),
+      balance: n.balance.toString(),
+      balanceUSD: n.balanceUSD,
+    });
+
+    // 1. Process owned assets with bridge data overlay
+    const ownedAssets = aggregatedTreasuryTokens
+      .filter(
+        (token) =>
+          token.symbol.toLowerCase().includes(searchLower) ||
+          token.name?.toLowerCase().includes(searchLower)
+      )
+      .map((treasuryToken): TokenListItem | null => {
+        const bridgeAsset = bridgeAssetsMap.get(treasuryToken.symbol);
+
+        // Fallback: Treasury-only token (not in bridge API) -> eg: FT token on NEAR blockchain
+        if (!bridgeAsset) {
+          return {
+            id: treasuryToken.symbol,
+            name:
+              treasuryToken.name +
+              (treasuryToken.isAggregated && treasuryToken.networks.length > 1
+                ? ` • ${treasuryToken.networks.length} Networks`
+                : ""),
+            symbol: treasuryToken.symbol,
+            icon: treasuryToken.icon,
+            assetId: treasuryToken.symbol,
+            assetName: treasuryToken.name,
+            networks: treasuryToken.networks.map(mapTreasuryNetwork),
+            networkCount: treasuryToken.networks.length,
+            totalBalance: Number(treasuryToken.totalBalance),
+            totalBalanceUSD: treasuryToken.totalBalanceUSD,
+          };
+        }
+
+        // Create lookup maps for treasury networks (only once per token)
+        const treasuryNetworksByIdMap = new Map(
+          treasuryToken.networks.map((n) => [n.id, n])
+        );
+        const treasuryNetworksByChainMap = new Map(
+          treasuryToken.networks.map((n) => [n.network, n])
+        );
+
+        // Track matched treasury networks to avoid duplicates
+        const matchedTreasuryNetworkIds = new Set<string>();
+
+        // Merge bridge networks with treasury balance data
+        const mergedNetworks = bridgeAsset.networks.map((bridgeNetwork) => {
+          const treasuryNetwork =
+            treasuryNetworksByIdMap.get(bridgeNetwork.id) ||
+            treasuryNetworksByChainMap.get(bridgeNetwork.chainId);
+
+          if (treasuryNetwork) {
+            matchedTreasuryNetworkIds.add(treasuryNetwork.id);
+          }
+
+          return {
+            id: bridgeNetwork.id,
+            name: bridgeNetwork.name,
+            icon: bridgeNetwork.icon,
+            chainId: bridgeNetwork.chainId,
+            decimals: bridgeNetwork.decimals,
+            residency: treasuryNetwork?.residency,
+            lockedBalance: treasuryNetwork?.lockedBalance?.toFixed(0),
+            ...(treasuryNetwork && {
+              balance: treasuryNetwork.balance.toString(),
+              balanceUSD: treasuryNetwork.balanceUSD,
+            }),
+          } as Network & { balance?: string; balanceUSD?: number };
+        });
+
+        // Add unmatched treasury networks (different residencies on same chain)
+        treasuryToken.networks.forEach((tn) => {
+          if (!matchedTreasuryNetworkIds.has(tn.id)) {
+            mergedNetworks.push(mapTreasuryNetwork(tn));
           }
         });
-      }
 
+        return {
+          id: treasuryToken.symbol,
+          name:
+            treasuryToken.name +
+            (mergedNetworks.length > 1
+              ? ` • ${mergedNetworks.length} Networks`
+              : ""),
+          symbol: treasuryToken.symbol,
+          icon: treasuryToken.icon,
+          assetId: bridgeAsset.id,
+          assetName: bridgeAsset.name,
+          networks: mergedNetworks,
+          networkCount: mergedNetworks.length,
+          totalBalance: Number(treasuryToken.totalBalance),
+          totalBalanceUSD: treasuryToken.totalBalanceUSD,
+        };
+      })
+      .filter((item): item is TokenListItem => item !== null);
+
+    // 2. Early return for showOnlyOwnedAssets
+    if (showOnlyOwnedAssets) {
       return {
-        id: token.symbol,
-        name:
-          token.name +
-          (token.networks.length > 1
-            ? ` • ${token.networks.length} Networks`
-            : ""),
-        symbol: token.symbol,
-        icon: token.icon,
-        // Asset properties
-        assetId: token.id,
-        assetName: token.name,
-        networks: token.networks,
-        // Display properties
-        networkCount: token.networks.length,
-        totalBalance: balanceMap ? totalBalance : undefined,
-        totalBalanceUSD: balanceMap ? totalBalanceUSD : undefined,
+        yourAssets: ownedAssets,
+        otherAssets: [],
+        hasAnyBalance: ownedAssets.length > 0,
       };
-    });
-  }, [assets, search, balanceMap]);
+    }
+
+    // 3. Process other assets (not owned) - already sorted by search
+    const otherAssetsFiltered = assets
+      .filter(
+        (token) =>
+          !ownedTokensMap.has(token.symbol) &&
+          (token.symbol.toLowerCase().includes(searchLower) ||
+            token.name?.toLowerCase().includes(searchLower))
+      )
+      .map(
+        (token): TokenListItem => ({
+          id: token.symbol,
+          name:
+            token.name +
+            (token.networks.length > 1
+              ? ` • ${token.networks.length} Networks`
+              : ""),
+          symbol: token.symbol,
+          icon: token.icon,
+          assetId: token.id,
+          assetName: token.name,
+          networks: token.networks,
+          networkCount: token.networks.length,
+          totalBalance: undefined,
+          totalBalanceUSD: undefined,
+        })
+      )
+      .sort((a, b) => a.symbol!.localeCompare(b.symbol!));
+
+    return {
+      yourAssets: ownedAssets,
+      otherAssets: otherAssetsFiltered,
+      hasAnyBalance: ownedAssets.length > 0,
+    };
+  }, [assets, search, showOnlyOwnedAssets, aggregatedTreasuryTokens]);
 
   const networkItems = useMemo(() => {
     if (!selectedAsset) return [];
-    return selectedAsset.networks.map(
+
+    const items = selectedAsset.networks.map(
       (network: Network, idx: number): NetworkListItem => {
-        const balanceData = balanceMap?.get(network.id);
+        // Treasury token networks (from aggregatedTreasuryTokens) have balance and residency info
+        // Bridge token networks don't have these
+        const treasuryNetwork = network as any; // May have TreasuryAsset properties for balance
+        const balance = treasuryNetwork.balance?.toString();
+        const balanceUSD = treasuryNetwork.balanceUSD;
 
         return {
           id: `${network.chainId}-${idx}`,
@@ -214,13 +353,32 @@ export default function BridgeTokenSelect({
           chainId: network.chainId,
           networkIcon: network.icon,
           decimals: network.decimals,
-          // Balance properties
-          balance: balanceData?.balance,
-          balanceUSD: balanceData?.balanceUSD,
+          // Balance and residency properties (only present for owned assets)
+          balance,
+          balanceUSD,
+          residency: network.residency, // From Network interface
+          lockedBalance: network.lockedBalance, // From Network interface
         };
       }
     );
-  }, [selectedAsset, balanceMap]);
+
+    // Sort networks: ones with balance first, then alphabetically by name
+    items.sort((a, b) => {
+      const aHasBalance = !!a.balance && parseFloat(a.balance) > 0;
+      const bHasBalance = !!b.balance && parseFloat(b.balance) > 0;
+
+      // If both have balance or both don't have balance, sort alphabetically
+      if (aHasBalance === bHasBalance) {
+        return a.name.localeCompare(b.name);
+      }
+
+      // Networks with balance come first
+      return bHasBalance ? 1 : -1;
+    });
+
+    return items;
+  }, [selectedAsset]);
+
 
   const handleTokenClick = useCallback((item: TokenListItem) => {
     setSelectedAsset({
@@ -314,12 +472,23 @@ export default function BridgeTokenSelect({
     [renderBaseTokenIcon]
   );
 
-  // Get network type label
-  const getNetworkType = useCallback((chainId: string): string => {
-    if (chainId.toLowerCase().includes("near:mainnet")) {
-      return "Native Token";
+  // Get network type label based on residency
+  const getNetworkType = useCallback((residency?: string): string => {
+    if (!residency) {
+      // Fallback for bridge tokens that don't have residency info
+      return "Intents Token";
     }
-    return "Intents Token";
+
+    switch (residency) {
+      case "Ft":
+        return "Fungible Token";
+      case "Intents":
+        return "Intents Token";
+      case "Near":
+        return "Native Token";
+      default:
+        return "Intents Token";
+    }
   }, []);
 
   // Render network icon with fallback
@@ -343,10 +512,32 @@ export default function BridgeTokenSelect({
     []
   );
 
+  // Render locked state
+  if (locked && selectedToken) {
+    return (
+      <div className="flex gap-2 items-center h-9 px-4 py-2 has-[>svg]:px-3 bg-card rounded-full cursor-default hover:bg-card hover:border-border">
+        {renderTokenWithNetworkBadge(
+          selectedToken.icon,
+          selectedToken.symbol,
+          selectedToken.networkIcon
+        )}
+        <div className="flex flex-col items-start">
+          <span className="font-semibold text-sm leading-none">
+            {selectedToken.symbol}
+          </span>
+          <span className="text-[10px] font-normal text-muted-foreground uppercase">
+            {selectedToken.network}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild disabled={disabled}>
         <Button
+          type="button"
           variant="outline"
           className={cn(
             "bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3",
@@ -379,7 +570,12 @@ export default function BridgeTokenSelect({
         <DialogHeader centerTitle={true}>
           <div className="flex items-center gap-2 w-full">
             {step === "network" && (
-              <Button variant="ghost" size="icon" onClick={handleBack}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleBack}
+                type="button"
+              >
                 <ChevronLeft className="size-5" />
               </Button>
             )}
@@ -399,61 +595,244 @@ export default function BridgeTokenSelect({
               onChange={(e) => setSearch(e.target.value)}
             />
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-muted-foreground">Loading assets...</div>
+              <div className="space-y-1 animate-pulse">
+                {[...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-full flex items-center gap-3 py-3 rounded-lg"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-muted shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-24" />
+                      <div className="h-3 bg-muted rounded w-32" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
-              <SelectList
-                items={filteredTokens}
-                onSelect={handleTokenClick}
-                emptyMessage="No tokens found"
-                renderRight={
-                  balanceMap
-                    ? (token) =>
-                        token.totalBalance !== undefined &&
-                        token.totalBalance > 0 ? (
-                          <div className="flex flex-col items-end">
-                            <span className="font-semibold">
-                              {token.totalBalance.toLocaleString("en-US", {
-                                maximumFractionDigits: 20,
-                              })}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              ≈${token.totalBalanceUSD?.toFixed(2) || "0.00"}
-                            </span>
+              <ScrollArea className="h-[400px]">
+                {showOnlyOwnedAssets ? (
+                  // Show only owned assets without section headers
+                  <>
+                    {yourAssets.map((token) => (
+                      <Button
+                        key={token.id}
+                        onClick={() => handleTokenClick(token)}
+                        variant="ghost"
+                        type="button"
+                        className="w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!"
+                      >
+                        <SelectListIcon
+                          icon={token.icon}
+                          gradient={token.gradient}
+                          alt={token.symbol || token.name}
+                        />
+                        <div className="flex-1 text-left">
+                          <div className="font-semibold">
+                            {token.symbol || token.name}
                           </div>
-                        ) : null
-                    : undefined
-                }
-              />
+                          {token.symbol && (
+                            <div className="text-sm text-muted-foreground">
+                              {token.name}
+                            </div>
+                          )}
+                        </div>
+                        {token.totalBalance !== undefined &&
+                          token.totalBalance > 0 && (
+                            <div className="flex flex-col items-end">
+                              <span className="font-semibold">
+                                {token.totalBalance.toLocaleString("en-US", {
+                                  maximumFractionDigits: 20,
+                                })}
+                              </span>
+                              <span className="text-sm text-muted-foreground">
+                                ≈${token.totalBalanceUSD?.toFixed(2) || "0.00"}
+                              </span>
+                            </div>
+                          )}
+                      </Button>
+                    ))}
+                    {yourAssets.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No tokens with balance found
+                      </div>
+                    )}
+                  </>
+                ) : hasAnyBalance ? (
+                  <>
+                    {/* Your Assets Section */}
+                    {yourAssets.length > 0 && (
+                      <div className="mb-4">
+                        <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                          Your Asset
+                        </div>
+                        {yourAssets.map((token) => (
+                          <Button
+                            key={token.id}
+                            onClick={() => handleTokenClick(token)}
+                            variant="ghost"
+                            type="button"
+                            className="w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!"
+                          >
+                            <SelectListIcon
+                              icon={token.icon}
+                              gradient={token.gradient}
+                              alt={token.symbol || token.name}
+                            />
+                            <div className="flex-1 text-left">
+                              <div className="font-semibold">
+                                {token.symbol || token.name}
+                              </div>
+                              {token.symbol && (
+                                <div className="text-sm text-muted-foreground">
+                                  {token.name}
+                                </div>
+                              )}
+                            </div>
+                            {token.totalBalance !== undefined &&
+                              token.totalBalance > 0 && (
+                                <div className="flex flex-col items-end">
+                                  <span className="font-semibold">
+                                    {token.totalBalance.toLocaleString(
+                                      "en-US",
+                                      {
+                                        maximumFractionDigits: 20,
+                                      }
+                                    )}
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
+                                    ≈$
+                                    {token.totalBalanceUSD?.toFixed(2) ||
+                                      "0.00"}
+                                  </span>
+                                </div>
+                              )}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Other Assets Section */}
+                    {otherAssets.length > 0 && (
+                      <div>
+                        <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                          Other Asset
+                        </div>
+                        {otherAssets.map((token) => (
+                          <Button
+                            key={token.id}
+                            onClick={() => handleTokenClick(token)}
+                            variant="ghost"
+                            type="button"
+                            className="w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!"
+                          >
+                            <SelectListIcon
+                              icon={token.icon}
+                              gradient={token.gradient}
+                              alt={token.symbol || token.name}
+                            />
+                            <div className="flex-1 text-left">
+                              <div className="font-semibold">
+                                {token.symbol || token.name}
+                              </div>
+                              {token.symbol && (
+                                <div className="text-sm text-muted-foreground">
+                                  {token.name}
+                                </div>
+                              )}
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  // No balance - show all tokens alphabetically without separation
+                  <>
+                    {otherAssets.map((token) => (
+                      <Button
+                        key={token.id}
+                        onClick={() => handleTokenClick(token)}
+                        variant="ghost"
+                        type="button"
+                        className="w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!"
+                      >
+                        <SelectListIcon
+                          icon={token.icon}
+                          gradient={token.gradient}
+                          alt={token.symbol || token.name}
+                        />
+                        <div className="flex-1 text-left">
+                          <div className="font-semibold">
+                            {token.symbol || token.name}
+                          </div>
+                          {token.symbol && (
+                            <div className="text-sm text-muted-foreground">
+                              {token.name}
+                            </div>
+                          )}
+                        </div>
+                      </Button>
+                    ))}
+                  </>
+                )}
+                {yourAssets.length === 0 && otherAssets.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No tokens found
+                  </div>
+                )}
+              </ScrollArea>
             )}
           </div>
         )}
         {step === "network" && selectedAsset && (
-          <SelectList
-            items={networkItems}
-            onSelect={handleNetworkClick}
-            renderIcon={(item) => (
-              <div className="pl-3">
-                <div className="flex items-center gap-3">
-                  {renderNetworkIcon(item.networkIcon, item.name)}
-                  <div className="flex flex-col text-left">
-                    <span className="font-semibold capitalize">
-                      {item.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {getNetworkType(item.chainId)}
-                    </span>
+          <ScrollArea className="h-[400px]">
+            {networkItems.map((item) => (
+              <Button
+                key={item.id}
+                onClick={() => handleNetworkClick(item)}
+                variant="ghost"
+                type="button"
+                className="w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!"
+              >
+                <div className="pl-3 w-full">
+                  <div className="flex items-center gap-3">
+                    {renderNetworkIcon(item.networkIcon, item.name)}
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold capitalize">
+                        {item.name}
+                      </span>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span>{getNetworkType(item.residency)}</span>
+                        {item.residency === "Near" && item.lockedBalance && (
+                          <Tooltip
+                            content={
+                              <p className="inline-block">
+                                Available balance after locking{" "}
+                                <span className="font-semibold">
+                                  {formatNearAmount(item.lockedBalance)} NEAR
+                                </span>{" "}
+                                for account activity
+                              </p>
+                            }
+                            side="bottom"
+                          >
+                            <span
+                              className="inline-flex"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Info className="size-3" />
+                            </span>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            renderContent={() => <div className="flex-1" />}
-            renderRight={
-              balanceMap
-                ? (item) => {
-                    if (!item.balance || item.decimals === undefined)
-                      return null;
+                <div className="flex-1" />
+                {item.balance &&
+                  item.decimals !== undefined &&
+                  (() => {
                     const balanceNum = Big(
                       formatBalance(item.balance, item.decimals)
                     ).toNumber();
@@ -471,10 +850,10 @@ export default function BridgeTokenSelect({
                         </span>
                       </div>
                     );
-                  }
-                : undefined
-            }
-          />
+                  })()}
+              </Button>
+            ))}
+          </ScrollArea>
         )}
       </DialogContent>
     </Dialog>

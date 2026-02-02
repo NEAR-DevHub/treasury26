@@ -36,17 +36,17 @@ export function buildProposalDescription(
   sellToken: Token,
   receiveToken: Token,
   slippageTolerance: number,
-  memo?: string
 ): string {
+  const deadline = proposalData.quote.deadline;
   return encodeToMarkdown({
     proposal_action: "asset-exchange",
-    notes: `**Must be executed before ${proposalData.timestamp}** for transferring tokens to 1Click's deposit address for swap execution.`,
+    notes: `**Must be executed before ${deadline}** for transferring tokens to 1Click's deposit address for swap execution.`,
     tokenIn: sellToken.symbol,
     tokenOut: receiveToken.symbol,
     amountIn: proposalData.quote.amountInFormatted,
     amountOut: proposalData.quote.amountOutFormatted,
     slippage: slippageTolerance.toString(),
-    quoteDeadline: proposalData.timestamp,
+    quoteDeadline: deadline,
     destinationNetwork: receiveToken.network,
     timeEstimate: proposalData.quote.timeEstimate
       ? `${proposalData.quote.timeEstimate} seconds`
