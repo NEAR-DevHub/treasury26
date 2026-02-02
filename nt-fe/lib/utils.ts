@@ -129,16 +129,23 @@ export function formatGas(gas: string): string {
 }
 
 export function formatBalance(balance: string | Big, decimals: number, displayDecimals: number = 5): string {
+  // Handle null/undefined/empty values
+  if (!balance || (typeof balance === "string" && balance.trim() === "")) {
+    return "0";
+  }
 
   let parsedBalance: Big;
   if (typeof balance === "string") {
-    parsedBalance = Big(balance);
+    try {
+      parsedBalance = Big(balance);
+    } catch (error) {
+      console.error("[formatBalance] Error parsing balance string:", error, { balance });
+      return "0";
+    }
   } else {
     parsedBalance = balance;
   }
-  return (
-    parsedBalance.div(Big(10).pow(decimals)).toFixed(displayDecimals).replace(/\.?0+$/, "")
-  );
+  return parsedBalance.div(Big(10).pow(decimals)).toFixed(displayDecimals).replace(/\.?0+$/, "");
 }
 
 export function formatNearAmount(amount: string, displayDecimals: number = 5): string {

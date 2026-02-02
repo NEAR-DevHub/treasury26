@@ -21,7 +21,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import BridgeTokenSelect from "@/components/bridge-token-select";
 import { useEffect, useMemo, useState } from "react";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { cn, formatBalance } from "@/lib/utils";
 import Big from "big.js";
@@ -76,7 +76,7 @@ function Step1({ handleNext }: StepProps) {
   const form = useFormContext<
     ExchangeFormValues & { slippageTolerance?: number }
   >();
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId: selectedTreasury } = useTreasury();
   const sellToken = form.watch("sellToken");
   const receiveToken = form.watch("receiveToken");
   const sellAmount = form.watch("sellAmount");
@@ -295,7 +295,7 @@ function Step1({ handleNext }: StepProps) {
 
 function Step2({ handleBack }: StepProps) {
   const form = useFormContext<ExchangeFormValues>();
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId: selectedTreasury } = useTreasury();
   const sellToken = form.watch("sellToken");
   const receiveToken = form.watch("receiveToken");
   const sellAmount = form.watch("sellAmount");
@@ -528,7 +528,7 @@ function Step2({ handleBack }: StepProps) {
 type ExchangeFormValues = z.infer<typeof exchangeFormSchema>;
 
 export default function ExchangePage() {
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId: selectedTreasury } = useTreasury();
   const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
   const [step, setStep] = useState(0);

@@ -55,7 +55,7 @@ export function TokenInput<
     TFieldValues extends FieldValues = FieldValues,
     TTokenPath extends Path<TFieldValues> = Path<TFieldValues>
 >({ control, title, amountName, tokenName, tokenSelect, readOnly = false, loading = false, customValue, infoMessage }: TokenInputProps<TFieldValues, TTokenPath>) {
-    const { selectedTreasury } = useTreasury();
+    const { treasuryId } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
     const token = useWatch({ control, name: tokenName }) as Token;

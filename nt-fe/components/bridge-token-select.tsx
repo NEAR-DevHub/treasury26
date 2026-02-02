@@ -13,9 +13,9 @@ import { Button } from "./button";
 import { cn, formatBalance, formatNearAmount } from "@/lib/utils";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
 import { useThemeStore } from "@/stores/theme-store";
-import { useTreasury } from "@/stores/treasury-store";
-import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
-import { useAggregatedTokens } from "@/hooks/use-aggregated-tokens";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useAssets } from "@/hooks/use-assets";
+import { useAggregatedTokens } from "@/hooks/use-assets";
 import { Input } from "./input";
 import { SelectListIcon } from "./select-list";
 import { Tooltip } from "./tooltip";
@@ -119,9 +119,11 @@ export default function BridgeTokenSelect({
   classNames,
   showOnlyOwnedAssets = false,
 }: BridgeTokenSelectProps) {
-  const { selectedTreasury } = useTreasury();
-  const { data: { tokens: treasuryAssets = [] } = {} } =
-    useTreasuryAssets(selectedTreasury);
+  const { treasuryId } = useTreasury();
+  const { data: { tokens: treasuryAssets = [] } = {} } = useAssets(treasuryId, {
+    onlyPositiveBalance: false,
+    onlySupportedTokens: true,
+  });
   const aggregatedTreasuryTokens = useAggregatedTokens(treasuryAssets);
   const { theme } = useThemeStore();
   const [open, setOpen] = useState(false);
@@ -190,8 +192,11 @@ export default function BridgeTokenSelect({
       chainId: n.network,
       decimals: n.decimals,
       residency: n.residency,
-      lockedBalance: n.lockedBalance?.toFixed(0),
-      balance: n.balance.toString(),
+      lockedBalance:
+        n.balance.type === "Standard"
+          ? n.balance.locked.toFixed(0)
+          : undefined,
+      balance: n.balance.total.toString(),
       balanceUSD: n.balanceUSD,
     });
 
@@ -253,9 +258,12 @@ export default function BridgeTokenSelect({
             chainId: bridgeNetwork.chainId,
             decimals: bridgeNetwork.decimals,
             residency: treasuryNetwork?.residency,
-            lockedBalance: treasuryNetwork?.lockedBalance?.toFixed(0),
+            lockedBalance:
+              treasuryNetwork?.balance.type === "Standard"
+                ? treasuryNetwork.balance.locked.toFixed(0)
+                : undefined,
             ...(treasuryNetwork && {
-              balance: treasuryNetwork.balance.toString(),
+              balance: treasuryNetwork.balance.total.toString(),
               balanceUSD: treasuryNetwork.balanceUSD,
             }),
           } as Network & { balance?: string; balanceUSD?: number };
@@ -525,7 +533,7 @@ export default function BridgeTokenSelect({
           <span className="font-semibold text-sm leading-none">
             {selectedToken.symbol}
           </span>
-          <span className="text-[10px] font-normal text-muted-foreground uppercase">
+          <span className="text-xxs font-normal text-muted-foreground uppercase">
             {selectedToken.network}
           </span>
         </div>
@@ -551,14 +559,14 @@ export default function BridgeTokenSelect({
                 selectedToken.symbol,
                 selectedToken.networkIcon
               )}
-              <div className="flex flex-col items-start">
-                <span className="font-semibold text-sm leading-none">
-                  {selectedToken.symbol}
-                </span>
-                <span className="text-[10px] font-normal text-muted-foreground uppercase">
-                  {selectedToken.network}
-                </span>
-              </div>
+            <div className="flex flex-col items-start">
+              <span className="font-semibold text-sm leading-none">
+                {selectedToken.symbol}
+              </span>
+              <span className="text-xxs font-normal text-muted-foreground uppercase">
+                {selectedToken.network}
+              </span>
+            </div>
             </>
           ) : (
             <span className="text-muted-foreground">Select token</span>
@@ -641,9 +649,7 @@ export default function BridgeTokenSelect({
                           token.totalBalance > 0 && (
                             <div className="flex flex-col items-end">
                               <span className="font-semibold">
-                                {token.totalBalance.toLocaleString("en-US", {
-                                  maximumFractionDigits: 20,
-                                })}
+                                {token.totalBalance.toFixed(2)}
                               </span>
                               <span className="text-sm text-muted-foreground">
                                 ≈${token.totalBalanceUSD?.toFixed(2) || "0.00"}
@@ -693,12 +699,7 @@ export default function BridgeTokenSelect({
                               token.totalBalance > 0 && (
                                 <div className="flex flex-col items-end">
                                   <span className="font-semibold">
-                                    {token.totalBalance.toLocaleString(
-                                      "en-US",
-                                      {
-                                        maximumFractionDigits: 20,
-                                      }
-                                    )}
+                                    {token.totalBalance.toFixed(2)}
                                   </span>
                                   <span className="text-sm text-muted-foreground">
                                     ≈$
@@ -832,18 +833,17 @@ export default function BridgeTokenSelect({
                 <div className="flex-1" />
                 {item.balance &&
                   item.decimals !== undefined &&
+                  item.balance.trim() !== "" &&
                   (() => {
-                    const balanceNum = Big(
+                    const balanceFormatted = Big(
                       formatBalance(item.balance, item.decimals)
-                    ).toNumber();
-                    if (balanceNum === 0) return null;
+                    ).toFixed(2);
+                    if (Big(balanceFormatted).eq(0)) return null;
 
                     return (
                       <div className="flex flex-col items-end">
                         <span className="font-semibold">
-                          {balanceNum.toLocaleString("en-US", {
-                            maximumFractionDigits: 20,
-                          })}
+                          {balanceFormatted}
                         </span>
                         <span className="text-sm text-muted-foreground">
                           ≈${item.balanceUSD?.toFixed(2) || "0.00"}
