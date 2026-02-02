@@ -177,10 +177,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::bulkpayment::usage_stats::get_usage_stats),
         )
         .route(
-            "/api/plan/details",
-            get(handlers::plan::details::get_plan_details),
-        )
-        .route(
             "/api/bulk-payment/list/{list_id}",
             get(handlers::bulkpayment::transactions::get_list_status),
         )

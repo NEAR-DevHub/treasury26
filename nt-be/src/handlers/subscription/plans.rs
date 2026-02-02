@@ -56,14 +56,32 @@ pub struct SubscriptionStatusResponse {
     pub credits_reset_at: DateTime<Utc>,
 }
 
-/// Account info from monitored_accounts
-#[derive(Debug, sqlx::FromRow)]
-struct AccountInfo {
+/// Account plan info from monitored_accounts (reusable across handlers)
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccountPlanInfo {
     pub account_id: String,
     pub plan_type: PlanType,
     pub export_credits: i32,
     pub batch_payment_credits: i32,
     pub credits_reset_at: DateTime<Utc>,
+}
+
+/// Fetch account plan info from the database
+/// Returns None if account not found
+pub async fn get_account_plan_info(
+    pool: &sqlx::PgPool,
+    account_id: &str,
+) -> Result<Option<AccountPlanInfo>, sqlx::Error> {
+    sqlx::query_as::<_, AccountPlanInfo>(
+        r#"
+        SELECT account_id, plan_type, export_credits, batch_payment_credits, credits_reset_at
+        FROM monitored_accounts
+        WHERE account_id = $1
+        "#,
+    )
+    .bind(account_id)
+    .fetch_optional(pool)
+    .await
 }
 
 /// GET /api/subscription/{account_id}
@@ -72,30 +90,21 @@ pub async fn get_subscription_status(
     State(state): State<Arc<AppState>>,
     Path(account_id): Path<String>,
 ) -> Result<Json<SubscriptionStatusResponse>, (StatusCode, Json<Value>)> {
-    // Get account info
-    let account = sqlx::query_as::<_, AccountInfo>(
-        r#"
-        SELECT account_id, plan_type, export_credits, batch_payment_credits, credits_reset_at
-        FROM monitored_accounts
-        WHERE account_id = $1
-        "#,
-    )
-    .bind(&account_id)
-    .fetch_optional(&state.db_pool)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Database error: {}", e) })),
-        )
-    })?;
-
-    let account = account.ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "Account not found" })),
-        )
-    })?;
+    // Get account info using shared function
+    let account = get_account_plan_info(&state.db_pool, &account_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Database error: {}", e) })),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Account not found" })),
+            )
+        })?;
 
     // Get active subscription if any
     let subscription = sqlx::query_as::<_, SubscriptionInfo>(
