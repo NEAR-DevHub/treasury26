@@ -21,8 +21,8 @@ interface InfoDisplayProps {
     expandableItems?: InfoItem[];
     className?: string;
     style?: "default" | "secondary";
-    showBorders?: boolean;
-    spacing?: "default" | "compact"; 
+    size?: "default" | "sm";
+    hideSeparator?: boolean;
 }
 
 const styleVariants = cva("flex flex-col", {
@@ -42,38 +42,33 @@ const styleVariants = cva("flex flex-col", {
     }
 })
 
-const lineVariants = cva("", {
+const lineVariants = cva("border-b border-border p-1 pb-4", {
     variants: {
         style: {
             default: "",
             secondary: "border-foreground/10",
         },
-        showBorders: {
-            true: "border-b border-border",
-            false: "",
+        size: {
+            default: "",
+            sm: "p-0 py-1.5",
         },
-        spacing: {
-            default: "p-1 pb-4",
-            compact: "p-1 pb-2",
-        }
     },
     defaultVariants: {
         style: "default",
-        showBorders: true,
-        spacing: "default",
+        size: "default",
     }
 })
 
-export function InfoDisplay({ items, expandableItems, className, style = "default", showBorders = true, spacing = "default" }: InfoDisplayProps) {
+export function InfoDisplay({ items, expandableItems, className, style = "default", size = "default", hideSeparator = false }: InfoDisplayProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const hasExpandableItems = expandableItems && expandableItems.length > 0;
 
     const displayItems = isExpanded ? [...items, ...expandableItems!] : items;
 
     return (
-        <div className={cn(styleVariants({ style }), className)}>
+        <div className={styleVariants({ style, size, className })}>
             {displayItems.map((item, index) => (
-                <div key={index} className={cn("flex flex-col gap-2", lineVariants({ style, showBorders, spacing, className: !hasExpandableItems && showBorders && "last:border-b-0" }))}>
+                <div key={index} className={cn("flex flex-col gap-2", lineVariants({ style, size, className: !hasExpandableItems && "last:border-b-0" }), hideSeparator && "border-b-0")}>
                     <div className="flex justify-between items-center flex-wrap">
                         <div className="flex items-center gap-1">
                             <p className="text-sm text-muted-foreground">{item.label}</p>

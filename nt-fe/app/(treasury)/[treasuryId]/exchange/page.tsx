@@ -45,7 +45,6 @@ import {
   getUserFriendlyErrorMessage,
 } from "./utils";
 import { useCountdownTimer } from "./hooks/use-countdown-timer";
-import { useQuoteFetcher } from "./hooks/use-quote-fetcher";
 import { useExchangeQuote } from "./hooks/use-exchange-quote";
 import { ExchangeSummaryCard } from "./components/exchange-summary-card";
 import { Rate } from "./components/rate";
@@ -120,7 +119,7 @@ function Step1({ handleNext }: StepProps) {
   useEffect(() => {
     // Immediately disable fetching when inputs change
     setIsReadyToFetch(false);
-    
+
     // Clear receive amount and errors immediately
     form.setValue("receiveAmount", "");
     form.clearErrors("sellAmount");
@@ -137,7 +136,14 @@ function Step1({ handleNext }: StepProps) {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [sellAmount, sellToken.address, receiveToken.address, slippageTolerance, areSameTokens, hasValidAmount]);
+  }, [
+    sellAmount,
+    sellToken.address,
+    receiveToken.address,
+    slippageTolerance,
+    areSameTokens,
+    hasValidAmount,
+  ]);
 
   const { data: quoteData, isLoading: isLoadingQuote } = useExchangeQuote({
     selectedTreasury,
@@ -147,10 +153,7 @@ function Step1({ handleNext }: StepProps) {
     slippageTolerance,
     form,
     enabled: Boolean(
-      selectedTreasury &&
-      isReadyToFetch &&
-      hasValidAmount &&
-      !areSameTokens
+      selectedTreasury && isReadyToFetch && hasValidAmount && !areSameTokens
     ),
     isDryRun: true,
     refetchInterval: DRY_QUOTE_REFRESH_INTERVAL,
@@ -304,7 +307,11 @@ function Step2({ handleBack }: StepProps) {
   const { data: receiveTokenData } = useToken(receiveToken.address);
   const formatDate = useFormatDate();
 
-  const { data: localLiveQuoteData, isLoading: isLoadingLiveQuote, isFetching: isFetchingLiveQuote } = useExchangeQuote({
+  const {
+    data: localLiveQuoteData,
+    isLoading: isLoadingLiveQuote,
+    isFetching: isFetchingLiveQuote,
+  } = useExchangeQuote({
     selectedTreasury,
     sellToken,
     receiveToken,
@@ -422,13 +429,12 @@ function Step2({ handleBack }: StepProps) {
                 sellToken={sellToken}
                 receiveToken={receiveToken}
                 detailed
-                className="p-1"
               />
 
               <InfoDisplay
                 className="gap-0"
-                showBorders={false}
-                spacing="compact"
+                hideSeparator
+                size="sm"
                 items={[
                   ...(marketPriceDifference &&
                   marketPriceDifference.hasMarketData

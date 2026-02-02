@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { UseFormReturn } from "react-hook-form";
-import { IntentsQuoteResponse } from "@/lib/api";
+import Big from "big.js";
+import { getIntentsQuote, IntentsQuoteResponse } from "@/lib/api";
 import { Token } from "@/components/token-input";
-import { useQuoteFetcher } from "./use-quote-fetcher";
-import { getUserFriendlyErrorMessage } from "../utils";
+import { formatAssetForIntentsAPI, getDepositAndRefundType, getUserFriendlyErrorMessage } from "../utils";
 
 interface UseExchangeQuoteParams {
   selectedTreasury: string | null | undefined;
@@ -33,8 +33,6 @@ export function useExchangeQuote({
   isDryRun,
   refetchInterval,
 }: UseExchangeQuoteParams) {
-  const { fetchQuote } = useQuoteFetcher();
-
   return useQuery({
     queryKey: [
       isDryRun ? "dryExchangeQuote" : "liveExchangeQuote",
@@ -47,39 +45,58 @@ export function useExchangeQuote({
     queryFn: async (): Promise<IntentsQuoteResponse | null> => {
       if (!selectedTreasury) return null;
 
-      const result = await fetchQuote(
-        {
-          sellToken,
-          receiveToken,
-          sellAmount,
-          slippageTolerance,
-          treasuryId: selectedTreasury,
-        },
-        isDryRun
-      );
+      try {
+        const parsedAmount = Big(sellAmount)
+          .mul(Big(10).pow(sellToken.decimals))
+          .toFixed();
 
-      if (result.quote) {
-        if (isDryRun) {
-          // Dry run: update receive amount
-          form.setValue("receiveAmount", result.quote.quote.amountOutFormatted);
-          form.clearErrors("receiveAmount");
-        } else {
-          // Live quote: store for submission
-          form.setValue("proposalData" as any, result.quote, { shouldValidate: false });
+        const originAsset = formatAssetForIntentsAPI(sellToken.address);
+        const destinationAsset = receiveToken.address;
+        const depositAndRefundType = getDepositAndRefundType(sellToken.network);
+
+        const quote = await getIntentsQuote(
+          {
+            swapType: "EXACT_INPUT",
+            slippageTolerance: Math.round(slippageTolerance * 100), // Convert to basis points
+            originAsset,
+            depositType: depositAndRefundType,
+            destinationAsset,
+            amount: parsedAmount,
+            refundTo: selectedTreasury,
+            refundType: depositAndRefundType,
+            recipient: selectedTreasury,
+            recipientType: "INTENTS", // Always INTENTS
+            deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+            quoteWaitingTimeMs: 3000,
+          },
+          isDryRun
+        );
+
+        if (quote) {
+          if (isDryRun) {
+            // Dry run: update receive amount
+            form.setValue("receiveAmount", quote.quote.amountOutFormatted);
+            form.clearErrors("receiveAmount");
+          } else {
+            // Live quote: store for submission
+            form.setValue("proposalData" as any, quote, { shouldValidate: false });
+          }
+          return quote;
         }
-        return result.quote;
-      } else if (isDryRun) {
-        // Only show errors for dry run (user is still on Step 1)
-        const userMessage = result.error
-          ? getUserFriendlyErrorMessage(result.error)
-          : "Unable to fetch quote. Please try again.";
-
-        form.setError("receiveAmount", {
-          type: "manual",
-          message: userMessage,
-        });
+        return null;
+      } catch (error: any) {
+        console.error("Error fetching quote:", error);
+        
+        if (isDryRun) {
+          // Only show errors for dry run (user is still on Step 1)
+          const userMessage = getUserFriendlyErrorMessage(error?.message || "Failed to fetch quote");
+          form.setError("receiveAmount", {
+            type: "manual",
+            message: userMessage,
+          });
+        }
+        return null;
       }
-      return null;
     },
     enabled,
     refetchInterval,

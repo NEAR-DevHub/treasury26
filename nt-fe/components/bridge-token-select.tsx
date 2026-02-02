@@ -11,6 +11,7 @@ import {
 import { ChevronDown, ChevronLeft, Info } from "lucide-react";
 import { Button } from "./button";
 import { cn, formatBalance, formatNearAmount } from "@/lib/utils";
+import { totalBalance } from "@/lib/balance";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
 import { useThemeStore } from "@/stores/theme-store";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -196,7 +197,7 @@ export default function BridgeTokenSelect({
         n.balance.type === "Standard"
           ? n.balance.locked.toFixed(0)
           : undefined,
-      balance: n.balance.total.toString(),
+      balance: totalBalance(n.balance).toString(),
       balanceUSD: n.balanceUSD,
     });
 
@@ -263,7 +264,7 @@ export default function BridgeTokenSelect({
                 ? treasuryNetwork.balance.locked.toFixed(0)
                 : undefined,
             ...(treasuryNetwork && {
-              balance: treasuryNetwork.balance.total.toString(),
+              balance: totalBalance(treasuryNetwork.balance).toString(),
               balanceUSD: treasuryNetwork.balanceUSD,
             }),
           } as Network & { balance?: string; balanceUSD?: number };
@@ -314,18 +315,18 @@ export default function BridgeTokenSelect({
       )
       .map(
         (token): TokenListItem => ({
-          id: token.symbol,
-          name:
-            token.name +
-            (token.networks.length > 1
-              ? ` • ${token.networks.length} Networks`
-              : ""),
-          symbol: token.symbol,
-          icon: token.icon,
-          assetId: token.id,
-          assetName: token.name,
-          networks: token.networks,
-          networkCount: token.networks.length,
+        id: token.symbol,
+        name:
+          token.name +
+          (token.networks.length > 1
+            ? ` • ${token.networks.length} Networks`
+            : ""),
+        symbol: token.symbol,
+        icon: token.icon,
+        assetId: token.id,
+        assetName: token.name,
+        networks: token.networks,
+        networkCount: token.networks.length,
           totalBalance: undefined,
           totalBalanceUSD: undefined,
         })
@@ -493,7 +494,7 @@ export default function BridgeTokenSelect({
       case "Intents":
         return "Intents Token";
       case "Near":
-        return "Native Token";
+      return "Native Token";
       default:
         return "Intents Token";
     }
@@ -559,14 +560,14 @@ export default function BridgeTokenSelect({
                 selectedToken.symbol,
                 selectedToken.networkIcon
               )}
-            <div className="flex flex-col items-start">
-              <span className="font-semibold text-sm leading-none">
-                {selectedToken.symbol}
-              </span>
+              <div className="flex flex-col items-start">
+                <span className="font-semibold text-sm leading-none">
+                  {selectedToken.symbol}
+                </span>
               <span className="text-xxs font-normal text-muted-foreground uppercase">
-                {selectedToken.network}
-              </span>
-            </div>
+                  {selectedToken.network}
+                </span>
+              </div>
             </>
           ) : (
             <span className="text-muted-foreground">Select token</span>
@@ -647,14 +648,14 @@ export default function BridgeTokenSelect({
                         </div>
                         {token.totalBalance !== undefined &&
                           token.totalBalance > 0 && (
-                            <div className="flex flex-col items-end">
-                              <span className="font-semibold">
+                          <div className="flex flex-col items-end">
+                            <span className="font-semibold">
                                 {token.totalBalance.toFixed(2)}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                ≈${token.totalBalanceUSD?.toFixed(2) || "0.00"}
-                              </span>
-                            </div>
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              ≈${token.totalBalanceUSD?.toFixed(2) || "0.00"}
+                            </span>
+                          </div>
                           )}
                       </Button>
                     ))}
@@ -797,12 +798,12 @@ export default function BridgeTokenSelect({
                 className="w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!"
               >
                 <div className="pl-3 w-full">
-                  <div className="flex items-center gap-3">
-                    {renderNetworkIcon(item.networkIcon, item.name)}
-                    <div className="flex flex-col text-left">
-                      <span className="font-semibold capitalize">
-                        {item.name}
-                      </span>
+                <div className="flex items-center gap-3">
+                  {renderNetworkIcon(item.networkIcon, item.name)}
+                  <div className="flex flex-col text-left">
+                    <span className="font-semibold capitalize">
+                      {item.name}
+                    </span>
                       <div className="text-xs text-muted-foreground flex items-center gap-1">
                         <span>{getNetworkType(item.residency)}</span>
                         {item.residency === "Near" && item.lockedBalance && (
@@ -823,7 +824,7 @@ export default function BridgeTokenSelect({
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Info className="size-3" />
-                            </span>
+                    </span>
                           </Tooltip>
                         )}
                       </div>
