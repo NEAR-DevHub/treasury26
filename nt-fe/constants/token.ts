@@ -6,4 +6,5 @@ export const NEAR_TOKEN = {
     network: "near",
     decimals: 24,
     icon: "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
+    networkIcon: null,
 } satisfies Token

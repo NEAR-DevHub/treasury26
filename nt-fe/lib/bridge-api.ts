@@ -1,13 +1,14 @@
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
 /**
- * Fetch deposit assets (aggregated tokens with networks)
- * Returns a clean list of assets with their available networks
+ * Fetch bridge tokens (assets available for cross-chain transfers)
+ * Returns a list of assets with their available networks for bridging
+ * Used for both deposit and exchange functionality
  * @param {string} theme - Theme for icons ("light" or "dark")
  */
-export async function fetchDepositAssets(theme: string = "light") {
+export async function fetchBridgeTokens(theme: string = "light") {
   try {
-    const response = await fetch(`${BACKEND_API_BASE}/intents/deposit-assets?theme=${theme}`);
+    const response = await fetch(`${BACKEND_API_BASE}/intents/bridge-tokens?theme=${theme}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -16,7 +17,7 @@ export async function fetchDepositAssets(theme: string = "light") {
     const data = await response.json();
     return data.assets || [];
   } catch (error) {
-    console.error("Error fetching deposit assets:", error);
+    console.error("Error fetching bridge tokens:", error);
     throw error;
   }
 }

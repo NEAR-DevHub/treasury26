@@ -31,7 +31,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
     },
     {
       label: "Receive",
-      value: <Amount amountWithDecimals={data.amountOut} showNetwork tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} />
+      value: <Amount amountWithDecimals={data.amountOut} showNetwork network={data.destinationNetwork} tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} />
     },
     {
       label: "Rate",
@@ -59,7 +59,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
 
   expandableItems.push({
     label: "Minimum Received",
-    value: <Amount amountWithDecimals={minimumReceived.toString()} showNetwork tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} />,
+    value: <Amount amountWithDecimals={minimumReceived.toString()} showNetwork network={data.destinationNetwork} tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} />,
     info: "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request."
   });
 
