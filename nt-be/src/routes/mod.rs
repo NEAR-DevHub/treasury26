@@ -230,5 +230,14 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/dao/mark-dirty",
             post(handlers::dao::mark_dirty),
         )
+        // Subscription endpoints
+        .route(
+            "/api/subscription/plans",
+            get(handlers::subscription::get_plans),
+        )
+        .route(
+            "/api/subscription/{account_id}",
+            get(handlers::subscription::get_subscription_status),
+        )
         .with_state(state)
 }
