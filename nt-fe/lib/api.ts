@@ -997,3 +997,34 @@ export async function getBulkPaymentUsageStats(
   return response.data;
 }
 
+/**
+ * Plan Details
+ */
+export type PlanType = "trial" | "plus" | "pro" | "custom";
+export type PlanPeriod = "trial" | "month";
+
+export interface PlanDetails {
+  plan_type: PlanType;
+  batch_payment_credit_limit: number | null; // null for unlimited
+  period: PlanPeriod;
+}
+
+/**
+ * Get plan details for a treasury
+ * Returns the plan type, credit limits for various features, and period information
+ */
+export async function getPlanDetails(
+  treasuryId: string
+): Promise<PlanDetails> {
+  const response = await axios.get<PlanDetails>(
+    `${BACKEND_API_BASE}/plan/details`,
+    {
+      params: { treasury_id: treasuryId },
+    }
+  );
+  return response.data;
+}
+
+
+
+

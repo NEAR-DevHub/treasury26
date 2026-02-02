@@ -1,703 +1,117 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
-import {
-  ArrowLeft,
-  Upload,
-  FileText,
-  DollarSign,
-  Edit2,
-  Trash2,
-  Info,
-} from "lucide-react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/button";
-import { PageComponentLayout } from "@/components/page-component-layout";
-import { PageCard } from "@/components/card";
-import { NEAR_TOKEN } from "@/constants/token";
-import { Textarea } from "@/components/textarea";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import {
-  getBatchStorageDepositIsRegistered,
-  getBulkPaymentUsageStats,
-} from "@/lib/api";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { toast } from "sonner";
 import Big from "big.js";
-import { PaymentFormSection } from "../components/payment-form-section";
-import { WarningAlert } from "@/components/warning-alert";
+import { PageComponentLayout } from "@/components/page-component-layout";
+import {
+  UploadDataStep,
+  ReviewPaymentsStep,
+  EditPaymentStep,
+} from "./components";
+import { needsStorageDepositCheck } from "./utils";
+import {
+  bulkPaymentFormSchema,
+  type BulkPaymentFormValues,
+  type BulkPaymentData,
+  type EditPaymentFormValues,
+} from "./schemas";
 import {
   generateListId,
   submitPaymentList,
   buildApproveListProposal,
-  MAX_RECIPIENTS_PER_BULK_PAYMENT,
   BULK_PAYMENT_CONTRACT_ID,
 } from "@/lib/bulk-payment-api";
-import { encodeToMarkdown, formatBalance } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/modal";
-import TokenSelect from "@/components/token-select";
-import type { TreasuryAsset } from "@/lib/api";
-import {
-  validateNearAddress,
-  isValidNearAddressFormat,
-} from "@/lib/near-validation";
-import { DialogDescription } from "@radix-ui/react-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+import { getBatchStorageDepositIsRegistered } from "@/lib/api";
+import { encodeToMarkdown } from "@/lib/utils";
+import { NEAR_TOKEN } from "@/constants/token";
 import { BulkPaymentToast } from "../components/bulk-payment-toast";
-
-interface BulkPaymentData {
-  recipient: string;
-  amount: string;
-  memo?: string;
-  isRegistered?: boolean;
-  validationError?: string;
-}
-
-function validateRecipientAddress(address: string): string | null {
-  if (!address || address.trim() === "") {
-    return "Recipient address is required";
-  }
-
-  if (!isValidNearAddressFormat(address)) {
-    return "Invalid recipient address.";
-  }
-
-  return null;
-}
-
-function needsStorageDepositCheck(token: TreasuryAsset): boolean {
-  // Intents, Near tokens don't need storage deposits
-  // FT tokens need storage deposits
-  return token.residency === "Ft";
-}
-
-/**
- * Detect if the first row/line is a header and return parsing configuration
- * Handles both paste data (string array) and CSV data (2D array)
- */
-function detectHeaderAndGetConfig(data: string[] | string[][]): {
-  hasHeader: boolean;
-  startRow: number;
-  recipientIdx: number;
-  amountIdx: number;
-} {
-  if (data.length === 0) {
-    return { hasHeader: false, startRow: 0, recipientIdx: 0, amountIdx: 1 };
-  }
-
-  const firstItem = data[0];
-
-  // Case 1: Array of strings (paste data - raw lines)
-  if (typeof firstItem === "string") {
-    const firstLine = firstItem.toLowerCase().trim();
-    const hasHeader =
-      firstLine.includes("recipient") &&
-      (firstLine.includes("amount") || firstLine.includes("value"));
-    return {
-      hasHeader,
-      startRow: hasHeader ? 1 : 0,
-      recipientIdx: 0,
-      amountIdx: 1,
-    };
-  }
-
-  // Case 2: Array of arrays (CSV data - parsed cells)
-  if (Array.isArray(firstItem)) {
-    const firstRow = firstItem as string[];
-    const hasHeader = firstRow.some((cell) => {
-      const cellLower = (cell || "").trim().toLowerCase();
-      return (
-        cellLower.startsWith("recipient") || cellLower.startsWith("amount")
-      );
-    });
-
-    if (hasHeader) {
-      const colIdx = (name: string) =>
-        firstRow.findIndex((h) =>
-          (h || "").trim().toLowerCase().startsWith(name.toLowerCase())
-        );
-
-      const recipientIdx = colIdx("Recipient");
-      const amountIdx = colIdx("Amount");
-
-      return {
-        hasHeader: true,
-        startRow: 1,
-        recipientIdx,
-        amountIdx,
-      };
-    }
-
-    return {
-      hasHeader: false,
-      startRow: 0,
-      recipientIdx: 0,
-      amountIdx: 1,
-    };
-  }
-
-  return { hasHeader: false, startRow: 0, recipientIdx: 0, amountIdx: 1 };
-}
-
-// CSV Parsing Utilities
-function parseCsv(raw: string): string[][] {
-  const delimiters = [",", "\t", ";"];
-  const lines = raw.trim().split(/\r?\n/);
-
-  if (lines.length === 0) return [];
-
-  let bestDelimiter = ",";
-  let maxColumns = 0;
-
-  for (const delimiter of delimiters) {
-    const cols = splitCsvLine(lines[0], delimiter).length;
-    if (cols > maxColumns) {
-      maxColumns = cols;
-      bestDelimiter = delimiter;
-    }
-  }
-
-  return lines.map((line) => splitCsvLine(line, bestDelimiter));
-}
-
-function splitCsvLine(line: string, delimiter: string): string[] {
-  const result: string[] = [];
-  let field = "";
-  let insideQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-
-    if (char === '"') {
-      if (insideQuotes && nextChar === '"') {
-        field += '"'; // Escaped quote
-        i++; // Skip next quote
-      } else {
-        insideQuotes = !insideQuotes;
-      }
-    } else if (char === delimiter && !insideQuotes) {
-      result.push(field.trim());
-      field = "";
-    } else {
-      field += char;
-    }
-  }
-
-  result.push(field.trim());
-  return result;
-}
-
-function parseAmount(amountStr: string): number {
-  // Remove spaces, currency symbols, and underscores (used as thousand separators)
-  let normalized = amountStr.trim().replace(/[$€£¥_\s]/g, "");
-
-  // Handle empty or invalid input
-  if (!normalized) return NaN;
-
-  // Handle different decimal separators
-  const hasComma = normalized.includes(",");
-  const hasDot = normalized.includes(".");
-
-  if (hasComma && hasDot) {
-    // Both separators present: last one is decimal, others are thousands
-    const lastCommaIndex = normalized.lastIndexOf(",");
-    const lastDotIndex = normalized.lastIndexOf(".");
-
-    if (lastDotIndex > lastCommaIndex) {
-      // Dot is decimal: "1,000.50" -> "1000.50"
-      normalized = normalized.replace(/,/g, "");
-    } else {
-      // Comma is decimal: "1.000,50" -> "1000.50"
-      normalized = normalized.replace(/\./g, "").replace(",", ".");
-    }
-  } else if (hasComma) {
-    // Only comma: check if it's decimal or thousands separator
-    const parts = normalized.split(",");
-    if (parts.length === 2 && parts[1].length <= 8) {
-      // Likely decimal separator: "10,5" or "10,50"
-      normalized = normalized.replace(",", ".");
-    } else {
-      // Likely thousands separator: "1,000" or "1,000,000"
-      normalized = normalized.replace(/,/g, "");
-    }
-  }
-  // If only dot, keep as-is (standard format)
-
-  return parseFloat(normalized);
-}
 
 export default function BulkPaymentPage() {
   const router = useRouter();
-  const { selectedTreasury } = useTreasury();
+  const queryClient = useQueryClient();
+  const { treasuryId: selectedTreasury } = useTreasury();
   const { createProposal } = useNear();
   const { data: policy } = useTreasuryPolicy(selectedTreasury);
 
-  const [selectedToken, setSelectedToken] = useState<TreasuryAsset | null>(
-    null
-  );
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [paymentData, setPaymentData] = useState<BulkPaymentData[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [activeTab, setActiveTab] = useState<"upload" | "paste">("upload");
-  const [showPreview, setShowPreview] = useState(false);
-  const [showEditView, setShowEditView] = useState(false);
-  const [comment, setComment] = useState("");
-  const [csvData, setCsvData] = useState<string | null>(null);
-  const [dataErrors, setDataErrors] = useState<Array<{
-    row: number;
-    message: string;
-  }> | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
-  const [isValidatingAccounts, setIsValidatingAccounts] = useState(false);
-  const [validationComplete, setValidationComplete] = useState(false);
-  const [availableCredits, setAvailableCredits] = useState(0); // Bulk payments per month
-  const [creditsUsed, setCreditsUsed] = useState(0);
-  const [totalCredits, setTotalCredits] = useState(5);
-  const [isLoadingCredits, setIsLoadingCredits] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pasteDataInput, setPasteDataInput] = useState("");
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
-  const [editFormData, setEditFormData] = useState<{
-    recipient: string;
-    amount: string;
-  }>({
-    recipient: "",
-    amount: "",
+  const [step, setStep] = useState(0);
+
+  const form = useForm<BulkPaymentFormValues>({
+    resolver: zodResolver(bulkPaymentFormSchema),
+    defaultValues: {
+      selectedToken: null,
+      comment: "",
+      csvData: null,
+      pasteDataInput: "",
+      activeTab: "upload",
+    },
   });
 
-  const fetchCredits = useCallback(async () => {
-    if (!selectedTreasury) return;
+  const selectedToken = form.watch("selectedToken");
+  const comment = form.watch("comment");
 
-    setIsLoadingCredits(true);
-    try {
-      const usageStats = await getBulkPaymentUsageStats(selectedTreasury);
+  const [paymentData, setPaymentData] = useState<BulkPaymentData[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-      setAvailableCredits(usageStats.credits_available);
-      setCreditsUsed(usageStats.credits_used);
-      setTotalCredits(usageStats.total_credits);
-    } catch (error) {
-      console.error("Error loading bulk payment credits:", error);
-      setAvailableCredits(0);
-      setCreditsUsed(0);
-      setTotalCredits(5); // Default fallback
-    } finally {
-      setIsLoadingCredits(false);
-    }
-  }, [selectedTreasury]);
-
-  useEffect(() => {
-    fetchCredits();
-  }, [fetchCredits]);
-
-  useEffect(() => {
-    if (
-      !showPreview ||
-      paymentData.length === 0 ||
-      !selectedToken ||
-      validationComplete
-    )
-      return;
-
-    const validateAccounts = async () => {
-      setIsValidatingAccounts(true);
-
-      try {
-        // Step 1: Validate account existence
-        const accountValidatedPayments = await Promise.all(
-          paymentData.map(async (payment) => {
-            try {
-              const validationError = await validateNearAddress(
-                payment.recipient
-              );
-
-              return {
-                ...payment,
-                validationError: validationError || undefined,
-              };
-            } catch (error) {
-              console.error(`Error validating ${payment.recipient}:`, error);
-              return {
-                ...payment,
-                validationError: "Failed to validate account",
-              };
-            }
-          })
-        );
-
-        // Step 2: Check storage registration for FT tokens (only for valid accounts)
-        if (needsStorageDepositCheck(selectedToken)) {
-          // Filter only valid accounts
-          const validAccounts = accountValidatedPayments.filter(
-            (payment) => !payment.validationError
-          );
-
-          if (validAccounts.length > 0) {
-            const tokenId = selectedToken.contractId || selectedToken.id;
-
-            const storageRequests = validAccounts.map((payment) => ({
-              accountId: payment.recipient,
-              tokenId: tokenId,
-            }));
-
-            const storageRegistrations =
-              await getBatchStorageDepositIsRegistered(storageRequests);
-
-            const registrationMap = new Map<string, boolean>();
-            storageRegistrations.forEach((reg) => {
-              registrationMap.set(
-                `${reg.account_id}-${reg.token_id}`,
-                reg.is_registered
-              );
-            });
-
-            const finalPayments = accountValidatedPayments.map((payment) => {
-              if (payment.validationError) {
-                return payment;
-              }
-
-              const key = `${payment.recipient}-${tokenId}`;
-              const isRegistered = registrationMap.get(key) ?? false;
-
-              return {
-                ...payment,
-                isRegistered,
-              };
-            });
-
-            setPaymentData(finalPayments);
-          } else {
-            setPaymentData(accountValidatedPayments);
-          }
-        } else {
-          setPaymentData(accountValidatedPayments);
-        }
-
-        setValidationComplete(true);
-      } finally {
-        setIsValidatingAccounts(false);
-      }
-    };
-
-    validateAccounts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPreview]);
-
-  const parsePasteData = useCallback(() => {
-    const normalizedInput = pasteDataInput.replace(/\\n/g, "\n").trim();
-    const lines = normalizedInput.split(/\r?\n/);
-
-    if (lines.length === 0 || lines.every((line) => !line.trim())) {
-      setDataErrors([{ row: 0, message: "No data provided" }]);
-      setIsValidating(false);
-      return;
-    }
-
-    // Parse paste data: convert lines to rows format
-    const { startRow } = detectHeaderAndGetConfig(lines);
-    const rows: string[][] = [];
-
-    for (let i = startRow; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      // Split by comma, tab, or multiple spaces
-      const parts = line.split(/[,\t]+/).map((p) => p.trim());
-      rows.push(parts);
-    }
-
-    // Use unified parser with column indices 0 and 1
-    parsePaymentData(rows, 0, 1, startRow);
-  }, [pasteDataInput]);
-
-
-  const parsePaymentData = useCallback(
-    (
-      rows: string[][],
-      recipientIdx: number,
-      amountIdx: number,
-      startRow: number
-    ) => {
-      const errors: Array<{ row: number; message: string }> = [];
-      const parsedData: BulkPaymentData[] = [];
-
-      // Parse all rows
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const actualRowNumber = i + startRow + 1; // Adjust for display
-
-        // Skip empty rows
-        if (row.every((cell) => !cell || !cell.trim())) {
-          continue;
-        }
-
-        // Check if row has enough columns
-        if (row.length < 2) {
-          errors.push({
-            row: actualRowNumber,
-            message: `Invalid format. Expected: recipient, amount`,
-          });
-          continue;
-        }
-
-        const recipient = (row[recipientIdx] || "").trim();
-        const amountStr = (row[amountIdx] || "").trim();
-
-        // Validate that both recipient and amount exist
-        if (!recipient) {
-          errors.push({
-            row: actualRowNumber,
-            message: "Missing recipient address",
-          });
-          continue;
-        }
-
-        if (!amountStr) {
-          errors.push({
-            row: actualRowNumber,
-            message: "Missing amount",
-          });
-          continue;
-        }
-
-        const parsedAmountValue = parseAmount(amountStr);
-
-        // Validate amount is a valid number
-        if (isNaN(parsedAmountValue) || parsedAmountValue <= 0) {
-          errors.push({
-            row: actualRowNumber,
-            message: `Invalid amount: ${amountStr}`,
-          });
-          continue;
-        }
-
-        const validationError = validateRecipientAddress(recipient);
-
-        parsedData.push({
-          recipient,
-          amount: String(parsedAmountValue),
-          validationError: validationError || undefined,
-        });
-      }
-
-      // Check if there were any parsing errors
-      if (errors.length > 0) {
-        setDataErrors(errors);
-        setIsValidating(false);
-        return;
-      }
-
-      if (parsedData.length === 0) {
-        setDataErrors([{ row: 0, message: "No valid data found" }]);
-        setIsValidating(false);
-        return;
-      }
-
-      // Check if exceeds maximum recipients limit
-      if (parsedData.length > MAX_RECIPIENTS_PER_BULK_PAYMENT) {
-        setDataErrors([
-          {
-            row: 0,
-            message: `Maximum limit of ${MAX_RECIPIENTS_PER_BULK_PAYMENT} transactions per request. Remove ${
-              parsedData.length - MAX_RECIPIENTS_PER_BULK_PAYMENT
-            } recipients to proceed.`,
-          },
-        ]);
-        setIsValidating(false);
-        return;
-      }
-
-      setDataErrors(null);
-      setPaymentData(parsedData);
-      setIsValidating(false);
-      setValidationComplete(false); // Reset validation
-      setShowPreview(true);
-    },
-    []
-  );
-
-  const parseAndValidateStructure = useCallback(() => {
-    if (activeTab === "paste") {
-      parsePasteData();
-      return;
-    }
-
-    const rows = parseCsv(csvData || "");
-
-    if (rows.length === 0) {
-      setDataErrors([{ row: 0, message: "No data provided" }]);
-      setIsValidating(false);
-      return;
-    }
-
-    // Detect header and get column configuration
-    const { hasHeader, startRow, recipientIdx, amountIdx } =
-      detectHeaderAndGetConfig(rows);
-
-    // If header detected but columns are missing, show error
-    if (hasHeader && (recipientIdx === -1 || amountIdx === -1)) {
-      setDataErrors([
-        {
-          row: 0,
-          message: "Missing one or more required columns: Recipient, Amount",
-        },
-      ]);
-      setIsValidating(false);
-      return;
-    }
-
-    // Extract data rows (skip header if present)
-    const dataRows = rows.slice(startRow);
-
-    // Use unified parser
-    parsePaymentData(dataRows, recipientIdx, amountIdx, startRow);
-  }, [
-    csvData,
-    availableCredits,
-    creditsUsed,
-    availableCredits,
-    activeTab,
-    parsePasteData,
-    parsePaymentData,
-  ]);
-
-  const handleFileUpload = (file: File) => {
-    if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
-      toast.error("Please upload a CSV file");
-      return;
-    }
-
-    if (file.size > 1.5 * 1024 * 1024) {
-      toast.error("File size must be less than 1.5 MB");
-      return;
-    }
-
-    setUploadedFile(file);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      setCsvData(text);
-    };
-
-    reader.readAsText(file);
+  // Handle continue from upload step
+  const handleContinueFromUpload = (payments: BulkPaymentData[]) => {
+    setPaymentData(payments);
+    setStep(1); // Move to review step
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      handleFileUpload(file);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const downloadTemplate = () => {
-    const csvContent =
-      "recipient,amount\nalice.near,10.5\nbob.near,25\ncharlie.near,100";
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "bulk_payment_template.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const totalAmount = useMemo(() => {
-    return paymentData.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  }, [paymentData]);
-
-  const handleRemoveRecipient = (index: number) => {
-    setDeletingIndex(index);
-  };
-
-  const confirmRemoveRecipient = () => {
-    if (deletingIndex === null) return;
-    setPaymentData((prev) => prev.filter((_, i) => i !== deletingIndex));
-    setDeletingIndex(null);
-  };
-
-  const handleEditRecipient = (index: number) => {
-    const payment = paymentData[index];
-    setEditFormData({
-      recipient: payment.recipient,
-      amount: payment.amount,
-    });
+  // Handle edit payment
+  const handleEditPayment = (index: number) => {
     setEditingIndex(index);
-    setShowEditView(true);
+    setStep(2); // Move to edit step
   };
 
-  const handleSaveEdit = async () => {
-    if (editingIndex === null || !selectedToken) return;
-
-    // The PaymentFormSection already validated the account format and existence
-    // Now check storage registration for FT tokens
-    let isRegistered = true;
-    if (needsStorageDepositCheck(selectedToken)) {
-      try {
-        const tokenId = selectedToken.contractId || selectedToken.id;
-        const storageResult = await getBatchStorageDepositIsRegistered([
-          {
-            accountId: editFormData.recipient,
-            tokenId: tokenId,
-          },
-        ]);
-        if (storageResult.length > 0) {
-          isRegistered = storageResult[0].is_registered;
-        }
-      } catch (error) {
-        console.error("Error checking storage deposit:", error);
-      }
-    }
-
+  // Handle save edit
+  const handleSaveEdit = (
+    index: number,
+    data: EditPaymentFormValues,
+    isRegistered: boolean
+  ) => {
     const updatedPayments = [...paymentData];
-    updatedPayments[editingIndex] = {
-      ...updatedPayments[editingIndex],
-      recipient: editFormData.recipient,
-      amount: editFormData.amount,
+    updatedPayments[index] = {
+      ...updatedPayments[index],
+      recipient: data.recipient,
+      amount: data.amount,
       validationError: undefined,
       isRegistered,
     };
     setPaymentData(updatedPayments);
 
-    // Go back to preview
-    setShowEditView(false);
+    // Go back to review step
+    setStep(1);
     setEditingIndex(null);
   };
 
+  // Handle cancel edit
   const handleCancelEdit = () => {
-    setShowEditView(false);
+    setStep(1);
     setEditingIndex(null);
   };
 
-  const handleSubmit = async () => {
+  // Handle submission
+  const onSubmit = async () => {
     if (!selectedTreasury || paymentData.length === 0 || !selectedToken) return;
 
-    setIsSubmitting(true);
+    const totalAmount = paymentData.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
 
     let loadingToastId: string | number | undefined;
 
     try {
-      // Show loading toast with first step
+      // Show loading toast
       loadingToastId = toast(
         <BulkPaymentToast
           steps={[
@@ -715,16 +129,12 @@ export default function BulkPaymentPage() {
 
       const proposalBond = policy?.proposal_bond || "0";
 
-      // Only treat as native NEAR if it's actually the native token (not wrapped or intents)
+      // Determine token IDs
       const isNEAR =
         selectedToken.id === NEAR_TOKEN.address &&
-        selectedToken.residency === "Near";
+        selectedToken.residency.toLowerCase() === "near";
 
-      // For backend hash generation and contract submission:
-      // - Native NEAR: convert "near" to "native"
-      // - All others: use id as-is (includes "nep141:" prefix for Intents, "wrap.near" for FT)
       const tokenIdForHash = isNEAR ? "native" : selectedToken.id;
-
       const tokenIdForProposal = selectedToken.id;
 
       // Convert amounts to smallest units
@@ -735,7 +145,7 @@ export default function BulkPaymentPage() {
           .toFixed(),
       }));
 
-      // Generate list_id using "native" for NEAR, token address for FT (must match backend)
+      // Generate list_id
       const listId = await generateListId(
         selectedTreasury,
         tokenIdForHash,
@@ -761,19 +171,19 @@ export default function BulkPaymentPage() {
         daoAccountId: selectedTreasury,
         listId,
         tokenId: tokenIdForProposal,
-        tokenResidency: selectedToken.residency,
+        tokenResidency: selectedToken.residency as "Near" | "Ft" | "Intents",
         totalAmount: totalAmountInSmallestUnits,
         description,
         proposalBond,
       });
 
-      // Build storage deposit transactions for unregistered recipients (FT tokens only, not Intents)
+      // Build storage deposit transactions
       const additionalTransactions: any[] = [];
       if (needsStorageDepositCheck(selectedToken)) {
         const gas = "30000000000000";
         const depositInYocto = Big(0.0125).mul(Big(10).pow(24)).toFixed();
 
-        // First, check if bulk payment contract is registered for this token
+        // Check if bulk payment contract is registered
         const bulkPaymentContractRegistration =
           await getBatchStorageDepositIsRegistered([
             {
@@ -786,7 +196,7 @@ export default function BulkPaymentPage() {
           bulkPaymentContractRegistration.length > 0 &&
           bulkPaymentContractRegistration[0].is_registered;
 
-        // Add storage deposit transaction for bulk payment contract if needed (must be first)
+        // Add storage deposit for bulk payment contract if needed
         if (!isBulkPaymentContractRegistered) {
           additionalTransactions.push({
             receiverId: selectedToken.id,
@@ -834,7 +244,7 @@ export default function BulkPaymentPage() {
         }
       }
 
-      // Create proposal first (required for backend verification) - suppress toast
+      // Create proposal
       const proposalResults = await createProposal(
         "Bulk payment proposal submitted",
         {
@@ -847,11 +257,11 @@ export default function BulkPaymentPage() {
           additionalTransactions,
         },
         false
-      ); // Don't show toast yet
+      );
 
-      // Only submit payment list if proposal creation was successful
+      // Submit payment list if proposal creation was successful
       if (proposalResults && proposalResults.length > 0) {
-        // Update toast to show proposal complete, list in progress
+        // Update toast
         toast(
           <BulkPaymentToast
             steps={[
@@ -868,17 +278,16 @@ export default function BulkPaymentPage() {
           }
         );
 
-        // Submit payment list to backend (must be after proposal creation)
+        // Submit payment list to backend
         try {
           const submitResult = await submitPaymentList({
             listId,
             submitterId: selectedTreasury,
             daoContractId: selectedTreasury,
-            tokenId: tokenIdForHash, // Use "native" for NEAR, contractId for FT
+            tokenId: tokenIdForHash,
             payments,
           });
 
-          // Check if submission was successful
           if (!submitResult.success) {
             throw new Error(
               submitResult.error || "Failed to submit payment list"
@@ -890,7 +299,7 @@ export default function BulkPaymentPage() {
 
           // Show success toast
           toast.success("Bulk Payment Request submitted", {
-            duration: 10000, // 10 seconds
+            duration: 10000,
             action: {
               label: "View Request",
               onClick: () =>
@@ -903,18 +312,16 @@ export default function BulkPaymentPage() {
               title: "!border-r !border-r-border !pr-4",
             },
           });
-          // Refetch credits after proposal creation (credits are decremented in the backend)
-          fetchCredits();
 
-          // Reset and go back to step 1
-          setShowPreview(false);
+          // Invalidate credits query to refetch in UploadDataStep
+          await queryClient.invalidateQueries({
+            queryKey: ["bulkPaymentCredits", selectedTreasury],
+          });
+
+          // Reset form and state
+          form.reset();
+          setStep(0);
           setPaymentData([]);
-          setSelectedToken(null);
-          setComment("");
-          setCsvData("");
-          setPasteDataInput("");
-          setActiveTab("upload");
-          setValidationComplete(false);
         } catch (error) {
           console.error("Failed to submit payment list to backend:", error);
           toast.dismiss(loadingToastId);
@@ -923,747 +330,72 @@ export default function BulkPaymentPage() {
               ? error.message
               : "Failed to submit bulk payment list"
           );
+          return; // Stop execution here
         }
       } else {
+        // Proposal creation failed - createProposal already shows error toast
         toast.dismiss(loadingToastId);
-        toast.error("Failed to create proposal");
       }
     } catch (error) {
+      // Only show error if it's not a wallet rejection (createProposal handles those)
       console.error("Failed to submit bulk payment:", error);
-    } finally {
-      setIsSubmitting(false);
+      if (loadingToastId) {
+        toast.dismiss(loadingToastId);
+      }
+      // Don't show additional error toast as createProposal already handles user rejections
     }
   };
 
-  // Check if there are any unregistered recipients
-  const hasUnregisteredRecipients = useMemo(() => {
-    return paymentData.some((payment) => payment.isRegistered === false);
-  }, [paymentData]);
-
-  const hasValidationErrors = useMemo(() => {
-    return paymentData.some((payment) => payment.validationError);
-  }, [paymentData]);
-
-  // Edit View Screen - For editing a single recipient
-  if (showEditView && editingIndex !== null && selectedToken) {
+  // Editing a single payment
+  if (editingIndex !== null && step === 2 && selectedToken) {
+    const payment = paymentData[editingIndex];
     return (
-      <PageComponentLayout title="Edit Payment" description="">
-        <div className="max-w-[600px] mx-auto">
-          <PageCard>
-            <button
-              onClick={handleCancelEdit}
-              className="flex items-center gap-2 transition-colors mb-6"
-            >
-              <ArrowLeft className="w-5 h-5 text-muted-foreground hover:text-foreground" />
-              <span className="text-lg font-semibold">Edit Payment</span>
-            </button>
-
-            <PaymentFormSection
-              selectedToken={selectedToken}
-              amount={editFormData.amount}
-              onAmountChange={(amount) =>
-                setEditFormData({ ...editFormData, amount })
-              }
-              recipient={editFormData.recipient}
-              onRecipientChange={(recipient) => {
-                setEditFormData({ ...editFormData, recipient });
-              }}
-              tokenLocked={true}
-              showBalance={true}
-              saveButtonText="Save"
-              onSave={handleSaveEdit}
-            />
-          </PageCard>
+      <PageComponentLayout
+        title="Payments"
+        description="Send and receive funds securely"
+      >
+        <div className="w-full max-w-3xl mx-auto px-4">
+          <EditPaymentStep
+            handleBack={handleCancelEdit}
+            payment={payment}
+            paymentIndex={editingIndex}
+            selectedToken={selectedToken}
+            onSave={handleSaveEdit}
+            onCancel={handleCancelEdit}
+          />
         </div>
       </PageComponentLayout>
     );
   }
 
-  // Preview Screen
-  if (showPreview && selectedToken) {
-    return (
-      <PageComponentLayout title="Review Your Payment" description="">
-        <div className="max-w-[600px] mx-auto">
-          <PageCard>
-            <button
-              onClick={() => setShowPreview(false)}
-              className="flex items-center gap-2 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-              <span className="text-lg font-semibold">Review Your Payment</span>
-            </button>
-
-            {/* Total Summary */}
-            <div className="px-3.5 py-3 rounded-xl bg-muted">
-              <div className="flex flex-col gap-2 p-2 text-xs text-muted-foreground text-center justify-center items-center">
-                <p>You are sending a total of</p>
-                <img
-                  src={selectedToken.icon || ""}
-                  alt={selectedToken.symbol}
-                  className="size-10 shrink-0 rounded-full"
-                />
-                <p className="text-xl font-semibold text-foreground">
-                  {totalAmount} {selectedToken.symbol}
-                </p>
-                <div>
-                  <p>
-                    to {paymentData.length} recipient
-                    {paymentData.length !== 1 ? "s" : ""}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Recipients List */}
-            <div className="space-y-4 mb-2">
-              <h3 className="text-sm text-muted-foreground mb-6">Recipients</h3>
-
-              {isValidatingAccounts ? (
-                // Loading skeleton while validating
-                <>
-                  {paymentData.map((_, index) => (
-                    <div key={index} className="space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold shrink-0 bg-secondary text-foreground">
-                          {index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between mb-2">
-                            <div className="flex flex-col gap-2 justify-between flex-1">
-                              <div className="h-5 w-48 bg-muted animate-pulse rounded" />
-                            </div>
-                            <div>
-                              <div className="flex flex-col gap-2 items-end">
-                                <div className="h-5 w-32 bg-muted animate-pulse rounded" />
-                                <div className="h-4 w-20 bg-muted animate-pulse rounded" />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                // Actual data after validation
-                <>
-                  {paymentData.map((payment, index) => {
-                    const estimatedUSDValue =
-                      selectedToken?.balanceUSD && selectedToken.balance
-                        ? (Number(payment.amount) /
-                            Number(
-                              formatBalance(
-                                selectedToken.balance.toString(),
-                                selectedToken.decimals
-                              )
-                            )) *
-                          selectedToken.balanceUSD
-                        : 0;
-
-                    return (
-                      <div
-                        key={index}
-                        className={`space-y-3 ${
-                          index < paymentData.length - 1
-                            ? "border-b border-border pb-4"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold shrink-0 ${
-                              payment.validationError
-                                ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                                : "bg-secondary text-foreground"
-                            }`}
-                          >
-                            {index + 1}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex justify-between mb-2">
-                              <div className="flex flex-col gap-2 justify-between">
-                                <div className="flex gap-2">
-                                  <span className="font-semibold text-sm text-foreground">
-                                    {payment.recipient}
-                                  </span>
-                                  {payment.isRegistered === false &&
-                                    !payment.validationError && (
-                                      <span className="px-2 py-1 text-xs font-medium bg-general-warning-background-faded text-general-warning-foreground rounded-full">
-                                        Unregistered
-                                      </span>
-                                    )}
-                                </div>
-                                {payment.validationError && (
-                                  <div className="text-xs text-red-600 dark:text-red-400 mb-2">
-                                    {payment.validationError}
-                                  </div>
-                                )}
-                              </div>
-
-                              <div>
-                                <div className="flex flex-col gap-2 items-end">
-                                  <div className="flex items-center gap-2">
-                                    <img
-                                      src={selectedToken.icon || ""}
-                                      alt={selectedToken.symbol}
-                                      className="w-5 h-5 rounded-full"
-                                    />
-                                    <div className="text-right">
-                                      <div className="text-sm font-semibold">
-                                        {payment.amount} {selectedToken.symbol}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        ≈ ${estimatedUSDValue.toFixed(2)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-3 justify-end">
-                                    <Button
-                                      variant="unstyled"
-                                      size="sm"
-                                      className="text-muted-foreground hover:text-foreground px-0!"
-                                      onClick={() => handleEditRecipient(index)}
-                                    >
-                                      <Edit2 className="w-4 h-4" /> Edit
-                                    </Button>
-                                    <Button
-                                      variant="unstyled"
-                                      size="sm"
-                                      className="text-muted-foreground hover:text-foreground px-0!"
-                                      onClick={() =>
-                                        handleRemoveRecipient(index)
-                                      }
-                                    >
-                                      <Trash2 className="w-4 h-4" /> Remove
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-
-            {/* Comment */}
-            {!isValidatingAccounts && (
-              <div className="mb-2">
-                <Textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Add a comment (optional)..."
-                  rows={3}
-                  className="resize-none"
-                />
-              </div>
-            )}
-
-            {/* Storage Deposit Warning */}
-            {!isValidatingAccounts && hasUnregisteredRecipients && (
-              <WarningAlert
-                className="mb-2"
-                message={
-                  <div>
-                    <h4 className="font-semibold">Storage Deposit Required</h4>
-                    <p>
-                      A one-time gas fee of 0.0125 NEAR per{" "}
-                      <span className="font-semibold">1 recipient</span> is
-                      required to create their payment contract. You can pay now
-                      or continue without these recipients.
-                    </p>
-                  </div>
-                }
-              />
-            )}
-
-            {/* Submit Button */}
-            {!isValidatingAccounts && (
-              <Button
-                type="button"
-                className="w-full"
-                size="lg"
-                onClick={handleSubmit}
-                disabled={isSubmitting || hasValidationErrors}
-              >
-                {isSubmitting ? "Submitting..." : "Confirm and Submit Request"}
-              </Button>
-            )}
-          </PageCard>
-
-          {/* Delete Confirmation Modal */}
-          <Dialog
-            open={deletingIndex !== null}
-            onOpenChange={(open) => !open && setDeletingIndex(null)}
-          >
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Remove Recipient</DialogTitle>
-              </DialogHeader>
-              <DialogDescription>
-                {deletingIndex !== null && paymentData[deletingIndex] && (
-                  <p className="text-base">
-                    Are you sure you want to remove the payment to{" "}
-                    <span className="font-semibold">
-                      {paymentData[deletingIndex].recipient}
-                    </span>
-                    ? This action cannot be undone.
-                  </p>
-                )}
-              </DialogDescription>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="w-full"
-                  size="lg"
-                  onClick={confirmRemoveRecipient}
-                >
-                  Remove
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </PageComponentLayout>
-    );
-  }
-
-  // Upload Screen
   return (
-    <PageComponentLayout title="Bulk Payment Requests">
-      {isLoadingCredits ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-[1200px] mx-auto">
-          {/* Left Column - Main Form Skeleton */}
-          <div className="lg:col-span-2">
-            <PageCard className="gap-2">
-              <div className="flex items-center gap-2">
-                <Skeleton className="w-4 h-4" />
-                <Skeleton className="h-7 w-48" />
-              </div>
-              <Skeleton className="h-5 w-full max-w-md" />
+    <PageComponentLayout
+      title="Payments"
+      description="Send and receive funds securely"
+    >
+      <FormProvider {...form}>
+        <div className={`w-full mx-auto px-4 ${step === 1 ? 'max-w-3xl' : 'max-w-7xl'}`}>
+          {/* Step 0: Upload Data */}
+          {step === 0 && (
+            <UploadDataStep
+              handleBack={() => router.back()}
+              treasuryId={selectedTreasury || ""}
+              onContinue={handleContinueFromUpload}
+            />
+          )}
 
-              {/* Step 1 Skeleton */}
-              <div className="mb-6 mt-6">
-                <div className="flex gap-2 mb-4">
-                  <Skeleton className="w-6 h-6 rounded-full" />
-                  <div className="flex-1 flex flex-col gap-2">
-                    <Skeleton className="h-6 w-32" />
-                    <Skeleton className="w-full h-14 rounded-lg" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 2 Skeleton */}
-              <div className="mb-6">
-                <div className="flex gap-2 mb-4">
-                  <Skeleton className="w-6 h-6 rounded-full" />
-                  <div className="flex-1 flex flex-col gap-2">
-                    <Skeleton className="h-6 w-48" />
-                    <div className="flex gap-2">
-                      <Skeleton className="h-10 flex-1" />
-                      <Skeleton className="h-10 flex-1" />
-                    </div>
-                    <Skeleton className="w-full h-32 rounded-lg" />
-                  </div>
-                </div>
-              </div>
-
-              <Skeleton className="w-full h-12 rounded-lg" />
-            </PageCard>
-          </div>
-
-          {/* Right Column Skeleton */}
-          <div className="space-y-6">
-            {/* Benefits Skeleton */}
-            <PageCard>
-              <Skeleton className="h-6 w-32 mb-4" />
-              <div className="space-y-4">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            </PageCard>
-
-            {/* Credits Skeleton */}
-            <PageCard>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-7 w-32" />
-                  <Skeleton className="h-8 w-24" />
-                </div>
-                <div className="space-y-2 border-b-[0.2px] border-general-unofficial-border pb-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <Skeleton className="h-5 w-24" />
-                    <Skeleton className="h-4 w-16" />
-                  </div>
-                  <Skeleton className="w-full h-2 rounded-full" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-5 w-32" />
-                  <Skeleton className="h-9 w-28" />
-                </div>
-              </div>
-            </PageCard>
-          </div>
+          {/* Step 1: Review Payments */}
+          {step === 1 && (
+            <ReviewPaymentsStep
+              handleBack={() => setStep(0)}
+              initialPaymentData={paymentData}
+              onEditPayment={handleEditPayment}
+              onPaymentDataChange={setPaymentData}
+              onSubmit={onSubmit}
+            />
+          )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-[1200px] mx-auto">
-          {/* Left Column - Main Form */}
-          <div className="lg:col-span-2">
-            <PageCard className="gap-2">
-              <button
-                onClick={() => router.back()}
-                className="flex items-center gap-2 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-                <span className="text-xl font-semibold">
-                  Bulk Payment Requests
-                </span>
-              </button>
-
-              <p className="text-sm text-muted-foreground font-medium mb-4">
-                Pay multiple recipients with a single proposal.
-              </p>
-
-              {/* Credit Exhaustion Banner */}
-              {availableCredits === 0 && (
-                <div className="mb-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                  <div className="flex gap-3">
-                    <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                        You've used all your credits
-                      </p>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        Upgrade your plan to get more and keep going
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 1: Select Asset */}
-              <div className="mb-6">
-                <div className="flex gap-2 mb-4">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-sm font-semibold">
-                    1
-                  </div>
-                  <div className="flex-1 flex flex-col gap-2">
-                    <h3 className="text-md font-semibold">Select Asset</h3>
-
-                    <TokenSelect
-                      selectedToken={selectedToken?.symbol || null}
-                      setSelectedToken={setSelectedToken}
-                      disabled={availableCredits === 0}
-                      iconSize="lg"
-                      classNames={{
-                        trigger:
-                          "w-full h-14 rounded-lg px-4 bg-muted hover:bg-muted/80 hover:border-none",
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 2: Provide Payment Data */}
-              <div className="mb-6">
-                <div className="flex gap-2 mb-4">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-foreground text-sm font-semibold">
-                    2
-                  </div>
-                  <div className="flex-1 flex flex-col gap-2">
-                    <h3 className="text-md font-semibold">
-                      Provide Payment Data
-                    </h3>
-
-                    {/* Tabs */}
-                    <div className="flex gap-1 border-b">
-                      <button
-                        className={`px-4 py-2 text-sm font-medium transition-colors ${
-                          activeTab === "upload"
-                            ? "border-b-2 border-foreground text-foreground"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                        onClick={() => {
-                          setActiveTab("upload");
-                          setDataErrors(null);
-                        }}
-                      >
-                        Upload File
-                      </button>
-                      <button
-                        className={`px-4 py-2 text-sm font-medium transition-colors ${
-                          activeTab === "paste"
-                            ? "border-b-2 border-foreground text-foreground"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                        onClick={() => {
-                          setActiveTab("paste");
-                          setDataErrors(null);
-                        }}
-                      >
-                        Provide Data
-                      </button>
-                    </div>
-                    {/* Upload Tab Content */}
-                    {activeTab === "upload" && (
-                      <div className="space-y-4">
-                        {!uploadedFile ? (
-                          <div
-                            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                              isDragging
-                                ? "border-primary bg-primary/5"
-                                : "border-border bg-muted"
-                            }`}
-                            onDrop={handleDrop}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                          >
-                            <div className="flex flex-col items-center gap-4">
-                              <Upload className="w-12 h-12 text-muted-foreground" />
-                              <div>
-                                <p className="text-base mb-2">
-                                  <button
-                                    type="button"
-                                    className="font-semibold hover:underline disabled:text-muted-foreground"
-                                    onClick={() =>
-                                      document
-                                        .getElementById("file-upload")
-                                        ?.click()
-                                    }
-                                    disabled={availableCredits === 0}
-                                  >
-                                    Choose File
-                                  </button>{" "}
-                                  <span className="text-muted-foreground">
-                                    or drag and drop
-                                  </span>
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  max 1 file up to 1.5 MB, CSV file only
-                                </p>
-                              </div>
-                              <input
-                                id="file-upload"
-                                type="file"
-                                accept=".csv"
-                                className="hidden"
-                                disabled={availableCredits === 0}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleFileUpload(file);
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <FileText className="w-5 h-5 text-primary" />
-                              <div>
-                                <p className="text-sm font-medium">
-                                  {uploadedFile.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {(uploadedFile.size / 1024).toFixed(0)}KB
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setUploadedFile(null);
-                                setCsvData(null);
-                                setDataErrors(null);
-                              }}
-                              className="text-sm text-muted-foreground hover:text-foreground"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">
-                            Don't have a file to upload?
-                          </span>
-                          <button
-                            type="button"
-                            onClick={downloadTemplate}
-                            className="font-medium hover:underline text-general-unofficial-ghost-foreground"
-                          >
-                            Download a template
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Paste Tab Content */}
-                    {activeTab === "paste" && (
-                      <div className="space-y-2">
-                        <Textarea
-                          value={pasteDataInput}
-                          onChange={(e) => {
-                            setPasteDataInput(e.target.value);
-                            if (dataErrors && dataErrors.length > 0) {
-                              setDataErrors(null);
-                            }
-                          }}
-                          placeholder={`olskik.near, 100.00\nvova.near, 100.00\nmegha.near, 100.00`}
-                          rows={8}
-                          className={`resize-none font-mono text-sm bg-muted focus:outline-none ${
-                            dataErrors && dataErrors.length > 0
-                              ? "border-2 border-destructive focus:border-destructive"
-                              : ""
-                          }`}
-                          disabled={availableCredits === 0}
-                        />
-                        {dataErrors && dataErrors.length > 0 && (
-                          <div className="text-sm text-destructive">
-                            {dataErrors.map((error, i) => (
-                              <div key={i}>
-                                {error.row > 0 ? `Row ${error.row}: ` : ""}
-                                {error.message}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Upload Tab Errors */}
-                    {activeTab === "upload" &&
-                      dataErrors &&
-                      dataErrors.length > 0 && (
-                        <div className="text-sm text-destructive">
-                          {dataErrors.map((error, i) => (
-                            <div key={i}>
-                              {error.row > 0 ? `Row ${error.row}: ` : ""}
-                              {error.message}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Preview Button */}
-              <Button
-                type="button"
-                className="w-full"
-                size="lg"
-                disabled={
-                  !selectedToken ||
-                  (activeTab === "upload" && (!uploadedFile || !csvData)) ||
-                  (activeTab === "paste" && !pasteDataInput.trim()) ||
-                  isValidating ||
-                  availableCredits === 0
-                }
-                onClick={() => {
-                  setIsValidating(true);
-                  parseAndValidateStructure();
-                }}
-              >
-                {isValidating ? "Validating..." : "See Preview"}
-              </Button>
-            </PageCard>
-          </div>
-
-          {/* Right Column - Requirements & Credits */}
-          <div className="space-y-4">
-            {/* Requirements */}
-            <PageCard
-              style={{
-                backgroundColor: "var(--color-general-tertiary)",
-              }}
-            >
-              <h3 className="text-lg font-semibold">
-                Bulk Payment Requirements
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">
-                      Max {MAX_RECIPIENTS_PER_BULK_PAYMENT} transactions per
-                      import
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <DollarSign className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">
-                      Single token and network
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </PageCard>
-
-            {/* Credits Usage */}
-            <PageCard
-              style={
-                availableCredits === 0
-                  ? {
-                      border: "1px solid var(--general-success-foreground)",
-                      background: "var(--general-success-background-faded)",
-                    }
-                  : { backgroundColor: "var(--color-general-tertiary)" }
-              }
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Bulk Payments</h3>
-                  <span className="text-sm font-medium border-2 py-1 px-2 rounded-lg">
-                    {totalCredits} credits
-                  </span>
-                </div>
-
-                <div className="space-y-2 border-b-[0.2px] border-general-unofficial-border pb-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-semibold">
-                      {availableCredits} Available
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {creditsUsed} Used
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-general-unofficial-accent rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-foreground transition-all"
-                      style={{
-                        width:
-                          totalCredits > 0
-                            ? `${(creditsUsed / totalCredits) * 100}%`
-                            : "0%",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-secondary-foreground">
-                    Need more credits?
-                  </span>
-                  <Button
-                    variant={availableCredits === 0 ? "default" : "outline"}
-                    size="sm"
-                    className="p-3!"
-                  >
-                    Upgrade Plan
-                  </Button>
-                </div>
-              </div>
-            </PageCard>
-          </div>
-        </div>
-      )}
+      </FormProvider>
     </PageComponentLayout>
   );
 }

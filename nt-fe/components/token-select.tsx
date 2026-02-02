@@ -48,7 +48,7 @@ interface TokenSelectProps {
 }
 
 
-export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData, classNames }: TokenSelectProps) {
+export default function TokenSelect({ selectedToken, setSelectedToken, disabled, locked, lockedTokenData, iconSize, classNames }: TokenSelectProps) {
     const { treasuryId } = useTreasury();
     const { data: { tokens = [] } = {} } = useAssets(treasuryId, { onlyPositiveBalance: true, onlySupportedTokens: true });
     const aggregatedTokens = useAggregatedTokens(tokens);

@@ -73,7 +73,7 @@ function Step1({ handleNext }: StepProps) {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">New Payment</h2>
         <div className="flex items-center gap-3">
-          <Link href={`/${selectedTreasury}/payments/bulk-payment`}>
+          <Link href={`/${treasuryId}/payments/bulk-payment`}>
             <Button
               variant="ghost"
               className="flex items-center gap-2 border-2"
@@ -84,7 +84,7 @@ function Step1({ handleNext }: StepProps) {
           </Link>
           <PendingButton
             id="payments-pending-btn"
-            categories={["payments"]}
+            types={["Payments"]}
           />
         </div>
       </div>

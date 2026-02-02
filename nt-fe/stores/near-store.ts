@@ -78,6 +78,7 @@ interface NearStore {
     createProposal: (
         toastMessage: string,
         params: CreateProposalParams,
+        showToast?: boolean,
     ) => Promise<Array<FinalExecutionOutcome>>;
     voteProposals: (
         treasuryId: string,
@@ -343,6 +344,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
     createProposal: async (
         toastMessage: string,
         params: CreateProposalParams,
+        showToast: boolean = true,
     ) => {
         const state = get();
         if (!isFullyAuthenticated(state)) {
@@ -382,22 +384,24 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 transactions,
                 network: "mainnet",
             });
-            toast.success(toastMessage, {
-                duration: 10000,
-                action: {
-                    label: "View Request",
-                    onClick: () =>
-                        window.open(
-                            `/${params.treasuryId}/requests?tab=pending`,
-                        ),
-                },
-                classNames: {
-                    toast: "!p-2 !px-4",
-                    actionButton:
-                        "!bg-transparent !text-foreground hover:!bg-muted !border-0",
-                    title: "!border-r !border-r-border !pr-4",
-                },
-            });
+            if (showToast) {
+                toast.success(toastMessage, {
+                    duration: 10000,
+                    action: {
+                        label: "View Request",
+                        onClick: () =>
+                            window.open(
+                                `/${params.treasuryId}/requests?tab=pending`,
+                            ),
+                    },
+                    classNames: {
+                        toast: "!p-2 !px-4",
+                        actionButton:
+                            "!bg-transparent !text-foreground hover:!bg-muted !border-0",
+                        title: "!border-r !border-r-border !pr-4",
+                    },
+                });
+            }
             return results;
         } catch (error) {
             console.error("Failed to create proposal:", error);
@@ -481,8 +485,9 @@ export const useNear = () => {
     const createProposal = async (
         toastMessage: string,
         params: CreateProposalParams,
+        showToast: boolean = true,
     ) => {
-        const results = await storeCreateProposal(toastMessage, params);
+        const results = await storeCreateProposal(toastMessage, params, showToast);
         if (results.length > 0) {
             // Delay to allow backend to pick up the new proposal
             await new Promise((resolve) => setTimeout(resolve, 5000));

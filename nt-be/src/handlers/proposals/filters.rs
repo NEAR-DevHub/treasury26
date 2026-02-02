@@ -217,7 +217,9 @@ fn matches_tokens_filter(
         return token_matches_filter(token_to_check, token, token_not);
     }
 
-    if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
+    if let Some(bulk_payment) =
+        BulkPayment::from_proposal_with_contract_id(proposal, bulk_payment_contract_id)
+    {
         let token_to_check = bulk_payment.token_id.as_str();
         return token_matches_filter(token_to_check, token, token_not);
     }
@@ -273,7 +275,9 @@ async fn matches_recipients_filter(
         return true; // Payment proposal matched recipients filter
     }
 
-    if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
+    if let Some(bulk_payment) =
+        BulkPayment::from_proposal_with_contract_id(proposal, bulk_payment_contract_id)
+    {
         // Fetch the batch payment list to get actual recipients
         let batch_id = bulk_payment.batch_id.clone();
         let cache_key = crate::utils::cache::CacheKey::new("batch-payment-recipients")
@@ -477,7 +481,9 @@ async fn matches_amount_filters(
     }
 
     // Check bulk payment
-    if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
+    if let Some(bulk_payment) =
+        BulkPayment::from_proposal_with_contract_id(proposal, bulk_payment_contract_id)
+    {
         return matches_payment_amount_filters(
             &PaymentInfo {
                 receiver: "".to_string(),
@@ -715,7 +721,7 @@ fn matches_types_filter(
     let name = if AssetExchangeInfo::from_proposal(proposal).is_some() {
         "Exchange"
     } else if PaymentInfo::from_proposal(proposal, Some(bulk_payment_contract_id)).is_some()
-        || BulkPayment::from_proposal(proposal).is_some()
+        || BulkPayment::from_proposal_with_contract_id(proposal, bulk_payment_contract_id).is_some()
     {
         "Payments"
     } else if StakeDelegationInfo::from_proposal(proposal).is_some() {

@@ -297,8 +297,6 @@ export interface ProposalFilters {
   page_size?: number;
   sort_by?: SortBy;
   sort_direction?: SortDirection;
-
-  category?: string[];
 }
 
 /**
@@ -356,7 +354,6 @@ export async function getProposals(
       if (filters.page_size) params.page_size = filters.page_size.toString();
       if (filters.sort_by) params.sort_by = filters.sort_by;
       if (filters.sort_direction) params.sort_direction = filters.sort_direction;
-      if (filters.category) params.category = filters.category.join(',');
     }
 
     const response = await axios.get<ProposalsResponse>(url, { params });

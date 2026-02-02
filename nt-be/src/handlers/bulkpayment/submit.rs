@@ -307,30 +307,79 @@ pub async fn submit_list(
             match result.into_result() {
                 Ok(_) => {
                     // Step 4: Decrement credits in monitored_accounts table
-                    let db_result = sqlx::query(
+                    log::info!(
+                        "Bulk payment submitted successfully for treasury {}. Decrementing credits...",
+                        request.dao_contract_id
+                    );
+
+                    // First, check current credits
+                    let current_credits_result = sqlx::query_as::<_, (i32,)>(
+                        r#"
+                        SELECT batch_payment_credits
+                        FROM monitored_accounts
+                        WHERE account_id = $1
+                        "#,
+                    )
+                    .bind(&request.dao_contract_id)
+                    .fetch_optional(&state.db_pool)
+                    .await;
+
+                    match current_credits_result {
+                        Ok(Some((current_credits,))) => {
+                            log::info!(
+                                "Treasury {} currently has {} credits before decrement",
+                                request.dao_contract_id,
+                                current_credits
+                            );
+                        }
+                        Ok(None) => {
+                            log::warn!(
+                                "Treasury {} not found in monitored_accounts table",
+                                request.dao_contract_id
+                            );
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "Failed to check current credits for {}: {}",
+                                request.dao_contract_id,
+                                e
+                            );
+                        }
+                    }
+
+                    let db_result = sqlx::query_as::<_, (i32,)>(
                         r#"
                 UPDATE monitored_accounts
                 SET batch_payment_credits = GREATEST(batch_payment_credits - 1, 0),
                     updated_at = NOW()
                 WHERE account_id = $1
+                RETURNING batch_payment_credits
                 "#,
                     )
                     .bind(&request.dao_contract_id)
-                    .execute(&state.db_pool)
+                    .fetch_optional(&state.db_pool)
                     .await;
 
                     match db_result {
-                        Ok(result) => {
-                            if result.rows_affected() > 0 {
-                            } else {
-                                log::warn!(
-                                    "Treasury {} not found in monitored_accounts, credits not decremented",
-                                    request.dao_contract_id
-                                );
-                            }
+                        Ok(Some((new_credits,))) => {
+                            log::info!(
+                                "Successfully decremented credits for treasury {}. New balance: {}",
+                                request.dao_contract_id,
+                                new_credits
+                            );
+                        }
+                        Ok(None) => {
+                            log::warn!(
+                                "Treasury {} not found in monitored_accounts, credits not decremented",
+                                request.dao_contract_id
+                            );
                         }
                         Err(e) => {
-                            log::error!("Failed to decrement batch payment credits: {}", e);
+                            log::error!(
+                                "Failed to decrement batch payment credits for {}: {}",
+                                request.dao_contract_id,
+                                e
+                            );
                             // Don't fail the request if DB update fails - contract submission succeeded
                         }
                     }

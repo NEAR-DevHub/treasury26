@@ -10,9 +10,6 @@ use std::sync::Arc;
 // Maximum recipients per bulk payment request
 const MAX_RECIPIENTS_PER_BULK_PAYMENT: u64 = 25;
 
-// Total free credits granted to new treasuries
-const TOTAL_FREE_CREDITS: i32 = 5;
-
 #[derive(Debug, Deserialize)]
 pub struct UsageStatsQuery {
     pub treasury_id: String,
@@ -26,12 +23,18 @@ pub struct UsageStatsResponse {
 }
 
 /// Get bulk payment usage statistics for a treasury
-/// Returns credits based on DB tracking, but ensures contract has enough storage
+/// Returns credits based on DB tracking and plan details, but ensures contract has enough storage
 pub async fn get_usage_stats(
     State(state): State<Arc<AppState>>,
     Query(query): Query<UsageStatsQuery>,
 ) -> Result<Json<UsageStatsResponse>, StatusCode> {
-    // Step 1: Get remaining credits from monitored_accounts table
+    // Step 1: Get plan details to determine credit limit
+    let plan_details = crate::handlers::plan::details::get_dummy_plan_details(&query.treasury_id);
+
+    // For unlimited plans (None), return a high number for total_credits
+    let total_credits = plan_details.batch_payment_credit_limit.unwrap_or(i32::MAX);
+
+    // Step 2: Get remaining credits from monitored_accounts table
     let db_credits_remaining = sqlx::query_as::<_, (i32,)>(
         r#"
         SELECT batch_payment_credits
@@ -53,11 +56,11 @@ pub async fn get_usage_stats(
     .map(|r| r.0)
     .unwrap_or(0);
 
-    // Step 2: Calculate credits used and available from DB
-    let credits_used = std::cmp::max(0, TOTAL_FREE_CREDITS - db_credits_remaining);
+    // Step 3: Calculate credits used and available from DB
+    let credits_used = std::cmp::max(0, total_credits - db_credits_remaining);
     let available_from_db = db_credits_remaining;
 
-    // Step 3: Fetch contract storage credits (these are PER RECIPIENT, not per bulk payment)
+    // Step 4: Fetch contract storage credits (these are PER RECIPIENT, not per bulk payment)
     let contract_credits_result = near_api::Contract(state.bulk_payment_contract_id.clone())
         .call_function(
             "view_storage_credits",
@@ -87,14 +90,21 @@ pub async fn get_usage_stats(
         }
     };
 
-    // Step 4: Return minimum of DB available and what contract can support
+    // Step 5: Return minimum of DB available and what contract can support
     // If DB says we have 3 bulk payments left, but contract only has storage for 2,
     // we return 2 (the contract limit)
-    let credits_available = std::cmp::min(available_from_db, max_bulk_payments_from_contract);
+    // For unlimited plans (None), return what contract can support
+    let credits_available = if plan_details.batch_payment_credit_limit.is_none() {
+        max_bulk_payments_from_contract
+    } else {
+        std::cmp::min(available_from_db, max_bulk_payments_from_contract)
+    };
 
     log::info!(
-        "Treasury {}: DB available={}, contract can support={}, returning={}",
+        "Treasury {}: plan={:?}, total={}, DB available={}, contract can support={}, returning={}",
         query.treasury_id,
+        plan_details.plan_type,
+        total_credits,
         available_from_db,
         max_bulk_payments_from_contract,
         credits_available
@@ -103,6 +113,6 @@ pub async fn get_usage_stats(
     Ok(Json(UsageStatsResponse {
         credits_available,
         credits_used,
-        total_credits: TOTAL_FREE_CREDITS,
+        total_credits,
     }))
 }

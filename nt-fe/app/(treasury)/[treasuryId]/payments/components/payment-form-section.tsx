@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/button";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import TokenSelect from "@/components/token-select";
 import { LargeInput } from "@/components/large-input";
@@ -43,12 +43,12 @@ export function PaymentFormSection({
   saveButtonText,
   onSave,
 }: PaymentFormSectionProps) {
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
   const [recipientError, setRecipientError] = useState<string | undefined>();
   const [isValidating, setIsValidating] = useState(false);
 
   const { data: tokenBalanceData, isLoading: isBalanceLoading } = useTokenBalance(
-    selectedTreasury,
+    treasuryId,
     selectedToken?.id || "",
     selectedToken?.network || "NEAR"
   );

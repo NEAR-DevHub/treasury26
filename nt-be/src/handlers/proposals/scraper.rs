@@ -980,8 +980,12 @@ impl ProposalType for StakeDelegationInfo {
     }
 }
 
-impl ProposalType for BulkPayment {
-    fn from_proposal(proposal: &Proposal) -> Option<Self> {
+impl BulkPayment {
+    /// Helper method to extract bulk payment info with a given contract ID
+    pub fn from_proposal_with_contract_id(
+        proposal: &Proposal,
+        bulk_payment_contract_id: &AccountId,
+    ) -> Option<Self> {
         if let Some(function_call) = proposal.kind.get("FunctionCall") {
             let actions = function_call
                 .get("actions")
@@ -1032,10 +1036,7 @@ impl ProposalType for BulkPayment {
 
                 // For ft_transfer_call/mt_transfer_call, the receiver_id in args should be bulk payment contract
                 // If not, this is not a bulk payment proposal
-                let bulk_payment_contract_id = std::env::var("BULK_PAYMENT_CONTRACT_ID")
-                    .unwrap_or_else(|_| "bulkpayment.near".to_string());
-
-                if args_receiver_id != bulk_payment_contract_id {
+                if args_receiver_id != bulk_payment_contract_id.as_str() {
                     return None;
                 }
 
@@ -1069,6 +1070,19 @@ impl ProposalType for BulkPayment {
         } else {
             None
         }
+    }
+}
+
+impl ProposalType for BulkPayment {
+    fn from_proposal(proposal: &Proposal) -> Option<Self> {
+        // Use default contract ID from env or fallback
+        // Note: For proper filtering, callers should use from_proposal_with_contract_id directly
+        let bulk_payment_contract_id = std::env::var("BULK_PAYMENT_CONTRACT_ID")
+            .unwrap_or_else(|_| "bulkpayment.near".to_string())
+            .parse()
+            .ok()?;
+
+        BulkPayment::from_proposal_with_contract_id(proposal, &bulk_payment_contract_id)
     }
 
     fn category_name() -> &'static str {
