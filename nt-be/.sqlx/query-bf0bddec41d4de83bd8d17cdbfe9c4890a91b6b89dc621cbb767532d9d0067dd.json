@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO subscription_payments (subscription_id, usdc_amount, status)\n        VALUES ($1, $2, 'pending')\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "bf0bddec41d4de83bd8d17cdbfe9c4890a91b6b89dc621cbb767532d9d0067dd"
+}

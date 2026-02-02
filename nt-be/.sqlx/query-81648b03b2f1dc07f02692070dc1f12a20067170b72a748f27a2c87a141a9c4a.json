@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE treasury_subscriptions\n                SET\n                    status = 'active',\n                    starts_at = $1,\n                    expires_at = $2,\n                    updated_at = NOW()\n                WHERE id = $3\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "81648b03b2f1dc07f02692070dc1f12a20067170b72a748f27a2c87a141a9c4a"
+}

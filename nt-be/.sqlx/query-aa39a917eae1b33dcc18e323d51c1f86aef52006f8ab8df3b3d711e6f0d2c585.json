@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE subscription_payments\n        SET pingpay_session_id = $1\n        WHERE id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aa39a917eae1b33dcc18e323d51c1f86aef52006f8ab8df3b3d711e6f0d2c585"
+}

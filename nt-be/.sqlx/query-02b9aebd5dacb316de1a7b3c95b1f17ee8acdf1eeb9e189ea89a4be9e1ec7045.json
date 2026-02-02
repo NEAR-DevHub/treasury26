@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE subscription_payments\n                SET status = 'expired'\n                WHERE id = $1 AND status = 'pending'\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "02b9aebd5dacb316de1a7b3c95b1f17ee8acdf1eeb9e189ea89a4be9e1ec7045"
+}

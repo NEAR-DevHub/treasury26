@@ -31,6 +31,12 @@ pub struct EnvVars {
     pub oneclick_app_fee_bps: Option<u32>,
     pub oneclick_app_fee_recipient: Option<String>,
     pub oneclick_referral: Option<String>,
+    // PingPay configuration for subscription payments
+    pub pingpay_api_url: String,
+    pub pingpay_api_key: Option<String>,
+    pub pingpay_mock_mode: bool,
+    pub subscription_success_url: String,
+    pub subscription_cancel_url: String,
     // JWT authentication configuration
     pub jwt_secret: String,
     pub jwt_expiry_hours: u64,
@@ -122,6 +128,20 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty())
                 .or_else(|| Some("near-treasury".to_string())),
+            // PingPay configuration
+            pingpay_api_url: std::env::var("PINGPAY_API_URL")
+                .unwrap_or_else(|_| "https://pay.pingpay.io".to_string()),
+            pingpay_api_key: std::env::var("PINGPAY_API_KEY")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            pingpay_mock_mode: std::env::var("PINGPAY_MOCK_MODE")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            subscription_success_url: std::env::var("SUBSCRIPTION_SUCCESS_URL")
+                .unwrap_or_else(|_| "http://localhost:3000/subscription/success".to_string()),
+            subscription_cancel_url: std::env::var("SUBSCRIPTION_CANCEL_URL")
+                .unwrap_or_else(|_| "http://localhost:3000/subscription/cancel".to_string()),
             // JWT configuration
             jwt_secret: std::env::var("JWT_SECRET").expect("JWT_SECRET is not set"),
             jwt_expiry_hours: std::env::var("JWT_EXPIRY_HOURS")

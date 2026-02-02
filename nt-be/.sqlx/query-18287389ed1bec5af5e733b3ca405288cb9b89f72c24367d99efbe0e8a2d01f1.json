@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE subscription_payments\n                SET\n                    pingpay_payment_id = $1,\n                    deposit_address = $2,\n                    tx_status = $3,\n                    status = 'completed',\n                    completed_at = NOW()\n                WHERE id = $4\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "18287389ed1bec5af5e733b3ca405288cb9b89f72c24367d99efbe0e8a2d01f1"
+}
