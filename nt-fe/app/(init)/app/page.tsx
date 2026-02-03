@@ -27,7 +27,7 @@ function GradientTitle() {
 
 export default function AppRedirect() {
     const router = useRouter();
-    const { accountId, connect, isInitializing, isAuthenticating } = useNear();
+    const { accountId, connect, isInitializing, isAuthenticating, authError, clearError } = useNear();
     const {
         data: treasuries = [],
         isLoading,
@@ -95,7 +95,10 @@ export default function AppRedirect() {
                                 <Button
                                     size="default"
                                     className="w-full max-w-md"
-                                    onClick={connect}
+                                    onClick={() => {
+                                        if (authError) clearError();
+                                        connect();
+                                    }}
                                     disabled={
                                         isAuthenticating || isInitializing
                                     }
@@ -105,6 +108,20 @@ export default function AppRedirect() {
                                     )}
                                     {buttonText}
                                 </Button>
+                                {authError && (
+                                    <div className="w-full max-w-md p-3 rounded-md bg-red-50 border border-red-200">
+                                        <p className="text-sm text-red-800 font-medium">
+                                            Authentication failed
+                                        </p>
+                                        <p className="text-xs text-red-600 mt-1">
+                                            {authError.includes("0xb005") || authError.includes("UNKNOWN_ERROR")
+                                                ? "Please make sure your Ledger device is unlocked and the NEAR app is open. You may need to approve the signature on your device."
+                                                : authError.includes("0x5515") || authError.includes("Locked device")
+                                                ? "Your Ledger device is locked. Please unlock it and try again."
+                                                : authError}
+                                        </p>
+                                    </div>
+                                )}
                                 <p className="text-center text-sm">
                                     Don't have a wallet?{" "}
                                     <Link
