@@ -1,0 +1,43 @@
+# Docker Compose for running Playwright E2E tests
+# Uses the published sandbox image as the backend
+
+services:
+  sandbox:
+    image: ghcr.io/near-devhub/treasury26/near-treasury-sandbox:main
+    ports:
+      - "3030:3030"  # NEAR RPC
+      - "8080:8080"  # Treasury Backend API
+      - "5001:5001"  # Sputnik Indexer
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_BACKEND_API_BASE=http://sandbox:8080
+      - NODE_ENV=development
+    depends_on:
+      sandbox:
+        condition: service_healthy
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.52.0-noble
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - BACKEND_URL=http://sandbox:8080
+      - CI=true
+    depends_on:
+      - frontend
+      - sandbox
+    command: npx playwright test

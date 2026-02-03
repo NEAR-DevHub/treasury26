@@ -12,6 +12,16 @@
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts",
       "installYarnUsingApt": false
+    },
+    "ghcr.io/devcontainers/features/desktop-lite:1": {}
+  },
+  "forwardPorts": [6080, 5901],
+  "portsAttributes": {
+    "6080": {
+      "label": "desktop"
+    },
+    "5901": {
+      "label": "vnc"
     }
   },
   "customizations": {

@@ -16,6 +16,7 @@ import { ProposalPermissionKind } from "@/lib/config-utils";
 import { toast } from "sonner";
 import Big from "big.js";
 import { useQueryClient } from "@tanstack/react-query";
+import { ledgerWalletManifest } from "@/lib/ledger-manifest";
 import {
   getAuthChallenge,
   authLogin,
@@ -144,6 +145,19 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
     set({ connector: newConnector });
 
+    // Register Ledger wallet after connector is initialized
+    newConnector.whenManifestLoaded.then(async () => {
+      // Check if WebHID is supported (not on mobile, requires secure context)
+      if (typeof navigator !== "undefined" && "hid" in navigator) {
+        try {
+          await newConnector.registerWallet(ledgerWalletManifest);
+          console.log("Ledger wallet registered successfully");
+        } catch (e) {
+          console.warn("Failed to register Ledger wallet:", e);
+        }
+      }
+    });
+
     try {
       const wallet = await newConnector.wallet();
       const accounts = await wallet.getAccounts();
@@ -151,7 +165,14 @@ export const useNearStore = create<NearStore>((set, get) => ({
       if (accountId) {
         set({ walletAccountId: accountId });
       }
-    } catch {} // No existing wallet connection found
+    } catch (e) {
+      // Silently handle errors - common cases:
+      // - No existing wallet connection found
+      // - Ledger wallet requires user gesture to reconnect (WebHID restriction)
+      if (e instanceof Error && e.message.includes("user gesture")) {
+        console.log("Ledger requires user interaction to reconnect");
+      }
+    }
 
     set({ isInitializing: false });
     return newConnector;
