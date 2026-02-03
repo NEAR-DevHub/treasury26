@@ -38,7 +38,7 @@ export function RecentActivity() {
   const [selectedActivity, setSelectedActivity] = useState<RecentActivityType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  
+
   const { data: response, isLoading, isFetching } = useRecentActivity(
     treasuryId,
     ITEMS_PER_PAGE,
@@ -49,7 +49,6 @@ export function RecentActivity() {
   useEffect(() => {
     if (response) {
       setTotal(response.total);
-
       if (page === 0) {
         // First page - replace all
         setAllActivities(response.data);
@@ -90,12 +89,10 @@ export function RecentActivity() {
     receiverId: string | null
   ) => {
     const isReceived = parseFloat(amount) > 0;
-
     // If received → show "From counterparty"
     if (isReceived && counterparty) {
       return `from ${counterparty}`;
     }
-
     // If sent → show "To receiver"
     if (!isReceived && receiverId) {
       return `to ${receiverId}`;
