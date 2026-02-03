@@ -352,14 +352,14 @@ async fn test_balance_chart_with_real_data() {
             token_id, expected_balance, balance
         );
 
-        // Check the price_usd field
+        // Check the priceUsd field
         // Note: Mock data uses DeFiLlama prices from Dec 4, 2025 23:59:55 UTC
-        let actual_price = last_snapshot.get("price_usd").and_then(|p| p.as_f64());
+        let actual_price = last_snapshot.get("priceUsd").and_then(|p| p.as_f64());
         match expected_price {
             Some(expected) => {
                 assert!(
                     actual_price.is_some(),
-                    "Expected price_usd for token {} but got null",
+                    "Expected priceUsd for token {} but got null",
                     token_id
                 );
                 let actual = actual_price.unwrap();
@@ -376,7 +376,7 @@ async fn test_balance_chart_with_real_data() {
             None => {
                 assert!(
                     actual_price.is_none(),
-                    "Expected no price_usd for token {} but got {:?}",
+                    "Expected no priceUsd for token {} but got {:?}",
                     token_id,
                     actual_price
                 );
