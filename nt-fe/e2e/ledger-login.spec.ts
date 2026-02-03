@@ -225,6 +225,41 @@ test("Ledger login flow", async ({ page, context }) => {
     });
   });
 
+  // Mock backend auth endpoints since the sandbox doesn't have full auth support
+  // This simulates a successful auth flow with terms already accepted
+  await context.route('**/api/auth/challenge', async (route) => {
+    console.log('Mocking auth challenge endpoint');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ nonce: 'dGVzdC1ub25jZS0xMjM0NTY3ODkw' }), // Base64 encoded test nonce
+    });
+  });
+
+  await context.route('**/api/auth/login', async (route) => {
+    console.log('Mocking auth login endpoint');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        account_id: 'test.near',
+        terms_accepted: true, // Simulate terms already accepted
+      }),
+    });
+  });
+
+  await context.route('**/api/auth/me', async (route) => {
+    console.log('Mocking auth me endpoint');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        account_id: 'test.near',
+        terms_accepted: true,
+      }),
+    });
+  });
+
   // Navigate to the app
   await page.goto("/app");
   await page.waitForTimeout(1500); // Pause to show the initial page
