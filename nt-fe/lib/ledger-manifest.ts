@@ -6,7 +6,8 @@
 export const ledgerWalletManifest = {
   id: "ledger",
   name: "Ledger",
-  icon: "https://cdn.jsdelivr.net/gh/AminMortezaie/icons@8e7b1b7/ledger-logo.svg",
+  // Official Ledger logo
+  icon: "/ledger-icon.jpeg",
   description: "Secure hardware wallet for NEAR Protocol",
   website: "https://www.ledger.com",
   version: "1.0.0",
