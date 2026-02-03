@@ -24,7 +24,7 @@ export function AmountSummary({
                     className="size-10 shrink-0 rounded-full"
                 />
                 <p className="text-xl font-semibold text-foreground">
-                    {total}{" "}
+                    {Number(total)}{" "}
                     <span className="text-muted-foreground font-medium text-sm">
                         {token.symbol}
                     </span>

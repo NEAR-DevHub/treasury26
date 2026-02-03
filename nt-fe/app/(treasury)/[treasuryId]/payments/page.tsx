@@ -20,6 +20,7 @@ import {
     useTreasuryPolicy,
 } from "@/hooks/use-treasury-queries";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Textarea } from "@/components/textarea";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
@@ -267,6 +268,20 @@ export default function PaymentsPage() {
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const [step, setStep] = useState(0);
+    const searchParams = useSearchParams();
+
+    // Parse token from query params
+    const defaultToken = useMemo(() => {
+        const tokenParam = searchParams.get("token");
+        if (tokenParam) {
+            try {
+                return JSON.parse(decodeURIComponent(tokenParam));
+            } catch {
+                return NEAR_TOKEN;
+            }
+        }
+        return NEAR_TOKEN;
+    }, [searchParams]);
 
     // Onboarding tours
     usePageTour(
@@ -284,9 +299,14 @@ export default function PaymentsPage() {
             address: "",
             amount: "",
             memo: "",
-            token: NEAR_TOKEN,
+            token: defaultToken,
         },
     });
+
+    // Update token when query param changes
+    useEffect(() => {
+        form.setValue("token", defaultToken);
+    }, [defaultToken, form]);
 
     const onSubmit = async (data: PaymentFormValues) => {
         try {

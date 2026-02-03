@@ -15,6 +15,7 @@ import {
 } from "@/components/step-wizard";
 import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { cn, formatBalance } from "@/lib/utils";
@@ -530,6 +531,20 @@ export default function ExchangePage() {
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
     const [step, setStep] = useState(0);
+    const searchParams = useSearchParams();
+
+    // Parse sellToken from query params
+    const defaultSellToken = useMemo(() => {
+        const sellTokenParam = searchParams.get("sellToken");
+        if (sellTokenParam) {
+            try {
+                return JSON.parse(decodeURIComponent(sellTokenParam));
+            } catch {
+                return NEAR_TOKEN;
+            }
+        }
+        return NEAR_TOKEN;
+    }, [searchParams]);
 
     // Onboarding tour
     usePageTour(
@@ -541,12 +556,17 @@ export default function ExchangePage() {
         resolver: zodResolver(exchangeFormSchema),
         defaultValues: {
             sellAmount: "",
-            sellToken: NEAR_TOKEN,
+            sellToken: defaultSellToken,
             receiveAmount: "0",
             receiveToken: NEAR_TOKEN,
             slippageTolerance: 0.5,
         },
     });
+
+    // Update sellToken when query param changes
+    useEffect(() => {
+        form.setValue("sellToken", defaultSellToken);
+    }, [defaultSellToken, form]);
 
     const onSubmit = async (data: ExchangeFormValues) => {
         const proposalDataFromForm = form.getValues(
