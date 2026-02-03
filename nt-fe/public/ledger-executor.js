@@ -3,9 +3,9 @@
 
 // Import dependencies from CDN
 import TransportWebHID from "https://esm.sh/@ledgerhq/hw-transport-webhid@6.29.4";
-import { 
-  baseEncode, 
-  baseDecode 
+import {
+  baseEncode,
+  baseDecode
 } from "https://esm.sh/@near-js/utils@0.2.2";
 import {
   Signature,
@@ -617,46 +617,61 @@ class LedgerWallet {
       await promptForLedgerConnect(this.ledger);
     }
 
-    // Build NEP-413 message payload
+    // Build NEP-413 message payload using borsh serialization
     const message = params.message;
     const recipient = params.recipient || "";
     const nonce = params.nonce || new Uint8Array(32);
 
-    // Encode the message according to NEP-413
-    const messageBuffer = new TextEncoder().encode(message);
-    const recipientBuffer = new TextEncoder().encode(recipient);
-    
-    // Create payload: message length (4 bytes) + message + recipient length (4 bytes) + recipient + nonce (32 bytes)
-    const payload = new Uint8Array(4 + messageBuffer.length + 4 + recipientBuffer.length + nonce.length);
-    const dataView = new DataView(payload.buffer);
+    // NEP-413 payload structure (borsh serialized):
+    // - message: string (4 bytes length + utf8 bytes)
+    // - nonce: [u8; 32] (32 fixed bytes)
+    // - recipient: string (4 bytes length + utf8 bytes)
+    // - callback_url: Option<String> (1 byte for Some/None + optional string)
+
+    // Manually construct borsh-serialized payload
+    const messageBytes = new TextEncoder().encode(message);
+    const recipientBytes = new TextEncoder().encode(recipient);
+
+    // Calculate total size
+    const payloadSize =
+      4 + messageBytes.length +  // message (length + data)
+      32 +                        // nonce (fixed 32 bytes)
+      4 + recipientBytes.length + // recipient (length + data)
+      1;                          // callback_url (0 = None)
+
+    const payload = new Uint8Array(payloadSize);
+    const view = new DataView(payload.buffer);
     let offset = 0;
-    
-    // Write message length
-    dataView.setUint32(offset, messageBuffer.length, true);
+
+    // Write message (length-prefixed string)
+    view.setUint32(offset, messageBytes.length, true);
     offset += 4;
-    
-    // Write message
-    payload.set(messageBuffer, offset);
-    offset += messageBuffer.length;
-    
-    // Write recipient length
-    dataView.setUint32(offset, recipientBuffer.length, true);
-    offset += 4;
-    
-    // Write recipient
-    payload.set(recipientBuffer, offset);
-    offset += recipientBuffer.length;
-    
-    // Write nonce
+    payload.set(messageBytes, offset);
+    offset += messageBytes.length;
+
+    // Write nonce (32 fixed bytes)
     payload.set(nonce, offset);
+    offset += 32;
+
+    // Write recipient (length-prefixed string)
+    view.setUint32(offset, recipientBytes.length, true);
+    offset += 4;
+    payload.set(recipientBytes, offset);
+    offset += recipientBytes.length;
+
+    // Write callback_url (Option<String> = None)
+    payload[offset] = 0; // 0 = None
 
     // Sign with Ledger
     const signature = await this.ledger.signMessage(payload, this.derivationPath);
 
+    // Convert signature to base64 (backend expects base64, not base58)
+    const signatureBase64 = btoa(String.fromCharCode(...signature));
+
     return {
       accountId: accounts[0].accountId,
       publicKey: accounts[0].publicKey,
-      signature: baseEncode(signature),
+      signature: signatureBase64,
     };
   }
 }
