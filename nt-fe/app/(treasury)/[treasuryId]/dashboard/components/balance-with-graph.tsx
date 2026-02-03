@@ -227,11 +227,11 @@ export default function BalanceWithGraph({
                         hasUSD: false,
                     };
                     const hasUSD =
-                        snapshot.value_usd !== null &&
-                        snapshot.value_usd !== undefined;
+                        snapshot.valueUsd !== null &&
+                        snapshot.valueUsd !== undefined;
 
                     timeMap.set(snapshot.timestamp, {
-                        usdValue: existing.usdValue + (snapshot.value_usd || 0),
+                        usdValue: existing.usdValue + (snapshot.valueUsd || 0),
                         hasUSD: existing.hasUSD || hasUSD,
                     });
                 }
@@ -282,13 +282,13 @@ export default function BalanceWithGraph({
                             hasUSD: false,
                         };
                         const hasUSD =
-                            snapshot.value_usd !== null &&
-                            snapshot.value_usd !== undefined;
+                            snapshot.valueUsd !== null &&
+                            snapshot.valueUsd !== undefined;
                         const balanceValue = parseFloat(snapshot.balance) || 0;
 
                         timeMap.set(snapshot.timestamp, {
                             usdValue:
-                                existing.usdValue + (snapshot.value_usd || 0),
+                                existing.usdValue + (snapshot.valueUsd || 0),
                             balanceValue: existing.balanceValue + balanceValue,
                             hasUSD: existing.hasUSD || hasUSD,
                         });

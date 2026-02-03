@@ -156,7 +156,7 @@ export function RecentActivity() {
                                     {getActivityFrom(
                                         activity.amount,
                                         activity.counterparty,
-                                        activity.receiver_id,
+                                        activity.receiverId,
                                     )}
                                 </div>
                             </div>
@@ -183,9 +183,9 @@ export function RecentActivity() {
                                 <span className="font-semibold">
                                     {formatAmount(
                                         activity.amount,
-                                        activity.token_metadata.decimals,
+                                        activity.tokenMetadata.decimals,
                                     )}{" "}
-                                    {activity.token_metadata.symbol}
+                                    {activity.tokenMetadata.symbol}
                                 </span>
                             </div>
                             <div className="text-sm text-muted-foreground">

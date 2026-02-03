@@ -126,9 +126,9 @@ fn prepare_args(payload: CreateTreasuryRequest) -> Result<serde_json::Value, ser
           "quorum": "0",
           "threshold": [1, 2],
         },
-        "proposal_bond": NearToken::from_millinear(100),
+        "proposal_bond": NearToken::from_millinear(0),
         "proposal_period": "604800000000000",
-        "bounty_bond": NearToken::from_millinear(100),
+        "bounty_bond": NearToken::from_millinear(0),
         "bounty_forgiveness_period": "604800000000000",
       },
     });

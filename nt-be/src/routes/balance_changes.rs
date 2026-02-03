@@ -25,18 +25,30 @@ pub struct BalanceChangesQuery {
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct BalanceChange {
     pub id: i64,
+    #[serde(rename = "accountId")]
     pub account_id: String,
+    #[serde(rename = "blockHeight")]
     pub block_height: i64,
+    #[serde(rename = "blockTime")]
     pub block_time: DateTime<Utc>,
+    #[serde(rename = "tokenId")]
     pub token_id: String,
+    #[serde(rename = "receiptId")]
     pub receipt_id: Vec<String>,
+    #[serde(rename = "transactionHashes")]
     pub transaction_hashes: Vec<String>,
+    #[serde(rename = "counterparty")]
     pub counterparty: Option<String>,
+    #[serde(rename = "signerId")]
     pub signer_id: Option<String>,
+    #[serde(rename = "receiverId")]
     pub receiver_id: Option<String>,
     pub amount: BigDecimal,
+    #[serde(rename = "balanceBefore")]
     pub balance_before: BigDecimal,
+    #[serde(rename = "balanceAfter")]
     pub balance_after: BigDecimal,
+    #[serde(rename = "createdAt")]
     pub created_at: DateTime<Utc>,
 }
 
@@ -50,13 +62,20 @@ pub struct RecentActivityResponse {
 pub struct RecentActivity {
     pub id: i64,
     pub block_time: DateTime<Utc>,
+    #[serde(rename = "tokenId")]
     pub token_id: String,
+    #[serde(rename = "tokenMetadata")]
     pub token_metadata: TokenMetadata,
     pub counterparty: Option<String>,
+    #[serde(rename = "signerId")]
     pub signer_id: Option<String>,
+    #[serde(rename = "receiverId")]
     pub receiver_id: Option<String>,
     pub amount: BigDecimal,
+    #[serde(rename = "transactionHashes")]
     pub transaction_hashes: Vec<String>,
+    #[serde(rename = "receiptIds")]
+    pub receipt_ids: Vec<String>,
 }
 
 pub async fn get_balance_changes(
@@ -314,6 +333,7 @@ pub async fn get_recent_activity(
                 signer_id: change.signer_id,
                 receiver_id: change.receiver_id,
                 amount: change.amount,
+                receipt_ids: change.receipt_id,
                 transaction_hashes: change.transaction_hashes,
             }
         })

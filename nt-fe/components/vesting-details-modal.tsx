@@ -1,6 +1,12 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/modal";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/modal";
 import { Button } from "@/components/button";
 import { TreasuryAsset } from "@/lib/api";
 import { FormattedDate } from "@/components/formatted-date";
@@ -8,11 +14,19 @@ import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { useTreasuryLockup } from "@/hooks/use-lockup";
 import { availableBalance } from "@/lib/balance";
 import { formatBalance } from "@/lib/utils";
-import { buildEarningOverviewItems, hasStakingActivity } from "@/lib/earning-utils";
+import {
+    buildEarningOverviewItems,
+    hasStakingActivity,
+} from "@/lib/earning-utils";
 import Big from "big.js";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { AmountSummary } from "./amount-summary";
 
 interface VestingDetailsModalProps {
     isOpen: boolean;
@@ -28,7 +42,7 @@ export function VestingDetailsModal({
     treasuryId,
 }: VestingDetailsModalProps) {
     const { data: lockupContract, isLoading } = useTreasuryLockup(
-        isOpen && treasuryId ? treasuryId : null
+        isOpen && treasuryId ? treasuryId : null,
     );
 
     if (!asset || asset.balance.type !== "Vested") return null;
@@ -39,7 +53,11 @@ export function VestingDetailsModal({
 
     // Calculate vested percentage
     const vestedPercent = lockup.totalAllocated.gt(0)
-        ? lockup.totalAllocated.sub(lockup.unvested).div(lockup.totalAllocated).mul(100).toNumber()
+        ? lockup.totalAllocated
+              .sub(lockup.unvested)
+              .div(lockup.totalAllocated)
+              .mul(100)
+              .toNumber()
         : 0;
 
     const vestedAmount = lockup.totalAllocated.sub(lockup.unvested);
@@ -56,7 +74,12 @@ export function VestingDetailsModal({
             label: "Start Date",
             value: (
                 <FormattedDate
-                    date={new Date(lockupContract.vestingSchedule.startTimestamp / 1_000_000)}
+                    date={
+                        new Date(
+                            lockupContract.vestingSchedule.startTimestamp /
+                                1_000_000,
+                        )
+                    }
                     includeTime={false}
                 />
             ),
@@ -65,7 +88,12 @@ export function VestingDetailsModal({
             label: "End Date",
             value: (
                 <FormattedDate
-                    date={new Date(lockupContract.vestingSchedule.endTimestamp / 1_000_000)}
+                    date={
+                        new Date(
+                            lockupContract.vestingSchedule.endTimestamp /
+                                1_000_000,
+                        )
+                    }
                     includeTime={false}
                 />
             ),
@@ -100,12 +128,12 @@ export function VestingDetailsModal({
     // Earning Overview items (only shown if has stake)
     const earningOverviewItems = hasStake
         ? buildEarningOverviewItems({
-            staked: lockup.staked,
-            unstakedBalance: lockup.unstakedBalance,
-            canWithdraw: lockup.canWithdraw,
-            symbol: asset.symbol,
-            formatTokenBalance,
-        })
+              staked: lockup.staked,
+              unstakedBalance: lockup.unstakedBalance,
+              canWithdraw: lockup.canWithdraw,
+              symbol: asset.symbol,
+              formatTokenBalance,
+          })
         : [];
 
     return (
@@ -117,73 +145,98 @@ export function VestingDetailsModal({
 
                 <div className="flex flex-col gap-5">
                     {/* Available Balance Display */}
-                    <div className="bg-muted rounded-lg flex flex-col items-center justify-center gap-2 py-6">
-                        <p className="text-sm text-muted-foreground font-medium">Available To Use</p>
-                        {asset.icon && (
-                            <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center border">
-                                <img
-                                    src={asset.icon}
-                                    alt={asset.symbol}
-                                    className="w-10 h-10 rounded-full"
-                                />
-                            </div>
-                        )}
-                        <div className="text-center">
-                            <span className="text-2xl font-bold">{formatTokenBalance(available)}</span>
-                            <span className="text-muted-foreground ml-1">{asset.symbol}</span>
-                        </div>
-                    </div>
+                    <AmountSummary
+                        title="Available To Use"
+                        total={formatTokenBalance(available)}
+                        token={{
+                            address: asset.contractId || "",
+                            symbol: asset.symbol,
+                            decimals: asset.decimals,
+                            name: asset.name,
+                            icon: asset.icon,
+                            network: asset.network,
+                        }}
+                    />
 
                     {/* Vesting Period */}
                     {isLoading ? (
                         <div className="flex flex-col gap-2">
                             <div className="flex flex-col gap-0.5">
-                                <h3 className="text-sm font-semibold">Vesting Period</h3>
-                                <p className="text-xs text-muted-foreground">Tokens unlock daily during this period.</p>
+                                <h3 className="text-sm font-semibold">
+                                    Vesting Period
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Tokens unlock daily during this period.
+                                </p>
                             </div>
                             <Skeleton className="h-16 w-full" />
                         </div>
                     ) : vestingPeriodItems.length > 0 ? (
                         <div className="flex flex-col gap-2">
                             <div className="flex flex-col gap-0.5">
-                                <h3 className="text-sm font-semibold">Vesting Period</h3>
-                                <p className="text-xs text-muted-foreground">Tokens unlock daily during this period.</p>
+                                <h3 className="text-sm font-semibold">
+                                    Vesting Period
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Tokens unlock daily during this period.
+                                </p>
                             </div>
-                            <InfoDisplay items={vestingPeriodItems} hideSeparator size="sm" />
+                            <InfoDisplay
+                                items={vestingPeriodItems}
+                                hideSeparator
+                                size="sm"
+                            />
                         </div>
                     ) : null}
 
                     {/* Token Breakdown - Collapsible, open by default */}
                     <Collapsible defaultOpen className="">
                         <CollapsibleTrigger className="w-full flex items-center justify-between py-2 group">
-                            <h3 className="text-sm font-semibold">Token Breakdown</h3>
+                            <h3 className="text-sm font-semibold">
+                                Token Breakdown
+                            </h3>
                             <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:hidden" />
                             <ChevronUp className="size-4 text-muted-foreground transition-transform group-data-[state=closed]:hidden" />
                         </CollapsibleTrigger>
                         <CollapsibleContent className="flex flex-col">
-                            <InfoDisplay items={tokenBreakdownItems} hideSeparator size="sm" />
+                            <InfoDisplay
+                                items={tokenBreakdownItems}
+                                hideSeparator
+                                size="sm"
+                            />
                         </CollapsibleContent>
                     </Collapsible>
 
                     {/* Earning Overview - Collapsible, collapsed by default if not staked */}
                     <Collapsible defaultOpen={hasStake}>
                         <CollapsibleTrigger className="w-full flex items-center justify-between py-2 group">
-                            <h3 className="text-sm font-semibold">Earning Overview</h3>
+                            <h3 className="text-sm font-semibold">
+                                Earning Overview
+                            </h3>
                             <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:hidden" />
                             <ChevronUp className="size-4 text-muted-foreground transition-transform group-data-[state=closed]:hidden" />
                         </CollapsibleTrigger>
                         <CollapsibleContent className="flex flex-col gap-2">
                             {hasStake ? (
-                                <InfoDisplay items={earningOverviewItems} hideSeparator size="sm" />
+                                <InfoDisplay
+                                    items={earningOverviewItems}
+                                    hideSeparator
+                                    size="sm"
+                                />
                             ) : (
                                 <div className="py-1.5 text-center flex flex-col items-center gap-2">
                                     <div className="bg-muted rounded-full p-2 text-center">
                                         <Clock className="size-5 text-muted-foreground" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium">Earn is almost ready!</p>
+                                        <p className="text-sm font-medium">
+                                            Earn is almost ready!
+                                        </p>
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            We're finalizing this feature<br />so you can start earning tokens shortly.
+                                            We're finalizing this feature
+                                            <br />
+                                            so you can start earning tokens
+                                            shortly.
                                         </p>
                                     </div>
                                 </div>
@@ -193,7 +246,11 @@ export function VestingDetailsModal({
                 </div>
 
                 <DialogFooter>
-                    <Button className="w-full" disabled tooltipContent="Coming soon">
+                    <Button
+                        className="w-full"
+                        disabled
+                        tooltipContent="Coming soon"
+                    >
                         Send
                     </Button>
                 </DialogFooter>
