@@ -9,12 +9,13 @@ interface AmountProps {
     tokenId: string;
     showUSDValue?: boolean;
     showNetwork?: boolean;
+    network?: string; // Optional override for network display
     textOnly?: boolean;
     iconSize?: "sm" | "md" | "lg";
 }
 
 
-export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, showUSDValue = true, showNetwork = false, iconSize = "lg" }: AmountProps) {
+export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, showUSDValue = true, showNetwork = false, network, iconSize = "lg" }: AmountProps) {
     const { data: tokenData } = useToken(tokenId);
     const amountValue = amount ? formatBalance(amount, tokenData?.decimals || 24) : Number(amountWithDecimals).toFixed(6);
     const estimatedUSDValue = useMemo(() => {
@@ -51,11 +52,12 @@ export function Amount({ amount, amountWithDecimals, textOnly = false, tokenId, 
                 )}
                 {showUSDValue && <span className="text-muted-foreground text-xs">({estimatedUSDValue})</span>}
             </div>
-            {showNetwork && tokenData?.network && (
+            {showNetwork && (network || tokenData?.network) && (
                 <span className="text-muted-foreground text-xs">
-                    Network: {tokenData.network?.toUpperCase()}
+                    Network: {(network || tokenData?.network)?.toUpperCase()}
                 </span>
             )}
         </div>
     );
 }
+``

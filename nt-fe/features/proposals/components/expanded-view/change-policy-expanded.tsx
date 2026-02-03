@@ -13,7 +13,7 @@ import { renderDiff, isNullValue } from "../../utils/diff-utils";
 import { formatRoleName } from "@/components/role-name";
 import { Proposal } from "@/lib/proposals-api";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { computePolicyDiff } from "../../utils/policy-diff-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -149,13 +149,13 @@ export function ChangePolicyExpanded({ data, proposal }: ChangePolicyExpandedPro
   const [expandedAdded, setExpandedAdded] = useState<number[]>([]);
   const [expandedRemoved, setExpandedRemoved] = useState<number[]>([]);
   const [expandedUpdated, setExpandedUpdated] = useState<number[]>([]);
-  const { selectedTreasury } = useTreasury();
+  const { treasuryId } = useTreasury();
 
   const isPending = proposal.status === "InProgress";
 
   // If not pending, fetch the policy at the time of submission
   const { data: oldPolicy, isLoading: isLoadingTimestamped } = useTreasuryPolicy(
-    selectedTreasury,
+    treasuryId,
     !isPending ? proposal.submission_time : null
   );
 

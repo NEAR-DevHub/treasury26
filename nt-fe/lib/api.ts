@@ -1,6 +1,12 @@
 import { Policy } from "@/types/policy";
 import axios from "axios";
 import Big from "big.js";
+import {
+  Balance,
+  BalanceRaw,
+  LockupBalance,
+  transformBalance,
+} from "./balance";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -75,7 +81,7 @@ export async function getUserTreasuries(
   }
 }
 
-export type TokenResidency = "Near" | "Ft" | "Intents";
+export type TokenResidency = "Near" | "Ft" | "Intents" | "Lockup" | "Staked";
 
 export interface TreasuryAsset {
   id: string;
@@ -85,8 +91,7 @@ export interface TreasuryAsset {
   chainName: string;
   chainIcons?: ChainIcons;
   symbol: string;
-  balance: Big;
-  lockedBalance?: Big;
+  balance: Balance;
   decimals: number;
   price: number;
   name: string;
@@ -108,8 +113,7 @@ interface TreasuryAssetRaw {
   chainName: string;
   chainIcons?: ChainIcons;
   symbol: string;
-  balance: string;
-  lockedBalance?: string;
+  balance: BalanceRaw;
   decimals: number;
   price: string;
   name: string;
@@ -135,9 +139,10 @@ export async function getTreasuryAssets(
 
     // Transform raw tokens with USD values
     const tokensWithUSD = response.data.map((token) => {
-      const balance = Big(token.balance).div(Big(10).pow(token.decimals));
+      const { balance, total } = transformBalance(token.balance);
       const price = parseFloat(token.price);
-      const balanceUSD = balance.mul(price).toNumber();
+      const totalDecimalAdjusted = total.div(Big(10).pow(token.decimals));
+      const balanceUSD = totalDecimalAdjusted.mul(price).toNumber();
 
       return {
         id: token.id,
@@ -146,8 +151,7 @@ export async function getTreasuryAssets(
         network: token.network,
         symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
         decimals: token.decimals,
-        balance: Big(token.balance),
-        lockedBalance: token.lockedBalance ? Big(token.lockedBalance) : undefined,
+        balance,
         chainName: token.chainName,
         chainIcons: token.chainIcons,
         balanceUSD,
@@ -184,7 +188,7 @@ export async function getTreasuryAssets(
 
 export interface BalanceSnapshot {
   timestamp: string; // ISO 8601 format
-  balance: string;   // Decimal-adjusted balance
+  balance: string; // Decimal-adjusted balance
   price_usd?: number; // USD price at timestamp (null if unavailable)
   value_usd?: number; // balance * price_usd (null if unavailable)
 }
@@ -198,7 +202,7 @@ export type ChartInterval = "hourly" | "daily" | "weekly" | "monthly";
 export interface BalanceChartRequest {
   accountId: string;
   startTime: string; // ISO 8601 format
-  endTime: string;   // ISO 8601 format
+  endTime: string; // ISO 8601 format
   interval: ChartInterval;
   tokenIds?: string[]; // If omitted, returns all tokens
 }
@@ -225,10 +229,12 @@ export async function getBalanceChart(
 
     // Add token_ids as comma-separated values
     if (params.tokenIds && params.tokenIds.length > 0) {
-      queryParams.append('token_ids', params.tokenIds.join(','));
+      queryParams.append("token_ids", params.tokenIds.join(","));
     }
 
-    const response = await axios.get<BalanceChartData>(`${url}?${queryParams.toString()}`);
+    const response = await axios.get<BalanceChartData>(
+      `${url}?${queryParams.toString()}`,
+    );
 
     return response.data;
   } catch (error) {
@@ -436,7 +442,10 @@ export async function getBatchStorageDepositIsRegistered(
 
     return response.data;
   } catch (error) {
-    console.error("Error getting batch storage deposit registrations", error);
+    console.error(
+      "Error getting batch storage deposit registrations",
+      error,
+    );
     return [];
   }
 }
@@ -470,7 +479,11 @@ export async function getTokenMetadata(
   if (!tokenId) return null;
 
   let token = tokenId;
-  if (!token.startsWith("nep141:") && !token.startsWith("nep245:") && token.toLowerCase() !== "near") {
+  if (
+    !token.startsWith("nep141:") &&
+    !token.startsWith("nep245:") &&
+    token.toLowerCase() !== "near"
+  ) {
     token = `nep141:${token}`;
   }
 
@@ -483,10 +496,7 @@ export async function getTokenMetadata(
 
     return response.data;
   } catch (error) {
-    console.error(
-      `Error getting metadata for token ${tokenId}`,
-      error,
-    );
+    console.error(`Error getting metadata for token ${tokenId}`, error);
     return null;
   }
 }
@@ -509,6 +519,45 @@ export async function getLockupPool(accountId: string): Promise<string | null> {
     return response.data;
   } catch (error) {
     console.error(`Error getting lockup pool for ${accountId}`, error);
+    return null;
+  }
+}
+
+export interface VestingSchedule {
+  startTimestamp: number;
+  cliffTimestamp: number;
+  endTimestamp: number;
+}
+
+export interface LockupContractInfo {
+  ownerAccountId: string;
+  vestingSchedule: VestingSchedule | null;
+  lockupTimestamp: number | null;
+  lockupDuration: number;
+  releaseDuration: number | null;
+  stakingPoolAccountId: string | null;
+}
+
+/**
+ * Get lockup contract information including vesting schedule
+ * Fetches from backend which queries the lockup contract on the blockchain
+ * Returns detailed lockup info including vesting dates if available
+ */
+export async function getLockupContract(
+  accountId: string,
+): Promise<LockupContractInfo | null> {
+  if (!accountId) return null;
+
+  try {
+    const url = `${BACKEND_API_BASE}/user/lockup`;
+
+    const response = await axios.get<LockupContractInfo | null>(url, {
+      params: { accountId },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error getting lockup contract for ${accountId}`, error);
     return null;
   }
 }
@@ -568,7 +617,7 @@ export async function getBatchProfiles(
   }
 }
 
-export type PaymentStatus = { Paid: {}, Pending: {}, Failed: {} }
+export type PaymentStatus = { Paid: {}; Pending: {}; Failed: {} };
 
 export interface BatchPayment {
   recipient: string;
@@ -588,12 +637,12 @@ export interface BatchPaymentResponse {
  * Fetches from backend which queries the batch payment contract
  */
 export async function getBatchPayment(
-  batchId: string
+  batchId: string,
 ): Promise<BatchPaymentResponse | null> {
   if (!batchId) return null;
 
   try {
-    const url = `${BACKEND_API_BASE}/bulkpayment/get`;
+    const url = `${BACKEND_API_BASE}/bulk-payment/get`;
 
     const response = await axios.get<BatchPaymentResponse>(url, {
       params: { batchId: batchId },
@@ -615,7 +664,7 @@ export interface CheckHandleUnusedResponse {
  * Validates that the account doesn't already exist on the blockchain
  */
 export async function checkHandleUnused(
-  treasuryId: string
+  treasuryId: string,
 ): Promise<CheckHandleUnusedResponse | null> {
   if (!treasuryId) return null;
 
@@ -628,7 +677,10 @@ export async function checkHandleUnused(
 
     return response.data;
   } catch (error) {
-    console.error(`Error checking if handle is unused for ${treasuryId}`, error);
+    console.error(
+      `Error checking if handle is unused for ${treasuryId}`,
+      error,
+    );
     return null;
   }
 }
@@ -642,7 +694,7 @@ export interface CheckAccountExistsResponse {
  * Works with any account ID, not limited to sputnik-dao accounts
  */
 export async function checkAccountExists(
-  accountId: string
+  accountId: string,
 ): Promise<CheckAccountExistsResponse | null> {
   if (!accountId) return null;
 
@@ -655,7 +707,10 @@ export async function checkAccountExists(
 
     return response.data;
   } catch (error) {
-    console.error(`Error checking if account exists for ${accountId}`, error);
+    console.error(
+      `Error checking if account exists for ${accountId}`,
+      error,
+    );
     return null;
   }
 }
@@ -679,7 +734,7 @@ export interface CreateTreasuryResponse {
  * Returns the created treasury account ID
  */
 export async function createTreasury(
-  request: CreateTreasuryRequest
+  request: CreateTreasuryRequest,
 ): Promise<CreateTreasuryResponse> {
   try {
     const url = `${BACKEND_API_BASE}/treasury/create`;
@@ -736,7 +791,7 @@ export interface SearchTokensResponse {
  * @returns Object with tokenIn and tokenOut search results
  */
 export async function searchIntentsTokens(
-  params: SearchTokensParams
+  params: SearchTokensParams,
 ): Promise<SearchTokensResponse> {
   try {
     const queryParams = new URLSearchParams();
@@ -748,7 +803,10 @@ export async function searchIntentsTokens(
       queryParams.append("tokenOut", params.tokenOut);
     }
     if (params.intentsTokenContractId) {
-      queryParams.append("intentsTokenContractId", params.intentsTokenContractId);
+      queryParams.append(
+        "intentsTokenContractId",
+        params.intentsTokenContractId,
+      );
     }
     if (params.destinationNetwork) {
       queryParams.append("destinationNetwork", params.destinationNetwork);
@@ -809,7 +867,7 @@ export interface OpenTreasuryResponse {
  * Returns the status of a payment list including counts of processed/pending payments
  */
 export async function getBulkPaymentListStatus(
-  listId: string
+  listId: string,
 ): Promise<BulkPaymentListStatusResponse | null> {
   if (!listId) return null;
 
@@ -818,7 +876,10 @@ export async function getBulkPaymentListStatus(
     const response = await axios.get<BulkPaymentListStatusResponse>(url);
     return response.data;
   } catch (error) {
-    console.error(`Error getting bulk payment list status for ${listId}`, error);
+    console.error(
+      `Error getting bulk payment list status for ${listId}`,
+      error,
+    );
     return null;
   }
 }
@@ -828,7 +889,7 @@ export async function getBulkPaymentListStatus(
  * Returns the list of completed payment transactions with block heights
  */
 export async function getBulkPaymentTransactions(
-  listId: string
+  listId: string,
 ): Promise<BulkPaymentTransactionsResponse | null> {
   if (!listId) return null;
 
@@ -837,7 +898,10 @@ export async function getBulkPaymentTransactions(
     const response = await axios.get<BulkPaymentTransactionsResponse>(url);
     return response.data;
   } catch (error) {
-    console.error(`Error getting bulk payment transactions for ${listId}`, error);
+    console.error(
+      `Error getting bulk payment transactions for ${listId}`,
+      error,
+    );
     return null;
   }
 }
@@ -848,16 +912,20 @@ export async function getBulkPaymentTransactions(
  */
 export async function getBulkPaymentTransactionHash(
   listId: string,
-  recipient: string
+  recipient: string,
 ): Promise<BulkPaymentTransactionHashResponse | null> {
   if (!listId || !recipient) return null;
 
   try {
     const url = `${BACKEND_API_BASE}/bulk-payment/list/${listId}/transaction/${encodeURI(recipient)}`;
-    const response = await axios.get<BulkPaymentTransactionHashResponse>(url);
+    const response =
+      await axios.get<BulkPaymentTransactionHashResponse>(url);
     return response.data;
   } catch (error) {
-    console.error(`Error getting transaction hash for ${recipient} in ${listId}`, error);
+    console.error(
+      `Error getting transaction hash for ${recipient} in ${listId}`,
+      error,
+    );
     return null;
   }
 }
@@ -869,7 +937,7 @@ export async function getBulkPaymentTransactionHash(
  * - If already registered: returns existing record without changes
  */
 export async function openTreasury(
-  treasuryId: string
+  treasuryId: string,
 ): Promise<OpenTreasuryResponse | null> {
   if (!treasuryId) return null;
 
@@ -881,6 +949,146 @@ export async function openTreasury(
     return response.data;
   } catch (error) {
     console.error(`Error registering treasury ${treasuryId}`, error);
+
     return null;
   }
 }
+
+/**
+ * Mark a DAO as dirty, triggering immediate re-sync of membership data
+ * Called after voting on policy-related proposals (add/remove member, change policy)
+ * This ensures membership changes are reflected immediately without waiting for
+ * the 5-minute background sync
+ */
+export async function markDaoDirty(daoId: string): Promise<void> {
+  if (!daoId) return;
+
+  try {
+    const url = `${BACKEND_API_BASE}/dao/mark-dirty`;
+    await axios.post(url, { daoId });
+  } catch (error) {
+    // Don't throw - this is a non-critical optimization
+    console.warn(`Failed to mark DAO ${daoId} as dirty:`, error);
+
+  }
+  }
+  
+export interface IntentsQuoteRequest {
+  dry?: boolean;
+  swapType?: string;
+  slippageTolerance?: number;
+  originAsset: string;
+  depositType?: string;
+  destinationAsset: string;
+  amount: string;
+  refundTo?: string;
+  refundType?: string;
+  recipient?: string;
+  recipientType?: string;
+  deadline: string;
+  quoteWaitingTimeMs?: number;
+}
+
+export interface IntentsQuote {
+  amountIn: string;
+  amountInFormatted: string;
+  amountInUsd: string;
+  minAmountIn: string;
+  amountOut: string;
+  amountOutFormatted: string;
+  amountOutUsd: string;
+  minAmountOut: string;
+  timeEstimate: number;
+  depositAddress: string;
+  deadline: string;
+  timeWhenInactive: string;
+}
+
+export interface IntentsQuoteResponse {
+  quote: IntentsQuote;
+  quoteRequest: IntentsQuoteRequest;
+  signature: string;
+  timestamp: string;
+  correlationId: string;
+}
+
+/**
+ * Get quote from 1click intents API
+ * @param request - Quote request parameters
+ * @param dry - If true, returns a dry quote without creating a proposal. If false, creates an actual intent proposal
+ */
+export async function getIntentsQuote(
+  request: IntentsQuoteRequest,
+  dry: boolean = true
+): Promise<IntentsQuoteResponse | null> {
+  try {
+    const url = `${BACKEND_API_BASE}/intents/quote`;
+    const response = await axios.post<IntentsQuoteResponse>(url, {
+      ...request,
+      dry,
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error(`Error getting intents ${dry ? 'dry quote' : 'proposal'}:`, error);
+    const message = error.response?.data || error?.message || 'Failed to get quote';
+    throw new Error(message);
+  }
+
+}
+
+/**
+ * Bulk Payment Usage Statistics
+ */
+export interface BulkPaymentUsageStats {
+  credits_available: number;
+  credits_used: number;
+  total_credits: number;
+}
+
+/**
+ * Get bulk payment usage statistics for a treasury
+ * Returns credits available, used, and total
+ */
+export async function getBulkPaymentUsageStats(
+  treasuryId: string
+): Promise<BulkPaymentUsageStats> {
+  const response = await axios.get<BulkPaymentUsageStats>(
+    `${BACKEND_API_BASE}/bulk-payment/usage-stats`,
+    {
+      params: { treasury_id: treasuryId },
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Plan Details
+ */
+export type PlanType = "trial" | "plus" | "pro" | "custom";
+export type PlanPeriod = "trial" | "month";
+
+export interface PlanDetails {
+  plan_type: PlanType;
+  batch_payment_credit_limit: number | null; // null for unlimited
+  period: PlanPeriod;
+}
+
+/**
+ * Get plan details for a treasury
+ * Returns the plan type, credit limits for various features, and period information
+ */
+export async function getPlanDetails(
+  treasuryId: string
+): Promise<PlanDetails> {
+  const response = await axios.get<PlanDetails>(
+    `${BACKEND_API_BASE}/plan/details`,
+    {
+      params: { treasury_id: treasuryId },
+    }
+  );
+  return response.data;
+}
+
+
+
+

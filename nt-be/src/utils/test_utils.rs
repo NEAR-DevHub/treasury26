@@ -56,17 +56,47 @@ pub async fn init_test_state() -> AppState {
 
     let http_client = reqwest::Client::new();
 
-    // Initialize price service - with CoinGecko provider if API key is available
-    let price_service = if let Some(api_key) = env_vars.coingecko_api_key.as_ref() {
-        let base_url = &env_vars.coingecko_api_base_url;
-        let coingecko_client = crate::services::CoinGeckoClient::with_base_url(
-            http_client.clone(),
-            api_key.clone(),
-            base_url.clone(),
-        );
-        crate::services::PriceLookupService::new(db_pool.clone(), coingecko_client)
+    // Initialize price service with DeFiLlama provider (free, no API key required)
+    let base_url = &env_vars.defillama_api_base_url;
+    let defillama_client =
+        crate::services::DeFiLlamaClient::with_base_url(http_client.clone(), base_url.clone());
+    let price_service = crate::services::PriceLookupService::new(db_pool.clone(), defillama_client);
+
+    // Create network configs first (needed for transfer hint service)
+    let network = NetworkConfig {
+        rpc_endpoints: vec![
+            RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
+                .with_api_key(env_vars.fastnear_api_key.clone()),
+        ],
+        ..NetworkConfig::mainnet()
+    };
+
+    let archival_network = NetworkConfig {
+        rpc_endpoints: vec![
+            RPCEndpoint::new(
+                "https://archival-rpc.mainnet.fastnear.com/"
+                    .parse()
+                    .unwrap(),
+            )
+            .with_api_key(env_vars.fastnear_api_key.clone()),
+        ],
+        ..NetworkConfig::mainnet()
+    };
+
+    // Create transfer hint service if enabled
+    let transfer_hint_service = if env_vars.transfer_hints_enabled {
+        use crate::handlers::balance_changes::transfer_hints::{
+            TransferHintService, fastnear::FastNearProvider,
+        };
+        let provider = if let Some(base_url) = &env_vars.transfer_hints_base_url {
+            FastNearProvider::with_base_url(archival_network.clone(), base_url.clone())
+        } else {
+            FastNearProvider::new(archival_network.clone())
+        }
+        .with_api_key(&env_vars.fastnear_api_key);
+        Some(TransferHintService::new().with_provider(provider))
     } else {
-        crate::services::PriceLookupService::without_provider(db_pool.clone())
+        None
     };
 
     AppState {
@@ -76,27 +106,12 @@ pub async fn init_test_state() -> AppState {
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
         signer_id: env_vars.signer_id.clone(),
-        network: NetworkConfig {
-            rpc_endpoints: vec![
-                RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
-                    .with_api_key(env_vars.fastnear_api_key.clone()),
-            ],
-            ..NetworkConfig::mainnet()
-        },
-        archival_network: NetworkConfig {
-            rpc_endpoints: vec![
-                RPCEndpoint::new(
-                    "https://archival-rpc.mainnet.fastnear.com/"
-                        .parse()
-                        .unwrap(),
-                )
-                .with_api_key(env_vars.fastnear_api_key.clone()),
-            ],
-            ..NetworkConfig::mainnet()
-        },
+        network,
+        archival_network,
         bulk_payment_contract_id: env_vars.bulk_payment_contract_id.clone(),
         env_vars,
         db_pool,
         price_service,
+        transfer_hint_service,
     }
 }

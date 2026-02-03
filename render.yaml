@@ -5,11 +5,11 @@ services:
     runtime: rust
     plan: starter
     rootDir: nt-be
-    buildCommand: cargo build --release --bin nt-be
+    buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be
     startCommand: ./target/release/nt-be
+    domains:
+      - api.trezu.app
     envVars:
-      - key: PIKESPEAK_KEY
-        sync: false
       - key: FASTNEAR_API_KEY
         sync: false
       - key: SIGNER_KEY
@@ -22,6 +22,8 @@ services:
         value: info
       - key: PORT
         value: 10000
+      - key: JWT_SECRET
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: database
@@ -34,18 +36,48 @@ services:
     runtime: node
     plan: starter
     rootDir: nt-fe
-    buildCommand: bun install && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
+    buildCommand: bun install && node ./node_modules/geoip-lite/scripts/updatedb.js license_key=$MAXMIND_LICENSE_KEY && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
     startCommand: node .next/standalone/server.js
+    domains:
+      - trezu.app
+      - www.trezu.app
     envVars:
       - key: NODE_ENV
         value: production
+      - key: MAXMIND_LICENSE_KEY
+        sync: false
       - key: NEXT_PUBLIC_BACKEND_API_BASE
-        fromService:
-          type: web
-          name: near-treasury-backend
-          envVarKey: RENDER_EXTERNAL_URL
+        value: https://api.trezu.app
+    healthCheckPath: /
+
+  - type: web
+    name: nt-nocodb
+    runtime: image
+    plan: starter
+    image:
+      url: docker.io/nocodb/nocodb:0.301.2
+    disk: 
+      name: nocodb-disk
+      mountPath: /usr/app/data/
+      sizeGB: 1
+    domains:
+      - nocodb.trezu.app
+      - www.nocodb.trezu.app
+    envVars:
+      - key: NC_CONNECTION_ENCRYPT_KEY
+        generateValue: true
+      - key: NC_AUTH_JWT_SECRET
+        generateValue: true
+      - key: NC_GOOGLE_CLIENT_ID
+        sync: false
+      - key: NC_GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: NC_PUBLIC_URL
+        sync: false
     healthCheckPath: /
 
 databases:
   - name: database
-    plan: free
+    plan: basic-1gb
+    diskSizeGB: 1
+    ipAllowList: [] # No entries in the IP allow list

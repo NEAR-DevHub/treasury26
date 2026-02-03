@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO dao_members (dao_id, account_id)\n            SELECT unnest($1::text[]), unnest($2::text[])\n            ON CONFLICT (dao_id, account_id) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "353abba7040f4631b5f69bcf1a76958e38a1234e325fb406c7e542c7c6a11eed"
+}

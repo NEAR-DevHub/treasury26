@@ -24,6 +24,9 @@
   --general-border: rgba(229, 229, 229);
   --input: rgb(229, 229, 229);
   --ring: rgb(161, 161, 161);
+  --general-unofficial-border: rgba(212, 212, 212);
+  --general-unofficial-ghost-foreground: rgba(64, 64, 64);
+  --general-unofficial-accent: rgba(229, 229, 229);
   --general-success-background-faded: rgb(220, 252, 231);
   --general-success-foreground: rgb(21, 128, 61);
   --general-destructive-background-faded: rgb(254, 242, 242);
@@ -35,8 +38,11 @@
   --general-warning-border: rgb(254, 240, 138);
   --general-warning-foreground: rgb(161, 98, 7);
   --general-tertiary: rgb(250, 250, 249);
-  --general-unofficial-border-3: rgba(212, 212, 212, 1);
-  --general-unofficial-border-5: rgba(115, 115, 115, 1);
+  --chart-area-fill: rgb(2, 7, 6);
+  --general-unofficial-border-3: rgb(212, 212, 212);
+  --general-unofficial-border-5: rgb(115, 115, 115);
+  --general-secondary: rgb(245, 245, 245);
+  --general-unofficial-outline: rgba(255, 255, 255, 0.1);
   --chart-1: rgb(164, 246, 204);
   --chart-2: rgb(106, 235, 178);
   --chart-3: rgb(10, 191, 122);
@@ -98,6 +104,7 @@
   --chart-3: rgb(39, 100, 237);
   --chart-4: rgb(28, 79, 216);
   --chart-5: rgb(32, 63, 172);
+  --chart-area-fill: rgb(243, 243, 243);
   --sidebar: rgb(25, 25, 26);
   --sidebar-foreground: rgb(250, 250, 250);
   --sidebar-primary: rgb(22, 72, 228);
@@ -116,9 +123,14 @@
   --general-warning-background-faded: rgb(28, 25, 23);
   --general-warning-border: rgb(113, 63, 18);
   --general-warning-foreground: rgb(250, 204, 21);
-  --general-tertiary: rgb(18, 18, 18);
-  --general-unofficial-border-3: rgba(64, 64, 64, 1);
-  --general-unofficial-border-5: rgba(115, 115, 115, 1);
+  --general-tertiary: rgb(28, 25, 23);
+  --general-unofficial-border: rgba(64, 64, 64);
+  --general-unofficial-ghost-foreground: rgba(229, 229, 229);
+  --general-unofficial-accent: rgba(38, 38, 38);
+  --general-unofficial-border-3: rgb(64, 64, 64);
+  --general-unofficial-border-5: rgb(115, 115, 115);
+  --general-secondary: rgba(38, 38, 38);
+  --general-unofficial-outline: rgba(255, 255, 255, 0.05);
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -171,14 +183,20 @@
   --color-general-warning-border: var(--general-warning-border);
   --color-general-warning-foreground: var(--general-warning-foreground);
   --color-general-tertiary: var(--general-tertiary);
+  --color-general-unofficial-border: var(--general-unofficial-border);
+  --color-general-unofficial-ghost-foreground: var(--general-unofficial-ghost-foreground);
+  --color-general-unofficial-accent: var(--general-unofficial-accent);
   --color-general-unofficial-border-3: var(--general-unofficial-border-3);
   --color-general-unofficial-border-5: var(--general-unofficial-border-5);
+  --color-general-secondary: var(--general-secondary);
+  --color-general-unofficial-outline: var(--general-unofficial-outline);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-area-fill: var(--chart-area-fill);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -205,6 +223,9 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+
+  --text-xxs: 0.625rem;
+  --text-xss--line-height: 0.75rem;
 }
 
 @layer base {

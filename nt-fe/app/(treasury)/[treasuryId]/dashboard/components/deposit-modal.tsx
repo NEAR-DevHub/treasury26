@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown } from "lucide-react";
 import QRCode from "react-qr-code";
 import { SelectModal } from "./select-modal";
-import { fetchDepositAssets, fetchDepositAddress } from "@/lib/bridge-api";
-import { useTreasury } from "@/stores/treasury-store";
-import { useThemeStore } from "@/stores/theme-store";
+import { fetchDepositAddress } from "@/lib/bridge-api";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { Button } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { useForm } from "react-hook-form";
@@ -79,8 +79,7 @@ type DepositFormValues = {
 };
 
 export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetworkId }: DepositModalProps) {
-  const { selectedTreasury } = useTreasury();
-  const { theme } = useThemeStore();
+  const { treasuryId } = useTreasury();
 
   const form = useForm<DepositFormValues>({
     resolver: zodResolver(depositFormSchema),
@@ -96,7 +95,6 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
   const [allNetworks, setAllNetworks] = useState<SelectOption[]>([]);
   const [filteredNetworks, setFilteredNetworks] = useState<SelectOption[]>([]);
   const [depositAddress, setDepositAddress] = useState<string | null>(null);
-  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [assetNetworkMap, setAssetNetworkMap] = useState<Map<string, string[]>>(
     new Map()
@@ -105,151 +103,127 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
   const selectedAsset = form.watch("asset");
   const selectedNetwork = form.watch("network");
 
-  // Fetch assets when modal opens, theme changes, or prefill token changes
-  useEffect(() => {
-    if (isOpen) {
-      fetchAssets();
-    }
-  }, [isOpen, theme, prefillTokenSymbol, prefillNetworkId]);
+  const { data: bridgeAssets = [], isLoading: isLoadingAssets } = useBridgeTokens(isOpen);
 
-  // Fetch all assets and networks once
-  const fetchAssets = async () => {
-    setIsLoadingAssets(true);
+  useEffect(() => {
+    if (!isOpen || !bridgeAssets.length) return;
+
     form.clearErrors("asset");
     form.clearErrors("network");
 
-    try {
-      const assets = await fetchDepositAssets(theme);
-      // Add "Other" asset that deposits directly to treasury
-      const otherAsset = {
-        id: "other",
-        name: "Other",
-        symbol: "OTHER",
-        icon: "O",
+    // Add "Other" asset that deposits directly to treasury
+    const otherAsset = {
+      id: "other",
+      name: "Other",
+      symbol: "OTHER",
+      icon: "O",
+      gradient: "bg-gradient-cyan-blue",
+      networks: [
+        {
+          id: "near:mainnet",
+          name: "Near",
+          icon: "https://img.rhea.finance/images/NEARIcon.png",
+          chainId: "near:mainnet",
+        },
+      ],
+    };
+
+    const formattedAssets: SelectOption[] = [
+      ...bridgeAssets.map((asset) => ({
+        id: asset.id,
+        name: asset.name,
+        symbol: asset.symbol,
+        icon: asset.icon,
         gradient: "bg-gradient-cyan-blue",
-        networks: [
-          {
-            id: "near:mainnet",
-            name: "Near",
-            icon: "https://img.rhea.finance/images/NEARIcon.png",
-            chainId: "near:mainnet",
-          },
-        ],
-      };
+        networks: asset.networks,
+      })),
+    ];
 
-      // Format assets
-      const formattedAssets: SelectOption[] = [
-        ...assets.map((asset: any) => {
-          // Check if icon is a valid URL or data URI
-          const hasValidIcon =
-            asset.icon &&
-            (asset.icon.startsWith("http") ||
-              asset.icon.startsWith("data:") ||
-              asset.icon.startsWith("/"));
+    // Add "Other" at the end
+    formattedAssets.push(otherAsset);
 
-          return {
-            id: asset.id,
-            name: asset.name || asset.assetName,
-            symbol: asset.symbol === 'wNEAR' ? 'NEAR' : asset.symbol,
-            icon: hasValidIcon ? asset.icon : asset.symbol?.charAt(0) || "?",
-            gradient: "bg-gradient-cyan-blue",
-            networks: asset.networks,
-          };
-        }),
-      ];
+    // Extract all unique networks
+    const networkMap = new Map<string, NetworkOption>();
+    const assetToNetworks = new Map<string, string[]>();
 
-      // Add "Other" at the end
-      formattedAssets.push(otherAsset);
+    formattedAssets.forEach((asset) => {
+      const networkIds: string[] = [];
 
-      // Extract all unique networks
-      const networkMap = new Map<string, NetworkOption>();
-      const assetToNetworks = new Map<string, string[]>();
+      asset.networks?.forEach((network: NetworkOption) => {
+        const networkKey = network.chainId;
+        networkIds.push(networkKey);
 
-      formattedAssets.forEach((asset) => {
-        const networkIds: string[] = [];
-
-        asset.networks?.forEach((network: NetworkOption) => {
-          const networkKey = network.chainId;
-          networkIds.push(networkKey);
-
-          // Add to network map
-          if (!networkMap.has(networkKey)) {
-            networkMap.set(networkKey, network);
-          }
-        });
-
-        // Add to asset→networks map
-        assetToNetworks.set(asset.id, networkIds);
+        // Add to network map
+        if (!networkMap.has(networkKey)) {
+          networkMap.set(networkKey, network);
+        }
       });
 
-      // Format networks - backend already returns sorted data
-      const formattedNetworks: SelectOption[] = Array.from(
-        networkMap.values()
-      ).map((network) => ({
-        id: network.chainId,
-        name: network.name,
-        symbol: undefined,
-        icon: network.icon || network.name.charAt(0),
-        gradient: "bg-linear-to-br from-green-500 to-teal-500",
-      }));
+      // Add to asset→networks map
+      assetToNetworks.set(asset.id, networkIds);
+    });
 
-      // Set all data
-      setAllAssets(formattedAssets);
-      setAllNetworks(formattedNetworks);
-      setAssetNetworkMap(assetToNetworks);
+    // Format networks
+    const formattedNetworks: SelectOption[] = Array.from(
+      networkMap.values()
+    ).map((network) => ({
+      id: network.chainId,
+      name: network.name,
+      symbol: undefined,
+      icon: network.icon || network.name.charAt(0),
+      gradient: "bg-linear-to-br from-green-500 to-teal-500",
+    }));
 
-      // Auto-select asset based on prefillTokenSymbol or default to USDT
-      const targetSymbol = prefillTokenSymbol?.toLowerCase() || "usdt";
-      const targetAsset = formattedAssets.find(
-        (asset) =>
-          asset.symbol?.toLowerCase() === targetSymbol ||
-          // Fallback to USDT if prefill not found
-          (!prefillTokenSymbol && (
-            asset.symbol?.toLowerCase() === "usdt" ||
-            asset.name?.toLowerCase().includes("tether")
-          ))
+    // Set all data
+    setAllAssets(formattedAssets);
+    setAllNetworks(formattedNetworks);
+    setAssetNetworkMap(assetToNetworks);
+
+    // Auto-select asset based on prefillTokenSymbol or default to USDT
+    const targetSymbol = prefillTokenSymbol?.toLowerCase() || "usdt";
+    const targetAsset = formattedAssets.find(
+      (asset) =>
+        asset.symbol?.toLowerCase() === targetSymbol ||
+        // Fallback to USDT if prefill not found
+        (!prefillTokenSymbol && (
+          asset.symbol?.toLowerCase() === "usdt" ||
+          asset.name?.toLowerCase().includes("tether")
+        ))
+    );
+
+    if (targetAsset) {
+      form.setValue("asset", targetAsset);
+
+      // Get networks for the selected asset
+      const networkIds = assetToNetworks.get(targetAsset.id) || [];
+      const availableNetworks = formattedNetworks.filter((n) =>
+        networkIds.includes(n.id)
       );
+      setFilteredNetworks(availableNetworks);
 
-      if (targetAsset) {
-        form.setValue("asset", targetAsset);
-
-        // Get networks for the selected asset
-        const networkIds = assetToNetworks.get(targetAsset.id) || [];
-        const availableNetworks = formattedNetworks.filter((n) =>
-          networkIds.includes(n.id)
+      if (prefillNetworkId) {
+        const prefillNetwork = availableNetworks.find(
+          (n) => n.id === prefillNetworkId || n.name.toLowerCase().includes(prefillNetworkId.toLowerCase())
         );
-        setFilteredNetworks(availableNetworks);
-
-        if (prefillNetworkId) {
-          const prefillNetwork = availableNetworks.find(
-            (n) => n.id === prefillNetworkId || n.name.toLowerCase().includes(prefillNetworkId.toLowerCase())
-          );
-          if (prefillNetwork) {
-            form.setValue("network", prefillNetwork);
-          } else {
-            form.setValue("network", availableNetworks[0]);
-          }
-        } else {
-          // Auto-select NEAR network if available, otherwise first network if only one
-          const nearNetwork = availableNetworks.find(
-            (n) => n.name.toLowerCase() === "near" || n.id.toLowerCase().includes("near")
-          );
-          if (nearNetwork) {
-            form.setValue("network", nearNetwork);
-          } else if (availableNetworks.length === 1) {
-            form.setValue("network", availableNetworks[0]);
-          }
+        if (prefillNetwork) {
+          form.setValue("network", prefillNetwork);
+        } else if (availableNetworks.length > 0) {
+          form.setValue("network", availableNetworks[0]);
+        }
+      } else {
+        // Auto-select NEAR network if available, otherwise first network if only one
+        const nearNetwork = availableNetworks.find(
+          (n) => n.name.toLowerCase() === "near" || n.id.toLowerCase().includes("near")
+        );
+        if (nearNetwork) {
+          form.setValue("network", nearNetwork);
+        } else if (availableNetworks.length === 1) {
+          form.setValue("network", availableNetworks[0]);
         }
       }
-    } catch (err) {
-      form.setError("asset", {
-        type: "manual",
-        message: "Failed to load assets. Please try again.",
-      });
-    } finally {
-      setIsLoadingAssets(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, bridgeAssets, prefillTokenSymbol, prefillNetworkId]);
 
   // Handle asset selection - show all assets but update network list
   const handleAssetSelect = useCallback(
@@ -296,7 +270,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
   // Fetch deposit address when both asset and network are selected
   useEffect(() => {
     const fetchAddress = async () => {
-      if (!selectedTreasury || !selectedNetwork || !selectedAsset) {
+      if (!treasuryId || !selectedNetwork || !selectedAsset) {
         setDepositAddress(null);
         return;
       }
@@ -304,7 +278,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
       // All NEAR networks deposit directly to treasury account ID
       const isNearNetwork = selectedNetwork.id.toLowerCase().includes("near");
       if (isNearNetwork) {
-        setDepositAddress(selectedTreasury);
+        setDepositAddress(treasuryId);
         return;
       }
 
@@ -313,7 +287,7 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
 
       try {
         const result = await fetchDepositAddress(
-          selectedTreasury,
+          treasuryId,
           selectedNetwork.id
         );
 
@@ -340,12 +314,12 @@ export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetwo
       }
     };
 
-    if (selectedAsset && selectedNetwork && selectedTreasury) {
+    if (selectedAsset && selectedNetwork && treasuryId) {
       fetchAddress();
     } else {
       setDepositAddress(null);
     }
-  }, [selectedAsset, selectedNetwork, selectedTreasury]);
+  }, [selectedAsset, selectedNetwork, treasuryId]);
 
   // Reset all state when modal closes
   const handleClose = useCallback(() => {

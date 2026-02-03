@@ -13,9 +13,10 @@ import { XIcon } from "lucide-react";
 
 interface DialogHeaderProps extends React.ComponentProps<typeof BaseDialogHeader> {
     centerTitle?: boolean;
+    closeButton?: boolean;
 }
 
-function DialogHeader({ className, children, centerTitle = false, ...props }: DialogHeaderProps) {
+function DialogHeader({ className, children, centerTitle = false, closeButton = true, ...props }: DialogHeaderProps) {
     return (
         <BaseDialogHeader
             {...props}
@@ -24,10 +25,12 @@ function DialogHeader({ className, children, centerTitle = false, ...props }: Di
             <div className={cn(centerTitle && "flex-1")}>
                 {children}
             </div>
-            <BaseDialogClose className="rounded-xs opacity-70 transition-opacity hover:opacity-100 ">
-                <XIcon className="size-4" />
-                <span className="sr-only">Close</span>
-            </BaseDialogClose>
+            {closeButton && (
+                <BaseDialogClose className="rounded-xs opacity-70 transition-opacity hover:opacity-100 ">
+                    <XIcon className="size-4" />
+                    <span className="sr-only">Close</span>
+                </BaseDialogClose>
+            )}
         </BaseDialogHeader>
     );
 }

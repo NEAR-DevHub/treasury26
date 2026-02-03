@@ -6,7 +6,6 @@ pub struct EnvVars {
     pub near_rpc_url: Option<String>,
     pub near_archival_rpc_url: Option<String>,
     pub bulk_payment_contract_id: AccountId,
-    pub pikespeak_key: String,
     pub fastnear_api_key: String,
     pub sputnik_dao_api_base: String,
     pub bridge_rpc_url: String,
@@ -20,13 +19,22 @@ pub struct EnvVars {
     pub telegram_chat_id: Option<String>,
     pub coingecko_api_key: Option<String>,
     pub coingecko_api_base_url: String, // Override for testing
+    pub defillama_api_base_url: String, // DeFiLlama API base URL (override for testing)
     pub nearblocks_api_key: Option<String>,
+    // Transfer hints configuration (FastNear transfers-api)
+    pub transfer_hints_enabled: bool,
+    pub transfer_hints_base_url: Option<String>, // Override FastNear API URL for testing
     // 1click API configuration for asset exchange quotes
     pub oneclick_api_url: String,
     pub oneclick_jwt_token: Option<String>,
     pub oneclick_app_fee_bps: Option<u32>,
     pub oneclick_app_fee_recipient: Option<String>,
     pub oneclick_referral: Option<String>,
+    // JWT authentication configuration
+    pub jwt_secret: String,
+    pub jwt_expiry_hours: u64,
+    // CORS configuration
+    pub cors_allowed_origins: Vec<String>,
 }
 
 impl Default for EnvVars {
@@ -41,7 +49,6 @@ impl Default for EnvVars {
                 .unwrap_or_else(|_| "bulkpayment.near".to_string())
                 .parse()
                 .expect("Invalid BULK_PAYMENT_CONTRACT_ID"),
-            pikespeak_key: std::env::var("PIKESPEAK_KEY").expect("PIKESPEAK_KEY is not set"),
             fastnear_api_key: std::env::var("FASTNEAR_API_KEY")
                 .expect("FASTNEAR_API_KEY is not set"),
             sputnik_dao_api_base: std::env::var("SPUTNIK_DAO_API_BASE")
@@ -76,6 +83,8 @@ impl Default for EnvVars {
                 .filter(|s| !s.is_empty()),
             coingecko_api_base_url: std::env::var("COINGECKO_API_BASE_URL")
                 .unwrap_or_else(|_| "https://pro-api.coingecko.com/api/v3".to_string()),
+            defillama_api_base_url: std::env::var("DEFILLAMA_API_BASE_URL")
+                .unwrap_or_else(|_| "https://coins.llama.fi".to_string()),
             telegram_bot_token: std::env::var("TELEGRAM_BOT_TOKEN")
                 .ok()
                 .filter(|s| !s.is_empty()),
@@ -83,6 +92,14 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty()),
             nearblocks_api_key: std::env::var("NEARBLOCKS_API_KEY")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            // Transfer hints configuration
+            transfer_hints_enabled: std::env::var("TRANSFER_HINTS_ENABLED")
+                .unwrap_or_else(|_| "true".to_string()) // Enabled by default
+                .parse()
+                .unwrap_or(true),
+            transfer_hints_base_url: std::env::var("TRANSFER_HINTS_BASE_URL")
                 .ok()
                 .filter(|s| !s.is_empty()),
             // 1click API configuration
@@ -103,6 +120,19 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty())
                 .or_else(|| Some("near-treasury".to_string())),
+            // JWT configuration
+            jwt_secret: std::env::var("JWT_SECRET").expect("JWT_SECRET is not set"),
+            jwt_expiry_hours: std::env::var("JWT_EXPIRY_HOURS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(72), // Default: 72 hours
+            // CORS configuration
+            cors_allowed_origins: std::env::var("CORS_ALLOWED_ORIGINS")
+                .unwrap_or_else(|_| "http://localhost:3001,http://localhost:3000".to_string())
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect(),
         }
     }
 }

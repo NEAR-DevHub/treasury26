@@ -17,7 +17,7 @@ import { useFilterState } from "../hooks/use-filter-state";
 import { parseFilterData } from "../types/filter-types";
 import { TooltipUser, User } from "@/components/user";
 import { useRecentAddresses } from "@/hooks/use-recent-addresses";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { CheckboxFilterContent } from "./checkbox-filter-content";
 import { useDaoUsers, UserListType } from "../hooks/use-dao-users";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -650,7 +650,7 @@ interface UserData {
 }
 
 function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: UserFilterContentProps) {
-    const { selectedTreasury } = useTreasury();
+    const { treasuryId } = useTreasury();
     const { recentAddresses, addRecentAddress } = useRecentAddresses();
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -674,7 +674,7 @@ function UserFilterContent({ value, onUpdate, setIsOpen, onRemove, label }: User
     }, [label]);
 
     // Fetch the appropriate user list using the unified hook
-    const { users: fetchedUsers, isLoading: isLoadingMembers } = useDaoUsers(selectedTreasury ?? null, userListType);
+    const { users: fetchedUsers, isLoading: isLoadingMembers } = useDaoUsers(treasuryId ?? null, userListType);
 
     // Use fetched users as suggestions
     const memberSuggestions = useMemo(() => {

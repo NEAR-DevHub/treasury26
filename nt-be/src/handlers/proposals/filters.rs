@@ -4,9 +4,9 @@ use serde::Deserialize;
 
 use crate::constants::intents_tokens::find_token_by_symbol;
 use crate::handlers::proposals::scraper::{
-    AssetExchangeInfo, BatchPaymentResponse, BulkPayment, LockupInfo, PaymentInfo, Policy,
-    Proposal, ProposalType, StakeDelegationInfo, Vote, fetch_batch_payment_list, fetch_ft_metadata,
-    get_status_display,
+    AssetExchangeInfo, BatchPaymentResponse, BulkPayment, LockupInfo, PaymentInfo,
+    PaymentProposalType, Policy, Proposal, ProposalType, StakeDelegationInfo, Vote,
+    fetch_batch_payment_list, fetch_ft_metadata, get_status_display,
 };
 use crate::utils::cache::{Cache, CacheKey, CacheTier};
 
@@ -193,9 +193,11 @@ fn matches_tokens_filter(
     proposal: &Proposal,
     token: Option<&String>,
     token_not: Option<&String>,
+    bulk_payment_contract_id: &near_api::AccountId,
 ) -> bool {
     // Check payments
-    if let Some(payment_info) = PaymentInfo::from_proposal(proposal) {
+    if let Some(payment_info) = PaymentInfo::from_proposal(proposal, Some(bulk_payment_contract_id))
+    {
         let token_to_check = if payment_info.token.is_empty() {
             "wrap.near"
         } else {
@@ -215,7 +217,9 @@ fn matches_tokens_filter(
         return token_matches_filter(token_to_check, token, token_not);
     }
 
-    if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
+    if let Some(bulk_payment) =
+        BulkPayment::from_proposal_with_contract_id(proposal, bulk_payment_contract_id)
+    {
         let token_to_check = bulk_payment.token_id.as_str();
         return token_matches_filter(token_to_check, token, token_not);
     }
@@ -253,9 +257,11 @@ async fn matches_recipients_filter(
     recipients_not_set: &Option<HashSet<&str>>,
     cache: &Cache,
     network: &NetworkConfig,
+    bulk_payment_contract_id: &near_api::AccountId,
 ) -> bool {
     // Check payments
-    if let Some(payment_info) = PaymentInfo::from_proposal(proposal) {
+    if let Some(payment_info) = PaymentInfo::from_proposal(proposal, Some(bulk_payment_contract_id))
+    {
         if let Some(recipients) = recipients_set
             && !recipients.contains(payment_info.receiver.as_str())
         {
@@ -269,7 +275,9 @@ async fn matches_recipients_filter(
         return true; // Payment proposal matched recipients filter
     }
 
-    if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
+    if let Some(bulk_payment) =
+        BulkPayment::from_proposal_with_contract_id(proposal, bulk_payment_contract_id)
+    {
         // Fetch the batch payment list to get actual recipients
         let batch_id = bulk_payment.batch_id.clone();
         let cache_key = crate::utils::cache::CacheKey::new("batch-payment-recipients")
@@ -279,7 +287,9 @@ async fn matches_recipients_filter(
             .cached_contract_call(
                 crate::utils::cache::CacheTier::LongTerm,
                 cache_key,
-                async move { fetch_batch_payment_list(network, &batch_id).await },
+                async move {
+                    fetch_batch_payment_list(network, &batch_id, bulk_payment_contract_id).await
+                },
             )
             .await;
 
@@ -449,6 +459,7 @@ async fn matches_amount_filters(
     filters: &ProposalFilters,
     cache: &Cache,
     network: &NetworkConfig,
+    bulk_payment_contract_id: &near_api::AccountId,
 ) -> bool {
     if filters.amount_equal.is_none()
         && filters.amount_min.is_none()
@@ -459,7 +470,8 @@ async fn matches_amount_filters(
     let token = filters.token.as_deref().unwrap_or("");
 
     // Check payments
-    if let Some(payment_info) = PaymentInfo::from_proposal(proposal) {
+    if let Some(payment_info) = PaymentInfo::from_proposal(proposal, Some(bulk_payment_contract_id))
+    {
         return matches_payment_amount_filters(&payment_info, filters, cache, network).await;
     }
 
@@ -469,7 +481,9 @@ async fn matches_amount_filters(
     }
 
     // Check bulk payment
-    if let Some(bulk_payment) = BulkPayment::from_proposal(proposal) {
+    if let Some(bulk_payment) =
+        BulkPayment::from_proposal_with_contract_id(proposal, bulk_payment_contract_id)
+    {
         return matches_payment_amount_filters(
             &PaymentInfo {
                 receiver: "".to_string(),
@@ -702,11 +716,12 @@ fn matches_types_filter(
     proposal: &Proposal,
     types_set: &Option<HashSet<&str>>,
     types_not_set: &Option<HashSet<&str>>,
+    bulk_payment_contract_id: &near_api::AccountId,
 ) -> bool {
     let name = if AssetExchangeInfo::from_proposal(proposal).is_some() {
         "Exchange"
-    } else if PaymentInfo::from_proposal(proposal).is_some()
-        || BulkPayment::from_proposal(proposal).is_some()
+    } else if PaymentInfo::from_proposal(proposal, Some(bulk_payment_contract_id)).is_some()
+        || BulkPayment::from_proposal_with_contract_id(proposal, bulk_payment_contract_id).is_some()
     {
         "Payments"
     } else if StakeDelegationInfo::from_proposal(proposal).is_some() {
@@ -745,6 +760,7 @@ impl ProposalFilters {
         policy: &Policy,
         cache: &Cache,
         network: &NetworkConfig,
+        bulk_payment_contract_id: &near_api::AccountId,
     ) -> Result<Vec<Proposal>, Box<dyn std::error::Error>> {
         let types_set = to_str_hashset(&self.types);
         let types_not_set = to_str_hashset(&self.types_not);
@@ -803,7 +819,12 @@ impl ProposalFilters {
             let submission_time = proposal.submission_time.0;
 
             // Apply types filter
-            if !matches_types_filter(&proposal, &types_set, &types_not_set) {
+            if !matches_types_filter(
+                &proposal,
+                &types_set,
+                &types_not_set,
+                bulk_payment_contract_id,
+            ) {
                 continue;
             }
 
@@ -969,7 +990,7 @@ impl ProposalFilters {
             // Smart filters - apply each filter independently across relevant proposal types
 
             // Apply tokens filter
-            if !matches_tokens_filter(&proposal, token, token_not) {
+            if !matches_tokens_filter(&proposal, token, token_not, bulk_payment_contract_id) {
                 continue;
             }
 
@@ -980,6 +1001,7 @@ impl ProposalFilters {
                 &recipients_not_set,
                 cache,
                 network,
+                bulk_payment_contract_id,
             )
             .await
             {
@@ -1005,7 +1027,9 @@ impl ProposalFilters {
             }
 
             // Apply amount filters
-            if !matches_amount_filters(&proposal, self, cache, network).await {
+            if !matches_amount_filters(&proposal, self, cache, network, bulk_payment_contract_id)
+                .await
+            {
                 continue;
             }
 

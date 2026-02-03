@@ -627,7 +627,10 @@ async fn load_enriched_balance_changes<P: crate::services::PriceProvider>(
     let mut token_dates: HashMap<String, HashSet<NaiveDate>> = HashMap::new();
 
     for change in &changes {
-        if change.counterparty == "SNAPSHOT" || change.counterparty == "NOT_REGISTERED" {
+        if change.counterparty == "SNAPSHOT"
+            || change.counterparty == "NOT_REGISTERED"
+            || change.counterparty == "STAKING_SNAPSHOT"
+        {
             continue;
         }
         token_dates
@@ -689,8 +692,14 @@ async fn load_enriched_balance_changes<P: crate::services::PriceProvider>(
         })
         .collect();
 
-    Ok(enriched)
-}
+    // Rows (exclude SNAPSHOT, NOT_REGISTERED, and STAKING_SNAPSHOT)
+    for change in changes {
+        if change.counterparty == "SNAPSHOT"
+            || change.counterparty == "NOT_REGISTERED"
+            || change.counterparty == "STAKING_SNAPSHOT"
+        {
+            continue;
+        }
 
 /// Generate JSON from enriched balance changes
 async fn generate_json<P: crate::services::PriceProvider>(

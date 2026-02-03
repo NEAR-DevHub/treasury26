@@ -2,7 +2,7 @@
 
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { useState, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
@@ -98,8 +98,8 @@ function PermissionsHeader({ policyRoles }: { policyRoles: RolePermission[] }) {
 }
 
 export default function MembersPage() {
-  const { selectedTreasury } = useTreasury();
-  const { data: policy, isLoading } = useTreasuryPolicy(selectedTreasury);
+  const { treasuryId } = useTreasury();
+  const { data: policy, isLoading } = useTreasuryPolicy(treasuryId);
   const { accountId } = useNear();
   const queryClient = useQueryClient();
 
@@ -114,7 +114,7 @@ export default function MembersPage() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
   // Fetch pending proposals to check for active member requests
-  const { data: pendingProposals } = useProposals(selectedTreasury, {
+  const { data: pendingProposals } = useProposals(treasuryId, {
     statuses: ["InProgress"],
     proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
     sort_direction: "desc",
@@ -134,7 +134,7 @@ export default function MembersPage() {
   }, [policy, accountId]);
 
   // Extract unique members from policy roles first (needed for schema validation)
-  const { members: existingMembers } = useTreasuryMembers(selectedTreasury);
+  const { members: existingMembers } = useTreasuryMembers(treasuryId);
 
   // Track current modal mode for schema validation
   const [currentModalMode, setCurrentModalMode] = useState<"add" | "edit">(
@@ -276,7 +276,7 @@ export default function MembersPage() {
   };
 
   const handleAddMembersSubmit = async () => {
-    if (!policy || !selectedTreasury) return;
+    if (!policy || !treasuryId) return;
 
     const data = form.getValues();
 
@@ -427,7 +427,7 @@ export default function MembersPage() {
     title: string,
     successMessage: string
   ) => {
-    if (!policy || !selectedTreasury) return;
+    if (!policy || !treasuryId) return;
 
     try {
       const description = {
@@ -438,7 +438,7 @@ export default function MembersPage() {
       const proposalBond = policy?.proposal_bond || "0";
 
       await createProposal(successMessage, {
-        treasuryId: selectedTreasury,
+        treasuryId,
         proposalBond,
         proposal: {
           description: encodeToMarkdown(description),
@@ -452,11 +452,10 @@ export default function MembersPage() {
 
       // Refetch proposals to show the newly created proposal
       queryClient.invalidateQueries({
-        queryKey: ["proposals", selectedTreasury],
+        queryKey: ["proposals", treasuryId],
       });
     } catch (error) {
       console.error("Failed to create proposal:", error);
-      toast.error("Failed to create proposal");
       throw error;
     }
   };
@@ -465,7 +464,7 @@ export default function MembersPage() {
   const handleEditMembersSubmit = async (
     membersData: Array<{ accountId: string; roles: string[] }>
   ) => {
-    if (!policy || !selectedTreasury) return;
+    if (!policy || !treasuryId) return;
 
     try {
       const membersList = membersData.map((m) => ({
@@ -517,7 +516,7 @@ export default function MembersPage() {
 
   // Handle delete members submission
   const handleDeleteMembersSubmit = async () => {
-    if (!policy || !selectedTreasury) return;
+    if (!policy || !treasuryId) return;
 
     try {
       const membersToRemove =

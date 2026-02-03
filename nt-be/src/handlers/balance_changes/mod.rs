@@ -8,4 +8,5 @@ pub mod gap_filler;
 pub mod history;
 pub mod staking_rewards;
 pub mod token_discovery;
+pub mod transfer_hints;
 pub mod utils;

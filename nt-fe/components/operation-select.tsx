@@ -33,7 +33,7 @@ export function OperationSelect({
                     variant="outline"
                     size="sm"
                     className={cn(
-                        "gap-1 px-1.5! w-fit h-5 items-center bg-card hover:bg-card border-0 text-[10px]",
+                        "gap-1 px-1.5! w-fit h-5 items-center bg-card hover:bg-card border-0 text-xxs",
                         className
                     )}
                 >
@@ -49,7 +49,7 @@ export function OperationSelect({
                             variant="ghost"
                             size="sm"
                             className={cn(
-                                "justify-start font-normal h-8 text-[10px]",
+                                "justify-start font-normal h-8 text-xxs",
                                 selectedOperation === operation && "bg-muted"
                             )}
                             onClick={() => {

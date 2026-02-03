@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO users (account_id)\n        VALUES ($1)\n        ON CONFLICT (account_id) DO UPDATE SET updated_at = NOW()\n        RETURNING id, account_id, terms_accepted_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "terms_accepted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "0afa278125bec590840b09935ee8cc541021c7ac3112f3040189213f72d991ad"
+}

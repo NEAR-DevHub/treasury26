@@ -72,36 +72,37 @@ export function TourCard({
         : isLastStep ? "Done" : "Next"
 
     return (
-        <div className="relative bg-popover-foreground text-popover rounded-md px-4 py-3 shadow-md min-w-[200px] animate-in fade-in-0 zoom-in-95">
+        <div className="bg-popover-foreground text-popover rounded-md px-2 py-3 shadow-md min-w-[200px] animate-in fade-in-0 zoom-in-95">
             <div className="text-popover-foreground">
                 {arrow}
             </div>
 
-            <button
-                onClick={handleSkip}
-                className="absolute right-2 top-2 rounded-sm opacity-70 transition-opacity hover:opacity-100"
-            >
-                <X className="h-3.5 w-3.5" />
-                <span className="sr-only">Close</span>
-            </button>
+            <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-start gap-3">
+                    <p className="text-xs">{step.content}</p>
+                    <button
+                        onClick={handleSkip}
+                        className="rounded-sm opacity-70 transition-opacity hover:opacity-100 shrink-0"
+                    >
+                        <X className="h-3.5 w-3.5" />
+                        <span className="sr-only">Close</span>
+                    </button>
+                </div>
 
-            <div className="flex w-full flex-col gap-3 pr-4">
-                <p className="text-xs">{step.content}</p>
+                <div className={cn("flex w-full items-center", totalSteps > 1 ? "justify-between" : "justify-end")}>
+                    {totalSteps > 1 && (
+                        <p className="text-xs rounded-full text-muted-foreground">
+                            {currentStep + 1} of {totalSteps}
+                        </p>
+                    )}
 
-                <div className="flex w-full items-center justify-between">
-                    <p className={cn("text-xs rounded-full text-muted-foreground")}>
-                        {currentStep + 1} of {totalSteps}
-                    </p>
-
-                    <div className="flex gap-1">
-                        <Button
-                            size="sm"
-                            className="h-6 px-2 text-xs bg-popover text-popover-foreground hover:bg-popover/90 hover:text-popover-foreground/90"
-                            onClick={isLastStep ? handleSkip : handleNext}
-                        >
-                            {buttonText}
-                        </Button>
-                    </div>
+                    <Button
+                        size="sm"
+                        className="h-6 px-2 text-xs bg-popover text-popover-foreground hover:bg-popover/90 hover:text-popover-foreground/90"
+                        onClick={isLastStep ? handleSkip : handleNext}
+                    >
+                        {buttonText}
+                    </Button>
                 </div>
             </div>
         </div>

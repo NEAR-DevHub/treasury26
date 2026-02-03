@@ -6,7 +6,7 @@ use near_api::{AccountId, Contract, NearToken, Tokens};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::{AppState, constants::TREASURY_FACTORY_CONTRACT_ID};
+use crate::{AppState, constants::TREASURY_FACTORY_CONTRACT_ID, services::register_new_dao};
 
 #[derive(Deserialize)]
 pub struct CreateTreasuryRequest {
@@ -182,6 +182,12 @@ pub async fn create_treasury(
             eprintln!("Error creating treasury: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
         })?;
+
+    // Register new DAO in local cache for immediate visibility
+    if let Err(e) = register_new_dao(&state.db_pool, treasury.as_str()).await {
+        log::warn!("Failed to register new DAO in cache: {}", e);
+        // Don't fail the request - the DAO will be picked up by the sync service
+    }
 
     // Fetch balance after treasury creation to track the cost
     let balance_after = Tokens::account(state.signer_id.clone())

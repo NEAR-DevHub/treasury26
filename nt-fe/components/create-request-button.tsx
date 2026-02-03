@@ -1,7 +1,7 @@
 import { Button } from "@/components/button";
 import { Loader2 } from "lucide-react";
 import { useNear } from "@/stores/near-store";
-import { useTreasury } from "@/stores/treasury-store";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { useMemo, useState } from "react";
 import { hasPermission } from "@/lib/config-utils";
@@ -35,8 +35,8 @@ export function CreateRequestButton({
   idleMessage = "Create Request",
 }: CreateRequestButtonProps) {
   const { accountId } = useNear();
-  const { selectedTreasury } = useTreasury();
-  const { data: policy } = useTreasuryPolicy(selectedTreasury);
+  const { treasuryId } = useTreasury();
+  const { data: policy } = useTreasuryPolicy(treasuryId);
   const { data: nearBalance } = useTokenBalance(accountId, "near", "near");
   const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
 

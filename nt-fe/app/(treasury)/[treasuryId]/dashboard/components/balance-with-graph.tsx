@@ -2,18 +2,31 @@ import { TreasuryAsset } from "@/lib/api";
 import { useState, useMemo } from "react";
 import BalanceChart from "./chart";
 import { Button } from "@/components/button";
-import { ArrowLeftRight, ArrowUpRightIcon, Download, Coins } from "lucide-react";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { useBalanceChart, } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/stores/treasury-store";
+import {
+    ArrowLeftRight,
+    ArrowUpRightIcon,
+    Download,
+    Coins,
+} from "lucide-react";
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
+import { useBalanceChart } from "@/hooks/use-treasury-queries";
+import { useTreasury } from "@/hooks/use-treasury";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageCard } from "@/components/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatBalance, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ChartInterval } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthButton } from "@/components/auth-button";
+import Big from "big.js";
+import { totalBalance } from "@/lib/balance";
 
 interface Props {
     totalBalanceUSD: number | Big.Big;
@@ -22,49 +35,45 @@ interface Props {
     isLoading?: boolean;
 }
 
-type TimePeriod = "1D" | "1W" | "1M" | "1Y";
+type TimePeriod = "1W" | "1M" | "3M" | "1Y";
 
-const TIME_PERIODS: TimePeriod[] = ["1D", "1W", "1M", "1Y"];
+const TIME_PERIODS: TimePeriod[] = ["1W", "1M", "3M", "1Y"];
 
 // Map frontend time periods to backend intervals
 const PERIOD_TO_INTERVAL: Record<TimePeriod, ChartInterval> = {
-    "1D": "hourly",
     "1W": "daily",
     "1M": "daily",
+    "3M": "daily",
     "1Y": "weekly",
 };
 
 // Calculate hours back for each period
 const PERIOD_TO_HOURS: Record<TimePeriod, number> = {
-    "1D": 24,
     "1W": 24 * 7,
     "1M": 24 * 30,
+    "3M": 24 * 90,
     "1Y": 24 * 365,
 };
 
 // Format timestamp based on time period
-const formatTimestampForPeriod = (timestamp: string, period: TimePeriod): string => {
+const formatTimestampForPeriod = (
+    timestamp: string,
+    period: TimePeriod,
+): string => {
     const date = new Date(timestamp);
 
     switch (period) {
-        case "1D":
-            // Show time only: "3:00 PM"
-            return date.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
         case "1W":
         case "1M":
             // Show date: "6 Jan"
-            return date.toLocaleDateString('en-US', {
-                day: 'numeric',
-                month: 'short'
+            return date.toLocaleDateString("en-US", {
+                day: "numeric",
+                month: "short",
             });
         case "1Y":
             // Show month and year: "Mar '25"
-            const month = date.toLocaleDateString('en-US', { month: 'short' });
-            const year = date.toLocaleDateString('en-US', { year: '2-digit' });
+            const month = date.toLocaleDateString("en-US", { month: "short" });
+            const year = date.toLocaleDateString("en-US", { year: "2-digit" });
             return `${month} '${year}`;
         default:
             return date.toLocaleDateString();
@@ -75,14 +84,18 @@ interface GroupedToken {
     symbol: string;
     tokens: TreasuryAsset[];
     totalBalanceUSD: number;
+    totalBalance: Big;
     icon: string;
     tokenIds: string[];
 }
 
-export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositClick, isLoading: isLoadingTokens }: Props) {
-    const params = useParams();
-    const treasuryId = params?.treasuryId as string | undefined;
-    const { selectedTreasury: accountId } = useTreasury();
+export default function BalanceWithGraph({
+    totalBalanceUSD,
+    tokens,
+    onDepositClick,
+    isLoading: isLoadingTokens,
+}: Props) {
+    const { treasuryId } = useTreasury();
     const [selectedToken, setSelectedToken] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1W");
 
@@ -95,47 +108,83 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
 
             // Convert token ID to balance-history format
             // Intents tokens need "intents.near:" prefix for balance-history API
-            let tokenIdForHistory = token.id;
-            if (token.residency === "Intents" && !token.id.startsWith("intents.near:")) {
-                tokenIdForHistory = `intents.near:${token.id}`;
+            // Staked tokens need "staking:" prefix with pool IDs
+            let tokenIdsForHistory: string[] = [];
+            if (
+                token.residency === "Intents" &&
+                !token.id.startsWith("intents.near:")
+            ) {
+                tokenIdsForHistory = [`intents.near:${token.id}`];
+            } else if (
+                token.residency === "Staked" &&
+                "staking" in token.balance
+            ) {
+                tokenIdsForHistory = token.balance.staking.pools.map(
+                    (p) => `staking:${p.poolId}`,
+                );
+            } else {
+                tokenIdsForHistory = [token.id];
             }
 
             if (existing) {
                 existing.tokens.push(token);
                 existing.totalBalanceUSD += token.balanceUSD;
-                // Only add if it's not already in the array (deduplicate)
-                if (!existing.tokenIds.includes(tokenIdForHistory)) {
-                    existing.tokenIds.push(tokenIdForHistory);
+                existing.totalBalance = existing.totalBalance.add(
+                    Big(
+                        formatBalance(
+                            totalBalance(token.balance),
+                            token.decimals,
+                        ),
+                    ),
+                );
+                // Add all token IDs, deduplicating
+                for (const tokenId of tokenIdsForHistory) {
+                    if (!existing.tokenIds.includes(tokenId)) {
+                        existing.tokenIds.push(tokenId);
+                    }
                 }
             } else {
                 grouped.set(token.symbol, {
                     symbol: token.symbol,
                     tokens: [token],
                     totalBalanceUSD: token.balanceUSD,
+                    totalBalance: Big(
+                        formatBalance(
+                            totalBalance(token.balance),
+                            token.decimals,
+                        ),
+                    ),
                     icon: token.icon,
-                    tokenIds: [tokenIdForHistory],
+                    tokenIds: tokenIdsForHistory,
                 });
             }
         }
 
         // Sort by total USD value descending
-        return Array.from(grouped.values()).sort((a, b) => b.totalBalanceUSD - a.totalBalanceUSD);
-    }, [tokens]);
+        return Array.from(grouped.values()).sort(
+            (a, b) => b.totalBalanceUSD - a.totalBalanceUSD,
+        );
+    }, [tokens, totalBalanceUSD]);
 
     // Get the selected token group
-    const selectedTokenGroup = selectedToken === "all"
-        ? null
-        : groupedTokens.find(group => group.symbol === selectedToken);
+    const selectedTokenGroup =
+        selectedToken === "all"
+            ? null
+            : groupedTokens.find((group) => group.symbol === selectedToken);
 
-    const balance = selectedTokenGroup ? selectedTokenGroup.totalBalanceUSD : totalBalanceUSD;
+    const balance = selectedTokenGroup
+        ? selectedTokenGroup.totalBalanceUSD
+        : totalBalanceUSD;
 
     // Calculate time range for chart API
     const chartParams = useMemo(() => {
-        if (!accountId) return null;
+        if (!treasuryId) return null;
 
         const endTime = new Date();
         const hoursBack = PERIOD_TO_HOURS[selectedPeriod];
-        const startTime = new Date(endTime.getTime() - (hoursBack * 60 * 60 * 1000));
+        const startTime = new Date(
+            endTime.getTime() - hoursBack * 60 * 60 * 1000,
+        );
 
         // Validate dates
         if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
@@ -143,7 +192,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
         }
 
         const params = {
-            accountId,
+            accountId: treasuryId,
             startTime: startTime.toISOString(),
             endTime: endTime.toISOString(),
             interval: PERIOD_TO_INTERVAL[selectedPeriod],
@@ -151,7 +200,7 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
         };
 
         return params;
-    }, [accountId, selectedPeriod, selectedTokenGroup]);
+    }, [treasuryId, selectedPeriod, selectedTokenGroup]);
 
     // Fetch balance chart data with USD values
     const { data: balanceChartData, isLoading } = useBalanceChart(chartParams);
@@ -164,12 +213,22 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
 
         if (selectedToken === "all") {
             // Aggregate USD values across all tokens
-            const timeMap = new Map<string, { usdValue: number; hasUSD: boolean }>();
+            const timeMap = new Map<
+                string,
+                { usdValue: number; hasUSD: boolean }
+            >();
 
-            for (const [tokenId, snapshots] of Object.entries(balanceChartData)) {
+            for (const [tokenId, snapshots] of Object.entries(
+                balanceChartData,
+            )) {
                 for (const snapshot of snapshots) {
-                    const existing = timeMap.get(snapshot.timestamp) || { usdValue: 0, hasUSD: false };
-                    const hasUSD = snapshot.value_usd !== null && snapshot.value_usd !== undefined;
+                    const existing = timeMap.get(snapshot.timestamp) || {
+                        usdValue: 0,
+                        hasUSD: false,
+                    };
+                    const hasUSD =
+                        snapshot.value_usd !== null &&
+                        snapshot.value_usd !== undefined;
 
                     timeMap.set(snapshot.timestamp, {
                         usdValue: existing.usdValue + (snapshot.value_usd || 0),
@@ -179,63 +238,102 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
             }
 
             const data = Array.from(timeMap.entries())
-                .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+                .sort(
+                    (a, b) =>
+                        new Date(a[0]).getTime() - new Date(b[0]).getTime(),
+                )
                 .map(([timestamp, { usdValue }]) => ({
                     name: formatTimestampForPeriod(timestamp, selectedPeriod),
                     usdValue: usdValue,
                 }));
 
+            if (data.length > 0) {
+                data.push({
+                    name: "Now",
+                    usdValue: Number(totalBalanceUSD),
+                });
+            }
+
             // Check if any snapshot has USD values
-            const hasAnyUSD = Array.from(timeMap.values()).some(v => v.hasUSD);
+            const hasAnyUSD = Array.from(timeMap.values()).some(
+                (v) => v.hasUSD,
+            );
 
             return { data, showUSD: hasAnyUSD };
         } else {
             // Aggregate values for selected token across all networks
-            const timeMap = new Map<string, { usdValue: number; balanceValue: number; hasUSD: boolean }>();
+            const timeMap = new Map<
+                string,
+                { usdValue: number; balanceValue: number; hasUSD: boolean }
+            >();
 
-            for (const [tokenIdString, snapshots] of Object.entries(balanceChartData)) {
-                const tokenId = tokenIdString.replace("intents.near:", "").replace("staking:", "");
-                const token = selectedTokenGroup?.tokens.find(t => t.id === tokenId);
+            for (const [tokenIdString, snapshots] of Object.entries(
+                balanceChartData,
+            )) {
+                const isPartOfSelectedTokenGroup =
+                    selectedTokenGroup?.tokenIds.includes(tokenIdString);
 
                 // Only include token IDs that belong to the selected token group
-                if (token) {
+                if (isPartOfSelectedTokenGroup) {
                     for (const snapshot of snapshots) {
                         const existing = timeMap.get(snapshot.timestamp) || {
                             usdValue: 0,
                             balanceValue: 0,
-                            hasUSD: false
+                            hasUSD: false,
                         };
-                        const hasUSD = snapshot.value_usd !== null && snapshot.value_usd !== undefined;
+                        const hasUSD =
+                            snapshot.value_usd !== null &&
+                            snapshot.value_usd !== undefined;
                         const balanceValue = parseFloat(snapshot.balance) || 0;
 
                         timeMap.set(snapshot.timestamp, {
-                            usdValue: existing.usdValue + (snapshot.value_usd || 0),
+                            usdValue:
+                                existing.usdValue + (snapshot.value_usd || 0),
                             balanceValue: existing.balanceValue + balanceValue,
                             hasUSD: existing.hasUSD || hasUSD,
                         });
                     }
                 }
             }
-            const hasAnyUSD = Array.from(timeMap.values()).some(v => v.hasUSD);
-
+            const hasAnyUSD = Array.from(timeMap.values()).some(
+                (v) => v.hasUSD,
+            );
             const data = Array.from(timeMap.entries())
-                .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+                .sort(
+                    (a, b) =>
+                        new Date(a[0]).getTime() - new Date(b[0]).getTime(),
+                )
                 .map(([timestamp, { usdValue, balanceValue, hasUSD }]) => ({
                     name: formatTimestampForPeriod(timestamp, selectedPeriod),
                     usdValue: hasUSD ? usdValue : undefined,
                     balanceValue: balanceValue,
                 }));
-
+            if (data.length > 0) {
+                data.push({
+                    name: "Now",
+                    usdValue: Number(selectedTokenGroup?.totalBalanceUSD),
+                    balanceValue:
+                        selectedTokenGroup?.totalBalance.toNumber() || 0,
+                });
+            }
             return { data, showUSD: hasAnyUSD };
         }
-    }, [balanceChartData, selectedToken, selectedTokenGroup, selectedPeriod]);
+    }, [
+        balanceChartData,
+        selectedToken,
+        selectedTokenGroup,
+        selectedPeriod,
+        totalBalanceUSD,
+    ]);
 
     if (isLoadingTokens) {
         return (
             <PageCard>
                 <div className="flex justify-around gap-4 mb-6">
                     <div className="flex-1">
-                        <h3 className="text-xs font-medium text-muted-foreground">Total Balance</h3>
+                        <h3 className="text-xs font-medium text-muted-foreground">
+                            Total Balance
+                        </h3>
                         <Skeleton className="h-9 w-40 mt-2" />
                     </div>
                     <div className="flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
@@ -260,12 +358,22 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
         <PageCard>
             <div className="flex justify-around gap-4 mb-6">
                 <div className="flex-1">
-                    <h3 className="text-xs font-medium text-muted-foreground">Total Balance</h3>
-                    <p className="text-3xl font-bold mt-2">{formatCurrency(Number(balance))}</p>
+                    <h3 className="text-xs font-medium text-muted-foreground">
+                        Total Balance
+                    </h3>
+                    <p className="text-3xl font-bold mt-2">
+                        {formatCurrency(Number(balance))}
+                    </p>
                 </div>
                 <div className="flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
-                    <Select value={selectedToken} onValueChange={setSelectedToken}>
-                        <SelectTrigger size="sm" className="min-w-[140px] w-full">
+                    <Select
+                        value={selectedToken}
+                        onValueChange={setSelectedToken}
+                    >
+                        <SelectTrigger
+                            size="sm"
+                            className="min-w-[140px] w-full"
+                        >
                             <SelectValue>
                                 {selectedToken === "all" ? (
                                     <div className="flex items-center gap-2">
@@ -295,8 +403,11 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                                     <span>All Tokens</span>
                                 </div>
                             </SelectItem>
-                            {groupedTokens.map(group => (
-                                <SelectItem key={group.symbol} value={group.symbol}>
+                            {groupedTokens.map((group) => (
+                                <SelectItem
+                                    key={group.symbol}
+                                    value={group.symbol}
+                                >
                                     <div className="flex items-center gap-2">
                                         {group.icon && (
                                             <img
@@ -313,8 +424,20 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                             ))}
                         </SelectContent>
                     </Select>
-                    <ToggleGroup type="single" size="sm" variant={"outline"} value={selectedPeriod} onValueChange={(e) => e && setSelectedPeriod(e as TimePeriod)}>
-                        {TIME_PERIODS.map((e => <ToggleGroupItem key={e} value={e}>{e}</ToggleGroupItem>))}
+                    <ToggleGroup
+                        type="single"
+                        size="sm"
+                        variant={"outline"}
+                        value={selectedPeriod}
+                        onValueChange={(e) =>
+                            e && setSelectedPeriod(e as TimePeriod)
+                        }
+                    >
+                        {TIME_PERIODS.map((e) => (
+                            <ToggleGroupItem key={e} value={e}>
+                                {e}
+                            </ToggleGroupItem>
+                        ))}
                     </ToggleGroup>
                 </div>
             </div>
@@ -323,13 +446,30 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                 <Button onClick={onDepositClick} id="dashboard-step1">
                     <Download className="size-4" /> Deposit
                 </Button>
-                <Link href={treasuryId ? `/${treasuryId}/payments` : "/payments"} className="flex" id="dashboard-step2">
-                    <AuthButton permissionKind="transfer" permissionAction="AddProposal" className="w-full">
-                        <ArrowUpRightIcon className="size-4" />Send
+                <Link
+                    href={treasuryId ? `/${treasuryId}/payments` : "/payments"}
+                    className="flex"
+                    id="dashboard-step2"
+                >
+                    <AuthButton
+                        permissionKind="transfer"
+                        permissionAction="AddProposal"
+                        className="w-full"
+                    >
+                        <ArrowUpRightIcon className="size-4" />
+                        Send
                     </AuthButton>
                 </Link>
-                <Link href={treasuryId ? `/${treasuryId}/exchange` : "/exchange"} className="flex" id="dashboard-step3">
-                    <AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
+                <Link
+                    href={treasuryId ? `/${treasuryId}/exchange` : "/exchange"}
+                    className="flex"
+                    id="dashboard-step3"
+                >
+                    <AuthButton
+                        permissionKind="call"
+                        permissionAction="AddProposal"
+                        className="w-full"
+                    >
                         <ArrowLeftRight className="size-4" /> Exchange
                     </AuthButton>
                 </Link>
@@ -337,16 +477,16 @@ export default function BalanceWithGraph({ totalBalanceUSD, tokens, onDepositCli
                     <Database className="size-4" /> Earn
                 </AuthButton> */}
             </div>
-            {
-                isLoading ? (
-                    <div className="h-56 w-full space-y-3 p-4">
-                        <Skeleton className="h-50 w-full" />
-                    </div>
-                ) : (
-                    <BalanceChart data={chartData.data} symbol={selectedTokenGroup?.symbol} />
-                )
-            }
-        </PageCard >
-    )
+            {isLoading ? (
+                <div className="h-56 w-full space-y-3 p-4">
+                    <Skeleton className="h-50 w-full" />
+                </div>
+            ) : (
+                <BalanceChart
+                    data={chartData.data}
+                    symbol={selectedTokenGroup?.symbol}
+                />
+            )}
+        </PageCard>
+    );
 }
-
