@@ -74,9 +74,9 @@ pub struct ChartRequest {
 pub struct BalanceSnapshot {
     pub timestamp: String,   // ISO 8601 format
     pub balance: BigDecimal, // Decimal-adjusted balance
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "priceUsd")]
     pub price_usd: Option<f64>, // USD price at timestamp (null if unavailable)
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "valueUsd")]
     pub value_usd: Option<f64>, // balance * price_usd (null if unavailable)
 }
 

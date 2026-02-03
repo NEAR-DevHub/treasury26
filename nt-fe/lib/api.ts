@@ -189,8 +189,8 @@ export async function getTreasuryAssets(
 export interface BalanceSnapshot {
     timestamp: string; // ISO 8601 format
     balance: string; // Decimal-adjusted balance
-    price_usd?: number; // USD price at timestamp (null if unavailable)
-    value_usd?: number; // balance * price_usd (null if unavailable)
+    priceUsd?: number; // USD price at timestamp (null if unavailable)
+    valueUsd?: number; // balance * price_usd (null if unavailable)
 }
 
 export interface BalanceChartData {
