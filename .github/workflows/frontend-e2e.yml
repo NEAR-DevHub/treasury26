@@ -21,24 +21,39 @@ jobs:
     name: Playwright E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
-    services:
-      sandbox:
-        image: ghcr.io/near-devhub/treasury26/near-treasury-sandbox:main
-        ports:
-          - 3030:3030
-          - 8080:8080
-          - 5001:5001
-        options: >-
-          --health-cmd "curl -f http://localhost:8080/api/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 30
-          --health-start-period 120s
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Determine sandbox image tag
+        id: sandbox-tag
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_TAG="pr-${{ github.event.pull_request.number }}"
+            # Check if PR-specific image exists
+            if docker manifest inspect ghcr.io/near-devhub/treasury26/near-treasury-sandbox:${PR_TAG} > /dev/null 2>&1; then
+              echo "tag=${PR_TAG}" >> $GITHUB_OUTPUT
+              echo "Using PR-specific sandbox image: ${PR_TAG}"
+            else
+              echo "tag=main" >> $GITHUB_OUTPUT
+              echo "PR-specific image not found, using main"
+            fi
+          else
+            echo "tag=main" >> $GITHUB_OUTPUT
+            echo "Using main sandbox image"
+          fi
+
+      - name: Start sandbox container
+        run: |
+          docker run -d --name sandbox \
+            -p 3030:3030 -p 8080:8080 -p 5001:5001 \
+            --health-cmd "curl -f http://localhost:8080/api/health || exit 1" \
+            --health-interval 10s \
+            --health-timeout 5s \
+            --health-retries 30 \
+            --health-start-period 120s \
+            ghcr.io/near-devhub/treasury26/near-treasury-sandbox:${{ steps.sandbox-tag.outputs.tag }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -71,6 +86,10 @@ jobs:
         env:
           BACKEND_URL: http://localhost:8080
           NEXT_PUBLIC_BACKEND_API_BASE: http://localhost:8080
+
+      - name: Stop sandbox container
+        if: always()
+        run: docker stop sandbox || true
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
