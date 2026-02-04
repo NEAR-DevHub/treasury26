@@ -17,11 +17,6 @@ pub enum PlanType {
     Enterprise,
 }
 
-impl Default for PlanType {
-    fn default() -> Self {
-        Self::Pro // Default to Pro for launch (no payments yet)
-    }
-}
 
 impl std::fmt::Display for PlanType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -121,7 +116,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
             description: "Get started with core on-chain asset management features at no cost."
                 .to_string(),
             limits: PlanLimits {
-                monthly_volume_limit_cents: Some(25_000_00), // $25k
+                monthly_volume_limit_cents: Some(2500000), // $25k
                 overage_rate_bps: 20,                        // 0.20%
                 exchange_fee_bps: 35,                        // 0.35%
                 gas_covered_transactions: Some(10),          // 10 gas covered transactions
