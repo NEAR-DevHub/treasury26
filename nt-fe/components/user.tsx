@@ -69,8 +69,16 @@ export function User({
     withHoverCard = false,
 }: UserProps) {
     const { data: profile } = useProfile(withName ? accountId : undefined);
-    const name = profile?.name || accountId.split(".")[0];
     const image = `https://i.near.social/magic/large/https://near.social/magic/img/account/${accountId}`;
+
+    const name = profile?.name ? (
+        <span className="font-medium truncate max-w-full">{profile.name}</span>
+    ) : (
+        <Address
+            address={accountId}
+            className="font-medium truncate max-w-full"
+        />
+    );
 
     const content = (
         <>
@@ -83,12 +91,7 @@ export function User({
             </div>
             {!iconOnly && (
                 <div className="flex flex-col items-start min-w-0">
-                    {withName && (
-                        <Address
-                            address={name}
-                            className="font-medium truncate max-w-full"
-                        />
-                    )}
+                    {withName && name}
                     <Address
                         address={accountId}
                         className="text-xs text-muted-foreground truncate max-w-full"

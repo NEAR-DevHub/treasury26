@@ -14,6 +14,7 @@ import { CopyButton } from "@/components/copy-button";
 import { useReceiptSearch } from "@/hooks/use-receipt-search";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { AmountSummary } from "@/components/amount-summary";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface TransactionDetailsModalProps {
     activity: RecentActivity | null;
@@ -30,11 +31,11 @@ export function TransactionDetailsModal({
 }: TransactionDetailsModalProps) {
     if (!activity) return null;
 
-    const { data: transactionFromReceipt } = useReceiptSearch(
-        activity.transactionHashes?.length
-            ? undefined
-            : activity.receiptIds?.[0],
-    );
+    const needsReceiptSearch = !activity.transactionHashes?.length;
+    const { data: transactionFromReceipt, isLoading: isLoadingTransaction } =
+        useReceiptSearch(
+            needsReceiptSearch ? activity.receiptIds?.[0] : undefined,
+        );
 
     const isReceived = parseFloat(activity.amount) > 0;
     const transactionType = isReceived ? "Payment received" : "Payment sent";
@@ -143,39 +144,48 @@ export function TransactionDetailsModal({
                                     </div>
                                 ),
                             },
-                            ...(transactionHash
+                            ...(isLoadingTransaction
                                 ? [
                                       {
                                           label: "Transaction",
                                           value: (
-                                              <div className="flex items-center gap-2">
-                                                  <span className="font-mono max-w-[200px] truncate">
-                                                      {transactionHash}
-                                                  </span>
-                                                  <CopyButton
-                                                      text={transactionHash}
-                                                      toastMessage="Transaction hash copied to clipboard"
-                                                      className="h-6 w-6 p-0"
-                                                      iconClassName="h-3 w-3 text-muted-foreground"
-                                                      variant="unstyled"
-                                                  />
-                                                  <Button
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-6 w-6"
-                                                      onClick={() =>
-                                                          openInExplorer(
-                                                              transactionHash,
-                                                          )
-                                                      }
-                                                  >
-                                                      <ExternalLink className="h-3 w-3" />
-                                                  </Button>
-                                              </div>
+                                              <Skeleton className="h-5 w-[200px]" />
                                           ),
                                       } as InfoItem,
                                   ]
-                                : []),
+                                : transactionHash
+                                  ? [
+                                        {
+                                            label: "Transaction",
+                                            value: (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-mono max-w-[200px] truncate">
+                                                        {transactionHash}
+                                                    </span>
+                                                    <CopyButton
+                                                        text={transactionHash}
+                                                        toastMessage="Transaction hash copied to clipboard"
+                                                        className="h-6 w-6 p-0"
+                                                        iconClassName="h-3 w-3 text-muted-foreground"
+                                                        variant="unstyled"
+                                                    />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6"
+                                                        onClick={() =>
+                                                            openInExplorer(
+                                                                transactionHash,
+                                                            )
+                                                        }
+                                                    >
+                                                        <ExternalLink className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ),
+                                        } as InfoItem,
+                                    ]
+                                  : []),
                         ]}
                     />
                 </div>
