@@ -17,7 +17,6 @@ pub enum PlanType {
     Enterprise,
 }
 
-
 impl std::fmt::Display for PlanType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -51,50 +50,30 @@ impl BillingPeriod {
 /// Plan limits and features
 /// Note: Each treasury is purchased separately, no max_treasuries limit per account
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlanLimits {
-    /// Monthly outbound volume limit in USD cents (None = unlimited)
     pub monthly_volume_limit_cents: Option<u64>,
-
-    /// Overage rate as basis points (e.g., 20 = 0.20%)
     pub overage_rate_bps: u32,
-
-    /// Exchange fee as basis points (e.g., 35 = 0.35%)
     pub exchange_fee_bps: u32,
-
-    /// Gas covered transactions (None for one-time trial or unlimited)
     pub gas_covered_transactions: Option<u32>,
-
-    /// Monthly export credits (None for one-time trial or unlimited)
     pub monthly_export_credits: Option<u32>,
-
-    /// One-time trial export credits (for free plan)
     pub trial_export_credits: Option<u32>,
-
-    /// Monthly batch payment credits (None for one-time trial or unlimited)
     pub monthly_batch_payment_credits: Option<u32>,
-
-    /// One-time trial batch payment credits (for free plan)
     pub trial_batch_payment_credits: Option<u32>,
-
-    /// History lookup in months
     pub history_lookup_months: u32,
 }
 
 /// Plan pricing information (all prices in USD cents)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlanPricing {
-    /// Price for 6-month period in USD cents
-    pub six_month_price_cents: u32,
-
-    /// Monthly price in USD cents (if available)
     pub monthly_price_cents: Option<u32>,
-
-    /// Yearly price in USD cents (if available)
     pub yearly_price_cents: Option<u32>,
 }
 
 /// Complete plan configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlanConfig {
     pub plan_type: PlanType,
     pub name: String,
@@ -117,17 +96,16 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 .to_string(),
             limits: PlanLimits {
                 monthly_volume_limit_cents: Some(2500000), // $25k
-                overage_rate_bps: 20,                        // 0.20%
-                exchange_fee_bps: 35,                        // 0.35%
-                gas_covered_transactions: Some(10),          // 10 gas covered transactions
-                monthly_export_credits: None,                // No monthly reset
-                trial_export_credits: Some(3),               // 3 one-time trial exports
-                monthly_batch_payment_credits: None,         // No monthly reset
-                trial_batch_payment_credits: Some(3),        // 3 one-time trial
+                overage_rate_bps: 20,                      // 0.20%
+                exchange_fee_bps: 35,                      // 0.35%
+                gas_covered_transactions: Some(10),        // 10 gas covered transactions
+                monthly_export_credits: None,              // No monthly reset
+                trial_export_credits: Some(3),             // 3 one-time trial exports
+                monthly_batch_payment_credits: None,       // No monthly reset
+                trial_batch_payment_credits: Some(3),      // 3 one-time trial
                 history_lookup_months: 3,
             },
             pricing: PlanPricing {
-                six_month_price_cents: 0,
                 monthly_price_cents: None,
                 yearly_price_cents: None,
             },
@@ -155,7 +133,6 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 history_lookup_months: 12,
             },
             pricing: PlanPricing {
-                six_month_price_cents: 29_400,       // $294
                 monthly_price_cents: Some(49_00),    // $49/month
                 yearly_price_cents: Some(47_000),    // $470/year (~20% discount)
             },
@@ -183,7 +160,6 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 history_lookup_months: 24,
             },
             pricing: PlanPricing {
-                six_month_price_cents: 119_400,      // $1,194
                 monthly_price_cents: None,           // No monthly option
                 yearly_price_cents: Some(191_000),   // $1,910/year (~20% discount)
             },
@@ -211,7 +187,6 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 history_lookup_months: 120, // 10 years (effectively unlimited)
             },
             pricing: PlanPricing {
-                six_month_price_cents: 0, // Custom pricing
                 monthly_price_cents: None,
                 yearly_price_cents: None,
             },

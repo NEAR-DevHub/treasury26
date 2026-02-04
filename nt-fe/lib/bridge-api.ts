@@ -39,7 +39,7 @@ export const fetchDepositAddress = async (
         const response = await axios.post(
             `${BACKEND_API_BASE}/intents/deposit-address`,
             {
-                account_id: accountId,
+                accountId: accountId,
                 chain: chainId,
             },
         );

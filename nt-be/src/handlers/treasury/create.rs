@@ -9,11 +9,10 @@ use serde::{Deserialize, Serialize};
 use crate::{AppState, constants::TREASURY_FACTORY_CONTRACT_ID, services::register_new_dao};
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateTreasuryRequest {
     pub name: String,
-    #[serde(rename = "accountId")]
     pub account_id: AccountId,
-    #[serde(rename = "paymentThreshold")]
     pub payment_threshold: u8,
     pub governors: Vec<AccountId>,
     pub financiers: Vec<AccountId>,

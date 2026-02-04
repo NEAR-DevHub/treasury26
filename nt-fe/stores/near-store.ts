@@ -225,8 +225,8 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
             // Send signature to backend for verification
             const loginResponse = await authLogin({
-                account_id: accountId,
-                public_key: signedMessage.publicKey,
+                accountId: accountId,
+                publicKey: signedMessage.publicKey,
                 signature: signedMessage.signature,
                 message,
                 nonce,
@@ -235,10 +235,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
             set({
                 isAuthenticated: true,
-                hasAcceptedTerms: loginResponse.terms_accepted,
+                hasAcceptedTerms: loginResponse.termsAccepted,
                 user: {
-                    account_id: loginResponse.account_id,
-                    terms_accepted: loginResponse.terms_accepted,
+                    accountId: loginResponse.accountId,
+                    termsAccepted: loginResponse.termsAccepted,
                 },
                 isAuthenticating: false,
             });
@@ -290,7 +290,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 set({
                     user: {
                         ...user,
-                        terms_accepted: true,
+                        termsAccepted: true,
                     },
                 });
             }
@@ -306,7 +306,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
             if (user) {
                 set({
                     isAuthenticated: true,
-                    hasAcceptedTerms: user.terms_accepted,
+                    hasAcceptedTerms: user.termsAccepted,
                     user,
                 });
             } else {

@@ -30,6 +30,7 @@ pub struct AddAccountRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AddAccountResponse {
     pub account_id: String,
     pub enabled: bool,

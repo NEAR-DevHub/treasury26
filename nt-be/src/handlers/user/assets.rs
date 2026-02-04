@@ -32,8 +32,8 @@ pub enum Balance {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserAssetsQuery {
-    #[serde(rename = "accountId")]
     pub account_id: AccountId,
 }
 
@@ -66,13 +66,12 @@ pub enum TokenResidency {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct SimplifiedToken {
     pub id: String,
-    #[serde(rename = "contractId")]
     pub contract_id: Option<String>,
     pub residency: TokenResidency,
     pub network: String,
-    #[serde(rename = "chainName")]
     pub chain_name: String,
     pub symbol: String,
 
@@ -81,7 +80,6 @@ pub struct SimplifiedToken {
     pub price: String,
     pub name: String,
     pub icon: Option<String>,
-    #[serde(rename = "chainIcons")]
     pub chain_icons: Option<ChainIcons>,
 }
 

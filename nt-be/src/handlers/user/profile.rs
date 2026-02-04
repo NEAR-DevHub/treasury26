@@ -10,22 +10,22 @@ use std::{collections::HashMap, sync::Arc};
 use crate::{AppState, utils::cache::CacheTier};
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProfileQuery {
-    #[serde(rename = "accountId")]
     pub account_id: String,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchProfileQuery {
-    #[serde(rename = "accountIds")]
     pub account_ids: String, // Comma-separated account IDs
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ProfileData {
     pub name: Option<String>,
     pub image: Option<serde_json::Value>,
-    #[serde(rename = "backgroundImage")]
     pub background_image: Option<String>,
     pub description: Option<String>,
     pub linktree: Option<serde_json::Value>,

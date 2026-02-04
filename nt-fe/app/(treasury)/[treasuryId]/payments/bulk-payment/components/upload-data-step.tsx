@@ -47,7 +47,7 @@ export function UploadDataStep({
     }> | null>(null);
 
     const isLoading = isLoadingCredits || isLoadingSubscription;
-    const availableCredits = creditsData?.credits_available ?? 0;
+    const availableCredits = creditsData?.creditsAvailable ?? 0;
 
     const selectedToken = form.watch("selectedToken");
     const csvData = form.watch("csvData");
@@ -277,12 +277,12 @@ export function UploadDataStep({
                                 <Info className="h-4 w-4 mt-[2px]" />
                                 <AlertTitle>
                                     You've used all your{" "}
-                                    {isTrialPlan(subscription.plan_config)
+                                    {isTrialPlan(subscription.planConfig)
                                         ? "credits"
                                         : "bulk payments"}
                                 </AlertTitle>
                                 <AlertDescription className="text-general-info-foreground">
-                                    {isTrialPlan(subscription.plan_config)
+                                    {isTrialPlan(subscription.planConfig)
                                         ? "Upgrade your plan to get more and keep going"
                                         : "Upgrade your plan for more access, or wait until your limits reset next month."}
                                 </AlertDescription>

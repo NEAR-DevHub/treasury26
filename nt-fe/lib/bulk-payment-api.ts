@@ -32,7 +32,7 @@ export async function generateListId(
             recipient: p.recipient,
         })),
         submitter: submitterId,
-        token_id: tokenId,
+        tokenId: tokenId,
     });
 
     if (typeof window !== "undefined" && window.crypto?.subtle) {
@@ -55,15 +55,15 @@ export async function submitPaymentList(params: {
     daoContractId: string;
     tokenId: string;
     payments: Array<{ recipient: string; amount: string }>;
-}): Promise<{ success: boolean; list_id?: string; error?: string }> {
+}): Promise<{ success: boolean; listId?: string; error?: string }> {
     try {
         const response = await axios.post(
             `${BACKEND_API_BASE}/api/bulk-payment/submit-list`,
             {
-                list_id: params.listId,
-                submitter_id: params.submitterId,
-                dao_contract_id: params.daoContractId,
-                token_id: params.tokenId,
+                listId: params.listId,
+                submitterId: params.submitterId,
+                daoContractId: params.daoContractId,
+                tokenId: params.tokenId,
                 payments: params.payments,
             },
             { withCredentials: true },

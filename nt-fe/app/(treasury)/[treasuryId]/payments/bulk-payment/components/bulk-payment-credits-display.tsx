@@ -19,20 +19,20 @@ export function BulkPaymentCreditsDisplay({
     credits,
     subscription,
 }: BulkPaymentCreditsDisplayProps) {
-    const { credits_available, credits_used, total_credits } = credits;
-    const batch_payment_credit_limit = getBatchPaymentCreditLimit(
-        subscription.plan_config,
+    const { creditsAvailable, creditsUsed, totalCredits } = credits;
+    const batchPaymentCreditLimit = getBatchPaymentCreditLimit(
+        subscription.planConfig,
     );
-    const isTrial = isTrialPlan(subscription.plan_config);
+    const isTrial = isTrialPlan(subscription.planConfig);
 
-    const isUnlimited = batch_payment_credit_limit === null;
+    const isUnlimited = batchPaymentCreditLimit === null;
 
     // Calculate progress percentage
     const progressPercentage = isUnlimited
         ? 0
-        : batch_payment_credit_limit
-          ? (credits_used / batch_payment_credit_limit) * 100
-          : (credits_used / total_credits) * 100;
+        : batchPaymentCreditLimit
+          ? (creditsUsed / batchPaymentCreditLimit) * 100
+          : (creditsUsed / totalCredits) * 100;
 
     // Format period display
     const periodDisplay = isTrial ? "one-time trial" : "month";
@@ -45,7 +45,7 @@ export function BulkPaymentCreditsDisplay({
                 <span className="text-sm font-medium border-2 py-1 px-2 rounded-lg">
                     {isUnlimited
                         ? "Unlimited"
-                        : `${batch_payment_credit_limit || total_credits} / ${periodDisplay}`}
+                        : `${batchPaymentCreditLimit || totalCredits} / ${periodDisplay}`}
                 </span>
             </div>
 
@@ -54,10 +54,10 @@ export function BulkPaymentCreditsDisplay({
                 <div className="space-y-2 border-b-[0.2px] border-general-unofficial-border pb-4">
                     <div className="flex items-center justify-between text-sm">
                         <span className="font-semibold">
-                            {credits_available} Available
+                            {creditsAvailable} Available
                         </span>
                         <span className="text-muted-foreground text-xs">
-                            {credits_used} Used
+                            {creditsUsed} Used
                         </span>
                     </div>
 
@@ -78,9 +78,7 @@ export function BulkPaymentCreditsDisplay({
                         Looking for more flexibility?
                     </span>
                     <Button
-                        variant={
-                            credits_available === 0 ? "default" : "outline"
-                        }
+                        variant={creditsAvailable === 0 ? "default" : "outline"}
                         size="sm"
                         className="p-3!"
                     >

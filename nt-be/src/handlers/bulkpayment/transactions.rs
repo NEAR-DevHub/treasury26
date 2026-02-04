@@ -14,6 +14,7 @@ use crate::{
 };
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PaymentTransaction {
     pub recipient: String,
     pub amount: String,
@@ -21,6 +22,7 @@ pub struct PaymentTransaction {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListStatusResponse {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,6 +32,7 @@ pub struct ListStatusResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListStatus {
     pub list_id: String,
     pub status: String,
@@ -39,6 +42,7 @@ pub struct ListStatus {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransactionsResponse {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,6 +52,7 @@ pub struct TransactionsResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransactionHashResponse {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -60,6 +65,7 @@ pub struct TransactionHashResponse {
 
 /// Contract response types
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PaymentListResponse {
     token_id: String,
     submitter: String,
@@ -100,6 +106,7 @@ impl PaymentListStatus {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ContractPaymentRecord {
     recipient: String,
     amount: String,
@@ -115,6 +122,7 @@ enum ContractPaymentStatus {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PaidStatus {
     block_height: u64,
 }

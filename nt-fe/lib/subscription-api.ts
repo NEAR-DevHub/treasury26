@@ -12,30 +12,29 @@ export type PlanType = "free" | "plus" | "pro" | "enterprise";
  * Plan limits and features
  */
 export interface PlanLimits {
-    monthly_volume_limit_cents: number | null;
-    overage_rate_bps: number;
-    exchange_fee_bps: number;
-    monthly_export_credits: number | null;
-    trial_export_credits: number | null;
-    monthly_batch_payment_credits: number | null;
-    trial_batch_payment_credits: number | null;
-    history_lookup_months: number;
+    monthlyVolumeLimitCents: number | null;
+    overageRateBps: number;
+    exchangeFeeBps: number;
+    monthlyExportCredits: number | null;
+    trialExportCredits: number | null;
+    monthlyBatchPaymentCredits: number | null;
+    trialBatchPaymentCredits: number | null;
+    historyLookupMonths: number;
 }
 
 /**
  * Plan pricing information (all prices in USD cents)
  */
 export interface PlanPricing {
-    six_month_price_cents: number;
-    monthly_price_cents: number | null;
-    yearly_price_cents: number | null;
+    monthlyPriceCents: number | null;
+    yearlyPriceCents: number | null;
 }
 
 /**
  * Complete plan configuration
  */
 export interface PlanConfig {
-    plan_type: PlanType;
+    planType: PlanType;
     name: string;
     description: string;
     limits: PlanLimits;
@@ -46,12 +45,12 @@ export interface PlanConfig {
  * Subscription status response from GET /api/subscription/{account_id}
  */
 export interface SubscriptionStatus {
-    account_id: string;
-    plan_type: PlanType;
-    plan_config: PlanConfig;
-    export_credits: number;
-    batch_payment_credits: number;
-    credits_reset_at: string;
+    accountId: string;
+    planType: PlanType;
+    planConfig: PlanConfig;
+    exportCredits: number;
+    batchPaymentCredits: number;
+    creditsResetAt: string;
 }
 
 /**
@@ -88,8 +87,8 @@ export async function getPlans(): Promise<PlanConfig[]> {
  */
 export function hasUnlimitedBatchPayments(planConfig: PlanConfig): boolean {
     return (
-        planConfig.limits.monthly_batch_payment_credits === null &&
-        planConfig.limits.trial_batch_payment_credits === null
+        planConfig.limits.monthlyBatchPaymentCredits === null &&
+        planConfig.limits.trialBatchPaymentCredits === null
     );
 }
 
@@ -101,8 +100,8 @@ export function getBatchPaymentCreditLimit(
     planConfig: PlanConfig,
 ): number | null {
     return (
-        planConfig.limits.monthly_batch_payment_credits ??
-        planConfig.limits.trial_batch_payment_credits
+        planConfig.limits.monthlyBatchPaymentCredits ??
+        planConfig.limits.trialBatchPaymentCredits
     );
 }
 
@@ -111,7 +110,7 @@ export function getBatchPaymentCreditLimit(
  */
 export function isTrialPlan(planConfig: PlanConfig): boolean {
     return (
-        planConfig.plan_type === "free" &&
-        planConfig.limits.trial_batch_payment_credits !== null
+        planConfig.planType === "free" &&
+        planConfig.limits.trialBatchPaymentCredits !== null
     );
 }

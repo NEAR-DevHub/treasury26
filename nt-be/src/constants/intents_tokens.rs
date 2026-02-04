@@ -20,27 +20,25 @@ pub enum TokenInfo {
 
 /// A virtual aggregation of the same token across multiple blockchains
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct UnifiedTokenInfo {
-    #[serde(rename = "unifiedAssetId")]
     pub unified_asset_id: String,
     pub symbol: String,
     pub name: String,
     pub icon: String,
-    #[serde(rename = "groupedTokens")]
     pub grouped_tokens: Vec<BaseTokenInfo>,
     pub tags: Option<Vec<String>>,
 }
 
 /// One token recognized by NEAR Intents
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct BaseTokenInfo {
-    #[serde(rename = "defuseAssetId")]
     pub defuse_asset_id: String,
     pub symbol: String,
     pub name: String,
     pub decimals: u8,
     pub icon: String,
-    #[serde(rename = "originChainName")]
     pub origin_chain_name: String,
     pub deployments: Vec<TokenDeployment>,
     pub tags: Option<Vec<String>>,

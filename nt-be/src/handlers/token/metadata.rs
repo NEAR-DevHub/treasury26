@@ -16,14 +16,14 @@ use crate::{
 };
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TokenMetadataQuery {
-    #[serde(rename = "tokenId")]
     pub token_id: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TokenMetadata {
-    #[serde(rename = "tokenId")]
     pub token_id: String,
     pub name: String,
     pub symbol: String,
@@ -32,15 +32,12 @@ pub struct TokenMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub price: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "priceUpdatedAt")]
     pub price_updated_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "chainName")]
     pub chain_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "chainIcons")]
     pub chain_icons: Option<ChainIcons>,
 }
 
@@ -49,8 +46,8 @@ pub struct TokenMetadata {
 /// Sometimes it contains both camelCase and snake_case fields or only one of them.
 /// We need to handle both cases. :)
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 struct RefSdkToken {
-    #[serde(rename = "defuseAssetId")]
     pub defuse_asset_id: Option<String>,
     #[serde(rename = "defuse_asset_id")]
     pub defuse_asset_id_snake_case: Option<String>,
@@ -59,13 +56,10 @@ struct RefSdkToken {
     pub decimals: Option<u8>,
     pub icon: Option<String>,
     pub price: Option<f64>,
-    #[serde(rename = "priceUpdatedAt")]
     pub price_updated_at: Option<String>,
     #[serde(rename = "price_updated_at")]
     pub price_updated_at_snake_case: Option<String>,
-    #[serde(rename = "chainName")]
     pub chain_name: Option<String>,
-    #[serde(rename = "chain_name")]
     pub chain_name_snake_case: Option<String>,
     pub error: Option<String>,
 }
