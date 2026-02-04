@@ -11,7 +11,6 @@ import {
     getTokenMetadata,
     getLockupPool,
     getProfile,
-    getBatchProfiles,
     StorageDepositRequest,
     getBatchPayment,
     checkHandleUnused,
