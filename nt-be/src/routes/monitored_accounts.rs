@@ -25,6 +25,7 @@ pub struct MonitoredAccount {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AddAccountRequest {
     pub account_id: String,
 }
@@ -45,11 +46,13 @@ pub struct AddAccountResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListAccountsQuery {
     pub enabled: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateAccountRequest {
     pub enabled: bool,
 }
