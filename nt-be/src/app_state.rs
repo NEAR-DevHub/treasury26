@@ -396,7 +396,7 @@ impl AppState {
                     r#"
                         SELECT block_height, block_timestamp
                         FROM balance_changes
-                        WHERE block_timestamp >= $1
+                        WHERE block_timestamp = $1
                         ORDER BY block_timestamp ASC
                         LIMIT 1
                         "#,
@@ -463,30 +463,31 @@ impl AppState {
     /// * `Err` - If the search fails
     async fn binary_search_block_by_timestamp(
         &self,
-        target_timestamp_ns: i64,
+        timestamp_ns: i64,
     ) -> Result<u64, Box<dyn std::error::Error>> {
         use near_api::{Chain, Reference};
 
         // Get the latest block to establish the search range
         let latest_block = Chain::block().fetch_from(&self.archival_network).await?;
 
-        let mut left = 1u64; // Genesis block
+        // Sputnik DAO genesis block
+        let mut left = 129265430; // Genesis block
         let mut right = latest_block.header.height;
         let mut result = right;
 
         // Validate that the target timestamp is within range
-        let latest_timestamp = latest_block.header.timestamp as i64;
-        if target_timestamp_ns > latest_timestamp {
+        let latest_timestamp: i64 = latest_block.header.timestamp as i64;
+        if timestamp_ns > latest_timestamp {
             return Err(format!(
                 "Target timestamp {} is in the future (latest block timestamp: {})",
-                target_timestamp_ns, latest_timestamp
+                timestamp_ns, latest_timestamp
             )
             .into());
         }
 
         log::info!(
             "Binary searching for block with timestamp {} in range [{}, {}]",
-            target_timestamp_ns,
+            timestamp_ns,
             left,
             right
         );
@@ -500,19 +501,19 @@ impl AppState {
                 .fetch_from(&self.archival_network)
                 .await?;
 
-            let mid_timestamp = mid_block.header.timestamp as i64;
+            let mid_timestamp: i64 = mid_block.header.timestamp as i64;
 
             log::debug!(
                 "Checking block {} with timestamp {} (target: {})",
                 mid,
                 mid_timestamp,
-                target_timestamp_ns
+                timestamp_ns
             );
 
-            if mid_timestamp < target_timestamp_ns {
+            if mid_timestamp < timestamp_ns {
                 // Target is in a later block
                 left = mid + 1;
-            } else if mid_timestamp > target_timestamp_ns {
+            } else if mid_timestamp > timestamp_ns {
                 // Target is in an earlier block
                 result = mid;
                 if mid == 0 {
@@ -524,7 +525,7 @@ impl AppState {
                 log::info!(
                     "Found exact match at block {} for timestamp {}",
                     mid,
-                    target_timestamp_ns
+                    timestamp_ns
                 );
                 return Ok(mid);
             }
@@ -534,7 +535,7 @@ impl AppState {
         log::info!(
             "Binary search completed. Closest block: {} for timestamp {}",
             result,
-            target_timestamp_ns
+            timestamp_ns
         );
 
         Ok(result)
@@ -604,7 +605,7 @@ mod tests {
 
         // Use a known block timestamp - Block 151386339 from the binary_search tests
         // Timestamp: 1750097144159145697 nanoseconds = ~2025-12-16
-        let target_timestamp_ns = 1767606003313746552;
+        let target_timestamp_ns = 1750097144159145697;
         let target_date = DateTime::<Utc>::from_timestamp_nanos(target_timestamp_ns);
 
         // Try to find the block height using binary search
@@ -617,7 +618,7 @@ mod tests {
 
         // The result should be close to the expected block (151386339)
         // Allow some margin since we're searching by timestamp
-        assert_eq!(result, 179819880)
+        assert_eq!(result, 151386339)
     }
 
     /// Test error handling for future timestamps
@@ -695,21 +696,5 @@ mod tests {
             cache_key,
             format!("block-height-by-timestamp:{}", target_timestamp_ns)
         );
-    }
-
-    /// Helper: Create a test database pool
-    async fn create_test_pool() -> PgPool {
-        dotenvy::from_filename(".env").ok();
-        dotenvy::from_filename(".env.test").ok();
-
-        let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-            "postgresql://treasury_test:test_password@localhost:5433/treasury_test_db".to_string()
-        });
-
-        sqlx::postgres::PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&db_url)
-            .await
-            .expect("Failed to create test pool")
     }
 }

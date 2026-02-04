@@ -189,8 +189,8 @@ export async function getTreasuryAssets(
 export interface BalanceSnapshot {
     timestamp: string; // ISO 8601 format
     balance: string; // Decimal-adjusted balance
-    price_usd?: number; // USD price at timestamp (null if unavailable)
-    value_usd?: number; // balance * price_usd (null if unavailable)
+    priceUsd?: number; // USD price at timestamp (null if unavailable)
+    valueUsd?: number; // balance * price_usd (null if unavailable)
 }
 
 export interface BalanceChartData {
@@ -254,8 +254,8 @@ export interface TokenBalance {
 export interface RecentActivity {
     id: number;
     block_time: string;
-    token_id: string;
-    token_metadata: {
+    tokenId: string;
+    tokenMetadata: {
         tokenId: string;
         name: string;
         symbol: string;
@@ -271,10 +271,11 @@ export interface RecentActivity {
         };
     };
     counterparty: string | null;
-    signer_id: string | null;
-    receiver_id: string | null;
+    signerId: string | null;
+    receiverId: string | null;
     amount: string;
-    transaction_hashes: string[];
+    transactionHashes: string[];
+    receiptIds: string[];
 }
 
 export interface RecentActivityResponse {
@@ -1061,4 +1062,59 @@ export async function getBulkPaymentUsageStats(
         },
     );
     return response.data;
+}
+
+/**
+ * Plan Details
+ */
+export type PlanType = "trial" | "plus" | "pro" | "custom";
+export type PlanPeriod = "trial" | "month";
+
+export interface PlanDetails {
+    plan_type: PlanType;
+    batch_payment_credit_limit: number | null; // null for unlimited
+    period: PlanPeriod;
+}
+
+/**
+ * Get plan details for a treasury
+ * Returns the plan type, credit limits for various features, and period information
+ */
+export async function getPlanDetails(treasuryId: string): Promise<PlanDetails> {
+    const response = await axios.get<PlanDetails>(
+        `${BACKEND_API_BASE}/plan/details`,
+        {
+            params: { treasury_id: treasuryId },
+        },
+    );
+    return response.data;
+}
+
+/**
+ * Receipt Search Result
+ */
+export interface ReceiptSearchResult {
+    receiptId: string;
+    originatedFromTransactionHash: string;
+}
+
+/**
+ * Search for a receipt by keyword (receipt ID) and return the originating transaction hash
+ * Uses long-term caching since receipt->transaction mappings are immutable
+ */
+export async function searchReceipt(
+    keyword: string,
+): Promise<ReceiptSearchResult[]> {
+    if (!keyword) return [];
+
+    try {
+        const url = `${BACKEND_API_BASE}/receipt/search`;
+        const response = await axios.get<ReceiptSearchResult[]>(url, {
+            params: { keyword },
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Error searching receipt for ${keyword}`, error);
+        return [];
+    }
 }

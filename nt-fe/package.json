@@ -7,7 +7,12 @@
         "build": "next build",
         "start": "next start",
         "lint": "biome check",
-        "format": "biome format --write"
+        "format": "biome format --write",
+        "proxy": "node proxy-server.js",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui",
+        "test:e2e:headed": "playwright test --headed",
+        "test:e2e:docker": "docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.2.2",
@@ -32,6 +37,7 @@
         "@tanstack/react-table": "^8.21.3",
         "axios": "^1.13.2",
         "big.js": "^7.0.1",
+        "borsh": "^2.0.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
@@ -57,6 +63,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.2.0",
+        "@playwright/test": "^1.58.0",
         "@tailwindcss/postcss": "^4.1.18",
         "@types/big.js": "^6.2.2",
         "@types/geoip-lite": "^1.4.4",
