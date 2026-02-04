@@ -9,8 +9,8 @@
 //! get attention from both, giving them double coverage.
 
 use near_api::{Chain, NetworkConfig};
-use sqlx::types::chrono::{DateTime, Utc};
 use sqlx::PgPool;
+use sqlx::types::chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
@@ -89,14 +89,8 @@ pub async fn run_dirty_monitor(
             // Note: hint_service is not passed to spawned tasks because
             // TransferHintService is not Clone. Binary search fallback is used instead.
             // This can be improved later by wrapping the service in Arc in AppState.
-            if let Err(e) = run_dirty_task(
-                &pool,
-                &network,
-                &account_id_clone,
-                original_dirty_at,
-                None,
-            )
-            .await
+            if let Err(e) =
+                run_dirty_task(&pool, &network, &account_id_clone, original_dirty_at, None).await
             {
                 log::error!(
                     "[dirty-monitor] Task for {} failed: {}",
@@ -125,50 +119,8 @@ async fn run_dirty_task(
     // Get current block height
     let up_to_block = Chain::block().fetch_from(network).await?.header.height as i64;
 
-    // Get all tokens for this account (excluding staking tokens)
-    let tokens: Vec<String> = sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT token_id
-        FROM balance_changes
-        WHERE account_id = $1 AND token_id IS NOT NULL
-        ORDER BY token_id
-        "#,
-    )
-    .bind(account_id)
-    .fetch_all(pool)
-    .await?;
-
-    let mut total_filled = 0;
-
-    for token_id in &tokens {
-        if is_staking_token(token_id) {
-            continue;
-        }
-
-        match fill_gaps_with_hints(pool, network, account_id, token_id, up_to_block, hint_service)
-            .await
-        {
-            Ok(filled) => {
-                if !filled.is_empty() {
-                    log::info!(
-                        "[dirty-monitor] {}/{}: Filled {} gaps",
-                        account_id,
-                        token_id,
-                        filled.len()
-                    );
-                    total_filled += filled.len();
-                }
-            }
-            Err(e) => {
-                log::error!(
-                    "[dirty-monitor] {}/{}: Error filling gaps: {}",
-                    account_id,
-                    token_id,
-                    e
-                );
-            }
-        }
-    }
+    let total_filled =
+        fill_dirty_account_gaps(pool, network, account_id, up_to_block, hint_service).await?;
 
     log::info!(
         "[dirty-monitor] {} completed: filled {} total gaps",
@@ -199,6 +151,75 @@ async fn run_dirty_task(
     }
 
     Ok(())
+}
+
+/// Fill gaps for all non-staking tokens of an account up to the given block.
+///
+/// This is the core gap-filling logic used by dirty account tasks.
+/// It processes all tokens for the account, skipping staking tokens,
+/// and returns the total number of gaps filled.
+///
+/// Exposed as public for integration testing with controlled block heights.
+pub async fn fill_dirty_account_gaps(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    account_id: &str,
+    up_to_block: i64,
+    hint_service: Option<&TransferHintService>,
+) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    // Get all tokens for this account (excluding staking tokens)
+    let tokens: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT token_id
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id IS NOT NULL
+        ORDER BY token_id
+        "#,
+    )
+    .bind(account_id)
+    .fetch_all(pool)
+    .await?;
+
+    let mut total_filled = 0;
+
+    for token_id in &tokens {
+        if is_staking_token(token_id) {
+            continue;
+        }
+
+        match fill_gaps_with_hints(
+            pool,
+            network,
+            account_id,
+            token_id,
+            up_to_block,
+            hint_service,
+        )
+        .await
+        {
+            Ok(filled) => {
+                if !filled.is_empty() {
+                    log::info!(
+                        "[dirty-monitor] {}/{}: Filled {} gaps",
+                        account_id,
+                        token_id,
+                        filled.len()
+                    );
+                    total_filled += filled.len();
+                }
+            }
+            Err(e) => {
+                log::error!(
+                    "[dirty-monitor] {}/{}: Error filling gaps: {}",
+                    account_id,
+                    token_id,
+                    e
+                );
+            }
+        }
+    }
+
+    Ok(total_filled)
 }
 
 #[cfg(test)]
