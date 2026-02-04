@@ -19,11 +19,11 @@ import {
 } from "@/components/modal";
 import type { BulkPaymentFormValues, BulkPaymentData } from "../schemas";
 import { formatBalance } from "@/lib/utils";
-import { availableBalance } from "@/lib/balance";
 import { validateAccountsAndStorage } from "../utils";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { AmountSummary } from "@/components/amount-summary";
+import { CreateRequestButton } from "@/components/create-request-button";
 
 interface ReviewPaymentsStepProps extends StepProps {
     initialPaymentData: BulkPaymentData[];
@@ -375,15 +375,13 @@ export function ReviewPaymentsStep({
 
                 {/* Submit Button */}
                 {!isValidatingAccounts && (
-                    <Button
+                    <CreateRequestButton
                         type="button"
-                        className="w-full"
-                        size="lg"
                         onClick={onSubmit}
                         disabled={hasValidationErrors}
-                    >
-                        Confirm and Submit Request
-                    </Button>
+                        permissions={[{ kind: "call", action: "AddProposal" }]}
+                        idleMessage="Confirm and Submit Request"
+                    />
                 )}
             </ReviewStep>
 

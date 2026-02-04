@@ -9,6 +9,7 @@ import { Upload, FileText, ArrowLeft, DollarSign, Info, X } from "lucide-react";
 import TokenSelect, { SelectedTokenData } from "@/components/token-select";
 import { NumberBadge } from "@/components/number-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CreateRequestButton } from "@/components/create-request-button";
 import { useSubscription } from "@/hooks/use-subscription";
 import { isTrialPlan } from "@/lib/subscription-api";
 import { useBulkPaymentCredits } from "../hooks/use-bulk-payment-credits";
@@ -578,10 +579,8 @@ export function UploadDataStep({
                     </div>
 
                     {/* Continue Button */}
-                    <Button
+                    <CreateRequestButton
                         type="button"
-                        className="w-full"
-                        size="lg"
                         disabled={
                             !selectedToken ||
                             (activeTab === "upload" && !csvData) ||
@@ -589,9 +588,12 @@ export function UploadDataStep({
                             availableCredits === 0
                         }
                         onClick={handleContinue}
-                    >
-                        Continue to Review
-                    </Button>
+                        permissions={[
+                            { kind: "transfer", action: "AddProposal" },
+                            { kind: "call", action: "AddProposal" },
+                        ]}
+                        idleMessage="Continue to Review"
+                    />
                 </PageCard>
             </div>
 

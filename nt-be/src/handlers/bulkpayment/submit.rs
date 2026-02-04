@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::{AppState, auth::AuthUser};
 
 const MAX_RECIPIENTS_PER_BULK_PAYMENT: usize = 25;
+const BYTES_PER_RECORD: u128 = 216;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -224,6 +225,7 @@ async fn verify_dao_proposal(
 
 fn calculate_storage_cost(num_records: u128) -> NearToken {
     STORAGE_COST_PER_BYTE
+        .saturating_mul(BYTES_PER_RECORD)
         .saturating_mul(num_records)
         .saturating_mul(11)
         .saturating_div(10)
