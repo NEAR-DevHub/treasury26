@@ -23,6 +23,7 @@ pub struct MonitoredAccount {
     pub updated_at: DateTime<Utc>,
     pub export_credits: i32,
     pub batch_payment_credits: i32,
+    pub dirty_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,6 +40,7 @@ pub struct AddAccountResponse {
     pub updated_at: DateTime<Utc>,
     pub export_credits: i32,
     pub batch_payment_credits: i32,
+    pub dirty_at: Option<DateTime<Utc>>,
     pub is_new_registration: bool,
 }
 
@@ -73,7 +75,7 @@ pub async fn add_monitored_account(
     // Check if already exists
     let existing = sqlx::query_as::<_, MonitoredAccount>(
         r#"
-        SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
+        SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
         FROM monitored_accounts
         WHERE account_id = $1
         "#,
@@ -98,6 +100,7 @@ pub async fn add_monitored_account(
             updated_at: account.updated_at,
             export_credits: account.export_credits,
             batch_payment_credits: account.batch_payment_credits,
+            dirty_at: account.dirty_at,
             is_new_registration: false,
         }));
     }
@@ -107,7 +110,7 @@ pub async fn add_monitored_account(
         r#"
         INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits)
         VALUES ($1, true, $2, $3)
-        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
         "#,
     )
     .bind(&payload.account_id)
@@ -130,6 +133,7 @@ pub async fn add_monitored_account(
         updated_at: account.updated_at,
         export_credits: account.export_credits,
         batch_payment_credits: account.batch_payment_credits,
+        dirty_at: account.dirty_at,
         is_new_registration: true,
     }))
 }
@@ -142,7 +146,7 @@ pub async fn list_monitored_accounts(
     let accounts = if let Some(enabled) = params.enabled {
         sqlx::query_as::<_, MonitoredAccount>(
             r#"
-            SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
+            SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
             FROM monitored_accounts
             WHERE enabled = $1
             ORDER BY account_id
@@ -154,7 +158,7 @@ pub async fn list_monitored_accounts(
     } else {
         sqlx::query_as::<_, MonitoredAccount>(
             r#"
-            SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
+            SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
             FROM monitored_accounts
             ORDER BY account_id
             "#,
@@ -184,7 +188,7 @@ pub async fn update_monitored_account(
         SET enabled = $2,
             updated_at = NOW()
         WHERE account_id = $1
-        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
         "#,
     )
     .bind(&account_id)
@@ -237,4 +241,52 @@ pub async fn delete_monitored_account(
     }
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MarkDirtyRequest {
+    /// How many hours back to fill gaps for. Defaults to 24.
+    pub hours_back: Option<i64>,
+}
+
+/// Mark a monitored account as dirty to trigger priority gap filling
+///
+/// Sets `dirty_at` to `NOW() - hours_back` (default 24 hours).
+/// The dirty account watcher will spawn a parallel task to fill gaps
+/// from `dirty_at` to now, most-recent-first.
+pub async fn mark_account_dirty(
+    State(state): State<Arc<AppState>>,
+    Path(account_id): Path<String>,
+    Json(payload): Json<MarkDirtyRequest>,
+) -> Result<Json<MonitoredAccount>, (StatusCode, Json<Value>)> {
+    let hours_back = payload.hours_back.unwrap_or(24);
+
+    let account = sqlx::query_as::<_, MonitoredAccount>(
+        r#"
+        UPDATE monitored_accounts
+        SET dirty_at = NOW() - make_interval(hours => $2),
+            updated_at = NOW()
+        WHERE account_id = $1 AND enabled = true
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
+        "#,
+    )
+    .bind(&account_id)
+    .bind(hours_back as f64)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Database error: {}", e) })),
+        )
+    })?;
+
+    account
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Account not found or not enabled" })),
+            )
+        })
+        .map(Json)
 }
