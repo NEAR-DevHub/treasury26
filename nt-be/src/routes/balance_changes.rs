@@ -14,6 +14,7 @@ use crate::handlers::balance_changes::gap_filler;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_metadata};
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BalanceChangesQuery {
     pub account_id: String,
     pub token_id: Option<String>,
@@ -23,58 +24,43 @@ pub struct BalanceChangesQuery {
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct BalanceChange {
     pub id: i64,
-    #[serde(rename = "accountId")]
     pub account_id: String,
-    #[serde(rename = "blockHeight")]
     pub block_height: i64,
-    #[serde(rename = "blockTime")]
     pub block_time: DateTime<Utc>,
-    #[serde(rename = "tokenId")]
     pub token_id: String,
-    #[serde(rename = "receiptId")]
     pub receipt_id: Vec<String>,
-    #[serde(rename = "transactionHashes")]
     pub transaction_hashes: Vec<String>,
-    #[serde(rename = "counterparty")]
     pub counterparty: Option<String>,
-    #[serde(rename = "signerId")]
     pub signer_id: Option<String>,
-    #[serde(rename = "receiverId")]
     pub receiver_id: Option<String>,
     pub amount: BigDecimal,
-    #[serde(rename = "balanceBefore")]
     pub balance_before: BigDecimal,
-    #[serde(rename = "balanceAfter")]
     pub balance_after: BigDecimal,
-    #[serde(rename = "createdAt")]
     pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecentActivityResponse {
     pub data: Vec<RecentActivity>,
     pub total: i64,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecentActivity {
     pub id: i64,
     pub block_time: DateTime<Utc>,
-    #[serde(rename = "tokenId")]
     pub token_id: String,
-    #[serde(rename = "tokenMetadata")]
     pub token_metadata: TokenMetadata,
     pub counterparty: Option<String>,
-    #[serde(rename = "signerId")]
     pub signer_id: Option<String>,
-    #[serde(rename = "receiverId")]
     pub receiver_id: Option<String>,
     pub amount: BigDecimal,
-    #[serde(rename = "transactionHashes")]
     pub transaction_hashes: Vec<String>,
-    #[serde(rename = "receiptIds")]
     pub receipt_ids: Vec<String>,
 }
 
@@ -143,6 +129,7 @@ pub async fn get_balance_changes(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecentActivityQuery {
     pub account_id: String,
     pub limit: Option<i64>,
@@ -346,6 +333,7 @@ pub async fn get_recent_activity(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FillGapsRequest {
     pub account_id: String,
     pub token_id: String,
@@ -353,6 +341,7 @@ pub struct FillGapsRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FillGapsResponse {
     pub gaps_filled: usize,
     pub account_id: String,

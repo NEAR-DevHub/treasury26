@@ -162,174 +162,193 @@ const mockWebHID = `
 `;
 
 test("Ledger login flow", async ({ page, context }) => {
-  // Increase timeout for this test due to pauses for video recording
-  test.setTimeout(120000);
-  // Capture console logs from the iframe
-  const logs: string[] = [];
-  page.on('console', msg => {
-    const text = msg.text();
-    logs.push(text);
-    if (text.includes('[Mock')) {
-      console.log('MOCK LOG:', text);
-    }
-  });
-
-  // Capture page errors
-  page.on('pageerror', error => {
-    console.log('PAGE ERROR:', error.message);
-  });
-
-  // Capture ALL console messages including errors and warnings
-  page.on('console', msg => {
-    if (msg.type() === 'error') {
-      console.log('CONSOLE ERROR:', msg.text());
-    } else if (msg.type() === 'warning') {
-      console.log('CONSOLE WARN:', msg.text());
-    }
-  });
-
-  // Also log all console messages to help debug
-  page.on('console', msg => {
-    const text = msg.text();
-    // Log messages that might indicate the flow state
-    if (text.includes('Ledger') || text.includes('account') || text.includes('error') || text.includes('Error')) {
-      console.log(`CONSOLE [${msg.type()}]:`, text);
-    }
-  });
-
-  // Inject WebHID mock into all frames BEFORE any JavaScript runs
-  // This is critical because TransportWebHID from the CDN will access navigator.hid
-  await context.addInitScript(mockWebHID);
-
-  // Intercept RPC calls to FastNEAR and redirect to local sandbox
-  // The ledger-executor.js calls mainnet RPC for access key verification
-  // The sandbox already has test.near with our mock public key
-  await context.route(/rpc\.(mainnet|testnet)\.fastnear\.com/, async (route) => {
-    const request = route.request();
-    const postData = request.postData();
-
-    console.log('Intercepting FastNEAR RPC, redirecting to sandbox');
-
-    // Forward the request to local sandbox
-    const response = await fetch('http://localhost:3030', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: postData,
+    // Increase timeout for this test due to pauses for video recording
+    test.setTimeout(120000);
+    // Capture console logs from the iframe
+    const logs: string[] = [];
+    page.on("console", (msg) => {
+        const text = msg.text();
+        logs.push(text);
+        if (text.includes("[Mock")) {
+            console.log("MOCK LOG:", text);
+        }
     });
 
-    const body = await response.text();
-    await route.fulfill({
-      status: response.status,
-      contentType: 'application/json',
-      body,
+    // Capture page errors
+    page.on("pageerror", (error) => {
+        console.log("PAGE ERROR:", error.message);
     });
-  });
 
-  // Mock backend auth endpoints since the sandbox doesn't have full auth support
-  // This simulates a successful auth flow with terms already accepted
-  await context.route('**/api/auth/challenge', async (route) => {
-    console.log('Mocking auth challenge endpoint');
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ nonce: 'dGVzdC1ub25jZS0xMjM0NTY3ODkw' }), // Base64 encoded test nonce
+    // Capture ALL console messages including errors and warnings
+    page.on("console", (msg) => {
+        if (msg.type() === "error") {
+            console.log("CONSOLE ERROR:", msg.text());
+        } else if (msg.type() === "warning") {
+            console.log("CONSOLE WARN:", msg.text());
+        }
     });
-  });
 
-  await context.route('**/api/auth/login', async (route) => {
-    console.log('Mocking auth login endpoint');
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        account_id: 'test.near',
-        terms_accepted: true, // Simulate terms already accepted
-      }),
+    // Also log all console messages to help debug
+    page.on("console", (msg) => {
+        const text = msg.text();
+        // Log messages that might indicate the flow state
+        if (
+            text.includes("Ledger") ||
+            text.includes("account") ||
+            text.includes("error") ||
+            text.includes("Error")
+        ) {
+            console.log(`CONSOLE [${msg.type()}]:`, text);
+        }
     });
-  });
 
-  await context.route('**/api/auth/me', async (route) => {
-    console.log('Mocking auth me endpoint');
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        account_id: 'test.near',
-        terms_accepted: true,
-      }),
+    // Inject WebHID mock into all frames BEFORE any JavaScript runs
+    // This is critical because TransportWebHID from the CDN will access navigator.hid
+    await context.addInitScript(mockWebHID);
+
+    // Intercept RPC calls to FastNEAR and redirect to local sandbox
+    // The ledger-executor.js calls mainnet RPC for access key verification
+    // The sandbox already has test.near with our mock public key
+    await context.route(
+        /rpc\.(mainnet|testnet)\.fastnear\.com/,
+        async (route) => {
+            const request = route.request();
+            const postData = request.postData();
+
+            console.log("Intercepting FastNEAR RPC, redirecting to sandbox");
+
+            // Forward the request to local sandbox
+            const response = await fetch("http://localhost:3030", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: postData,
+            });
+
+            const body = await response.text();
+            await route.fulfill({
+                status: response.status,
+                contentType: "application/json",
+                body,
+            });
+        },
+    );
+
+    // Mock backend auth endpoints since the sandbox doesn't have full auth support
+    // This simulates a successful auth flow with terms already accepted
+    await context.route("**/api/auth/challenge", async (route) => {
+        console.log("Mocking auth challenge endpoint");
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ nonce: "dGVzdC1ub25jZS0xMjM0NTY3ODkw" }), // Base64 encoded test nonce
+        });
     });
-  });
 
-  // Navigate to the app
-  await page.goto("/app");
-  await page.waitForTimeout(1500); // Pause to show the initial page
+    await context.route("**/api/auth/login", async (route) => {
+        console.log("Mocking auth login endpoint");
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+                account_id: "test.near",
+                terms_accepted: true, // Simulate terms already accepted
+            }),
+        });
+    });
 
-  // Click Connect Wallet button
-  await page.getByRole("button", { name: /connect wallet/i }).click();
-  await page.waitForTimeout(1000); // Pause to show the button
+    await context.route("**/api/auth/me", async (route) => {
+        console.log("Mocking auth me endpoint");
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+                account_id: "test.near",
+                terms_accepted: true,
+            }),
+        });
+    });
 
-  // Verify wallet selector appears
-  await expect(page.getByText("Select wallet")).toBeVisible();
-  await page.waitForTimeout(1500); // Pause to show the wallet selector modal
+    // Navigate to the app
+    await page.goto("/app");
+    await page.waitForTimeout(1500); // Pause to show the initial page
 
-  // Verify Ledger option is visible and click it
-  const ledgerOption = page.getByText("Ledger", { exact: true });
-  await expect(ledgerOption).toBeVisible();
-  await page.waitForTimeout(1000); // Pause before clicking Ledger
-  await ledgerOption.click();
-  await page.waitForTimeout(1500); // Pause to show Ledger iframe loading
+    // Click Connect Wallet button
+    await page.getByRole("button", { name: /connect wallet/i }).click();
+    await page.waitForTimeout(1000); // Pause to show the button
 
-  // Wait for the iframe to load
-  const iframe = page.frameLocator('iframe[sandbox*="allow-scripts"]').first();
+    // Verify wallet selector appears
+    await expect(page.getByText("Select wallet")).toBeVisible();
+    await page.waitForTimeout(1500); // Pause to show the wallet selector modal
 
-  // Assert the "Connect Ledger" button appears (mock returns empty from getDevices)
-  const connectLedgerButton = iframe.getByRole("button", { name: /connect ledger/i });
-  await expect(connectLedgerButton).toBeVisible({ timeout: 10000 });
-  await page.waitForTimeout(1500); // Pause to show the Connect Ledger button
+    // Verify Ledger option is visible and click it
+    const ledgerOption = page.getByText("Ledger", { exact: true });
+    await expect(ledgerOption).toBeVisible();
+    await page.waitForTimeout(1000); // Pause before clicking Ledger
+    await ledgerOption.click();
+    await page.waitForTimeout(1500); // Pause to show Ledger iframe loading
 
-  // Click the Connect Ledger button - the mock will handle requestDevice()
-  // Wait a moment for the iframe to stabilize before clicking
-  await page.waitForTimeout(500);
-  console.log('About to click Connect Ledger button...');
-  await connectLedgerButton.click();
-  console.log('Clicked Connect Ledger button');
-  await page.waitForTimeout(2000); // Pause to show the device connection happening
+    // Wait for the iframe to load
+    const iframe = page
+        .frameLocator('iframe[sandbox*="allow-scripts"]')
+        .first();
 
-  // After clicking Connect Ledger:
-  // 1. Gets public key from Ledger (mock handles this)
-  // 2. Shows account ID input prompt
-  // Note: The 500ms mock delay prevents race condition with iframe hide/show transitions
+    // Assert the "Connect Ledger" button appears (mock returns empty from getDevices)
+    const connectLedgerButton = iframe.getByRole("button", {
+        name: /connect ledger/i,
+    });
+    await expect(connectLedgerButton).toBeVisible({ timeout: 10000 });
+    await page.waitForTimeout(1500); // Pause to show the Connect Ledger button
 
-  // Wait for account ID input to appear
-  const accountIdInput = iframe.getByPlaceholder("example.near");
-  await expect(accountIdInput).toBeVisible({ timeout: 10000 });
-  console.log('Account ID input is visible');
-  await page.waitForTimeout(1000); // Pause to show the dialog
+    // Click the Connect Ledger button - the mock will handle requestDevice()
+    // Wait a moment for the iframe to stabilize before clicking
+    await page.waitForTimeout(500);
+    console.log("About to click Connect Ledger button...");
+    await connectLedgerButton.click();
+    console.log("Clicked Connect Ledger button");
+    await page.waitForTimeout(2000); // Pause to show the device connection happening
 
-  // Type the account ID with visible keystrokes
-  await accountIdInput.click();
-  await accountIdInput.pressSequentially('test.near', { delay: 150 });
-  console.log('Typed account ID: test.near');
-  await page.waitForTimeout(1500); // Pause to show the completed text
+    // After clicking Connect Ledger:
+    // 1. Gets public key from Ledger (mock handles this)
+    // 2. Shows account ID input prompt
+    // Note: The 500ms mock delay prevents race condition with iframe hide/show transitions
 
-  // Click the confirm button
-  const confirmBtn = iframe.getByRole('button', { name: /confirm/i });
-  await confirmBtn.click();
-  console.log('Clicked confirm button');
+    // Wait for account ID input to appear
+    const accountIdInput = iframe.getByPlaceholder("example.near");
+    await expect(accountIdInput).toBeVisible({ timeout: 10000 });
+    console.log("Account ID input is visible");
+    await page.waitForTimeout(1000); // Pause to show the dialog
 
-  // Verify the mock was used by checking logs
-  const mockWasUsed = logs.some(log => log.includes('[Mock HID]') || log.includes('[Mock Ledger]'));
-  console.log('Mock was used:', mockWasUsed);
-  console.log('Relevant logs:', logs.filter(l => l.includes('[Mock')));
+    // Type the account ID with visible keystrokes
+    await accountIdInput.click();
+    await accountIdInput.pressSequentially("test.near", { delay: 150 });
+    console.log("Typed account ID: test.near");
+    await page.waitForTimeout(1500); // Pause to show the completed text
 
-  // Wait for login to complete
-  await page.waitForTimeout(2000);
+    // Click the confirm button
+    const confirmBtn = iframe.getByRole("button", { name: /confirm/i });
+    await confirmBtn.click();
+    console.log("Clicked confirm button");
 
-  // Verify login succeeded - should be on the Create Treasury page or similar
-  // The URL should have changed from /app to /app/new or similar
-  await expect(page).toHaveURL(/\/app\/(new|dashboard|treasury)/, { timeout: 10000 });
-  console.log('Login successful - redirected to:', page.url());
+    // Verify the mock was used by checking logs
+    const mockWasUsed = logs.some(
+        (log) => log.includes("[Mock HID]") || log.includes("[Mock Ledger]"),
+    );
+    console.log("Mock was used:", mockWasUsed);
+    console.log(
+        "Relevant logs:",
+        logs.filter((l) => l.includes("[Mock")),
+    );
 
-  // Pause at the end to clearly show the successful login result
-  await page.waitForTimeout(3000);
+    // Wait for login to complete
+    await page.waitForTimeout(2000);
+
+    // Verify login succeeded - should be on the Create Treasury page or similar
+    // The URL should have changed from /app to /app/new or similar
+    await expect(page).toHaveURL(/\/app\/(new|dashboard|treasury)/, {
+        timeout: 10000,
+    });
+    console.log("Login successful - redirected to:", page.url());
+
+    // Pause at the end to clearly show the successful login result
+    await page.waitForTimeout(3000);
 });

@@ -50,10 +50,9 @@ pub struct ProposalTransactionResponse {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransactionQueryParams {
-    #[serde(rename = "afterDate")]
     pub after_date: NaiveDate,
-    #[serde(rename = "beforeDate")]
     pub before_date: NaiveDate,
     pub action: String,
 }
@@ -252,10 +251,9 @@ pub struct NearBlocksReceiptInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ReceiptSearchResult {
-    #[serde(rename = "receiptId")]
     pub receipt_id: String,
-    #[serde(rename = "originatedFromTransactionHash")]
     pub originated_from_transaction_hash: String,
 }
 

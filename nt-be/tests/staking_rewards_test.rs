@@ -10,8 +10,8 @@ use nt_be::handlers::balance_changes::balance::staking::{
 };
 use nt_be::handlers::balance_changes::staking_rewards::{
     STAKING_REWARD_COUNTERPARTY, STAKING_SNAPSHOT_COUNTERPARTY, discover_staking_pools,
-    extract_staking_pool, fill_staking_gaps, find_staking_gaps, insert_staking_reward,
-    insert_staking_snapshot, is_staking_token, staking_token_id, track_staking_rewards,
+    extract_staking_pool, find_staking_gaps, insert_staking_reward, insert_staking_snapshot,
+    is_staking_token, staking_token_id, track_staking_rewards,
 };
 use sqlx::{PgPool, Row};
 
@@ -40,10 +40,7 @@ async fn test_query_staking_balance(_pool: PgPool) -> sqlx::Result<()> {
     println!("Staking balance: {} NEAR", balance);
 
     // webassemblymusic-treasury should have some staked balance
-    assert!(
-        balance > BigDecimal::from(0),
-        "Should have non-zero staking balance"
-    );
+    assert!(balance > 0, "Should have non-zero staking balance");
 
     Ok(())
 }
@@ -705,7 +702,7 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
         // Balance should be >= 1000 (initial stake) and could grow with rewards
         let balance: BigDecimal = after.parse().expect("Should parse balance");
         assert!(
-            balance >= BigDecimal::from(1000),
+            balance >= 1000,
             "Staking balance should be at least 1000 NEAR, got {}",
             balance
         );

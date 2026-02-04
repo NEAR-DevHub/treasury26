@@ -5,27 +5,27 @@ use axum::{
 };
 use near_api::Contract;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use crate::{AppState, utils::cache::CacheTier};
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProfileQuery {
-    #[serde(rename = "accountId")]
     pub account_id: String,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchProfileQuery {
-    #[serde(rename = "accountIds")]
     pub account_ids: String, // Comma-separated account IDs
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ProfileData {
     pub name: Option<String>,
     pub image: Option<serde_json::Value>,
-    #[serde(rename = "backgroundImage")]
     pub background_image: Option<String>,
     pub description: Option<String>,
     pub linktree: Option<serde_json::Value>,
@@ -105,90 +105,4 @@ pub async fn get_profile(
         .await?;
 
     Ok(Json(profile))
-}
-
-/// Batch handler for multiple profiles endpoint
-pub async fn get_batch_profiles(
-    State(state): State<Arc<AppState>>,
-    Query(params): Query<BatchProfileQuery>,
-) -> Result<Json<HashMap<String, ProfileData>>, (StatusCode, String)> {
-    let account_ids: Vec<&str> = params.account_ids.split(',').map(|s| s.trim()).collect();
-
-    if account_ids.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "No account IDs provided".to_string(),
-        ));
-    }
-
-    // Check which accounts are not in cache
-    let mut uncached_accounts = Vec::new();
-    let mut cached_profiles: HashMap<String, ProfileData> = HashMap::new();
-
-    for account_id in &account_ids {
-        let cache_key = format!("profile:{}", account_id);
-        if let Some(cached_data) = state.cache.long_term.get(&cache_key).await {
-            if let Ok(profile) = serde_json::from_value::<ProfileData>(cached_data) {
-                cached_profiles.insert(account_id.to_string(), profile);
-            }
-        } else {
-            uncached_accounts.push(*account_id);
-        }
-    }
-
-    if uncached_accounts.is_empty() {
-        println!("✅ All profiles in cache, returning cached data");
-        return Ok(Json(cached_profiles));
-    }
-
-    println!(
-        "🚨 Fetching profiles from Social DB for: {:?}",
-        uncached_accounts
-    );
-
-    // Fetch uncached profiles
-    let mut futures = Vec::new();
-
-    for account_id in uncached_accounts {
-        let state_clone = state.clone();
-        let account_id_owned = account_id.to_string();
-
-        futures.push(async move {
-            match fetch_profile(&state_clone, &account_id_owned).await {
-                Ok(profile) => {
-                    let cache_key = format!("profile:{}", account_id_owned);
-                    if let Ok(value) = serde_json::to_value(&profile) {
-                        state_clone.cache.long_term.insert(cache_key, value).await;
-                    }
-                    Some((account_id_owned, profile))
-                }
-                Err(e) => {
-                    eprintln!("Error fetching profile for {}: {}", account_id_owned, e);
-                    // Cache empty profile to prevent retries
-                    let cache_key = format!("profile:{}", account_id_owned);
-                    let empty_profile = ProfileData {
-                        name: None,
-                        image: None,
-                        background_image: None,
-                        description: None,
-                        linktree: None,
-                        tags: None,
-                    };
-                    if let Ok(value) = serde_json::to_value(&empty_profile) {
-                        state_clone.cache.long_term.insert(cache_key, value).await;
-                    }
-                    Some((account_id_owned, empty_profile))
-                }
-            }
-        });
-    }
-
-    let results = futures::future::join_all(futures).await;
-
-    // Combine cached and fetched profiles
-    for result in results.into_iter().flatten() {
-        cached_profiles.insert(result.0, result.1);
-    }
-
-    Ok(Json(cached_profiles))
 }

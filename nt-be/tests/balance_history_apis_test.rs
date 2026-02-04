@@ -188,7 +188,7 @@ async fn wait_for_price_sync() {
             );
         }
 
-        if start.elapsed().as_secs() % 30 == 0 && start.elapsed().as_secs() > 0 {
+        if start.elapsed().as_secs().is_multiple_of(30) && start.elapsed().as_secs() > 0 {
             println!(
                 "Still syncing prices... {} assets, {} prices so far ({:?})",
                 asset_count,
@@ -324,7 +324,7 @@ async fn test_balance_chart_with_real_data() {
     for (token_id, expected_balance, expected_price) in &expected_tokens {
         let token_data = token_map
             .get(*token_id)
-            .expect(&format!("Token {} not found", token_id));
+            .unwrap_or_else(|| panic!("Token {} not found", token_id));
         assert!(
             token_data.is_array(),
             "Token data should be an array for {}",
@@ -344,7 +344,7 @@ async fn test_balance_chart_with_real_data() {
         let balance = last_snapshot
             .get("balance")
             .and_then(|b| b.as_str())
-            .expect(&format!("Balance should be a string for {}", token_id));
+            .unwrap_or_else(|| panic!("Balance should be a string for {}", token_id));
 
         assert_eq!(
             balance, *expected_balance,
@@ -475,11 +475,13 @@ async fn test_csv_export_with_real_data() {
     );
 
     // Compare with snapshot (hard assertion for regression testing)
-    let snapshot_content = std::fs::read_to_string(snapshot_path).expect(&format!(
-        "Failed to read snapshot file: {}\n\
+    let snapshot_content = std::fs::read_to_string(snapshot_path).unwrap_or_else(|_| {
+        panic!(
+            "Failed to read snapshot file: {}\n\
          To generate new snapshots, run: GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test",
-        snapshot_path
-    ));
+            snapshot_path
+        )
+    });
 
     assert_eq!(
         csv_content, snapshot_content,
@@ -550,11 +552,13 @@ async fn test_chart_api_intervals() {
         }
 
         // Compare with snapshot (hard assertion for regression testing)
-        let existing_snapshot = std::fs::read_to_string(&snapshot_path).expect(&format!(
-            "Failed to read snapshot file: {}\n\
+        let existing_snapshot = std::fs::read_to_string(&snapshot_path).unwrap_or_else(|_| {
+            panic!(
+                "Failed to read snapshot file: {}\n\
              To generate new snapshots, run: GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test",
-            snapshot_path
-        ));
+                snapshot_path
+            )
+        });
 
         let expected_data: serde_json::Value =
             serde_json::from_str(&existing_snapshot).expect("Failed to parse snapshot");

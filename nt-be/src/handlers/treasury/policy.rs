@@ -12,10 +12,9 @@ use crate::{
 };
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetTreasuryPolicyQuery {
-    #[serde(rename = "treasuryId")]
     pub treasury_id: AccountId,
-    #[serde(rename = "atBefore")]
     pub at_before: Option<U64>,
 }
 

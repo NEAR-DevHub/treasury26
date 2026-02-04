@@ -12,23 +12,24 @@ use crate::utils::cache::CacheKey;
 use crate::{AppState, utils::cache::CacheTier};
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetTreasuryConfigQuery {
-    #[serde(rename = "treasuryId")]
     pub treasury_id: AccountId,
-    #[serde(rename = "atBefore")]
     pub at_before: Option<U64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TreasuryMetadata {
-    #[serde(rename = "primaryColor", default)]
+    #[serde(default)]
     pub primary_color: Option<String>,
-    #[serde(rename = "flagLogo", default)]
+    #[serde(default)]
     pub flag_logo: Option<String>,
 }
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TreasuryConfigFromContract {
     #[serde_as(as = "Base64Json<TreasuryMetadata>")]
     pub metadata: Option<TreasuryMetadata>,
@@ -46,8 +47,8 @@ pub struct TreasuryConfig {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Treasury {
-    #[serde(rename = "daoId")]
     pub dao_id: String,
     pub config: TreasuryConfig,
 }

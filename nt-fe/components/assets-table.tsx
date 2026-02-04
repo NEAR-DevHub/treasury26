@@ -11,6 +11,7 @@ import {
     Info,
     Send,
     RefreshCw,
+    ArrowLeftRight,
 } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -443,7 +444,7 @@ export function AssetsTable({ tokens }: Props) {
                                                                                         className="h-8 w-8"
                                                                                         tooltipContent="Send"
                                                                                     >
-                                                                                        <Send className="size-4 text-primary" />
+                                                                                        <ArrowUpRight className="size-4 text-primary" />
                                                                                     </Button>
                                                                                 </Link>
                                                                                 <Link
@@ -460,7 +461,7 @@ export function AssetsTable({ tokens }: Props) {
                                                                                         className="h-8 w-8"
                                                                                         tooltipContent="Exchange"
                                                                                     >
-                                                                                        <RefreshCw className="size-4 text-primary" />
+                                                                                        <ArrowLeftRight className="size-4 text-primary" />
                                                                                     </Button>
                                                                                 </Link>
                                                                             </div>

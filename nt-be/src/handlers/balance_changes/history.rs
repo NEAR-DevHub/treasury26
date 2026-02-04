@@ -61,6 +61,7 @@ impl Interval {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChartRequest {
     pub account_id: String,
     pub start_time: DateTime<Utc>,
@@ -71,12 +72,13 @@ pub struct ChartRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BalanceSnapshot {
     pub timestamp: String,   // ISO 8601 format
     pub balance: BigDecimal, // Decimal-adjusted balance
-    #[serde(skip_serializing_if = "Option::is_none", rename = "priceUsd")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub price_usd: Option<f64>, // USD price at timestamp (null if unavailable)
-    #[serde(skip_serializing_if = "Option::is_none", rename = "valueUsd")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub value_usd: Option<f64>, // balance * price_usd (null if unavailable)
 }
 
@@ -124,6 +126,7 @@ pub async fn get_balance_chart(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CsvRequest {
     pub account_id: String,
     pub start_time: DateTime<Utc>,

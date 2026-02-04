@@ -105,6 +105,8 @@ pub async fn init_test_state() -> AppState {
         http_client,
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
+        bulk_payment_signer: Signer::from_secret_key(env_vars.bulk_payment_signer.clone())
+            .expect("Failed to create bulk payment signer"),
         signer_id: env_vars.signer_id.clone(),
         network,
         archival_network,

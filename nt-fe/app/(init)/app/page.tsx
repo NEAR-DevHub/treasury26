@@ -27,7 +27,14 @@ function GradientTitle() {
 
 export default function AppRedirect() {
     const router = useRouter();
-    const { accountId, connect, isInitializing, isAuthenticating, authError, clearError } = useNear();
+    const {
+        accountId,
+        connect,
+        isInitializing,
+        isAuthenticating,
+        authError,
+        clearError,
+    } = useNear();
     const {
         data: treasuries = [],
         isLoading,
@@ -114,11 +121,17 @@ export default function AppRedirect() {
                                             Authentication failed
                                         </p>
                                         <p className="text-xs text-red-600 mt-1">
-                                            {authError.includes("0xb005") || authError.includes("UNKNOWN_ERROR")
+                                            {authError.includes("0xb005") ||
+                                            authError.includes("UNKNOWN_ERROR")
                                                 ? "Please make sure your Ledger device is unlocked and the NEAR app is open. You may need to approve the signature on your device."
-                                                : authError.includes("0x5515") || authError.includes("Locked device")
-                                                ? "Your Ledger device is locked. Please unlock it and try again."
-                                                : authError}
+                                                : authError.includes(
+                                                        "0x5515",
+                                                    ) ||
+                                                    authError.includes(
+                                                        "Locked device",
+                                                    )
+                                                  ? "Your Ledger device is locked. Please unlock it and try again."
+                                                  : authError}
                                         </p>
                                     </div>
                                 )}

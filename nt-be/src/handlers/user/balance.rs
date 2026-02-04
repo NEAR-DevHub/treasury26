@@ -14,29 +14,28 @@ use crate::{
 };
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TokenBalanceQuery {
-    #[serde(rename = "accountId")]
     pub account_id: AccountId,
-    #[serde(rename = "tokenId")]
     pub token_id: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TokenBalanceResponse {
     pub account_id: String,
     pub token_id: String,
     pub balance: U128,
-    #[serde(rename = "lockedBalance")]
     pub locked_balance: Option<U128>,
     pub decimals: u8,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TokenBalanceStringResponse {
     pub account_id: String,
     pub token_id: String,
     pub balance: String,
-    #[serde(rename = "lockedBalance")]
     pub locked_balance: Option<String>,
     pub decimals: u8,
 }

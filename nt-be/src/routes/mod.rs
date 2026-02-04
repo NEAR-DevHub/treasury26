@@ -122,10 +122,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::user::profile::get_profile),
         )
         .route(
-            "/api/user/profile/batch",
-            get(handlers::user::profile::get_batch_profiles),
-        )
-        .route(
             "/api/user/check-account-exists",
             get(handlers::user::check_account_exists::check_account_exists),
         )
@@ -179,10 +175,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/bulk-payment/usage-stats",
             get(handlers::bulkpayment::usage_stats::get_usage_stats),
-        )
-        .route(
-            "/api/plan/details",
-            get(handlers::plan::details::get_plan_details),
         )
         .route(
             "/api/bulk-payment/list/{list_id}",
@@ -245,6 +237,15 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/dao/mark-dirty",
             post(handlers::dao::mark_dirty),
+        )
+        // Subscription endpoints
+        .route(
+            "/api/subscription/plans",
+            get(handlers::subscription::get_plans),
+        )
+        .route(
+            "/api/subscription/{account_id}",
+            get(handlers::subscription::get_subscription_status),
         )
         .with_state(state)
 }

@@ -11,8 +11,8 @@ use crate::{
 };
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PoolLookupQuery {
-    #[serde(rename = "accountId")]
     pub account_id: AccountId,
 }
 

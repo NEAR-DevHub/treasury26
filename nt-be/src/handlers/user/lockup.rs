@@ -146,26 +146,20 @@ pub const GENERIC_POOL_ID: &AccountIdRef = AccountIdRef::new_or_panic("allnodes.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct StakingPoolAccount {
     pub account_id: String,
-    #[serde(rename = "unstaked_balance")]
     pub unstaked_balance: NearToken,
-    #[serde(rename = "staked_balance")]
     pub staked_balance: NearToken,
-    #[serde(rename = "can_withdraw")]
     pub can_withdraw: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct LockupBalance {
     pub total: NearToken,
-    #[serde(rename = "storageLocked")]
     pub storage_locked: NearToken,
-    #[serde(rename = "totalAllocated")]
     pub total_allocated: NearToken,
     pub unvested: NearToken,
     pub staked: NearToken,
-    #[serde(rename = "unstakedBalance")]
     pub unstaked_balance: NearToken,
-    #[serde(rename = "canWithdraw")]
     pub can_withdraw: bool,
 }
 
@@ -270,34 +264,27 @@ pub async fn fetch_lockup_balance_of_account(
 // API endpoint types and handler
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LockupQuery {
-    #[serde(rename = "accountId")]
     pub account_id: AccountId,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct VestingScheduleResponse {
-    #[serde(rename = "startTimestamp")]
     pub start_timestamp: u64,
-    #[serde(rename = "cliffTimestamp")]
     pub cliff_timestamp: u64,
-    #[serde(rename = "endTimestamp")]
     pub end_timestamp: u64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct LockupContractResponse {
-    #[serde(rename = "ownerAccountId")]
     pub owner_account_id: String,
-    #[serde(rename = "vestingSchedule")]
     pub vesting_schedule: Option<VestingScheduleResponse>,
-    #[serde(rename = "lockupTimestamp")]
     pub lockup_timestamp: Option<u64>,
-    #[serde(rename = "lockupDuration")]
     pub lockup_duration: u64,
-    #[serde(rename = "releaseDuration")]
     pub release_duration: Option<u64>,
-    #[serde(rename = "stakingPoolAccountId")]
     pub staking_pool_account_id: Option<String>,
 }
 

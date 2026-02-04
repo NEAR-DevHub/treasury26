@@ -8,8 +8,8 @@ use crate::AppState;
 use crate::services::mark_dao_dirty;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarkDirtyRequest {
-    #[serde(rename = "daoId")]
     pub dao_id: String,
 }
 

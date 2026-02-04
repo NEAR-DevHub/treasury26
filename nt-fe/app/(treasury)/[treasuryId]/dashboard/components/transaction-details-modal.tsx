@@ -104,7 +104,7 @@ export function TransactionDetailsModal({
                                 label: "Date",
                                 value: (
                                     <FormattedDate
-                                        date={new Date(activity.block_time)}
+                                        date={new Date(activity.blockTime)}
                                         includeTime
                                     />
                                 ),
