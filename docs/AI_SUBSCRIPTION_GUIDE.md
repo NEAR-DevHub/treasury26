@@ -1,6 +1,10 @@
-# AI Guide: Subscription & Payment System
+# AI Guide: Subscription & Plan System
 
-This document provides context for AI assistants working on Treasury26's subscription system.
+This document provides context for AI assistants working on Treasury26's plan system.
+
+## Launch Status
+
+**For launch, all new users automatically receive Pro plan.** Payment processing (Stripe, PingPay) has been deferred. The plan system and metrics tracking are in place for future monetization.
 
 ## Quick Reference
 
@@ -16,8 +20,8 @@ This document provides context for AI assistants working on Treasury26's subscri
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Frontend                                 │
-│  - Shows plan selection UI                                       │
-│  - Redirects to Stripe Checkout or PingPay payment page         │
+│  - Shows plan info in UI                                         │
+│  - Displays credits and usage                                    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -26,10 +30,7 @@ This document provides context for AI assistants working on Treasury26's subscri
 │                                                                  │
 │  API Endpoints:                                                  │
 │  - GET  /api/subscription/plans         → List all plans         │
-│  - GET  /api/subscription/{account_id}  → Get subscription status│
-│  - POST /api/subscription/checkout/*    → Create checkout (TODO) │
-│  - POST /api/webhooks/stripe            → Stripe webhooks (TODO) │
-│  - POST /api/webhooks/pingpay           → PingPay webhooks (TODO)│
+│  - GET  /api/subscription/{account_id}  → Get plan status        │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -38,9 +39,7 @@ This document provides context for AI assistants working on Treasury26's subscri
 │                                                                  │
 │  Tables:                                                         │
 │  - monitored_accounts  (plan_type, credits, credits_reset_at)   │
-│  - subscriptions       (billing periods, provider info)          │
-│  - payments            (transaction records)                     │
-│  - usage_tracking      (monthly volume, fees)                    │
+│  - usage_tracking      (monthly volume, fees - for metrics)     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -61,56 +60,17 @@ This document provides context for AI assistants working on Treasury26's subscri
 ### Database
 | File | Purpose |
 |------|---------|
-| `nt-be/migrations/20260203000001_add_subscription_system.sql` | All subscription tables |
-| `nt-be/src/routes/monitored_accounts.rs` | Account CRUD with plan fields |
+| `nt-be/migrations/20260204000002_add_subscription_system.sql` | Plan and usage tracking tables |
+| `nt-be/src/routes/monitored_accounts.rs` | Account CRUD with plan fields (defaults to Pro) |
 
 ### Documentation
 | File | Purpose |
 |------|---------|
-| `docs/PRICING.md` | Full pricing documentation with DB schema |
+| `docs/PRICING.md` | Full pricing documentation |
 
-## Payment Providers
+## Fee System (Future)
 
-### Stripe (Recurring Subscriptions)
-
-**Flow:**
-1. User selects plan → Frontend calls `POST /api/subscription/checkout/stripe`
-2. Backend creates Stripe Checkout Session → Returns redirect URL
-3. User completes payment on Stripe → Stripe sends webhook
-4. Backend receives `checkout.session.completed` webhook
-5. Backend creates `subscription` record with `auto_renew = true`
-6. Backend updates `monitored_accounts.plan_type`
-
-**Key Fields:**
-- `stripe_subscription_id` - Stripe's subscription ID (for managing/canceling)
-- `stripe_customer_id` - Stripe customer for future payments
-- `stripe_payment_intent_id` - Individual payment reference
-- `stripe_card_brand`, `stripe_card_last4`, `stripe_card_first6` - Card tracking
-
-**Billing Periods:** Monthly, Yearly (20% discount)
-
-### PingPay (One-Time Crypto Payments)
-
-**Important:** PingPay is NOT a subscription service. It's a one-time payment that grants access for a fixed period.
-
-**Flow:**
-1. User selects plan + period (6 or 12 months) → Frontend calls `POST /api/subscription/checkout/pingpay`
-2. Backend creates PingPay payment request → Returns payment details
-3. User sends crypto payment → PingPay sends webhook
-4. Backend receives payment confirmation webhook
-5. Backend creates `subscription` record with `auto_renew = false`
-6. Backend sets `current_period_end` = now + 6/12 months
-7. When period ends, subscription expires (no auto-renewal)
-
-**Key Fields:**
-- `pingpay_payment_id` - PingPay's payment reference
-- `pingpay_wallet_address` - Wallet that made the payment
-- `pingpay_transaction_hash` - On-chain transaction hash
-- `crypto_amount`, `crypto_currency` - Payment details
-
-**Billing Periods:** 6 months, 12 months (no monthly option)
-
-## Fee System
+Fee calculations are implemented but not currently collected. They're tracked in `usage_tracking` for future monetization.
 
 ### Exchange Fees
 Applied to every token swap/exchange transaction.
@@ -122,8 +82,6 @@ pub fn calculate_exchange_fee(plan_type: PlanType, amount_cents: u64) -> u64 {
     (amount_cents * config.limits.exchange_fee_bps as u64) / 10_000
 }
 ```
-
-**Collection:** Deducted from swap output before sending to user.
 
 ### Overage Fees
 Applied when monthly outbound volume exceeds plan limit.
@@ -139,8 +97,6 @@ pub fn calculate_overage_fee(plan_type: PlanType, volume_cents: u64, limit_cents
     (overage * config.limits.overage_rate_bps as u64) / 10_000
 }
 ```
-
-**Collection:** Deducted from payment amounts when processing bulk payments.
 
 ## Credit System
 
@@ -161,10 +117,6 @@ Paid Plans (Plus, Pro):
 
 Enterprise:
 - Unlimited (no tracking needed)
-
-On Subscription Expiry:
-- plan_type → 'free'
-- Credits restored to free tier trial values (3/3)
 ```
 
 ### Checking Credits
@@ -178,23 +130,20 @@ pub fn has_export_credits(plan_type: PlanType, current_credits: i32) -> bool {
 }
 ```
 
-## Database Enums
+## Database Schema
 
 ```sql
 -- Plan tiers
 CREATE TYPE plan_type AS ENUM ('free', 'plus', 'pro', 'enterprise');
 
--- Subscription lifecycle
-CREATE TYPE subscription_status AS ENUM ('active', 'cancelled', 'expired', 'past_due', 'trialing');
+-- monitored_accounts columns
+plan_type plan_type NOT NULL DEFAULT 'free'  -- DB default, API assigns 'pro'
+credits_reset_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 
--- Payment providers
-CREATE TYPE payment_provider AS ENUM ('stripe', 'pingpay');
-
--- Billing periods
-CREATE TYPE billing_period AS ENUM ('monthly', 'six_months', 'yearly');
-
--- Payment status
-CREATE TYPE payment_status AS ENUM ('pending', 'processing', 'succeeded', 'failed', 'refunded', 'cancelled');
+-- usage_tracking table (for metrics)
+- outbound_volume_cents, exports_used, batch_payments_used
+- exchanges_count, exchanges_volume_cents
+- overage_volume_cents, overage_fees_cents, exchange_fees_cents
 ```
 
 ## Common Tasks
@@ -221,41 +170,6 @@ let plan_config = get_plan_config(account.plan_type);
 let volume_limit = plan_config.limits.monthly_volume_limit_cents;
 ```
 
-### Processing a Payment Webhook
-```rust
-// Stripe webhook
-match event.type_.as_str() {
-    "checkout.session.completed" => {
-        // Create subscription record
-        // Update monitored_accounts.plan_type
-        // Set credits to plan defaults
-    }
-    "customer.subscription.deleted" => {
-        // Set subscription.status = 'cancelled'
-        // Downgrade to free plan
-        // Reset credits to trial values
-    }
-    _ => {}
-}
-```
-
-## Environment Variables
-
-```bash
-# Stripe
-STRIPE_SECRET_KEY=sk_...
-STRIPE_PUBLISHABLE_KEY=pk_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-
-# PingPay (placeholder - partner will provide)
-PINGPAY_API_KEY=
-PINGPAY_API_URL=
-PINGPAY_WEBHOOK_SECRET=
-
-# Fee collection
-FEE_RECIPIENT_WALLET=treasury26.near
-```
-
 ## Testing
 
 ### Unit Tests
@@ -277,8 +191,8 @@ cargo test --package nt-be config::plans
 | GET /api/subscription/plans | Done |
 | GET /api/subscription/{id} | Done |
 | Database migrations | Done |
-| Stripe checkout | TODO |
-| Stripe webhooks | TODO |
-| PingPay interface | TODO (placeholder) |
+| Default Pro for new users | Done |
+| Usage tracking table | Done |
 | Background credit reset | TODO |
-| Fee deduction in payments | TODO |
+| Fee collection | Deferred |
+| Payment processing | Deferred |

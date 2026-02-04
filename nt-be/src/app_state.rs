@@ -18,6 +18,7 @@ pub struct AppState {
     pub http_client: reqwest::Client,
     pub cache: Cache,
     pub signer: Arc<Signer>,
+    pub bulk_payment_signer: Arc<Signer>,
     pub signer_id: AccountId,
     pub network: NetworkConfig,
     pub archival_network: NetworkConfig,
@@ -53,6 +54,7 @@ pub struct AppStateBuilder {
     http_client: Option<reqwest::Client>,
     cache: Option<Cache>,
     signer: Option<Arc<Signer>>,
+    bulk_payment_signer: Option<Arc<Signer>>,
     signer_id: Option<AccountId>,
     network: Option<NetworkConfig>,
     archival_network: Option<NetworkConfig>,
@@ -71,6 +73,7 @@ impl AppStateBuilder {
             http_client: None,
             cache: None,
             signer: None,
+            bulk_payment_signer: None,
             signer_id: None,
             network: None,
             archival_network: None,
@@ -98,6 +101,12 @@ impl AppStateBuilder {
     /// Set the signer
     pub fn signer(mut self, signer: Arc<Signer>) -> Self {
         self.signer = Some(signer);
+        self
+    }
+
+    /// Set the bulk payment signer
+    pub fn bulk_payment_signer(mut self, bulk_payment_signer: Arc<Signer>) -> Self {
+        self.bulk_payment_signer = Some(bulk_payment_signer);
         self
     }
 
@@ -175,6 +184,14 @@ impl AppStateBuilder {
             // Use test key or key from env
             let test_key = env_vars.signer_key.clone();
             Signer::from_secret_key(test_key).expect("Failed to create default signer")
+        };
+
+        let bulk_payment_signer = if let Some(s) = self.bulk_payment_signer {
+            s
+        } else {
+            // Use test key or key from env
+            let test_key = env_vars.bulk_payment_signer.clone();
+            Signer::from_secret_key(test_key).expect("Failed to create bulk payment signer")
         };
 
         let signer_id = self.signer_id.unwrap_or_else(|| env_vars.signer_id.clone());
@@ -267,6 +284,7 @@ impl AppStateBuilder {
             http_client: self.http_client.unwrap_or_default(),
             cache: self.cache.unwrap_or_default(),
             signer,
+            bulk_payment_signer,
             signer_id,
             network,
             telegram_client: self.telegram_client.unwrap_or_default(),

@@ -9,11 +9,6 @@ const BACKEND_API_BASE =
 export type PlanType = "free" | "plus" | "pro" | "enterprise";
 
 /**
- * Billing period options
- */
-export type BillingPeriod = "monthly" | "six_months" | "yearly";
-
-/**
  * Plan limits and features
  */
 export interface PlanLimits {
@@ -45,36 +40,15 @@ export interface PlanConfig {
     description: string;
     limits: PlanLimits;
     pricing: PlanPricing;
-    stripe_enabled: boolean;
-    pingpay_enabled: boolean;
 }
 
 /**
- * Subscription info for active subscriptions
- */
-export interface SubscriptionInfo {
-    id: string;
-    monitored_account_id: string;
-    plan_type: PlanType;
-    billing_period: string;
-    payment_provider: string;
-    status: string;
-    current_period_start: string;
-    current_period_end: string;
-    amount_cents: number;
-    currency: string;
-    auto_renew: boolean;
-    created_at: string;
-}
-
-/**
- * Full subscription status response from GET /api/subscription/{account_id}
+ * Subscription status response from GET /api/subscription/{account_id}
  */
 export interface SubscriptionStatus {
     account_id: string;
     plan_type: PlanType;
     plan_config: PlanConfig;
-    subscription: SubscriptionInfo | null;
     export_credits: number;
     batch_payment_credits: number;
     credits_reset_at: string;

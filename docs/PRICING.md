@@ -4,6 +4,8 @@
 
 Treasury26 offers four subscription tiers designed for different treasury management needs.
 
+**Launch Promotion:** All new users automatically receive Pro plan at no cost.
+
 ## Plans
 
 | Plan           | Price                  | Best For                                        |
@@ -38,6 +40,8 @@ Treasury26 offers four subscription tiers designed for different treasury manage
 - **Overage Rate**: Applied to payment volume exceeding the monthly limit
 - **Exchange Fee**: Applied to every token swap/exchange transaction
 
+*Note: Fees are tracked but not currently collected during the launch promotion period.*
+
 ### Feature Credits
 
 | Plan       | CSV Exports   | Bulk Payments | History Lookup |
@@ -56,33 +60,10 @@ Treasury26 offers four subscription tiers designed for different treasury manage
 - Fully On-chain & Open Source
 - Unlimited Audit History Retention
 
-## Payment Methods
-
-### Stripe (Card Payments)
-
-- Monthly subscriptions (Plus plan only)
-- Annual subscriptions (20% discount)
-- Automatic renewal
-
-### PingPay (Crypto Payments)
-
-- **One-time payment** (NOT a subscription)
-- Choose period: 6 months or 12 months
-- No auto-renewal - user must manually renew
-- Wallet address tracked for payment verification
-
-## Fee Collection
-
-Fees are deducted in real-time from transaction amounts:
-
-- **Exchange fees**: Deducted from swap output
-- **Overage fees**: Applied when monthly volume exceeds plan limit
-
 ## Credit Reset Policy
 
 - **Paid plans**: Credits reset on the 1st of each month
 - **Free plan**: Trial credits are one-time only
-- **Expired subscriptions**: Downgrade to Free with trial credits restored
 
 ## Pricing Model
 

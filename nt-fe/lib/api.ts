@@ -21,23 +21,10 @@ export interface Timezone {
  */
 export async function getTimezones(): Promise<Timezone[]> {
     try {
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api/proxy/timezones`,
-            {
-                method: "GET",
-                headers: {
-                    accept: "application/json",
-                },
-            },
+        const response = await axios.get<Timezone[]>(
+            `${BACKEND_API_BASE}/proxy/timezones`,
         );
-
-        if (!response.ok) {
-            console.error("Failed to fetch timezones");
-            return [];
-        }
-
-        const data = await response.json();
-        return data || [];
+        return response.data || [];
     } catch (error) {
         console.error("Error getting timezones:", error);
         return [];

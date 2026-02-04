@@ -106,13 +106,13 @@ pub async fn add_monitored_account(
         }));
     }
 
-    // New registration - insert with default credits for free plan
-    let (export_credits, batch_payment_credits) = get_initial_credits(PlanType::Free);
+    // New registration - insert with Pro plan and credits (launch promotion)
+    let (export_credits, batch_payment_credits) = get_initial_credits(PlanType::Pro);
 
     let account = sqlx::query_as::<_, MonitoredAccount>(
         r#"
         INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits, plan_type)
-        VALUES ($1, true, $2, $3, 'free')
+        VALUES ($1, true, $2, $3, 'pro')
         RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
                   export_credits, batch_payment_credits, plan_type, credits_reset_at
         "#,

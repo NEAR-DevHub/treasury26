@@ -19,7 +19,7 @@ pub enum PlanType {
 
 impl Default for PlanType {
     fn default() -> Self {
-        Self::Free
+        Self::Pro // Default to Pro for launch (no payments yet)
     }
 }
 
@@ -40,7 +40,6 @@ impl std::fmt::Display for PlanType {
 #[serde(rename_all = "snake_case")]
 pub enum BillingPeriod {
     Monthly,
-    SixMonths,
     Yearly,
 }
 
@@ -49,7 +48,6 @@ impl BillingPeriod {
     pub fn months(&self) -> u32 {
         match self {
             BillingPeriod::Monthly => 1,
-            BillingPeriod::SixMonths => 6,
             BillingPeriod::Yearly => 12,
         }
     }
@@ -105,10 +103,6 @@ pub struct PlanConfig {
     pub description: String,
     pub limits: PlanLimits,
     pub pricing: PlanPricing,
-    /// Whether Stripe monthly/yearly subscriptions are available
-    pub stripe_enabled: bool,
-    /// Whether PingPay crypto payments are available
-    pub pingpay_enabled: bool,
 }
 
 /// Get the configuration for all plans
@@ -138,8 +132,6 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_price_cents: None,
                 yearly_price_cents: None,
             },
-            stripe_enabled: false,
-            pingpay_enabled: false,
         },
     );
 
@@ -167,8 +159,6 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_price_cents: Some(49_00),    // $49/month
                 yearly_price_cents: Some(47_000),    // $470/year (~20% discount)
             },
-            stripe_enabled: true,
-            pingpay_enabled: true,
         },
     );
 
@@ -196,8 +186,6 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_price_cents: None,           // No monthly option
                 yearly_price_cents: Some(191_000),   // $1,910/year (~20% discount)
             },
-            stripe_enabled: true,
-            pingpay_enabled: true,
         },
     );
 
@@ -225,8 +213,6 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_price_cents: None,
                 yearly_price_cents: None,
             },
-            stripe_enabled: false, // Custom invoicing
-            pingpay_enabled: false,
         },
     );
 
@@ -444,7 +430,6 @@ mod tests {
     #[test]
     fn test_billing_period_months() {
         assert_eq!(BillingPeriod::Monthly.months(), 1);
-        assert_eq!(BillingPeriod::SixMonths.months(), 6);
         assert_eq!(BillingPeriod::Yearly.months(), 12);
     }
 }
