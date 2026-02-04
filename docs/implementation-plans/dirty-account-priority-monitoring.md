@@ -28,26 +28,28 @@ A single nullable timestamp field on `monitored_accounts` serves two purposes:
 │   Existing Monitor Loop  │   NEW: Dirty Account Watcher      │
 │   (unchanged)            │                                    │
 │                          │   Polls for dirty_at IS NOT NULL   │
-│   - Sequential           │   Spawns parallel tokio tasks      │
-│   - All tokens + staking │   per dirty account                │
+│   - Sequential           │   Maintains active_tasks map       │
+│   - All tokens + staking │   (one task per account, no dupes) │
 │   - 30s interval         │                                    │
 │                          │   ┌─────────┐  ┌─────────┐       │
-│                          │   │ Account │  │ Account │  ...   │
-│                          │   │ Task A  │  │ Task B  │       │
+│                          │   │ Acct A  │  │ Acct B  │  ...   │
+│                          │   │ (owned) │  │ (owned) │       │
 │                          │   └─────────┘  └─────────┘       │
 │                          │                                    │
 │                          │   - Gap fill only (no staking)     │
 │                          │   - Most recent gaps first         │
 │                          │   - Clears dirty_at when done      │
+│                          │   - Task exits → removed from map  │
 └──────────────────────────┴───────────────────────────────────┘
 ```
 
 ### What the dirty task does per account
 
-1. Get all tokens for the account
-2. For each token (skipping staking tokens), find gaps between `dirty_at` and now
-3. Fill gaps in **reverse block height order** (most recent first)
-4. After all gaps in the `dirty_at → now` window are filled, set `dirty_at = NULL`
+1. Snapshot the current `dirty_at` value (remember it for step 4)
+2. Get all tokens for the account
+3. For each token (skipping staking tokens), find gaps between `dirty_at` and now
+4. Fill gaps in **reverse block height order** (most recent first)
+5. **Conditional clear:** `SET dirty_at = NULL WHERE dirty_at = $original` — only clears if the value hasn't changed since step 1. If the API re-dirtied the account mid-task, the clear is a no-op and a fresh task will be spawned on the next poll cycle
 
 ### What the dirty task does NOT do
 
@@ -87,19 +89,31 @@ Core function:
 ```rust
 pub async fn run_dirty_monitor(
     pool: &PgPool,
-    network: &NetworkConfig,
+    state: &AppState,
     hint_service: Option<&TransferHintService>,
+    active_tasks: &mut HashMap<String, JoinHandle<()>>,
 ) {
-    // 1. Query: SELECT * FROM monitored_accounts WHERE dirty_at IS NOT NULL AND enabled = true
-    // 2. For each dirty account, spawn a tokio task
-    // 3. Each task:
-    //    a. Get current block height
-    //    b. Get all non-staking tokens for account
-    //    c. For each token, find gaps where gap.end_block >= dirty_at_block
-    //    d. Fill gaps in reverse order (highest end_block first)
-    //    e. After all gaps filled, SET dirty_at = NULL
+    // 1. Clean up finished tasks from active_tasks map
+    // 2. Query: SELECT * FROM monitored_accounts WHERE dirty_at IS NOT NULL AND enabled = true
+    // 3. For each dirty account NOT already in active_tasks, spawn a tokio task and insert the JoinHandle
+    // 4. Each task remembers its original dirty_at value, then:
+    //    a. Convert dirty_at to block height via state.find_block_height(dirty_at)
+    //    b. Get current block height
+    //    c. Get all non-staking tokens for account
+    //    d. For each token, find gaps where gap.end_block >= dirty_at_block
+    //    e. Fill gaps in reverse order (highest end_block first)
+    //    f. Conditional clear: UPDATE monitored_accounts
+    //       SET dirty_at = NULL
+    //       WHERE account_id = $1 AND dirty_at = $original_dirty_at
+    //       (no-op if API re-dirtied the account while task was running;
+    //        next poll cycle spawns a fresh task for the new window)
+    //    (task naturally exits; next poll cycle removes it from active_tasks)
 }
 ```
+
+The `active_tasks: HashMap<String, JoinHandle<()>>` map (keyed by account ID) ensures each account has at most one running task. On each poll cycle, finished handles are removed and new tasks are only spawned for accounts not already in-flight.
+
+**Timestamp → block height:** Use the existing `AppState::find_block_height(date)` ([app_state.rs:379](nt-be/src/app_state.rs#L379)) to convert the `dirty_at` timestamp into a block height for gap comparison. This function checks the DB first, falls back to binary search via RPC, and caches results.
 
 **Files to modify:**
 - `nt-be/src/handlers/balance_changes/dirty_monitor.rs` — new module
@@ -114,14 +128,15 @@ Spawn the dirty watcher as a new background task alongside the existing ones:
 {
     let state_clone = state.clone();
     tokio::spawn(async move {
-        // Poll every 5 seconds for dirty accounts
+        let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
         let mut interval = tokio::time::interval(Duration::from_secs(5));
         loop {
             interval.tick().await;
             run_dirty_monitor(
                 &state_clone.db_pool,
-                &state_clone.archival_network,
+                &state_clone,
                 state_clone.transfer_hint_service.as_ref(),
+                &mut active_tasks,
             ).await;
         }
     });
@@ -138,7 +153,8 @@ Following TDD guidelines from the project:
 1. **Unit test:** `dirty_monitor` fills gaps in reverse order and clears `dirty_at`
 2. **Unit test:** `dirty_monitor` skips staking tokens
 3. **Integration test:** POST `/dirty` endpoint sets `dirty_at`, dirty monitor processes it, `dirty_at` becomes NULL
-4. **Unit test:** Concurrent safety — dirty task and main cycle don't create duplicate records (relies on existing `ON CONFLICT` clauses)
+4. **Unit test:** Conditional clear — if `dirty_at` is updated by the API while a task is running, the task's clear is a no-op and `dirty_at` remains set for the next cycle
+5. **Unit test:** Concurrent safety — dirty task and main cycle don't create duplicate records (relies on existing `ON CONFLICT` clauses)
 
 ## Key Design Decisions
 
@@ -150,9 +166,11 @@ Following TDD guidelines from the project:
 
 4. **No staking in dirty tasks** — Staking reward tracking is expensive (epoch snapshots, binary search per epoch). It stays in the main cycle to avoid overloading RPC during priority syncs.
 
-5. **No rate limiting for now** — Dirty tasks make RPC calls without throttling. This can be added later if needed.
+5. **One task per account** — The watcher maintains a `HashMap<String, JoinHandle<()>>` of active tasks. Each poll cycle cleans up finished handles and only spawns new tasks for accounts not already in-flight. This prevents duplicate work and unbounded task growth without needing a separate concurrency limiter.
 
-6. **Concurrent safety** — The existing `ON CONFLICT` clauses in balance_changes inserts handle the case where both the dirty task and main cycle try to fill the same gap simultaneously.
+6. **No rate limiting for now** — Dirty tasks make RPC calls without throttling. This can be added later if needed.
+
+7. **Concurrent safety** — The existing `ON CONFLICT` clauses in balance_changes inserts handle the case where both the dirty task and main cycle try to fill the same gap simultaneously.
 
 ## File Structure
 
