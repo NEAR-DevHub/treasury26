@@ -24,26 +24,21 @@ pub struct StakingPoolEntry {
 
 /// Aggregated staking balance for an account
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct StakingBalance {
-    #[serde(rename = "stakedBalance")]
     pub staked_balance: NearToken,
-    #[serde(rename = "unstakedBalance")]
     pub unstaked_balance: NearToken,
-    #[serde(rename = "canWithdraw")]
     pub can_withdraw: bool,
     pub pools: Vec<StakingPoolAccountInfo>,
 }
 
 /// Per-pool staking balance info
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct StakingPoolAccountInfo {
-    #[serde(rename = "poolId")]
     pub pool_id: String,
-    #[serde(rename = "stakedBalance")]
     pub staked_balance: NearToken,
-    #[serde(rename = "unstakedBalance")]
     pub unstaked_balance: NearToken,
-    #[serde(rename = "canWithdraw")]
     pub can_withdraw: bool,
 }
 

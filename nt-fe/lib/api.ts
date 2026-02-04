@@ -1,12 +1,7 @@
 import { Policy } from "@/types/policy";
 import axios from "axios";
 import Big from "big.js";
-import {
-    Balance,
-    BalanceRaw,
-    LockupBalance,
-    transformBalance,
-} from "./balance";
+import { Balance, BalanceRaw, transformBalance } from "./balance";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -21,23 +16,10 @@ export interface Timezone {
  */
 export async function getTimezones(): Promise<Timezone[]> {
     try {
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api/proxy/timezones`,
-            {
-                method: "GET",
-                headers: {
-                    accept: "application/json",
-                },
-            },
+        const response = await axios.get<Timezone[]>(
+            `${BACKEND_API_BASE}/proxy/timezones`,
         );
-
-        if (!response.ok) {
-            console.error("Failed to fetch timezones");
-            return [];
-        }
-
-        const data = await response.json();
-        return data || [];
+        return response.data || [];
     } catch (error) {
         console.error("Error getting timezones:", error);
         return [];
@@ -221,15 +203,15 @@ export async function getBalanceChart(
         const url = `${BACKEND_API_BASE}/balance-history/chart`;
 
         const queryParams = new URLSearchParams({
-            account_id: params.accountId,
-            start_time: params.startTime,
-            end_time: params.endTime,
+            accountId: params.accountId,
+            startTime: params.startTime,
+            endTime: params.endTime,
             interval: params.interval,
         });
 
         // Add token_ids as comma-separated values
         if (params.tokenIds && params.tokenIds.length > 0) {
-            queryParams.append("token_ids", params.tokenIds.join(","));
+            queryParams.append("tokenIds", params.tokenIds.join(","));
         }
 
         const response = await axios.get<BalanceChartData>(
@@ -244,8 +226,8 @@ export async function getBalanceChart(
 }
 
 export interface TokenBalance {
-    account_id: string;
-    token_id: string;
+    accountId: string;
+    tokenId: string;
     balance: string;
     lockedBalance?: string;
     decimals: number;
@@ -253,7 +235,7 @@ export interface TokenBalance {
 
 export interface RecentActivity {
     id: number;
-    block_time: string;
+    blockTime: string;
     tokenId: string;
     tokenMetadata: {
         tokenId: string;
@@ -297,7 +279,7 @@ export async function getRecentActivity(
     try {
         const url = `${BACKEND_API_BASE}/recent-activity`;
         const response = await axios.get<RecentActivityResponse>(url, {
-            params: { account_id: accountId, limit, offset },
+            params: { accountId, limit, offset },
         });
         return response.data;
     } catch (error) {
@@ -387,9 +369,9 @@ export interface StorageDeposit {
 }
 
 export interface StorageDepositRegistration {
-    account_id: string;
-    token_id: string;
-    is_registered: boolean;
+    accountId: string;
+    tokenId: string;
+    isRegistered: boolean;
 }
 
 /**
@@ -595,29 +577,6 @@ export async function getProfile(
     }
 }
 
-/**
- * Get profile data from NEAR Social for multiple accounts in a single batch request
- * More efficient than making individual requests for each account
- */
-export async function getBatchProfiles(
-    accountIds: string[],
-): Promise<Record<string, ProfileData>> {
-    if (!accountIds || accountIds.length === 0) return {};
-
-    try {
-        const url = `${BACKEND_API_BASE}/user/profile/batch`;
-
-        const response = await axios.get<Record<string, ProfileData>>(url, {
-            params: { accountIds: accountIds.join(",") },
-        });
-
-        return response.data;
-    } catch (error) {
-        console.error("Error getting batch profiles", error);
-        return {};
-    }
-}
-
 export type PaymentStatus = { Paid: {}; Pending: {}; Failed: {} };
 
 export interface BatchPayment {
@@ -627,7 +586,7 @@ export interface BatchPayment {
 }
 
 export interface BatchPaymentResponse {
-    token_id: string;
+    tokenId: string;
     submitter: string;
     status: string;
     payments: BatchPayment[];
@@ -824,11 +783,11 @@ export async function searchIntentsTokens(
 }
 
 export interface BulkPaymentListStatus {
-    list_id: string;
+    listId: string;
     status: string;
-    total_payments: number;
-    processed_payments: number;
-    pending_payments: number;
+    totalPayments: number;
+    processedPayments: number;
+    pendingPayments: number;
 }
 
 export interface BulkPaymentListStatusResponse {
@@ -840,7 +799,7 @@ export interface BulkPaymentListStatusResponse {
 export interface BulkPaymentTransaction {
     recipient: string;
     amount: string;
-    block_height: number;
+    blockHeight: number;
 }
 
 export interface BulkPaymentTransactionsResponse {
@@ -851,16 +810,16 @@ export interface BulkPaymentTransactionsResponse {
 
 export interface BulkPaymentTransactionHashResponse {
     success: boolean;
-    transaction_hash?: string;
-    block_height?: number;
+    transactionHash?: string;
+    blockHeight?: number;
     error?: string;
 }
 
 export interface OpenTreasuryResponse {
-    account_id: string;
-    is_new_registration: boolean;
-    export_credits: number;
-    batch_payment_credits: number;
+    accountId: string;
+    isNewRegistration: boolean;
+    exportCredits: number;
+    batchPaymentCredits: number;
 }
 
 /**
@@ -945,7 +904,7 @@ export async function openTreasury(
     try {
         const url = `${BACKEND_API_BASE}/monitored-accounts`;
         const response = await axios.post<OpenTreasuryResponse>(url, {
-            account_id: treasuryId,
+            accountId: treasuryId,
         });
         return response.data;
     } catch (error) {
@@ -1043,9 +1002,9 @@ export async function getIntentsQuote(
  * Bulk Payment Usage Statistics
  */
 export interface BulkPaymentUsageStats {
-    credits_available: number;
-    credits_used: number;
-    total_credits: number;
+    creditsAvailable: number;
+    creditsUsed: number;
+    totalCredits: number;
 }
 
 /**
@@ -1058,33 +1017,7 @@ export async function getBulkPaymentUsageStats(
     const response = await axios.get<BulkPaymentUsageStats>(
         `${BACKEND_API_BASE}/bulk-payment/usage-stats`,
         {
-            params: { treasury_id: treasuryId },
-        },
-    );
-    return response.data;
-}
-
-/**
- * Plan Details
- */
-export type PlanType = "trial" | "plus" | "pro" | "custom";
-export type PlanPeriod = "trial" | "month";
-
-export interface PlanDetails {
-    plan_type: PlanType;
-    batch_payment_credit_limit: number | null; // null for unlimited
-    period: PlanPeriod;
-}
-
-/**
- * Get plan details for a treasury
- * Returns the plan type, credit limits for various features, and period information
- */
-export async function getPlanDetails(treasuryId: string): Promise<PlanDetails> {
-    const response = await axios.get<PlanDetails>(
-        `${BACKEND_API_BASE}/plan/details`,
-        {
-            params: { treasury_id: treasuryId },
+            params: { treasuryId: treasuryId },
         },
     );
     return response.data;

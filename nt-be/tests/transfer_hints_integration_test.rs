@@ -70,12 +70,7 @@ async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
 
     insert_snapshot_record(&pool, &network, account_id, token_id, seed_block)
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     println!("✓ Seeded initial balance at block {}", seed_block);
 
@@ -99,12 +94,7 @@ async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
 
     run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
@@ -231,12 +221,7 @@ async fn test_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
 
     insert_snapshot_record(&pool, &network, account_id, token_id, seed_block)
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     println!("✓ Seeded initial balance at block {}", seed_block);
 
@@ -260,12 +245,7 @@ async fn test_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
 
     run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
@@ -388,12 +368,7 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
 
     insert_snapshot_record(&pool, &network, account_id, token_id, seed_block)
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     println!("✓ Seeded initial balance at block {}", seed_block);
 
@@ -439,12 +414,7 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
 
     run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
@@ -550,12 +520,7 @@ async fn test_shitzu_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
 
     insert_snapshot_record(&pool, &network, account_id, token_id, seed_block)
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     println!("✓ Seeded initial balance at block {}", seed_block);
 
@@ -585,12 +550,7 @@ async fn test_shitzu_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
 
     run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
@@ -778,12 +738,7 @@ async fn test_no_duplicate_block_checks(pool: PgPool) -> sqlx::Result<()> {
         Some(stats.clone()),
     )
     .await
-    .map_err(|e| {
-        sqlx::Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     println!("Result: {:?}", result);
 
@@ -957,12 +912,7 @@ async fn test_hints_strategy_is_used(pool: PgPool) -> sqlx::Result<()> {
     // Verify this balance via RPC to ensure hint data is accurate
     let rpc_balance = get_balance_at_block(&pool, &network, account_id, token_id, hint_block)
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     println!("RPC balance at block {}: {}", hint_block, rpc_balance);
 
@@ -985,12 +935,7 @@ async fn test_hints_strategy_is_used(pool: PgPool) -> sqlx::Result<()> {
         Some(stats.clone()),
     )
     .await
-    .map_err(|e| {
-        sqlx::Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let stats_data = stats.lock().unwrap().clone();
 

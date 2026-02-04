@@ -10,8 +10,8 @@ use std::sync::Arc;
 use crate::AppState;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CheckAccountExistsQuery {
-    #[serde(rename = "accountId")]
     pub account_id: AccountId,
 }
 

@@ -1,17 +1,25 @@
 use axum::{Json, extract::State, http::StatusCode};
+use near_api::{
+    NearGas, NearToken, Transaction,
+    types::{Action, tokens::STORAGE_COST_PER_BYTE, transaction::actions::FunctionCallAction},
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
-use crate::AppState;
+use crate::{AppState, auth::AuthUser};
+
+const MAX_RECIPIENTS_PER_BULK_PAYMENT: usize = 25;
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PaymentInput {
     pub recipient: String,
     pub amount: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SubmitListRequest {
     pub list_id: String,
     pub submitter_id: String,
@@ -21,6 +29,7 @@ pub struct SubmitListRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SubmitListResponse {
     pub success: bool,
     pub list_id: Option<String>,
@@ -213,17 +222,55 @@ async fn verify_dao_proposal(
     Ok(false)
 }
 
+fn calculate_storage_cost(num_records: u128) -> NearToken {
+    STORAGE_COST_PER_BYTE
+        .saturating_mul(num_records)
+        .saturating_mul(11)
+        .saturating_div(10)
+}
+
+fn serialize_args(
+    args: &serde_json::Value,
+) -> Result<Vec<u8>, (StatusCode, Json<SubmitListResponse>)> {
+    serde_json::to_vec(args).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(SubmitListResponse {
+                success: false,
+                list_id: None,
+                error: Some(format!("Failed to serialize args: {}", e)),
+            }),
+        )
+    })
+}
+
 /// Submit a payment list to the bulk payment contract
 ///
 /// This endpoint verifies:
 /// 1. The list_id matches the SHA-256 hash of the payload
 /// 2. A pending DAO proposal exists with this list_id
+/// 3. The submitter is the same as the authenticated user
 ///
 /// Then submits the list to the contract.
 pub async fn submit_list(
     State(state): State<Arc<AppState>>,
+    _: AuthUser,
     Json(request): Json<SubmitListRequest>,
 ) -> Result<Json<SubmitListResponse>, (StatusCode, Json<SubmitListResponse>)> {
+    if request.payments.len() > MAX_RECIPIENTS_PER_BULK_PAYMENT {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(SubmitListResponse {
+                success: false,
+                list_id: None,
+                error: Some(format!(
+                    "Maximum number of recipients per bulk payment is {}",
+                    MAX_RECIPIENTS_PER_BULK_PAYMENT
+                )),
+            }),
+        ));
+    }
+
     // Step 1: Verify the list_id matches the computed hash
     let computed_hash =
         compute_list_hash(&request.submitter_id, &request.token_id, &request.payments);
@@ -284,22 +331,33 @@ pub async fn submit_list(
         })
         .collect();
 
-    let execution_result = near_api::Contract(state.bulk_payment_contract_id.clone())
-        .call_function(
-            "submit_list",
-            serde_json::json!({
-                "list_id": request.list_id,
-                "token_id": request.token_id,
-                "payments": payments,
-                "submitter_id": request.submitter_id,
-            }),
-        )
-        .transaction()
-        .max_gas()
-        .deposit(near_api::types::NearToken::from_yoctonear(0))
-        .with_signer(state.signer_id.clone(), state.signer.clone())
-        .send_to(&state.network)
-        .await;
+    let execution_result = Transaction::construct(
+        state.bulk_payment_contract_id.clone(),
+        state.bulk_payment_contract_id.clone(),
+    )
+    .add_action(Action::FunctionCall(Box::new(FunctionCallAction {
+        method_name: "buy_storage".to_string(),
+        args: serialize_args(&serde_json::json!({
+            "num_records": payments.len() as u64,
+            "beneficiary_account_id": request.dao_contract_id.clone(),
+        }))?,
+        gas: NearGas::from_tgas(100),
+        deposit: calculate_storage_cost(payments.len() as u128),
+    })))
+    .add_action(Action::FunctionCall(Box::new(FunctionCallAction {
+        method_name: "submit_list".to_string(),
+        args: serialize_args(&serde_json::json!({
+            "list_id": request.list_id,
+            "token_id": request.token_id,
+            "payments": payments,
+            "submitter_id": request.submitter_id,
+        }))?,
+        gas: NearGas::from_tgas(200),
+        deposit: NearToken::from_yoctonear(0),
+    })))
+    .with_signer(state.bulk_payment_signer.clone())
+    .send_to(&state.network)
+    .await;
 
     match execution_result {
         Ok(result) => {
@@ -308,7 +366,8 @@ pub async fn submit_list(
                 Ok(_) => {
                     // Step 4: Decrement credits in monitored_accounts table
                     log::info!(
-                        "Bulk payment submitted successfully for treasury {}. Decrementing credits...",
+                        "Bulk payment submitted successfully fyurtur.near,0.01
+yurtur-treasury.sputnik-dao.near,0.01or treasury {}. Decrementing credits...",
                         request.dao_contract_id
                     );
 

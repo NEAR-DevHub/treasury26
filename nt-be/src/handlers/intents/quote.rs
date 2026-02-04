@@ -198,7 +198,7 @@ mod tests {
         dotenvy::from_filename(".env.test").ok();
 
         let use_defaults = env_overrides.is_none();
-        let mut env_vars = env_overrides.unwrap_or_else(EnvVars::default);
+        let mut env_vars = env_overrides.unwrap_or_default();
         env_vars.oneclick_api_url = mock_server_url.to_string();
         if use_defaults {
             env_vars.oneclick_jwt_token = Some("test-jwt-token".to_string());

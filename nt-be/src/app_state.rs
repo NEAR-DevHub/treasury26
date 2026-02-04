@@ -18,6 +18,7 @@ pub struct AppState {
     pub http_client: reqwest::Client,
     pub cache: Cache,
     pub signer: Arc<Signer>,
+    pub bulk_payment_signer: Arc<Signer>,
     pub signer_id: AccountId,
     pub network: NetworkConfig,
     pub archival_network: NetworkConfig,
@@ -53,6 +54,7 @@ pub struct AppStateBuilder {
     http_client: Option<reqwest::Client>,
     cache: Option<Cache>,
     signer: Option<Arc<Signer>>,
+    bulk_payment_signer: Option<Arc<Signer>>,
     signer_id: Option<AccountId>,
     network: Option<NetworkConfig>,
     archival_network: Option<NetworkConfig>,
@@ -71,6 +73,7 @@ impl AppStateBuilder {
             http_client: None,
             cache: None,
             signer: None,
+            bulk_payment_signer: None,
             signer_id: None,
             network: None,
             archival_network: None,
@@ -98,6 +101,12 @@ impl AppStateBuilder {
     /// Set the signer
     pub fn signer(mut self, signer: Arc<Signer>) -> Self {
         self.signer = Some(signer);
+        self
+    }
+
+    /// Set the bulk payment signer
+    pub fn bulk_payment_signer(mut self, bulk_payment_signer: Arc<Signer>) -> Self {
+        self.bulk_payment_signer = Some(bulk_payment_signer);
         self
     }
 
@@ -175,6 +184,14 @@ impl AppStateBuilder {
             // Use test key or key from env
             let test_key = env_vars.signer_key.clone();
             Signer::from_secret_key(test_key).expect("Failed to create default signer")
+        };
+
+        let bulk_payment_signer = if let Some(s) = self.bulk_payment_signer {
+            s
+        } else {
+            // Use test key or key from env
+            let test_key = env_vars.bulk_payment_signer.clone();
+            Signer::from_secret_key(test_key).expect("Failed to create bulk payment signer")
         };
 
         let signer_id = self.signer_id.unwrap_or_else(|| env_vars.signer_id.clone());
@@ -267,6 +284,7 @@ impl AppStateBuilder {
             http_client: self.http_client.unwrap_or_default(),
             cache: self.cache.unwrap_or_default(),
             signer,
+            bulk_payment_signer,
             signer_id,
             network,
             telegram_client: self.telegram_client.unwrap_or_default(),
@@ -396,7 +414,7 @@ impl AppState {
                     r#"
                         SELECT block_height, block_timestamp
                         FROM balance_changes
-                        WHERE block_timestamp >= $1
+                        WHERE block_timestamp = $1
                         ORDER BY block_timestamp ASC
                         LIMIT 1
                         "#,
@@ -463,30 +481,31 @@ impl AppState {
     /// * `Err` - If the search fails
     async fn binary_search_block_by_timestamp(
         &self,
-        target_timestamp_ns: i64,
+        timestamp_ns: i64,
     ) -> Result<u64, Box<dyn std::error::Error>> {
         use near_api::{Chain, Reference};
 
         // Get the latest block to establish the search range
         let latest_block = Chain::block().fetch_from(&self.archival_network).await?;
 
-        let mut left = 1u64; // Genesis block
+        // Sputnik DAO genesis block
+        let mut left = 129265430; // Genesis block
         let mut right = latest_block.header.height;
         let mut result = right;
 
         // Validate that the target timestamp is within range
-        let latest_timestamp = latest_block.header.timestamp as i64;
-        if target_timestamp_ns > latest_timestamp {
+        let latest_timestamp: i64 = latest_block.header.timestamp as i64;
+        if timestamp_ns > latest_timestamp {
             return Err(format!(
                 "Target timestamp {} is in the future (latest block timestamp: {})",
-                target_timestamp_ns, latest_timestamp
+                timestamp_ns, latest_timestamp
             )
             .into());
         }
 
         log::info!(
             "Binary searching for block with timestamp {} in range [{}, {}]",
-            target_timestamp_ns,
+            timestamp_ns,
             left,
             right
         );
@@ -500,19 +519,19 @@ impl AppState {
                 .fetch_from(&self.archival_network)
                 .await?;
 
-            let mid_timestamp = mid_block.header.timestamp as i64;
+            let mid_timestamp: i64 = mid_block.header.timestamp as i64;
 
             log::debug!(
                 "Checking block {} with timestamp {} (target: {})",
                 mid,
                 mid_timestamp,
-                target_timestamp_ns
+                timestamp_ns
             );
 
-            if mid_timestamp < target_timestamp_ns {
+            if mid_timestamp < timestamp_ns {
                 // Target is in a later block
                 left = mid + 1;
-            } else if mid_timestamp > target_timestamp_ns {
+            } else if mid_timestamp > timestamp_ns {
                 // Target is in an earlier block
                 result = mid;
                 if mid == 0 {
@@ -524,7 +543,7 @@ impl AppState {
                 log::info!(
                     "Found exact match at block {} for timestamp {}",
                     mid,
-                    target_timestamp_ns
+                    timestamp_ns
                 );
                 return Ok(mid);
             }
@@ -534,7 +553,7 @@ impl AppState {
         log::info!(
             "Binary search completed. Closest block: {} for timestamp {}",
             result,
-            target_timestamp_ns
+            timestamp_ns
         );
 
         Ok(result)
@@ -604,7 +623,7 @@ mod tests {
 
         // Use a known block timestamp - Block 151386339 from the binary_search tests
         // Timestamp: 1750097144159145697 nanoseconds = ~2025-12-16
-        let target_timestamp_ns = 1767606003313746552;
+        let target_timestamp_ns = 1750097144159145697;
         let target_date = DateTime::<Utc>::from_timestamp_nanos(target_timestamp_ns);
 
         // Try to find the block height using binary search
@@ -617,7 +636,7 @@ mod tests {
 
         // The result should be close to the expected block (151386339)
         // Allow some margin since we're searching by timestamp
-        assert_eq!(result, 179819880)
+        assert_eq!(result, 151386339)
     }
 
     /// Test error handling for future timestamps
@@ -695,21 +714,5 @@ mod tests {
             cache_key,
             format!("block-height-by-timestamp:{}", target_timestamp_ns)
         );
-    }
-
-    /// Helper: Create a test database pool
-    async fn create_test_pool() -> PgPool {
-        dotenvy::from_filename(".env").ok();
-        dotenvy::from_filename(".env.test").ok();
-
-        let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-            "postgresql://treasury_test:test_password@localhost:5433/treasury_test_db".to_string()
-        });
-
-        sqlx::postgres::PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&db_url)
-            .await
-            .expect("Failed to create test pool")
     }
 }

@@ -26,6 +26,7 @@ import {
 } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableRow } from "@/components/table";
 import { FormattedDate } from "@/components/formatted-date";
+import { useProposals } from "@/hooks/use-proposals";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -41,6 +42,9 @@ export function RecentActivity() {
     const [selectedActivity, setSelectedActivity] =
         useState<RecentActivityType | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const { data: proposalsData, isLoading: isProposalsLoading } =
+        useProposals(treasuryId);
+    const isEmptyProposals = proposalsData?.proposals?.length === 0;
 
     const {
         data: response,
@@ -190,7 +194,7 @@ export function RecentActivity() {
                             </div>
                             <div className="text-sm text-muted-foreground">
                                 <FormattedDate
-                                    date={new Date(activity.block_time)}
+                                    date={new Date(activity.blockTime)}
                                     includeTime
                                 />
                             </div>
@@ -225,7 +229,7 @@ export function RecentActivity() {
                     </Button>
                 </CardHeader>
                 <CardContent className="px-2">
-                    {isLoading && page === 0 ? (
+                    {(isLoading || isProposalsLoading) && page === 0 ? (
                         <div className="space-y-4 px-4 py-2">
                             {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
                                 <div
@@ -247,8 +251,16 @@ export function RecentActivity() {
                     ) : allActivities.length === 0 ? (
                         <EmptyState
                             icon={Clock}
-                            title="Nothing to show yet"
-                            description="Your transactions and actions will appear here once they happen"
+                            title={
+                                isEmptyProposals
+                                    ? "Nothing to show yet"
+                                    : "Loading your activity"
+                            }
+                            description={
+                                isEmptyProposals
+                                    ? "Your transactions and actions will appear here once they happen"
+                                    : "Your transactions are on the way. This might take some time."
+                            }
                         />
                     ) : (
                         <>

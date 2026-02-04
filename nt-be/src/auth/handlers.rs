@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 /// Request body for creating a challenge
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChallengeRequest {
     pub account_id: String,
 }
@@ -25,6 +26,7 @@ pub struct ChallengeResponse {
 
 /// Request body for login
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LoginRequest {
     pub account_id: AccountId,
     pub public_key: PublicKey,
@@ -36,15 +38,9 @@ pub struct LoginRequest {
     pub callback_url: Option<String>,
 }
 
-/// Response body for login
-#[derive(Debug, Serialize)]
-pub struct LoginResponse {
-    pub account_id: String,
-    pub terms_accepted: bool,
-}
-
 /// Response body for /me endpoint
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MeResponse {
     pub account_id: String,
     pub terms_accepted: bool,
@@ -88,7 +84,7 @@ pub async fn login(
     State(state): State<Arc<AppState>>,
     jar: CookieJar,
     Json(request): Json<LoginRequest>,
-) -> Result<(CookieJar, Json<LoginResponse>), AuthError> {
+) -> Result<(CookieJar, Json<MeResponse>), AuthError> {
     // Verify the challenge exists and hasn't expired
     let challenge = sqlx::query!(
         r#"
@@ -197,7 +193,7 @@ pub async fn login(
 
     Ok((
         jar,
-        Json(LoginResponse {
+        Json(MeResponse {
             account_id: user.account_id,
             terms_accepted: user.terms_accepted_at.is_some(),
         }),

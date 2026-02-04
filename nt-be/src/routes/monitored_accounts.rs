@@ -9,10 +9,7 @@ use sqlx::types::chrono::{DateTime, Utc};
 use std::sync::Arc;
 
 use crate::AppState;
-
-// Default credits granted when a treasury is first registered
-const DEFAULT_EXPORT_CREDITS: i32 = 10;
-const DEFAULT_BATCH_PAYMENT_CREDITS: i32 = 5;
+use crate::config::{PlanType, get_initial_credits};
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct MonitoredAccount {
@@ -23,15 +20,19 @@ pub struct MonitoredAccount {
     pub updated_at: DateTime<Utc>,
     pub export_credits: i32,
     pub batch_payment_credits: i32,
+    pub plan_type: PlanType,
+    pub credits_reset_at: DateTime<Utc>,
     pub dirty_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AddAccountRequest {
     pub account_id: String,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AddAccountResponse {
     pub account_id: String,
     pub enabled: bool,
@@ -40,16 +41,20 @@ pub struct AddAccountResponse {
     pub updated_at: DateTime<Utc>,
     pub export_credits: i32,
     pub batch_payment_credits: i32,
+    pub plan_type: PlanType,
+    pub credits_reset_at: DateTime<Utc>,
     pub dirty_at: Option<DateTime<Utc>>,
     pub is_new_registration: bool,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListAccountsQuery {
     pub enabled: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateAccountRequest {
     pub enabled: bool,
 }
@@ -75,7 +80,8 @@ pub async fn add_monitored_account(
     // Check if already exists
     let existing = sqlx::query_as::<_, MonitoredAccount>(
         r#"
-        SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
+        SELECT account_id, enabled, last_synced_at, created_at, updated_at,
+               export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
         FROM monitored_accounts
         WHERE account_id = $1
         "#,
@@ -100,22 +106,27 @@ pub async fn add_monitored_account(
             updated_at: account.updated_at,
             export_credits: account.export_credits,
             batch_payment_credits: account.batch_payment_credits,
+            plan_type: account.plan_type,
+            credits_reset_at: account.credits_reset_at,
             dirty_at: account.dirty_at,
             is_new_registration: false,
         }));
     }
 
-    // New registration - insert with default credits
+    // New registration - insert with Pro plan and credits (launch promotion)
+    let (export_credits, batch_payment_credits) = get_initial_credits(PlanType::Pro);
+
     let account = sqlx::query_as::<_, MonitoredAccount>(
         r#"
-        INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits)
-        VALUES ($1, true, $2, $3)
-        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
+        INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits, plan_type)
+        VALUES ($1, true, $2, $3, 'pro')
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
+                  export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
         "#,
     )
     .bind(&payload.account_id)
-    .bind(DEFAULT_EXPORT_CREDITS)
-    .bind(DEFAULT_BATCH_PAYMENT_CREDITS)
+    .bind(export_credits)
+    .bind(batch_payment_credits)
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
@@ -133,6 +144,8 @@ pub async fn add_monitored_account(
         updated_at: account.updated_at,
         export_credits: account.export_credits,
         batch_payment_credits: account.batch_payment_credits,
+        plan_type: account.plan_type,
+        credits_reset_at: account.credits_reset_at,
         dirty_at: account.dirty_at,
         is_new_registration: true,
     }))
@@ -146,7 +159,8 @@ pub async fn list_monitored_accounts(
     let accounts = if let Some(enabled) = params.enabled {
         sqlx::query_as::<_, MonitoredAccount>(
             r#"
-            SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
+            SELECT account_id, enabled, last_synced_at, created_at, updated_at,
+                   export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
             FROM monitored_accounts
             WHERE enabled = $1
             ORDER BY account_id
@@ -158,7 +172,8 @@ pub async fn list_monitored_accounts(
     } else {
         sqlx::query_as::<_, MonitoredAccount>(
             r#"
-            SELECT account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
+            SELECT account_id, enabled, last_synced_at, created_at, updated_at,
+                   export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
             FROM monitored_accounts
             ORDER BY account_id
             "#,
@@ -188,7 +203,8 @@ pub async fn update_monitored_account(
         SET enabled = $2,
             updated_at = NOW()
         WHERE account_id = $1
-        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
+                  export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
         "#,
     )
     .bind(&account_id)
@@ -267,7 +283,8 @@ pub async fn mark_account_dirty(
         SET dirty_at = NOW() - make_interval(hours => $2),
             updated_at = NOW()
         WHERE account_id = $1 AND enabled = true
-        RETURNING account_id, enabled, last_synced_at, created_at, updated_at, export_credits, batch_payment_credits, dirty_at
+        RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
+                  export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
         "#,
     )
     .bind(&account_id)

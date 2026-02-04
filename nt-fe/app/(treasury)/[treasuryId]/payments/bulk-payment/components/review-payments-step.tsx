@@ -344,6 +344,7 @@ export function ReviewPaymentsStep({
                             }
                             placeholder="Add a comment (optional)..."
                             rows={3}
+                            borderless
                             className="resize-none"
                         />
                     </div>
