@@ -519,9 +519,7 @@ pub async fn get_user_assets(
                     contract_id: None,
                     decimals: near_token_meta.decimals,
                     balance: Balance::Standard {
-                        total: near_balance
-                            .balance
-                            .0.to_string(),
+                        total: near_balance.balance.0.to_string(),
                         locked: "0".to_string(),
                     },
                     price: near_token_meta.price.unwrap_or(0.0).to_string(),

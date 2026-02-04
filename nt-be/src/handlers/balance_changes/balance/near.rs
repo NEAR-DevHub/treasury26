@@ -51,7 +51,11 @@ pub async fn get_balance_at_block(
                 }
 
                 // Convert yoctoNEAR to human-readable NEAR (24 decimals)
-                let yocto_near = balance.total.saturating_sub(balance.storage_locked).as_yoctonear().to_string();
+                let yocto_near = balance
+                    .total
+                    .saturating_sub(balance.storage_locked)
+                    .as_yoctonear()
+                    .to_string();
                 let decimal_near = convert_raw_to_decimal(&yocto_near, 24)?;
 
                 return Ok(decimal_near);
