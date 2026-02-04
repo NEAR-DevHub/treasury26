@@ -12,12 +12,14 @@ use crate::{AppState, auth::AuthUser};
 const MAX_RECIPIENTS_PER_BULK_PAYMENT: usize = 25;
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PaymentInput {
     pub recipient: String,
     pub amount: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SubmitListRequest {
     pub list_id: String,
     pub submitter_id: String,
@@ -27,6 +29,7 @@ pub struct SubmitListRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SubmitListResponse {
     pub success: bool,
     pub list_id: Option<String>,

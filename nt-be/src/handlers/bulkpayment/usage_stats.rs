@@ -10,11 +10,13 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UsageStatsQuery {
     pub treasury_id: String,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UsageStatsResponse {
     pub credits_available: i32,
     pub credits_used: i32,

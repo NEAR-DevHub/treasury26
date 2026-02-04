@@ -32,7 +32,7 @@ export async function generateListId(
             recipient: p.recipient,
         })),
         submitter: submitterId,
-        tokenId: tokenId,
+        token_id: tokenId,
     });
 
     if (typeof window !== "undefined" && window.crypto?.subtle) {
