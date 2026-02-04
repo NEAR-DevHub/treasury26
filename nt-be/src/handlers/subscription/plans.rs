@@ -35,6 +35,7 @@ pub struct SubscriptionStatusResponse {
     pub plan_config: PlanConfig,
     pub export_credits: i32,
     pub batch_payment_credits: i32,
+    pub gas_covered_transactions: i32,
     pub credits_reset_at: DateTime<Utc>,
 }
 
@@ -45,6 +46,7 @@ pub struct AccountPlanInfo {
     pub plan_type: PlanType,
     pub export_credits: i32,
     pub batch_payment_credits: i32,
+    pub gas_covered_transactions: i32,
     pub credits_reset_at: DateTime<Utc>,
 }
 
@@ -56,7 +58,7 @@ pub async fn get_account_plan_info(
 ) -> Result<Option<AccountPlanInfo>, sqlx::Error> {
     sqlx::query_as::<_, AccountPlanInfo>(
         r#"
-        SELECT account_id, plan_type, export_credits, batch_payment_credits, credits_reset_at
+        SELECT account_id, plan_type, export_credits, batch_payment_credits, gas_covered_transactions, credits_reset_at
         FROM monitored_accounts
         WHERE account_id = $1
         "#,
@@ -94,6 +96,7 @@ pub async fn get_subscription_status(
         account_id: account.account_id,
         plan_type: account.plan_type,
         plan_config,
+        gas_covered_transactions: account.gas_covered_transactions,
         export_credits: account.export_credits,
         batch_payment_credits: account.batch_payment_credits,
         credits_reset_at: account.credits_reset_at,

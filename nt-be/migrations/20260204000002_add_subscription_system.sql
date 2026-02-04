@@ -19,6 +19,11 @@ ALTER TABLE
     monitored_accounts
 ADD
     COLUMN credits_reset_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    
+ALTER TABLE
+    monitored_accounts
+ADD
+    COLUMN gas_covered_transactions INTEGER NOT NULL DEFAULT 10;
 
 CREATE INDEX idx_monitored_accounts_plan_type ON monitored_accounts(plan_type);
 
@@ -41,6 +46,7 @@ CREATE TABLE usage_tracking (
     -- Feature usage
     exports_used INTEGER NOT NULL DEFAULT 0,
     batch_payments_used INTEGER NOT NULL DEFAULT 0,
+    gas_covered_transactions INTEGER NOT NULL DEFAULT 0,
     -- Exchange/swap tracking
     exchanges_count INTEGER NOT NULL DEFAULT 0,
     exchanges_volume_cents BIGINT NOT NULL DEFAULT 0,
@@ -96,4 +102,5 @@ UPDATE
 SET
     plan_type = 'pro',
     batch_payment_credits = 100,
-    export_credits = 10;
+    export_credits = 10,
+    gas_covered_transactions = 1000;

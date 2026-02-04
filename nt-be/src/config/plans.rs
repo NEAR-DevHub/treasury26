@@ -66,6 +66,9 @@ pub struct PlanLimits {
     /// Exchange fee as basis points (e.g., 35 = 0.35%)
     pub exchange_fee_bps: u32,
 
+    /// Gas covered transactions (None for one-time trial or unlimited)
+    pub gas_covered_transactions: Option<u32>,
+
     /// Monthly export credits (None for one-time trial or unlimited)
     pub monthly_export_credits: Option<u32>,
 
@@ -121,6 +124,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: Some(25_000_00), // $25k
                 overage_rate_bps: 20,                        // 0.20%
                 exchange_fee_bps: 35,                        // 0.35%
+                gas_covered_transactions: Some(10),          // 10 gas covered transactions
                 monthly_export_credits: None,                // No monthly reset
                 trial_export_credits: Some(3),               // 3 one-time trial exports
                 monthly_batch_payment_credits: None,         // No monthly reset
@@ -148,6 +152,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: Some(50_000_000), // $500k
                 overage_rate_bps: 20,                         // 0.20%
                 exchange_fee_bps: 20,                         // 0.20%
+                gas_covered_transactions: Some(100),          // 10 gas covered transactions
                 monthly_export_credits: Some(5),
                 trial_export_credits: None,
                 monthly_batch_payment_credits: Some(10),
@@ -175,6 +180,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: Some(100_000_000), // $1M
                 overage_rate_bps: 10,                           // 0.10%
                 exchange_fee_bps: 10,                           // 0.10%
+                gas_covered_transactions: Some(1000),          // 1000 gas covered transactions
                 monthly_export_credits: Some(10),
                 trial_export_credits: None,
                 monthly_batch_payment_credits: Some(100),
@@ -202,6 +208,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: None, // Unlimited
                 overage_rate_bps: 0,              // 0%
                 exchange_fee_bps: 0,              // 0%
+                gas_covered_transactions: None,   // Unlimited
                 monthly_export_credits: None,     // Unlimited (handled as None check)
                 trial_export_credits: None,
                 monthly_batch_payment_credits: None, // Unlimited
