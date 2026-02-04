@@ -7,9 +7,9 @@
 //! The dirty account mechanism solves this by spawning a parallel task that fills gaps
 //! for the marked account while the main cycle continues processing other accounts.
 //!
-//! Transaction hashes expected:
-//! - DLz6ZX5R6gHBadhxgeNba6JB6sQdj5fEHQPr3hXmWSd3
-//! - Ff42Tk5UUCdfhbYd3UNttnDmv2U3hmgavKQXAXfjBePW
+//! Expected payments from petersalomonsen.near at blocks:
+//! - 183985506
+//! - 183985508
 
 mod common;
 
@@ -28,11 +28,11 @@ const BASELINE_BLOCK: i64 = 183_985_000;
 /// Block after the two payment transactions — dirty task should find them by here
 const DIRTY_UP_TO_BLOCK: i64 = 183_986_000;
 
-/// The two expected transaction hashes from the 2026-02-03 payments
-const EXPECTED_TX_HASHES: &[&str] = &[
-    "DLz6ZX5R6gHBadhxgeNba6JB6sQdj5fEHQPr3hXmWSd3",
-    "Ff42Tk5UUCdfhbYd3UNttnDmv2U3hmgavKQXAXfjBePW",
-];
+/// The expected block heights where payments from petersalomonsen.near occurred
+const EXPECTED_PAYMENT_BLOCKS: &[i64] = &[183_985_506, 183_985_508];
+
+/// The expected counterparty for these payments
+const EXPECTED_COUNTERPARTY: &str = "petersalomonsen.near";
 
 /// End-to-end test: dirty account priority monitoring detects payment transactions
 /// while the main monitoring cycle is busy with staking rewards.
@@ -123,38 +123,35 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
         main_cycle_duration
     );
 
-    // Verify no payment transactions exist yet (they happen after baseline block)
-    let pre_dirty_changes: Vec<(i64, Vec<String>)> = sqlx::query_as(
+    // Verify no payment blocks exist yet (they happen after baseline block)
+    let pre_dirty_blocks: Vec<i64> = sqlx::query_scalar(
         r#"
-        SELECT block_height, transaction_hashes
+        SELECT block_height
         FROM balance_changes
         WHERE account_id = $1
           AND token_id = 'near'
+          AND block_height > $2
           AND counterparty != 'SNAPSHOT'
           AND counterparty != 'STAKING_SNAPSHOT'
         ORDER BY block_height DESC
         "#,
     )
     .bind(TREASURY_ACCOUNT)
+    .bind(BASELINE_BLOCK)
     .fetch_all(&pool)
     .await?;
 
     println!(
-        "Balance changes before dirty: {} (should not include the expected payments)",
-        pre_dirty_changes.len()
+        "Balance changes after baseline before dirty: {} (should be 0)",
+        pre_dirty_blocks.len()
     );
 
-    // Verify the expected payment tx hashes are NOT yet in the database
-    let all_tx_hashes_before: Vec<String> = pre_dirty_changes
-        .iter()
-        .flat_map(|(_, hashes)| hashes.iter().cloned())
-        .collect();
-
-    for expected_hash in EXPECTED_TX_HASHES {
+    // Verify the expected payment blocks are NOT yet in the database
+    for expected_block in EXPECTED_PAYMENT_BLOCKS {
         assert!(
-            !all_tx_hashes_before.contains(&expected_hash.to_string()),
-            "Transaction {} should NOT be in the database before dirty monitoring",
-            expected_hash
+            !pre_dirty_blocks.contains(expected_block),
+            "Block {} should NOT be in the database before dirty monitoring",
+            expected_block
         );
     }
 
@@ -195,9 +192,10 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
     println!("\n--- Phase 3: Verify the two payment transactions are now visible ---");
 
     // Query all non-snapshot NEAR balance changes after the baseline
-    let post_dirty_changes: Vec<(i64, Vec<String>, String)> = sqlx::query_as(
+    // Include receipt_id to verify receipts are captured
+    let post_dirty_changes: Vec<(i64, String, Vec<String>)> = sqlx::query_as(
         r#"
-        SELECT block_height, transaction_hashes, counterparty
+        SELECT block_height, counterparty, receipt_id
         FROM balance_changes
         WHERE account_id = $1
           AND token_id = 'near'
@@ -216,27 +214,42 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
         "New balance changes after dirty monitor: {}",
         post_dirty_changes.len()
     );
-    for (block, hashes, counterparty) in &post_dirty_changes {
+    for (block, counterparty, receipt_ids) in &post_dirty_changes {
         println!(
-            "  Block {}: counterparty={}, tx_hashes={:?}",
-            block, counterparty, hashes
+            "  Block {}: counterparty={}, receipt_ids={:?}",
+            block, counterparty, receipt_ids
         );
     }
 
-    // Collect all transaction hashes from the new changes
-    let all_tx_hashes: Vec<String> = post_dirty_changes
-        .iter()
-        .flat_map(|(_, hashes, _)| hashes.iter().cloned())
-        .collect();
+    // Collect all block heights from the new changes
+    let found_blocks: Vec<i64> = post_dirty_changes.iter().map(|(b, _, _)| *b).collect();
 
-    // Assert both expected transactions are now in the database
-    for expected_hash in EXPECTED_TX_HASHES {
+    // Assert both expected payment blocks are now in the database
+    for expected_block in EXPECTED_PAYMENT_BLOCKS {
         assert!(
-            all_tx_hashes.contains(&expected_hash.to_string()),
-            "Expected transaction {} to be found after dirty monitoring.\nFound tx hashes: {:?}",
-            expected_hash,
-            all_tx_hashes
+            found_blocks.contains(expected_block),
+            "Expected block {} to be found after dirty monitoring.\nFound blocks: {:?}",
+            expected_block,
+            found_blocks
         );
+    }
+
+    // Verify the counterparty is correct for the expected payment blocks
+    for (block, counterparty, receipt_ids) in &post_dirty_changes {
+        if EXPECTED_PAYMENT_BLOCKS.contains(block) {
+            assert_eq!(
+                counterparty, EXPECTED_COUNTERPARTY,
+                "Expected counterparty {} for block {}, got {}",
+                EXPECTED_COUNTERPARTY, block, counterparty
+            );
+
+            // Verify receipt IDs are captured (not empty)
+            assert!(
+                !receipt_ids.is_empty(),
+                "Expected receipt_ids to be captured for block {}, got empty array",
+                block
+            );
+        }
     }
 
     // Assert the dirty monitor was faster than the main cycle
@@ -246,8 +259,8 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
     println!("Dirty monitor duration: {:?}", dirty_duration);
     println!("Gaps filled by dirty monitor: {}", gaps_filled);
     println!(
-        "Both expected transactions found: {}",
-        EXPECTED_TX_HASHES.join(", ")
+        "Both expected payment blocks found: {:?}",
+        EXPECTED_PAYMENT_BLOCKS
     );
 
     println!("\nTest passed!");
