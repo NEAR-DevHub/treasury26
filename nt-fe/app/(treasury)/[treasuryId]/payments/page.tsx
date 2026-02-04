@@ -182,6 +182,7 @@ function Step2({ handleBack }: StepProps) {
                                 <Textarea
                                     value={field.value}
                                     onChange={field.onChange}
+                                    borderless
                                     rows={2}
                                     placeholder="Add a comment (optional)..."
                                 />

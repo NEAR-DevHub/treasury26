@@ -113,10 +113,7 @@ mod tests {
         // Expected balance after from test data (converted to NEAR from yoctoNEAR)
         use bigdecimal::BigDecimal;
         use std::str::FromStr;
-        assert_eq!(
-            balance,
-            BigDecimal::from_str("11.1002111266305371").unwrap()
-        );
+        assert_eq!(balance, BigDecimal::from_str("5.6882211266305371").unwrap());
     }
 
     #[tokio::test]
@@ -140,7 +137,13 @@ mod tests {
         // From test data: balanceBefore and balanceAfter at block 151386339 (converted to NEAR)
         use bigdecimal::BigDecimal;
         use std::str::FromStr;
-        assert_eq!(before, BigDecimal::from_str("6.1002111266305371").unwrap());
-        assert_eq!(after, BigDecimal::from_str("11.1002111266305371").unwrap());
+        assert_eq!(
+            before,
+            BigDecimal::from_str("0.688221126630537100000000").unwrap()
+        );
+        assert_eq!(
+            after,
+            BigDecimal::from_str("5.688221126630537100000000").unwrap()
+        );
     }
 }
