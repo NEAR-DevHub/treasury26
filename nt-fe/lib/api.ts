@@ -1,12 +1,7 @@
 import { Policy } from "@/types/policy";
 import axios from "axios";
 import Big from "big.js";
-import {
-    Balance,
-    BalanceRaw,
-    LockupBalance,
-    transformBalance,
-} from "./balance";
+import { Balance, BalanceRaw, transformBalance } from "./balance";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -579,29 +574,6 @@ export async function getProfile(
     } catch (error) {
         console.error(`Error getting profile for ${accountId}`, error);
         return null;
-    }
-}
-
-/**
- * Get profile data from NEAR Social for multiple accounts in a single batch request
- * More efficient than making individual requests for each account
- */
-export async function getBatchProfiles(
-    accountIds: string[],
-): Promise<Record<string, ProfileData>> {
-    if (!accountIds || accountIds.length === 0) return {};
-
-    try {
-        const url = `${BACKEND_API_BASE}/user/profile/batch`;
-
-        const response = await axios.get<Record<string, ProfileData>>(url, {
-            params: { accountIds: accountIds.join(",") },
-        });
-
-        return response.data;
-    } catch (error) {
-        console.error("Error getting batch profiles", error);
-        return {};
     }
 }
 

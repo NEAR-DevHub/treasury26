@@ -122,10 +122,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::user::profile::get_profile),
         )
         .route(
-            "/api/user/profile/batch",
-            get(handlers::user::profile::get_batch_profiles),
-        )
-        .route(
             "/api/user/check-account-exists",
             get(handlers::user::check_account_exists::check_account_exists),
         )
