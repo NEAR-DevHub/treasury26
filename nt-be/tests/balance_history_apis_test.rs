@@ -223,9 +223,9 @@ async fn test_balance_chart_with_real_data() {
     let response = client
         .get(server.url("/api/balance-history/chart"))
         .query(&[
-            ("account_id", "webassemblymusic-treasury.sputnik-dao.near"),
-            ("start_time", "2025-12-01T00:00:00Z"),
-            ("end_time", "2025-12-04T23:59:59Z"),
+            ("accountId", "webassemblymusic-treasury.sputnik-dao.near"),
+            ("startTime", "2025-12-01T00:00:00Z"),
+            ("endTime", "2025-12-04T23:59:59Z"),
             ("interval", "daily"),
         ])
         .send()
@@ -411,9 +411,9 @@ async fn test_csv_export_with_real_data() {
     let response = client
         .get(server.url("/api/balance-history/csv"))
         .query(&[
-            ("account_id", "webassemblymusic-treasury.sputnik-dao.near"),
-            ("start_time", "2025-06-01T00:00:00Z"),
-            ("end_time", "2026-01-01T00:00:00Z"),
+            ("accountId", "webassemblymusic-treasury.sputnik-dao.near"),
+            ("startTime", "2025-06-01T00:00:00Z"),
+            ("endTime", "2026-01-01T00:00:00Z"),
         ])
         .send()
         .await
@@ -515,9 +515,9 @@ async fn test_chart_api_intervals() {
         let response = client
             .get(server.url("/api/balance-history/chart"))
             .query(&[
-                ("account_id", "webassemblymusic-treasury.sputnik-dao.near"),
-                ("start_time", "2025-06-01T00:00:00Z"),
-                ("end_time", "2025-12-31T23:59:59Z"),
+                ("accountId", "webassemblymusic-treasury.sputnik-dao.near"),
+                ("startTime", "2025-06-01T00:00:00Z"),
+                ("endTime", "2025-12-31T23:59:59Z"),
                 ("interval", interval),
             ])
             .send()
