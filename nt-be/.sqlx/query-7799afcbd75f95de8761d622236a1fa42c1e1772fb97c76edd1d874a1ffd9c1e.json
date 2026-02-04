@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, duration_months, price_usdc\n        FROM subscription_plans\n        WHERE id = $1 AND active = true\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "duration_months",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "price_usdc",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7799afcbd75f95de8761d622236a1fa42c1e1772fb97c76edd1d874a1ffd9c1e"
+}

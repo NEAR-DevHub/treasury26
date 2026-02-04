@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            sp.id, sp.usdc_amount, sp.status, sp.created_at, sp.completed_at,\n            EXISTS(SELECT 1 FROM subscription_invoices si WHERE si.payment_id = sp.id) as \"has_invoice!\"\n        FROM subscription_payments sp\n        JOIN treasury_subscriptions ts ON ts.id = sp.subscription_id\n        WHERE ts.account_id = $1\n        ORDER BY sp.created_at DESC\n        LIMIT 10\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "usdc_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "completed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "has_invoice!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "e10ce8c564b46e083b7d8b364f3b4568d84ba90c0065612673f2e7678ee2d0d5"
+}

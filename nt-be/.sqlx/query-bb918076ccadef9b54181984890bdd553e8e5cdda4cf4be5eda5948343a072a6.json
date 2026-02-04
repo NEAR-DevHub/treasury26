@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT sp.id, sp.subscription_id, ts.plan_id\n            FROM subscription_payments sp\n            JOIN treasury_subscriptions ts ON ts.id = sp.subscription_id\n            WHERE sp.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "subscription_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "plan_id",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bb918076ccadef9b54181984890bdd553e8e5cdda4cf4be5eda5948343a072a6"
+}

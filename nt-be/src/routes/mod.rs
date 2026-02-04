@@ -229,6 +229,23 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/proxy/{*path}",
             get(handlers::proxy::external::proxy_external_api),
         )
+        // Subscription endpoints
+        .route(
+            "/api/subscriptions/plans",
+            get(handlers::subscriptions::plans::get_plans),
+        )
+        .route(
+            "/api/subscriptions/status",
+            get(handlers::subscriptions::status::get_subscription_status),
+        )
+        .route(
+            "/api/subscriptions/checkout",
+            post(handlers::subscriptions::checkout::create_checkout),
+        )
+        .route(
+            "/api/subscriptions/callback",
+            get(handlers::subscriptions::callback::handle_callback),
+        )
         // Auth endpoints
         .route(
             "/api/auth/challenge",
