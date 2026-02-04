@@ -31,6 +31,8 @@ pub struct EnvVars {
     pub oneclick_app_fee_bps: Option<u32>,
     pub oneclick_app_fee_recipient: Option<String>,
     pub oneclick_referral: Option<String>,
+    // Backend public URL (for PingPay callbacks)
+    pub backend_url: String,
     // PingPay configuration for subscription payments
     pub pingpay_api_url: String,
     pub pingpay_api_key: Option<String>,
@@ -128,6 +130,9 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty())
                 .or_else(|| Some("near-treasury".to_string())),
+            // Backend public URL
+            backend_url: std::env::var("BACKEND_URL")
+                .unwrap_or_else(|_| "http://localhost:3002".to_string()),
             // PingPay configuration
             pingpay_api_url: std::env::var("PINGPAY_API_URL")
                 .unwrap_or_else(|_| "https://pay.pingpay.io".to_string()),

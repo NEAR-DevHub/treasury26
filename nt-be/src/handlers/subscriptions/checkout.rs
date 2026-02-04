@@ -144,16 +144,18 @@ pub async fn create_checkout(
         )
     })?;
 
-    // Build callback URL with subscription/payment IDs
+    // Build callback URLs pointing to the backend callback handler
+    // PingPay will redirect here, then the callback handler redirects to frontend
+    let backend_base = state.env_vars.backend_url.trim_end_matches('/');
     let success_url = format!(
-        "{}/api/subscriptions/callback?type=success&subscription_id={}&payment_id={}",
-        state.env_vars.subscription_success_url.trim_end_matches('/'),
+        "{}/api/subscriptions/callback?type=success&subscription_id={}&internal_payment_id={}",
+        backend_base,
         subscription.id,
         payment.id
     );
     let cancel_url = format!(
-        "{}/api/subscriptions/callback?type=cancel&subscription_id={}&payment_id={}",
-        state.env_vars.subscription_cancel_url.trim_end_matches('/'),
+        "{}/api/subscriptions/callback?type=cancel&subscription_id={}&internal_payment_id={}",
+        backend_base,
         subscription.id,
         payment.id
     );
@@ -161,7 +163,7 @@ pub async fn create_checkout(
     // Create PingPay checkout session
     let pingpay_client = PingPayClient::new(
         state.http_client.clone(),
-        format!("{}/api", state.env_vars.pingpay_api_url),
+        state.env_vars.pingpay_api_url.clone(),
         state.env_vars.pingpay_api_key.clone(),
     );
 

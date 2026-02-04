@@ -38,25 +38,34 @@ pub struct CreateCheckoutSessionRequest {
     pub metadata: Option<serde_json::Value>,
 }
 
+/// Amount details in checkout response
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AmountDetails {
+    pub asset_id: Option<String>,
+    pub amount: String,
+    pub decimals: Option<u8>,
+}
+
+/// Recipient details in checkout response
+#[derive(Deserialize, Clone, Debug)]
+pub struct RecipientDetails {
+    pub address: String,
+}
+
 /// Session details in checkout response
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionDetails {
     pub session_id: String,
     pub status: String,
-    pub amount: String,
-    pub recipient: String,
-    pub asset: AssetResponse,
+    pub amount: AmountDetails,
+    pub recipient: RecipientDetails,
+    #[serde(default)]
+    pub payment_id: Option<String>,
     pub created_at: String,
     #[serde(default)]
     pub expires_at: Option<String>,
-}
-
-/// Asset in response
-#[derive(Deserialize, Clone, Debug)]
-pub struct AssetResponse {
-    pub chain: String,
-    pub symbol: String,
 }
 
 /// Response from creating a checkout session
@@ -183,26 +192,29 @@ mod tests {
     fn test_checkout_response_deserialization() {
         let json = r#"{
             "session": {
-                "sessionId": "sess_123",
-                "status": "pending",
-                "amount": "150000000",
-                "recipient": "trezu.near",
-                "asset": {
-                    "chain": "NEAR",
-                    "symbol": "USDC"
+                "sessionId": "cs_KkSF2ZfdK4N7oAzKdri_L",
+                "status": "CREATED",
+                "paymentId": null,
+                "amount": {
+                    "assetId": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+                    "amount": "150000000",
+                    "decimals": 6
+                },
+                "recipient": {
+                    "address": "trezu.near"
                 },
                 "createdAt": "2026-02-01T12:00:00Z",
                 "expiresAt": "2026-02-01T13:00:00Z"
             },
-            "sessionUrl": "https://pay.pingpay.io/checkout?sessionId=sess_123"
+            "sessionUrl": "https://pay.pingpay.io/checkout?sessionId=cs_KkSF2ZfdK4N7oAzKdri_L"
         }"#;
 
         let response: CheckoutSessionResponse = serde_json::from_str(json).unwrap();
 
-        assert_eq!(response.session.session_id, "sess_123");
-        assert_eq!(response.session.status, "pending");
-        assert_eq!(response.session.amount, "150000000");
-        assert_eq!(response.session.recipient, "trezu.near");
-        assert!(response.session_url.contains("sess_123"));
+        assert_eq!(response.session.session_id, "cs_KkSF2ZfdK4N7oAzKdri_L");
+        assert_eq!(response.session.status, "CREATED");
+        assert_eq!(response.session.amount.amount, "150000000");
+        assert_eq!(response.session.recipient.address, "trezu.near");
+        assert!(response.session_url.contains("cs_KkSF2ZfdK4N7oAzKdri_L"));
     }
 }
