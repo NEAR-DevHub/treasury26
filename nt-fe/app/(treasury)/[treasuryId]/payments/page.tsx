@@ -140,10 +140,12 @@ function Step2({ handleBack }: StepProps) {
     }, [storageDepositData, form]);
 
     const total = useMemo(() => {
-        return Number(amount) || 0;
+        return Big(amount) || Big(0);
     }, [amount]);
 
-    const estimatedUSDValue = tokenData?.price ? total * tokenData.price : 0;
+    const estimatedUSDValue = tokenData?.price
+        ? total.mul(tokenData.price)
+        : Big(0);
 
     return (
         <PageCard>

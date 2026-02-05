@@ -146,10 +146,15 @@ export function TokenInput<
                                                 ) {
                                                     setValue(
                                                         amountName,
-                                                        formatBalance(
+                                                        Big(
                                                             tokenBalanceData.balance,
-                                                            token.decimals,
-                                                        ) as PathValue<
+                                                        )
+                                                            .div(
+                                                                Big(10).pow(
+                                                                    token.decimals,
+                                                                ),
+                                                            )
+                                                            .toString() as PathValue<
                                                             TFieldValues,
                                                             Path<TFieldValues>
                                                         >,
@@ -188,7 +193,7 @@ export function TokenInput<
                                             ? "..."
                                             : customValue !== undefined
                                               ? customValue
-                                              : field.value
+                                              : field.value.toString()
                                     }
                                     placeholder="0"
                                     className={cn(

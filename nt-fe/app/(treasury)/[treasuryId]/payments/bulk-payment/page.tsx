@@ -105,8 +105,8 @@ export default function BulkPaymentPage() {
             return;
 
         const totalAmount = paymentData.reduce(
-            (sum, item) => sum + Number(item.amount || 0),
-            0,
+            (sum, item) => sum.add(Big(item.amount || "0")),
+            Big(0),
         );
 
         let loadingToastId: string | number | undefined;
@@ -146,7 +146,7 @@ export default function BulkPaymentPage() {
                 recipient: payment.recipient,
                 amount: Big(payment.amount || "0")
                     .times(Big(10).pow(selectedToken.decimals))
-                    .toFixed(),
+                    .toString(),
             }));
 
             // Generate list_id

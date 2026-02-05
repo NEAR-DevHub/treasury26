@@ -103,8 +103,8 @@ export function ReviewPaymentsStep({
     }
 
     const totalAmount = paymentData.reduce(
-        (sum, item) => sum + Number(item.amount || 0),
-        0,
+        (sum, item) => sum.add(Big(item.amount || "0")),
+        Big(0),
     );
 
     const hasUnregisteredRecipients = paymentData.some(
@@ -116,7 +116,7 @@ export function ReviewPaymentsStep({
     );
 
     // Calculate total USD value and check insufficient balance
-    let totalUSDValue = 0;
+    let totalUSDValue = Big(0);
     let hasInsufficientBalance = false;
 
     if (selectedTokenBalanceData) {
@@ -132,11 +132,10 @@ export function ReviewPaymentsStep({
 
             // Calculate USD value only if price is available
             if (selectedTokenData?.price && balanceFormattedBig.gt(0)) {
-                totalUSDValue = totalAmount * selectedTokenData.price;
+                totalUSDValue = totalAmount.mul(selectedTokenData.price);
             }
         } catch (error) {
             console.error("Error calculating total USD value:", error);
-            totalUSDValue = 0;
         }
     }
 

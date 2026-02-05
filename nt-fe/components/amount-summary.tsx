@@ -1,8 +1,9 @@
+import Big from "big.js";
 import { InputBlock } from "./input-block";
 import { Token } from "./token-input";
 
 interface AmountSummaryProps {
-    total: number | string;
+    total: Big | string;
     token: Token;
     title?: string;
     children?: React.ReactNode;
@@ -24,7 +25,7 @@ export function AmountSummary({
                     className="size-10 shrink-0 rounded-full"
                 />
                 <p className="text-xl font-semibold text-foreground">
-                    {Number(total)}{" "}
+                    {Big(total).toString()}{" "}
                     <span className="text-muted-foreground font-medium text-sm">
                         {token.symbol}
                     </span>

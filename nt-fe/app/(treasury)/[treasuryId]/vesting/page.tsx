@@ -47,7 +47,7 @@ const vestingFormSchema = z
                 .max(64, "Recipient must be less than 64 characters"),
             amount: z
                 .string()
-                .refine((val) => !isNaN(Number(val)) && Number(val) >= 3.5, {
+                .refine((val) => !isNaN(Number(val)) && Big(val).gte(3.5), {
                     message: "Amount must be greater than or equal to 3.5",
                 }),
             memo: z.string().optional(),
@@ -268,10 +268,7 @@ function Step3({ handleBack }: StepProps) {
                 handleBack={handleBack}
             >
                 <div className="flex flex-col gap-6">
-                    <AmountSummary
-                        total={Number(vesting.amount)}
-                        token={vesting.token}
-                    >
+                    <AmountSummary total={vesting.amount} token={vesting.token}>
                         <p>≈ {formatCurrency(estimatedUSDValue)}</p>
                     </AmountSummary>
                     <InfoDisplay items={infoItems} />
