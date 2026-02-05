@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
 import { useTreasury } from "@/hooks/use-treasury";
-import { ChevronRight, Check, X, Download } from "lucide-react";
+import { ChevronRight, Check, X, Download, Send } from "lucide-react";
 import Link from "next/link";
 import { ProposalTypeIcon } from "../proposal-type-icon";
 import { TransactionCell } from "../transaction-cell";
@@ -22,10 +22,11 @@ import {
     getKindFromProposal,
     ProposalPermissionKind,
 } from "@/lib/config-utils";
-import { cn, formatBalance } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
 import { Policy } from "@/types/policy";
+import { EmptyState } from "@/components/empty-state";
 
 const MAX_DISPLAYED_REQUESTS = 4;
 
@@ -248,12 +249,11 @@ export function PendingRequests() {
                             ))}
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-0.5 w-full h-full items-center justify-center my-auto">
-                        <h1 className="font-semibold">All caught up!</h1>
-                        <p className="text-xs text-muted-foreground">
-                            There are no pending requests.
-                        </p>
-                    </div>
+                    <EmptyState
+                        icon={Send}
+                        title="All caught up!"
+                        description="There are no pending requests."
+                    />
                 )}
             </div>
             <VoteModal
