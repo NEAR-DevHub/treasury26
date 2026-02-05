@@ -155,7 +155,7 @@ export function formatBalance(
     }
     return parsedBalance
         .div(Big(10).pow(decimals))
-        .toFixed(displayDecimals)
+        .toFixed(displayDecimals, 3)
         .replace(/\.?0+$/, "");
 }
 

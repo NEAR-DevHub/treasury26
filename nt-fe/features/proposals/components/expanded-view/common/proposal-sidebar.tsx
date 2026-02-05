@@ -248,6 +248,7 @@ export function ProposalSidebar({
     );
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(
         proposal,
+        policy,
         treasuryId,
     );
 
@@ -328,7 +329,11 @@ export function ProposalSidebar({
                                 {insufficientBalanceInfo.differenceDisplay}{" "}
                                 {insufficientBalanceInfo.tokenSymbol}
                             </strong>{" "}
-                            to continue.
+                            to{" "}
+                            {insufficientBalanceInfo.type === "bond"
+                                ? "cover proposal bond costs"
+                                : "continue"}
+                            .
                         </span>
                     }
                 />
