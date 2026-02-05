@@ -13,10 +13,14 @@
 
 mod common;
 
+use bigdecimal::BigDecimal;
 use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 use nt_be::handlers::balance_changes::dirty_monitor::fill_dirty_account_gaps;
 use nt_be::handlers::balance_changes::gap_filler::insert_snapshot_record;
+use nt_be::handlers::balance_changes::utils::block_timestamp_to_datetime;
+use serde_json::json;
 use sqlx::PgPool;
+use std::str::FromStr;
 use std::time::Instant;
 
 const TREASURY_ACCOUNT: &str = "webassemblymusic-treasury.sputnik-dao.near";
@@ -38,6 +42,71 @@ const EXPECTED_COUNTERPARTY: &str = "petersalomonsen.near";
 const EXPECTED_RECEIPT_IDS: &[&str] = &[
     "CbLDUW23fBNYCbhRu5dYzGDktShSf9yheyEwRE5wSgAf",
     "6Mk2hc5r8JDUhN6KGDgAYohd7VJE8FGFwD4x8BZPH8y9",
+];
+
+/// Approximate block timestamp for BASELINE_BLOCK in nanoseconds (~Feb 3, 2026)
+const BASELINE_BLOCK_TIMESTAMP: i64 = 1_770_076_800_000_000_000;
+
+/// Token snapshots from https://api.trezu.app/api/balance-changes
+/// Balances at or before BASELINE_BLOCK for webassemblymusic-treasury.sputnik-dao.near
+/// Note: `near` is seeded via insert_snapshot_record (needs real on-chain balance),
+///       `near:total` is excluded (computed value, not gap-fillable)
+const TREASURY_TOKEN_SNAPSHOTS: &[(&str, &str)] = &[
+    (
+        "staking:astro-stakers.poolv1.near",
+        "1031.105895126873021215500734",
+    ),
+    ("arizcredits.near", "2.5000"),
+    (
+        "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+        "9.99998000",
+    ),
+    (
+        "intents.near:nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
+        "22.54364600",
+    ),
+    ("intents.near:nep141:sol.omft.near", "0.08342401"),
+    (
+        "intents.near:nep245:v2_1.omni.hot.tg:43114_11111111111111111111",
+        "1.51476544231523885200",
+    ),
+    ("intents.near:nep141:xrp.omft.near", "16.69236700"),
+    ("intents.near:nep141:btc.omft.near", "0.00544253"),
+    (
+        "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "119",
+    ),
+    (
+        "intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+        "125.01182900",
+    ),
+    ("intents.near:nep141:wrap.near", "0.8000"),
+    (
+        "intents.near:nep141:eth.omft.near",
+        "0.03501508842977613200",
+    ),
+];
+
+/// Token snapshots for testing-astradao.sputnik-dao.near
+/// Note: `near` and `near:total` excluded (same reason as above)
+const STAKING_TOKEN_SNAPSHOTS: &[(&str, &str)] = &[
+    ("staking:figment.poolv1.near", "0.100003532026647260349538"),
+    (
+        "staking:bisontrails.poolv1.near",
+        "0.523954777382739780399233",
+    ),
+    (
+        "staking:astro-stakers.poolv1.near",
+        "0.243096488083090812499858",
+    ),
+    (
+        "intents.near:nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+        "0.09978800",
+    ),
+    (
+        "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        "2.9100",
+    ),
 ];
 
 /// End-to-end test: dirty account priority monitoring detects payment transactions
@@ -89,28 +158,65 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
             .await?;
     }
 
-    println!("\n--- Phase 1: Seed initial balance and run main cycle up to baseline ---");
+    println!("\n--- Phase 1: Seed token snapshots and run main cycle up to baseline ---");
 
-    // Seed initial NEAR balance snapshot at baseline block for the treasury account
-    insert_snapshot_record(
-        &pool,
-        &network,
-        TREASURY_ACCOUNT,
-        "near",
-        BASELINE_BLOCK as u64,
-    )
-    .await
-    .map_err(|e| {
-        sqlx::Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    // Seed NEAR balance via RPC (needs real on-chain balance for accurate gap filling)
+    for account_id in [TREASURY_ACCOUNT, STAKING_ACCOUNT] {
+        insert_snapshot_record(&pool, &network, account_id, "near", BASELINE_BLOCK as u64)
+            .await
+            .map_err(|e| {
+                sqlx::Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    e.to_string(),
+                ))
+            })?;
+        println!("Seeded NEAR snapshot for {} via RPC", account_id);
+    }
 
-    println!(
-        "Seeded initial balance for {} at block {}",
-        TREASURY_ACCOUNT, BASELINE_BLOCK
-    );
+    // Seed remaining token snapshots (data from https://api.trezu.app/api/balance-changes)
+    // This ensures the monitor cycle has many tokens to process, simulating a busy worker
+    let block_time = block_timestamp_to_datetime(BASELINE_BLOCK_TIMESTAMP);
+    let zero = BigDecimal::from(0);
+
+    for (account_id, snapshots) in [
+        (TREASURY_ACCOUNT, TREASURY_TOKEN_SNAPSHOTS),
+        (STAKING_ACCOUNT, STAKING_TOKEN_SNAPSHOTS),
+    ] {
+        for (token_id, balance_str) in snapshots {
+            let balance = BigDecimal::from_str(balance_str).expect("valid balance");
+            sqlx::query(
+                r#"
+                INSERT INTO balance_changes
+                (account_id, token_id, block_height, block_timestamp, block_time,
+                 amount, balance_before, balance_after,
+                 transaction_hashes, receipt_id, counterparty, actions, raw_data)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                ON CONFLICT (account_id, block_height, token_id) DO NOTHING
+                "#,
+            )
+            .bind(account_id)
+            .bind(*token_id)
+            .bind(BASELINE_BLOCK)
+            .bind(BASELINE_BLOCK_TIMESTAMP)
+            .bind(block_time)
+            .bind(&zero)
+            .bind(&balance)
+            .bind(&balance)
+            .bind(&Vec::<String>::new())
+            .bind(&Vec::<String>::new())
+            .bind("SNAPSHOT")
+            .bind(json!({}))
+            .bind(json!({}))
+            .execute(&pool)
+            .await?;
+        }
+        println!(
+            "Seeded {} token snapshots for {} at block {}",
+            snapshots.len(),
+            account_id,
+            BASELINE_BLOCK
+        );
+    }
 
     // Run monitor cycle up to baseline block — this establishes the "current state"
     // and processes staking rewards for testing-astradao (simulating the busy worker)
