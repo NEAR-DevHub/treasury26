@@ -275,6 +275,7 @@ export interface RecentActivity {
   receiver_id: string | null;
   amount: string;
   transaction_hashes: string[];
+  value_usd?: number;
 }
 
 export interface RecentActivityResponse {
@@ -288,16 +289,42 @@ export interface RecentActivityResponse {
  */
 export async function getRecentActivity(
   accountId: string,
-  limit: number = 50,
+  limit: number = 10,
   offset: number = 0,
+  minUsdValue?: number,
+  transactionType?: string,
+  tokenIds?: string[],
+  startDate?: string,
+  endDate?: string,
 ): Promise<RecentActivityResponse | null> {
   if (!accountId) return null;
 
   try {
     const url = `${BACKEND_API_BASE}/recent-activity`;
+    const params: Record<string, string | number> = {
+      account_id: accountId,
+      limit,
+      offset,
+    };
+    if (minUsdValue !== undefined) {
+      params.min_usd_value = minUsdValue;
+    }
+    if (transactionType !== undefined && transactionType !== "all") {
+      params.transaction_type = transactionType;
+    }
+    if (tokenIds && tokenIds.length > 0) {
+      params.token_ids = tokenIds.join(",");
+    }
+    if (startDate) {
+      params.start_date = startDate;
+    }
+    if (endDate) {
+      params.end_date = endDate;
+    }
     const response = await axios.get<RecentActivityResponse>(url, {
-      params: { account_id: accountId, limit, offset },
+      params,
     });
+    console.log(response.data);
     return response.data;
   } catch (error) {
     console.error("Error getting recent activity", error);
@@ -971,8 +998,8 @@ export async function markDaoDirty(daoId: string): Promise<void> {
     console.warn(`Failed to mark DAO ${daoId} as dirty:`, error);
 
   }
-  }
-  
+}
+
 export interface IntentsQuoteRequest {
   dry?: boolean;
   swapType?: string;
@@ -1070,6 +1097,8 @@ export type PlanPeriod = "trial" | "month";
 export interface PlanDetails {
   plan_type: PlanType;
   batch_payment_credit_limit: number | null; // null for unlimited
+  export_credit_limit: number | null; // null for unlimited
+  history_months: number | null; // null for unlimited
   period: PlanPeriod;
 }
 
@@ -1089,6 +1118,62 @@ export async function getPlanDetails(
   return response.data;
 }
 
+// ============================================================================
+// Export Credits & History
+// ============================================================================
 
+export interface ExportCreditsResponse {
+  export_credits: number;     // Remaining credits
+  credits_used: number;       // Used credits (calculated by backend)
+  total_credits: number;      // Total credits from plan
+}
 
+export interface ExportHistoryItem {
+  id: number;
+  account_id: string;
+  generated_by: string;
+  email: string | null;
+  status: string;
+  file_url: string;
+  error_message: string | null;
+  created_at: string;
+}
 
+export interface ExportHistoryResponse {
+  data: ExportHistoryItem[];
+  total: number;
+}
+
+/**
+ * Get export credits for an account
+ */
+export async function getExportCredits(accountId: string): Promise<ExportCreditsResponse> {
+  const response = await axios.get<ExportCreditsResponse>(
+    `${BACKEND_API_BASE}/export-credits`,
+    {
+      params: { account_id: accountId },
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Get export history for an account
+ */
+export async function getExportHistory(
+  accountId: string,
+  limit = 10,
+  offset = 0
+): Promise<ExportHistoryResponse> {
+  const response = await axios.get<ExportHistoryResponse>(
+    `${BACKEND_API_BASE}/export-history`,
+    {
+      params: {
+        account_id: accountId,
+        limit,
+        offset,
+      },
+    }
+  );
+  return response.data;
+}

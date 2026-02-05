@@ -19,6 +19,8 @@ import {
   searchIntentsTokens,
   SearchTokensParams,
   getRecentActivity,
+  getExportCredits,
+  getExportHistory,
 } from "@/lib/api";
 
 /**
@@ -260,13 +262,47 @@ export function useSearchIntentsTokens(params: SearchTokensParams) {
  */
 export function useRecentActivity(
   accountId: string | null | undefined,
-  limit: number = 50,
+  limit: number = 10,
+  offset: number = 0,
+  minUsdValue?: number,
+  transactionType?: string,
+  tokenIds?: string[],
+  startDate?: string,
+  endDate?: string,
+) {
+  return useQuery({
+    queryKey: ["recentActivity", accountId, limit, offset, minUsdValue, transactionType, tokenIds, startDate, endDate],
+    queryFn: () => getRecentActivity(accountId!, limit, offset, minUsdValue, transactionType, tokenIds, startDate, endDate),
+    enabled: !!accountId,
+    staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
+  });
+}
+
+/**
+ * Hook to fetch export credits for an account
+ */
+export function useExportCredits(accountId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["exportCredits", accountId],
+    queryFn: () => getExportCredits(accountId!),
+    enabled: !!accountId,
+    staleTime: Infinity, // Never auto-refresh, only manual refetch
+  });
+}
+
+/**
+ * Hook to fetch export history for an account
+ * Only updates when explicitly refetched (after export)
+ */
+export function useExportHistory(
+  accountId: string | null | undefined,
+  limit: number = 10,
   offset: number = 0,
 ) {
   return useQuery({
-    queryKey: ["recentActivity", accountId, limit, offset],
-    queryFn: () => getRecentActivity(accountId!, limit, offset),
+    queryKey: ["exportHistory", accountId, limit, offset],
+    queryFn: () => getExportHistory(accountId!, limit, offset),
     enabled: !!accountId,
-    staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
+    staleTime: Infinity, // Never auto-refresh, only manual refetch
   });
 }

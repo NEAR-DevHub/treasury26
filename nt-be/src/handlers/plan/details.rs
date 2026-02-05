@@ -32,6 +32,8 @@ pub enum PlanPeriod {
 pub struct PlanDetailsResponse {
     pub plan_type: PlanType,
     pub batch_payment_credit_limit: Option<i32>, // None for unlimited
+    pub export_credit_limit: Option<i32>,        // None for unlimited
+    pub history_months: Option<i32>,             // None for unlimited
     pub period: PlanPeriod,
 }
 
@@ -59,18 +61,29 @@ pub async fn get_plan_details(
 }
 
 /// Returns dummy plan details for testing
+/// Plan limits:
+/// - Trial: 3 exports (one-time), 3 months history
+/// - Plus: 5 exports/month, 1 year (12 months) history
+/// - Pro: 10 exports/month, 2 years (24 months) history
+/// - Custom: unlimited exports, unlimited history
 pub fn get_dummy_plan_details(_treasury_id: &str) -> PlanDetailsResponse {
     // manually change this to test different plans
-    // Trial plan
+
+    // Trial plan (default)
     PlanDetailsResponse {
         plan_type: PlanType::Trial,
         batch_payment_credit_limit: Some(5),
+        export_credit_limit: Some(3), // 3 one-time exports
+        history_months: Some(3),      // 3 months of history
         period: PlanPeriod::Trial,
     }
 
+    // Pro plan
     // PlanDetailsResponse {
     //     plan_type: PlanType::Pro,
     //     batch_payment_credit_limit: Some(100),
+    //     export_credit_limit: Some(10), // 10 exports per month
+    //     history_months: Some(24), // 2 years
     //     period: PlanPeriod::Month,
     // }
 
@@ -78,6 +91,8 @@ pub fn get_dummy_plan_details(_treasury_id: &str) -> PlanDetailsResponse {
     // PlanDetailsResponse {
     //     plan_type: PlanType::Plus,
     //     batch_payment_credit_limit: Some(10),
+    //     export_credit_limit: Some(5), // 5 exports per month
+    //     history_months: Some(12), // 1 year
     //     period: PlanPeriod::Month,
     // }
 
@@ -85,6 +100,8 @@ pub fn get_dummy_plan_details(_treasury_id: &str) -> PlanDetailsResponse {
     // PlanDetailsResponse {
     //     plan_type: PlanType::Custom,
     //     batch_payment_credit_limit: None,
+    //     export_credit_limit: None, // unlimited
+    //     history_months: None, // unlimited
     //     period: PlanPeriod::Month,
     // }
 }

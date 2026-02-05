@@ -22,17 +22,6 @@ import { CheckboxFilterContent } from "./checkbox-filter-content";
 import { useDaoUsers, UserListType } from "../hooks/use-dao-users";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const FILTER_OPTIONS = [
-    { id: "proposal_types", label: "Requests Type" },
-    { id: "created_date", label: "Created Date" },
-    { id: "recipients", label: "Recipient" },
-    { id: "tokens", label: "Token" },
-    { id: "proposers", label: "Requester" },
-    { id: "approvers", label: "Approver" },
-    { id: "my_vote", label: "My Vote Status" },
-];
-
-
 const PROPOSAL_TYPE_OPTIONS = [
     "Payments",
     "Exchange",
@@ -60,11 +49,19 @@ interface TokenOption {
     icon: string;
 }
 
-interface ProposalFiltersProps {
-    className?: string;
+export interface FilterOption {
+    id: string;
+    label: string;
+    minDate?: Date;
+    maxDate?: Date;
 }
 
-export function ProposalFilters({ className }: ProposalFiltersProps) {
+interface ProposalFiltersProps {
+    className?: string;
+    filterOptions: FilterOption[];
+}
+
+export function ProposalFilters({ className, filterOptions }: ProposalFiltersProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -72,13 +69,13 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
 
     const activeFilters = useMemo(() => {
         const filters: string[] = [];
-        FILTER_OPTIONS.forEach((opt) => {
+        filterOptions.forEach((opt) => {
             if (searchParams.has(opt.id)) {
                 filters.push(opt.id);
             }
         });
         return filters;
-    }, [searchParams]);
+    }, [searchParams, filterOptions]);
 
     const updateFilters = useCallback(
         (updates: Record<string, string | null>) => {
@@ -107,7 +104,7 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
         updateFilters({ [id]: null });
     };
 
-    const availableFilters = FILTER_OPTIONS.filter(
+    const availableFilters = filterOptions.filter(
         (opt) => !activeFilters.includes(opt.id)
     );
 
@@ -123,16 +120,21 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
             </Button>
 
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-                {activeFilters.map((filterId) => (
-                    <FilterPill
-                        key={filterId}
-                        id={filterId}
-                        label={FILTER_OPTIONS.find((o) => o.id === filterId)?.label || ""}
-                        value={searchParams.get(filterId) || ""}
-                        onRemove={() => removeFilter(filterId)}
-                        onUpdate={(val) => updateFilters({ [filterId]: val })}
-                    />
-                ))}
+                {activeFilters.map((filterId) => {
+                    const filterOption = filterOptions.find((o) => o.id === filterId);
+                    return (
+                        <FilterPill
+                            key={filterId}
+                            id={filterId}
+                            label={filterOption?.label || ""}
+                            value={searchParams.get(filterId) || ""}
+                            onRemove={() => removeFilter(filterId)}
+                            onUpdate={(val) => updateFilters({ [filterId]: val })}
+                            minDate={filterOption?.minDate}
+                            maxDate={filterOption?.maxDate}
+                        />
+                    );
+                })}
 
                 {availableFilters.length > 0 && (
                     <Popover open={isAddFilterOpen} onOpenChange={setIsAddFilterOpen}>
@@ -176,9 +178,11 @@ interface FilterPillProps {
     value: string;
     onRemove: () => void;
     onUpdate: (value: string) => void;
+    minDate?: Date;
+    maxDate?: Date;
 }
 
-function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
+function FilterPill({ id, label, value, onRemove, onUpdate, minDate, maxDate }: FilterPillProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     // Single unified parsing - no backward compatibility
@@ -202,8 +206,8 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
             case "proposal_types":
                 return <ProposalTypeFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             case "created_date":
-                return <CreatedDateFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
-            case "tokens":
+                return <CreatedDateFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} minDate={minDate} maxDate={maxDate} />;
+            case "token":
                 return <TokenFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             case "my_vote":
                 return <MyVoteFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
@@ -224,7 +228,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         if (!filterData) return <span className="font-medium">{displayValue}</span>;
 
         // Token filter display
-        if (id === "tokens" && (filterData as any).token) {
+        if (id === "token" && (filterData as any).token) {
             const { operation, token, amountOperation, minAmount, maxAmount } = filterData as any;
             let amountDisplay = "";
             if (operation === "Is" && (minAmount || maxAmount)) {
@@ -495,6 +499,8 @@ interface CreatedDateFilterContentProps {
     onUpdate: (value: string) => void;
     setIsOpen: (isOpen: boolean) => void;
     onRemove: () => void;
+    minDate?: Date;
+    maxDate?: Date;
 }
 
 interface DateData {
@@ -504,7 +510,7 @@ interface DateData {
     };
 }
 
-function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: CreatedDateFilterContentProps) {
+function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove, minDate, maxDate }: CreatedDateFilterContentProps) {
     const { operation, setOperation, data, setData, handleClear } = useFilterState<DateData>({
         value,
         onUpdate,
@@ -630,6 +636,8 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: Crea
                         }}
                         defaultMonth={defaultMonth}
                         numberOfMonths={1}
+                        min={minDate}
+                        max={maxDate}
                     />
                 </div>
             </div>

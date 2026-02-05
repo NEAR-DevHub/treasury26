@@ -25,6 +25,10 @@ export interface DateRangePickerProps {
   align?: 'start' | 'center' | 'end'
   /** Option for locale */
   locale?: string
+  /** Minimum date that can be selected */
+  minDate?: Date
+  /** Maximum date that can be selected (defaults to today) */
+  maxDate?: Date
 }
 
 const formatDate = (date: Date, locale: string = 'en-us'): string => {
@@ -78,7 +82,9 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
   initialDateTo,
   onUpdate,
   align = 'end',
-  locale = 'en-US'
+  locale = 'en-US',
+  minDate,
+  maxDate = new Date()
 }): React.ReactNode => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -88,7 +94,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
       ? getDateAdjustedForTimezone(initialDateTo)
       : getDateAdjustedForTimezone(initialDateFrom)
   })
-  
+
   const [month, setMonth] = useState<Date>(getDateAdjustedForTimezone(initialDateFrom))
 
   // Ref to store the value of range when the date picker is opened
@@ -267,9 +273,8 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
         <Button variant="unstyled" className="border-2 w-full justify-start">
           <div className="text-left flex-1">
             <div className="py-1">
-              <div>{`${formatDate(range.from, locale)}${
-                range.to != null ? ' - ' + formatDate(range.to, locale) : ''
-              }`}</div>
+              <div>{`${formatDate(range.from, locale)}${range.to != null ? ' - ' + formatDate(range.to, locale) : ''
+                }`}</div>
             </div>
           </div>
           <div className="pl-1 opacity-60 -mr-2 scale-125">
@@ -290,7 +295,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
               />
             ))}
           </div>
-          
+
           {/* Calendar on the right */}
           <div className="p-3">
             {/* Month/Year selector */}
@@ -307,7 +312,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
               >
                 <ChevronUpIcon className="h-4 w-4 -rotate-90" />
               </Button>
-              
+
               <Select
                 value={`${month.getFullYear()}-${month.getMonth()}`}
                 onValueChange={(value) => {
@@ -338,7 +343,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                     ))}
                 </SelectContent>
               </Select>
-              
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -353,11 +358,11 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                 <ChevronDownIcon className="h-4 w-4 -rotate-90" />
               </Button>
             </div>
-            
+
             <Calendar
               mode="range"
               onSelect={(value: { from?: Date, to?: Date } | undefined) => {
-                if (value?.from != null) {                  
+                if (value?.from != null) {
                   // If value only has 'from' (user clicked first date of new range)
                   if (!value.to) {
                     setRange({ from: value.from, to: undefined });
@@ -367,7 +372,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                     // If they're the same, it's a single date click - start new range
                     if (value.from.getTime() === value.to.getTime()) {
                       setRange({ from: value.from, to: undefined });
-                    } 
+                    }
                     // Different dates - complete range
                     else {
                       setRange({ from: value.from, to: value.to });
@@ -383,7 +388,10 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
               numberOfMonths={1}
               month={month}
               onMonthChange={setMonth}
-              disabled={{ after: new Date() }}
+              disabled={[
+                ...(maxDate ? [{ after: maxDate }] : [{ after: new Date() }]),
+                ...(minDate ? [{ before: minDate }] : [])
+              ]}
             />
           </div>
         </div>

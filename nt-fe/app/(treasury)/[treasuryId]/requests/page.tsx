@@ -14,7 +14,7 @@ import { ArrowRightLeft, ArrowUpRight, ListFilter } from "lucide-react";
 import Link from "next/link";
 import { useTreasuryPolicy, useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
-import { ProposalFilters as ProposalFiltersComponent } from "@/features/proposals/components/proposal-filters";
+import { ProposalFilters as ProposalFiltersComponent, FilterOption } from "@/features/proposals/components/proposal-filters";
 import { convertUrlParamsToApiFilters } from "@/features/proposals/utils/filter-params-converter";
 import { NumberBadge } from "@/components/number-badge";
 import { TableSkeleton } from "@/components/table-skeleton";
@@ -24,6 +24,16 @@ import { useNear } from "@/stores/near-store";
 // Constants
 const SEARCH_DEBOUNCE_MS = 300;
 const FILTER_PANEL_MAX_HEIGHT = '500px';
+
+const PROPOSAL_FILTER_OPTIONS: FilterOption[] = [
+  { id: "proposal_types", label: "Requests Type" },
+  { id: "created_date", label: "Created Date", maxDate: new Date() },
+  { id: "recipients", label: "Recipient" },
+  { id: "token", label: "Token" },
+  { id: "proposers", label: "Requester" },
+  { id: "approvers", label: "Approver" },
+  { id: "my_vote", label: "My Vote Status" },
+];
 
 function ProposalsList({ status, onSelectionChange }: { status?: ProposalStatus[]; onSelectionChange?: (count: number) => void }) {
   const { treasuryId, config } = useTreasury();
@@ -35,7 +45,7 @@ function ProposalsList({ status, onSelectionChange }: { status?: ProposalStatus[
   const { accountId } = useNear();
 
   const hasActiveFilters = useMemo(() => {
-    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'tokens', 'created_date', 'my_vote', 'search'];
+    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'token', 'created_date', 'my_vote', 'search'];
     return filterParams.some(param => searchParams.has(param));
   }, [searchParams]);
 
@@ -199,7 +209,7 @@ export default function RequestsPage() {
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
     // Without search as we shouldn't show indicator for search
-    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'tokens', 'created_date', 'my_vote'];
+    const filterParams = ['proposers', 'approvers', 'recipients', 'proposal_types', 'token', 'created_date', 'my_vote'];
     return filterParams.some(param => searchParams.has(param));
   }, [searchParams]);
   const isSearchActive = useMemo(() => {
@@ -268,7 +278,7 @@ export default function RequestsPage() {
                 }}
               >
                 <div className="py-3 px-4">
-                  <ProposalFiltersComponent />
+                  <ProposalFiltersComponent filterOptions={PROPOSAL_FILTER_OPTIONS} />
                 </div>
               </div>
             </>

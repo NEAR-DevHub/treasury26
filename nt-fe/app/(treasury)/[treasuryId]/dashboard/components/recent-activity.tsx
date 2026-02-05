@@ -9,15 +9,16 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowDownToLine, ArrowUpToLine, Upload, Clock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowDownToLine, ArrowUpToLine, Clock, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
+import { usePlanDetails } from "@/hooks/use-plan-details";
 import { useTreasury } from "@/hooks/use-treasury";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useMemo } from "react";
+import { formatHistoryDuration } from "@/lib/utils/plan-utils";
+import { useState, useMemo } from "react";
 import type { RecentActivity as RecentActivityType } from "@/lib/api";
-import { TransactionDetailsModal } from "./transaction-details-modal";
-import { ExportActivityModal } from "./export-activity-modal";
 import {
     useReactTable,
     getCoreRowModel,
@@ -27,50 +28,39 @@ import {
 } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableRow } from "@/components/table";
 import { FormattedDate } from "@/components/formatted-date";
+import { TransactionDetailsModal } from "./transaction-details-modal";
+import { MemberOnlyExportButton } from "./member-only-export-button";
+import Link from "next/link";
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_ON_DASHBOARD = 10;
 
 const columnHelper = createColumnHelper<RecentActivityType>();
 
 export function RecentActivity() {
     const { treasuryId } = useTreasury();
-    const [page, setPage] = useState(0);
-    const [allActivities, setAllActivities] = useState<RecentActivityType[]>(
-        [],
-    );
-    const [total, setTotal] = useState(0);
-    const [selectedActivity, setSelectedActivity] =
-        useState<RecentActivityType | null>(null);
+    const [hideSmallTransactions, setHideSmallTransactions] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState<RecentActivityType | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const {
         data: response,
         isLoading,
-        isFetching,
-    } = useRecentActivity(treasuryId, ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+    } = useRecentActivity(
+        treasuryId,
+        ITEMS_ON_DASHBOARD,
+        0,
+        hideSmallTransactions ? 1 : undefined,
+    );
 
-    // Accumulate activities as we paginate
-    useEffect(() => {
-        if (response) {
-            setTotal(response.total);
+    const { data: planDetails } = usePlanDetails(treasuryId);
 
-            if (page === 0) {
-                // First page - replace all
-                setAllActivities(response.data);
-            } else {
-                // Subsequent pages - append
-                setAllActivities((prev) => {
-                    const existingIds = new Set(prev.map((a) => a.id));
-                    const newActivities = response.data.filter(
-                        (a) => !existingIds.has(a.id),
-                    );
-                    return [...prev, ...newActivities];
-                });
-            }
-        }
-    }, [response, page]);
+    const activities = response?.data || [];
+    const historyMonths = planDetails?.history_months;
 
-    const hasMore = allActivities.length < total;
+    const handleActivityClick = (activity: RecentActivityType) => {
+        setSelectedActivity(activity);
+        setIsModalOpen(true);
+    };
 
     const formatAmount = (amount: string, decimals: number) => {
         const num = parseFloat(amount);
@@ -112,16 +102,7 @@ export function RecentActivity() {
             : `to ${receiverId || "unknown"}`;
     };
 
-    const handleActivityClick = (activity: RecentActivityType) => {
-        setSelectedActivity(activity);
-        setIsModalOpen(true);
-    };
-
-    const handleToggleShowAll = () => {
-        if (!isFetching && hasMore) {
-            setPage((prev) => prev + 1);
-        }
-    };
+    const historyDescription = formatHistoryDuration(historyMonths);
 
     const columns = useMemo<ColumnDef<RecentActivityType, any>[]>(
         () => [
@@ -134,7 +115,7 @@ export function RecentActivity() {
                     const activityType = getActivityType(activity.amount);
 
                     return (
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                             <div
                                 className={cn(
                                     "flex h-10 w-10 items-center justify-center rounded-full shrink-0",
@@ -149,11 +130,11 @@ export function RecentActivity() {
                                     <ArrowUpToLine className="h-5 w-5 text-general-destructive-foreground" />
                                 )}
                             </div>
-                            <div>
-                                <div className="font-semibold">
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                                <div className="font-semibold truncate">
                                     {activityType}
                                 </div>
-                                <div className="text-md text-muted-foreground font-medium">
+                                <div className="text-md text-muted-foreground font-medium truncate">
                                     {getActivityFrom(
                                         activity.amount,
                                         activity.counterparty,
@@ -173,28 +154,30 @@ export function RecentActivity() {
                     const isReceived = parseFloat(activity.amount) > 0;
 
                     return (
-                        <div className="text-right">
-                            <div
-                                className={
-                                    isReceived
-                                        ? "text-general-success-foreground"
-                                        : "text-general-destructive-foreground"
-                                }
-                            >
-                                <span className="font-semibold">
+                        <div className="flex items-center justify-end gap-2 shrink-0">
+                            <div className="text-right transition-all group-hover:pr-2 shrink-0">
+                                <div
+                                    className={cn(
+                                        "whitespace-nowrap font-semibold",
+                                        isReceived
+                                            ? "text-general-success-foreground"
+                                            : "text-foreground"
+                                    )}
+                                >
                                     {formatAmount(
                                         activity.amount,
                                         activity.token_metadata.decimals,
                                     )}{" "}
                                     {activity.token_metadata.symbol}
-                                </span>
+                                </div>
+                                <div className="text-sm text-muted-foreground whitespace-nowrap">
+                                    <FormattedDate
+                                        date={new Date(activity.block_time)}
+                                        includeTime
+                                    />
+                                </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                                <FormattedDate
-                                    date={new Date(activity.block_time)}
-                                    includeTime
-                                />
-                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all shrink-0" />
                         </div>
                     );
                 },
@@ -204,7 +187,7 @@ export function RecentActivity() {
     );
 
     const table = useReactTable({
-        data: allActivities,
+        data: activities,
         columns,
         getCoreRowModel: getCoreRowModel(),
         getRowId: (row) => row.id.toString(),
@@ -213,22 +196,36 @@ export function RecentActivity() {
     return (
         <>
             <Card className="gap-3 border-none shadow-none">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3 px-6">
                     <div className="space-y-1">
-                        <CardTitle>Recent Activity</CardTitle>
+                        <CardTitle>Recent Transactions</CardTitle>
                         <CardDescription>
-                            History of sent and received transactions
+                            Sent and received transactions ({historyDescription})
                         </CardDescription>
                     </div>
-                    <Button variant="outline" size="sm">
-                        <Upload className="h-4 w-4" />
-                        Export
-                    </Button>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="hide-small"
+                                checked={hideSmallTransactions}
+                                onCheckedChange={(checked) =>
+                                    setHideSmallTransactions(!!checked)
+                                }
+                            />
+                            <label
+                                htmlFor="hide-small"
+                                className="text-sm text-muted-foreground leading-none cursor-pointer whitespace-nowrap"
+                            >
+                                Hide transactions &lt;1USD
+                            </label>
+                        </div>
+                        <MemberOnlyExportButton />
+                    </div>
                 </CardHeader>
-                <CardContent className="px-2">
-                    {isLoading && page === 0 ? (
+                <CardContent className="px-0">
+                    {isLoading ? (
                         <div className="space-y-4 px-4 py-2">
-                            {[...Array(ITEMS_PER_PAGE)].map((_, i) => (
+                            {[...Array(ITEMS_ON_DASHBOARD)].map((_, i) => (
                                 <div
                                     key={i}
                                     className="flex items-center justify-between"
@@ -245,7 +242,7 @@ export function RecentActivity() {
                                 </div>
                             ))}
                         </div>
-                    ) : allActivities.length === 0 ? (
+                    ) : activities.length === 0 ? (
                         <EmptyState
                             icon={Clock}
                             title="Nothing to show yet"
@@ -253,46 +250,51 @@ export function RecentActivity() {
                         />
                     ) : (
                         <>
-                            <Table>
-                                <TableBody>
-                                    {table.getRowModel().rows.map((row) => (
-                                        <TableRow
-                                            key={row.id}
-                                            onClick={() =>
-                                                handleActivityClick(
-                                                    row.original,
-                                                )
-                                            }
-                                            className="cursor-pointer"
-                                        >
-                                            {row
-                                                .getVisibleCells()
-                                                .map((cell) => (
-                                                    <TableCell
-                                                        key={cell.id}
-                                                        className="p-4"
-                                                    >
-                                                        {flexRender(
-                                                            cell.column
-                                                                .columnDef.cell,
-                                                            cell.getContext(),
-                                                        )}
-                                                    </TableCell>
-                                                ))}
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                            {hasMore && (
-                                <Button
-                                    variant="outline"
-                                    className="w-full mt-4 bg-transparent hover:bg-muted/50"
-                                    onClick={handleToggleShowAll}
-                                    disabled={isFetching}
-                                >
-                                    {isFetching ? "Loading..." : "Show More"}
-                                </Button>
-                            )}
+                            <div className="w-full overflow-hidden px-6">
+                                <Table className="table-fixed w-full">
+                                    <colgroup>
+                                        <col />
+                                        <col className="w-52" />
+                                    </colgroup>
+                                    <TableBody>
+                                        {table.getRowModel().rows.map((row) => (
+                                            <TableRow
+                                                key={row.id}
+                                                className="group cursor-pointer"
+                                                onClick={() => handleActivityClick(row.original)}
+                                            >
+                                                {row
+                                                    .getVisibleCells()
+                                                    .map((cell, idx) => (
+                                                        <TableCell
+                                                            key={cell.id}
+                                                            className={cn(
+                                                                "py-3",
+                                                                idx === 0 ? "pl-2 overflow-hidden" : "pr-0 text-right"
+                                                            )}
+                                                        >
+                                                            {flexRender(
+                                                                cell.column
+                                                                    .columnDef.cell,
+                                                                cell.getContext(),
+                                                            )}
+                                                        </TableCell>
+                                                    ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <div className="px-6">
+                                <Link href={`/${treasuryId}/activity`}>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full mt-4 bg-transparent hover:bg-muted/50"
+                                    >
+                                        View Full Activity
+                                    </Button>
+                                </Link>
+                            </div>
                         </>
                     )}
                 </CardContent>
