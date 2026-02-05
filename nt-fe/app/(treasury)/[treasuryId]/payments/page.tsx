@@ -71,6 +71,9 @@ function Step1({ handleNext }: StepProps) {
     const form = useFormContext<PaymentFormValues>();
     const { treasuryId } = useTreasury();
 
+    const amount = form.watch("amount");
+    const address = form.watch("address");
+
     const handleContinue = () => {
         form.trigger().then((isValid) => {
             if (isValid && handleNext) {
@@ -115,7 +118,12 @@ function Step1({ handleNext }: StepProps) {
                         { kind: "transfer", action: "AddProposal" },
                         { kind: "call", action: "AddProposal" },
                     ]}
-                    idleMessage="Review Payment"
+                    disabled={!amount || !address}
+                    idleMessage={
+                        !amount || !address
+                            ? "Enter amount and address"
+                            : "Review Payment"
+                    }
                 />
             </div>
         </PageCard>
