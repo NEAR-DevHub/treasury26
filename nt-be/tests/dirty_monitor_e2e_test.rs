@@ -34,6 +34,12 @@ const EXPECTED_PAYMENT_BLOCKS: &[i64] = &[183_985_506, 183_985_508];
 /// The expected counterparty for these payments
 const EXPECTED_COUNTERPARTY: &str = "petersalomonsen.near";
 
+/// The expected receipt IDs for the two payment blocks (indexed by position in EXPECTED_PAYMENT_BLOCKS)
+const EXPECTED_RECEIPT_IDS: &[&str] = &[
+    "CbLDUW23fBNYCbhRu5dYzGDktShSf9yheyEwRE5wSgAf",
+    "6Mk2hc5r8JDUhN6KGDgAYohd7VJE8FGFwD4x8BZPH8y9",
+];
+
 /// End-to-end test: dirty account priority monitoring detects payment transactions
 /// while the main monitoring cycle is busy with staking rewards.
 ///
@@ -234,22 +240,27 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
         );
     }
 
-    // Verify the counterparty is correct for the expected payment blocks
-    for (block, counterparty, receipt_ids) in &post_dirty_changes {
-        if EXPECTED_PAYMENT_BLOCKS.contains(block) {
-            assert_eq!(
-                counterparty, EXPECTED_COUNTERPARTY,
-                "Expected counterparty {} for block {}, got {}",
-                EXPECTED_COUNTERPARTY, block, counterparty
-            );
+    // Verify counterparty and exact receipt IDs for each expected payment block
+    for (i, &expected_block) in EXPECTED_PAYMENT_BLOCKS.iter().enumerate() {
+        let (block, counterparty, receipt_ids) = post_dirty_changes
+            .iter()
+            .find(|(b, _, _)| *b == expected_block)
+            .unwrap_or_else(|| panic!("Expected block {} not found in results", expected_block));
 
-            // Verify receipt IDs are captured (not empty)
-            assert!(
-                !receipt_ids.is_empty(),
-                "Expected receipt_ids to be captured for block {}, got empty array",
-                block
-            );
-        }
+        assert_eq!(
+            counterparty, EXPECTED_COUNTERPARTY,
+            "Expected counterparty {} for block {}, got {}",
+            EXPECTED_COUNTERPARTY, block, counterparty
+        );
+
+        assert_eq!(
+            receipt_ids,
+            &vec![EXPECTED_RECEIPT_IDS[i].to_string()],
+            "Expected receipt_id {:?} for block {}, got {:?}",
+            EXPECTED_RECEIPT_IDS[i],
+            block,
+            receipt_ids
+        );
     }
 
     // Assert the dirty monitor was faster than the main cycle
