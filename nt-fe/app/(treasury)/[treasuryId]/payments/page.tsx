@@ -139,13 +139,10 @@ function Step2({ handleBack }: StepProps) {
         }
     }, [storageDepositData, form]);
 
-    const total = useMemo(() => {
-        return Big(amount) || Big(0);
-    }, [amount]);
-
-    const estimatedUSDValue = tokenData?.price
-        ? total.mul(tokenData.price)
-        : Big(0);
+    const estimatedUSDValue =
+        !!amount && !!tokenData?.price
+            ? Big(amount).mul(tokenData.price)
+            : Big(0);
 
     return (
         <PageCard>
@@ -153,7 +150,7 @@ function Step2({ handleBack }: StepProps) {
                 reviewingTitle="Review Your Payment"
                 handleBack={handleBack}
             >
-                <AmountSummary total={total} token={token}>
+                <AmountSummary total={amount} token={token}>
                     <p>to 1 recipient</p>
                 </AmountSummary>
                 <div className="flex flex-col gap-2">

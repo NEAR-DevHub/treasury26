@@ -5,12 +5,15 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
-use chrono::Datelike;
+use bigdecimal::FromPrimitive;
+use bigdecimal::ToPrimitive;
+use chrono::{Datelike, Months, NaiveDate};
 use serde::Serialize;
 use serde_json::{Value, json};
 use sqlx::types::BigDecimal;
 use sqlx::types::chrono::{DateTime, Utc};
 use std::collections::HashMap;
+use std::ops::Mul;
 use std::sync::Arc;
 
 use crate::AppState;
@@ -97,29 +100,37 @@ pub async fn calculate_monthly_outbound_volume(
     month: u32,
 ) -> Result<u64, (StatusCode, String)> {
     // Calculate start and end of the month
-    let start_date = format!("{}-{:02}-01", year, month);
-    let end_date = if month == 12 {
-        format!("{}-01-01", year + 1)
-    } else {
-        format!("{}-{:02}-01", year, month + 1)
-    };
+    let start_date = NaiveDate::from_ymd_opt(year, month, 1)
+        .and_then(|date| date.and_hms_opt(0, 0, 0))
+        .unwrap_or_default();
+    let end_date = start_date
+        .checked_add_months(Months::new(1))
+        .unwrap_or_default();
+
+    println!("Start date: {}", start_date);
+    println!("End date: {}", end_date);
+    println!("Account ID: {}", account_id);
+    println!("Year: {}", year);
+    println!("Month: {}", month);
 
     // Query outgoing amounts grouped by token for the specified month
-    let outbound_amounts = sqlx::query_as::<_, TokenOutboundAmount>(
+    let outbound_amounts = sqlx::query_as!(
+        TokenOutboundAmount,
         r#"
-        SELECT token_id, ABS(SUM(amount)) as total_amount
+        SELECT token_id as "token_id!", ABS(SUM(amount)) as "total_amount!"
         FROM balance_changes
         WHERE account_id = $1
           AND amount < 0
           AND counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT', 'NOT_REGISTERED')
-          AND block_time >= $2::timestamptz
-          AND block_time < $3::timestamptz
+          AND block_time >= $2
+          AND block_time < $3
+          AND token_id IS NOT NULL
         GROUP BY token_id
         "#,
+        account_id.to_string(),
+        DateTime::<Utc>::from_naive_utc_and_offset(start_date, Utc::now().offset().to_owned()),
+        DateTime::<Utc>::from_naive_utc_and_offset(end_date, Utc::now().offset().to_owned()),
     )
-    .bind(account_id)
-    .bind(&start_date)
-    .bind(&end_date)
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
@@ -129,11 +140,6 @@ pub async fn calculate_monthly_outbound_volume(
             format!("Failed to fetch outbound amounts: {}", e),
         )
     })?;
-
-    if outbound_amounts.is_empty() {
-        return Ok(0);
-    }
-
     // Convert token_id to defuse asset ID format for metadata lookup
     fn token_id_for_metadata(token_id: &str) -> String {
         if token_id == "near" {
@@ -170,18 +176,18 @@ pub async fn calculate_monthly_outbound_volume(
         .collect();
 
     // Calculate USD value for each token
-    let mut total_usd_cents: f64 = 0.0;
+    let mut total_usd_cents: BigDecimal = BigDecimal::from(0);
 
     for outbound in &outbound_amounts {
         let lookup_id = token_id_for_metadata(&outbound.token_id);
 
         // Get metadata for price and decimals
-        let (price, decimals) = if outbound.token_id == "near" {
+        let price = if outbound.token_id == "near" {
             // NEAR fallback
             let near_meta = metadata_map.get("nep141:wrap.near");
-            (near_meta.and_then(|m| m.price).unwrap_or(0.0), 24u8)
+            near_meta.and_then(|m| m.price).unwrap_or(0.0)
         } else if let Some(meta) = metadata_map.get(&lookup_id) {
-            (meta.price.unwrap_or(0.0), meta.decimals)
+            meta.price.unwrap_or(0.0)
         } else {
             log::warn!(
                 "No metadata found for token {}, skipping in volume calc",
@@ -195,14 +201,16 @@ pub async fn calculate_monthly_outbound_volume(
         }
 
         // Convert amount to USD: amount / 10^decimals * price * 100 (for cents)
-        let amount_f64: f64 = outbound.total_amount.to_string().parse().unwrap_or(0.0);
-        let divisor = 10_f64.powi(decimals as i32);
-        let usd_value = (amount_f64 / divisor) * price * 100.0;
+        let usd_value = outbound
+            .total_amount
+            .clone()
+            .mul(BigDecimal::from(100))
+            .mul(BigDecimal::from_f64(price).unwrap_or(BigDecimal::from(0)));
 
         total_usd_cents += usd_value;
     }
 
-    Ok(total_usd_cents.round() as u64)
+    Ok(total_usd_cents.round(0).to_i64().unwrap_or(0) as u64)
 }
 
 /// GET /api/subscription/{account_id}

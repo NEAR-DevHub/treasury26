@@ -25,7 +25,7 @@ export function AmountSummary({
                     className="size-10 shrink-0 rounded-full"
                 />
                 <p className="text-xl font-semibold text-foreground">
-                    {Big(total).toString()}{" "}
+                    {total instanceof Big ? total.toString() : total}{" "}
                     <span className="text-muted-foreground font-medium text-sm">
                         {token.symbol}
                     </span>
