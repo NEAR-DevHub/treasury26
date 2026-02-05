@@ -262,7 +262,11 @@ export function Sidebar({ onClose }: SidebarProps) {
                         icon={HelpCircle}
                         label="Help & Support"
                         showLabels={!isReduced}
-                        onClick={() => setSupportModalOpen(true)}
+                        onClick={() => {
+                            // close if mobile
+                            if (isMobile) onClose();
+                            setSupportModalOpen(true);
+                        }}
                     />
                 </div>
             </div>
