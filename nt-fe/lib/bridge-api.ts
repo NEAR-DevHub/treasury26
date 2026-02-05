@@ -6,12 +6,11 @@ const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
  * Fetch bridge tokens (assets available for cross-chain transfers)
  * Returns a list of assets with their available networks for bridging
  * Used for both deposit and exchange functionality
- * @param {string} theme - Theme for icons ("light" or "dark")
  */
-export async function fetchBridgeTokens(theme: string = "light") {
+export async function fetchBridgeTokens() {
     try {
         const response = await axios.get(
-            `${BACKEND_API_BASE}/intents/bridge-tokens?theme=${theme}`,
+            `${BACKEND_API_BASE}/intents/bridge-tokens`,
         );
 
         return response.data.assets || [];

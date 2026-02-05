@@ -4,7 +4,7 @@ import QRCode from "react-qr-code";
 import { SelectModal } from "./select-modal";
 import { fetchDepositAddress } from "@/lib/bridge-api";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useBridgeTokens, BridgeNetwork } from "@/hooks/use-bridge-tokens";
 import { Button } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { useForm } from "react-hook-form";
@@ -12,577 +12,647 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/modal";
 import { InputBlock } from "@/components/input-block";
 import { WarningAlert } from "@/components/warning-alert";
+import { useThemeStore } from "@/stores/theme-store";
 
 interface DepositModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  /** Optional token symbol to prefill (e.g., "USDC", "NEAR") */
-  prefillTokenSymbol?: string;
-  /** Optional network ID to prefill (e.g., "near:mainnet") */
-  prefillNetworkId?: string;
+    isOpen: boolean;
+    onClose: () => void;
+    /** Optional token symbol to prefill (e.g., "USDC", "NEAR") */
+    prefillTokenSymbol?: string;
+    /** Optional network ID to prefill (e.g., "near:mainnet") */
+    prefillNetworkId?: string;
 }
 
 interface SelectOption {
-  id: string;
-  name: string;
-  symbol?: string;
-  icon: string;
-  gradient?: string;
-  networks?: NetworkOption[];
-}
-
-interface NetworkOption {
-  id: string;
-  name: string;
-  icon: string | null;
-  chainId: string;
+    id: string;
+    name: string;
+    symbol?: string;
+    icon: string;
+    gradient?: string;
+    networks?: BridgeNetwork[];
 }
 
 const assetSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  symbol: z.string().optional(),
-  icon: z.string(),
-  gradient: z.string().optional(),
-  networks: z.array(z.any()).optional(),
+    id: z.string(),
+    name: z.string(),
+    symbol: z.string().optional(),
+    icon: z.string(),
+    gradient: z.string().optional(),
+    networks: z.array(z.any()).optional(),
 });
 
 const networkSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  icon: z.string(),
-  gradient: z.string().optional(),
+    id: z.string(),
+    name: z.string(),
+    icon: z.string(),
+    gradient: z.string().optional(),
 });
 
 const depositFormSchema = z.object({
-  asset: assetSchema.nullable().refine((val) => val !== null, {
-    message: "Please select an asset",
-  }),
-  network: networkSchema.nullable().refine((val) => val !== null, {
-    message: "Please select a network",
-  }),
+    asset: assetSchema.nullable().refine((val) => val !== null, {
+        message: "Please select an asset",
+    }),
+    network: networkSchema.nullable().refine((val) => val !== null, {
+        message: "Please select a network",
+    }),
 });
 
 type Asset = z.infer<typeof assetSchema>;
 type Network = z.infer<typeof networkSchema>;
 
 type DepositFormValues = {
-  asset: Asset | null;
-  network: Network | null;
+    asset: Asset | null;
+    network: Network | null;
 };
 
-export function DepositModal({ isOpen, onClose, prefillTokenSymbol, prefillNetworkId }: DepositModalProps) {
-  const { treasuryId } = useTreasury();
+export function DepositModal({
+    isOpen,
+    onClose,
+    prefillTokenSymbol,
+    prefillNetworkId,
+}: DepositModalProps) {
+    const { treasuryId } = useTreasury();
+    const { theme } = useThemeStore();
 
-  const form = useForm<DepositFormValues>({
-    resolver: zodResolver(depositFormSchema),
-    mode: "onChange",
-    defaultValues: {
-      asset: null,
-      network: null,
-    },
-  });
-
-  const [modalType, setModalType] = useState<"asset" | "network" | null>(null);
-  const [allAssets, setAllAssets] = useState<SelectOption[]>([]);
-  const [allNetworks, setAllNetworks] = useState<SelectOption[]>([]);
-  const [filteredNetworks, setFilteredNetworks] = useState<SelectOption[]>([]);
-  const [depositAddress, setDepositAddress] = useState<string | null>(null);
-  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
-  const [assetNetworkMap, setAssetNetworkMap] = useState<Map<string, string[]>>(
-    new Map()
-  );
-
-  const selectedAsset = form.watch("asset");
-  const selectedNetwork = form.watch("network");
-
-  const { data: bridgeAssets = [], isLoading: isLoadingAssets } = useBridgeTokens(isOpen);
-
-  useEffect(() => {
-    if (!isOpen || !bridgeAssets.length) return;
-
-    form.clearErrors("asset");
-    form.clearErrors("network");
-
-    // Add "Other" asset that deposits directly to treasury
-    const otherAsset = {
-      id: "other",
-      name: "Other",
-      symbol: "OTHER",
-      icon: "O",
-      gradient: "bg-gradient-cyan-blue",
-      networks: [
-        {
-          id: "near:mainnet",
-          name: "Near",
-          icon: "https://img.rhea.finance/images/NEARIcon.png",
-          chainId: "near:mainnet",
+    const form = useForm<DepositFormValues>({
+        resolver: zodResolver(depositFormSchema),
+        mode: "onChange",
+        defaultValues: {
+            asset: null,
+            network: null,
         },
-      ],
-    };
-
-    const formattedAssets: SelectOption[] = [
-      ...bridgeAssets.map((asset) => ({
-        id: asset.id,
-        name: asset.name,
-        symbol: asset.symbol,
-        icon: asset.icon,
-        gradient: "bg-gradient-cyan-blue",
-        networks: asset.networks,
-      })),
-    ];
-
-    // Add "Other" at the end
-    formattedAssets.push(otherAsset);
-
-    // Extract all unique networks
-    const networkMap = new Map<string, NetworkOption>();
-    const assetToNetworks = new Map<string, string[]>();
-
-    formattedAssets.forEach((asset) => {
-      const networkIds: string[] = [];
-
-      asset.networks?.forEach((network: NetworkOption) => {
-        const networkKey = network.chainId;
-        networkIds.push(networkKey);
-
-        // Add to network map
-        if (!networkMap.has(networkKey)) {
-          networkMap.set(networkKey, network);
-        }
-      });
-
-      // Add to asset→networks map
-      assetToNetworks.set(asset.id, networkIds);
     });
 
-    // Format networks
-    const formattedNetworks: SelectOption[] = Array.from(
-      networkMap.values()
-    ).map((network) => ({
-      id: network.chainId,
-      name: network.name,
-      symbol: undefined,
-      icon: network.icon || network.name.charAt(0),
-      gradient: "bg-linear-to-br from-green-500 to-teal-500",
-    }));
+    const [modalType, setModalType] = useState<"asset" | "network" | null>(
+        null,
+    );
+    const [allAssets, setAllAssets] = useState<SelectOption[]>([]);
+    const [allNetworks, setAllNetworks] = useState<SelectOption[]>([]);
+    const [filteredNetworks, setFilteredNetworks] = useState<SelectOption[]>(
+        [],
+    );
+    const [depositAddress, setDepositAddress] = useState<string | null>(null);
+    const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+    const [assetNetworkMap, setAssetNetworkMap] = useState<
+        Map<string, string[]>
+    >(new Map());
 
-    // Set all data
-    setAllAssets(formattedAssets);
-    setAllNetworks(formattedNetworks);
-    setAssetNetworkMap(assetToNetworks);
+    const selectedAsset = form.watch("asset");
+    const selectedNetwork = form.watch("network");
 
-    // Auto-select asset based on prefillTokenSymbol or default to USDT
-    const targetSymbol = prefillTokenSymbol?.toLowerCase() || "usdt";
-    const targetAsset = formattedAssets.find(
-      (asset) =>
-        asset.symbol?.toLowerCase() === targetSymbol ||
-        // Fallback to USDT if prefill not found
-        (!prefillTokenSymbol && (
-          asset.symbol?.toLowerCase() === "usdt" ||
-          asset.name?.toLowerCase().includes("tether")
-        ))
+    const { data: bridgeAssets = [], isLoading: isLoadingAssets } =
+        useBridgeTokens(isOpen);
+
+    useEffect(() => {
+        if (!isOpen || !bridgeAssets.length) return;
+
+        form.clearErrors("asset");
+        form.clearErrors("network");
+
+        // Add "Other" asset that deposits directly to treasury
+        const otherAsset: SelectOption = {
+            id: "other",
+            name: "Other",
+            symbol: "OTHER",
+            icon: "O",
+            gradient: "bg-gradient-cyan-blue",
+            networks: [
+                {
+                    id: "near:mainnet",
+                    name: "Near",
+                    chainIcons: null,
+                    chainId: "near:mainnet",
+                    decimals: 24,
+                },
+            ],
+        };
+
+        const formattedAssets: SelectOption[] = [
+            ...bridgeAssets.map((asset) => ({
+                id: asset.id,
+                name: asset.name,
+                symbol: asset.symbol,
+                icon: asset.icon,
+                gradient: "bg-gradient-cyan-blue",
+                networks: asset.networks,
+            })),
+        ];
+
+        // Add "Other" at the end
+        formattedAssets.push(otherAsset);
+
+        // Extract all unique networks
+        const networkMap = new Map<string, BridgeNetwork>();
+        const assetToNetworks = new Map<string, string[]>();
+
+        formattedAssets.forEach((asset) => {
+            const networkIds: string[] = [];
+
+            asset.networks?.forEach((network: BridgeNetwork) => {
+                const networkKey = network.chainId;
+                networkIds.push(networkKey);
+
+                // Add to network map
+                if (!networkMap.has(networkKey)) {
+                    networkMap.set(networkKey, network);
+                }
+            });
+
+            // Add to asset→networks map
+            assetToNetworks.set(asset.id, networkIds);
+        });
+
+        // Format networks with theme-aware icons
+        const formattedNetworks: SelectOption[] = Array.from(
+            networkMap.values(),
+        ).map((network) => {
+            const iconUrl = network.chainIcons
+                ? theme === "dark"
+                    ? network.chainIcons.dark
+                    : network.chainIcons.light
+                : null;
+
+            return {
+                id: network.chainId,
+                name: network.name,
+                symbol: undefined,
+                icon: iconUrl || network.name.charAt(0),
+                gradient: "bg-linear-to-br from-green-500 to-teal-500",
+            };
+        });
+
+        // Set all data
+        setAllAssets(formattedAssets);
+        setAllNetworks(formattedNetworks);
+        setAssetNetworkMap(assetToNetworks);
+
+        // Auto-select asset based on prefillTokenSymbol or default to USDT
+        const targetSymbol = prefillTokenSymbol?.toLowerCase() || "usdt";
+        const targetAsset = formattedAssets.find(
+            (asset) =>
+                asset.symbol?.toLowerCase() === targetSymbol ||
+                // Fallback to USDT if prefill not found
+                (!prefillTokenSymbol &&
+                    (asset.symbol?.toLowerCase() === "usdt" ||
+                        asset.name?.toLowerCase().includes("tether"))),
+        );
+
+        if (targetAsset) {
+            form.setValue("asset", targetAsset);
+
+            // Get networks for the selected asset
+            const networkIds = assetToNetworks.get(targetAsset.id) || [];
+            const availableNetworks = formattedNetworks.filter((n) =>
+                networkIds.includes(n.id),
+            );
+            setFilteredNetworks(availableNetworks);
+
+            if (prefillNetworkId) {
+                const prefillNetwork = availableNetworks.find(
+                    (n) =>
+                        n.id === prefillNetworkId ||
+                        n.name
+                            .toLowerCase()
+                            .includes(prefillNetworkId.toLowerCase()),
+                );
+                if (prefillNetwork) {
+                    form.setValue("network", prefillNetwork);
+                } else if (availableNetworks.length > 0) {
+                    form.setValue("network", availableNetworks[0]);
+                }
+            } else {
+                // Auto-select NEAR network if available, otherwise first network if only one
+                const nearNetwork = availableNetworks.find(
+                    (n) =>
+                        n.name.toLowerCase() === "near" ||
+                        n.id.toLowerCase().includes("near"),
+                );
+                if (nearNetwork) {
+                    form.setValue("network", nearNetwork);
+                } else if (availableNetworks.length === 1) {
+                    form.setValue("network", availableNetworks[0]);
+                }
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, bridgeAssets, prefillTokenSymbol, prefillNetworkId, theme]);
+
+    // Handle asset selection - show all assets but update network list
+    const handleAssetSelect = useCallback(
+        (asset: SelectOption) => {
+            form.setValue("asset", asset);
+            form.clearErrors("asset");
+            form.clearErrors("network");
+
+            setDepositAddress(null);
+
+            // Get networks that support this asset
+            const supportedNetworkIds = assetNetworkMap.get(asset.id) || [];
+            const availableNetworks = allNetworks.filter((network) =>
+                supportedNetworkIds.includes(network.id),
+            );
+
+            setFilteredNetworks(availableNetworks);
+
+            // Auto-select network if only one is available
+            if (availableNetworks.length === 1) {
+                form.setValue("network", availableNetworks[0]);
+            } else if (
+                selectedNetwork &&
+                !supportedNetworkIds.includes(selectedNetwork.id)
+            ) {
+                form.setValue("network", null);
+            }
+        },
+        [form, assetNetworkMap, allNetworks, selectedNetwork],
     );
 
-    if (targetAsset) {
-      form.setValue("asset", targetAsset);
+    // Handle network selection
+    const handleNetworkSelect = useCallback(
+        (network: SelectOption) => {
+            form.setValue("network", network);
+            form.clearErrors("network");
+            form.clearErrors("asset");
 
-      // Get networks for the selected asset
-      const networkIds = assetToNetworks.get(targetAsset.id) || [];
-      const availableNetworks = formattedNetworks.filter((n) =>
-        networkIds.includes(n.id)
-      );
-      setFilteredNetworks(availableNetworks);
+            setDepositAddress(null);
+        },
+        [form],
+    );
 
-      if (prefillNetworkId) {
-        const prefillNetwork = availableNetworks.find(
-          (n) => n.id === prefillNetworkId || n.name.toLowerCase().includes(prefillNetworkId.toLowerCase())
-        );
-        if (prefillNetwork) {
-          form.setValue("network", prefillNetwork);
-        } else if (availableNetworks.length > 0) {
-          form.setValue("network", availableNetworks[0]);
-        }
-      } else {
-        // Auto-select NEAR network if available, otherwise first network if only one
-        const nearNetwork = availableNetworks.find(
-          (n) => n.name.toLowerCase() === "near" || n.id.toLowerCase().includes("near")
-        );
-        if (nearNetwork) {
-          form.setValue("network", nearNetwork);
-        } else if (availableNetworks.length === 1) {
-          form.setValue("network", availableNetworks[0]);
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, bridgeAssets, prefillTokenSymbol, prefillNetworkId]);
+    // Fetch deposit address when both asset and network are selected
+    useEffect(() => {
+        const fetchAddress = async () => {
+            if (!treasuryId || !selectedNetwork || !selectedAsset) {
+                setDepositAddress(null);
+                return;
+            }
 
-  // Handle asset selection - show all assets but update network list
-  const handleAssetSelect = useCallback(
-    (asset: SelectOption) => {
-      form.setValue("asset", asset);
-      form.clearErrors("asset");
-      form.clearErrors("network");
+            // All NEAR networks deposit directly to treasury account ID
+            const isNearNetwork = selectedNetwork.id
+                .toLowerCase()
+                .includes("near");
+            if (isNearNetwork) {
+                setDepositAddress(treasuryId);
+                return;
+            }
 
-      setDepositAddress(null);
+            setIsLoadingAddress(true);
+            form.clearErrors("network");
 
-      // Get networks that support this asset
-      const supportedNetworkIds = assetNetworkMap.get(asset.id) || [];
-      const availableNetworks = allNetworks.filter((network) =>
-        supportedNetworkIds.includes(network.id)
-      );
+            try {
+                const result = await fetchDepositAddress(
+                    treasuryId,
+                    selectedNetwork.id,
+                );
 
-      setFilteredNetworks(availableNetworks);
+                if (result && result.address) {
+                    setDepositAddress(result.address);
+                    form.clearErrors("network");
+                } else {
+                    setDepositAddress(null);
+                    form.setError("network", {
+                        type: "manual",
+                        message:
+                            "Could not retrieve deposit address for the selected asset and network.",
+                    });
+                }
+            } catch (err: any) {
+                form.setError("network", {
+                    type: "manual",
+                    message:
+                        err.message ||
+                        "Failed to fetch deposit address. Please try again.",
+                });
+                setDepositAddress(null);
+            } finally {
+                setIsLoadingAddress(false);
+            }
+        };
 
-      // Auto-select network if only one is available
-      if (availableNetworks.length === 1) {
-        form.setValue("network", availableNetworks[0]);
-      } else if (
-        selectedNetwork &&
-        !supportedNetworkIds.includes(selectedNetwork.id)
-      ) {
-        form.setValue("network", null);
-      }
-    },
-    [form, assetNetworkMap, allNetworks, selectedNetwork]
-  );
-
-  // Handle network selection
-  const handleNetworkSelect = useCallback(
-    (network: SelectOption) => {
-      form.setValue("network", network);
-      form.clearErrors("network");
-      form.clearErrors("asset");
-
-      setDepositAddress(null);
-    },
-    [form]
-  );
-
-  // Fetch deposit address when both asset and network are selected
-  useEffect(() => {
-    const fetchAddress = async () => {
-      if (!treasuryId || !selectedNetwork || !selectedAsset) {
-        setDepositAddress(null);
-        return;
-      }
-
-      // All NEAR networks deposit directly to treasury account ID
-      const isNearNetwork = selectedNetwork.id.toLowerCase().includes("near");
-      if (isNearNetwork) {
-        setDepositAddress(treasuryId);
-        return;
-      }
-
-      setIsLoadingAddress(true);
-      form.clearErrors("network");
-
-      try {
-        const result = await fetchDepositAddress(
-          treasuryId,
-          selectedNetwork.id
-        );
-
-        if (result && result.address) {
-          setDepositAddress(result.address);
-          form.clearErrors("network");
+        if (selectedAsset && selectedNetwork && treasuryId) {
+            fetchAddress();
         } else {
-          setDepositAddress(null);
-          form.setError("network", {
-            type: "manual",
-            message:
-              "Could not retrieve deposit address for the selected asset and network.",
-          });
+            setDepositAddress(null);
         }
-      } catch (err: any) {
-        form.setError("network", {
-          type: "manual",
-          message:
-            err.message || "Failed to fetch deposit address. Please try again.",
-        });
+    }, [selectedAsset, selectedNetwork, treasuryId]);
+
+    // Reset all state when modal closes
+    const handleClose = useCallback(() => {
+        form.reset();
         setDepositAddress(null);
-      } finally {
-        setIsLoadingAddress(false);
-      }
-    };
+        setFilteredNetworks([]);
+        setModalType(null);
+        onClose();
+    }, [form, onClose]);
 
-    if (selectedAsset && selectedNetwork && treasuryId) {
-      fetchAddress();
-    } else {
-      setDepositAddress(null);
-    }
-  }, [selectedAsset, selectedNetwork, treasuryId]);
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+            <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                    <DialogTitle>Deposit</DialogTitle>
+                </DialogHeader>
 
-  // Reset all state when modal closes
-  const handleClose = useCallback(() => {
-    form.reset();
-    setDepositAddress(null);
-    setFilteredNetworks([]);
-    setModalType(null);
-    onClose();
-  }, [form, onClose]);
+                <Form {...form}>
+                    <div>
+                        <p className="font-semibold pb-2">
+                            Select asset and network to see deposit address
+                        </p>
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Deposit</DialogTitle>
-        </DialogHeader>
-
-        <Form {...form}>
-          <div>
-            <p className="font-semibold pb-2">
-              Select asset and network to see deposit address
-            </p>
-
-            {/* Asset Select */}
-            <FormField
-              control={form.control}
-              name="asset"
-              render={({ fieldState }) => (
-                <FormItem>
-                  <InputBlock
-                    title="Asset"
-                    invalid={!!fieldState.error}
-                    className="rounded-b-none border-b border-general-border border-l-0! border-r-0! border-t-0!"
-                  >
-                    <Button
-                      type="button"
-                      onClick={() => setModalType("asset")}
-                      variant="unstyled"
-                      className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
-                    >
-                      <div className="w-full flex items-center justify-between py-1">
-                        {selectedAsset ? (
-                          <div className="flex items-center gap-2">
-                            {selectedAsset.icon?.startsWith("http") ||
-                              selectedAsset.icon?.startsWith("data:") ? (
-                              <img
-                                src={selectedAsset.icon}
-                                alt={selectedAsset.symbol}
-                                className="w-6 h-6 rounded-full object-contain"
-                              />
-                            ) : (
-                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold bg-gradient-cyan-blue">
-                                <span>{selectedAsset.icon}</span>
-                              </div>
+                        {/* Asset Select */}
+                        <FormField
+                            control={form.control}
+                            name="asset"
+                            render={({ fieldState }) => (
+                                <FormItem>
+                                    <InputBlock
+                                        title="Asset"
+                                        invalid={!!fieldState.error}
+                                        className="rounded-b-none border-b border-general-border border-l-0! border-r-0! border-t-0!"
+                                    >
+                                        <Button
+                                            type="button"
+                                            onClick={() =>
+                                                setModalType("asset")
+                                            }
+                                            variant="unstyled"
+                                            className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
+                                        >
+                                            <div className="w-full flex items-center justify-between py-1">
+                                                {selectedAsset ? (
+                                                    <div className="flex items-center gap-2">
+                                                        {selectedAsset.icon?.startsWith(
+                                                            "http",
+                                                        ) ||
+                                                        selectedAsset.icon?.startsWith(
+                                                            "data:",
+                                                        ) ? (
+                                                            <img
+                                                                src={
+                                                                    selectedAsset.icon
+                                                                }
+                                                                alt={
+                                                                    selectedAsset.symbol
+                                                                }
+                                                                className="w-6 h-6 rounded-full object-contain"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold bg-gradient-cyan-blue">
+                                                                <span>
+                                                                    {
+                                                                        selectedAsset.icon
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        <span className="text-foreground font-medium">
+                                                            {
+                                                                selectedAsset.symbol
+                                                            }{" "}
+                                                            (
+                                                            {selectedAsset.name}
+                                                            )
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-lg font-normal">
+                                                        Select Asset
+                                                    </span>
+                                                )}
+                                                <ChevronDown className="w-5 h-5" />
+                                            </div>
+                                        </Button>
+                                        <FormMessage />
+                                    </InputBlock>
+                                </FormItem>
                             )}
-                            <span className="text-foreground font-medium">
-                              {selectedAsset.symbol} ({selectedAsset.name})
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-lg font-normal">
-                            Select Asset
-                          </span>
-                        )}
-                        <ChevronDown className="w-5 h-5" />
-                      </div>
-                    </Button>
-                    <FormMessage />
-                  </InputBlock>
-                </FormItem>
-              )}
-            />
+                        />
 
-            {/* Network Select */}
-            <FormField
-              control={form.control}
-              name="network"
-              render={({ fieldState }) => (
-                <FormItem>
-                  <InputBlock
-                    title="Network"
-                    invalid={!!fieldState.error}
-                    className="rounded-t-none border-l-0! border-r-0! border-t-0! border-b-0!"
-                  >
-                    <Button
-                      type="button"
-                      onClick={() => setModalType("network")}
-                      variant="unstyled"
-                      className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
-                    >
-                      <div className="w-full flex items-center justify-between py-1">
-                        {selectedNetwork ? (
-                          <div>
-                            <div className="flex items-center gap-2">
-                              {selectedNetwork.icon?.startsWith("http") ||
-                                selectedNetwork.icon?.startsWith("data:") ? (
-                                <div className="w-6 h-6 rounded-full object-cover">
-                                  <img
-                                    src={selectedNetwork.icon}
-                                    alt={selectedNetwork.name}
-                                    className="w-full h-full"
-                                  />
+                        {/* Network Select */}
+                        <FormField
+                            control={form.control}
+                            name="network"
+                            render={({ fieldState }) => (
+                                <FormItem>
+                                    <InputBlock
+                                        title="Network"
+                                        invalid={!!fieldState.error}
+                                        className="rounded-t-none border-l-0! border-r-0! border-t-0! border-b-0!"
+                                    >
+                                        <Button
+                                            type="button"
+                                            onClick={() =>
+                                                setModalType("network")
+                                            }
+                                            variant="unstyled"
+                                            className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
+                                        >
+                                            <div className="w-full flex items-center justify-between py-1">
+                                                {selectedNetwork ? (
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            {selectedNetwork.icon?.startsWith(
+                                                                "http",
+                                                            ) ||
+                                                            selectedNetwork.icon?.startsWith(
+                                                                "data:",
+                                                            ) ? (
+                                                                <div className="w-6 h-6 rounded-full object-cover">
+                                                                    <img
+                                                                        src={
+                                                                            selectedNetwork.icon
+                                                                        }
+                                                                        alt={
+                                                                            selectedNetwork.name
+                                                                        }
+                                                                        className="w-full h-full"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <div
+                                                                    className={`w-6 h-6 rounded-full ${
+                                                                        selectedNetwork.gradient ||
+                                                                        "bg-linear-to-br from-green-500 to-teal-500"
+                                                                    } flex items-center justify-center text-white text-xs font-bold`}
+                                                                >
+                                                                    <span>
+                                                                        {
+                                                                            selectedNetwork.icon
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            <span className="text-foreground font-medium">
+                                                                {
+                                                                    selectedNetwork.name
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        {/* Info message for "Other" asset */}
+                                                        {selectedAsset?.id ===
+                                                            "other" && (
+                                                            <div className="break-all overflow-wrap-anywhere text-wrap mt-2 text-sm text-general-info-foreground">
+                                                                You can deposit
+                                                                any token not
+                                                                listed in the
+                                                                assets, but only
+                                                                via the NEAR
+                                                                network.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-lg font-normal">
+                                                        Select Network
+                                                    </span>
+                                                )}
+                                                <ChevronDown className="w-5 h-5" />
+                                            </div>
+                                        </Button>
+                                        <FormMessage />
+                                    </InputBlock>
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Deposit Address Section */}
+                        {isLoadingAddress && (
+                            <div className="mt-6 space-y-4 animate-pulse">
+                                <div>
+                                    <div className="h-6 bg-muted rounded w-48 mb-2" />
+                                    <div className="h-4 bg-muted rounded w-72" />
                                 </div>
-                              ) : (
-                                <div
-                                  className={`w-6 h-6 rounded-full ${selectedNetwork.gradient ||
-                                    "bg-linear-to-br from-green-500 to-teal-500"
-                                    } flex items-center justify-center text-white text-xs font-bold`}
-                                >
-                                  <span>{selectedNetwork.icon}</span>
+
+                                <div className="bg-muted rounded-lg p-2">
+                                    <div className="flex gap-4">
+                                        {/* QR Code Skeleton */}
+                                        <div className="shrink-0">
+                                            <div className="w-32 h-32 bg-background rounded-lg" />
+                                        </div>
+
+                                        {/* Address Skeleton */}
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-4 bg-background rounded w-20" />
+                                            <div className="bg-background rounded-lg p-3"></div>
+                                        </div>
+                                    </div>
                                 </div>
-                              )}
-                              <span className="text-foreground font-medium">
-                                {selectedNetwork.name}
-                              </span>
+
+                                {/* Warning Skeleton */}
+                                <div className="bg-muted rounded-lg p-3 flex gap-3">
+                                    <div className="w-5 h-5 bg-background rounded shrink-0" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-4 bg-background rounded w-full" />
+                                        <div className="h-4 bg-background rounded w-3/4" />
+                                    </div>
+                                </div>
                             </div>
-                            {/* Info message for "Other" asset */}
-                            {selectedAsset?.id === "other" && (
-                              <div className="break-all overflow-wrap-anywhere text-wrap mt-2 text-sm text-general-info-foreground">
-                                You can deposit any token not listed in the
-                                assets, but only via the NEAR network.
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-lg font-normal">
-                            Select Network
-                          </span>
                         )}
-                        <ChevronDown className="w-5 h-5" />
-                      </div>
-                    </Button>
-                    <FormMessage />
-                  </InputBlock>
-                </FormItem>
-              )}
-            />
 
-            {/* Deposit Address Section */}
-            {isLoadingAddress && (
-              <div className="mt-6 space-y-4 animate-pulse">
-                <div>
-                  <div className="h-6 bg-muted rounded w-48 mb-2" />
-                  <div className="h-4 bg-muted rounded w-72" />
-                </div>
+                        {depositAddress && !isLoadingAddress && (
+                            <div className="mt-6 space-y-3">
+                                <div>
+                                    <h3 className="font-semibold mb-1">
+                                        Deposit Address
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Always double-check your deposit
+                                        address.
+                                    </p>
+                                </div>
 
-                <div className="bg-muted rounded-lg p-2">
-                  <div className="flex gap-4">
-                    {/* QR Code Skeleton */}
-                    <div className="shrink-0">
-                      <div className="w-32 h-32 bg-background rounded-lg" />
-                    </div>
+                                <div className="bg-muted rounded-lg p-2">
+                                    <div className="flex gap-3">
+                                        {/* QR Code */}
+                                        <div className="shrink-0">
+                                            <div className="w-40 h-40 rounded-lg flex items-center justify-center p-2">
+                                                <QRCode
+                                                    value={depositAddress}
+                                                    size={112}
+                                                    style={{
+                                                        height: "auto",
+                                                        maxWidth: "100%",
+                                                        width: "100%",
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
 
-                    {/* Address Skeleton */}
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-background rounded w-20" />
-                      <div className="bg-background rounded-lg p-3"></div>
-                    </div>
-                  </div>
-                </div>
+                                        {/* Address */}
+                                        <div className="flex-1 space-y-2 pt-1">
+                                            <label className="text-sm text-muted-foreground">
+                                                Address
+                                            </label>
+                                            <div className="rounded-lg flex justify-between gap-2">
+                                                <code className="font-mono break-all">
+                                                    {depositAddress}
+                                                </code>
+                                                <CopyButton
+                                                    text={depositAddress}
+                                                    toastMessage="Address copied to clipboard"
+                                                    variant="unstyled"
+                                                    size="icon-sm"
+                                                    className="shrink-0"
+                                                    iconClassName="w-5 h-5 text-muted-foreground"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                {/* Warning Skeleton */}
-                <div className="bg-muted rounded-lg p-3 flex gap-3">
-                  <div className="w-5 h-5 bg-background rounded shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-background rounded w-full" />
-                    <div className="h-4 bg-background rounded w-3/4" />
-                  </div>
-                </div>
-              </div>
-            )}
+                                {/* Warning Message */}
+                                <WarningAlert
+                                    message={
+                                        <span>
+                                            Only deposit from the{" "}
+                                            <strong>
+                                                {selectedNetwork?.name}
+                                            </strong>{" "}
+                                            network. We recommend starting with
+                                            a small test transaction to ensure
+                                            everything works correctly before
+                                            sending the full amount.
+                                        </span>
+                                    }
+                                />
+                            </div>
+                        )}
 
-            {depositAddress && !isLoadingAddress && (
-              <div className="mt-6 space-y-3">
-                <div>
-                  <h3 className="font-semibold mb-1">Deposit Address</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Always double-check your deposit address.
-                  </p>
-                </div>
-
-                <div className="bg-muted rounded-lg p-2">
-                  <div className="flex gap-3">
-                    {/* QR Code */}
-                    <div className="shrink-0">
-                      <div className="w-40 h-40 rounded-lg flex items-center justify-center p-2">
-                        <QRCode
-                          value={depositAddress}
-                          size={112}
-                          style={{
-                            height: "auto",
-                            maxWidth: "100%",
-                            width: "100%",
-                          }}
+                        <SelectModal
+                            isOpen={modalType === "asset"}
+                            onClose={() => setModalType(null)}
+                            onSelect={(option) => {
+                                handleAssetSelect(option);
+                                setModalType(null);
+                            }}
+                            title="Select Asset"
+                            options={allAssets}
+                            searchPlaceholder="Search by name"
+                            isLoading={isLoadingAssets}
+                            selectedId={selectedAsset?.id}
                         />
-                      </div>
-                    </div>
 
-                    {/* Address */}
-                    <div className="flex-1 space-y-2 pt-1">
-                      <label className="text-sm text-muted-foreground">
-                        Address
-                      </label>
-                      <div className="rounded-lg flex justify-between gap-2">
-                        <code className="font-mono break-all">
-                          {depositAddress}
-                        </code>
-                        <CopyButton
-                          text={depositAddress}
-                          toastMessage="Address copied to clipboard"
-                          variant="unstyled"
-                          size="icon-sm"
-                          className="shrink-0"
-                          iconClassName="w-5 h-5 text-muted-foreground"
+                        <SelectModal
+                            isOpen={modalType === "network"}
+                            onClose={() => setModalType(null)}
+                            onSelect={(option) => {
+                                handleNetworkSelect(option);
+                                setModalType(null);
+                            }}
+                            title="Select Network"
+                            options={filteredNetworks}
+                            searchPlaceholder="Search by name"
+                            isLoading={isLoadingAssets}
                         />
-                      </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Warning Message */}
-                <WarningAlert
-                  message={
-                    <span>
-                      Only deposit from the{" "}
-                      <strong>{selectedNetwork?.name}</strong> network. We
-                      recommend starting with a small test transaction to ensure
-                      everything works correctly before sending the full amount.
-                    </span>
-                  }
-                />
-              </div>
-            )}
-
-            <SelectModal
-              isOpen={modalType === "asset"}
-              onClose={() => setModalType(null)}
-              onSelect={(option) => {
-                handleAssetSelect(option);
-                setModalType(null);
-              }}
-              title="Select Asset"
-              options={allAssets}
-              searchPlaceholder="Search by name"
-              isLoading={isLoadingAssets}
-              selectedId={selectedAsset?.id}
-            />
-
-            <SelectModal
-              isOpen={modalType === "network"}
-              onClose={() => setModalType(null)}
-              onSelect={(option) => {
-                handleNetworkSelect(option);
-                setModalType(null);
-              }}
-              title="Select Network"
-              options={filteredNetworks}
-              searchPlaceholder="Search by name"
-              isLoading={isLoadingAssets}
-            />
-          </div>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
 }

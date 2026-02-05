@@ -8,20 +8,20 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "./modal";
-import { ChevronDown, ChevronLeft, Info } from "lucide-react";
+import { ChevronDown, ChevronLeft } from "lucide-react";
 import { Button } from "./button";
-import { cn, formatBalance, formatNearAmount } from "@/lib/utils";
+import { cn, formatBalance } from "@/lib/utils";
 import { ChainIcons } from "@/lib/api";
 import { useAggregatedTokens } from "@/hooks/use-assets";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import Big from "big.js";
 import { TokenDisplay } from "./token-display-with-network";
+import { NetworkIconDisplay } from "./token-display";
 import { Input } from "./input";
 import { SelectListIcon } from "./select-list";
 import { ScrollArea } from "./ui/scroll-area";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useAssets } from "@/hooks/use-assets";
-import { Tooltip } from "./tooltip";
 
 interface SelectListItem {
     id: string;
@@ -35,7 +35,7 @@ interface SelectListItem {
 interface Network {
     id: string;
     name: string;
-    icon: string | null;
+    chainIcons: ChainIcons | null;
     chainId: string;
     decimals: number;
     residency?: string;
@@ -76,7 +76,7 @@ interface NetworkListItem extends SelectListItem {
     networkId: string;
     networkName: string;
     chainId: string;
-    networkIcon: string | null;
+    chainIcons: ChainIcons | null;
     decimals: number;
     balance?: string;
     balanceUSD?: number;
@@ -166,7 +166,7 @@ export default function TokenSelect({
         const mapTreasuryNetwork = (n: any) => ({
             id: n.id,
             name: n.network,
-            icon: n.chainIcons?.light || null,
+            chainIcons: n.chainIcons || null,
             chainId: n.network,
             decimals: n.decimals,
             residency: n.residency,
@@ -239,7 +239,7 @@ export default function TokenSelect({
                         return {
                             id: bridgeNetwork.id,
                             name: bridgeNetwork.name,
-                            icon: bridgeNetwork.icon,
+                            chainIcons: bridgeNetwork.chainIcons,
                             chainId: bridgeNetwork.chainId,
                             decimals: bridgeNetwork.decimals,
                             residency: treasuryNetwork?.residency,
@@ -351,7 +351,7 @@ export default function TokenSelect({
                     networkId: network.id,
                     networkName: network.name,
                     chainId: network.chainId,
-                    networkIcon: network.icon,
+                    chainIcons: network.chainIcons,
                     decimals: network.decimals,
                     balance,
                     balanceUSD,
@@ -440,9 +440,7 @@ export default function TokenSelect({
                     name: selectedAsset.name,
                     icon: selectedAsset.icon,
                     network: item.networkName,
-                    chainIcons: item.networkIcon
-                        ? { light: item.networkIcon, dark: item.networkIcon }
-                        : undefined,
+                    chainIcons: item.chainIcons || undefined,
                     residency: "Intents",
                 });
             }
@@ -468,26 +466,6 @@ export default function TokenSelect({
             setSearch("");
         }
     }, []);
-
-    const renderNetworkIcon = useCallback(
-        (networkIcon: string | null, networkName: string) => {
-            if (!networkIcon) {
-                return (
-                    <div className="size-6 rounded-full bg-gradient-cyan-blue flex items-center justify-center text-white text-xs font-bold">
-                        {networkName.charAt(0)}
-                    </div>
-                );
-            }
-            return (
-                <img
-                    src={networkIcon}
-                    alt={`${networkName} network`}
-                    className="size-6"
-                />
-            );
-        },
-        [],
-    );
 
     // Render locked state
     if (locked && lockedTokenData) {
@@ -811,56 +789,11 @@ export default function TokenSelect({
                             >
                                 <div className="pl-3 w-full">
                                     <div className="flex items-center gap-3">
-                                        {renderNetworkIcon(
-                                            item.networkIcon,
-                                            item.name,
-                                        )}
-                                        <div className="flex flex-col text-left">
-                                            <span className="font-semibold capitalize">
-                                                {item.name}
-                                            </span>
-                                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <span>
-                                                    {item.residency === "Ft"
-                                                        ? "Fungible Token"
-                                                        : item.residency ===
-                                                            "Near"
-                                                          ? "Native Token"
-                                                          : "Intents Token"}
-                                                </span>
-                                                {item.residency === "Near" &&
-                                                    item.lockedBalance && (
-                                                        <Tooltip
-                                                            content={
-                                                                <p className="inline-block">
-                                                                    Available
-                                                                    balance
-                                                                    after
-                                                                    locking{" "}
-                                                                    <span className="font-semibold">
-                                                                        {formatNearAmount(
-                                                                            item.lockedBalance,
-                                                                        )}{" "}
-                                                                        NEAR
-                                                                    </span>{" "}
-                                                                    for account
-                                                                    activity
-                                                                </p>
-                                                            }
-                                                            side="bottom"
-                                                        >
-                                                            <span
-                                                                className="inline-flex"
-                                                                onClick={(e) =>
-                                                                    e.stopPropagation()
-                                                                }
-                                                            >
-                                                                <Info className="size-3" />
-                                                            </span>
-                                                        </Tooltip>
-                                                    )}
-                                            </div>
-                                        </div>
+                                        <NetworkIconDisplay
+                                            chainIcons={item.chainIcons}
+                                            networkName={item.name}
+                                            residency={item.residency}
+                                        />
                                     </div>
                                 </div>
                                 <div className="flex-1" />
