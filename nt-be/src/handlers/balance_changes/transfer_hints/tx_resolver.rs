@@ -16,6 +16,58 @@ use near_jsonrpc_client::{JsonRpcClient, auth, methods};
 use near_primitives::types::{BlockId, BlockReference};
 use near_primitives::views::FinalExecutionOutcomeViewEnum;
 use std::error::Error;
+use std::future::Future;
+use tokio::time::{Duration, sleep};
+
+const MAX_RPC_RETRIES: u32 = 3;
+
+/// Check if an RPC error is a transient transport error that should be retried
+fn is_transport_error(err_debug: &str) -> bool {
+    err_debug.contains("TransportError")
+        || err_debug.contains("SendError")
+        || err_debug.contains("DispatchGone")
+        || err_debug.contains("connection")
+        || err_debug.contains("timed out")
+}
+
+/// Call an RPC endpoint with retry on transient transport errors.
+///
+/// Uses exponential backoff (200ms, 400ms, 800ms) between retries.
+/// Non-transport errors (e.g. "transaction not found") fail immediately.
+async fn call_rpc_with_retry<T, E, F, Fut>(
+    label: &str,
+    mut make_call: F,
+) -> Result<T, Box<dyn Error + Send + Sync>>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T, E>>,
+    E: std::fmt::Debug + Error + Send + Sync + 'static,
+{
+    for attempt in 0..=MAX_RPC_RETRIES {
+        if attempt > 0 {
+            let delay_ms = 200 * 2u64.pow(attempt - 1);
+            log::warn!(
+                "{}: transport error, retrying in {}ms (attempt {}/{})",
+                label,
+                delay_ms,
+                attempt + 1,
+                MAX_RPC_RETRIES + 1
+            );
+            sleep(Duration::from_millis(delay_ms)).await;
+        }
+        match make_call().await {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                let err_debug = format!("{:?}", e);
+                if is_transport_error(&err_debug) && attempt < MAX_RPC_RETRIES {
+                    continue;
+                }
+                return Err(Box::new(e));
+            }
+        }
+    }
+    unreachable!()
+}
 
 /// Result of resolving a transaction to find balance change blocks
 #[derive(Debug, Clone)]
@@ -67,16 +119,22 @@ pub async fn resolve_transaction_blocks(
         client = client.header(auth::Authorization::bearer(token)?);
     }
 
-    // Query transaction status
-    let tx_request = methods::tx::RpcTransactionStatusRequest {
-        transaction_info: methods::tx::TransactionInfo::TransactionId {
-            tx_hash: tx_hash.parse()?,
-            sender_account_id: sender_account_id.parse()?,
-        },
-        wait_until: near_primitives::views::TxExecutionStatus::Final,
-    };
+    // Parse inputs once (deterministic, no need to retry)
+    let parsed_tx_hash: near_primitives::hash::CryptoHash = tx_hash.parse()?;
+    let parsed_sender: near_primitives::types::AccountId = sender_account_id.parse()?;
 
-    let tx_response = client.call(tx_request).await?;
+    // Query transaction status with retry on transport errors
+    let tx_response = call_rpc_with_retry("tx_status", || {
+        let req = methods::tx::RpcTransactionStatusRequest {
+            transaction_info: methods::tx::TransactionInfo::TransactionId {
+                tx_hash: parsed_tx_hash,
+                sender_account_id: parsed_sender.clone(),
+            },
+            wait_until: near_primitives::views::TxExecutionStatus::Final,
+        };
+        client.call(req)
+    })
+    .await?;
 
     let mut receipt_blocks = Vec::new();
 
@@ -98,12 +156,15 @@ pub async fn resolve_transaction_blocks(
         if executor == account_id {
             let block_hash = receipt_outcome.block_hash.to_string();
 
-            // Resolve block height from block hash
-            let block_request = methods::block::RpcBlockRequest {
-                block_reference: BlockReference::BlockId(BlockId::Hash(block_hash.parse()?)),
-            };
-
-            let block = client.call(block_request).await?;
+            // Resolve block height from block hash with retry on transport errors
+            let parsed_block_hash: near_primitives::hash::CryptoHash = block_hash.parse()?;
+            let block = call_rpc_with_retry("block", || {
+                let req = methods::block::RpcBlockRequest {
+                    block_reference: BlockReference::BlockId(BlockId::Hash(parsed_block_hash)),
+                };
+                client.call(req)
+            })
+            .await?;
             let block_height = block.header.height;
 
             receipt_blocks.push(ReceiptBlock {
