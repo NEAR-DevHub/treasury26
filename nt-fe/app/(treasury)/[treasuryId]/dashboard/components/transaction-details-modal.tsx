@@ -119,10 +119,10 @@ export function TransactionDetailsModal({
                                         </span>
                                         <CopyButton
                                             text={fromAccount}
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            tooltipContent="Copy Address"
                                             toastMessage="Address copied to clipboard"
-                                            className="h-6 w-6 p-0"
-                                            iconClassName="h-3 w-3 text-muted-foreground"
-                                            variant="unstyled"
                                         />
                                     </div>
                                 ),
@@ -137,9 +137,9 @@ export function TransactionDetailsModal({
                                         <CopyButton
                                             text={toAccount}
                                             toastMessage="Address copied to clipboard"
-                                            className="h-6 w-6 p-0"
-                                            iconClassName="h-3 w-3 text-muted-foreground"
-                                            variant="unstyled"
+                                            tooltipContent="Copy Address"
+                                            variant="ghost"
+                                            size="icon-sm"
                                         />
                                     </div>
                                 ),
@@ -165,14 +165,14 @@ export function TransactionDetailsModal({
                                                     <CopyButton
                                                         text={transactionHash}
                                                         toastMessage="Transaction hash copied to clipboard"
-                                                        className="h-6 w-6 p-0"
-                                                        iconClassName="h-3 w-3 text-muted-foreground"
-                                                        variant="unstyled"
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        tooltipContent="Copy Transaction Hash"
                                                     />
                                                     <Button
                                                         variant="ghost"
-                                                        size="icon"
-                                                        className="h-6 w-6"
+                                                        size="icon-sm"
+                                                        tooltipContent="Open Link in Explorer"
                                                         onClick={() =>
                                                             openInExplorer(
                                                                 transactionHash,
