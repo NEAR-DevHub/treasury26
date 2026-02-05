@@ -1,4 +1,3 @@
-import type { BulkPaymentUsageStats } from "@/lib/api";
 import type { SubscriptionStatus } from "@/lib/subscription-api";
 import {
     getBatchPaymentCreditLimit,
@@ -7,7 +6,11 @@ import {
 import { Button } from "@/components/button";
 
 interface BulkPaymentCreditsDisplayProps {
-    credits: BulkPaymentUsageStats;
+    credits: {
+        creditsAvailable: number;
+        creditsUsed: number;
+        totalCredits: number;
+    };
     subscription: SubscriptionStatus;
 }
 

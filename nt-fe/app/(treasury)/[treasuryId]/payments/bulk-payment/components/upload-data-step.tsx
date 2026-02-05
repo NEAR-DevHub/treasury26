@@ -12,7 +12,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { useSubscription } from "@/hooks/use-subscription";
 import { isTrialPlan } from "@/lib/subscription-api";
-import { useBulkPaymentCredits } from "../hooks/use-bulk-payment-credits";
 import { BulkPaymentCreditsDisplay } from "./bulk-payment-credits-display";
 import { MAX_RECIPIENTS_PER_BULK_PAYMENT } from "@/lib/bulk-payment-api";
 import type { BulkPaymentFormValues, BulkPaymentData } from "../schemas";
@@ -38,8 +37,6 @@ export function UploadDataStep({
     const form = useFormContext<BulkPaymentFormValues>();
     const { data: subscription, isLoading: isLoadingSubscription } =
         useSubscription(treasuryId);
-    const { data: creditsData, isLoading: isLoadingCredits } =
-        useBulkPaymentCredits(treasuryId);
     const [isDragging, setIsDragging] = useState(false);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [dataErrors, setDataErrors] = useState<Array<{
@@ -47,8 +44,13 @@ export function UploadDataStep({
         message: string;
     }> | null>(null);
 
-    const isLoading = isLoadingCredits || isLoadingSubscription;
-    const availableCredits = creditsData?.creditsAvailable ?? 0;
+    const isLoading = isLoadingSubscription;
+    const availableCredits = subscription?.batchPaymentCredits ?? 0;
+    const totalCredits =
+        subscription?.planConfig.limits.monthlyBatchPaymentCredits ??
+        subscription?.planConfig.limits.trialBatchPaymentCredits ??
+        0;
+    const creditsUsed = totalCredits - availableCredits;
 
     const selectedToken = form.watch("selectedToken");
     const csvData = form.watch("csvData");
@@ -646,9 +648,13 @@ export function UploadDataStep({
                     }
                     className="w-full"
                 >
-                    {creditsData && subscription && (
+                    {subscription && (
                         <BulkPaymentCreditsDisplay
-                            credits={creditsData}
+                            credits={{
+                                creditsAvailable: availableCredits,
+                                creditsUsed: creditsUsed,
+                                totalCredits: totalCredits,
+                            }}
                             subscription={subscription}
                         />
                     )}

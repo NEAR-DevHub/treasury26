@@ -999,31 +999,6 @@ export async function getIntentsQuote(
 }
 
 /**
- * Bulk Payment Usage Statistics
- */
-export interface BulkPaymentUsageStats {
-    creditsAvailable: number;
-    creditsUsed: number;
-    totalCredits: number;
-}
-
-/**
- * Get bulk payment usage statistics for a treasury
- * Returns credits available, used, and total
- */
-export async function getBulkPaymentUsageStats(
-    treasuryId: string,
-): Promise<BulkPaymentUsageStats> {
-    const response = await axios.get<BulkPaymentUsageStats>(
-        `${BACKEND_API_BASE}/bulk-payment/usage-stats`,
-        {
-            params: { treasuryId: treasuryId },
-        },
-    );
-    return response.data;
-}
-
-/**
  * Receipt Search Result
  */
 export interface ReceiptSearchResult {
