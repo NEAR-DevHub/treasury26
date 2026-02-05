@@ -44,7 +44,7 @@ export function TooltipUser({
                             toastMessage="Wallet address copied to clipboard"
                             variant="ghost"
                             size="icon"
-                            className="h-auto w-auto p-0 hover:bg-transparent"
+                            className="h-auto w-auto p-0"
                         >
                             <span className="break-all">
                                 Copy Wallet Address

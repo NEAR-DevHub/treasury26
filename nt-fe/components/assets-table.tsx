@@ -45,6 +45,7 @@ import { VestingDetailsModal } from "./vesting-details-modal";
 import { EarningDetailsModal } from "./earning-details-modal";
 import { Tooltip } from "./tooltip";
 import { useTreasury } from "@/hooks/use-treasury";
+import { AuthButton } from "./auth-button";
 
 const columnHelper = createColumnHelper<AggregatedAsset>();
 
@@ -438,14 +439,16 @@ export function AssetsTable({ tokens }: Props) {
                                                                                         e.stopPropagation()
                                                                                     }
                                                                                 >
-                                                                                    <Button
+                                                                                    <AuthButton
+                                                                                        permissionKind="transfer"
+                                                                                        permissionAction="AddProposal"
                                                                                         variant="ghost"
                                                                                         size="icon"
                                                                                         className="h-8 w-8"
                                                                                         tooltipContent="Send"
                                                                                     >
                                                                                         <ArrowUpRight className="size-4 text-primary" />
-                                                                                    </Button>
+                                                                                    </AuthButton>
                                                                                 </Link>
                                                                                 <Link
                                                                                     href={`/${treasuryId}/exchange?sellToken=${tokenParam}`}
@@ -455,14 +458,16 @@ export function AssetsTable({ tokens }: Props) {
                                                                                         e.stopPropagation()
                                                                                     }
                                                                                 >
-                                                                                    <Button
+                                                                                    <AuthButton
+                                                                                        permissionKind="call"
+                                                                                        permissionAction="AddProposal"
                                                                                         variant="ghost"
                                                                                         size="icon"
                                                                                         className="h-8 w-8"
                                                                                         tooltipContent="Exchange"
                                                                                     >
                                                                                         <ArrowLeftRight className="size-4 text-primary" />
-                                                                                    </Button>
+                                                                                    </AuthButton>
                                                                                 </Link>
                                                                             </div>
                                                                         </div>
