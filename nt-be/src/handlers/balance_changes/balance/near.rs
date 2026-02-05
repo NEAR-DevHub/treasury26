@@ -8,6 +8,7 @@ use near_api::{AccountId, NetworkConfig, Reference, Tokens};
 use std::str::FromStr;
 
 use crate::handlers::balance_changes::counterparty::convert_raw_to_decimal;
+use crate::handlers::balance_changes::utils::with_transport_retry;
 
 /// Query NEAR native token balance at a specific block height, converted to human-readable format
 ///
@@ -34,11 +35,13 @@ pub async fn get_balance_at_block(
     for offset in 0..=max_retries {
         let current_block = block_height.saturating_sub(offset);
 
-        match Tokens::account(account_id.clone())
-            .near_balance()
-            .at(Reference::AtBlock(current_block))
-            .fetch_from(network)
-            .await
+        match with_transport_retry("near_balance", || {
+            Tokens::account(account_id.clone())
+                .near_balance()
+                .at(Reference::AtBlock(current_block))
+                .fetch_from(network)
+        })
+        .await
         {
             Ok(balance) => {
                 if offset > 0 {

@@ -11,63 +11,12 @@
 //! 4. Resolve block heights from block hashes
 //! 5. Return candidate blocks for balance verification
 
+use crate::handlers::balance_changes::utils::with_transport_retry;
 use near_api::NetworkConfig;
 use near_jsonrpc_client::{JsonRpcClient, auth, methods};
 use near_primitives::types::{BlockId, BlockReference};
 use near_primitives::views::FinalExecutionOutcomeViewEnum;
 use std::error::Error;
-use std::future::Future;
-use tokio::time::{Duration, sleep};
-
-const MAX_RPC_RETRIES: u32 = 3;
-
-/// Check if an RPC error is a transient transport error that should be retried
-fn is_transport_error(err_debug: &str) -> bool {
-    err_debug.contains("TransportError")
-        || err_debug.contains("SendError")
-        || err_debug.contains("DispatchGone")
-        || err_debug.contains("connection")
-        || err_debug.contains("timed out")
-}
-
-/// Call an RPC endpoint with retry on transient transport errors.
-///
-/// Uses exponential backoff (200ms, 400ms, 800ms) between retries.
-/// Non-transport errors (e.g. "transaction not found") fail immediately.
-async fn call_rpc_with_retry<T, E, F, Fut>(
-    label: &str,
-    mut make_call: F,
-) -> Result<T, Box<dyn Error + Send + Sync>>
-where
-    F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, E>>,
-    E: std::fmt::Debug + Error + Send + Sync + 'static,
-{
-    for attempt in 0..=MAX_RPC_RETRIES {
-        if attempt > 0 {
-            let delay_ms = 200 * 2u64.pow(attempt - 1);
-            log::warn!(
-                "{}: transport error, retrying in {}ms (attempt {}/{})",
-                label,
-                delay_ms,
-                attempt + 1,
-                MAX_RPC_RETRIES + 1
-            );
-            sleep(Duration::from_millis(delay_ms)).await;
-        }
-        match make_call().await {
-            Ok(result) => return Ok(result),
-            Err(e) => {
-                let err_debug = format!("{:?}", e);
-                if is_transport_error(&err_debug) && attempt < MAX_RPC_RETRIES {
-                    continue;
-                }
-                return Err(Box::new(e));
-            }
-        }
-    }
-    unreachable!()
-}
 
 /// Result of resolving a transaction to find balance change blocks
 #[derive(Debug, Clone)]
@@ -124,7 +73,7 @@ pub async fn resolve_transaction_blocks(
     let parsed_sender: near_primitives::types::AccountId = sender_account_id.parse()?;
 
     // Query transaction status with retry on transport errors
-    let tx_response = call_rpc_with_retry("tx_status", || {
+    let tx_response = with_transport_retry("tx_status", || {
         let req = methods::tx::RpcTransactionStatusRequest {
             transaction_info: methods::tx::TransactionInfo::TransactionId {
                 tx_hash: parsed_tx_hash,
@@ -158,7 +107,7 @@ pub async fn resolve_transaction_blocks(
 
             // Resolve block height from block hash with retry on transport errors
             let parsed_block_hash: near_primitives::hash::CryptoHash = block_hash.parse()?;
-            let block = call_rpc_with_retry("block", || {
+            let block = with_transport_retry("block", || {
                 let req = methods::block::RpcBlockRequest {
                     block_reference: BlockReference::BlockId(BlockId::Hash(parsed_block_hash)),
                 };
