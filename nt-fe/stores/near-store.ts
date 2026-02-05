@@ -26,6 +26,7 @@ import {
     AuthUserInfo,
 } from "@/lib/auth-api";
 import { markDaoDirty } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export interface CreateProposalParams {
     treasuryId: string;
@@ -463,8 +464,35 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     },
                 ],
             });
+
+            const toastAction =
+                votes.length === 1
+                    ? {
+                          label: "View Request",
+                          onClick: () =>
+                              window.open(
+                                  `/${treasuryId}/requests/${votes[0].proposalId}`,
+                              ),
+                      }
+                    : undefined;
             toast.success(
                 `Your vote${votes.length > 1 ? "s" : ""} have been submitted`,
+                {
+                    duration: 10000,
+                    action: toastAction,
+                    classNames: {
+                        toast: "!p-2 !px-4",
+                        actionButton: cn(
+                            !toastAction ? "!hidden" : "",
+                            "!bg-transparent !text-foreground hover:!bg-muted !border-0",
+                        ),
+                        title: cn(
+                            toastAction
+                                ? "!border-r !border-r-border !pr-4"
+                                : "!pr-0",
+                        ),
+                    },
+                },
             );
             return results;
         } catch (error) {

@@ -57,9 +57,9 @@ import { VoteModal } from "./vote-modal";
 import { Address } from "@/components/address";
 import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
 import { EmptyState } from "@/components/empty-state";
-import Link from "next/link";
 import { AuthButton } from "@/components/auth-button";
 import { useRouter } from "next/navigation";
+import { Tooltip } from "@/components/tooltip";
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -131,14 +131,35 @@ export function ProposalsTable({
                         false,
                     );
                     const proposalStatus = getProposalStatus(proposal, policy);
+                    const isVoted = Object.keys(proposal.votes).includes(
+                        accountId ?? "",
+                    );
                     const canVote =
                         approverAccounts.includes(accountId ?? "") &&
                         accountId &&
-                        treasuryId &&
-                        proposalStatus === "Pending";
+                        treasuryId;
+                    const isPending = proposalStatus === "Pending";
 
-                    if (!canVote) {
-                        return null;
+                    if (isVoted || !canVote || !isPending) {
+                        const content = !isPending
+                            ? "Proposal is not pending."
+                            : !canVote
+                              ? "You don't have permission to vote on this request."
+                              : isVoted
+                                ? "You already voted on this request."
+                                : "";
+
+                        return (
+                            <Tooltip content={content}>
+                                <Checkbox
+                                    checked={row.getIsSelected()}
+                                    disabled={true}
+                                    onCheckedChange={(value) =>
+                                        row.toggleSelected(!!value)
+                                    }
+                                />
+                            </Tooltip>
+                        );
                     }
 
                     return (
@@ -287,9 +308,13 @@ export function ProposalsTable({
                 proposal.kind,
                 false,
             );
+            const isVoted = Object.keys(proposal.votes).includes(
+                accountId ?? "",
+            );
             const proposalStatus = getProposalStatus(proposal, policy);
             return (
                 approverAccounts.includes(accountId ?? "") &&
+                !isVoted &&
                 !!accountId &&
                 !!treasuryId &&
                 proposal.status === "InProgress" &&
