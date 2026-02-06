@@ -118,8 +118,10 @@ export const BalanceCell = ({
 }) => {
     return (
         <div className="text-right">
-            <div className="font-semibold">{formatCurrency(balanceUSD)}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="font-medium text-sm">
+                {formatCurrency(balanceUSD)}
+            </div>
+            <div className="text-xxs text-muted-foreground">
                 {balance.toString()} {symbol}
             </div>
         </div>

@@ -412,12 +412,7 @@ export function DepositModal({
                                                             </div>
                                                         )}
                                                         <span className="text-foreground font-medium">
-                                                            {
-                                                                selectedAsset.symbol
-                                                            }{" "}
-                                                            (
                                                             {selectedAsset.name}
-                                                            )
                                                         </span>
                                                     </div>
                                                 ) : (
@@ -488,7 +483,7 @@ export function DepositModal({
                                                                     </span>
                                                                 </div>
                                                             )}
-                                                            <span className="text-foreground font-medium">
+                                                            <span className="text-foreground font-medium uppercase">
                                                                 {
                                                                     selectedNetwork.name
                                                                 }

@@ -9,8 +9,6 @@ import {
     Lock,
     ArrowUpRight,
     Info,
-    Send,
-    RefreshCw,
     ArrowLeftRight,
 } from "lucide-react";
 import Link from "next/link";
@@ -40,7 +38,7 @@ import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-assets";
 import Big from "big.js";
 import { NetworkDisplay, BalanceCell } from "./token-display";
-import { availableBalance, totalBalance, lockedBalance } from "@/lib/balance";
+import { availableBalance, lockedBalance } from "@/lib/balance";
 import { VestingDetailsModal } from "./vesting-details-modal";
 import { EarningDetailsModal } from "./earning-details-modal";
 import { Tooltip } from "./tooltip";
@@ -50,10 +48,10 @@ import { AuthButton } from "./auth-button";
 const columnHelper = createColumnHelper<AggregatedAsset>();
 
 interface Props {
-    tokens: TreasuryAsset[];
+    aggregatedTokens: AggregatedAsset[];
 }
 
-export function AssetsTable({ tokens }: Props) {
+export function AssetsTable({ aggregatedTokens }: Props) {
     const [sorting, setSorting] = useState<SortingState>([
         { id: "totalBalanceUSD", desc: true },
     ]);
@@ -65,9 +63,6 @@ export function AssetsTable({ tokens }: Props) {
     const [selectedStakingNetwork, setSelectedStakingNetwork] =
         useState<TreasuryAsset | null>(null);
     const [isStakingModalOpen, setIsStakingModalOpen] = useState(false);
-
-    // Aggregate tokens by symbol using custom hook
-    const aggregatedTokens = useAggregatedTokens(tokens);
 
     // Define columns
     const columns = useMemo<ColumnDef<AggregatedAsset, any>[]>(
@@ -195,7 +190,7 @@ export function AssetsTable({ tokens }: Props) {
         getRowId: (row) => row.symbol,
     });
 
-    if (tokens.length === 0) {
+    if (aggregatedTokens.length === 0) {
         return (
             <div className="p-8 text-center text-muted-foreground">
                 No assets found.
@@ -312,10 +307,10 @@ export function AssetsTable({ tokens }: Props) {
                                                         <TableCell className="p-2 pl-16 text-xxs">
                                                             Source
                                                         </TableCell>
-                                                        <TableCell className="p-2"></TableCell>
                                                         <TableCell className="p-2 text-right text-xxs">
                                                             Available to Use
                                                         </TableCell>
+                                                        <TableCell className="p-2"></TableCell>
                                                         <TableCell className="p-2 text-xxs flex items-center justify-end gap-1">
                                                             Frozen{" "}
                                                             <Tooltip content="Frozen tokens are locked and cannot be used. They might be locked due to being used for storage, staked, or not yet vested.">
@@ -326,10 +321,6 @@ export function AssetsTable({ tokens }: Props) {
                                                     </TableRow>
                                                     {sourceNetworks.map(
                                                         (network, idx) => {
-                                                            const total =
-                                                                totalBalance(
-                                                                    network.balance,
-                                                                );
                                                             const available =
                                                                 availableBalance(
                                                                     network.balance,
@@ -370,7 +361,7 @@ export function AssetsTable({ tokens }: Props) {
                                                                         <BalanceCell
                                                                             balance={Big(
                                                                                 formatBalance(
-                                                                                    total,
+                                                                                    available,
                                                                                     network.decimals,
                                                                                 ),
                                                                             )}
@@ -378,34 +369,13 @@ export function AssetsTable({ tokens }: Props) {
                                                                                 network.symbol
                                                                             }
                                                                             balanceUSD={calculateBalanceUSD(
-                                                                                total,
+                                                                                available,
                                                                                 network.price,
                                                                                 network.decimals,
                                                                             )}
                                                                         />
                                                                     </TableCell>
-                                                                    <TableCell className="p-4">
-                                                                        {locked.gt(
-                                                                            0,
-                                                                        ) && (
-                                                                            <BalanceCell
-                                                                                balance={Big(
-                                                                                    formatBalance(
-                                                                                        available,
-                                                                                        network.decimals,
-                                                                                    ),
-                                                                                )}
-                                                                                symbol={
-                                                                                    network.symbol
-                                                                                }
-                                                                                balanceUSD={calculateBalanceUSD(
-                                                                                    available,
-                                                                                    network.price,
-                                                                                    network.decimals,
-                                                                                )}
-                                                                            />
-                                                                        )}
-                                                                    </TableCell>
+                                                                    <TableCell className="p-4"></TableCell>
                                                                     <TableCell className="p-4">
                                                                         <div className="relative">
                                                                             <div className="group-hover:opacity-0 transition-opacity">
@@ -485,10 +455,6 @@ export function AssetsTable({ tokens }: Props) {
                                                 <>
                                                     {stakingNetworks.map(
                                                         (network, idx) => {
-                                                            const total =
-                                                                totalBalance(
-                                                                    network.balance,
-                                                                );
                                                             const available =
                                                                 availableBalance(
                                                                     network.balance,
@@ -521,24 +487,6 @@ export function AssetsTable({ tokens }: Props) {
                                                                         <BalanceCell
                                                                             balance={Big(
                                                                                 formatBalance(
-                                                                                    total,
-                                                                                    network.decimals,
-                                                                                ),
-                                                                            )}
-                                                                            symbol={
-                                                                                network.symbol
-                                                                            }
-                                                                            balanceUSD={calculateBalanceUSD(
-                                                                                total,
-                                                                                network.price,
-                                                                                network.decimals,
-                                                                            )}
-                                                                        />
-                                                                    </TableCell>
-                                                                    <TableCell className="p-4">
-                                                                        <BalanceCell
-                                                                            balance={Big(
-                                                                                formatBalance(
                                                                                     available,
                                                                                     network.decimals,
                                                                                 ),
@@ -553,6 +501,7 @@ export function AssetsTable({ tokens }: Props) {
                                                                             )}
                                                                         />
                                                                     </TableCell>
+                                                                    <TableCell className="p-4"></TableCell>
                                                                     <TableCell className="p-4">
                                                                         <div className="relative">
                                                                             <div className="group-hover:opacity-0 transition-opacity">
@@ -647,23 +596,42 @@ export function AssetsTable({ tokens }: Props) {
                                                                                   .toNumber()
                                                                             : 0;
                                                                     return (
-                                                                        <div className="flex items-center justify-end gap-2">
-                                                                            <div className="w-20 bg-muted rounded-full h-1.5 overflow-hidden">
-                                                                                <div
-                                                                                    className="bg-primary h-full rounded-full transition-all"
-                                                                                    style={{
-                                                                                        width: `${vestedPercent}%`,
-                                                                                    }}
-                                                                                />
+                                                                        <Tooltip
+                                                                            content={
+                                                                                <span className="font-medium">
+                                                                                    {formatBalance(
+                                                                                        totalAllocated.sub(
+                                                                                            unvested,
+                                                                                        ),
+                                                                                        24,
+                                                                                    )}{" "}
+                                                                                    /{" "}
+                                                                                    {formatBalance(
+                                                                                        totalAllocated,
+                                                                                        24,
+                                                                                    )}{" "}
+                                                                                    NEAR
+                                                                                </span>
+                                                                            }
+                                                                        >
+                                                                            <div className="flex items-center justify-end gap-2">
+                                                                                <div className="w-20 bg-muted rounded-full h-1.5 overflow-hidden">
+                                                                                    <div
+                                                                                        className="bg-primary h-full rounded-full transition-all"
+                                                                                        style={{
+                                                                                            width: `${vestedPercent}%`,
+                                                                                        }}
+                                                                                    />
+                                                                                </div>
+                                                                                <span className="text-xxs text-muted-foreground">
+                                                                                    {vestedPercent.toFixed(
+                                                                                        0,
+                                                                                    )}
+                                                                                    %
+                                                                                    Vested
+                                                                                </span>
                                                                             </div>
-                                                                            <span className="text-xxs text-muted-foreground">
-                                                                                {vestedPercent.toFixed(
-                                                                                    0,
-                                                                                )}
-                                                                                %
-                                                                                Vested
-                                                                            </span>
-                                                                        </div>
+                                                                        </Tooltip>
                                                                     );
                                                                 }
                                                                 return null;
@@ -673,10 +641,6 @@ export function AssetsTable({ tokens }: Props) {
                                                     </TableRow>
                                                     {vestingNetworks.map(
                                                         (network, idx) => {
-                                                            const total =
-                                                                totalBalance(
-                                                                    network.balance,
-                                                                );
                                                             const available =
                                                                 availableBalance(
                                                                     network.balance,
@@ -709,24 +673,6 @@ export function AssetsTable({ tokens }: Props) {
                                                                         <BalanceCell
                                                                             balance={Big(
                                                                                 formatBalance(
-                                                                                    total,
-                                                                                    network.decimals,
-                                                                                ),
-                                                                            )}
-                                                                            symbol={
-                                                                                network.symbol
-                                                                            }
-                                                                            balanceUSD={calculateBalanceUSD(
-                                                                                total,
-                                                                                network.price,
-                                                                                network.decimals,
-                                                                            )}
-                                                                        />
-                                                                    </TableCell>
-                                                                    <TableCell className="p-4">
-                                                                        <BalanceCell
-                                                                            balance={Big(
-                                                                                formatBalance(
                                                                                     available,
                                                                                     network.decimals,
                                                                                 ),
@@ -741,6 +687,7 @@ export function AssetsTable({ tokens }: Props) {
                                                                             )}
                                                                         />
                                                                     </TableCell>
+                                                                    <TableCell className="p-4"></TableCell>
                                                                     <TableCell className="p-4">
                                                                         <div className="relative">
                                                                             <div className="group-hover:opacity-0 transition-opacity">
