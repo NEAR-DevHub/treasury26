@@ -63,8 +63,9 @@ pub struct TransactionHashResponse {
     pub error: Option<String>,
 }
 
-/// Contract response types (snake_case: deserialized from NEAR contract)
+/// Contract response types
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PaymentListResponse {
     token_id: String,
     submitter: String,
@@ -105,6 +106,7 @@ impl PaymentListStatus {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ContractPaymentRecord {
     recipient: String,
     amount: String,
@@ -120,6 +122,7 @@ enum ContractPaymentStatus {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PaidStatus {
     block_height: u64,
 }
