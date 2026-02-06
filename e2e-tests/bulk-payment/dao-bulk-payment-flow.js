@@ -719,10 +719,10 @@ assert.match(listId, /^[0-9a-f]{64}$/, 'list_id must be hex-encoded');
 // Step 7b: Verify API rejects submission with WRONG hash (payload doesn't match list_id)
 console.log('\n🔒 Testing API rejection with mismatched hash...');
 const wrongHashResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
-  listId: listId,
-  submitterId: daoAccountId,
-  daoContractId: daoAccountId,
-  tokenId: 'native',
+  list_id: listId,
+  submitter_id: daoAccountId,
+  dao_contract_id: daoAccountId,
+  token_id: 'native',
   // Tamper with payments - change first recipient's amount
   payments: payments.map((p, i) => i === 0 ? { ...p, amount: '999' } : p),
 }, true); // expectError = true
@@ -735,10 +735,10 @@ console.log(`✅ API correctly rejected tampered payload: ${wrongHashResponse.er
 // Step 7c: Verify API rejects submission WITHOUT a DAO proposal
 console.log('\n🔒 Testing API rejection without DAO proposal...');
 const rejectResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
-  listId: listId,
-  submitterId: daoAccountId,
-  daoContractId: daoAccountId,
-  tokenId: 'native',
+  list_id: listId,
+  submitter_id: daoAccountId,
+  dao_contract_id: daoAccountId,
+  token_id: 'native',
   payments,
 }, true); // expectError = true
 
@@ -763,15 +763,15 @@ const submitListProposalId = await createProposal(
 // Step 9: Submit payment list via API (requires DAO proposal to exist)
 console.log('\n📤 Submitting payment list via API...');
 const submitResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
-  listId: listId,
-  submitterId: daoAccountId,
-  daoContractId: daoAccountId,
-  tokenId: 'native',
+  list_id: listId,
+  submitter_id: daoAccountId,
+  dao_contract_id: daoAccountId,
+  token_id: 'native',
   payments,
 });
 
 assert.equal(submitResponse.success, true, `Submit must succeed: ${submitResponse.error}`);
-assert.equal(submitResponse.listId, listId, 'Returned listId must match submitted');
+assert.equal(submitResponse.list_id, listId, 'Returned list_id must match submitted');
 console.log(`✅ Payment list submitted with ID: ${listId}`);
 
 // Step 10: Approve the payment list proposal (already created in Step 8)
