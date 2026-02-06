@@ -268,7 +268,11 @@ function Step3({ handleBack }: StepProps) {
                 handleBack={handleBack}
             >
                 <div className="flex flex-col gap-6">
-                    <AmountSummary total={vesting.amount} token={vesting.token}>
+                    <AmountSummary
+                        total={vesting.amount}
+                        totalUSD={estimatedUSDValue}
+                        token={vesting.token}
+                    >
                         <p>≈ {formatCurrency(estimatedUSDValue)}</p>
                     </AmountSummary>
                     <InfoDisplay items={infoItems} />

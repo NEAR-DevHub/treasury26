@@ -12,6 +12,7 @@ export interface InfoItem {
     value: string | number | React.ReactNode;
     info?: string;
     afterValue?: React.ReactNode;
+    subItem?: boolean;
 
     style?: "default" | "secondary";
 }
@@ -39,8 +40,8 @@ const styleVariants = cva("flex flex-col", {
     defaultVariants: {
         style: "default",
         size: "default",
-    }
-})
+    },
+});
 
 const lineVariants = cva("border-b border-border p-1 pb-4", {
     variants: {
@@ -56,10 +57,17 @@ const lineVariants = cva("border-b border-border p-1 pb-4", {
     defaultVariants: {
         style: "default",
         size: "default",
-    }
-})
+    },
+});
 
-export function InfoDisplay({ items, expandableItems, className, style = "default", size = "default", hideSeparator = false }: InfoDisplayProps) {
+export function InfoDisplay({
+    items,
+    expandableItems,
+    className,
+    style = "default",
+    size = "default",
+    hideSeparator = false,
+}: InfoDisplayProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const hasExpandableItems = expandableItems && expandableItems.length > 0;
 
@@ -68,15 +76,33 @@ export function InfoDisplay({ items, expandableItems, className, style = "defaul
     return (
         <div className={styleVariants({ style, size, className })}>
             {displayItems.map((item, index) => (
-                <div key={index} className={cn("flex flex-col gap-2", lineVariants({ style, size, className: !hasExpandableItems && "last:border-b-0" }), hideSeparator && "border-b-0")}>
+                <div
+                    key={index}
+                    className={cn(
+                        "flex flex-col gap-2",
+                        lineVariants({
+                            style,
+                            size,
+                            className: !hasExpandableItems && "last:border-b-0",
+                        }),
+                        hideSeparator && "border-b-0",
+                        item.subItem && "pl-5",
+                    )}
+                >
                     <div className="flex justify-between items-center flex-wrap">
                         <div className="flex items-center gap-1">
-                            <p className="text-sm text-muted-foreground">{item.label}</p>
-                            {item.info && <Tooltip content={item.info}>
-                                <Info className="size-3 shrink-0 text-muted-foreground" />
-                            </Tooltip>}
+                            <p className="text-sm text-muted-foreground">
+                                {item.label}
+                            </p>
+                            {item.info && (
+                                <Tooltip content={item.info}>
+                                    <Info className="size-3 shrink-0 text-muted-foreground" />
+                                </Tooltip>
+                            )}
                         </div>
-                        <div className="text-sm font-medium text-wrap">{item.value}</div>
+                        <div className="text-sm font-medium text-wrap">
+                            {item.value}
+                        </div>
                     </div>
                     {item.afterValue && (
                         <div className="flex flex-col gap-2">
@@ -92,7 +118,11 @@ export function InfoDisplay({ items, expandableItems, className, style = "defaul
                     className="flex gap-2 w-full justify-center mt-2"
                 >
                     {isExpanded ? "View Less" : "View All Details"}
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {isExpanded ? (
+                        <ChevronUp className="w-4 h-4" />
+                    ) : (
+                        <ChevronDown className="w-4 h-4" />
+                    )}
                 </Button>
             )}
         </div>

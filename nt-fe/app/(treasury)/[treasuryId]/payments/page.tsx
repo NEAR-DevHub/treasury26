@@ -158,7 +158,11 @@ function Step2({ handleBack }: StepProps) {
                 reviewingTitle="Review Your Payment"
                 handleBack={handleBack}
             >
-                <AmountSummary total={amount} token={token}>
+                <AmountSummary
+                    total={amount}
+                    totalUSD={estimatedUSDValue.toNumber()}
+                    token={token}
+                >
                     <p>to 1 recipient</p>
                 </AmountSummary>
                 <div className="flex flex-col gap-2">

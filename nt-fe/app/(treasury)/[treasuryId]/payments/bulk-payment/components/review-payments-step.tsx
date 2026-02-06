@@ -146,7 +146,11 @@ export function ReviewPaymentsStep({
                 handleBack={handleBack}
             >
                 {/* Total Summary */}
-                <AmountSummary total={totalAmount} token={selectedToken} />
+                <AmountSummary
+                    total={totalAmount}
+                    totalUSD={totalUSDValue.toNumber()}
+                    token={selectedToken}
+                />
 
                 {/* Recipients List */}
                 <div className="space-y-4 mb-2">

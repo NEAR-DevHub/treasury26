@@ -148,6 +148,10 @@ export function VestingDetailsModal({
                     <AmountSummary
                         title="Available To Use"
                         total={formatTokenBalance(available)}
+                        totalUSD={available
+                            .mul(asset.price)
+                            .div(Big(10).pow(asset.decimals))
+                            .toNumber()}
                         token={{
                             address: asset.contractId || "",
                             symbol: asset.symbol,

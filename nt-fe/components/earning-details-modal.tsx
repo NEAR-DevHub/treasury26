@@ -68,7 +68,8 @@ export function EarningDetailsModal({
         ];
         if (pool.unstakedBalance.gt(0)) {
             items.push({
-                label: pool.canWithdraw ? "└ Ready to withdraw" : "└ Unstaking",
+                label: pool.canWithdraw ? "Ready to withdraw" : "Unstaking",
+                subItem: true,
                 value: `${formatTokenBalance(pool.unstakedBalance)} ${asset.symbol}`,
             });
         }
@@ -86,6 +87,7 @@ export function EarningDetailsModal({
                     <AmountSummary
                         title="Total Staked"
                         total={formatTokenBalance(totalStaked)}
+                        totalUSD={asset.balanceUSD}
                         token={{
                             address: asset.contractId || "",
                             symbol: asset.symbol,
