@@ -17,13 +17,25 @@ interface Props {
 export default function Assets({ tokens, isLoading }: Props) {
     const aggregatedTokens = useAggregatedTokens(tokens);
     const [filterLessThanDollar, setFilterLessThanDollar] = useState(false);
-    const total = aggregatedTokens.reduce(
-        (value, element) => value + element.totalBalanceUSD,
-        0,
+
+    const total = useMemo(
+        () =>
+            aggregatedTokens.reduce(
+                (value, element) => value + element.totalBalanceUSD,
+                0,
+            ),
+        [aggregatedTokens],
     );
 
+    const isThereSomethingToHide = useMemo(
+        () => aggregatedTokens.some((value) => value.totalBalanceUSD < 1),
+        [aggregatedTokens],
+    );
+
+    const shouldWeHide = total > 1 && isThereSomethingToHide;
+
     useEffect(() => {
-        if (total > 1) {
+        if (shouldWeHide) {
             setFilterLessThanDollar(true);
         }
     }, [isLoading, aggregatedTokens]);
@@ -58,7 +70,7 @@ export default function Assets({ tokens, isLoading }: Props) {
         <PageCard className="flex flex-col gap-5">
             <div className="flex justify-between">
                 <StepperHeader title="Assets" />
-                {total > 1 && (
+                {shouldWeHide && (
                     <div className="flex gap-2">
                         <Checkbox
                             checked={filterLessThanDollar}
