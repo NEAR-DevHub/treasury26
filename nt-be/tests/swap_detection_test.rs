@@ -4,6 +4,7 @@
 //! 1. resolve_receipt_to_transaction - traces receipts back to originating transactions
 //! 2. backfill_transaction_hashes - fills in missing tx hashes from receipt data
 //! 3. detect_swaps - groups multi-token balance changes from the same transaction
+//!    AND detects intents swaps via time-proximity matching
 //!
 //! Uses webassemblymusic-treasury.sputnik-dao.near with real historical swap data.
 
@@ -15,9 +16,113 @@ use nt_be::handlers::balance_changes::swap_detector::{
 use nt_be::handlers::balance_changes::transfer_hints::tx_resolver::{
     get_all_receipt_tx_mappings, resolve_receipt_to_transaction,
 };
+use serde::Deserialize;
 use sqlx::PgPool;
 
 const TEST_ACCOUNT: &str = "webassemblymusic-treasury.sputnik-dao.near";
+
+/// Fixture record matching the JSON structure in webassemblymusic_sample.json
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FixtureRecord {
+    account_id: String,
+    block_height: i64,
+    block_time: String,
+    token_id: String,
+    receipt_id: Vec<String>,
+    transaction_hashes: Vec<String>,
+    counterparty: String,
+    amount: String,
+    balance_before: String,
+    balance_after: String,
+}
+
+/// Load test fixture data and insert into the database
+async fn load_fixture_data(pool: &PgPool, account_id: &str) -> sqlx::Result<usize> {
+    let fixture_path = "tests/test_data/balance_changes/webassemblymusic_sample.json";
+    let data = std::fs::read_to_string(fixture_path)
+        .unwrap_or_else(|_| panic!("Failed to read fixture file: {}", fixture_path));
+
+    let records: Vec<FixtureRecord> =
+        serde_json::from_str(&data).expect("Failed to parse fixture JSON");
+
+    // Insert monitored account
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, true)
+        ON CONFLICT (account_id) DO UPDATE SET enabled = true
+        "#,
+        account_id
+    )
+    .execute(pool)
+    .await?;
+
+    // Clear existing balance changes for this account
+    sqlx::query!(
+        "DELETE FROM balance_changes WHERE account_id = $1",
+        account_id
+    )
+    .execute(pool)
+    .await?;
+
+    let mut count = 0;
+    for record in &records {
+        if record.account_id != account_id {
+            continue;
+        }
+
+        let block_time: chrono::DateTime<chrono::Utc> = record
+            .block_time
+            .parse()
+            .expect("Failed to parse block_time");
+
+        let block_timestamp = block_time.timestamp_nanos_opt().unwrap_or(0);
+
+        let amount: sqlx::types::BigDecimal = record
+            .amount
+            .parse()
+            .expect("Failed to parse amount");
+        let balance_before: sqlx::types::BigDecimal = record
+            .balance_before
+            .parse()
+            .expect("Failed to parse balance_before");
+        let balance_after: sqlx::types::BigDecimal = record
+            .balance_after
+            .parse()
+            .expect("Failed to parse balance_after");
+
+        sqlx::query!(
+            r#"
+            INSERT INTO balance_changes
+            (account_id, token_id, block_height, block_timestamp, block_time, amount,
+             balance_before, balance_after, transaction_hashes, receipt_id,
+             counterparty, actions, raw_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            ON CONFLICT (account_id, block_height, token_id) DO NOTHING
+            "#,
+            account_id,
+            record.token_id,
+            record.block_height,
+            block_timestamp,
+            block_time,
+            amount,
+            balance_before,
+            balance_after,
+            &record.transaction_hashes as &[String],
+            &record.receipt_id as &[String],
+            record.counterparty,
+            serde_json::json!({}),
+            serde_json::json!({})
+        )
+        .execute(pool)
+        .await?;
+
+        count += 1;
+    }
+
+    Ok(count)
+}
 
 /// Test resolve_receipt_to_transaction with a known receipt
 ///
@@ -213,110 +318,37 @@ async fn test_backfill_transaction_hashes(pool: PgPool) -> sqlx::Result<()> {
     Ok(())
 }
 
-/// Test swap detection with manually inserted swap data
+/// Test intents swap detection via time-proximity using real fixture data
 ///
-/// This test simulates a swap scenario by inserting two balance changes for different
-/// tokens that share the same transaction hash, then verifies swap detection groups them.
+/// The fixture file contains a USDC → Base USDC swap across two different transactions:
+/// - Block 171108230: intents USDC, amount=-10 (DAO proposal callback, no tx hash)
+/// - Block 171108241: intents Base USDC, amount=+9.99998 (solver fulfillment, different tx hash)
+///
+/// These cannot be matched by tx-hash grouping. Time-proximity detection finds them
+/// because they are intents tokens within a 20-block window with opposite signs.
 #[sqlx::test]
-async fn test_detect_swap_from_shared_tx_hash(pool: PgPool) -> sqlx::Result<()> {
+async fn test_detect_intents_swap_from_fixture(pool: PgPool) -> sqlx::Result<()> {
     common::load_test_env();
 
     let account_id = TEST_ACCOUNT;
-    let tx_hash = "SwapTestTransaction123456789";
 
-    // Insert monitored account
-    sqlx::query!(
-        r#"
-        INSERT INTO monitored_accounts (account_id, enabled)
-        VALUES ($1, true)
-        ON CONFLICT (account_id) DO UPDATE SET enabled = true
-        "#,
-        account_id
-    )
-    .execute(&pool)
-    .await?;
-
-    // Clear existing balance changes
-    sqlx::query!(
-        "DELETE FROM balance_changes WHERE account_id = $1",
-        account_id
-    )
-    .execute(&pool)
-    .await?;
-
-    // Insert swap leg 1: USDC decreases (sent)
-    let usdc_token = "intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near";
-    sqlx::query!(
-        r#"
-        INSERT INTO balance_changes
-        (account_id, token_id, block_height, block_timestamp, block_time, amount,
-         balance_before, balance_after, transaction_hashes, receipt_id,
-         counterparty, actions, raw_data)
-        VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7, $8, $9, $10, $11, $12)
-        "#,
-        account_id,
-        usdc_token,
-        171108230i64,
-        1700000000000000000i64,
-        sqlx::types::BigDecimal::from(-100),
-        sqlx::types::BigDecimal::from(200),
-        sqlx::types::BigDecimal::from(100),
-        &vec![tx_hash.to_string()] as &[String],
-        &vec!["receipt_usdc_leg".to_string()] as &[String],
-        "solver.near",
-        serde_json::json!({}),
-        serde_json::json!({})
-    )
-    .execute(&pool)
-    .await?;
-
-    // Insert swap leg 2: Base USDC increases (received)
-    let base_usdc_token =
-        "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near";
-    sqlx::query!(
-        r#"
-        INSERT INTO balance_changes
-        (account_id, token_id, block_height, block_timestamp, block_time, amount,
-         balance_before, balance_after, transaction_hashes, receipt_id,
-         counterparty, actions, raw_data)
-        VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7, $8, $9, $10, $11, $12)
-        "#,
-        account_id,
-        base_usdc_token,
-        171108241i64,
-        1700000001000000000i64,
-        sqlx::types::BigDecimal::from(99),
-        sqlx::types::BigDecimal::from(0),
-        sqlx::types::BigDecimal::from(99),
-        &vec![tx_hash.to_string()] as &[String],
-        &vec!["receipt_base_usdc_leg".to_string()] as &[String],
-        "solver.near",
-        serde_json::json!({}),
-        serde_json::json!({})
-    )
-    .execute(&pool)
-    .await?;
-
-    println!("\n=== Swap Detection Test ===");
-    println!("Account: {}", account_id);
+    // Load real balance change data from fixture
+    let loaded = load_fixture_data(&pool, account_id).await?;
     println!(
-        "Inserted 2 balance changes with shared tx_hash: {}",
-        tx_hash
-    );
-    println!("  Leg 1: {} at block 171108230 (amount: -100)", usdc_token);
-    println!(
-        "  Leg 2: {} at block 171108241 (amount: +99)",
-        base_usdc_token
+        "\n=== Intents Swap Detection Test (from fixture) ===\nLoaded {} records from fixture",
+        loaded
     );
 
-    // Detect swaps
+    assert!(loaded > 0, "Should have loaded fixture records");
+
+    // Detect swaps around the known intents swap (blocks 171108200 - 171108300)
     let swaps = detect_swaps_in_range(&pool, account_id, 171108200, 171108300)
         .await
         .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
-    println!("\nDetected {} swap(s)", swaps.len());
+    println!("Detected {} swap(s)", swaps.len());
     for swap in &swaps {
-        println!("  Swap tx: {}", swap.transaction_hash);
+        println!("  Swap type: {}", swap.transaction_hash);
         for leg in &swap.legs {
             println!(
                 "    {} at block {}: amount={}",
@@ -325,37 +357,54 @@ async fn test_detect_swap_from_shared_tx_hash(pool: PgPool) -> sqlx::Result<()> 
         }
     }
 
-    // Assertions
+    // Should detect the intents proximity swap
     assert_eq!(swaps.len(), 1, "Should detect exactly 1 swap");
 
     let swap = &swaps[0];
-    assert_eq!(swap.transaction_hash, tx_hash, "Swap tx hash should match");
-    assert_eq!(swap.account_id, account_id, "Swap account should match");
+    assert_eq!(
+        swap.transaction_hash, "intents-proximity",
+        "Should be detected via time-proximity, not tx-hash grouping"
+    );
     assert_eq!(swap.legs.len(), 2, "Swap should have 2 legs");
 
-    // Verify tokens
+    // Verify the legs
     let leg_tokens: Vec<&str> = swap.legs.iter().map(|l| l.token_id.as_str()).collect();
     assert!(
-        leg_tokens.contains(&usdc_token),
-        "Swap should include USDC leg"
+        leg_tokens.iter().any(|t| t.contains("17208628f84f5d6ad")),
+        "Swap should include the USDC (intents) leg"
     );
     assert!(
-        leg_tokens.contains(&base_usdc_token),
-        "Swap should include Base USDC leg"
+        leg_tokens.iter().any(|t| t.contains("base-0x833589fcd6edb6e")),
+        "Swap should include the Base USDC (intents) leg"
     );
 
-    // Verify the legs have different blocks (swap legs can occur at different blocks)
+    // Verify block heights
     let leg_blocks: Vec<i64> = swap.legs.iter().map(|l| l.block_height).collect();
     assert!(
         leg_blocks.contains(&171108230),
-        "Should include block 171108230"
+        "Should include block 171108230 (USDC out)"
     );
     assert!(
         leg_blocks.contains(&171108241),
-        "Should include block 171108241"
+        "Should include block 171108241 (Base USDC in)"
     );
 
-    println!("\n✓ Swap detection test passed!");
+    // Verify receipt IDs from the fixture
+    let all_receipts: Vec<&str> = swap
+        .legs
+        .iter()
+        .flat_map(|l| l.receipt_ids.iter().map(|r| r.as_str()))
+        .collect();
+    assert!(
+        all_receipts.contains(&"6bqKjx8UVTzJZ5WgrQVikL4jZ23CRTgqJjFCLVSCdtBU"),
+        "Should include the USDC out receipt"
+    );
+    assert!(
+        all_receipts.contains(&"8k8oSLc2fzQUgnrefNGkmX9Nrwmg4szzuTBg5xm7QtfD"),
+        "Should include the Base USDC in receipt"
+    );
+
+    println!("\n✓ Intents swap detection test passed!");
 
     Ok(())
 }

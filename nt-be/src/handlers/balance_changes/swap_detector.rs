@@ -1,34 +1,44 @@
 //! Swap Detection
 //!
-//! Detects token swaps by grouping balance changes that trace back to the same
-//! originating transaction. When an account's balance changes in multiple tokens
-//! as part of a single transaction (e.g., USDC decreases and wNEAR increases),
-//! this constitutes a swap rather than independent payments.
+//! Detects token swaps using two complementary strategies:
 //!
-//! # How it works
+//! ## Strategy 1: Transaction hash grouping
+//! Groups balance changes that share the same originating transaction hash.
+//! When multiple tokens change as part of a single transaction, it's a swap.
 //!
-//! 1. Query balance changes that have receipt_ids but missing transaction_hashes
-//! 2. Resolve each receipt to its originating transaction using `resolve_receipt_to_transaction`
-//! 3. Group balance changes by their originating transaction hash
-//! 4. Groups with multiple different tokens form a swap
+//! ## Strategy 2: Time-proximity for NEAR Intents
+//! For intents tokens (token_id starts with "intents.near:"), swaps may span
+//! multiple transactions (e.g., DAO proposal triggers send, solver fulfills receive).
+//! These are matched by finding intents balance changes within a configurable
+//! block window where one token decreases and another increases.
 //!
 //! # Data Model
 //!
 //! Balance changes already store `receipt_id` and `transaction_hashes` as TEXT[] arrays.
 //! Swaps are detected by finding balance changes with different tokens that share the
-//! same originating transaction hash.
+//! same originating transaction hash, or by time-proximity for intents tokens.
 
 use near_api::NetworkConfig;
+use sqlx::types::BigDecimal;
 use sqlx::PgPool;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
+use std::str::FromStr;
 
 use super::transfer_hints::tx_resolver;
+
+/// Default block window for intents time-proximity matching.
+/// NEAR produces ~1 block/second, so 20 blocks ≈ 20 seconds.
+const DEFAULT_INTENTS_BLOCK_WINDOW: i64 = 20;
+
+/// Token ID prefix for NEAR Intents tokens
+const INTENTS_PREFIX: &str = "intents.near:";
 
 /// A detected swap: multiple token balance changes from the same transaction
 #[derive(Debug, Clone)]
 pub struct DetectedSwap {
-    /// The originating transaction hash that caused all legs of the swap
+    /// The originating transaction hash that caused all legs of the swap.
+    /// For intents time-proximity swaps, this is set to "intents-proximity".
     pub transaction_hash: String,
     /// The account that performed the swap
     pub account_id: String,
@@ -176,11 +186,11 @@ pub async fn backfill_transaction_hashes(
     Ok(updated_count)
 }
 
-/// Detect swaps for an account by grouping balance changes that share the same transaction hash
+/// Detect swaps for an account using both tx-hash grouping and intents time-proximity
 ///
 /// A swap is identified when:
-/// 1. Two or more balance changes for different tokens share the same originating transaction
-/// 2. The changes have opposite signs (one token goes up, another goes down)
+/// 1. Two or more balance changes for different tokens share the same originating transaction, OR
+/// 2. Two intents token balance changes occur within a block window with opposite signs
 ///
 /// # Arguments
 /// * `pool` - Database connection pool
@@ -192,7 +202,7 @@ pub async fn detect_swaps(
     pool: &PgPool,
     account_id: &str,
 ) -> Result<Vec<DetectedSwap>, Box<dyn Error + Send + Sync>> {
-    // Query balance changes that have transaction hashes
+    // Query all balance changes (both with and without tx hashes) for swap detection
     let records = sqlx::query_as!(
         BalanceChangeRecord,
         r#"
@@ -200,7 +210,6 @@ pub async fn detect_swaps(
                amount, transaction_hashes, receipt_id as "receipt_ids"
         FROM balance_changes
         WHERE account_id = $1
-          AND array_length(transaction_hashes, 1) > 0
           AND counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT')
         ORDER BY block_height ASC
         "#,
@@ -209,10 +218,10 @@ pub async fn detect_swaps(
     .fetch_all(pool)
     .await?;
 
-    let swaps = group_into_swaps(&records, account_id);
+    let swaps = detect_all_swaps(&records, account_id, DEFAULT_INTENTS_BLOCK_WINDOW);
 
     log::info!(
-        "Detected {} swaps for {} (from {} balance changes with tx hashes)",
+        "Detected {} swaps for {} (from {} balance changes)",
         swaps.len(),
         account_id,
         records.len()
@@ -249,7 +258,6 @@ pub async fn detect_swaps_in_range(
         WHERE account_id = $1
           AND block_height >= $2
           AND block_height <= $3
-          AND array_length(transaction_hashes, 1) > 0
           AND counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT')
         ORDER BY block_height ASC
         "#,
@@ -260,12 +268,48 @@ pub async fn detect_swaps_in_range(
     .fetch_all(pool)
     .await?;
 
-    Ok(group_into_swaps(&records, account_id))
+    Ok(detect_all_swaps(&records, account_id, DEFAULT_INTENTS_BLOCK_WINDOW))
 }
 
-/// Group balance change records into swaps based on shared transaction hashes
-fn group_into_swaps(records: &[BalanceChangeRecord], account_id: &str) -> Vec<DetectedSwap> {
-    // Group by transaction hash
+/// Detect swaps using both tx-hash grouping and intents time-proximity
+fn detect_all_swaps(
+    records: &[BalanceChangeRecord],
+    account_id: &str,
+    block_window: i64,
+) -> Vec<DetectedSwap> {
+    let mut swaps = Vec::new();
+    // Track record IDs already matched to avoid duplicates across strategies
+    let mut matched_ids: HashSet<i64> = HashSet::new();
+
+    // Strategy 1: Group by transaction hash (existing approach)
+    let tx_swaps = group_by_tx_hash(records, account_id);
+    for swap in tx_swaps {
+        for leg in &swap.legs {
+            // Find matching record IDs for this leg
+            for r in records {
+                if r.token_id_str() == leg.token_id
+                    && r.block_height == leg.block_height
+                    && r.receipt_ids == leg.receipt_ids
+                {
+                    matched_ids.insert(r.id);
+                }
+            }
+        }
+        swaps.push(swap);
+    }
+
+    // Strategy 2: Time-proximity for intents tokens
+    let intents_swaps = group_intents_by_proximity(records, account_id, block_window, &matched_ids);
+    swaps.extend(intents_swaps);
+
+    // Sort by earliest block height in each swap
+    swaps.sort_by_key(|s| s.legs.iter().map(|l| l.block_height).min().unwrap_or(0));
+
+    swaps
+}
+
+/// Strategy 1: Group balance change records into swaps based on shared transaction hashes
+fn group_by_tx_hash(records: &[BalanceChangeRecord], account_id: &str) -> Vec<DetectedSwap> {
     let mut tx_groups: HashMap<String, Vec<&BalanceChangeRecord>> = HashMap::new();
     for record in records {
         for tx_hash in &record.transaction_hashes {
@@ -276,11 +320,9 @@ fn group_into_swaps(records: &[BalanceChangeRecord], account_id: &str) -> Vec<De
         }
     }
 
-    // Find groups with multiple different tokens (these are swaps)
     let mut swaps = Vec::new();
 
     for (tx_hash, group) in &tx_groups {
-        // Collect unique tokens in this group
         let unique_tokens: Vec<&str> = {
             let mut tokens: Vec<&str> = group.iter().map(|r| r.token_id_str()).collect();
             tokens.sort();
@@ -288,7 +330,6 @@ fn group_into_swaps(records: &[BalanceChangeRecord], account_id: &str) -> Vec<De
             tokens
         };
 
-        // A swap requires at least 2 different tokens
         if unique_tokens.len() < 2 {
             continue;
         }
@@ -310,8 +351,88 @@ fn group_into_swaps(records: &[BalanceChangeRecord], account_id: &str) -> Vec<De
         });
     }
 
-    // Sort by earliest block height in each swap
-    swaps.sort_by_key(|s| s.legs.iter().map(|l| l.block_height).min().unwrap_or(0));
+    swaps
+}
+
+/// Strategy 2: Match intents token balance changes by time-proximity
+///
+/// For NEAR Intents swaps, the send and receive legs are separate transactions
+/// (e.g., DAO proposal callback sends tokens, solver fulfills with a different tx).
+/// We detect these by finding intents token balance changes within `block_window`
+/// blocks where one token decreases and another increases.
+fn group_intents_by_proximity(
+    records: &[BalanceChangeRecord],
+    account_id: &str,
+    block_window: i64,
+    already_matched: &HashSet<i64>,
+) -> Vec<DetectedSwap> {
+    let zero = BigDecimal::from_str("0").unwrap();
+
+    // Filter to unmatched intents records only
+    let intents_records: Vec<&BalanceChangeRecord> = records
+        .iter()
+        .filter(|r| {
+            !already_matched.contains(&r.id)
+                && r.token_id_str().starts_with(INTENTS_PREFIX)
+        })
+        .collect();
+
+    if intents_records.len() < 2 {
+        return Vec::new();
+    }
+
+    let mut swaps = Vec::new();
+    let mut used: HashSet<i64> = HashSet::new();
+
+    // For each negative (outgoing) intents change, find a matching positive (incoming)
+    // intents change for a different token within the block window
+    for (i, send) in intents_records.iter().enumerate() {
+        if used.contains(&send.id) || send.amount >= zero {
+            continue;
+        }
+
+        for receive in &intents_records[i + 1..] {
+            if used.contains(&receive.id) || receive.amount <= zero {
+                continue;
+            }
+
+            // Must be different tokens
+            if send.token_id_str() == receive.token_id_str() {
+                continue;
+            }
+
+            // Must be within block window
+            let block_diff = (receive.block_height - send.block_height).abs();
+            if block_diff > block_window {
+                continue;
+            }
+
+            // Found a match
+            used.insert(send.id);
+            used.insert(receive.id);
+
+            swaps.push(DetectedSwap {
+                transaction_hash: "intents-proximity".to_string(),
+                account_id: account_id.to_string(),
+                legs: vec![
+                    SwapLeg {
+                        token_id: send.token_id_str().to_string(),
+                        block_height: send.block_height,
+                        amount: send.amount.clone(),
+                        receipt_ids: send.receipt_ids.clone(),
+                    },
+                    SwapLeg {
+                        token_id: receive.token_id_str().to_string(),
+                        block_height: receive.block_height,
+                        amount: receive.amount.clone(),
+                        receipt_ids: receive.receipt_ids.clone(),
+                    },
+                ],
+            });
+
+            break; // Move to next send leg
+        }
+    }
 
     swaps
 }
@@ -332,7 +453,7 @@ mod tests {
             receipt_ids: vec!["r1".to_string()],
         }];
 
-        let swaps = group_into_swaps(&records, "test.near");
+        let swaps = detect_all_swaps(&records, "test.near", DEFAULT_INTENTS_BLOCK_WINDOW);
         assert!(swaps.is_empty(), "Single-token group should not be a swap");
     }
 
@@ -359,7 +480,7 @@ mod tests {
             },
         ];
 
-        let swaps = group_into_swaps(&records, "test.near");
+        let swaps = detect_all_swaps(&records, "test.near", DEFAULT_INTENTS_BLOCK_WINDOW);
         assert_eq!(swaps.len(), 1, "Two tokens with same tx_hash should form one swap");
 
         let swap = &swaps[0];
@@ -396,7 +517,7 @@ mod tests {
             },
         ];
 
-        let swaps = group_into_swaps(&records, "test.near");
+        let swaps = detect_all_swaps(&records, "test.near", DEFAULT_INTENTS_BLOCK_WINDOW);
         assert!(
             swaps.is_empty(),
             "Same token with same tx_hash should not be a swap"
@@ -436,8 +557,148 @@ mod tests {
             },
         ];
 
-        let swaps = group_into_swaps(&records, "test.near");
+        let swaps = detect_all_swaps(&records, "test.near", DEFAULT_INTENTS_BLOCK_WINDOW);
         assert_eq!(swaps.len(), 1, "Should detect one complex swap");
         assert_eq!(swaps[0].legs.len(), 3, "Swap should have 3 legs");
+    }
+
+    #[test]
+    fn test_intents_proximity_swap_detection() {
+        // Simulate the real-world NEAR Intents swap: USDC out at block 171108230,
+        // Base USDC in at block 171108241 (11 blocks apart, different tx hashes)
+        let records = vec![
+            BalanceChangeRecord {
+                id: 1,
+                account_id: "test.near".to_string(),
+                token_id: Some(
+                    "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+                        .to_string(),
+                ),
+                block_height: 171108230,
+                amount: sqlx::types::BigDecimal::from(-10),
+                transaction_hashes: vec![], // No tx hash (DAO callback)
+                receipt_ids: vec!["6bqKjx8UVTzJZ5WgrQVikL4jZ23CRTgqJjFCLVSCdtBU".to_string()],
+            },
+            BalanceChangeRecord {
+                id: 2,
+                account_id: "test.near".to_string(),
+                token_id: Some(
+                    "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near"
+                        .to_string(),
+                ),
+                block_height: 171108241,
+                amount: sqlx::types::BigDecimal::try_from(9.99998).unwrap(),
+                transaction_hashes: vec!["6LLejN4izEV5qu8xYHZPGbzY6i5yQCGSscPzNyiezt6r".to_string()],
+                receipt_ids: vec!["8k8oSLc2fzQUgnrefNGkmX9Nrwmg4szzuTBg5xm7QtfD".to_string()],
+            },
+        ];
+
+        let swaps = detect_all_swaps(&records, "test.near", 20);
+        assert_eq!(swaps.len(), 1, "Should detect intents proximity swap");
+        assert_eq!(swaps[0].transaction_hash, "intents-proximity");
+        assert_eq!(swaps[0].legs.len(), 2, "Swap should have 2 legs");
+
+        let leg_tokens: Vec<&str> = swaps[0].legs.iter().map(|l| l.token_id.as_str()).collect();
+        assert!(
+            leg_tokens.iter().any(|t| t.contains("17208628f84f5d6ad")),
+            "Should contain USDC leg"
+        );
+        assert!(
+            leg_tokens.iter().any(|t| t.contains("base-0x833589fcd6edb6e")),
+            "Should contain Base USDC leg"
+        );
+    }
+
+    #[test]
+    fn test_intents_proximity_outside_window_not_detected() {
+        // Two intents changes 50 blocks apart should NOT match with a 20-block window
+        let records = vec![
+            BalanceChangeRecord {
+                id: 1,
+                account_id: "test.near".to_string(),
+                token_id: Some("intents.near:nep141:token_a".to_string()),
+                block_height: 100,
+                amount: sqlx::types::BigDecimal::from(-5),
+                transaction_hashes: vec![],
+                receipt_ids: vec!["r1".to_string()],
+            },
+            BalanceChangeRecord {
+                id: 2,
+                account_id: "test.near".to_string(),
+                token_id: Some("intents.near:nep141:token_b".to_string()),
+                block_height: 150,
+                amount: sqlx::types::BigDecimal::from(5),
+                transaction_hashes: vec![],
+                receipt_ids: vec!["r2".to_string()],
+            },
+        ];
+
+        let swaps = detect_all_swaps(&records, "test.near", 20);
+        assert!(
+            swaps.is_empty(),
+            "Intents changes outside block window should not be detected as swap"
+        );
+    }
+
+    #[test]
+    fn test_intents_same_direction_not_swap() {
+        // Two intents decreases within window should NOT be a swap
+        let records = vec![
+            BalanceChangeRecord {
+                id: 1,
+                account_id: "test.near".to_string(),
+                token_id: Some("intents.near:nep141:token_a".to_string()),
+                block_height: 100,
+                amount: sqlx::types::BigDecimal::from(-5),
+                transaction_hashes: vec![],
+                receipt_ids: vec!["r1".to_string()],
+            },
+            BalanceChangeRecord {
+                id: 2,
+                account_id: "test.near".to_string(),
+                token_id: Some("intents.near:nep141:token_b".to_string()),
+                block_height: 105,
+                amount: sqlx::types::BigDecimal::from(-3),
+                transaction_hashes: vec![],
+                receipt_ids: vec!["r2".to_string()],
+            },
+        ];
+
+        let swaps = detect_all_swaps(&records, "test.near", 20);
+        assert!(
+            swaps.is_empty(),
+            "Two decreases should not form a swap"
+        );
+    }
+
+    #[test]
+    fn test_non_intents_tokens_not_proximity_matched() {
+        // Regular tokens with different tx hashes should NOT be proximity-matched
+        let records = vec![
+            BalanceChangeRecord {
+                id: 1,
+                account_id: "test.near".to_string(),
+                token_id: Some("usdc.near".to_string()),
+                block_height: 100,
+                amount: sqlx::types::BigDecimal::from(-5),
+                transaction_hashes: vec!["tx1".to_string()],
+                receipt_ids: vec!["r1".to_string()],
+            },
+            BalanceChangeRecord {
+                id: 2,
+                account_id: "test.near".to_string(),
+                token_id: Some("wnear.near".to_string()),
+                block_height: 105,
+                amount: sqlx::types::BigDecimal::from(5),
+                transaction_hashes: vec!["tx2".to_string()],
+                receipt_ids: vec!["r2".to_string()],
+            },
+        ];
+
+        let swaps = detect_all_swaps(&records, "test.near", 20);
+        assert!(
+            swaps.is_empty(),
+            "Non-intents tokens with different tx hashes should not be matched"
+        );
     }
 }
