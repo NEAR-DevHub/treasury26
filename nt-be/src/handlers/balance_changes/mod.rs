@@ -7,6 +7,7 @@ pub mod gap_detector;
 pub mod gap_filler;
 pub mod history;
 pub mod staking_rewards;
+pub mod swap_detector;
 pub mod token_discovery;
 pub mod transfer_hints;
 pub mod utils;
