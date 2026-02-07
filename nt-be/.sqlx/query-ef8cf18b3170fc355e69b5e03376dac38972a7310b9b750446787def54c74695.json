@@ -1,0 +1,72 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, account_id, token_id, block_height, block_timestamp,\n               amount, transaction_hashes, receipt_id as \"receipt_ids\", counterparty\n        FROM balance_changes\n        WHERE account_id = $1\n          AND block_height >= $2\n          AND block_height <= $3\n          AND counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT')\n        ORDER BY block_height ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "token_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "block_height",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "block_timestamp",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "transaction_hashes",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 7,
+        "name": "receipt_ids",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 8,
+        "name": "counterparty",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ef8cf18b3170fc355e69b5e03376dac38972a7310b9b750446787def54c74695"
+}

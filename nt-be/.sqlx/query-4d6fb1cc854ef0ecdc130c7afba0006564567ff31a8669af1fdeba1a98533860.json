@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, account_id, token_id, block_height, block_timestamp,\n               amount, transaction_hashes, receipt_id as \"receipt_ids\", counterparty\n        FROM balance_changes\n        WHERE account_id = $1\n          AND array_length(receipt_id, 1) > 0\n          AND (transaction_hashes = '{}' OR transaction_hashes IS NULL)\n        ORDER BY block_height ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "token_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "block_height",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "block_timestamp",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "transaction_hashes",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 7,
+        "name": "receipt_ids",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 8,
+        "name": "counterparty",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4d6fb1cc854ef0ecdc130c7afba0006564567ff31a8669af1fdeba1a98533860"
+}

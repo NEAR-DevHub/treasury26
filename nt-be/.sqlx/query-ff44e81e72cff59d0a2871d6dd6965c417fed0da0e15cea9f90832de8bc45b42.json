@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE balance_changes\n                    SET transaction_hashes = array_append(transaction_hashes, $1)\n                    WHERE id = $2\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ff44e81e72cff59d0a2871d6dd6965c417fed0da0e15cea9f90832de8bc45b42"
+}
