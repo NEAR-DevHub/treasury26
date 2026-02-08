@@ -23,9 +23,9 @@ CREATE TABLE detected_swaps (
 
     -- Token amounts
     sent_token_id VARCHAR(256),
-    sent_amount NUMERIC(78, 0),
+    sent_amount NUMERIC(78, 18),
     received_token_id VARCHAR(256) NOT NULL,
-    received_amount NUMERIC(78, 0) NOT NULL,
+    received_amount NUMERIC(78, 18) NOT NULL,
 
     -- Block info
     block_height BIGINT NOT NULL,

@@ -92,9 +92,16 @@ async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
     println!("\n=== Running Monitor Cycle ===");
     let start = Instant::now();
 
-    run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        Some(&hint_service),
+        None,
+        "https://explorer.near-intents.org/api/v0",
+    )
+    .await
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
@@ -243,9 +250,16 @@ async fn test_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     println!("\n=== Running Monitor Cycle ===");
     let start = Instant::now();
 
-    run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        Some(&hint_service),
+        None,
+        "https://explorer.near-intents.org/api/v0",
+    )
+    .await
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
@@ -412,9 +426,16 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     println!("\n=== Running Monitor Cycle ===");
     let start = Instant::now();
 
-    run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        Some(&hint_service),
+        None,
+        "https://explorer.near-intents.org/api/v0",
+    )
+    .await
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
@@ -548,9 +569,16 @@ async fn test_shitzu_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
     println!("\n=== Running Monitor Cycle ===");
     let start = Instant::now();
 
-    run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        Some(&hint_service),
+        None,
+        "https://explorer.near-intents.org/api/v0",
+    )
+    .await
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);

@@ -236,9 +236,7 @@ pub async fn resolve_receipt_to_transaction(
 
     // Extract signer_id from the receipt's action data
     let signer_id = match &receipt_response.receipt {
-        near_primitives::views::ReceiptEnumView::Action { signer_id, .. } => {
-            signer_id.to_string()
-        }
+        near_primitives::views::ReceiptEnumView::Action { signer_id, .. } => signer_id.to_string(),
         _ => {
             return Err(format!(
                 "Receipt {} is not an action receipt - cannot resolve to transaction",
@@ -320,8 +318,13 @@ pub async fn resolve_receipt_to_transaction(
         // The receipt may have been created by a cross-contract call
         for tx_view in &chunk_response.transactions {
             let tx_hash_str = tx_view.hash.to_string();
-            if has_receipt(&client, &tx_hash_str, &tx_view.signer_id.to_string(), receipt_id)
-                .await?
+            if has_receipt(
+                &client,
+                &tx_hash_str,
+                &tx_view.signer_id.to_string(),
+                receipt_id,
+            )
+            .await?
             {
                 return Ok(ReceiptTransaction {
                     receipt_id: receipt_id.to_string(),
