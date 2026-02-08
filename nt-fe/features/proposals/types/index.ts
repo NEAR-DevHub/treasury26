@@ -157,11 +157,14 @@ export interface SwapRequestData {
     intentsTokenContractId?: string;
     quoteSignature?: string;
     depositAddress?: string;
-    tokenIn: string;
+    tokenIn: string; // Token ID extracted from actions (e.g., "wrap.near")
+    tokenInSymbol?: string; // Token symbol from description (e.g., "NEAR")
+    tokenInAddress?: string; // Token address from description (e.g., "near" or "nep141:...")
     sourceNetwork: string;
     destinationNetwork: string;
     amountIn: string;
-    tokenOut: string;
+    tokenOut: string; // Token symbol from description (e.g., "USDT")
+    tokenOutAddress?: string; // Token address from description
     amountOut: string;
     slippage?: string;
     quoteDeadline?: string;

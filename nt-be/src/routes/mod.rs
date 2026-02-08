@@ -221,6 +221,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/intents/quote",
             post(handlers::intents::quote::get_quote),
         )
+        .route(
+            "/api/intents/swap-status",
+            get(handlers::intents::swap_status::get_swap_status),
+        )
         // Proxy endpoints - catch-all for external API
         .route(
             "/api/proxy/{*path}",

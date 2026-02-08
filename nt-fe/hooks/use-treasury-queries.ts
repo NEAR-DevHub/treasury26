@@ -236,13 +236,13 @@ export function useCheckAccountExists(accountId: string | null | undefined) {
  * @param params.destinationNetwork - Chain ID to match for tokenOut network (e.g., "near", "eth")
  * @returns Object with tokenIn and tokenOut metadata including defuse asset IDs and network info
  */
-export function useSearchIntentsTokens(params: SearchTokensParams) {
+export function useSearchIntentsTokens(params: SearchTokensParams, enabled: boolean = true) {
     const hasParams = !!(params.tokenIn || params.tokenOut);
 
     return useQuery({
         queryKey: ["searchIntentsTokens", params],
         queryFn: () => searchIntentsTokens(params),
-        enabled: hasParams,
+        enabled: enabled && hasParams,
         staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
     });
 }

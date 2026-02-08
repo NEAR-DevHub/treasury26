@@ -268,10 +268,10 @@ export function extractVestingData(proposal: Proposal): VestingData {
     const vestingScheduleRaw = args.vesting_schedule?.VestingSchedule;
     const vestingSchedule: VestingSchedule | null = vestingScheduleRaw
         ? {
-              start_timestamp: vestingScheduleRaw.start_timestamp,
-              end_timestamp: vestingScheduleRaw.end_timestamp,
-              cliff_timestamp: vestingScheduleRaw.cliff_timestamp,
-          }
+            start_timestamp: vestingScheduleRaw.start_timestamp,
+            end_timestamp: vestingScheduleRaw.end_timestamp,
+            cliff_timestamp: vestingScheduleRaw.cliff_timestamp,
+        }
         : null;
 
     const whitelistAccountId = args.whitelist_account_id || "";
@@ -303,12 +303,17 @@ export function extractExchangeRequestData(
     }
 
     const functionCall = proposal.kind.FunctionCall;
+
+    // For NEAR exchanges, we need to find the ft_transfer_call action (second action)
+    // not the near_deposit action (first action)
+    // Filter out near_deposit actions and find the actual transfer
     const action = functionCall.actions.find(
         (a) =>
-            a.method_name === "mt_transfer" ||
-            a.method_name === "mt_transfer_call" ||
-            a.method_name === "ft_transfer" ||
-            a.method_name === "ft_transfer_call",
+            a.method_name !== "near_deposit" &&
+            (a.method_name === "mt_transfer" ||
+                a.method_name === "mt_transfer_call" ||
+                a.method_name === "ft_transfer" ||
+                a.method_name === "ft_transfer_call")
     );
 
     if (!action) {
@@ -321,12 +326,14 @@ export function extractExchangeRequestData(
     }
 
     // Extract from description
+    const tokenInSymbol = decodeProposalDescription("tokenIn", proposal.description) || "";
+    const tokenInAddress = decodeProposalDescription("tokenInAddress", proposal.description) || "";
+    const tokenOutSymbol = decodeProposalDescription("tokenOut", proposal.description) || "";
+    const tokenOutAddress = decodeProposalDescription("tokenOutAddress", proposal.description) || "";
     const amountIn =
         args.amount ||
         decodeProposalDescription("amountIn", proposal.description) ||
         "0";
-    const tokenOut =
-        decodeProposalDescription("tokenOut", proposal.description) || "";
     const amountOut =
         decodeProposalDescription("amountOut", proposal.description) || "0";
     const slippage = decodeProposalDescription(
@@ -337,7 +344,7 @@ export function extractExchangeRequestData(
         "destinationNetwork",
         proposal.description,
     );
-    const depositAddress = args.receiver_id || "";
+
     const intentsTokenContractId = args.token_id?.startsWith("nep141:")
         ? args.token_id.replace("nep141:", "")
         : args.token_id;
@@ -354,15 +361,52 @@ export function extractExchangeRequestData(
         proposal.description,
     );
 
+    // Determine tokenIn and depositAddress based on proposal structure:
+    // 1. Native NEAR: ft_transfer_call with msg.token_id = "wrap.near", depositAddress in msg.receiver_id
+    // 2. FT tokens on NEAR: ft_transfer_call to intents.near, tokenIn = receiver_id (FT contract), depositAddress in msg.receiver_id
+    // 3. Intents tokens: mt_transfer with args.token_id, depositAddress in args.receiver_id
+    let tokenIn: string;
+    let depositAddress: string;
+
+    if (action.method_name === "mt_transfer" || action.method_name === "mt_transfer_call") {
+        // Intents tokens: token_id and depositAddress are in args directly
+        tokenIn = args.token_id || "";
+        depositAddress = args.receiver_id || "";
+    } else if (args.msg) {
+        // ft_transfer_call: parse msg for deposit address and optionally token_id
+        try {
+            const msgData = typeof args.msg === 'string' ? JSON.parse(args.msg) : args.msg;
+            depositAddress = msgData.receiver_id || "";
+
+            if (msgData.token_id) {
+                // Native NEAR: token_id is in msg (wrap.near)
+                tokenIn = msgData.token_id;
+            } else if (args.receiver_id === "intents.near") {
+                // FT tokens: tokenIn is the FT contract (functionCall.receiver_id)
+                tokenIn = functionCall.receiver_id;
+            } else {
+                tokenIn = "";
+            }
+        } catch {
+            // If parsing fails, use fallback values
+            depositAddress = args.receiver_id || "";
+            tokenIn = "";
+        }
+    } else {
+        // Fallback
+        depositAddress = args.receiver_id || "";
+        tokenIn = "";
+    }
+
     return {
         source: "exchange",
-        tokenIn:
-            args.receiver_id === "v2.ref-finance.near"
-                ? functionCall.receiver_id
-                : args.token_id || "",
+        tokenIn,
+        tokenInSymbol, // For display fallback
+        tokenInAddress, // For useToken hook
+        tokenOut: tokenOutSymbol, // For display fallback
+        tokenOutAddress, // For useToken hook
         intentsTokenContractId,
         amountIn,
-        tokenOut,
         amountOut,
         destinationNetwork,
         sourceNetwork: "near", // As from mt_transfer_call
@@ -635,7 +679,22 @@ export function extractProposalData(proposal: Proposal): {
         case "Exchange":
             if ("FunctionCall" in proposal.kind) {
                 const functionCall = proposal.kind.FunctionCall;
+
+                // Check if this is a transfer to intents.near (exchange)
+                const hasIntentsTransfer = functionCall.actions.some(
+                    (action) => {
+                        if (action.method_name === "ft_transfer_call" || action.method_name === "mt_transfer_call") {
+                            const args = decodeArgs(action.args);
+                            return args?.receiver_id === "intents.near";
+                        }
+                        return false;
+                    }
+                );
+
+                // If it has intents transfer, it's an exchange regardless of wrap.near
+                // Otherwise, check if it's a simple wrap/unwrap
                 if (
+                    !hasIntentsTransfer &&
                     functionCall.receiver_id === "wrap.near" &&
                     functionCall.actions.some(
                         (action) =>

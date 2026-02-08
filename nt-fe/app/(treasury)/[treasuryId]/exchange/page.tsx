@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
+import { useThemeStore } from "@/stores/theme-store";
 import { cn, formatBalance } from "@/lib/utils";
 import { NEAR_TOKEN } from "@/constants/token";
 import { CreateRequestButton } from "@/components/create-request-button";
@@ -70,6 +71,7 @@ function Step1({ handleNext }: StepProps) {
         ExchangeFormValues & { slippageTolerance?: number }
     >();
     const { treasuryId: selectedTreasury } = useTreasury();
+    const { theme } = useThemeStore();
     const sellToken = form.watch("sellToken");
     const receiveToken = form.watch("receiveToken");
     const sellAmount = form.watch("sellAmount");
@@ -243,15 +245,15 @@ function Step1({ handleNext }: StepProps) {
                     className={cn(
                         "w-full h-10 rounded-none font-medium",
                         (areSameTokens || !hasValidAmount || !quoteData) &&
-                            "bg-muted text-muted-foreground hover:bg-muted",
+                        "bg-muted text-muted-foreground hover:bg-muted",
                     )}
                     disabled={areSameTokens || !hasValidAmount || !quoteData}
                 >
                     {areSameTokens
                         ? "Tokens must be different"
                         : !hasValidAmount
-                          ? "Enter an amount to exchange "
-                          : "Review Exchange"}
+                            ? "Enter an amount to exchange "
+                            : "Review Exchange"}
                 </Button>
             </div>
 
@@ -259,7 +261,7 @@ function Step1({ handleNext }: StepProps) {
                 <span>Powered by</span>
                 <span className="font-semibold flex items-center gap-1">
                     <img
-                        src="/near-intents.svg"
+                        src={theme === "dark" ? "/near-intents-dark.svg" : "/near-intents-light.svg"}
                         alt="NEAR Intents"
                         className="h-3"
                     />
@@ -321,15 +323,15 @@ function Step2({ handleBack }: StepProps) {
 
     const marketPriceDifference = localLiveQuoteData
         ? calculateMarketPriceDifference(
-              localLiveQuoteData.quote.amountInUsd,
-              localLiveQuoteData.quote.amountOutUsd,
-              localLiveQuoteData.quote.amountIn,
-              localLiveQuoteData.quote.amountOut,
-              sellToken.decimals,
-              receiveToken.decimals,
-              sellTokenData?.price,
-              receiveTokenData?.price,
-          )
+            localLiveQuoteData.quote.amountInUsd,
+            localLiveQuoteData.quote.amountOutUsd,
+            localLiveQuoteData.quote.amountIn,
+            localLiveQuoteData.quote.amountOut,
+            sellToken.decimals,
+            receiveToken.decimals,
+            sellTokenData?.price,
+            receiveTokenData?.price,
+        )
         : null;
 
     return (
@@ -417,24 +419,24 @@ function Step2({ handleBack }: StepProps) {
                                 size="sm"
                                 items={[
                                     ...(marketPriceDifference &&
-                                    marketPriceDifference.hasMarketData
+                                        marketPriceDifference.hasMarketData
                                         ? [
-                                              {
-                                                  label: "Price Difference",
-                                                  value: (
-                                                      <span className="font-medium">
-                                                          {marketPriceDifference.isFavorable
-                                                              ? "+"
-                                                              : ""}
-                                                          {
-                                                              marketPriceDifference.percentDifference
-                                                          }
-                                                          %
-                                                      </span>
-                                                  ),
-                                                  info: "Difference between the quote rate and the current market rate. Positive values indicate a better rate than market.",
-                                              },
-                                          ]
+                                            {
+                                                label: "Price Difference",
+                                                value: (
+                                                    <span className="font-medium">
+                                                        {marketPriceDifference.isFavorable
+                                                            ? "+"
+                                                            : ""}
+                                                        {
+                                                            marketPriceDifference.percentDifference
+                                                        }
+                                                        %
+                                                    </span>
+                                                ),
+                                                info: "Difference between the quote rate and the current market rate. Positive values indicate a better rate than market.",
+                                            },
+                                        ]
                                         : []),
                                     {
                                         label: "Estimated Time",

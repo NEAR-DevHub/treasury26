@@ -7,17 +7,21 @@ import Big from "big.js";
 export function formatAssetForIntentsAPI(
   tokenAddress: string
 ): string {
-  return tokenAddress === "near" ? "wrap.near" : tokenAddress;
+  return tokenAddress.startsWith("nep") ? tokenAddress : tokenAddress === 'near' ? 'nep141:wrap.near' : `nep141:${tokenAddress}`;
 }
 
 /**
  * Determines deposit and refund type based on the origin asset's network
  * Returns the same value for both deposit and refund
- * - If network === "near": Token is on NEAR chain → ORIGIN_CHAIN
- * - Otherwise: Token is on intents → INTENTS
+ * - If residency === "Intents": Token is on Intents → INTENTS
+ * - Otherwise: Token is on NEAR: FT or Native NEAR → ORIGIN_CHAIN
  */
-export function getDepositAndRefundType(network: string): "INTENTS" | "ORIGIN_CHAIN" {
-  return network === "near" ? "ORIGIN_CHAIN" : "INTENTS";
+export function getDepositAndRefundType(residency: string): "INTENTS" | "ORIGIN_CHAIN" {
+  return residency === "Intents" ? "INTENTS" : "ORIGIN_CHAIN";
+}
+
+export function getRecipientType(residency: string): "INTENTS" | "DESTINATION_CHAIN" {
+  return residency === "Intents" ? "INTENTS" : "DESTINATION_CHAIN";
 }
 
 /**
@@ -97,7 +101,7 @@ export function calculateMarketPriceDifference(
  */
 export function getUserFriendlyErrorMessage(errorMessage: string): string {
   const lowerError = errorMessage.toLowerCase();
-  
+
   if (
     lowerError.includes("no route") ||
     lowerError.includes("no swap") ||
@@ -119,7 +123,7 @@ export function getUserFriendlyErrorMessage(errorMessage: string): string {
   ) {
     return "Network error. Please check your connection and try again.";
   }
-  
+
   return errorMessage;
 }
 

@@ -895,6 +895,7 @@ impl ProposalFilters {
                     submission_time,
                     policy.proposal_period.0,
                     "InProgress",
+                    Some(&proposal),
                 );
                 if !statuses.contains(computed_status.as_str()) {
                     continue;
