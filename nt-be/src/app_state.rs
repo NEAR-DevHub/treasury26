@@ -666,10 +666,25 @@ mod tests {
 
         println!("\n=== First call - should perform binary search and cache result ===");
         let start = std::time::Instant::now();
-        let result1 = app_state
-            .find_block_height(target_date)
-            .await
-            .expect("Should find block via binary search");
+        // Retry on transient RPC errors (binary search makes multiple RPC calls)
+        let mut result1 = None;
+        for attempt in 0..3 {
+            match app_state.find_block_height(target_date).await {
+                Ok(block) => {
+                    result1 = Some(block);
+                    break;
+                }
+                Err(e) if attempt < 2 => {
+                    println!("Attempt {} failed (retrying): {}", attempt + 1, e);
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                }
+                Err(e) => panic!(
+                    "Should find block via binary search after 3 attempts: {}",
+                    e
+                ),
+            }
+        }
+        let result1 = result1.unwrap();
         let duration1 = start.elapsed();
 
         println!("First call took: {:?}", duration1);
