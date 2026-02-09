@@ -11,9 +11,9 @@ async fn test_monitored_accounts_crud() {
     let client = reqwest::Client::new();
 
     // Test 1: Add a monitored account
+    // Note: AddAccountRequest uses camelCase deserialization
     let add_payload = serde_json::json!({
-        "account_id": "test-treasury.sputnik-dao.near",
-        "enabled": true
+        "accountId": "test-treasury.sputnik-dao.near"
     });
 
     let response = client
@@ -24,11 +24,12 @@ async fn test_monitored_accounts_crud() {
         .expect("Failed to add account");
 
     assert_eq!(response.status(), 200, "Add account should succeed");
+    // AddAccountResponse uses camelCase serialization
     let added: serde_json::Value = response.json().await.expect("Failed to parse JSON");
-    assert_eq!(added["account_id"], "test-treasury.sputnik-dao.near");
+    assert_eq!(added["accountId"], "test-treasury.sputnik-dao.near");
     assert_eq!(added["enabled"], true);
-    assert!(added["created_at"].is_string());
-    assert!(added["updated_at"].is_string());
+    assert!(added["createdAt"].is_string());
+    assert!(added["updatedAt"].is_string());
 
     // Test 2: List all monitored accounts
     let response = client
@@ -38,6 +39,7 @@ async fn test_monitored_accounts_crud() {
         .expect("Failed to list accounts");
 
     assert_eq!(response.status(), 200);
+    // MonitoredAccount (list response) uses snake_case serialization
     let accounts: serde_json::Value = response.json().await.expect("Failed to parse JSON");
     assert!(accounts.is_array());
     let accounts_array = accounts.as_array().unwrap();
@@ -80,6 +82,7 @@ async fn test_monitored_accounts_crud() {
         .expect("Failed to update account");
 
     assert_eq!(response.status(), 200, "Update should succeed");
+    // Update response uses MonitoredAccount (snake_case)
     let updated: serde_json::Value = response.json().await.expect("Failed to parse JSON");
     assert_eq!(updated["account_id"], "test-treasury.sputnik-dao.near");
     assert_eq!(updated["enabled"], false, "Account should be disabled");
@@ -159,5 +162,5 @@ async fn test_monitored_accounts_crud() {
         "Deleting non-existent account should return 404"
     );
 
-    println!("✓ All monitored accounts CRUD operations validated");
+    println!("All monitored accounts CRUD operations validated");
 }

@@ -3,6 +3,57 @@
 //! Common utility functions used across balance change modules.
 
 use sqlx::types::chrono::{DateTime, Utc};
+use std::future::Future;
+use tokio::time::{Duration, sleep};
+
+const MAX_TRANSPORT_RETRIES: u32 = 3;
+
+/// Check if an error is a transient transport/network error that should be retried
+pub fn is_transport_error(err_debug: &str) -> bool {
+    err_debug.contains("TransportError")
+        || err_debug.contains("SendError")
+        || err_debug.contains("DispatchGone")
+        || err_debug.contains("sending payload")
+        || err_debug.contains("error sending request")
+        || err_debug.contains("connection")
+        || err_debug.contains("timed out")
+}
+
+/// Retry an async operation on transient transport errors with exponential backoff.
+///
+/// Retries up to 3 times with delays of 200ms, 400ms, 800ms.
+/// Non-transport errors are returned immediately without retrying.
+pub async fn with_transport_retry<T, E, F, Fut>(label: &str, mut make_call: F) -> Result<T, E>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T, E>>,
+    E: std::fmt::Debug,
+{
+    for attempt in 0..=MAX_TRANSPORT_RETRIES {
+        if attempt > 0 {
+            let delay_ms = 200 * 2u64.pow(attempt - 1);
+            log::warn!(
+                "{}: transport error, retrying in {}ms (attempt {}/{})",
+                label,
+                delay_ms,
+                attempt + 1,
+                MAX_TRANSPORT_RETRIES + 1
+            );
+            sleep(Duration::from_millis(delay_ms)).await;
+        }
+        match make_call().await {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                let err_debug = format!("{:?}", e);
+                if is_transport_error(&err_debug) && attempt < MAX_TRANSPORT_RETRIES {
+                    continue;
+                }
+                return Err(e);
+            }
+        }
+    }
+    unreachable!()
+}
 
 /// Convert NEAR block timestamp (nanoseconds) to DateTime<Utc>
 ///
