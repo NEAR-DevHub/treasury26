@@ -343,10 +343,11 @@ pub async fn get_recent_activity(
         .collect();
 
     for swap in swap_map.values() {
-        if let Some(ref sent_id) = swap.sent_token_id
-            && let Some(meta_id) = token_id_for_metadata(sent_id)
-        {
-            token_id_set.insert(meta_id);
+        #[allow(clippy::collapsible_if)]
+        if let Some(ref sent_id) = swap.sent_token_id {
+            if let Some(meta_id) = token_id_for_metadata(sent_id) {
+                token_id_set.insert(meta_id);
+            }
         }
         if let Some(meta_id) = token_id_for_metadata(&swap.received_token_id) {
             token_id_set.insert(meta_id);
