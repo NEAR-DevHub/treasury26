@@ -113,12 +113,24 @@ async fn test_store_detected_swaps(pool: PgPool) -> sqlx::Result<()> {
         "Database should have correct solver tx hash"
     );
 
-    // Test idempotency - storing again should not create duplicates
-    let stored_again = store_detected_swaps(&pool, &[swap])
+    // Test idempotency - storing again should not create duplicates in the database
+    // (ON CONFLICT DO UPDATE reports rows_affected=1, but no new row is created)
+    store_detected_swaps(&pool, &[swap])
         .await
         .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
-    assert_eq!(stored_again, 0, "Should not store duplicates");
+    let db_swaps_after: Vec<(String,)> = sqlx::query_as(
+        "SELECT solver_transaction_hash FROM detected_swaps WHERE account_id = $1",
+    )
+    .bind(account_id)
+    .fetch_all(&pool)
+    .await?;
+
+    assert_eq!(
+        db_swaps_after.len(),
+        1,
+        "Should still have exactly 1 swap after re-insert (no duplicates)"
+    );
 
     println!("\n✓ Store detected swaps test passed!");
 
