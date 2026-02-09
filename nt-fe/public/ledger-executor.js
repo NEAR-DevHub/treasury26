@@ -3,6 +3,7 @@
 
 // Import dependencies from CDN
 import TransportWebHID from "https://esm.sh/@ledgerhq/hw-transport-webhid@6.29.4";
+import TransportWebUSB from "https://esm.sh/@ledgerhq/hw-transport-webusb@6.29.4";
 import { baseEncode, baseDecode } from "https://esm.sh/@near-js/utils@0.2.2";
 import {
     Signature,
@@ -55,6 +56,10 @@ const BOLOS_INS_QUIT_APP = 0xa7;
 // Ledger app open constants
 const APP_OPEN_CLA = 0xe0;
 const APP_OPEN_INS = 0xd8;
+
+// Select transport based on browser support: prefer WebHID, fall back to WebUSB
+const useWebHID = !!navigator?.hid;
+const Transport = useWebHID ? TransportWebHID : TransportWebUSB;
 
 // Default derivation path for NEAR
 const DEFAULT_DERIVATION_PATH = "44'/397'/0'/0'/1'";
@@ -116,13 +121,13 @@ class LedgerClient {
 
     async connect() {
         // Request new device (requires user gesture)
-        this.transport = await TransportWebHID.create();
+        this.transport = await Transport.create();
         this._setupDisconnectHandler();
     }
 
     async connectWithDevice(device) {
         // Connect to a specific already-authorized device
-        this.transport = await TransportWebHID.open(device);
+        this.transport = await Transport.open(device);
         this._setupDisconnectHandler();
     }
 
@@ -348,7 +353,9 @@ function getLedgerErrorMessage(error) {
  */
 async function promptForLedgerConnect(ledgerClient) {
     // First check if we already have device access (doesn't require user gesture)
-    const existingDevices = await navigator.hid.getDevices();
+    const existingDevices = useWebHID
+        ? await navigator?.hid?.getDevices()
+        : await navigator?.usb?.getDevices();
     const ledgerDevice = existingDevices.find(
         (d) => d.vendorId === 0x2c97, // Ledger vendor ID
     );

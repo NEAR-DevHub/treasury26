@@ -21,6 +21,7 @@
 //! 3. For each candidate transaction, check if it produced our receipt
 //! 4. Return the matching transaction hash
 
+use crate::handlers::balance_changes::utils::with_transport_retry;
 use near_api::{Chain, NetworkConfig, Reference};
 use near_jsonrpc_client::{JsonRpcClient, auth, methods};
 use near_jsonrpc_primitives::types::receipts::ReceiptReference;
@@ -68,16 +69,22 @@ pub async fn resolve_transaction_blocks(
 ) -> Result<ResolvedTransaction, Box<dyn Error + Send + Sync>> {
     let client = create_rpc_client(network)?;
 
-    // Query transaction status
-    let tx_request = methods::tx::RpcTransactionStatusRequest {
-        transaction_info: methods::tx::TransactionInfo::TransactionId {
-            tx_hash: tx_hash.parse()?,
-            sender_account_id: sender_account_id.parse()?,
-        },
-        wait_until: near_primitives::views::TxExecutionStatus::Final,
-    };
+    // Parse inputs once (deterministic, no need to retry)
+    let parsed_tx_hash: near_primitives::hash::CryptoHash = tx_hash.parse()?;
+    let parsed_sender: near_primitives::types::AccountId = sender_account_id.parse()?;
 
-    let tx_response = client.call(tx_request).await?;
+    // Query transaction status with retry on transport errors
+    let tx_response = with_transport_retry("tx_status", || {
+        let req = methods::tx::RpcTransactionStatusRequest {
+            transaction_info: methods::tx::TransactionInfo::TransactionId {
+                tx_hash: parsed_tx_hash,
+                sender_account_id: parsed_sender.clone(),
+            },
+            wait_until: near_primitives::views::TxExecutionStatus::Final,
+        };
+        client.call(req)
+    })
+    .await?;
 
     let mut receipt_blocks = Vec::new();
 
@@ -99,12 +106,15 @@ pub async fn resolve_transaction_blocks(
         if executor == account_id {
             let block_hash = receipt_outcome.block_hash.to_string();
 
-            // Resolve block height from block hash
-            let block_request = methods::block::RpcBlockRequest {
-                block_reference: BlockReference::BlockId(BlockId::Hash(block_hash.parse()?)),
-            };
-
-            let block = client.call(block_request).await?;
+            // Resolve block height from block hash with retry on transport errors
+            let parsed_block_hash: near_primitives::hash::CryptoHash = block_hash.parse()?;
+            let block = with_transport_retry("block", || {
+                let req = methods::block::RpcBlockRequest {
+                    block_reference: BlockReference::BlockId(BlockId::Hash(parsed_block_hash)),
+                };
+                client.call(req)
+            })
+            .await?;
             let block_height = block.header.height;
 
             receipt_blocks.push(ReceiptBlock {

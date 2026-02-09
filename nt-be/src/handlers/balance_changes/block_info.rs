@@ -2,6 +2,7 @@
 //!
 //! Functions to query block metadata including timestamps and receipt data via RPC.
 
+use crate::handlers::balance_changes::utils::with_transport_retry;
 use near_api::{Chain, NetworkConfig, Reference};
 use near_jsonrpc_client::{JsonRpcClient, auth, methods};
 use near_primitives::types::{BlockId, BlockReference};
@@ -52,10 +53,12 @@ pub async fn get_block_timestamp(
     }
 
     // Query from RPC
-    let block = Chain::block()
-        .at(Reference::AtBlock(block_height))
-        .fetch_from(network)
-        .await?;
+    let block = with_transport_retry("block_timestamp", || {
+        Chain::block()
+            .at(Reference::AtBlock(block_height))
+            .fetch_from(network)
+    })
+    .await?;
 
     let timestamp = block.header.timestamp as i64;
 
@@ -86,10 +89,12 @@ pub async fn get_block_data(
     block_height: u64,
 ) -> Result<BlockReceiptData, Box<dyn std::error::Error + Send + Sync>> {
     // Query the block first
-    let block = Chain::block()
-        .at(Reference::AtBlock(block_height))
-        .fetch_from(network)
-        .await?;
+    let block = with_transport_retry("block_data", || {
+        Chain::block()
+            .at(Reference::AtBlock(block_height))
+            .fetch_from(network)
+    })
+    .await?;
 
     let block_hash = block.header.hash.to_string();
     let mut all_receipts = Vec::new();
@@ -113,13 +118,17 @@ pub async fn get_block_data(
         let chunk_hash_str = chunk_header.chunk_hash.to_string();
 
         // Query the chunk using near-jsonrpc-client
-        let chunk_request = methods::chunk::RpcChunkRequest {
-            chunk_reference: methods::chunk::ChunkReference::ChunkHash {
-                chunk_id: chunk_hash_str.parse()?,
-            },
-        };
-
-        let chunk_response = match client.call(chunk_request).await {
+        let parsed_chunk_id = chunk_hash_str.parse()?;
+        let chunk_response = match with_transport_retry("chunk", || {
+            let req = methods::chunk::RpcChunkRequest {
+                chunk_reference: methods::chunk::ChunkReference::ChunkHash {
+                    chunk_id: parsed_chunk_id,
+                },
+            };
+            client.call(req)
+        })
+        .await
+        {
             Ok(chunk) => chunk,
             Err(e) => {
                 eprintln!("Warning: Failed to fetch chunk {}: {}", chunk_hash_str, e);
@@ -162,10 +171,12 @@ pub async fn get_all_account_receipts(
     block_height: u64,
 ) -> Result<Vec<ReceiptView>, Box<dyn std::error::Error + Send + Sync>> {
     // Query the block first
-    let block = Chain::block()
-        .at(Reference::AtBlock(block_height))
-        .fetch_from(network)
-        .await?;
+    let block = with_transport_retry("all_receipts_block", || {
+        Chain::block()
+            .at(Reference::AtBlock(block_height))
+            .fetch_from(network)
+    })
+    .await?;
 
     let mut all_receipts = Vec::new();
 
@@ -185,13 +196,17 @@ pub async fn get_all_account_receipts(
     for chunk_header in &block.chunks {
         let chunk_hash_str = chunk_header.chunk_hash.to_string();
 
-        let chunk_request = methods::chunk::RpcChunkRequest {
-            chunk_reference: methods::chunk::ChunkReference::ChunkHash {
-                chunk_id: chunk_hash_str.parse()?,
-            },
-        };
-
-        let chunk_response = match client.call(chunk_request).await {
+        let parsed_chunk_id = chunk_hash_str.parse()?;
+        let chunk_response = match with_transport_retry("chunk", || {
+            let req = methods::chunk::RpcChunkRequest {
+                chunk_reference: methods::chunk::ChunkReference::ChunkHash {
+                    chunk_id: parsed_chunk_id,
+                },
+            };
+            client.call(req)
+        })
+        .await
+        {
             Ok(chunk) => chunk,
             Err(e) => {
                 eprintln!("Warning: Failed to fetch chunk {}: {}", chunk_hash_str, e);
@@ -242,14 +257,17 @@ pub async fn get_account_changes(
         client = client.header(auth::Authorization::bearer(token)?);
     }
 
-    let request = methods::EXPERIMENTAL_changes::RpcStateChangesInBlockByTypeRequest {
-        block_reference: BlockReference::BlockId(BlockId::Height(block_height)),
-        state_changes_request: StateChangesRequestView::AccountChanges {
-            account_ids: vec![account_id.parse()?],
-        },
-    };
-
-    let response = client.call(request).await?;
+    let parsed_account_id: near_primitives::types::AccountId = account_id.parse()?;
+    let response = with_transport_retry("account_changes", || {
+        let req = methods::EXPERIMENTAL_changes::RpcStateChangesInBlockByTypeRequest {
+            block_reference: BlockReference::BlockId(BlockId::Height(block_height)),
+            state_changes_request: StateChangesRequestView::AccountChanges {
+                account_ids: vec![parsed_account_id.clone()],
+            },
+        };
+        client.call(req)
+    })
+    .await?;
 
     Ok(response.changes)
 }
@@ -291,17 +309,19 @@ pub async fn get_transaction(
     }
 
     let tx_hash_crypto: CryptoHash = tx_hash.parse()?;
-    let account_id_parsed = account_id.parse()?;
+    let account_id_parsed: near_primitives::types::AccountId = account_id.parse()?;
 
-    let request = methods::tx::RpcTransactionStatusRequest {
-        transaction_info: methods::tx::TransactionInfo::TransactionId {
-            tx_hash: tx_hash_crypto,
-            sender_account_id: account_id_parsed,
-        },
-        wait_until: near_primitives::views::TxExecutionStatus::Final,
-    };
-
-    let response = client.call(request).await?;
+    let response = with_transport_retry("get_transaction", || {
+        let req = methods::tx::RpcTransactionStatusRequest {
+            transaction_info: methods::tx::TransactionInfo::TransactionId {
+                tx_hash: tx_hash_crypto,
+                sender_account_id: account_id_parsed.clone(),
+            },
+            wait_until: near_primitives::views::TxExecutionStatus::Final,
+        };
+        client.call(req)
+    })
+    .await?;
 
     Ok(response)
 }
@@ -585,23 +605,30 @@ mod tests {
         }
 
         // Get the block first to find the right chunk
-        let block = Chain::block()
-            .at(Reference::AtBlock(177751529))
-            .fetch_from(&state.archival_network)
-            .await
-            .expect("Should be able to query block");
+        let block = with_transport_retry("test_block", || {
+            Chain::block()
+                .at(Reference::AtBlock(177751529))
+                .fetch_from(&state.archival_network)
+        })
+        .await
+        .expect("Should be able to query block");
 
         // Look through each chunk for our receipt
         for chunk_header in &block.chunks {
             let chunk_hash_str = chunk_header.chunk_hash.to_string();
 
-            let chunk_request = methods::chunk::RpcChunkRequest {
-                chunk_reference: methods::chunk::ChunkReference::ChunkHash {
-                    chunk_id: chunk_hash_str.parse().unwrap(),
-                },
-            };
-
-            let chunk_response = client.call(chunk_request).await.expect("Should get chunk");
+            let parsed_chunk_id: near_primitives::hash::CryptoHash =
+                chunk_hash_str.parse().unwrap();
+            let chunk_response = with_transport_retry("test_chunk", || {
+                let req = methods::chunk::RpcChunkRequest {
+                    chunk_reference: methods::chunk::ChunkReference::ChunkHash {
+                        chunk_id: parsed_chunk_id,
+                    },
+                };
+                client.call(req)
+            })
+            .await
+            .expect("Should get chunk");
 
             // Check if this chunk has our receipt
             let has_our_receipt = chunk_response.receipts.iter().any(|r| {
@@ -660,15 +687,22 @@ mod tests {
                     );
 
                     // Get full transaction details
-                    let tx_request = methods::tx::RpcTransactionStatusRequest {
-                        transaction_info: methods::tx::TransactionInfo::TransactionId {
-                            tx_hash: tx_view.hash.to_string().parse().unwrap(),
-                            sender_account_id: tx_view.signer_id.clone(),
-                        },
-                        wait_until: near_primitives::views::TxExecutionStatus::Final,
-                    };
+                    let parsed_tx_hash: near_primitives::hash::CryptoHash =
+                        tx_view.hash.to_string().parse().unwrap();
+                    let signer_id = tx_view.signer_id.clone();
 
-                    match client.call(tx_request).await {
+                    match with_transport_retry("test_tx", || {
+                        let req = methods::tx::RpcTransactionStatusRequest {
+                            transaction_info: methods::tx::TransactionInfo::TransactionId {
+                                tx_hash: parsed_tx_hash,
+                                sender_account_id: signer_id.clone(),
+                            },
+                            wait_until: near_primitives::views::TxExecutionStatus::Final,
+                        };
+                        client.call(req)
+                    })
+                    .await
+                    {
                         Ok(tx_response) => {
                             println!("\n  Transaction details for {}:", tx_view.hash);
 

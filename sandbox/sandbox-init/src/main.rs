@@ -7,7 +7,6 @@
 
 use anyhow::{Context, Result};
 use base64::Engine;
-use near_api::types::transaction::actions::FunctionCallPermission;
 use near_api::types::AccessKeyPermission;
 use near_api::{AccountId, NearToken, NetworkConfig, PublicKey, Signer};
 use near_gas::NearGas;
@@ -462,34 +461,27 @@ async fn deploy_bulk_payment_contract(
         contract_id
     );
 
-    // Add a function access key for the contract to call itself
+    // Add a full access key for the API signer (needs to send multi-action transactions)
     info!(
-        "Adding function access key to {} for all contract methods",
+        "Adding full access key to {} for API signer",
         contract_id
     );
 
-    // Dedicated API function access key (hardcoded for sandbox)
+    // Dedicated API access key (hardcoded for sandbox)
     let api_public_key: PublicKey =
         "ed25519:C72KRM91LgqMmbKVspQAF9j5dgGGaxYPT5rnnXtLXmsN"
             .parse()
             .expect("Failed to parse API public key");
 
     near_api::Account(contract_id.clone())
-        .add_key(
-            AccessKeyPermission::FunctionCall(FunctionCallPermission {
-                allowance: None, // Unlimited allowance
-                receiver_id: contract_id.to_string(),
-                method_names: vec![], // Empty = all methods allowed
-            }),
-            api_public_key,
-        )
+        .add_key(AccessKeyPermission::FullAccess, api_public_key)
         .with_signer(contract_signer)
         .send_to(network_config)
         .await
-        .context("Failed to add function access key")?
+        .context("Failed to add full access key")?
         .assert_success();
 
-    info!("Successfully added function access key to {}", contract_id);
+    info!("Successfully added full access key to {}", contract_id);
     Ok(())
 }
 
