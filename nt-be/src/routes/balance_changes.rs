@@ -390,8 +390,7 @@ pub async fn get_recent_activity(
                     .sent_token_id
                     .as_ref()
                     .map(|id| resolve_metadata(id, &metadata_map));
-                let received_token_metadata =
-                    resolve_metadata(&s.received_token_id, &metadata_map);
+                let received_token_metadata = resolve_metadata(&s.received_token_id, &metadata_map);
 
                 SwapInfo {
                     sent_token_id: s.sent_token_id.clone(),

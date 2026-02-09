@@ -234,13 +234,13 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
         intents_api_key.as_deref(),
         &intents_api_url,
     )
-        .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+    .await
+    .map_err(|e| {
+        sqlx::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            e.to_string(),
+        ))
+    })?;
     let main_cycle_duration = start.elapsed();
     println!(
         "Main monitoring cycle completed in {:?}",
@@ -281,7 +281,9 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
 
     println!("\n--- Phase 2: Mark account as dirty and run dirty monitor ---");
 
-    // Mark the treasury account as dirty via the HTTP endpoint
+    // Mark the treasury account as dirty via the POST /api/monitored-accounts endpoint
+    // This is the same endpoint the frontend calls on every treasury open (openTreasury),
+    // which now sets dirty_at = NOW() to trigger priority gap filling.
     let app_state = nt_be::AppState::builder()
         .db_pool(pool.clone())
         .build()
@@ -298,12 +300,11 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
         .oneshot(
             axum::http::Request::builder()
                 .method("POST")
-                .uri(format!(
-                    "/api/monitored-accounts/{}/dirty",
-                    TREASURY_ACCOUNT
-                ))
+                .uri("/api/monitored-accounts")
                 .header("content-type", "application/json")
-                .body(axum::body::Body::from(r#"{"hours_back": 24}"#))
+                .body(axum::body::Body::from(
+                    serde_json::json!({ "accountId": TREASURY_ACCOUNT }).to_string(),
+                ))
                 .unwrap(),
         )
         .await
@@ -312,13 +313,23 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
     assert_eq!(
         response.status(),
         axum::http::StatusCode::OK,
-        "mark_account_dirty HTTP endpoint should succeed"
+        "POST /api/monitored-accounts should succeed and set dirty_at"
+    );
+
+    // Verify the response includes dirty_at
+    let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let body: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+    assert!(
+        body["dirtyAt"].is_string(),
+        "Response should include dirtyAt timestamp, got: {}",
+        body
     );
 
     println!(
-        "Marked {} as dirty via HTTP endpoint (status: {})",
-        TREASURY_ACCOUNT,
-        response.status()
+        "Marked {} as dirty via POST /api/monitored-accounts (dirtyAt: {})",
+        TREASURY_ACCOUNT, body["dirtyAt"]
     );
 
     // Run dirty gap filling up to the block after the payments
