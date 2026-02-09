@@ -9,10 +9,14 @@ import {
     Signature,
     createTransaction,
     encodeTransaction,
+    encodeDelegateAction,
     SignedTransaction,
+    DelegateAction,
+    buildDelegateAction,
+    SignedDelegate,
     actionCreators,
-} from "https://esm.sh/@near-js/transactions@1.3.3";
-import { PublicKey } from "https://esm.sh/@near-js/crypto@1.4.1";
+} from "https://esm.sh/@near-js/transactions@2.5.1";
+import { PublicKey } from "https://esm.sh/@near-js/crypto@2.5.1";
 import { Buffer } from "https://esm.sh/buffer@6.0.3";
 
 // Destructure action creators for convenience
@@ -40,10 +44,10 @@ const NETWORK_ID = "W".charCodeAt(0); // 87
 
 // Ledger NEAR instruction codes
 const NEAR_INS = {
-    GET_VERSION: 0x06,
+    SIGN_TRANSACTION: 0x02,
     GET_PUBLIC_KEY: 0x04,
     GET_WALLET_ID: 0x05,
-    SIGN_TRANSACTION: 0x02,
+    GET_VERSION: 0x06,
     NEP413_SIGN_MESSAGE: 0x07,
     NEP366_SIGN_DELEGATE_ACTION: 0x08,
 };
@@ -205,7 +209,7 @@ class LedgerClient {
                 CLA,
                 ins,
                 isLastChunk ? P1_LAST : P1_MORE,
-                P2_IGNORE,
+                NETWORK_ID,
                 chunk,
             );
 
@@ -230,6 +234,14 @@ class LedgerClient {
             data,
             derivationPath,
             NEAR_INS.NEP413_SIGN_MESSAGE,
+        );
+    }
+
+    async signDelegation(data, derivationPath) {
+        return this.internalSign(
+            data,
+            derivationPath,
+            NEAR_INS.NEP366_SIGN_DELEGATE_ACTION,
         );
     }
 
@@ -844,6 +856,55 @@ async function verifyAccessKey(network, accountId, publicKey) {
 }
 
 /**
+ * Convert action params from wallet-selector format to NEAR SDK action objects
+ */
+function buildNearActions(actions) {
+    return actions.map((action) => {
+        if (action.type === "FunctionCall") {
+            const args = action.params.args || {};
+            return functionCall(
+                action.params.methodName,
+                args,
+                BigInt(action.params.gas || "30000000000000"),
+                BigInt(action.params.deposit || "0"),
+            );
+        } else if (action.type === "Transfer") {
+            return transfer(BigInt(action.params.deposit));
+        } else if (action.type === "AddKey") {
+            const publicKey = PublicKey.from(action.params.publicKey);
+            const accessKey = action.params.accessKey;
+
+            if (accessKey.permission === "FullAccess") {
+                return addKey(publicKey, fullAccessKey());
+            } else {
+                return addKey(
+                    publicKey,
+                    functionCallAccessKey(
+                        accessKey.permission.receiverId,
+                        accessKey.permission.methodNames || [],
+                        BigInt(accessKey.permission.allowance || "0"),
+                    ),
+                );
+            }
+        } else if (action.type === "DeleteKey") {
+            const publicKey = PublicKey.from(action.params.publicKey);
+            return deleteKey(publicKey);
+        } else if (action.type === "CreateAccount") {
+            return createAccount();
+        } else if (action.type === "DeleteAccount") {
+            return deleteAccount(action.params.beneficiaryId);
+        } else if (action.type === "Stake") {
+            const publicKey = PublicKey.from(action.params.publicKey);
+            return stake(BigInt(action.params.stake), publicKey);
+        } else if (action.type === "DeployContract") {
+            return deployContract(action.params.code);
+        }
+
+        throw new Error(`Unsupported action type: ${action.type}`);
+    });
+}
+
+/**
  * Main Ledger Wallet implementation
  */
 class LedgerWallet {
@@ -856,6 +917,36 @@ class LedgerWallet {
             STORAGE_KEY_DERIVATION_PATH,
         );
         return derivationPath || DEFAULT_DERIVATION_PATH;
+    }
+
+    /**
+     * Ensure accounts exist and Ledger is connected. Returns stored accounts.
+     */
+    async _ensureReady() {
+        const accounts = await this.getAccounts();
+        if (!accounts || accounts.length === 0) {
+            throw new Error("No account connected");
+        }
+        if (!this.ledger.isConnected()) {
+            await promptForLedgerConnect(this.ledger);
+        }
+        return accounts;
+    }
+
+    /**
+     * Fetch access key info and latest block from RPC.
+     */
+    async _getAccessKeyAndBlock(network, signerId, publicKey) {
+        const accessKey = await rpcRequest(network, "query", {
+            request_type: "view_access_key",
+            finality: "final",
+            account_id: signerId,
+            public_key: publicKey,
+        });
+        const block = await rpcRequest(network, "block", {
+            finality: "final",
+        });
+        return { accessKey, block };
     }
 
     /**
@@ -885,7 +976,6 @@ class LedgerWallet {
             const implicitAccountId =
                 Buffer.from(publicKeyBytes).toString("hex");
 
-            console.log(publicKey);
             // Verification function to check account access
             const network = params?.network || "mainnet";
             const verifyAccount = async (accountId) => {
@@ -955,77 +1045,19 @@ class LedgerWallet {
      * Sign and send a single transaction
      */
     async signAndSendTransaction(params) {
+        const accounts = await this._ensureReady();
         const network = params.network || "mainnet";
-        const accounts = await this.getAccounts();
-
-        if (!accounts || accounts.length === 0) {
-            throw new Error("No account connected");
-        }
-
         const signerId = accounts[0].accountId;
         const { receiverId, actions } = params.transactions[0];
 
-        // Connect to Ledger if not already connected
-        if (!this.ledger.isConnected()) {
-            await promptForLedgerConnect(this.ledger);
-        }
-
-        // Get current nonce and block hash
-        const accessKey = await rpcRequest(network, "query", {
-            request_type: "view_access_key",
-            finality: "final",
-            account_id: signerId,
-            public_key: accounts[0].publicKey,
-        });
-
-        const block = await rpcRequest(network, "block", { finality: "final" });
+        const { accessKey, block } = await this._getAccessKeyAndBlock(
+            network,
+            signerId,
+            accounts[0].publicKey,
+        );
         const blockHash = baseDecode(block.header.hash);
 
-        // Build transaction actions
-        const txActions = actions.map((action) => {
-            if (action.type === "FunctionCall") {
-                // Args should be passed as object or Uint8Array, not pre-stringified
-                const args = action.params.args || {};
-                return functionCall(
-                    action.params.methodName,
-                    args,
-                    BigInt(action.params.gas || "30000000000000"),
-                    BigInt(action.params.deposit || "0"),
-                );
-            } else if (action.type === "Transfer") {
-                return transfer(BigInt(action.params.deposit));
-            } else if (action.type === "AddKey") {
-                const publicKey = PublicKey.from(action.params.publicKey);
-                const accessKey = action.params.accessKey;
-
-                if (accessKey.permission === "FullAccess") {
-                    return addKey(publicKey, fullAccessKey());
-                } else {
-                    return addKey(
-                        publicKey,
-                        functionCallAccessKey(
-                            accessKey.permission.receiverId,
-                            accessKey.permission.methodNames || [],
-                            BigInt(accessKey.permission.allowance || "0"),
-                        ),
-                    );
-                }
-            } else if (action.type === "DeleteKey") {
-                const publicKey = PublicKey.from(action.params.publicKey);
-                return deleteKey(publicKey);
-            } else if (action.type === "CreateAccount") {
-                return createAccount();
-            } else if (action.type === "DeleteAccount") {
-                return deleteAccount(action.params.beneficiaryId);
-            } else if (action.type === "Stake") {
-                const publicKey = PublicKey.from(action.params.publicKey);
-                return stake(BigInt(action.params.stake), publicKey);
-            } else if (action.type === "DeployContract") {
-                return deployContract(action.params.code);
-            }
-
-            throw new Error(`Unsupported action type: ${action.type}`);
-        });
+        const txActions = buildNearActions(actions);
 
         // Create transaction
         const transaction = createTransaction(
@@ -1067,6 +1099,65 @@ class LedgerWallet {
     }
 
     /**
+     * Sign a delegation (NEP-366 meta-transaction)
+     */
+    async signDelegateAction(params) {
+        const accounts = await this._ensureReady();
+        const network = params.network || "mainnet";
+        const { accountId: signerId, publicKey } = accounts[0];
+        const { receiverId, actions } = params.transaction;
+
+        const { accessKey, block } = await this._getAccessKeyAndBlock(
+            network,
+            signerId,
+            publicKey,
+        );
+
+        const nearActions = buildNearActions(actions);
+
+        // Create DelegateAction (NEP-366)
+        const delegateAction = buildDelegateAction({
+            senderId: signerId,
+            receiverId,
+            actions: nearActions,
+            nonce: BigInt(accessKey.nonce) + 1n,
+            maxBlockHeight: BigInt(block.header.height) + 120n,
+            publicKey: PublicKey.from(publicKey),
+        });
+
+        // Ledger app expects only the DelegateAction bytes (no NEP-366 prefix).
+        // It injects the 4-byte discriminant when hashing; we must not send it.
+        const fullEncoded = encodeDelegateAction(delegateAction);
+        const serialized = fullEncoded.subarray(4); // strip DelegateActionPrefix (u32)
+        const derivationPath = await this.getDerivationPath();
+        const signature = await showLedgerApprovalUI(
+            "Approve Transaction",
+            "Please review and approve the transaction on your Ledger device.",
+            () => this.ledger.signDelegation(serialized, derivationPath),
+            true,
+        );
+
+        // Create SignedDelegate (SignDelegateActionResult.signedDelegate)
+        const signedDelegate = new SignedDelegate({
+            delegateAction,
+            signature: new Signature({
+                keyType: delegateAction.publicKey.keyType,
+                data: signature,
+            }),
+        });
+
+        // Delegate hash = SHA-256 of the signed payload (NEP-366 prefix + borsh(DelegateAction))
+        const delegateHash = new Uint8Array(
+            await crypto.subtle.digest("SHA-256", fullEncoded),
+        );
+
+        return {
+            delegateHash,
+            signedDelegate,
+        };
+    }
+
+    /**
      * Sign and send multiple transactions
      */
     async signAndSendTransactions(params) {
@@ -1084,19 +1175,25 @@ class LedgerWallet {
     }
 
     /**
+     * Sign and send multiple delegate actions
+     */
+    async signDelegateActions(params) {
+        const results = [];
+        for (const tx of params.delegateActions) {
+            const result = await this.signDelegateAction({
+                ...params,
+                transaction: tx,
+            });
+            results.push(result);
+        }
+        return { signedDelegateActions: results };
+    }
+
+    /**
      * Sign a message (NEP-413)
      */
     async signMessage(params) {
-        const accounts = await this.getAccounts();
-
-        if (!accounts || accounts.length === 0) {
-            throw new Error("No account connected");
-        }
-
-        // Connect to Ledger if not already connected
-        if (!this.ledger.isConnected()) {
-            await promptForLedgerConnect(this.ledger);
-        }
+        const accounts = await this._ensureReady();
 
         // Build NEP-413 message payload using borsh serialization
         const message = params.message;

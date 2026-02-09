@@ -591,29 +591,24 @@ export default function ExchangePage() {
                 proposalBond,
             };
 
-            let result;
-
             if (isSellingNativeNEAR) {
                 const proposal = buildNativeNEARProposal(proposalParams);
-                result = await createProposal("Exchange request submitted", {
+                await createProposal("Exchange request submitted", {
                     treasuryId: selectedTreasury,
                     proposal,
                     proposalBond,
                 });
             } else {
                 const proposal = buildFungibleTokenProposal(proposalParams);
-                result = await createProposal("Exchange request submitted", {
+                await createProposal("Exchange request submitted", {
                     treasuryId: selectedTreasury,
                     proposal,
                     proposalBond,
                 });
             }
 
-            // Reset after proposal is submitted
-            if (result && result.length > 0) {
-                form.reset();
-                setStep(0);
-            }
+            form.reset();
+            setStep(0);
         } catch (error: any) {
             console.error("Exchange error", error);
         }

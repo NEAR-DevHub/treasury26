@@ -184,6 +184,11 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/bulk-payment/list/{list_id}/transaction/{recipient}",
             get(handlers::bulkpayment::transactions::get_transaction_hash),
         )
+        // Relay endpoints
+        .route(
+            "/api/relay/delegate-action",
+            post(handlers::relay::submit::relay_delegate_action),
+        )
         // Monitored accounts endpoints
         .route(
             "/api/monitored-accounts",

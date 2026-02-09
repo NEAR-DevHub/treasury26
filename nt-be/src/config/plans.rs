@@ -233,6 +233,15 @@ pub fn has_batch_payment_credits(plan_type: PlanType, current_credits: i32) -> b
     current_credits > 0
 }
 
+/// Check if an account has remaining gas-covered transaction credits
+/// For Enterprise, always returns true (unlimited)
+pub fn has_gas_covered_credits(plan_type: PlanType, current_credits: i32) -> bool {
+    if plan_type == PlanType::Enterprise {
+        return true; // Unlimited
+    }
+    current_credits > 0
+}
+
 /// Get the initial credits for a plan (used when creating or resetting)
 pub fn get_initial_credits(plan_type: PlanType) -> (i32, i32) {
     let config = get_plan_config(plan_type);
@@ -384,6 +393,13 @@ mod tests {
 
         assert!(has_batch_payment_credits(PlanType::Plus, 5));
         assert!(!has_batch_payment_credits(PlanType::Plus, 0));
+
+        // Gas-covered credits
+        assert!(has_gas_covered_credits(PlanType::Enterprise, 0));
+        assert!(has_gas_covered_credits(PlanType::Free, 1));
+        assert!(!has_gas_covered_credits(PlanType::Free, 0));
+        assert!(has_gas_covered_credits(PlanType::Pro, 5));
+        assert!(!has_gas_covered_credits(PlanType::Pro, 0));
     }
 
     #[test]
