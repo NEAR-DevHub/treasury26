@@ -288,7 +288,7 @@ pub async fn mark_account_dirty(
         "#,
     )
     .bind(&account_id)
-    .bind(hours_back as f64)
+    .bind(hours_back as i32)
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {

@@ -21,7 +21,9 @@ use nt_be::handlers::balance_changes::utils::block_timestamp_to_datetime;
 use serde_json::json;
 use sqlx::PgPool;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Instant;
+use tower::ServiceExt;
 
 const TREASURY_ACCOUNT: &str = "webassemblymusic-treasury.sputnik-dao.near";
 const STAKING_ACCOUNT: &str = "testing-astradao.sputnik-dao.near";
@@ -221,7 +223,17 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
     // Run monitor cycle up to baseline block — this establishes the "current state"
     // and processes staking rewards for testing-astradao (simulating the busy worker)
     let start = Instant::now();
-    run_monitor_cycle(&pool, &network, BASELINE_BLOCK, None)
+    let intents_api_key = std::env::var("INTENTS_EXPLORER_API_KEY").ok();
+    let intents_api_url = std::env::var("INTENTS_EXPLORER_API_URL")
+        .unwrap_or_else(|_| "https://explorer.near-intents.org/api/v0".to_string());
+    run_monitor_cycle(
+        &pool,
+        &network,
+        BASELINE_BLOCK,
+        None,
+        intents_api_key.as_deref(),
+        &intents_api_url,
+    )
         .await
         .map_err(|e| {
             sqlx::Error::Io(std::io::Error::new(
@@ -269,19 +281,45 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
 
     println!("\n--- Phase 2: Mark account as dirty and run dirty monitor ---");
 
-    // Mark the treasury account as dirty (simulating API call)
-    sqlx::query(
-        r#"
-        UPDATE monitored_accounts
-        SET dirty_at = NOW() - INTERVAL '24 hours'
-        WHERE account_id = $1
-        "#,
-    )
-    .bind(TREASURY_ACCOUNT)
-    .execute(&pool)
-    .await?;
+    // Mark the treasury account as dirty via the HTTP endpoint
+    let app_state = nt_be::AppState::builder()
+        .db_pool(pool.clone())
+        .build()
+        .await
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+    let app = nt_be::routes::create_routes(Arc::new(app_state));
 
-    println!("Marked {} as dirty", TREASURY_ACCOUNT);
+    let response = app
+        .oneshot(
+            axum::http::Request::builder()
+                .method("POST")
+                .uri(format!(
+                    "/api/monitored-accounts/{}/dirty",
+                    TREASURY_ACCOUNT
+                ))
+                .header("content-type", "application/json")
+                .body(axum::body::Body::from(r#"{"hours_back": 24}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        response.status(),
+        axum::http::StatusCode::OK,
+        "mark_account_dirty HTTP endpoint should succeed"
+    );
+
+    println!(
+        "Marked {} as dirty via HTTP endpoint (status: {})",
+        TREASURY_ACCOUNT,
+        response.status()
+    );
 
     // Run dirty gap filling up to the block after the payments
     let start = Instant::now();
