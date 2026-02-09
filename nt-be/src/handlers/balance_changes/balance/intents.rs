@@ -7,6 +7,7 @@ use sqlx::PgPool;
 use std::str::FromStr;
 
 use crate::handlers::balance_changes::counterparty::{convert_raw_to_decimal, ensure_ft_metadata};
+use crate::handlers::balance_changes::utils::with_transport_retry;
 
 /// Query NEAR Intents multi-token balance at a specific block height
 ///
@@ -49,17 +50,20 @@ pub async fn get_balance_at_block(
     for offset in 0..=max_retries {
         let current_block = block_height.saturating_sub(offset);
 
-        let args = serde_json::json!({
-            "account_id": account_id,
-            "token_id": token
-        });
-
-        match contract
-            .call_function("mt_balance_of", args)
-            .read_only()
-            .at(Reference::AtBlock(current_block))
-            .fetch_from(network)
-            .await
+        match with_transport_retry("intents_balance", || {
+            contract
+                .call_function(
+                    "mt_balance_of",
+                    serde_json::json!({
+                        "account_id": account_id,
+                        "token_id": token
+                    }),
+                )
+                .read_only()
+                .at(Reference::AtBlock(current_block))
+                .fetch_from(network)
+        })
+        .await
         {
             Ok(balance) => {
                 if offset > 0 {

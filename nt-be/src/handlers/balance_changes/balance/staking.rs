@@ -18,6 +18,7 @@ use near_api::{AccountId, Contract, NetworkConfig, Reference};
 use std::str::FromStr;
 
 use crate::handlers::balance_changes::counterparty::convert_raw_to_decimal;
+use crate::handlers::balance_changes::utils::with_transport_retry;
 
 /// NEAR mainnet epoch length in blocks (~12 hours)
 pub const EPOCH_LENGTH_BLOCKS: u64 = 43_200;
@@ -86,17 +87,19 @@ pub async fn get_staking_balance_at_block(
     for offset in 0..=max_retries {
         let current_block = block_height.saturating_sub(offset);
 
-        let contract = Contract(pool_account_id.clone());
-        let result: Result<near_api::Data<U128>, _> = contract
-            .call_function(
-                "get_account_total_balance",
-                serde_json::json!({
-                    "account_id": account_id
-                }),
-            )
-            .read_only()
-            .at(Reference::AtBlock(current_block))
-            .fetch_from(network)
+        let result: Result<near_api::Data<U128>, _> =
+            with_transport_retry("staking_balance", || {
+                Contract(pool_account_id.clone())
+                    .call_function(
+                        "get_account_total_balance",
+                        serde_json::json!({
+                            "account_id": account_id
+                        }),
+                    )
+                    .read_only()
+                    .at(Reference::AtBlock(current_block))
+                    .fetch_from(network)
+            })
             .await;
 
         match result {

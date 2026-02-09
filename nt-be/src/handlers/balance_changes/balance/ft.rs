@@ -9,6 +9,7 @@ use sqlx::PgPool;
 use std::str::FromStr;
 
 use crate::handlers::balance_changes::counterparty::{convert_raw_to_decimal, ensure_ft_metadata};
+use crate::handlers::balance_changes::utils::with_transport_retry;
 
 /// Query fungible token balance at a specific block height
 ///
@@ -45,18 +46,19 @@ pub async fn get_balance_at_block(
 
         // Call ft_balance_of to get raw U128 value
         // Use U128 directly in the type signature for automatic deserialization
-        let contract = Contract(token_contract_obj.clone());
-        let result: Result<near_api::Data<U128>, _> = contract
-            .call_function(
-                "ft_balance_of",
-                serde_json::json!({
-                    "account_id": account_id
-                }),
-            )
-            .read_only()
-            .at(Reference::AtBlock(current_block))
-            .fetch_from(network)
-            .await;
+        let result: Result<near_api::Data<U128>, _> = with_transport_retry("ft_balance", || {
+            Contract(token_contract_obj.clone())
+                .call_function(
+                    "ft_balance_of",
+                    serde_json::json!({
+                        "account_id": account_id
+                    }),
+                )
+                .read_only()
+                .at(Reference::AtBlock(current_block))
+                .fetch_from(network)
+        })
+        .await;
 
         match result {
             Ok(data) => {
