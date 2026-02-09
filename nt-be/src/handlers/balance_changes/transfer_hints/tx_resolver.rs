@@ -331,7 +331,7 @@ pub async fn resolve_receipt_to_transaction(
             if has_receipt(
                 &client,
                 &tx_hash_str,
-                &tx_view.signer_id.to_string(),
+                tx_view.signer_id.as_ref(),
                 receipt_id,
             )
             .await?
