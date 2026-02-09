@@ -249,31 +249,24 @@ pub async fn detect_swaps_from_api(
             continue;
         };
 
-        // Try to find a matching deposit (different token, sent before this fulfillment)
+        // Use API data for sent side (origin_asset and amount_in_formatted)
+        let sent_token_id = format!("intents.near:{}", api_tx.origin_asset);
+        let sent_amount = BigDecimal::from_str(&api_tx.amount_in_formatted).ok();
+
+        // Try to find a matching deposit for exclusion from activity list
+        // Use origin_asset to narrow the match to the correct token
         let matching_deposit = deposits
             .iter()
             .filter(|d| {
                 !matched_deposit_ids.contains(&d.id)
                     && d.block_height < fulfillment.block_height
-                    && d.token_id_str() != fulfillment.token_id_str()
+                    && d.token_id_str() == sent_token_id
             })
             .max_by_key(|d| d.block_height);
 
-        let (deposit_info, deposit_id) = if let Some(deposit) = matching_deposit {
+        if let Some(deposit) = matching_deposit {
             matched_deposit_ids.insert(deposit.id);
-            (
-                Some((
-                    deposit.token_id_str().to_string(),
-                    deposit.amount.clone(),
-                    deposit.block_height,
-                    deposit.id,
-                    deposit.receipt_ids.first().cloned(),
-                )),
-                Some(deposit.id),
-            )
-        } else {
-            (None, None)
-        };
+        }
 
         let fulfillment_receipt = fulfillment.receipt_ids.first().cloned().unwrap_or_default();
 
@@ -281,11 +274,11 @@ pub async fn detect_swaps_from_api(
             solver_transaction_hash: fulfillment_tx.clone(),
             solver_account_id: None, // API doesn't provide solver account
             account_id: account_id.to_string(),
-            sent_token_id: deposit_info.as_ref().map(|(t, _, _, _, _)| t.clone()),
-            sent_amount: deposit_info.as_ref().map(|(_, a, _, _, _)| a.clone()),
-            deposit_block_height: deposit_info.as_ref().map(|(_, _, b, _, _)| *b),
-            deposit_balance_change_id: deposit_id,
-            deposit_receipt_id: deposit_info.as_ref().and_then(|(_, _, _, _, r)| r.clone()),
+            sent_token_id: Some(sent_token_id),
+            sent_amount,
+            deposit_block_height: matching_deposit.map(|d| d.block_height),
+            deposit_balance_change_id: matching_deposit.map(|d| d.id),
+            deposit_receipt_id: matching_deposit.and_then(|d| d.receipt_ids.first().cloned()),
             received_token_id: fulfillment.token_id_str().to_string(),
             received_amount: fulfillment.amount.clone(),
             fulfillment_block_height: fulfillment.block_height,
@@ -332,7 +325,12 @@ pub async fn store_detected_swaps(
                 received_amount,
                 block_height
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            ON CONFLICT (account_id, fulfillment_receipt_id) DO NOTHING
+            ON CONFLICT (account_id, fulfillment_receipt_id) DO UPDATE SET
+                sent_token_id = EXCLUDED.sent_token_id,
+                sent_amount = EXCLUDED.sent_amount,
+                deposit_balance_change_id = EXCLUDED.deposit_balance_change_id,
+                deposit_receipt_id = EXCLUDED.deposit_receipt_id,
+                solver_transaction_hash = EXCLUDED.solver_transaction_hash
             "#,
             swap.account_id,
             swap.solver_transaction_hash,

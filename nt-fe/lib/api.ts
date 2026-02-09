@@ -233,31 +233,44 @@ export interface TokenBalance {
     decimals: number;
 }
 
+export interface TokenMetadataInfo {
+    tokenId: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+    icon?: string;
+    price?: number;
+    priceUpdatedAt?: string;
+    network?: string;
+    chainName?: string;
+    chainIcons?: {
+        dark: string;
+        light: string;
+    };
+}
+
+export interface SwapInfo {
+    sentTokenId: string | null;
+    sentAmount: string | null;
+    sentTokenMetadata?: TokenMetadataInfo;
+    receivedTokenId: string;
+    receivedAmount: string;
+    receivedTokenMetadata: TokenMetadataInfo;
+    solverTransactionHash: string;
+}
+
 export interface RecentActivity {
     id: number;
     blockTime: string;
     tokenId: string;
-    tokenMetadata: {
-        tokenId: string;
-        name: string;
-        symbol: string;
-        decimals: number;
-        icon?: string;
-        price?: number;
-        priceUpdatedAt?: string;
-        network?: string;
-        chainName?: string;
-        chainIcons?: {
-            dark: string;
-            light: string;
-        };
-    };
+    tokenMetadata: TokenMetadataInfo;
     counterparty: string | null;
     signerId: string | null;
     receiverId: string | null;
     amount: string;
     transactionHashes: string[];
     receiptIds: string[];
+    swap?: SwapInfo;
 }
 
 export interface RecentActivityResponse {
