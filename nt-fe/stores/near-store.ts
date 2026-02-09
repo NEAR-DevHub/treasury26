@@ -3,20 +3,19 @@
 import { create } from "zustand";
 import {
     NearConnector,
-    SignAndSendTransactionsParams,
     SignedMessage,
     ConnectorAction,
+    SignDelegateActionParams,
 } from "@hot-labs/near-connect";
-import {
-    EventMap,
-    FinalExecutionOutcome,
-} from "@hot-labs/near-connect/build/types";
 import { Vote as ProposalVote } from "@/lib/proposals-api";
 import { ProposalPermissionKind } from "@/lib/config-utils";
 import { toast } from "sonner";
 import Big from "big.js";
 import { useQueryClient } from "@tanstack/react-query";
-import { ledgerWalletManifest } from "@/lib/ledger-manifest";
+import {
+    ledgerWalletManifest,
+    meteorWalletManifest,
+} from "@/lib/wallet-manifests";
 import {
     getAuthChallenge,
     authLogin,
@@ -25,8 +24,12 @@ import {
     authLogout,
     AuthUserInfo,
 } from "@/lib/auth-api";
-import { markDaoDirty } from "@/lib/api";
+import { markDaoDirty, relayDelegateAction } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import {
+    EventMap,
+    SignDelegateActionsResponse,
+} from "@hot-labs/near-connect/build/types";
 
 export interface CreateProposalParams {
     treasuryId: string;
@@ -74,18 +77,16 @@ interface NearStore {
     signMessage: (
         message: string,
     ) => Promise<{ signatureData: SignedMessage; signedData: string }>;
-    signAndSendTransactions: (
-        params: SignAndSendTransactionsParams,
-    ) => Promise<Array<FinalExecutionOutcome>>;
+    signAndSendDelegateAction: (
+        params: SignDelegateActionParams,
+        treasuryId: string,
+    ) => Promise<boolean>;
     createProposal: (
         toastMessage: string,
         params: CreateProposalParams,
         showToast: boolean,
-    ) => Promise<Array<FinalExecutionOutcome>>;
-    voteProposals: (
-        treasuryId: string,
-        votes: Vote[],
-    ) => Promise<Array<FinalExecutionOutcome>>;
+    ) => Promise<void>;
+    voteProposals: (treasuryId: string, votes: Vote[]) => Promise<void>;
 }
 
 // Helper to check if fully authenticated
@@ -122,6 +123,9 @@ export const useNearStore = create<NearStore>((set, get) => ({
         try {
             newConnector = new NearConnector({
                 network: "mainnet",
+                features: {
+                    signDelegateAction: true,
+                },
             });
         } catch (err) {
             set({ isInitializing: false });
@@ -162,6 +166,11 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     console.warn("Failed to register Ledger wallet:", e);
                 }
             }
+            console.log("Registering Meteor wallet");
+            // Currently, there is a bug in hot wallet connector where it filters wallets by feature flag: signDelegateAction but it should filter out by
+            // signDelegateActions. So I have to register it manually with the feature flag: signDelegateAction.
+            await newConnector.registerWallet(meteorWalletManifest);
+            console.log("Meteor wallet registered successfully");
         });
 
         try {
@@ -352,7 +361,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
         return { signatureData, signedData: message };
     },
 
-    signAndSendTransactions: async (params: SignAndSendTransactionsParams) => {
+    signAndSendDelegateAction: async (
+        params: SignDelegateActionParams,
+        treasuryId: string,
+    ): Promise<boolean> => {
         const state = get();
         if (!isFullyAuthenticated(state)) {
             throw new Error(
@@ -363,7 +375,22 @@ export const useNearStore = create<NearStore>((set, get) => ({
             throw new Error("Connector not initialized");
         }
         const wallet = await state.connector.wallet();
-        return wallet.signAndSendTransactions(params);
+        const result = await wallet.signDelegateActions(params);
+
+        // Relay each signed delegate action to the backend for gas-sponsored submission
+        for (const signedAction of result.signedDelegateActions) {
+            const relayResult = await relayDelegateAction(
+                treasuryId,
+                signedAction,
+            );
+            if (!relayResult.success) {
+                throw new Error(
+                    relayResult.error || "Failed to relay delegate action",
+                );
+            }
+        }
+
+        return true;
     },
 
     createProposal: async (
@@ -374,7 +401,9 @@ export const useNearStore = create<NearStore>((set, get) => ({
         const state = get();
         if (!isFullyAuthenticated(state)) {
             toast.error("Please connect wallet and accept terms to continue.");
-            return [];
+            throw new Error(
+                "Not authorized. Please connect wallet and accept terms.",
+            );
         }
         if (!state.connector) {
             throw new Error("Connector not initialized");
@@ -403,12 +432,17 @@ export const useNearStore = create<NearStore>((set, get) => ({
             proposalTransaction,
             ...(params.additionalTransactions || []),
         ];
+
+        const delegateActions = transactions.map((t) => ({
+            receiverId: t.receiverId,
+            actions: t.actions,
+        }));
+
         try {
-            const wallet = await state.connector.wallet();
-            const results = await wallet.signAndSendTransactions({
-                transactions,
-                network: "mainnet",
-            });
+            await get().signAndSendDelegateAction(
+                { delegateActions, network: "mainnet" },
+                params.treasuryId,
+            );
             if (showToast) {
                 toast.success(toastMessage, {
                     duration: 10000,
@@ -427,11 +461,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     },
                 });
             }
-            return results;
         } catch (error) {
             console.error("Failed to create proposal:", error);
             toast.error("Transaction wasn't approved in your wallet.");
-            return [];
+            throw error;
         }
     },
 
@@ -439,34 +472,37 @@ export const useNearStore = create<NearStore>((set, get) => ({
         const state = get();
         if (!isFullyAuthenticated(state)) {
             toast.error("Please connect wallet and accept terms to continue.");
-            return [];
+            throw new Error(
+                "Not authorized. Please connect wallet and accept terms.",
+            );
         }
 
-        const { signAndSendTransactions } = get();
+        const { signAndSendDelegateAction } = get();
         const gas = Big("300000000000000").div(votes.length).toFixed();
-        try {
-            const results = await signAndSendTransactions({
-                transactions: [
-                    {
-                        receiverId: treasuryId,
-                        actions: [
-                            ...votes.map((vote) => ({
-                                type: "FunctionCall",
-                                params: {
-                                    methodName: "act_proposal",
-                                    args: {
-                                        id: vote.proposalId,
-                                        action: `Vote${vote.vote}`,
-                                        proposal: vote.proposalKind,
-                                    },
-                                    gas: gas.toString(),
-                                    deposit: "0",
-                                },
-                            })),
-                        ],
+        const delegateActions = [
+            {
+                receiverId: treasuryId,
+                actions: votes.map((vote) => ({
+                    type: "FunctionCall",
+                    params: {
+                        methodName: "act_proposal",
+                        args: {
+                            id: vote.proposalId,
+                            action: `Vote${vote.vote}`,
+                            proposal: vote.proposalKind,
+                        },
+                        gas: gas.toString(),
+                        deposit: "0",
                     },
-                ],
-            });
+                })),
+            },
+        ];
+
+        try {
+            await signAndSendDelegateAction(
+                { delegateActions: delegateActions as any, network: "mainnet" },
+                treasuryId,
+            );
 
             const toastAction =
                 votes.length === 1
@@ -497,11 +533,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     },
                 },
             );
-            return results;
         } catch (error) {
             console.error("Failed to vote proposals:", error);
             toast.error(`Failed to submit vote${votes.length > 1 ? "s" : ""}`);
-            return [];
+            throw error;
         }
     },
 }));
@@ -523,7 +558,6 @@ export const useNear = () => {
         checkAuth,
         clearError,
         signMessage,
-        signAndSendTransactions,
         createProposal: storeCreateProposal,
         voteProposals: storeVoteProposals,
     } = useNearStore();
@@ -538,96 +572,71 @@ export const useNear = () => {
         params: CreateProposalParams,
         showToast: boolean = true,
     ) => {
-        const results = await storeCreateProposal(
-            toastMessage,
-            params,
-            showToast,
-        );
+        await storeCreateProposal(toastMessage, params, showToast);
 
-        // If successful, invalidate queries after delay in background
-        if (results.length > 0) {
-            (async () => {
-                // Delay to allow backend to pick up the new proposal
-                await new Promise((resolve) => setTimeout(resolve, 5000));
-                // Invalidate and refetch proposals
-                await queryClient.invalidateQueries({
-                    queryKey: ["proposals", params.treasuryId],
-                });
-                await queryClient.invalidateQueries({
-                    queryKey: ["proposal", params.treasuryId],
-                });
-            })();
-        } else {
-            throw new Error("Transaction wasn't approved in your wallet.");
-        }
-
-        return results;
+        // Success: invalidate queries after delay in background
+        (async () => {
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+            await queryClient.invalidateQueries({
+                queryKey: ["proposals", params.treasuryId],
+            });
+            await queryClient.invalidateQueries({
+                queryKey: ["proposal", params.treasuryId],
+            });
+        })();
     };
 
     const voteProposals = async (treasuryId: string, votes: Vote[]) => {
-        const results = await storeVoteProposals(treasuryId, votes);
-        if (results.length > 0) {
-            // Delay to allow backend to pick up the new votes
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-            let promises = [];
-            // Invalidate proposals list
-            promises.push(
+        await storeVoteProposals(treasuryId, votes);
+
+        // Success: delay then invalidate
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const promises = [
+            queryClient.invalidateQueries({
+                queryKey: ["proposals", treasuryId],
+            }),
+            ...votes.map((vote) =>
                 queryClient.invalidateQueries({
-                    queryKey: ["proposals", treasuryId],
+                    queryKey: [
+                        "proposal",
+                        treasuryId,
+                        vote.proposalId.toString(),
+                    ],
                 }),
-            );
-            // Invalidate individual proposal queries for the voted proposals
-            promises.push(
-                ...votes.map((vote) =>
-                    queryClient.invalidateQueries({
-                        queryKey: [
-                            "proposal",
-                            treasuryId,
-                            vote.proposalId.toString(),
-                        ],
-                    }),
-                ),
-            );
-            promises.push(
-                ...votes.map((vote) =>
-                    queryClient.invalidateQueries({
-                        queryKey: [
-                            "proposal-transaction",
-                            treasuryId,
-                            vote.proposalId.toString(),
-                        ],
-                    }),
-                ),
-            );
-            await Promise.all(promises);
+            ),
+            ...votes.map((vote) =>
+                queryClient.invalidateQueries({
+                    queryKey: [
+                        "proposal-transaction",
+                        treasuryId,
+                        vote.proposalId.toString(),
+                    ],
+                }),
+            ),
+        ];
+        await Promise.all(promises);
 
-            // Invalidate policy and config since voting can approve proposals that change them
-            await queryClient.invalidateQueries({
-                queryKey: ["treasuryPolicy", treasuryId],
-            });
-            await queryClient.invalidateQueries({
-                queryKey: ["treasuryConfig", treasuryId],
-            });
-            // Invalidate user treasuries to update sidebar name/logo
-            await queryClient.invalidateQueries({
-                queryKey: ["userTreasuries", accountId],
-            });
+        await queryClient.invalidateQueries({
+            queryKey: ["treasuryPolicy", treasuryId],
+        });
+        await queryClient.invalidateQueries({
+            queryKey: ["treasuryConfig", treasuryId],
+        });
+        await queryClient.invalidateQueries({
+            queryKey: ["userTreasuries", accountId],
+        });
 
-            // Mark DAO as dirty if voting on policy-related proposals
-            // This triggers immediate re-sync of membership data
-            const policyKinds: ProposalPermissionKind[] = [
-                "policy",
-                "add_member_to_role",
-                "remove_member_from_role",
-            ];
-            const hasPolicyVote = votes.some((v) =>
-                policyKinds.includes(v.proposalKind),
-            );
-            if (hasPolicyVote) {
-                await markDaoDirty(treasuryId);
-            }
+        const policyKinds: ProposalPermissionKind[] = [
+            "policy",
+            "add_member_to_role",
+            "remove_member_from_role",
+        ];
+        const hasPolicyVote = votes.some((v) =>
+            policyKinds.includes(v.proposalKind),
+        );
+        if (hasPolicyVote) {
+            await markDaoDirty(treasuryId);
         }
-        return results;
     };
 
     return {
@@ -646,7 +655,6 @@ export const useNear = () => {
         checkAuth,
         clearError,
         signMessage,
-        signAndSendTransactions,
         createProposal,
         voteProposals,
     };

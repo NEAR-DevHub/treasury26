@@ -2,6 +2,8 @@ import { Policy } from "@/types/policy";
 import axios from "axios";
 import Big from "big.js";
 import { Balance, BalanceRaw, transformBalance } from "./balance";
+import { SignDelegateActionResult } from "@hot-labs/near-connect/build/types";
+import { encodeSignedDelegate } from "@near-js/transactions";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -1025,4 +1027,48 @@ export async function searchReceipt(
         console.error(`Error searching receipt for ${keyword}`, error);
         return [];
     }
+}
+
+export interface RelayDelegateActionResponse {
+    success: boolean;
+    error?: string;
+}
+
+/**
+ * Relay a signed delegate action to the backend for gas-sponsored submission.
+ * The backend wraps it in a transaction, pays for gas, and decrements credits.
+ */
+function signedDelegateToBase64(
+    signedDelegate: SignDelegateActionResult["signedDelegate"],
+): string {
+    let bytes: Uint8Array;
+    const withEncode = signedDelegate as unknown as {
+        encode?: () => Uint8Array;
+    };
+    if (typeof withEncode.encode === "function") {
+        bytes = new Uint8Array(withEncode.encode());
+    } else if (typeof signedDelegate === "string") {
+        bytes = Uint8Array.from(atob(signedDelegate), (c) => c.charCodeAt(0));
+    } else {
+        bytes = encodeSignedDelegate(
+            signedDelegate as Parameters<typeof encodeSignedDelegate>[0],
+        );
+    }
+    return btoa(String.fromCharCode(...bytes));
+}
+
+export async function relayDelegateAction(
+    treasuryId: string,
+    signedDelegateAction: SignDelegateActionResult,
+): Promise<RelayDelegateActionResponse> {
+    const url = `${BACKEND_API_BASE}/relay/delegate-action`;
+    const base64Encoded = signedDelegateToBase64(
+        signedDelegateAction.signedDelegate,
+    );
+    const response = await axios.post<RelayDelegateActionResponse>(
+        url,
+        { treasuryId, signedDelegateAction: base64Encoded },
+        { withCredentials: true },
+    );
+    return response.data;
 }
