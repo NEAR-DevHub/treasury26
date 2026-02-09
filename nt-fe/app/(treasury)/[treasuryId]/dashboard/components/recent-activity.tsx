@@ -122,14 +122,15 @@ export function RecentActivity() {
             return `from ${activity.counterparty}`;
         }
 
-        // If sent → show "To receiver"
-        if (!isReceived && activity.receiverId) {
-            return `to ${activity.receiverId}`;
+        // If sent → show "To receiver" (fall back to counterparty)
+        if (!isReceived) {
+            const to = activity.receiverId || activity.counterparty;
+            if (to) return `to ${to}`;
         }
 
         return isReceived
             ? `from ${activity.counterparty || "unknown"}`
-            : `to ${activity.receiverId || "unknown"}`;
+            : "to unknown";
     };
 
     const handleActivityClick = (activity: RecentActivityType) => {
