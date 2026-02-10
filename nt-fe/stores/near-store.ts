@@ -161,10 +161,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         // Register Ledger wallet after connector is initialized
         newConnector.whenManifestLoaded.then(async () => {
             // Check if WebHID is supported (not on mobile, requires secure context)
-            if (
-                typeof navigator !== "undefined" &&
-                ("hid" in navigator || "usb" in navigator)
-            ) {
+            if (typeof navigator !== "undefined" && "hid" in navigator) {
                 try {
                     await newConnector.registerWallet(ledgerWalletManifest);
                     console.log("Ledger wallet registered successfully");
