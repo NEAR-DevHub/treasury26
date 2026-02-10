@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/input";
 import { DateTimePicker } from "@/components/ui/datepicker";
-import { endOfDay, format, isSameDay, startOfDay, subDays, subMonths } from "date-fns";
+import { endOfDay, format, isSameDay, startOfDay } from "date-fns";
 import { OperationSelect } from "@/components/operation-select";
 import { TokenSelectPopover } from "@/components/token-select-popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -537,68 +537,6 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove, minDat
         setIsOpen(false);
     };
 
-    const commonTimeFilters = useMemo(
-        () => [
-            {
-                label: 'Today',
-                value: {
-                    from: startOfDay(new Date()),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Yesterday',
-                value: {
-                    from: subDays(startOfDay(new Date()), 1),
-                    to: subDays(endOfDay(new Date()), 1),
-                },
-            },
-            {
-                label: 'Last 3 days',
-                value: {
-                    from: subDays(startOfDay(new Date()), 3),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last 7 days',
-                value: {
-                    from: subDays(startOfDay(new Date()), 7),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last 14 days',
-                value: {
-                    from: subDays(startOfDay(new Date()), 14),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last month',
-                value: {
-                    from: subMonths(startOfDay(new Date()), 1),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last 3 months',
-                value: {
-                    from: subMonths(startOfDay(new Date()), 3),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last 6 months',
-                value: {
-                    from: subMonths(startOfDay(new Date()), 6),
-                    to: endOfDay(new Date()),
-                },
-            },
-        ],
-        [],
-    );
-
     const defaultMonth = useMemo(() => {
         if (data?.dateRange?.from) {
             return data.dateRange.from;
@@ -620,7 +558,6 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove, minDat
                 <div className="h-full w-full flex items-center justify-center">
                     <DateTimePicker
                         mode="range"
-                        presets={commonTimeFilters}
                         value={data?.dateRange ? { from: data?.dateRange.from, to: data?.dateRange.to } : undefined}
                         onChange={(range) => {
                             if (range && typeof range === 'object' && 'from' in range) {

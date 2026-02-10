@@ -309,7 +309,6 @@ export async function getRecentActivity(
         const response = await axios.get<RecentActivityResponse>(url, {
             params,
         });
-        console.log(response.data);
         return response.data;
     } catch (error) {
         console.error("Error getting recent activity", error);
@@ -1100,61 +1099,6 @@ export async function relayDelegateAction(
     return response.data;
 }
 
-/**
- * Bulk Payment Usage Statistics
- */
-export interface BulkPaymentUsageStats {
-    credits_available: number;
-    credits_used: number;
-    total_credits: number;
-}
-
-/**
- * Get bulk payment usage statistics for a treasury
- * Returns credits available, used, and total
- */
-export async function getBulkPaymentUsageStats(
-    treasuryId: string
-): Promise<BulkPaymentUsageStats> {
-    const response = await axios.get<BulkPaymentUsageStats>(
-        `${BACKEND_API_BASE}/bulk-payment/usage-stats`,
-        {
-            params: { treasury_id: treasuryId },
-        }
-    );
-    return response.data;
-}
-
-/**
- * Plan Details
- */
-export type PlanType = "trial" | "plus" | "pro" | "custom";
-export type PlanPeriod = "trial" | "month";
-
-export interface PlanDetails {
-    plan_type: PlanType;
-    batch_payment_credit_limit: number | null; // null for unlimited
-    export_credit_limit: number | null; // null for unlimited
-    history_months: number | null; // null for unlimited
-    period: PlanPeriod;
-}
-
-/**
- * Get plan details for a treasury
- * Returns the plan type, credit limits for various features, and period information
- */
-export async function getPlanDetails(
-    treasuryId: string
-): Promise<PlanDetails> {
-    const response = await axios.get<PlanDetails>(
-        `${BACKEND_API_BASE}/plan/details`,
-        {
-            params: { treasury_id: treasuryId },
-        }
-    );
-    return response.data;
-}
-
 // ============================================================================
 // Export Credits & History
 // ============================================================================
@@ -1179,19 +1123,6 @@ export interface ExportHistoryItem {
 export interface ExportHistoryResponse {
     data: ExportHistoryItem[];
     total: number;
-}
-
-/**
- * Get export credits for an account
- */
-export async function getExportCredits(accountId: string): Promise<ExportCreditsResponse> {
-    const response = await axios.get<ExportCreditsResponse>(
-        `${BACKEND_API_BASE}/export-credits`,
-        {
-            params: { accountId },
-        }
-    );
-    return response.data;
 }
 
 /**

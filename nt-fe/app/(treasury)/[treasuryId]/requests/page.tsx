@@ -20,6 +20,7 @@ import { NumberBadge } from "@/components/number-badge";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { Input } from "@/components/input";
 import { useNear } from "@/stores/near-store";
+import { AuthButton } from "@/components/auth-button";
 
 // Constants
 const SEARCH_DEBOUNCE_MS = 300;
@@ -124,6 +125,7 @@ function ProposalsList({ status, onSelectionChange }: { status?: ProposalStatus[
 
 function NoRequestsFound() {
     const { treasuryId: treasuryId } = useTreasury();
+    const router = useRouter();
     return (
         <PageCard className="py-[100px] flex flex-col items-center justify-center w-full h-fit gap-4">
             <div className="flex flex-col items-center justify-center gap-0.5">
@@ -131,16 +133,22 @@ function NoRequestsFound() {
                 <p className="text-xs text-muted-foreground max-w-[300px] text-center">Requests for payments, exchanges, and other actions will appear here once created.</p>
             </div>
             <div className="flex gap-4 w-[300px]">
-                <Link href={`/${treasuryId}/payments`} className="w-1/2">
-                    <Button className="gap-1 w-full">
-                        <ArrowUpRight className="size-3.5" /> Send
-                    </Button>
-                </Link>
-                <Link href={`/${treasuryId}/exchange`} className="w-1/2">
-                    <Button className="gap-1 w-full">
-                        <ArrowRightLeft className="size-3.5" /> Exchange
-                    </Button>
-                </Link>
+                <AuthButton
+                    permissionKind="transfer"
+                    onClick={() => router.push(`/${treasuryId}/payments`)}
+                    permissionAction="AddProposal"
+                    className="gap-1 w-full"
+                >
+                    <ArrowUpRight className="size-3.5" /> Send
+                </AuthButton>
+                <AuthButton
+                    permissionKind="call"
+                    onClick={() => router.push(`/${treasuryId}/exchange`)}
+                    permissionAction="AddProposal"
+                    className="gap-1 w-full"
+                >
+                    <ArrowRightLeft className="size-3.5" /> Exchange
+                </AuthButton>
             </div>
         </PageCard>
     );

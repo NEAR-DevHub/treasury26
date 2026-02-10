@@ -1121,69 +1121,6 @@ pub struct ExportCreditsQuery {
     pub account_id: String,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExportCreditsResponse {
-    pub export_credits: i32, // Remaining credits in DB
-    pub credits_used: i32,   // Calculated: total - remaining
-    pub total_credits: i32,  // From plan details
-}
-
-pub async fn get_export_credits(
-    State(state): State<Arc<AppState>>,
-    Query(params): Query<ExportCreditsQuery>,
-) -> Result<Json<ExportCreditsResponse>, (StatusCode, String)> {
-    // Step 1: Get account plan info
-    let account_plan = get_account_plan_info(&state.db_pool, &params.account_id)
-        .await
-        .map_err(|e| {
-            log::error!("Failed to fetch account plan info: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to check subscription status: {}", e),
-            )
-        })?;
-
-    // If account not found, default to Free plan
-    let (plan_config, db_credits_remaining) = if let Some(plan) = account_plan {
-        let config = get_plan_config(plan.plan_type);
-        (config, plan.export_credits)
-    } else {
-        // Default to Free plan if account not monitored
-        let config = get_plan_config(crate::config::PlanType::Free);
-        (config, 0)
-    };
-
-    // For unlimited plans (None), return a high number for total_credits
-    // For monthly/trial plans, use the configured limit
-    let total_credits = plan_config
-        .limits
-        .monthly_export_credits
-        .or(plan_config.limits.trial_export_credits)
-        .map(|c| c as i32)
-        .unwrap_or(i32::MAX);
-
-    // Step 2: Calculate credits used
-    // If remaining > total (bonus credits), used = 0
-    // Otherwise, used = total - remaining
-    let credits_used = std::cmp::max(0, total_credits - db_credits_remaining);
-
-    log::info!(
-        "Export credits for {}: plan={:?}, total={}, remaining={}, used={}",
-        params.account_id,
-        plan_config.plan_type,
-        total_credits,
-        db_credits_remaining,
-        credits_used
-    );
-
-    Ok(Json(ExportCreditsResponse {
-        export_credits: db_credits_remaining,
-        credits_used,
-        total_credits,
-    }))
-}
-
 // ============================================================================
 // Recent Activity Endpoint
 // ============================================================================

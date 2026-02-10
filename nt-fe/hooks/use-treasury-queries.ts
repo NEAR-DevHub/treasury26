@@ -18,7 +18,6 @@ import {
     searchIntentsTokens,
     SearchTokensParams,
     getRecentActivity,
-    getExportCredits,
     getExportHistory,
 } from "@/lib/api";
 
@@ -269,18 +268,6 @@ export function useRecentActivity(
         queryFn: () => getRecentActivity(accountId!, limit, offset, minUsdValue, transactionType, tokenIds, startDate, endDate),
         enabled: !!accountId,
         staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
-    });
-}
-
-/**
- * Hook to fetch export credits for an account
- */
-export function useExportCredits(accountId: string | null | undefined) {
-    return useQuery({
-        queryKey: ["exportCredits", accountId],
-        queryFn: () => getExportCredits(accountId!),
-        enabled: !!accountId,
-        staleTime: Infinity, // Never auto-refresh, only manual refetch
     });
 }
 

@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import * as z from "zod";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { PageCard } from "@/components/card";
@@ -12,19 +13,18 @@ import { ArrowLeft, Calendar, Coins, Mail, Clock, FileX, ChevronDown } from "luc
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { useSubscription } from "@/hooks/use-subscription";
-import { useExportCredits, useExportHistory } from "@/hooks/use-treasury-queries";
-import { DateRangePicker } from "@/components/date-range-picker";
+import { useExportHistory } from "@/hooks/use-treasury-queries";
+import { DateTimePicker } from "@/components/ui/datepicker";
 import { Input } from "@/components/ui/input";
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAssets, useAggregatedTokens } from "@/hooks/use-assets";
 import { cn } from "@/lib/utils";
-import { subMonths } from "date-fns";
+import { endOfDay, startOfDay, subMonths } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import { EmptyState } from "@/components/empty-state";
 import { toast } from "sonner";
@@ -257,10 +257,10 @@ function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
 
 export default function ExportActivityPage() {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { treasuryId } = useTreasury();
     const { accountId } = useNear();
     const { data: planDetails, isLoading: planLoading } = useSubscription(treasuryId);
-    const { data: exportCreditsData, refetch: refetchCredits } = useExportCredits(treasuryId);
     const { data: exportHistoryData, refetch: refetchHistory } = useExportHistory(treasuryId);
     const { data: assetsData } = useAssets(treasuryId, { onlyPositiveBalance: false });
     const aggregatedTokens = useAggregatedTokens(assetsData?.tokens || []);
@@ -294,6 +294,13 @@ export default function ExportActivityPage() {
     const dateRange = form.watch("dateRange");
     const selectedAssets = form.watch("selectedAssets");
     const selectedTransactionTypes = form.watch("selectedTransactionTypes");
+
+    const defaultMonth = useMemo(() => {
+        if (dateRange?.from) {
+            return dateRange.from;
+        }
+        return startOfDay(new Date());
+    }, [dateRange?.from]);
 
 
     const handleExport = async () => {
@@ -379,8 +386,11 @@ export default function ExportActivityPage() {
                 description: `Your ${documentType.toUpperCase()} file has been downloaded. Check your export history for details.`,
             });
 
-            // Refetch credits and history
-            await Promise.all([refetchCredits(), refetchHistory()]);
+            // Refetch subscription data and history
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ["subscription", treasuryId] }),
+                refetchHistory()
+            ]);
 
             // Navigate to history tab
             setCurrentTab("history");
@@ -433,13 +443,13 @@ export default function ExportActivityPage() {
     };
 
     const canGenerateExport = useMemo(() => {
-        const credits = exportCreditsData?.exportCredits ?? 0;
+        const credits = planDetails?.exportCredits ?? 0;
         return credits > 0;
-    }, [exportCreditsData]);
+    }, [planDetails]);
 
-    const exportCreditsUsed = exportCreditsData?.creditsUsed ?? 0;
-    const exportCreditsTotal = exportCreditsData?.totalCredits ?? planDetails?.planConfig?.limits?.monthlyExportCredits ?? 0;
-    const exportCreditsRemaining = exportCreditsData?.exportCredits ?? 0;
+    const exportCreditsRemaining = planDetails?.exportCredits ?? 0;
+    const exportCreditsTotal = planDetails?.planConfig?.limits?.monthlyExportCredits ?? planDetails?.planConfig?.limits?.trialExportCredits ?? 0;
+    const exportCreditsUsed = Math.max(0, exportCreditsTotal - exportCreditsRemaining);
 
     // Show loading skeleton
     if (planLoading) {
@@ -529,18 +539,26 @@ export default function ExportActivityPage() {
                                         {/* Time Range */}
                                         <div>
                                             <label className="text-sm font-medium mb-2 block">Time Range</label>
-                                            <DateRangePicker
-                                                initialDateFrom={dateRange.from}
-                                                initialDateTo={dateRange.to}
-                                                align="start"
-                                                locale="en-US"
-                                                minDate={minDate}
-                                                maxDate={new Date()}
-                                                onUpdate={(values: any) => {
-                                                    if (values.range) {
-                                                        form.setValue("dateRange", values.range, { shouldValidate: true });
+                                            <DateTimePicker
+                                                mode="range"
+                                                value={dateRange ? { from: dateRange.from, to: dateRange.to } : undefined}
+                                                onChange={(range: any) => {
+                                                    if (range && typeof range === 'object' && 'from' in range) {
+                                                        form.setValue("dateRange", {
+                                                            from: range.from ? startOfDay(range.from) : startOfDay(new Date()),
+                                                            to: range.to ? endOfDay(range.to) : endOfDay(new Date())
+                                                        }, { shouldValidate: true });
+                                                    } else {
+                                                        form.setValue("dateRange", {
+                                                            from: startOfDay(new Date()),
+                                                            to: endOfDay(new Date())
+                                                        }, { shouldValidate: true });
                                                     }
                                                 }}
+                                                defaultMonth={defaultMonth}
+                                                numberOfMonths={1}
+                                                min={minDate}
+                                                max={new Date()}
                                             />
                                         </div>
 
