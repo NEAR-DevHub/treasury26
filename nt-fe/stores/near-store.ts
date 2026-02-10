@@ -126,7 +126,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 footerBranding: {
                     icon: "/favicon_dark.svg",
                     link: "https://wallet.near.org/",
-                    linkText: "Need wallet?",
+                    linkText: "Need a wallet?",
                     heading: "More wallets coming soon",
                 },
                 features: {
