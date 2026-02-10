@@ -178,6 +178,7 @@ function VotingSection({
                                 accountId={account}
                                 vote={vote}
                                 iconOnly={false}
+                                expired={proposalStatus === "Expired"}
                             />
                         </div>
                     );
