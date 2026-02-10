@@ -21,8 +21,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::AppState;
+use crate::config::get_plan_config;
 use crate::handlers::balance_changes::query_builder::{BalanceChangeFilters, build_count_query};
-use crate::handlers::plan::details::get_dummy_plan_details;
+use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::token::TokenMetadata;
 use crate::routes::{BalanceChangesQuery, get_balance_changes_internal};
 
@@ -47,11 +48,6 @@ pub struct BalanceChangeRow {
 // ============================================================================
 // Shared Helper Functions
 // ============================================================================
-
-/// Calculate date cutoff based on plan limits
-fn calculate_date_cutoff(history_months: Option<i32>) -> Option<DateTime<Utc>> {
-    history_months.map(|months| Utc::now() - Duration::days(months as i64 * 30))
-}
 
 /// Deserializer for comma-separated values
 /// Accepts either a comma-separated string or None
@@ -266,7 +262,7 @@ async fn handle_export(
     format: &str,
 ) -> Result<(String, Vec<u8>, &'static str), (StatusCode, String)> {
     // Validate date range based on plan
-    validate_export_date_range(&params.account_id, params.start_time)?;
+    validate_export_date_range(&state.db_pool, &params.account_id, params.start_time).await?;
 
     // Generate export data
     let (data, content_type) = match format {
@@ -779,21 +775,31 @@ async fn generate_xlsx(
 /// Validate that the export date range is within the user's plan limits
 ///
 /// Returns an error if the start_time is before the earliest allowed date
-/// based on the user's plan history_months limit
-fn validate_export_date_range(
+/// based on the user's plan history_lookup_months limit
+async fn validate_export_date_range(
+    pool: &sqlx::PgPool,
     account_id: &str,
     start_time: DateTime<Utc>,
 ) -> Result<(), (StatusCode, String)> {
-    // Get plan details to determine history limits
-    let plan_details = get_dummy_plan_details(account_id);
+    // Get account plan info
+    let account_plan = get_account_plan_info(pool, account_id).await.map_err(|e| {
+        log::error!("Failed to fetch account plan info: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to check subscription status: {}", e),
+        )
+    })?;
 
-    // If unlimited history (None), allow any date
-    if plan_details.history_months.is_none() {
-        return Ok(());
-    }
+    // If account not found, default to Free plan
+    let plan_config = if let Some(plan) = account_plan {
+        get_plan_config(plan.plan_type)
+    } else {
+        // Default to Free plan if account not monitored
+        get_plan_config(crate::config::PlanType::Free)
+    };
 
     // Calculate the earliest allowed date based on plan
-    let history_months = plan_details.history_months.unwrap();
+    let history_months = plan_config.limits.history_lookup_months;
     let earliest_allowed = Utc::now() - Duration::days(history_months as i64 * 30);
 
     // Check if start_time is before the earliest allowed date
@@ -1127,27 +1133,37 @@ pub async fn get_export_credits(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ExportCreditsQuery>,
 ) -> Result<Json<ExportCreditsResponse>, (StatusCode, String)> {
-    // Step 1: Get plan details to determine credit limit
-    let plan_details = get_dummy_plan_details(&params.account_id);
+    // Step 1: Get account plan info
+    let account_plan = get_account_plan_info(&state.db_pool, &params.account_id)
+        .await
+        .map_err(|e| {
+            log::error!("Failed to fetch account plan info: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to check subscription status: {}", e),
+            )
+        })?;
+
+    // If account not found, default to Free plan
+    let (plan_config, db_credits_remaining) = if let Some(plan) = account_plan {
+        let config = get_plan_config(plan.plan_type);
+        (config, plan.export_credits)
+    } else {
+        // Default to Free plan if account not monitored
+        let config = get_plan_config(crate::config::PlanType::Free);
+        (config, 0)
+    };
 
     // For unlimited plans (None), return a high number for total_credits
-    let total_credits = plan_details.export_credit_limit.unwrap_or(i32::MAX);
+    // For monthly/trial plans, use the configured limit
+    let total_credits = plan_config
+        .limits
+        .monthly_export_credits
+        .or(plan_config.limits.trial_export_credits)
+        .map(|c| c as i32)
+        .unwrap_or(i32::MAX);
 
-    // Step 2: Get remaining credits from monitored_accounts table
-    let db_credits_remaining: i32 = sqlx::query_scalar(
-        r#"
-        SELECT export_credits
-        FROM monitored_accounts
-        WHERE account_id = $1
-        "#,
-    )
-    .bind(&params.account_id)
-    .fetch_optional(&state.db_pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    .unwrap_or(0);
-
-    // Step 3: Calculate credits used
+    // Step 2: Calculate credits used
     // If remaining > total (bonus credits), used = 0
     // Otherwise, used = total - remaining
     let credits_used = std::cmp::max(0, total_credits - db_credits_remaining);
@@ -1155,7 +1171,7 @@ pub async fn get_export_credits(
     log::info!(
         "Export credits for {}: plan={:?}, total={}, remaining={}, used={}",
         params.account_id,
-        plan_details.plan_type,
+        plan_config.plan_type,
         total_credits,
         db_credits_remaining,
         credits_used
@@ -1192,6 +1208,7 @@ pub struct RecentActivityResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecentActivity {
     pub id: i64,
     pub block_time: DateTime<Utc>,
@@ -1202,6 +1219,7 @@ pub struct RecentActivity {
     pub receiver_id: Option<String>,
     pub amount: BigDecimal,
     pub transaction_hashes: Vec<String>,
+    pub receipt_ids: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value_usd: Option<f64>,
 }
@@ -1213,9 +1231,27 @@ pub async fn get_recent_activity(
     let limit = params.limit.unwrap_or(10).min(100);
     let offset = params.offset.unwrap_or(0);
 
-    // Get plan details and calculate date cutoff
-    let plan_details = get_dummy_plan_details(&params.account_id);
-    let date_cutoff = calculate_date_cutoff(plan_details.history_months);
+    // Get account plan info and calculate date cutoff
+    let account_plan = get_account_plan_info(&state.db_pool, &params.account_id)
+        .await
+        .map_err(|e| {
+            log::error!("Failed to fetch account plan info: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": format!("Failed to check subscription status: {}", e) })),
+            )
+        })?;
+
+    // If account not found, default to Free plan
+    let plan_config = if let Some(plan) = account_plan {
+        get_plan_config(plan.plan_type)
+    } else {
+        // Default to Free plan if account not monitored
+        get_plan_config(crate::config::PlanType::Free)
+    };
+
+    let history_months = plan_config.limits.history_lookup_months;
+    let date_cutoff = Some(Utc::now() - Duration::days(history_months as i64 * 30));
 
     // Parse user-provided date range filters
     let start_date = params.start_date.as_ref().map(|s| s.as_str());
@@ -1342,6 +1378,7 @@ pub async fn get_recent_activity(
                 receiver_id: change.receiver_id,
                 amount: change.amount,
                 transaction_hashes: change.transaction_hashes,
+                receipt_ids: change.receipt_id,
                 value_usd,
             })
         })

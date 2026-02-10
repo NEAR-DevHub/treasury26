@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS export_history (
 );
 
 -- Add indexes for common queries
-CREATE INDEX idx_export_history_account_id ON export_history(account_id);
-CREATE INDEX idx_export_history_generated_by ON export_history(generated_by);
+CREATE INDEX IF NOT EXISTS idx_export_history_account_id ON export_history(account_id);
+CREATE INDEX IF NOT EXISTS idx_export_history_generated_by ON export_history(generated_by);
 
 -- Add comments
 COMMENT ON TABLE export_history IS 'Stores history of transaction exports requested by users';

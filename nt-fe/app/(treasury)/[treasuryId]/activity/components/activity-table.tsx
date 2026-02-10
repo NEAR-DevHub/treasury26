@@ -115,7 +115,7 @@ export function ActivityTable({
                                                     <span className="text-sm font-medium">{typeLabel}</span>
                                                     <span className="text-xs text-muted-foreground">
                                                         <FormattedDate
-                                                            date={new Date(activity.block_time)}
+                                                            date={new Date(activity.blockTime)}
                                                             includeTime
                                                         />
                                                     </span>
@@ -124,16 +124,16 @@ export function ActivityTable({
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                {activity.token_metadata.icon && (
+                                                {activity.tokenMetadata.icon && (
                                                     <img
-                                                        src={activity.token_metadata.icon}
-                                                        alt={activity.token_metadata.symbol}
+                                                        src={activity.tokenMetadata.icon}
+                                                        alt={activity.tokenMetadata.symbol}
                                                         className="h-6 w-6 rounded-full"
                                                     />
                                                 )}
                                                 <div className={isReceived ? "text-general-success-foreground" : "text-foreground"}>
-                                                    {formatAmount(activity.amount, activity.token_metadata.decimals)}{" "}
-                                                    {activity.token_metadata.symbol}
+                                                    {formatAmount(activity.amount, activity.tokenMetadata.decimals)}{" "}
+                                                    {activity.tokenMetadata.symbol}
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -141,15 +141,15 @@ export function ActivityTable({
                                             <span className="text-sm">
                                                 {activity.counterparty && isReceived
                                                     ? activity.counterparty
-                                                    : activity.signer_id
-                                                        ? activity.signer_id
+                                                    : activity.signerId
+                                                        ? activity.signerId
                                                         : "—"}
                                             </span>
                                         </TableCell>
                                         <TableCell>
                                             <span className="text-sm">
-                                                {activity.receiver_id && !isReceived
-                                                    ? activity.receiver_id
+                                                {activity.receiverId && !isReceived
+                                                    ? activity.receiverId
                                                     : activity.counterparty && !isReceived
                                                         ? activity.counterparty
                                                         : treasuryId
@@ -158,18 +158,18 @@ export function ActivityTable({
                                             </span>
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
-                                            {activity.transaction_hashes.length > 0 && (
+                                            {activity.transactionHashes.length > 0 && (
                                                 <div className="flex items-center justify-end gap-2">
                                                     <a
-                                                        href={`https://nearblocks.io/txns/${activity.transaction_hashes[0]}`}
+                                                        href={`https://nearblocks.io/txns/${activity.transactionHashes[0]}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="text-sm underline hover:no-underline"
                                                     >
-                                                        {activity.transaction_hashes[0].slice(0, 12)}...
+                                                        {activity.transactionHashes[0].slice(0, 12)}...
                                                     </a>
                                                     <CopyButton
-                                                        text={activity.transaction_hashes[0]}
+                                                        text={activity.transactionHashes[0]}
                                                         toastMessage="Transaction hash copied"
                                                         className="h-6 w-6 p-0"
                                                         iconClassName="h-3 w-3"

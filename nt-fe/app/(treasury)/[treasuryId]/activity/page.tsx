@@ -4,7 +4,7 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { PageCard } from "@/components/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
-import { usePlanDetails } from "@/hooks/use-plan-details";
+import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -100,7 +100,7 @@ export default function ActivityPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
-    const { data: planDetails } = usePlanDetails(treasuryId);
+    const { data: subscriptionData } = useSubscription(treasuryId);
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [hideSmallTransactions, setHideSmallTransactions] = useState(
         searchParams.get("min_usd_value") === "1"
@@ -110,8 +110,8 @@ export default function ActivityPage() {
 
     // Calculate filter options with date restrictions based on plan
     const activityFilterOptions: FilterOption[] = useMemo(() => {
-        const minDate = planDetails?.history_months
-            ? subMonths(new Date(), planDetails.history_months)
+        const minDate = subscriptionData?.planConfig?.limits?.historyLookupMonths
+            ? subMonths(new Date(), subscriptionData.planConfig.limits.historyLookupMonths)
             : undefined;
 
         return [
@@ -126,7 +126,7 @@ export default function ActivityPage() {
                 label: "Token"
             },
         ];
-    }, [planDetails?.history_months]);
+    }, [subscriptionData?.planConfig?.limits?.historyLookupMonths]);
 
     const handleTabChange = useCallback((value: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -156,7 +156,7 @@ export default function ActivityPage() {
     return (
         <PageComponentLayout
             title="Recent Transactions"
-            description={getHistoryDescription(planDetails?.history_months)}
+            description={getHistoryDescription(subscriptionData?.planConfig?.limits?.historyLookupMonths)}
             backButton={`/${treasuryId}/dashboard`}
         >
             <PageCard className="p-0">

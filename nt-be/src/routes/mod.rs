@@ -177,14 +177,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::bulkpayment::storage_credits::get_storage_credits),
         )
         .route(
-            "/api/bulk-payment/usage-stats",
-            get(handlers::bulkpayment::usage_stats::get_usage_stats),
-        )
-        .route(
-            "/api/plan/details",
-            get(handlers::plan::details::get_plan_details),
-        )
-        .route(
             "/api/export-history",
             get(handlers::balance_changes::history::get_export_history),
         )

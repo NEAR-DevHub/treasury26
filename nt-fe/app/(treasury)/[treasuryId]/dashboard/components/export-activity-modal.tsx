@@ -6,9 +6,8 @@ import { Button } from "@/components/button";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Coins } from "lucide-react";
-import { useTreasury } from "@/stores/treasury-store";
-import { useTreasuryAssets } from "@/hooks/use-treasury-queries";
-import { useAggregatedTokens } from "@/hooks/use-aggregated-tokens";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useAssets, useAggregatedTokens } from "@/hooks/use-assets";
 import { cn } from "@/lib/utils";
 
 interface ExportActivityModalProps {
@@ -30,8 +29,8 @@ interface DateRange {
 }
 
 export function ExportActivityModal({ isOpen, onClose }: ExportActivityModalProps) {
-  const { selectedTreasury: accountId } = useTreasury();
-  const { data } = useTreasuryAssets(accountId, { onlyPositiveBalance: false });
+  const { treasuryId } = useTreasury();
+  const { data } = useAssets(treasuryId, { onlyPositiveBalance: false });
   const aggregatedTokens = useAggregatedTokens(data?.tokens || []);
 
   const [documentType, setDocumentType] = useState<DocumentType>("csv");
@@ -43,12 +42,12 @@ export function ExportActivityModal({ isOpen, onClose }: ExportActivityModalProp
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
-    if (!accountId || !dateRange.from || !dateRange.to) return;
+    if (!treasuryId || !dateRange.from || !dateRange.to) return;
 
     setIsExporting(true);
     try {
       const params = new URLSearchParams({
-        account_id: accountId,
+        account_id: treasuryId,
         start_time: dateRange.from.toISOString(),
         end_time: dateRange.to.toISOString(),
       });
@@ -64,7 +63,7 @@ export function ExportActivityModal({ isOpen, onClose }: ExportActivityModalProp
       }
 
       const url = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api/balance-history/${documentType}?${params.toString()}`;
-      
+
       // Trigger download
       const response = await fetch(url);
       if (!response.ok) {
@@ -75,10 +74,10 @@ export function ExportActivityModal({ isOpen, onClose }: ExportActivityModalProp
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = downloadUrl;
-      
-      const filename = `balance_changes_${accountId}_${dateRange.from.toISOString().split('T')[0]}_to_${dateRange.to.toISOString().split('T')[0]}.${documentType}`;
+
+      const filename = `balance_changes_${treasuryId}_${dateRange.from.toISOString().split('T')[0]}_to_${dateRange.to.toISOString().split('T')[0]}.${documentType}`;
       link.download = filename;
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -117,8 +116,8 @@ export function ExportActivityModal({ isOpen, onClose }: ExportActivityModalProp
                       : ""
                   )}
                   style={{
-                    borderColor: documentType === type.value 
-                      ? 'var(--general-unofficial-border-5)' 
+                    borderColor: documentType === type.value
+                      ? 'var(--general-unofficial-border-5)'
                       : 'var(--general-unofficial-border-3)',
                   }}
                 >
