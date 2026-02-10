@@ -120,7 +120,7 @@ pub async fn add_monitored_account(
     let account = sqlx::query_as::<_, MonitoredAccount>(
         r#"
         INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits, gas_covered_transactions, plan_type)
-        VALUES ($1, true, $2, $3, $4, $5)
+        VALUES ($1, true, $2, $3, $4, 'pro')
         RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
                   export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
         "#,
@@ -129,7 +129,6 @@ pub async fn add_monitored_account(
     .bind(export_credits)
     .bind(batch_payment_credits)
     .bind(gas_covered_transactions)
-    .bind("pro")
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
