@@ -348,7 +348,7 @@ export function ProposalSidebar({
                         className="flex-1"
                         onClick={() => onVote("Reject")}
                         disabled={isUserVoter}
-                        disabledTooltip={NO_VOTE_MESSAGE}
+                        tooltip={isUserVoter ? NO_VOTE_MESSAGE : undefined}
                     >
                         <X className="h-4 w-4 mr-2" />
                         Reject
@@ -374,7 +374,7 @@ export function ProposalSidebar({
                             className="flex gap-1 flex-1"
                             onClick={() => onVote("Approve")}
                             disabled={isUserVoter}
-                            disabledTooltip={NO_VOTE_MESSAGE}
+                            tooltip={isUserVoter ? NO_VOTE_MESSAGE : undefined}
                         >
                             <Check className="h-4 w-4 mr-2" />
                             Approve

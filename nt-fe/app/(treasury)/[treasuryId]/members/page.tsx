@@ -4,7 +4,7 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -48,6 +48,8 @@ import { sortRolesByOrder, getRoleDescription } from "@/lib/role-utils";
 import { formatRoleName } from "@/components/role-name";
 import { StepperHeader } from "@/components/step-wizard";
 import { NumberBadge } from "@/components/number-badge";
+import { NEARN_IO_ACCOUNT } from "./constants";
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface Member {
     accountId: string;
@@ -105,9 +107,11 @@ function PermissionsHeader({ policyRoles }: { policyRoles: RolePermission[] }) {
 
 export default function MembersPage() {
     const { treasuryId } = useTreasury();
-    const { data: policy, isLoading } = useTreasuryPolicy(treasuryId);
+    const { data: policy, isLoading } = useTreasuryPolicy(treasuryId || "");
     const { accountId } = useNear();
     const queryClient = useQueryClient();
+    const searchParams = useSearchParams();
+    const router = useRouter();
 
     usePageTour(
         PAGE_TOUR_NAMES.MEMBERS_PENDING,
@@ -121,6 +125,9 @@ export default function MembersPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+
+    // Track if we've already processed URL params to avoid reopening modal
+    const hasProcessedUrlParams = useRef(false);
 
     // Fetch pending proposals to check for active member requests
     const { data: pendingProposals } = useProposals(treasuryId, {
@@ -142,7 +149,7 @@ export default function MembersPage() {
         return hasPermission(policy, accountId, "policy", "AddProposal");
     }, [policy, accountId]);
 
-    // Extract unique members from policy roles first (needed for schema validation)
+    // Extract unique members from policy roles
     const { members: existingMembers } = useTreasuryMembers(treasuryId);
 
     // Track current modal mode for schema validation
@@ -234,15 +241,168 @@ export default function MembersPage() {
         );
     }, [policy]);
 
-    const activeMembers = existingMembers;
+    // Check for URL parameters to pre-fill add member modal
+    useEffect(() => {
+        const memberParam = searchParams.get('member');
+        const rolesParam = searchParams.get('roles');
 
-    // Use member validation hook
-    const { canModifyMember, canDeleteBulk, canConfirmEdit } =
+        if (memberParam && canAddMember && !isAddMemberModalOpen && availableRoles.length > 0 && !hasProcessedUrlParams.current) {
+            // Mark as processed
+            hasProcessedUrlParams.current = true;
+
+            // Parse roles from comma-separated string and match against policy roles
+            let rolesToAdd: string[] = [];
+
+            if (rolesParam) {
+                const requestedRoles = rolesParam.split(',').map(r => r.trim()).filter(Boolean);
+
+                // Match requested roles with actual policy role names (case-insensitive)
+                rolesToAdd = requestedRoles
+                    .map(requestedRole => {
+                        return availableRoles.find(
+                            policyRole => policyRole.name.toLowerCase() === requestedRole.toLowerCase()
+                        )?.name;
+                    })
+                    .filter((role): role is string => role !== undefined);
+            }
+
+            // Set form values and open modal (even if no valid roles found, just add the account)
+            form.setValue('members', [{
+                accountId: memberParam,
+                roles: rolesToAdd
+            }]);
+
+            setIsAddMemberModalOpen(true);
+        }
+    }, [searchParams, canAddMember, isAddMemberModalOpen, form, availableRoles]);
+
+    // Use member validation hook - use existingMembers
+    const { canModifyMember, canDeleteBulk, canRemoveRoleFromMember } =
         useMemberValidation(existingMembers, {
             accountId: accountId || undefined,
             canAddMember,
             hasPendingMemberRequest,
         });
+
+    // Function to get disabled roles for a member during editing
+    // This considers the final state after ALL batch edits
+    const getDisabledRolesForMember = useCallback(
+        (accountId: string, currentRoles: string[]) => {
+            const disabledRoles: { roleId: string; reason: string }[] = [];
+
+            // Special check for nearn-io.near account
+            const isNearnIoAccount = accountId.toLowerCase() === NEARN_IO_ACCOUNT;
+
+            if (isNearnIoAccount) {
+                // For nearn-io accounts, use priority-based role selection
+                // Priority 1: Find roles with :AddProposal
+                // Priority 2: If none, find roles with :* (full wildcard)
+
+                // Step 1: Check if any roles have :AddProposal
+                const rolesWithAddProposal = availableRoles.filter((role) =>
+                    role.permissions.some((perm) => perm.includes(':AddProposal'))
+                );
+
+                // Step 2: If no :AddProposal roles, check for :* roles
+                const rolesWithFullWildcard = rolesWithAddProposal.length === 0
+                    ? availableRoles.filter((role) =>
+                        role.permissions.some((perm) => perm === ':*')
+                    )
+                    : [];
+
+                // Determine which roles are allowed based on priority
+                const allowedRoles = rolesWithAddProposal.length > 0
+                    ? rolesWithAddProposal
+                    : rolesWithFullWildcard;
+
+                // Disable all roles that are not in the allowed list
+                availableRoles.forEach((role) => {
+                    const isAllowed = allowedRoles.some((allowedRole) => allowedRole.name === role.name);
+
+                    if (!isAllowed) {
+                        disabledRoles.push({
+                            roleId: role.name,
+                            reason: 'You can only add the Requestor role for this member, as they are responsible for creating payment requests from NEARN.',
+                        });
+                    }
+                });
+
+                return disabledRoles;
+            }
+
+            // Check if this is edit mode (member already exists in existingMembers)
+            const isEditMode = existingMembers.some(m => m.accountId === accountId);
+
+            // For add mode, skip the role validation checks
+            if (!isEditMode) {
+                return disabledRoles;
+            }
+
+            // Rest of the validation is only for edit mode
+            // Get all members currently being edited in the form
+            const membersInForm = form.watch("members") || [];
+
+            // Build a map of what the final state will be after edits
+            const finalRoleMembersMap = new Map<string, Set<string>>();
+
+            // Start with current state of all members
+            existingMembers.forEach((member) => {
+                member.roles.forEach((role) => {
+                    if (!finalRoleMembersMap.has(role)) {
+                        finalRoleMembersMap.set(role, new Set());
+                    }
+                    finalRoleMembersMap.get(role)!.add(member.accountId);
+                });
+            });
+
+            // Apply changes from the form to get final state
+            membersInForm.forEach((formMember: any) => {
+                const memberId = formMember.accountId;
+                const newRoles = formMember.roles || [];
+
+                // Find original member to see what they had before
+                const originalMember = existingMembers.find(m => m.accountId === memberId);
+                if (!originalMember) return;
+
+                // Remove member from roles they no longer have
+                originalMember.roles.forEach((role) => {
+                    if (!newRoles.includes(role)) {
+                        finalRoleMembersMap.get(role)?.delete(memberId);
+                    }
+                });
+
+                // Add member to new roles
+                newRoles.forEach((role: string) => {
+                    if (!finalRoleMembersMap.has(role)) {
+                        finalRoleMembersMap.set(role, new Set());
+                    }
+                    finalRoleMembersMap.get(role)!.add(memberId);
+                });
+            });
+
+            // For each currently selected role, check if removing it would leave the role empty
+            // in the FINAL state (after all edits)
+            currentRoles.forEach((role) => {
+                const membersWithRoleAfterEdits = finalRoleMembersMap.get(role);
+
+                // If removing this role from current member would leave role empty
+                if (membersWithRoleAfterEdits && membersWithRoleAfterEdits.size === 1 && membersWithRoleAfterEdits.has(accountId)) {
+                    const hasGovernance = role.toLowerCase().includes("governance") || role.toLowerCase().includes("admin");
+                    const reason = hasGovernance
+                        ? `You can't remove the ${role} role from this member. After all your changes, they would be the only ${role} member, and without this role you won't be able to manage team members or configure voting.`
+                        : `You can't remove the ${role} role from this member. After all your changes, they would be the only person assigned to this role.`;
+
+                    disabledRoles.push({
+                        roleId: role,
+                        reason: reason,
+                    });
+                }
+            });
+
+            return disabledRoles;
+        },
+        [canRemoveRoleFromMember, form, existingMembers, availableRoles],
+    );
 
     const handleReviewRequest = async () => {
         const isValid = await form.trigger();
@@ -543,22 +703,22 @@ export default function MembersPage() {
             const membersToRemove =
                 selectedMembers.length > 0
                     ? selectedMembers.map((accountId) => {
-                          const member = activeMembers.find(
-                              (m) => m.accountId === accountId,
-                          );
-                          return {
-                              member: accountId,
-                              roles: member?.roles || [],
-                          };
-                      })
+                        const member = existingMembers.find(
+                            (m) => m.accountId === accountId,
+                        );
+                        return {
+                            member: accountId,
+                            roles: member?.roles || [],
+                        };
+                    })
                     : memberToDelete
-                      ? [
+                        ? [
                             {
                                 member: memberToDelete.accountId,
                                 roles: memberToDelete.roles,
                             },
                         ]
-                      : [];
+                        : [];
 
             if (membersToRemove.length === 0) return;
 
@@ -569,7 +729,7 @@ export default function MembersPage() {
                 updatedPolicy,
                 summary,
                 "Update Policy - Remove Member" +
-                    (membersToRemove.length > 1 ? "s" : ""),
+                (membersToRemove.length > 1 ? "s" : ""),
                 `Member removal request created successfully`,
             );
 
@@ -609,7 +769,7 @@ export default function MembersPage() {
 
     // Handle bulk edit
     const handleBulkEdit = useCallback(() => {
-        const membersToEdit = activeMembers.filter((m) =>
+        const membersToEdit = existingMembers.filter((m) =>
             selectedMembers.includes(m.accountId),
         );
         setCurrentModalMode("edit");
@@ -628,7 +788,7 @@ export default function MembersPage() {
             })),
         });
         setIsEditRolesModalOpen(true);
-    }, [activeMembers, selectedMembers, form]);
+    }, [existingMembers, selectedMembers, form]);
 
     // Handle bulk delete
     const handleBulkDelete = useCallback(() => {
@@ -646,23 +806,23 @@ export default function MembersPage() {
 
     // Handle select all
     const handleToggleAll = useCallback(() => {
-        if (selectedMembers.length === activeMembers.length) {
+        if (selectedMembers.length === existingMembers.length) {
             setSelectedMembers([]);
         } else {
-            setSelectedMembers(activeMembers.map((m) => m.accountId));
+            setSelectedMembers(existingMembers.map((m) => m.accountId));
         }
-    }, [selectedMembers.length, activeMembers]);
+    }, [selectedMembers.length, existingMembers]);
 
     // Validate bulk delete
     const bulkDeleteValidation = useMemo(() => {
         if (selectedMembers.length === 0) return { canModify: true };
 
-        const membersToDelete = activeMembers.filter((m) =>
+        const membersToDelete = existingMembers.filter((m) =>
             selectedMembers.includes(m.accountId),
         );
 
         return canDeleteBulk(membersToDelete);
-    }, [selectedMembers, activeMembers, canDeleteBulk]);
+    }, [selectedMembers, existingMembers, canDeleteBulk]);
 
     // Render members table
     const renderMembersTable = (members: Member[]) => {
@@ -737,12 +897,12 @@ export default function MembersPage() {
                             <Checkbox
                                 checked={
                                     selectedMembers.length ===
-                                        activeMembers.length &&
-                                    activeMembers.length > 0
+                                        existingMembers.length &&
+                                        existingMembers.length > 0
                                         ? true
                                         : selectedMembers.length > 0
-                                          ? "indeterminate"
-                                          : false
+                                            ? "indeterminate"
+                                            : false
                                 }
                                 onCheckedChange={handleToggleAll}
                             />
@@ -760,7 +920,8 @@ export default function MembersPage() {
                 </TableHeader>
                 <TableBody>
                     {members.map((member) => {
-                        const validation = canModifyMember(member);
+                        const deleteValidation = canModifyMember(member);
+                        const editValidation = canModifyMember(member, member.roles); // Pass roles to trigger edit check
 
                         return (
                             <TableRow key={member.accountId} className="group">
@@ -772,7 +933,6 @@ export default function MembersPage() {
                                         onCheckedChange={() =>
                                             handleToggleMember(member.accountId)
                                         }
-                                        disabled={!validation.canModify}
                                     />
                                 </TableCell>
                                 <TableCell>
@@ -809,8 +969,19 @@ export default function MembersPage() {
                                             onClick={() =>
                                                 handleEditMember(member)
                                             }
-                                            disabled={hasPendingMemberRequest}
+                                            disabled={
+                                                hasPendingMemberRequest ||
+                                                !editValidation.canModify
+                                            }
                                             className="h-8 w-8"
+                                            tooltip={editValidation.reason}
+                                            tooltipProps={{
+                                                disabled:
+                                                    editValidation.canModify ||
+                                                    !editValidation.reason ||
+                                                    !canAddMember,
+                                                contentProps: { className: "max-w-[280px]" }
+                                            }}
                                         >
                                             <Pencil className="w-4 h-4" />
                                         </AuthButton>
@@ -826,8 +997,19 @@ export default function MembersPage() {
                                                 setMemberToDelete(member);
                                                 setIsDeleteModalOpen(true);
                                             }}
-                                            disabled={hasPendingMemberRequest}
+                                            disabled={
+                                                hasPendingMemberRequest ||
+                                                !deleteValidation.canModify
+                                            }
                                             className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                            tooltip={deleteValidation.reason}
+                                            tooltipProps={{
+                                                disabled:
+                                                    deleteValidation.canModify ||
+                                                    !deleteValidation.reason ||
+                                                    !canAddMember,
+                                                contentProps: { className: "max-w-[280px]" }
+                                            }}
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </AuthButton>
@@ -853,7 +1035,7 @@ export default function MembersPage() {
                         <div className="flex items-center gap-3">
                             <StepperHeader title="Active Members" />
                             <NumberBadge
-                                number={activeMembers.length}
+                                number={existingMembers.length}
                                 variant="secondary"
                             />
                         </div>
@@ -898,7 +1080,8 @@ export default function MembersPage() {
                                 content={bulkDeleteValidation.reason}
                                 disabled={
                                     bulkDeleteValidation.canModify ||
-                                    !bulkDeleteValidation.reason
+                                    !bulkDeleteValidation.reason ||
+                                    !canAddMember // Only show validation tooltip if user has permission
                                 }
                                 contentProps={{ className: "max-w-[280px]" }}
                             >
@@ -923,25 +1106,27 @@ export default function MembersPage() {
                                     </AuthButton>
                                 </span>
                             </Tooltip>
-                            <AuthButton
-                                permissionKind="policy"
-                                permissionAction="AddProposal"
-                                balanceCheck={{ withProposalBond: true }}
-                                variant="outline"
-                                size="sm"
-                                onClick={handleBulkEdit}
-                                disabled={hasPendingMemberRequest}
-                                className="h-9 flex-1 sm:flex-none"
-                            >
-                                <Pencil className="w-4 h-4 mr-1" />
-                                Edit
-                            </AuthButton>
+                            <span className="flex-1 sm:flex-none">
+                                <AuthButton
+                                    permissionKind="policy"
+                                    permissionAction="AddProposal"
+                                    balanceCheck={{ withProposalBond: true }}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleBulkEdit}
+                                    disabled={hasPendingMemberRequest}
+                                    className="h-9 w-full sm:w-auto"
+                                >
+                                    <Pencil className="w-4 h-4 mr-1" />
+                                    Edit
+                                </AuthButton>
+                            </span>
                         </div>
                     </div>
                 )}
 
                 {/* Members Table */}
-                {renderMembersTable(activeMembers)}
+                {renderMembersTable(existingMembers)}
             </PageCard>
 
             {/* Add New Member Modal */}
@@ -951,12 +1136,23 @@ export default function MembersPage() {
                     setIsAddMemberModalOpen(false);
                     setCurrentModalMode("add");
                     setMembersBeingEdited([]);
+
+                    // Clear URL parameters if they exist
+                    const memberParam = searchParams.get('member');
+                    const rolesParam = searchParams.get('roles');
+                    if (memberParam || rolesParam) {
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.delete('member');
+                        params.delete('roles');
+                        router.replace(`/${treasuryId}/members${params.toString() ? '?' + params.toString() : ''}`);
+                    }
                 }}
                 form={form}
                 availableRoles={availableRoles}
                 onReviewRequest={handleReviewRequest}
                 isValidatingAddresses={isValidatingAddresses}
                 mode="add"
+                getDisabledRoles={getDisabledRolesForMember}
             />
 
             {/* Preview Modal */}
@@ -986,6 +1182,7 @@ export default function MembersPage() {
                 isValidatingAddresses={false}
                 mode="edit"
                 originalMembers={originalMembersData}
+                getDisabledRoles={getDisabledRolesForMember}
             />
 
             {/* Edit Preview Modal */}
@@ -1007,28 +1204,7 @@ export default function MembersPage() {
                     await handleEditMembersSubmit(membersData);
                 }}
                 mode="edit"
-                existingMembers={activeMembers}
-                validationError={(() => {
-                    const membersData = form.watch("members");
-
-                    // Build edits array for validation
-                    const edits = membersData.map(
-                        (m: { accountId: string; roles: string[] }) => {
-                            const existingMember = activeMembers.find(
-                                (am) => am.accountId === m.accountId,
-                            );
-                            return {
-                                accountId: m.accountId,
-                                oldRoles: existingMember?.roles || [],
-                                newRoles: m.roles,
-                            };
-                        },
-                    );
-
-                    // Validate the edits
-                    const validation = canConfirmEdit(edits);
-                    return validation.canModify ? undefined : validation.reason;
-                })()}
+                existingMembers={existingMembers}
             />
 
             {/* Delete Confirmation Modal */}
@@ -1042,21 +1218,21 @@ export default function MembersPage() {
                 member={memberToDelete}
                 members={
                     selectedMembers.length > 0
-                        ? activeMembers.filter((m) =>
-                              selectedMembers.includes(m.accountId),
-                          )
+                        ? existingMembers.filter((m) =>
+                            selectedMembers.includes(m.accountId),
+                        )
                         : undefined
                 }
                 onConfirm={handleDeleteMembersSubmit}
                 validationError={(() => {
                     const membersToDelete =
                         selectedMembers.length > 0
-                            ? activeMembers.filter((m) =>
-                                  selectedMembers.includes(m.accountId),
-                              )
+                            ? existingMembers.filter((m) =>
+                                selectedMembers.includes(m.accountId),
+                            )
                             : memberToDelete
-                              ? [memberToDelete]
-                              : [];
+                                ? [memberToDelete]
+                                : [];
 
                     if (membersToDelete.length === 0) return undefined;
 
