@@ -4,7 +4,10 @@ import { hasPermission, getApproversAndThreshold } from "@/lib/config-utils";
 import { ProposalKind } from "@/lib/proposals-api";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useTreasuryPolicy, useTokenBalance } from "@/hooks/use-treasury-queries";
+import {
+    useTreasuryPolicy,
+    useTokenBalance,
+} from "@/hooks/use-treasury-queries";
 import { useMemo, useState } from "react";
 import { InsufficientBalanceModal } from "@/features/proposals/components/insufficient-balance-modal";
 import Big from "big.js";
@@ -16,11 +19,15 @@ interface AuthButtonProps extends React.ComponentProps<typeof Button> {
         withProposalBond?: boolean;
     };
     tooltip?: string; // Tooltip content
-    tooltipProps?: Omit<React.ComponentProps<typeof Tooltip>, 'children' | 'content'>; // Additional tooltip props (disabled, contentProps, etc.)
+    tooltipProps?: Omit<
+        React.ComponentProps<typeof Tooltip>,
+        "children" | "content"
+    >; // Additional tooltip props (disabled, contentProps, etc.)
 }
 
 export const NO_WALLET_MESSAGE = "Connect your wallet";
-export const NO_PERMISSION_MESSAGE = "You don't have permission to perform this action";
+export const NO_PERMISSION_MESSAGE =
+    "You don't have permission to perform this action";
 export const NO_VOTE_MESSAGE = "You have already voted on this proposal";
 export const MIN_BALANCE_BUFFER = "0.03";
 
@@ -48,6 +55,7 @@ export function AuthButton({
     balanceCheck,
     onClick,
     tooltip,
+    tooltipContent,
     tooltipProps,
     ...props
 }: AuthButtonProps) {
@@ -55,10 +63,14 @@ export function AuthButton({
     const { treasuryId } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const { data: nearBalance } = useTokenBalance(accountId, "near", "near");
-    const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
+    const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] =
+        useState(false);
 
     const hasAccess = useMemo(() => {
-        return !!(accountId && hasPermission(policy, accountId, permissionKind, permissionAction));
+        return !!(
+            accountId &&
+            hasPermission(policy, accountId, permissionKind, permissionAction)
+        );
     }, [policy, accountId, permissionKind, permissionAction]);
 
     const requiredAmount = useMemo(() => {
@@ -84,19 +96,31 @@ export function AuthButton({
     };
 
     if (!accountId) {
-        return <ErrorMessage message={NO_WALLET_MESSAGE} {...props}>{children}</ErrorMessage>;
+        return (
+            <ErrorMessage message={NO_WALLET_MESSAGE} {...props}>
+                {children}
+            </ErrorMessage>
+        );
     }
 
     if (!hasAccess) {
-        return <ErrorMessage message={NO_PERMISSION_MESSAGE} {...props}>{children}</ErrorMessage>;
+        return (
+            <ErrorMessage message={NO_PERMISSION_MESSAGE} {...props}>
+                {children}
+            </ErrorMessage>
+        );
     }
 
     return (
         <>
-            {tooltip ? (
-                <Tooltip content={tooltip} {...tooltipProps}>
+            {tooltip || tooltipContent ? (
+                <Tooltip content={tooltip || tooltipContent} {...tooltipProps}>
                     <span>
-                        <Button {...props} disabled={disabled} onClick={handleClick}>
+                        <Button
+                            {...props}
+                            disabled={disabled}
+                            onClick={handleClick}
+                        >
                             {children}
                         </Button>
                     </span>
@@ -116,11 +140,15 @@ export function AuthButton({
     );
 }
 
-interface AuthButtonWithProposalProps extends React.ComponentProps<typeof Button> {
+interface AuthButtonWithProposalProps
+    extends React.ComponentProps<typeof Button> {
     proposalKind: ProposalKind;
     isDeleteCheck?: boolean;
     tooltip?: string; // Tooltip content
-    tooltipProps?: Omit<React.ComponentProps<typeof Tooltip>, 'children' | 'content'>;
+    tooltipProps?: Omit<
+        React.ComponentProps<typeof Tooltip>,
+        "children" | "content"
+    >;
 }
 
 const MIN_VOTE_BALANCE = "0.03";
@@ -139,11 +167,17 @@ export function AuthButtonWithProposal({
     const { treasuryId } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const { data: nearBalance } = useTokenBalance(accountId, "near", "near");
-    const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
+    const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] =
+        useState(false);
 
     const hasAccess = useMemo(() => {
         if (!policy || !accountId) return false;
-        const { approverAccounts } = getApproversAndThreshold(policy, accountId, proposalKind, isDeleteCheck);
+        const { approverAccounts } = getApproversAndThreshold(
+            policy,
+            accountId,
+            proposalKind,
+            isDeleteCheck,
+        );
         return approverAccounts.includes(accountId);
     }, [policy, accountId, proposalKind, isDeleteCheck]);
 
@@ -163,11 +197,19 @@ export function AuthButtonWithProposal({
     };
 
     if (!accountId) {
-        return <ErrorMessage message={NO_WALLET_MESSAGE} {...props}>{children}</ErrorMessage>;
+        return (
+            <ErrorMessage message={NO_WALLET_MESSAGE} {...props}>
+                {children}
+            </ErrorMessage>
+        );
     }
 
     if (!hasAccess) {
-        return <ErrorMessage message={NO_PERMISSION_MESSAGE} {...props}>{children}</ErrorMessage>;
+        return (
+            <ErrorMessage message={NO_PERMISSION_MESSAGE} {...props}>
+                {children}
+            </ErrorMessage>
+        );
     }
 
     return (
@@ -175,7 +217,11 @@ export function AuthButtonWithProposal({
             {tooltip ? (
                 <Tooltip content={tooltip} {...tooltipProps}>
                     <span>
-                        <Button {...props} disabled={disabled} onClick={handleClick}>
+                        <Button
+                            {...props}
+                            disabled={disabled}
+                            onClick={handleClick}
+                        >
                             {children}
                         </Button>
                     </span>
