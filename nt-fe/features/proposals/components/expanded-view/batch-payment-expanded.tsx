@@ -11,7 +11,8 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ArrowUpRight, ChevronDown, AlertCircle } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
+import { RequestErrorState } from "../request-error-state";
 import { cn } from "@/lib/utils";
 import { Address } from "@/components/address";
 import { User } from "@/components/user";
@@ -167,22 +168,7 @@ export function BatchPaymentRequestExpanded({
 
     // Error state
     if (isError || !batchData) {
-        return (
-            <div className="py-8 flex flex-col items-center justify-center gap-4 text-center">
-                <AlertCircle className="h-12 w-12 text-destructive" />
-                <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-destructive">
-                        Unable to Load Payment Details
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                        The batch payment information could not be retrieved.
-                    </p>
-                    <p className="text-xs text-muted-foreground font-mono">
-                        Batch ID: {data.batchId}
-                    </p>
-                </div>
-            </div>
-        );
+        return <RequestErrorState />;
     }
 
     let tokenId = data.tokenId;

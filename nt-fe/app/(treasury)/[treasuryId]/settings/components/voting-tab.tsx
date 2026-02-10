@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/form";
 import { useNear } from "@/stores/near-store";
 import { hasPermission } from "@/lib/config-utils";
-import { User } from "@/components/user";
+import { MemberAvatarsWithOverflow } from "./member-avatars-with-overflow";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { encodeToMarkdown } from "@/lib/utils";
@@ -412,7 +412,7 @@ export function VotingTab() {
             value={activeTab}
             onValueChange={setActiveTab}
           >
-            <TabsList className="w-fit">
+            <TabsList>
               {groupRoles.map((role) => (
                 <TabsTrigger key={role.name} value={role.name}>
                   <RoleName name={role.name} />
@@ -434,26 +434,10 @@ export function VotingTab() {
                   </div>
 
                   {/* Member avatars */}
-                  <div className="flex items-center">
-                    {role.members
-                      .slice(0, 15)
-                      .map((member: string, index: number) => (
-                        <div key={member} className="-ml-2 first:ml-0">
-                          <User
-                            accountId={member}
-                            iconOnly={true}
-                            size="lg"
-                            withLink={true}
-                            withHoverCard={true}
-                          />
-                        </div>
-                      ))}
-                    {role.memberCount > 10 && (
-                      <span className="ml-2 text-sm text-muted-foreground">
-                        +{role.memberCount - 10} more
-                      </span>
-                    )}
-                  </div>
+                  <MemberAvatarsWithOverflow
+                    members={role.members}
+                    totalCount={role.memberCount}
+                  />
 
                   {/* Threshold slider */}
                   {(() => {
