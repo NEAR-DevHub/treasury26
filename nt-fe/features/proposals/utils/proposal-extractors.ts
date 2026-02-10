@@ -23,12 +23,12 @@ import {
 import { getProposalUIKind } from "./proposal-utils";
 import { ProposalUIKind } from "../types/index";
 import { Policy } from "@/types/policy";
-import { Action } from "@hot-labs/near-connect/build/types";
 import { getKindFromProposal } from "@/lib/config-utils";
+import { FunctionCallAction } from "@/lib/proposals-api";
 
 function extractFTTransferData(
     functionCall: FunctionCallKind["FunctionCall"],
-    actions: Action[],
+    actions: FunctionCallAction[],
 ): Omit<PaymentRequestData, "notes"> | undefined {
     const action = actions.find(
         (a) =>

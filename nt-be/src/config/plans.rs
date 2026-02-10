@@ -233,8 +233,17 @@ pub fn has_batch_payment_credits(plan_type: PlanType, current_credits: i32) -> b
     current_credits > 0
 }
 
+/// Check if an account has remaining gas-covered transaction credits
+/// For Enterprise, always returns true (unlimited)
+pub fn has_gas_covered_credits(plan_type: PlanType, current_credits: i32) -> bool {
+    if plan_type == PlanType::Enterprise {
+        return true; // Unlimited
+    }
+    current_credits > 0
+}
+
 /// Get the initial credits for a plan (used when creating or resetting)
-pub fn get_initial_credits(plan_type: PlanType) -> (i32, i32) {
+pub fn get_initial_credits(plan_type: PlanType) -> (i32, i32, i32) {
     let config = get_plan_config(plan_type);
 
     let export_credits = config
@@ -249,7 +258,13 @@ pub fn get_initial_credits(plan_type: PlanType) -> (i32, i32) {
         .or(config.limits.trial_batch_payment_credits)
         .unwrap_or(0) as i32;
 
-    (export_credits, batch_payment_credits)
+    let gas_covered_transactions = config.limits.gas_covered_transactions.unwrap_or(0) as i32;
+
+    (
+        export_credits,
+        batch_payment_credits,
+        gas_covered_transactions,
+    )
 }
 
 /// Calculate overage fee for volume exceeding plan limit
@@ -352,24 +367,28 @@ mod tests {
     #[test]
     fn test_initial_credits() {
         // Free plan: 3 trial credits each
-        let (exports, batch) = get_initial_credits(PlanType::Free);
+        let (exports, batch, gas) = get_initial_credits(PlanType::Free);
         assert_eq!(exports, 3);
         assert_eq!(batch, 3);
+        assert_eq!(gas, 10);
 
         // Plus plan: 5 exports, 10 batch payments
-        let (exports, batch) = get_initial_credits(PlanType::Plus);
+        let (exports, batch, gas) = get_initial_credits(PlanType::Plus);
         assert_eq!(exports, 5);
         assert_eq!(batch, 10);
+        assert_eq!(gas, 100);
 
         // Pro plan: 10 exports, 100 batch payments
-        let (exports, batch) = get_initial_credits(PlanType::Pro);
+        let (exports, batch, gas) = get_initial_credits(PlanType::Pro);
         assert_eq!(exports, 10);
         assert_eq!(batch, 100);
+        assert_eq!(gas, 1000);
 
         // Enterprise: unlimited (0 as there's no limit to track)
-        let (exports, batch) = get_initial_credits(PlanType::Enterprise);
+        let (exports, batch, gas) = get_initial_credits(PlanType::Enterprise);
         assert_eq!(exports, 0);
         assert_eq!(batch, 0);
+        assert_eq!(gas, 0);
     }
 
     #[test]
@@ -384,6 +403,13 @@ mod tests {
 
         assert!(has_batch_payment_credits(PlanType::Plus, 5));
         assert!(!has_batch_payment_credits(PlanType::Plus, 0));
+
+        // Gas-covered credits
+        assert!(has_gas_covered_credits(PlanType::Enterprise, 0));
+        assert!(has_gas_covered_credits(PlanType::Free, 1));
+        assert!(!has_gas_covered_credits(PlanType::Free, 0));
+        assert!(has_gas_covered_credits(PlanType::Pro, 5));
+        assert!(!has_gas_covered_credits(PlanType::Pro, 0));
     }
 
     #[test]

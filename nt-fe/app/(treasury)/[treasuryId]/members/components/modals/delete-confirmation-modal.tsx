@@ -8,6 +8,7 @@ import {
   DialogFooter,
 } from "@/components/modal";
 import { ButtonWithTooltip } from "@/components/button-with-tooltip";
+import { NEARN_IO_ACCOUNT } from "../../constants";
 
 interface Member {
   accountId: string;
@@ -46,6 +47,11 @@ export function DeleteConfirmationModal({
   const membersToDelete =
     members && members.length > 0 ? members : member ? [member] : [];
 
+  // Check if nearn-io.near account is being deleted
+  const isNearnAccountBeingDeleted = membersToDelete.some(
+    (m) => m.accountId.toLowerCase() === NEARN_IO_ACCOUNT
+  );
+
   return (
     <Dialog
       open={isOpen && membersToDelete.length > 0}
@@ -59,13 +65,22 @@ export function DeleteConfirmationModal({
         </DialogHeader>
 
         <DialogDescription>
-          Once approved, this action will permanently remove{" "}
-          <span className="font-semibold break-all overflow-wrap-anywhere text-wrap">
-            {membersToDelete.map((m) => m.accountId).join(", ")}
-          </span>{" "}
-          from the treasury and revoke all assigned permissions.
-        </DialogDescription>
 
+
+
+          {isNearnAccountBeingDeleted ? (
+            <span>
+
+              Once approved, {NEARN_IO_ACCOUNT} will be permanently removed from the treasury and all associated permissions will be revoked.<br /> <br />  After removal, this account will no longer be able to create requests from NEARN.
+
+            </span>
+          ) : <span>
+            Once approved, this action will permanently remove{" "}
+            <span className="font-semibold break-all overflow-wrap-anywhere text-wrap">
+              {membersToDelete.map((m) => m.accountId).join(", ")}
+            </span>{" "}
+            from the treasury and revoke all assigned permissions.</span>}
+        </DialogDescription>
         <DialogFooter>
           <div className="w-full">
             <ButtonWithTooltip

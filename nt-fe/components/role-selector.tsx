@@ -9,6 +9,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Button } from "./button"
+import { Tooltip } from "./tooltip"
 
 type Role = {
     id: string
@@ -42,16 +43,21 @@ interface RoleSelectorProps {
     onRolesChange?: (roles: string[]) => void
     className?: string
     availableRoles?: readonly Role[]
+    disabledRoles?: { roleId: string; reason: string }[]
 }
 
 export function RoleSelector({
     selectedRoles = [],
     onRolesChange,
     availableRoles = ROLES,
+    disabledRoles = [],
 }: RoleSelectorProps) {
     const [open, setOpen] = React.useState(false)
 
     const handleRoleToggle = (roleId: string) => {
+        const isDisabled = disabledRoles.some(d => d.roleId === roleId)
+        if (isDisabled) return
+
         const newRoles = selectedRoles.includes(roleId)
             ? selectedRoles.filter((id) => id !== roleId)
             : [...selectedRoles, roleId]
@@ -80,26 +86,53 @@ export function RoleSelector({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-1 gap-1 flex flex-col" align="end">
-                {availableRoles.map((role) => (
-                    <label
-                        key={role.id}
-                        className="flex cursor-pointer items-start space-x-3 rounded-md p-3 transition-colors hover:bg-accent"
-                    >
-                        <Checkbox
-                            checked={selectedRoles.includes(role.id)}
-                            onCheckedChange={() => handleRoleToggle(role.id)}
-                            className="mt-0.5"
-                        />
-                        <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium leading-none mt-0.5">{role.title}</p>
-                            {role.description && (
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {role.description}
-                                </p>
-                            )}
-                        </div>
-                    </label>
-                ))}
+                {availableRoles.map((role) => {
+                    const disabledInfo = disabledRoles.find(d => d.roleId === role.id)
+                    const isDisabled = !!disabledInfo
+                    const isChecked = selectedRoles.includes(role.id)
+
+                    const content = (
+                        <label
+                            key={role.id}
+                            className={`flex items-start space-x-3 rounded-md p-3 transition-colors ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-accent'
+                                }`}
+                            onClick={(e) => {
+                                if (isDisabled) {
+                                    e.preventDefault()
+                                }
+                            }}
+                        >
+                            <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => handleRoleToggle(role.id)}
+                                className="mt-0.5"
+                                disabled={isDisabled}
+                            />
+                            <div className="flex-1 space-y-1">
+                                <p className="text-sm font-medium leading-none mt-0.5">{role.title}</p>
+                                {role.description && (
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        {role.description}
+                                    </p>
+                                )}
+                            </div>
+                        </label>
+                    )
+
+                    if (isDisabled && disabledInfo) {
+                        return (
+                            <Tooltip
+                                key={role.id}
+                                content={disabledInfo.reason}
+                                contentProps={{ className: "max-w-[320px]" }}
+                            >
+                                {content}
+                            </Tooltip>
+                        )
+                    }
+
+                    return content
+                })}
             </PopoverContent>
         </Popover >
     )

@@ -66,10 +66,11 @@ interface MemberInputProps<
     mode?: MemberInputMode;
     availableRoles?: readonly Role[];
     name: TMemberPath extends ArrayPath<TFieldValues>
-        ? PathValue<TFieldValues, TMemberPath> extends MembersArray
-            ? TMemberPath
-            : never
-        : never;
+    ? PathValue<TFieldValues, TMemberPath> extends MembersArray
+    ? TMemberPath
+    : never
+    : never;
+    getDisabledRoles?: (accountId: string, currentRoles: string[]) => { roleId: string; reason: string }[];
 }
 
 export function MemberInput<
@@ -80,6 +81,7 @@ export function MemberInput<
     mode = "add",
     availableRoles = ROLES,
     name,
+    getDisabledRoles,
 }: MemberInputProps<TFieldValues, TMemberPath>) {
     const { fields, append, remove } = useFieldArray({
         control,
@@ -136,34 +138,44 @@ export function MemberInput<
                                 name={
                                     `${name}.${index}.roles` as Path<TFieldValues>
                                 }
-                                render={({ field }) => (
-                                    <>
-                                        {disableAllInputs ? (
-                                            <RoleSelector
-                                                selectedRoles={field.value}
-                                                onRolesChange={(roles) => {
-                                                    field.onChange(roles);
-                                                }}
-                                                availableRoles={availableRoles}
-                                            />
-                                        ) : index > 0 || !lockedFirstMember ? (
-                                            <RoleSelector
-                                                selectedRoles={field.value}
-                                                onRolesChange={(roles) => {
-                                                    field.onChange(roles);
-                                                }}
-                                                availableRoles={availableRoles}
-                                            />
-                                        ) : (
-                                            <FullAccessTooltip>
-                                                <Pill
-                                                    title={"Full Access"}
-                                                    variant="secondary"
+                                render={({ field }) => {
+                                    const form = useFormContext();
+                                    const accountId = form.watch(`${name}.${index}.accountId`);
+                                    const disabledRoles = getDisabledRoles && accountId
+                                        ? getDisabledRoles(accountId, field.value || [])
+                                        : [];
+
+                                    return (
+                                        <>
+                                            {disableAllInputs ? (
+                                                <RoleSelector
+                                                    selectedRoles={field.value}
+                                                    onRolesChange={(roles) => {
+                                                        field.onChange(roles);
+                                                    }}
+                                                    availableRoles={availableRoles}
+                                                    disabledRoles={disabledRoles}
                                                 />
-                                            </FullAccessTooltip>
-                                        )}
-                                    </>
-                                )}
+                                            ) : index > 0 || !lockedFirstMember ? (
+                                                <RoleSelector
+                                                    selectedRoles={field.value}
+                                                    onRolesChange={(roles) => {
+                                                        field.onChange(roles);
+                                                    }}
+                                                    availableRoles={availableRoles}
+                                                    disabledRoles={disabledRoles}
+                                                />
+                                            ) : (
+                                                <FullAccessTooltip>
+                                                    <Pill
+                                                        title={"Full Access"}
+                                                        variant="secondary"
+                                                    />
+                                                </FullAccessTooltip>
+                                            )}
+                                        </>
+                                    );
+                                }}
                             />
                         </div>
                         <div className="flex justify-between gap-1">
@@ -211,14 +223,14 @@ export function MemberInput<
                                 roles: defaultRoles,
                             } as TMemberPath extends ArrayPath<TFieldValues>
                                 ? PathValue<
-                                      TFieldValues,
-                                      TMemberPath
-                                  > extends Member
-                                    ? PathValue<
-                                          TFieldValues,
-                                          TMemberPath
-                                      >[number]
-                                    : never
+                                    TFieldValues,
+                                    TMemberPath
+                                > extends Member
+                                ? PathValue<
+                                    TFieldValues,
+                                    TMemberPath
+                                >[number]
+                                : never
                                 : never)
                         }
                     >

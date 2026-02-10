@@ -20,7 +20,6 @@ export function BatchPaymentCell({
     const {
         data: batchData,
         isLoading,
-        isError,
     } = useBatchPayment(data.batchId);
 
     // Loading state
@@ -29,20 +28,6 @@ export function BatchPaymentCell({
             <div className="flex flex-col gap-2">
                 <Skeleton className="h-5 w-40" />
                 <Skeleton className="h-4 w-24" />
-            </div>
-        );
-    }
-
-    // Error state
-    if (isError || !batchData) {
-        return (
-            <div className="flex flex-col gap-1">
-                <span className="font-medium text-destructive">
-                    Error loading batch payment
-                </span>
-                <span className="text-xs text-muted-foreground">
-                    Batch ID: {data.batchId}
-                </span>
             </div>
         );
     }

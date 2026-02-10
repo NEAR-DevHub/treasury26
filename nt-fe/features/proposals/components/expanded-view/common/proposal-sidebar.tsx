@@ -23,6 +23,7 @@ import {
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
 import { cn } from "@/lib/utils";
+import { NotEnoughBalance } from "../../not-enough-balance";
 
 interface ProposalSidebarProps {
     proposal: Proposal;
@@ -314,28 +315,9 @@ export function ProposalSidebar({
             )}
 
             {/* Insufficient Balance Warning */}
-            {isPending && insufficientBalanceInfo.hasInsufficientBalance && (
-                <InfoAlert
-                    className="inline-flex"
-                    message={
-                        <span>
-                            This request can&apos;t be approved because the
-                            treasury has insufficient{" "}
-                            <strong>
-                                {insufficientBalanceInfo.tokenSymbol}
-                            </strong>{" "}
-                            balance. Add{" "}
-                            <strong>
-                                {insufficientBalanceInfo.differenceDisplay}{" "}
-                                {insufficientBalanceInfo.tokenSymbol}
-                            </strong>{" "}
-                            to{" "}
-                            {insufficientBalanceInfo.type === "bond"
-                                ? "cover proposal bond costs"
-                                : "continue"}
-                            .
-                        </span>
-                    }
+            {isPending && (
+                <NotEnoughBalance
+                    insufficientBalanceInfo={insufficientBalanceInfo}
                 />
             )}
 
@@ -348,7 +330,7 @@ export function ProposalSidebar({
                         className="flex-1"
                         onClick={() => onVote("Reject")}
                         disabled={isUserVoter}
-                        disabledTooltip={NO_VOTE_MESSAGE}
+                        tooltip={isUserVoter ? NO_VOTE_MESSAGE : undefined}
                     >
                         <X className="h-4 w-4 mr-2" />
                         Reject
@@ -374,7 +356,7 @@ export function ProposalSidebar({
                             className="flex gap-1 flex-1"
                             onClick={() => onVote("Approve")}
                             disabled={isUserVoter}
-                            disabledTooltip={NO_VOTE_MESSAGE}
+                            tooltip={isUserVoter ? NO_VOTE_MESSAGE : undefined}
                         >
                             <Check className="h-4 w-4 mr-2" />
                             Approve

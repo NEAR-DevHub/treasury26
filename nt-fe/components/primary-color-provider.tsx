@@ -18,7 +18,43 @@ export function PrimaryColorProvider({ treasuryId }: PrimaryColorProviderProps) 
     if (treasury?.metadata?.primaryColor) {
       const primaryColor = treasury.metadata.primaryColor;
 
-      // Convert hex to RGB
+      // Special handling for black color - use white in dark mode
+      if (primaryColor === "#000000") {
+        // Check if dark mode is active
+        const isDarkMode = document.documentElement.classList.contains("dark");
+
+        if (isDarkMode) {
+          // In dark mode, use white
+          document.documentElement.style.setProperty("--primary", "rgb(255, 255, 255)");
+          document.documentElement.style.setProperty("--primary-foreground", "rgb(25, 25, 26)");
+        } else {
+          // In light mode, use black
+          document.documentElement.style.setProperty("--primary", "rgb(0, 0, 0)");
+          document.documentElement.style.setProperty("--primary-foreground", "rgb(250, 250, 250)");
+        }
+
+        // Listen for theme changes
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.attributeName === "class") {
+              const isDarkMode = document.documentElement.classList.contains("dark");
+              if (isDarkMode) {
+                document.documentElement.style.setProperty("--primary", "rgb(255, 255, 255)");
+                document.documentElement.style.setProperty("--primary-foreground", "rgb(25, 25, 26)");
+              } else {
+                document.documentElement.style.setProperty("--primary", "rgb(0, 0, 0)");
+                document.documentElement.style.setProperty("--primary-foreground", "rgb(250, 250, 250)");
+              }
+            }
+          });
+        });
+
+        observer.observe(document.documentElement, { attributes: true });
+
+        return () => observer.disconnect();
+      }
+
+      // Convert hex to RGB for other colors
       const hexToRgb = (hex: string) => {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result

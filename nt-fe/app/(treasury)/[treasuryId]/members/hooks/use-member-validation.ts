@@ -85,12 +85,12 @@ export function useMemberValidation(
         };
       }
 
-      // For edit: always allow, but we'll prevent removing critical roles in the UI
+      // For edit: always allow (user can add roles, specific role removal is handled in modal)
       if (newRoles !== undefined) {
         return { canModify: true };
       }
 
-      // For delete: check if removing member would leave roles empty
+      // For delete: check if removing member would leave any role empty
       const rolesToCheck = member.roles;
       const criticalRoles: string[] = [];
 
@@ -104,14 +104,11 @@ export function useMemberValidation(
         const hasGovernance = hasGovernanceRole(criticalRoles);
         const rolesList = formatRolesList(criticalRoles);
         const reason = hasGovernance
-          ? `Cannot remove this member. They are the only person assigned to the ${rolesList} ${
-              criticalRoles.length === 1 ? "role" : "roles"
-            }, which ${
-              criticalRoles.length === 1 ? "is" : "are"
-            } required to manage team members and configure voting.`
-          : `Cannot remove this member. They are the only person assigned to the ${rolesList} ${
-              criticalRoles.length === 1 ? "role" : "roles"
-            }.`;
+          ? `Cannot remove this member. They are the only person assigned to the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
+          }, which ${criticalRoles.length === 1 ? "is" : "are"
+          } required to manage team members and configure voting.`
+          : `Cannot remove this member. They are the only person assigned to the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
+          }.`;
 
         return {
           canModify: false,
@@ -123,17 +120,6 @@ export function useMemberValidation(
     },
     [permissionError, getRoleMemberCount, hasGovernanceRole, formatRolesList]
   );
-
-  // Check if bulk edit is allowed (only check permissions, not roles since we don't know new roles yet)
-  const canEditBulk = useCallback((): ValidationResult => {
-    if (permissionError) {
-      return {
-        canModify: false,
-        reason: permissionError,
-      };
-    }
-    return { canModify: true };
-  }, [permissionError]);
 
   // Check if bulk delete is valid (check both permissions and role validation)
   const canDeleteBulk = useCallback(
@@ -194,60 +180,20 @@ export function useMemberValidation(
     [permissionError, roleMembersMap, hasGovernanceRole, formatRolesList]
   );
 
-  // Check if editing members with new roles would leave any role empty
-  const canConfirmEdit = useCallback(
-    (
-      edits: Array<{
-        accountId: string;
-        oldRoles: string[];
-        newRoles: string[];
-      }>
-    ): ValidationResult => {
-      // Check permission/auth first
-      if (permissionError) {
-        return {
-          canModify: false,
-          reason: permissionError,
-        };
-      }
+  // Check if a single role change for a member would leave any role empty
+  // This is used for inline validation in the edit modal
+  const canRemoveRoleFromMember = useCallback(
+    (accountId: string, roleToRemove: string): ValidationResult => {
+      // Check if removing this role would leave it empty
+      const membersWithRole = roleMembersMap.get(roleToRemove);
+      if (!membersWithRole) return { canModify: true };
 
-      const editMap = new Map(edits.map((e) => [e.accountId, e.newRoles]));
-
-      // Check each role to see if it would be empty after edits
-      const criticalRoles: string[] = [];
-
-      for (const [roleName, membersWithRole] of roleMembersMap) {
-        let remainingCount = 0;
-
-        // For each member with this role, check if they still have it after edits
-        for (const accountId of membersWithRole) {
-          const newRoles = editMap.get(accountId);
-
-          if (newRoles !== undefined) {
-            // This member is being edited - check new roles
-            if (newRoles.includes(roleName)) {
-              remainingCount++;
-            }
-          } else {
-            // This member is not being edited - they still have the role
-            remainingCount++;
-          }
-        }
-
-        if (remainingCount === 0) {
-          criticalRoles.push(roleName);
-        }
-      }
-
-      if (criticalRoles.length > 0) {
-        const hasGovernance = hasGovernanceRole(criticalRoles);
-        const rolesList = formatRolesList(criticalRoles);
+      // If this member has the role and is the only one, prevent removal
+      if (membersWithRole.size === 1 && membersWithRole.has(accountId)) {
+        const hasGovernance = hasGovernanceRole([roleToRemove]);
         const reason = hasGovernance
-          ? `Cannot save these changes. This would leave the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
-          } empty, which ${criticalRoles.length === 1 ? "is" : "are"
-          } required to manage team members and configure voting.`
-          : `Cannot save these changes. This would leave the ${rolesList} ${criticalRoles.length === 1 ? "role" : "roles"
-          } empty.`;
+          ? `You can't remove the ${roleToRemove} role from this member. They are the only ${roleToRemove} member, and without this role you won't be able to manage team members or configure voting.`
+          : `You can't remove the ${roleToRemove} role from this member. They are the only person assigned to this role.`;
 
         return {
           canModify: false,
@@ -257,26 +203,13 @@ export function useMemberValidation(
 
       return { canModify: true };
     },
-    [permissionError, roleMembersMap, hasGovernanceRole, formatRolesList]
+    [roleMembersMap, hasGovernanceRole]
   );
-
-  // Check if adding new member is allowed
-  const canAddNewMember = useCallback((): ValidationResult => {
-    if (permissionError) {
-      return {
-        canModify: false,
-        reason: permissionError,
-      };
-    }
-    return { canModify: true };
-  }, [permissionError]);
 
   return {
     canModifyMember,
-    canEditBulk,
     canDeleteBulk,
-    canConfirmEdit,
-    canAddNewMember,
     getRoleMemberCount,
+    canRemoveRoleFromMember,
   };
 }

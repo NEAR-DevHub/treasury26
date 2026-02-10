@@ -32,6 +32,7 @@ interface MemberModalProps {
     accountId: string;
     roles: string[];
   }>;
+  getDisabledRoles?: (accountId: string, currentRoles: string[]) => { roleId: string; reason: string }[];
 }
 
 export function MemberModal({
@@ -44,6 +45,7 @@ export function MemberModal({
   mode,
   validationError,
   originalMembers,
+  getDisabledRoles,
 }: MemberModalProps) {
   const isEditMode = mode === "edit";
   const title = isEditMode ? "Edit Roles" : "Add New Member";
@@ -58,7 +60,7 @@ export function MemberModal({
     if (!isEditMode || !originalMembers) return true;
 
     const currentMembers = form.watch("members");
-    
+
     // Compare each member's roles with original
     return currentMembers.some((currentMember) => {
       const originalMember = originalMembers.find(
@@ -112,6 +114,7 @@ export function MemberModal({
                   (name) => mappedRoles.find((r) => r.id === name)!
                 );
               })()}
+              getDisabledRoles={getDisabledRoles}
             />
           </FormProvider>
         </div>
