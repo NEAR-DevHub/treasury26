@@ -123,6 +123,12 @@ export const useNearStore = create<NearStore>((set, get) => ({
         try {
             newConnector = new NearConnector({
                 network: "mainnet",
+                footerBranding: {
+                    icon: "/favicon_dark.svg",
+                    link: "https://wallet.near.org/",
+                    linkText: "Need wallet?",
+                    heading: "More wallets coming soon",
+                },
                 features: {
                     signDelegateAction: true,
                 },
