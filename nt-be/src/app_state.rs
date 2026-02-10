@@ -483,10 +483,14 @@ impl AppState {
         &self,
         timestamp_ns: i64,
     ) -> Result<u64, Box<dyn std::error::Error>> {
+        use crate::handlers::balance_changes::utils::with_transport_retry;
         use near_api::{Chain, Reference};
 
         // Get the latest block to establish the search range
-        let latest_block = Chain::block().fetch_from(&self.archival_network).await?;
+        let latest_block = with_transport_retry("binary_search_latest", || {
+            Chain::block().fetch_from(&self.archival_network)
+        })
+        .await?;
 
         // Sputnik DAO genesis block
         let mut left = 129265430; // Genesis block
@@ -514,10 +518,12 @@ impl AppState {
         while left <= right {
             let mid = left + (right - left) / 2;
 
-            let mid_block = Chain::block()
-                .at(Reference::AtBlock(mid))
-                .fetch_from(&self.archival_network)
-                .await?;
+            let mid_block = with_transport_retry("binary_search_block", || {
+                Chain::block()
+                    .at(Reference::AtBlock(mid))
+                    .fetch_from(&self.archival_network)
+            })
+            .await?;
 
             let mid_timestamp: i64 = mid_block.header.timestamp as i64;
 
