@@ -3,7 +3,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { Button } from "@/components/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import { Input } from "@/components/input";
 import { cn } from "@/lib/utils";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
@@ -39,7 +43,7 @@ export function TokenSelectPopover({
         const loadTokens = async () => {
             setIsLoading(true);
             try {
-                const assets = await fetchBridgeTokens(theme);
+                const assets = await fetchBridgeTokens();
 
                 // Format and deduplicate tokens by symbol (network-agnostic)
                 const tokenMap = new Map<string, TokenOption>();
@@ -56,8 +60,13 @@ export function TokenSelectPopover({
                         tokenMap.set(symbol, {
                             id: asset.id,
                             name: asset.name || asset.assetName,
-                            symbol: asset.symbol === 'wNEAR' ? 'NEAR' : asset.symbol,
-                            icon: hasValidIcon ? asset.icon : asset.symbol?.charAt(0) || "?",
+                            symbol:
+                                asset.symbol === "wNEAR"
+                                    ? "NEAR"
+                                    : asset.symbol,
+                            icon: hasValidIcon
+                                ? asset.icon
+                                : asset.symbol?.charAt(0) || "?",
                             gradient: "bg-gradient-cyan-blue",
                         });
                     }
@@ -81,7 +90,7 @@ export function TokenSelectPopover({
         return tokens.filter(
             (token) =>
                 token.symbol.toLowerCase().includes(query) ||
-                token.name.toLowerCase().includes(query)
+                token.name.toLowerCase().includes(query),
         );
     }, [tokens, search]);
 
@@ -99,13 +108,13 @@ export function TokenSelectPopover({
                     size="sm"
                     className={cn(
                         "h-9 gap-2 bg-card hover:bg-card border-border min-w-32",
-                        className
+                        className,
                     )}
                 >
                     {selectedToken ? (
                         <>
                             {selectedToken.icon?.startsWith("http") ||
-                                selectedToken.icon?.startsWith("data:") ? (
+                            selectedToken.icon?.startsWith("data:") ? (
                                 <img
                                     src={selectedToken.icon}
                                     alt={selectedToken.symbol}
@@ -116,10 +125,14 @@ export function TokenSelectPopover({
                                     <span>{selectedToken.icon}</span>
                                 </div>
                             )}
-                            <span className="font-medium">{selectedToken.symbol}</span>
+                            <span className="font-medium">
+                                {selectedToken.symbol}
+                            </span>
                         </>
                     ) : (
-                        <span className="text-muted-foreground">Select token</span>
+                        <span className="text-muted-foreground">
+                            Select token
+                        </span>
                     )}
                     <ChevronDown className="h-3 w-3 text-muted-foreground ml-auto" />
                 </Button>
@@ -138,7 +151,10 @@ export function TokenSelectPopover({
                         {isLoading ? (
                             <div className="space-y-1 animate-pulse p-1">
                                 {[...Array(5)].map((_, i) => (
-                                    <div key={i} className="flex items-center gap-2 py-2">
+                                    <div
+                                        key={i}
+                                        className="flex items-center gap-2 py-2"
+                                    >
                                         <div className="w-5 h-5 rounded-full bg-muted shrink-0" />
                                         <div className="flex-1 space-y-1">
                                             <div className="h-3 bg-muted rounded w-16" />
@@ -156,12 +172,13 @@ export function TokenSelectPopover({
                                         size="sm"
                                         className={cn(
                                             "w-full justify-start gap-2 h-auto py-2 font-normal",
-                                            selectedToken?.symbol === token.symbol && "bg-muted"
+                                            selectedToken?.symbol ===
+                                                token.symbol && "bg-muted",
                                         )}
                                         onClick={() => handleSelect(token)}
                                     >
                                         {token.icon?.startsWith("http") ||
-                                            token.icon?.startsWith("data:") ? (
+                                        token.icon?.startsWith("data:") ? (
                                             <img
                                                 src={token.icon}
                                                 alt={token.symbol}

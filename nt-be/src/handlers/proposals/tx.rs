@@ -6,9 +6,11 @@ use axum::{
 use chrono::NaiveDate;
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::sync::Arc;
 
 use crate::AppState;
+use crate::utils::cache::{CacheKey, CacheTier};
 
 #[derive(Deserialize, Debug)]
 struct NearBlocksTransaction {
@@ -48,10 +50,9 @@ pub struct ProposalTransactionResponse {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransactionQueryParams {
-    #[serde(rename = "afterDate")]
     pub after_date: NaiveDate,
-    #[serde(rename = "beforeDate")]
     pub before_date: NaiveDate,
     pub action: String,
 }
@@ -133,7 +134,7 @@ pub async fn find_proposal_execution_transaction(
     State(state): State<Arc<AppState>>,
     Path((dao_id, proposal_id)): Path<(AccountId, u64)>,
     Query(params): Query<TransactionQueryParams>,
-) -> Result<(StatusCode, Json<ProposalTransactionResponse>), (StatusCode, String)> {
+) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
     log::info!(
         "Searching for proposal {} execution between {} and {}",
         proposal_id,
@@ -148,75 +149,190 @@ pub async fn find_proposal_execution_transaction(
         ));
     };
 
-    if params.action == "VoteApprove" {
-        // Try on_proposal_callback first
-        let callback_txns = fetch_nearblocks_transactions(
-            &state.http_client,
-            nearblocks_api_key,
-            &dao_id,
-            "on_proposal_callback",
-            params.after_date,
-            params.before_date,
-        )
-        .await?;
+    let cache_key = CacheKey::new("proposal-tx")
+        .with(&dao_id)
+        .with(proposal_id)
+        .with(&params.action)
+        .build();
 
-        log::info!(
-            "Found {} on_proposal_callback transactions",
-            callback_txns.len()
-        );
+    let http_client = state.http_client.clone();
+    let api_key = nearblocks_api_key.clone();
+    let dao_id_clone = dao_id.clone();
+    let action = params.action.clone();
+    let after_date = params.after_date;
+    let before_date = params.before_date;
 
-        if let Some(txn) = find_matching_transaction(&callback_txns, proposal_id, &params.action) {
-            log::info!("Found execution transaction: {}", txn.transaction_hash);
-            return Ok((
-                StatusCode::OK,
-                Json(ProposalTransactionResponse {
+    state
+        .cache
+        .cached_json(CacheTier::LongTerm, cache_key, async move {
+            if action == "VoteApprove" {
+                // Try on_proposal_callback first
+                let callback_txns = fetch_nearblocks_transactions(
+                    &http_client,
+                    &api_key,
+                    &dao_id_clone,
+                    "on_proposal_callback",
+                    after_date,
+                    before_date,
+                )
+                .await?;
+
+                log::info!(
+                    "Found {} on_proposal_callback transactions",
+                    callback_txns.len()
+                );
+
+                if let Some(txn) = find_matching_transaction(&callback_txns, proposal_id, &action) {
+                    log::info!("Found execution transaction: {}", txn.transaction_hash);
+                    return Ok(ProposalTransactionResponse {
+                        transaction_hash: txn.transaction_hash.clone(),
+                        nearblocks_url: format!(
+                            "https://nearblocks.io/txns/{}",
+                            txn.transaction_hash
+                        ),
+                        block_height: txn.block.block_height,
+                        timestamp: txn.receipt_block.block_timestamp,
+                    });
+                }
+            }
+
+            // Fallback to act_proposal if not found
+            let act_proposal_txns = fetch_nearblocks_transactions(
+                &http_client,
+                &api_key,
+                &dao_id_clone,
+                "act_proposal",
+                after_date,
+                before_date,
+            )
+            .await?;
+
+            log::info!(
+                "Found {} act_proposal transactions",
+                act_proposal_txns.len()
+            );
+
+            if let Some(txn) = find_matching_transaction(&act_proposal_txns, proposal_id, &action) {
+                log::info!("Found execution transaction: {}", txn.transaction_hash);
+                return Ok(ProposalTransactionResponse {
                     transaction_hash: txn.transaction_hash.clone(),
                     nearblocks_url: format!("https://nearblocks.io/txns/{}", txn.transaction_hash),
                     block_height: txn.block.block_height,
                     timestamp: txn.receipt_block.block_timestamp,
-                }),
-            ));
-        }
-    }
+                });
+            }
 
-    // Fallback to act_proposal if not found
-    let act_proposal_txns = fetch_nearblocks_transactions(
-        &state.http_client,
-        nearblocks_api_key,
-        &dao_id,
-        "act_proposal",
-        params.after_date,
-        params.before_date,
-    )
-    .await?;
+            log::info!(
+                "No execution transaction found for proposal {}",
+                proposal_id
+            );
+            Err((
+                StatusCode::NOT_FOUND,
+                format!(
+                    "No execution transaction found for proposal {}",
+                    proposal_id
+                ),
+            ))
+        })
+        .await
+}
 
-    log::info!(
-        "Found {} act_proposal transactions",
-        act_proposal_txns.len()
-    );
+// Receipt search types and endpoint
 
-    if let Some(txn) = find_matching_transaction(&act_proposal_txns, proposal_id, &params.action) {
-        log::info!("Found execution transaction: {}", txn.transaction_hash);
-        return Ok((
-            StatusCode::OK,
-            Json(ProposalTransactionResponse {
-                transaction_hash: txn.transaction_hash.clone(),
-                nearblocks_url: format!("https://nearblocks.io/txns/{}", txn.transaction_hash),
-                block_height: txn.block.block_height,
-                timestamp: txn.receipt_block.block_timestamp,
-            }),
+#[derive(Deserialize, Debug)]
+struct NearBlocksReceiptSearchResponse {
+    receipts: Vec<NearBlocksReceiptInfo>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct NearBlocksReceiptInfo {
+    pub receipt_id: String,
+    pub originated_from_transaction_hash: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ReceiptSearchResult {
+    pub receipt_id: String,
+    pub originated_from_transaction_hash: String,
+}
+
+#[derive(Deserialize)]
+pub struct ReceiptSearchQuery {
+    pub keyword: String,
+}
+
+/// Search for a receipt by keyword (receipt ID) and return the originating transaction hash
+pub async fn search_receipt(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<ReceiptSearchQuery>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
+    let Some(nearblocks_api_key) = state.env_vars.nearblocks_api_key.as_ref() else {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "NearBlocks API is not enabled".to_string(),
         ));
-    }
+    };
 
-    log::info!(
-        "No execution transaction found for proposal {}",
-        proposal_id
-    );
-    Err((
-        StatusCode::NOT_FOUND,
-        format!(
-            "No execution transaction found for proposal {}",
-            proposal_id
-        ),
-    ))
+    let cache_key = CacheKey::new("receipt-search")
+        .with(&params.keyword)
+        .build();
+
+    let http_client = state.http_client.clone();
+    let api_key = nearblocks_api_key.clone();
+    let keyword = params.keyword.clone();
+
+    state
+        .cache
+        .cached_json(CacheTier::LongTerm, cache_key, async move {
+            let url = format!(
+                "https://api.nearblocks.io/v1/search/receipts?keyword={}",
+                keyword
+            );
+
+            let response = http_client
+                .get(&url)
+                .header("accept", "application/json")
+                .header("Authorization", format!("Bearer {}", api_key))
+                .send()
+                .await
+                .map_err(|e| {
+                    log::error!("Failed to fetch from NearBlocks receipt search API: {}", e);
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to fetch from external API".to_string(),
+                    )
+                })?;
+
+            if !response.status().is_success() {
+                log::error!("NearBlocks receipt search API error: {}", response.status());
+                return Err((
+                    StatusCode::from_u16(response.status().as_u16())
+                        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                    "Receipt search failed".to_string(),
+                ));
+            }
+            let data = response.json().await;
+
+            println!("data: {:?}", data);
+
+            let data: NearBlocksReceiptSearchResponse = data.map_err(|e| {
+                log::error!("Failed to parse NearBlocks receipt search response: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to parse API response".to_string(),
+                )
+            })?;
+
+            Ok::<_, (StatusCode, String)>(
+                data.receipts
+                    .into_iter()
+                    .map(|r| ReceiptSearchResult {
+                        receipt_id: r.receipt_id,
+                        originated_from_transaction_hash: r.originated_from_transaction_hash,
+                    })
+                    .collect::<Vec<ReceiptSearchResult>>(),
+            )
+        })
+        .await
 }

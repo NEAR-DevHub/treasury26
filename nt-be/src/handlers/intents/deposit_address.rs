@@ -7,12 +7,14 @@ use crate::utils::cache::{CacheKey, CacheTier};
 use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DepositAddressRequest {
     pub account_id: String,
     pub chain: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct DepositAddressResult {
     pub address: String,
 }

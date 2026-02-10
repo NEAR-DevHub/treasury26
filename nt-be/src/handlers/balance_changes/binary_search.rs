@@ -93,11 +93,10 @@ mod tests {
     #[tokio::test]
     async fn test_find_balance_change_mainnet() {
         let state = init_test_state().await;
-
         // Test data: balance changed at block 151386339
-        // Before (raw): "6100211126630537100000000" yoctoNEAR = 6.1002111266305371 NEAR (decimal)
-        // After (raw): "11100211126630537100000000" yoctoNEAR = 11.1002111266305371 NEAR (decimal)
-        let expected_balance = BigDecimal::from_str("11.1002111266305371").unwrap();
+        // Before (raw): "688221126630537100000000" yoctoNEAR = 0.688221126630537100000000 NEAR (decimal)
+        // After (raw): "5688221126630537100000000" yoctoNEAR = 5.688221126630537100000000 NEAR (decimal)
+        let expected_balance = BigDecimal::from_str("5.688221126630537100000000").unwrap();
         let result = find_balance_change_block(
             &state.db_pool,
             &state.archival_network,
@@ -138,9 +137,8 @@ mod tests {
     #[tokio::test]
     async fn test_single_block_range() {
         let state = init_test_state().await;
-
         // Single block range
-        let expected_balance = BigDecimal::from_str("11.1002111266305371").unwrap();
+        let expected_balance = BigDecimal::from_str("5.688221126630537100000000").unwrap();
         let result = find_balance_change_block(
             &state.db_pool,
             &state.archival_network,

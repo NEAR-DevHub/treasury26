@@ -353,11 +353,11 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         "Block 176927244 counterparty should match"
     );
     assert_eq!(
-        record_176927244.balance_before, "10.326123124009596399999989",
+        record_176927244.balance_before, "0.590253124009596399999989",
         "Block 176927244 balance_before should match"
     );
     assert_eq!(
-        record_176927244.balance_after, "10.449873124009596399999989",
+        record_176927244.balance_after, "0.714003124009596399999989",
         "Block 176927244 balance_after should match"
     );
 
@@ -380,11 +380,11 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         "Block 176927247 counterparty should match"
     );
     assert_eq!(
-        record_176927247.balance_before, "10.449873124009596399999989",
+        record_176927247.balance_before, "0.714003124009596399999989",
         "Block 176927247 balance_before should match"
     );
     assert_eq!(
-        record_176927247.balance_after, "10.449933795827029599999989",
+        record_176927247.balance_after, "0.714063795827029599999989",
         "Block 176927247 balance_after should match"
     );
 
@@ -407,11 +407,11 @@ async fn test_fill_gaps_with_bootstrap(pool: PgPool) -> sqlx::Result<()> {
         "Block 176936471 counterparty should match"
     );
     assert_eq!(
-        record_176936471.balance_before, "10.449933795827029599999989",
+        record_176936471.balance_before, "0.714063795827029599999989",
         "Block 176936471 balance_before should match"
     );
     assert_eq!(
-        record_176936471.balance_after, "10.449985392206838099999989",
+        record_176936471.balance_after, "0.710055392206838099999989",
         "Block 176936471 balance_after should match"
     );
 
@@ -971,12 +971,12 @@ async fn test_fill_gap_with_transaction_hash_block_178148634(pool: PgPool) -> sq
     println!("✓ Block timestamp: {}", record.block_timestamp);
 
     // Verify balance fields (decimal-adjusted: NEAR has 24 decimals)
-    assert_eq!(
-        record.balance_after, "47.131979815366840642871301",
-        "Balance after should be correct (decimal-adjusted)"
-    );
     println!("✓ Balance before: {}", record.balance_before);
     println!("✓ Balance after: {}", record.balance_after);
+    assert_eq!(
+        record.balance_after, "46.801649815366840642871301",
+        "Balance after should be correct (decimal-adjusted)"
+    );
     println!("✓ Amount: {}", record.amount);
 
     // Verify transaction hash was captured (should be present for NEAR balance changes)

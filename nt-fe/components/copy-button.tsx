@@ -3,45 +3,32 @@ import { toast } from "sonner";
 import { Button } from "./button";
 import { cn } from "@/lib/utils";
 
-interface CopyButtonProps {
-  text: string;
-  toastMessage?: string;
-  variant?: "ghost" | "outline" | "default" | "secondary" | "destructive" | "link" | "unstyled";
-  size?: "default" | "sm" | "lg" | "icon" | "icon-sm";
-  className?: string;
-  iconClassName?: string;
-  children?: React.ReactNode;
+interface CopyButtonProps extends React.ComponentProps<typeof Button> {
+    text: string;
+    toastMessage?: string;
+    iconClassName?: string;
 }
 
 export function CopyButton({
-  text,
-  toastMessage = "Copied to clipboard",
-  variant = "ghost",
-  size = "icon",
-  className,
-  children,
-  iconClassName,
+    text,
+    toastMessage = "Copied to clipboard",
+    children,
+    iconClassName,
+    ...props
 }: CopyButtonProps) {
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(toastMessage);
-    } catch (error) {
-      toast.error("Failed to copy");
-    }
-  };
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            toast.success(toastMessage);
+        } catch (error) {
+            toast.error("Failed to copy");
+        }
+    };
 
-  return (
-    <Button
-      type="button"
-      variant={variant}
-      size={size}
-      className={className}
-      onClick={handleCopy}
-    >
-      <Copy className={cn("h-4 w-4", iconClassName)} />
-      {children}
-    </Button>
-  );
+    return (
+        <Button type="button" onClick={handleCopy} {...props}>
+            <Copy className={cn("h-4 w-4", iconClassName)} />
+            {children}
+        </Button>
+    );
 }
-

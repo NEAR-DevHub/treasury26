@@ -24,6 +24,7 @@ where
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BalanceChangesQuery {
     pub account_id: String,
 
@@ -54,6 +55,7 @@ pub struct BalanceChangesQuery {
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct BalanceChange {
     pub id: i64,
     pub account_id: String,
@@ -323,7 +325,7 @@ pub async fn get_balance_changes_internal(
                 block_height: change.block_height,
                 block_time: change.block_time,
                 token_id,
-                receipt_id: change.receipt_id,
+                receipt_ids: change.receipt_id,
                 transaction_hashes: change.transaction_hashes,
                 counterparty,
                 signer_id: change.signer_id,
@@ -378,6 +380,7 @@ pub async fn get_balance_changes(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FillGapsRequest {
     pub account_id: String,
     pub token_id: String,
@@ -385,6 +388,7 @@ pub struct FillGapsRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FillGapsResponse {
     pub gaps_filled: usize,
     pub account_id: String,

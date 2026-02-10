@@ -1,5 +1,3 @@
-import React from "react";
-
 /**
  * Maps internal role names to display names
  * Approver -> Financial

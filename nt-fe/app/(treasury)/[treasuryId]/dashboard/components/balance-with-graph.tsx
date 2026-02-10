@@ -20,13 +20,12 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageCard } from "@/components/card";
 import { formatBalance, formatCurrency } from "@/lib/utils";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import type { ChartInterval } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthButton } from "@/components/auth-button";
 import Big from "big.js";
 import { totalBalance } from "@/lib/balance";
+import { useRouter } from "next/navigation";
 
 interface Props {
     totalBalanceUSD: number | Big.Big;
@@ -98,7 +97,7 @@ export default function BalanceWithGraph({
     const { treasuryId } = useTreasury();
     const [selectedToken, setSelectedToken] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1W");
-
+    const router = useRouter();
     // Group tokens by symbol (to handle same token on different networks)
     const groupedTokens = useMemo(() => {
         const grouped = new Map<string, GroupedToken>();
@@ -227,11 +226,11 @@ export default function BalanceWithGraph({
                         hasUSD: false,
                     };
                     const hasUSD =
-                        snapshot.value_usd !== null &&
-                        snapshot.value_usd !== undefined;
+                        snapshot.valueUsd !== null &&
+                        snapshot.valueUsd !== undefined;
 
                     timeMap.set(snapshot.timestamp, {
-                        usdValue: existing.usdValue + (snapshot.value_usd || 0),
+                        usdValue: existing.usdValue + (snapshot.valueUsd || 0),
                         hasUSD: existing.hasUSD || hasUSD,
                     });
                 }
@@ -282,13 +281,13 @@ export default function BalanceWithGraph({
                             hasUSD: false,
                         };
                         const hasUSD =
-                            snapshot.value_usd !== null &&
-                            snapshot.value_usd !== undefined;
+                            snapshot.valueUsd !== null &&
+                            snapshot.valueUsd !== undefined;
                         const balanceValue = parseFloat(snapshot.balance) || 0;
 
                         timeMap.set(snapshot.timestamp, {
                             usdValue:
-                                existing.usdValue + (snapshot.value_usd || 0),
+                                existing.usdValue + (snapshot.valueUsd || 0),
                             balanceValue: existing.balanceValue + balanceValue,
                             hasUSD: existing.hasUSD || hasUSD,
                         });
@@ -446,33 +445,24 @@ export default function BalanceWithGraph({
                 <Button onClick={onDepositClick} id="dashboard-step1">
                     <Download className="size-4" /> Deposit
                 </Button>
-                <Link
-                    href={treasuryId ? `/${treasuryId}/payments` : "/payments"}
-                    className="flex"
+                <AuthButton
+                    permissionKind="transfer"
+                    permissionAction="AddProposal"
+                    className="w-full"
                     id="dashboard-step2"
+                    onClick={() => router.push(`/${treasuryId}/payments`)}
                 >
-                    <AuthButton
-                        permissionKind="transfer"
-                        permissionAction="AddProposal"
-                        className="w-full"
-                    >
-                        <ArrowUpRightIcon className="size-4" />
-                        Send
-                    </AuthButton>
-                </Link>
-                <Link
-                    href={treasuryId ? `/${treasuryId}/exchange` : "/exchange"}
-                    className="flex"
+                    <ArrowUpRightIcon className="size-4" />
+                    Send
+                </AuthButton>
+                <AuthButton
+                    permissionKind="call"
+                    permissionAction="AddProposal"
+                    className="w-full"
                     id="dashboard-step3"
                 >
-                    <AuthButton
-                        permissionKind="call"
-                        permissionAction="AddProposal"
-                        className="w-full"
-                    >
-                        <ArrowLeftRight className="size-4" /> Exchange
-                    </AuthButton>
-                </Link>
+                    <ArrowLeftRight className="size-4" /> Exchange
+                </AuthButton>
                 {/*<AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
                     <Database className="size-4" /> Earn
                 </AuthButton> */}

@@ -4,266 +4,279 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: rgb(245, 245, 245);
-  --foreground: rgb(10, 10, 10);
-  --card: rgb(255, 255, 255);
-  --card-foreground: rgb(25, 25, 26);
-  --popover: rgb(255, 255, 255);
-  --popover-foreground: rgb(25, 25, 26);
-  --primary: rgb(25, 25, 26);
-  --primary-foreground: rgb(250, 250, 250);
-  --secondary: rgb(245, 245, 245);
-  --secondary-foreground: rgb(10, 10, 10);
-  --muted: rgb(245, 245, 245);
-  --muted-foreground: rgb(115, 115, 115);
-  --accent: rgb(245, 245, 245);
-  --accent-foreground: rgb(10, 10, 10);
-  --destructive: rgb(207, 0, 28);
-  --destructive-foreground: rgb(255, 255, 255);
-  --border: rgb(245, 245, 245);
-  --general-border: rgba(229, 229, 229);
-  --input: rgb(229, 229, 229);
-  --ring: rgb(161, 161, 161);
-  --general-unofficial-border: rgba(212, 212, 212);
-  --general-unofficial-ghost-foreground: rgba(64, 64, 64);
-  --general-unofficial-accent: rgba(229, 229, 229);
-  --general-success-background-faded: rgb(220, 252, 231);
-  --general-success-foreground: rgb(21, 128, 61);
-  --general-destructive-background-faded: rgb(254, 242, 242);
-  --general-destructive-foreground: rgb(220, 38, 38);
-  --general-info-background-faded: rgb(239, 246, 255);
-  --general-info-border: rgb(191, 219, 254);
-  --general-info-foreground: rgb(29, 78, 216);
-  --general-warning-background-faded: rgb(254, 252, 232);
-  --general-warning-border: rgb(254, 240, 138);
-  --general-warning-foreground: rgb(161, 98, 7);
-  --general-tertiary: rgb(250, 250, 249);
-  --chart-area-fill: rgb(2, 7, 6);
-  --general-unofficial-border-3: rgb(212, 212, 212);
-  --general-unofficial-border-5: rgb(115, 115, 115);
-  --general-secondary: rgb(245, 245, 245);
-  --general-unofficial-outline: rgba(255, 255, 255, 0.1);
-  --chart-1: rgb(164, 246, 204);
-  --chart-2: rgb(106, 235, 178);
-  --chart-3: rgb(10, 191, 122);
-  --chart-4: rgb(0, 161, 103);
-  --chart-5: rgb(0, 124, 83);
-  --sidebar: rgb(250, 250, 250);
-  --sidebar-foreground: rgb(25, 25, 26);
-  --sidebar-primary: rgb(242, 242, 242);
-  --sidebar-primary-foreground: rgb(250, 250, 250);
-  --sidebar-accent: rgb(245, 245, 245);
-  --sidebar-accent-foreground: rgb(15, 23, 42);
-  --sidebar-border: rgb(229, 229, 229);
-  --sidebar-ring: rgb(161, 161, 161);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --radius: 0.625rem;
-  --shadow-x: 0;
-  --shadow-y: 0px;
-  --shadow-blur: 0px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 0;
-  --shadow-color: oklch(0 0 0);
-  --shadow-2xs: 0 0px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-xs: 0 0px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
-  --shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
-  --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
-  --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0 0px 0px 0px hsl(0 0% 0% / 0.00);
-  --tracking-normal: 0em;
-  --spacing: 0.25rem;
+    --background: rgb(245, 245, 245);
+    --foreground: rgb(10, 10, 10);
+    --card: rgb(255, 255, 255);
+    --card-foreground: rgb(25, 25, 26);
+    --popover: rgb(255, 255, 255);
+    --popover-foreground: rgb(25, 25, 26);
+    --primary: rgb(25, 25, 26);
+    --primary-foreground: rgb(250, 250, 250);
+    --secondary: rgb(245, 245, 245);
+    --secondary-foreground: rgb(10, 10, 10);
+    --muted: rgb(245, 245, 245);
+    --muted-foreground: rgb(115, 115, 115);
+    --accent: rgb(245, 245, 245);
+    --accent-foreground: rgb(10, 10, 10);
+    --destructive: rgb(207, 0, 28);
+    --destructive-foreground: rgb(255, 255, 255);
+    --border: rgb(245, 245, 245);
+    --general-border: rgba(229, 229, 229);
+    --input: rgb(229, 229, 229);
+    --ring: rgb(161, 161, 161);
+    --general-unofficial-border: rgba(212, 212, 212);
+    --general-unofficial-ghost-foreground: rgba(64, 64, 64);
+    --general-unofficial-accent: rgba(229, 229, 229);
+    --general-success-background-faded: rgb(220, 252, 231);
+    --general-success-foreground: rgb(21, 128, 61);
+    --general-destructive-background-faded: rgb(254, 242, 242);
+    --general-destructive-foreground: rgb(220, 38, 38);
+    --general-info-background-faded: rgb(239, 246, 255);
+    --general-info-border: rgb(191, 219, 254);
+    --general-info-foreground: rgb(29, 78, 216);
+    --general-warning-background-faded: rgb(254, 252, 232);
+    --general-warning-border: rgb(254, 240, 138);
+    --general-warning-foreground: rgb(161, 98, 7);
+    --general-tertiary: rgb(250, 250, 249);
+    --chart-area-fill: rgb(2, 7, 6);
+    --general-unofficial-border-3: rgb(212, 212, 212);
+    --general-unofficial-border-5: rgb(115, 115, 115);
+    --general-secondary: rgb(245, 245, 245);
+    --general-unofficial-outline: rgba(255, 255, 255, 0.1);
+    --chart-1: rgb(164, 246, 204);
+    --chart-2: rgb(106, 235, 178);
+    --chart-3: rgb(10, 191, 122);
+    --chart-4: rgb(0, 161, 103);
+    --chart-5: rgb(0, 124, 83);
+    --sidebar: rgb(250, 250, 250);
+    --sidebar-foreground: rgb(25, 25, 26);
+    --sidebar-primary: rgb(242, 242, 242);
+    --sidebar-primary-foreground: rgb(250, 250, 250);
+    --sidebar-accent: rgb(245, 245, 245);
+    --sidebar-accent-foreground: rgb(15, 23, 42);
+    --sidebar-border: rgb(229, 229, 229);
+    --sidebar-ring: rgb(161, 161, 161);
+    --font-sans:
+        ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+        "Courier New", monospace;
+    --radius: 0.625rem;
+    --shadow-x: 0;
+    --shadow-y: 0px;
+    --shadow-blur: 0px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0;
+    --shadow-color: oklch(0 0 0);
+    --shadow-2xs: 0 0px 0px 0px hsl(0 0% 0% / 0);
+    --shadow-xs: 0 0px 0px 0px hsl(0 0% 0% / 0);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
+    --shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md:
+        0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
+    --shadow-lg:
+        0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
+    --shadow-xl:
+        0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 0px 0px 0px hsl(0 0% 0% / 0);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
 }
 
 .dark {
-  --background: rgb(15, 15, 16);
-  --foreground: rgb(250, 250, 250);
-  --card: rgb(25, 25, 26);
-  --card-foreground: rgb(250, 250, 250);
-  --popover: rgb(38, 38, 38);
-  --popover-foreground: rgb(250, 250, 250);
-  --primary: rgb(229, 229, 229);
-  --primary-foreground: rgb(25, 25, 26);
-  --secondary: rgb(38, 38, 38);
-  --secondary-foreground: rgb(250, 250, 250);
-  --muted: rgb(38, 38, 38);
-  --muted-foreground: rgb(161, 161, 161);
-  --accent: rgb(64, 64, 64);
-  --accent-foreground: rgb(250, 250, 250);
-  --destructive: rgb(255, 101, 104);
-  --destructive-foreground: rgb(250, 250, 250);
-  --border: rgb(40, 40, 40);
-  --general-border: rgba(64, 64, 64);
-  --input: rgb(52, 52, 52);
-  --ring: rgb(115, 115, 115);
-  --chart-1: rgb(146, 197, 255);
-  --chart-2: rgb(60, 129, 244);
-  --chart-3: rgb(39, 100, 237);
-  --chart-4: rgb(28, 79, 216);
-  --chart-5: rgb(32, 63, 172);
-  --chart-area-fill: rgb(243, 243, 243);
-  --sidebar: rgb(25, 25, 26);
-  --sidebar-foreground: rgb(250, 250, 250);
-  --sidebar-primary: rgb(22, 72, 228);
-  --sidebar-primary-foreground: rgb(250, 250, 250);
-  --sidebar-accent: rgb(38, 38, 38);
-  --sidebar-accent-foreground: rgb(250, 250, 250);
-  --sidebar-border: rgb(30, 30, 30);
-  --sidebar-ring: rgb(82, 82, 82);
-  --general-success-background-faded: rgb(5, 46, 22);
-  --general-success-foreground: rgb(34, 197, 94);
-  --general-destructive-background-faded: rgb(69, 10, 10);
-  --general-destructive-foreground: rgb(158, 64, 66);
-  --general-info-background-faded: rgb(23, 37, 84);
-  --general-info-border: rgb(30, 58, 138);
-  --general-info-foreground: rgb(147, 197, 253);
-  --general-warning-background-faded: rgb(28, 25, 23);
-  --general-warning-border: rgb(113, 63, 18);
-  --general-warning-foreground: rgb(250, 204, 21);
-  --general-tertiary: rgb(28, 25, 23);
-  --general-unofficial-border: rgba(64, 64, 64);
-  --general-unofficial-ghost-foreground: rgba(229, 229, 229);
-  --general-unofficial-accent: rgba(38, 38, 38);
-  --general-unofficial-border-3: rgb(64, 64, 64);
-  --general-unofficial-border-5: rgb(115, 115, 115);
-  --general-secondary: rgba(38, 38, 38);
-  --general-unofficial-outline: rgba(255, 255, 255, 0.05);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --radius: 0.625rem;
-  --shadow-x: 0;
-  --shadow-y: 0px;
-  --shadow-blur: 0px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 0;
-  --shadow-color: oklch(0 0 0);
-  --shadow-2xs: 0 0px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-xs: 0 0px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
-  --shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
-  --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
-  --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0 0px 0px 0px hsl(0 0% 0% / 0.00);
+    --background: rgb(15, 15, 16);
+    --foreground: rgb(250, 250, 250);
+    --card: rgb(25, 25, 26);
+    --card-foreground: rgb(250, 250, 250);
+    --popover: rgb(38, 38, 38);
+    --popover-foreground: rgb(250, 250, 250);
+    --primary: rgb(229, 229, 229);
+    --primary-foreground: rgb(25, 25, 26);
+    --secondary: rgb(38, 38, 38);
+    --secondary-foreground: rgb(250, 250, 250);
+    --muted: rgb(38, 38, 38);
+    --muted-foreground: rgb(161, 161, 161);
+    --accent: rgb(64, 64, 64);
+    --accent-foreground: rgb(250, 250, 250);
+    --destructive: rgb(255, 101, 104);
+    --destructive-foreground: rgb(250, 250, 250);
+    --border: rgb(40, 40, 40);
+    --general-border: rgba(64, 64, 64);
+    --input: rgb(52, 52, 52);
+    --ring: rgb(115, 115, 115);
+    --chart-1: rgb(146, 197, 255);
+    --chart-2: rgb(60, 129, 244);
+    --chart-3: rgb(39, 100, 237);
+    --chart-4: rgb(28, 79, 216);
+    --chart-5: rgb(32, 63, 172);
+    --chart-area-fill: rgb(243, 243, 243);
+    --sidebar: rgb(25, 25, 26);
+    --sidebar-foreground: rgb(250, 250, 250);
+    --sidebar-primary: rgb(22, 72, 228);
+    --sidebar-primary-foreground: rgb(250, 250, 250);
+    --sidebar-accent: rgb(38, 38, 38);
+    --sidebar-accent-foreground: rgb(250, 250, 250);
+    --sidebar-border: rgb(30, 30, 30);
+    --sidebar-ring: rgb(82, 82, 82);
+    --general-success-background-faded: rgb(5, 46, 22);
+    --general-success-foreground: rgb(34, 197, 94);
+    --general-destructive-background-faded: rgb(69, 10, 10);
+    --general-destructive-foreground: rgb(158, 64, 66);
+    --general-info-background-faded: rgb(23, 37, 84);
+    --general-info-border: rgb(30, 58, 138);
+    --general-info-foreground: rgb(147, 197, 253);
+    --general-warning-background-faded: rgb(28, 25, 23);
+    --general-warning-border: rgb(113, 63, 18);
+    --general-warning-foreground: rgb(250, 204, 21);
+    --general-tertiary: rgb(31, 31, 31);
+    --general-unofficial-border: rgba(64, 64, 64);
+    --general-unofficial-ghost-foreground: rgba(229, 229, 229);
+    --general-unofficial-accent: rgba(38, 38, 38);
+    --general-unofficial-border-3: rgb(64, 64, 64);
+    --general-unofficial-border-5: rgb(115, 115, 115);
+    --general-secondary: rgba(38, 38, 38);
+    --general-unofficial-outline: rgba(255, 255, 255, 0.05);
+    --font-sans:
+        ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+        "Courier New", monospace;
+    --radius: 0.625rem;
+    --shadow-x: 0;
+    --shadow-y: 0px;
+    --shadow-blur: 0px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0;
+    --shadow-color: oklch(0 0 0);
+    --shadow-2xs: 0 0px 0px 0px hsl(0 0% 0% / 0);
+    --shadow-xs: 0 0px 0px 0px hsl(0 0% 0% / 0);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
+    --shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md:
+        0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
+    --shadow-lg:
+        0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
+    --shadow-xl:
+        0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 0px 0px 0px hsl(0 0% 0% / 0);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-general-border: var(--general-border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-general-success-background-faded: var(--general-success-background-faded);
-  --color-general-success-foreground: var(--general-success-foreground);
-  --color-general-destructive-background-faded: var(--general-destructive-background-faded);
-  --color-general-destructive-foreground: var(--general-destructive-foreground);
-  --color-general-info-background-faded: var(--general-info-background-faded);
-  --color-general-info-border: var(--general-info-border);
-  --color-general-info-foreground: var(--general-info-foreground);
-  --color-general-warning-background-faded: var(--general-warning-background-faded);
-  --color-general-warning-border: var(--general-warning-border);
-  --color-general-warning-foreground: var(--general-warning-foreground);
-  --color-general-tertiary: var(--general-tertiary);
-  --color-general-unofficial-border: var(--general-unofficial-border);
-  --color-general-unofficial-ghost-foreground: var(--general-unofficial-ghost-foreground);
-  --color-general-unofficial-accent: var(--general-unofficial-accent);
-  --color-general-unofficial-border-3: var(--general-unofficial-border-3);
-  --color-general-unofficial-border-5: var(--general-unofficial-border-5);
-  --color-general-secondary: var(--general-secondary);
-  --color-general-unofficial-outline: var(--general-unofficial-outline);
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-general-border: var(--general-border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-general-success-background-faded: var(--general-success-background-faded);
+    --color-general-success-foreground: var(--general-success-foreground);
+    --color-general-destructive-background-faded: var(--general-destructive-background-faded);
+    --color-general-destructive-foreground: var(--general-destructive-foreground);
+    --color-general-info-background-faded: var(--general-info-background-faded);
+    --color-general-info-border: var(--general-info-border);
+    --color-general-info-foreground: var(--general-info-foreground);
+    --color-general-warning-background-faded: var(--general-warning-background-faded);
+    --color-general-warning-border: var(--general-warning-border);
+    --color-general-warning-foreground: var(--general-warning-foreground);
+    --color-general-tertiary: var(--general-tertiary);
+    --color-general-unofficial-border: var(--general-unofficial-border);
+    --color-general-unofficial-ghost-foreground: var(--general-unofficial-ghost-foreground);
+    --color-general-unofficial-accent: var(--general-unofficial-accent);
+    --color-general-unofficial-border-3: var(--general-unofficial-border-3);
+    --color-general-unofficial-border-5: var(--general-unofficial-border-5);
+    --color-general-secondary: var(--general-secondary);
+    --color-general-unofficial-outline: var(--general-unofficial-outline);
 
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-chart-area-fill: var(--chart-area-fill);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-chart-area-fill: var(--chart-area-fill);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-sans: var(--font-geist-sans), var(--font-sans);
-  --font-mono: var(--font-geist-mono), var(--font-mono);
-  --font-serif: var(--font-geist-serif), var(--font-serif);
+    --font-sans: var(--font-geist-sans), var(--font-sans);
+    --font-mono: var(--font-geist-mono), var(--font-mono);
+    --font-serif: var(--font-geist-serif), var(--font-serif);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+    --radius-6: 6px;
 
-  --shadow-2xs: var(--shadow-2xs);
-  --shadow-xs: var(--shadow-xs);
-  --shadow-sm: var(--shadow-sm);
-  --shadow: var(--shadow);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-xl: var(--shadow-xl);
-  --shadow-2xl: var(--shadow-2xl);
+    --shadow-2xs: var(--shadow-2xs);
+    --shadow-xs: var(--shadow-xs);
+    --shadow-sm: var(--shadow-sm);
+    --shadow: var(--shadow);
+    --shadow-md: var(--shadow-md);
+    --shadow-lg: var(--shadow-lg);
+    --shadow-xl: var(--shadow-xl);
+    --shadow-2xl: var(--shadow-2xl);
 
-  --text-xxs: 0.625rem;
-  --text-xss--line-height: 0.75rem;
+    --text-xxs: 0.625rem;
+    --text-xss--line-height: 0.75rem;
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
+    * {
+        @apply border-border outline-ring/50;
+    }
 
-  body {
-    @apply bg-background text-foreground;
-  }
+    body {
+        @apply bg-background text-foreground;
+    }
 }
 
 @layer utilities {
-  .bg-gradient-cyan-blue {
-    background: linear-gradient(134deg, #0FFD9E 19.78%, #1F9CF0 85.42%);
-  }
+    .bg-gradient-cyan-blue {
+        background: linear-gradient(134deg, #0ffd9e 19.78%, #1f9cf0 85.42%);
+    }
 
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
 }
 
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
-  /* display: none; <- Crashes Chrome on hover */
-  -webkit-appearance: none;
-  margin: 0;
-  /* <-- Apparently some margin are still there even though it's hidden */
+    /* display: none; <- Crashes Chrome on hover */
+    -webkit-appearance: none;
+    margin: 0;
+    /* <-- Apparently some margin are still there even though it's hidden */
 }
 
-input[type=number] {
-  -moz-appearance: textfield;
-  /* Firefox */
+input[type="number"] {
+    -moz-appearance: textfield;
+    /* Firefox */
 }
 
 @plugin "tailwind-scrollbar";

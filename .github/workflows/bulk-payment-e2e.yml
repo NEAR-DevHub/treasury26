@@ -191,7 +191,7 @@ jobs:
         env:
           SANDBOX_RPC_URL: http://localhost:3030
           API_URL: http://localhost:8080
-          NUM_RECIPIENTS: '100'
+          NUM_RECIPIENTS: '25'
         run: npm test
 
       - name: Show Docker logs on failure

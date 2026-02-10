@@ -12,6 +12,7 @@ pub struct EnvVars {
     pub ref_sdk_base_url: String,
     pub signer_key: SecretKey,
     pub signer_id: AccountId,
+    pub bulk_payment_signer: SecretKey,
     pub disable_balance_monitoring: bool,
     pub disable_treasury_creation: bool,
     pub monitor_interval_seconds: u64,
@@ -49,6 +50,10 @@ impl Default for EnvVars {
                 .unwrap_or_else(|_| "bulkpayment.near".to_string())
                 .parse()
                 .expect("Invalid BULK_PAYMENT_CONTRACT_ID"),
+            bulk_payment_signer: std::env::var("BULK_PAYMENT_SIGNER")
+                .expect("BULK_PAYMENT_SIGNER is not set")
+                .parse()
+                .expect("Invalid BULK_PAYMENT_SIGNER"),
             fastnear_api_key: std::env::var("FASTNEAR_API_KEY")
                 .expect("FASTNEAR_API_KEY is not set"),
             sputnik_dao_api_base: std::env::var("SPUTNIK_DAO_API_BASE")

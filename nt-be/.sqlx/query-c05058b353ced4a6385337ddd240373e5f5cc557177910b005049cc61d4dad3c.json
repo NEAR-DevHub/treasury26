@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT token_id as \"token_id!\", ABS(SUM(amount)) as \"total_amount!\"\n        FROM balance_changes\n        WHERE account_id = $1\n          AND amount < 0\n          AND counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT', 'NOT_REGISTERED')\n          AND block_time >= $2\n          AND block_time < $3\n          AND token_id IS NOT NULL\n        GROUP BY token_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_id!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_amount!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      true,
+      null
+    ]
+  },
+  "hash": "c05058b353ced4a6385337ddd240373e5f5cc557177910b005049cc61d4dad3c"
+}

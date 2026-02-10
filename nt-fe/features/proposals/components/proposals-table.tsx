@@ -11,7 +11,16 @@ import {
     TableRow,
 } from "@/components/table";
 import { Button } from "@/components/button";
-import { ChevronDown, ChevronRight, X, Check, SearchX } from "lucide-react";
+import {
+    ChevronDown,
+    ChevronRight,
+    X,
+    Check,
+    SearchX,
+    Send,
+    ArrowUpRight,
+    ArrowRightLeft,
+} from "lucide-react";
 import { TransactionCell } from "./transaction-cell";
 import { ExpandedView } from "./expanded-view";
 import { ProposalTypeIcon } from "./proposal-type-icon";
@@ -47,6 +56,10 @@ import {
 import { VoteModal } from "./vote-modal";
 import { Address } from "@/components/address";
 import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
+import { EmptyState } from "@/components/empty-state";
+import { AuthButton } from "@/components/auth-button";
+import { useRouter } from "next/navigation";
+import { Tooltip } from "@/components/tooltip";
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -76,6 +89,7 @@ export function ProposalsTable({
     const [expanded, setExpanded] = useState<ExpandedState>({});
     const { accountId } = useNear();
     const { treasuryId } = useTreasury();
+    const router = useRouter();
     const formatDate = useFormatDate();
 
     const columns = useMemo<ColumnDef<Proposal, any>[]>(
@@ -117,14 +131,35 @@ export function ProposalsTable({
                         false,
                     );
                     const proposalStatus = getProposalStatus(proposal, policy);
+                    const isVoted = Object.keys(proposal.votes).includes(
+                        accountId ?? "",
+                    );
                     const canVote =
                         approverAccounts.includes(accountId ?? "") &&
                         accountId &&
-                        treasuryId &&
-                        proposalStatus === "Pending";
+                        treasuryId;
+                    const isPending = proposalStatus === "Pending";
 
-                    if (!canVote) {
-                        return null;
+                    if (isVoted || !canVote || !isPending) {
+                        const content = !isPending
+                            ? "Proposal is not pending."
+                            : !canVote
+                              ? "You don't have permission to vote on this request."
+                              : isVoted
+                                ? "You already voted on this request."
+                                : "";
+
+                        return (
+                            <Tooltip content={content}>
+                                <Checkbox
+                                    checked={row.getIsSelected()}
+                                    disabled={true}
+                                    onCheckedChange={(value) =>
+                                        row.toggleSelected(!!value)
+                                    }
+                                />
+                            </Tooltip>
+                        );
                     }
 
                     return (
@@ -273,9 +308,13 @@ export function ProposalsTable({
                 proposal.kind,
                 false,
             );
+            const isVoted = Object.keys(proposal.votes).includes(
+                accountId ?? "",
+            );
             const proposalStatus = getProposalStatus(proposal, policy);
             return (
                 approverAccounts.includes(accountId ?? "") &&
+                !isVoted &&
                 !!accountId &&
                 !!treasuryId &&
                 proposal.status === "InProgress" &&
@@ -303,16 +342,40 @@ export function ProposalsTable({
     }, [selectedRows.length, onSelectionChange]);
 
     if ((proposals.length === 0 && pageIndex === 0) || total === 0) {
-        return (
+        return withFilters ? (
             <div className="flex flex-col items-center justify-center py-8 gap-4">
-                <div className="size-8 p-2 bg-muted rounded-full flex items-center justify-center">
-                    <SearchX className="size-5 text-muted-foreground shrink-0" />
+                <EmptyState
+                    icon={SearchX}
+                    title=""
+                    description="No requests found matching your filters."
+                />
+            </div>
+        ) : (
+            <div className="flex flex-col items-center justify-center py-8 gap-4">
+                <EmptyState
+                    icon={Send}
+                    title="All caught up!"
+                    description="There are no pending requests."
+                    className="pb-0"
+                />
+                <div className="flex gap-4 w-full max-w-[300px] min-w-0 pb-12">
+                    <AuthButton
+                        permissionKind="transfer"
+                        onClick={() => router.push(`/${treasuryId}/payments`)}
+                        permissionAction="AddProposal"
+                        className="gap-1 flex-1"
+                    >
+                        <ArrowUpRight className="size-3.5" /> Send
+                    </AuthButton>
+                    <AuthButton
+                        permissionKind="call"
+                        onClick={() => router.push(`/${treasuryId}/exchange`)}
+                        permissionAction="AddProposal"
+                        className="gap-1 flex-1"
+                    >
+                        <ArrowRightLeft className="size-3.5" /> Exchange
+                    </AuthButton>
                 </div>
-                <p className="text-muted-foreground text-xs">
-                    {withFilters
-                        ? "No requests found matching your filters."
-                        : "No requests found."}
-                </p>
             </div>
         );
     }

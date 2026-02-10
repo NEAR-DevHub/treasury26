@@ -1,26 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  getUserTreasuries,
-  getTreasuryConfig,
-  getBalanceChart,
-  BalanceChartRequest,
-  getTokenBalance,
-  getTreasuryPolicy,
-  getStorageDepositIsRegistered,
-  getBatchStorageDepositIsRegistered,
-  getTokenMetadata,
-  getLockupPool,
-  getProfile,
-  getBatchProfiles,
-  StorageDepositRequest,
-  getBatchPayment,
-  checkHandleUnused,
-  checkAccountExists,
-  searchIntentsTokens,
-  SearchTokensParams,
-  getRecentActivity,
-  getExportCredits,
-  getExportHistory,
+    getUserTreasuries,
+    getTreasuryConfig,
+    getBalanceChart,
+    BalanceChartRequest,
+    getTokenBalance,
+    getTreasuryPolicy,
+    getStorageDepositIsRegistered,
+    getBatchStorageDepositIsRegistered,
+    getTokenMetadata,
+    getLockupPool,
+    getProfile,
+    StorageDepositRequest,
+    getBatchPayment,
+    checkHandleUnused,
+    checkAccountExists,
+    searchIntentsTokens,
+    SearchTokensParams,
+    getRecentActivity,
+    getExportCredits,
+    getExportHistory,
 } from "@/lib/api";
 
 /**
@@ -28,25 +27,28 @@ import {
  * Requires Near instance for blockchain queries
  */
 export function useUserTreasuries(accountId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["userTreasuries", accountId],
-    queryFn: () => getUserTreasuries(accountId!),
-    enabled: !!accountId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+    return useQuery({
+        queryKey: ["userTreasuries", accountId],
+        queryFn: () => getUserTreasuries(accountId!),
+        enabled: !!accountId,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+    });
 }
 
 /**
  * Query hook to get a single treasury's config data
  * Fetches directly from the treasury contract via backend
  */
-export function useTreasuryConfig(treasuryId: string | null | undefined, before: string | null | undefined = null) {
-  return useQuery({
-    queryKey: ["treasuryConfig", treasuryId, before],
-    queryFn: () => getTreasuryConfig(treasuryId!, before),
-    enabled: !!treasuryId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+export function useTreasuryConfig(
+    treasuryId: string | null | undefined,
+    before: string | null | undefined = null,
+) {
+    return useQuery({
+        queryKey: ["treasuryConfig", treasuryId, before],
+        queryFn: () => getTreasuryConfig(treasuryId!, before),
+        enabled: !!treasuryId,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+    });
 }
 
 /**
@@ -54,15 +56,20 @@ export function useTreasuryConfig(treasuryId: string | null | undefined, before:
  * Fetches historical balance snapshots at specified intervals
  * Supports filtering by specific tokens or all tokens
  */
-export function useBalanceChart(
-  params: BalanceChartRequest | null,
-) {
-  return useQuery({
-    queryKey: ["balanceChart", params?.accountId, params?.startTime, params?.endTime, params?.interval, params?.tokenIds],
-    queryFn: () => getBalanceChart(params!),
-    enabled: !!params?.accountId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+export function useBalanceChart(params: BalanceChartRequest | null) {
+    return useQuery({
+        queryKey: [
+            "balanceChart",
+            params?.accountId,
+            params?.startTime,
+            params?.endTime,
+            params?.interval,
+            params?.tokenIds,
+        ],
+        queryFn: () => getBalanceChart(params!),
+        enabled: !!params?.accountId,
+        staleTime: 1000 * 60 * 5, // 5 minutes
+    });
 }
 
 /**
@@ -71,30 +78,33 @@ export function useBalanceChart(
  * Supports both NEAR and FT tokens
  */
 export function useTokenBalance(
-  accountId: string | null | undefined,
-  tokenId: string | null | undefined,
-  network: string | null | undefined,
+    accountId: string | null | undefined,
+    tokenId: string | null | undefined,
+    network: string | null | undefined,
 ) {
-  return useQuery({
-    queryKey: ["tokenBalance", accountId, tokenId],
-    queryFn: () => getTokenBalance(accountId!, tokenId!, network!),
-    enabled: !!accountId && !!tokenId && !!network,
-    staleTime: 1000 * 30, // 30 seconds (balances change frequently)
-    refetchInterval: 1000 * 30, // Refetch every 30 seconds
-  });
+    return useQuery({
+        queryKey: ["tokenBalance", accountId, tokenId],
+        queryFn: () => getTokenBalance(accountId!, tokenId!, network!),
+        enabled: !!accountId && !!tokenId && !!network,
+        staleTime: 1000 * 30, // 30 seconds (balances change frequently)
+        refetchInterval: 1000 * 30, // Refetch every 30 seconds
+    });
 }
 
 /**
  * Query hook to get treasury policy including roles, permissions, and approval settings
  * Fetches from backend which queries the treasury contract and caches the result
  */
-export function useTreasuryPolicy(treasuryId: string | null | undefined, before: string | null | undefined = null) {
-  return useQuery({
-    queryKey: ["treasuryPolicy", treasuryId, before],
-    queryFn: () => getTreasuryPolicy(treasuryId!, before),
-    enabled: !!treasuryId,
-    staleTime: 1000 * 60 * 10, // 10 minutes (policies don't change frequently)
-  });
+export function useTreasuryPolicy(
+    treasuryId: string | null | undefined,
+    before: string | null | undefined = null,
+) {
+    return useQuery({
+        queryKey: ["treasuryPolicy", treasuryId, before],
+        queryFn: () => getTreasuryPolicy(treasuryId!, before),
+        enabled: !!treasuryId,
+        staleTime: 1000 * 60 * 10, // 10 minutes (policies don't change frequently)
+    });
 }
 
 /**
@@ -103,15 +113,15 @@ export function useTreasuryPolicy(treasuryId: string | null | undefined, before:
  * Useful for determining if storage deposit is needed before token transfers
  */
 export function useStorageDepositIsRegistered(
-  accountId: string | null | undefined,
-  tokenId: string | null | undefined,
+    accountId: string | null | undefined,
+    tokenId: string | null | undefined,
 ) {
-  return useQuery({
-    queryKey: ["storageDepositIsRegistered", accountId, tokenId],
-    queryFn: () => getStorageDepositIsRegistered(accountId!, tokenId!),
-    enabled: !!accountId && !!tokenId,
-    staleTime: 1000 * 60 * 5, // 5 minutes (storage deposits don't change frequently)
-  });
+    return useQuery({
+        queryKey: ["storageDepositIsRegistered", accountId, tokenId],
+        queryFn: () => getStorageDepositIsRegistered(accountId!, tokenId!),
+        enabled: !!accountId && !!tokenId,
+        staleTime: 1000 * 60 * 5, // 5 minutes (storage deposits don't change frequently)
+    });
 }
 
 /**
@@ -120,14 +130,14 @@ export function useStorageDepositIsRegistered(
  * Re-uses individual cache entries on the backend rather than caching the full batch query
  */
 export function useBatchStorageDepositIsRegistered(
-  requests: StorageDepositRequest[],
+    requests: StorageDepositRequest[],
 ) {
-  return useQuery({
-    queryKey: ["batchStorageDepositIsRegistered", requests],
-    queryFn: () => getBatchStorageDepositIsRegistered(requests),
-    enabled: requests.length > 0,
-    staleTime: 1000 * 60 * 5, // 5 minutes (storage deposits don't change frequently)
-  });
+    return useQuery({
+        queryKey: ["batchStorageDepositIsRegistered", requests],
+        queryFn: () => getBatchStorageDepositIsRegistered(requests),
+        enabled: requests.length > 0,
+        staleTime: 1000 * 60 * 5, // 5 minutes (storage deposits don't change frequently)
+    });
 }
 
 /**
@@ -135,16 +145,14 @@ export function useBatchStorageDepositIsRegistered(
  * Fetches from backend which enriches data from bridge and external price APIs
  * Supports both NEAR and cross-chain tokens
  */
-export function useToken(
-  tokenId: string | null | undefined,
-) {
-  return useQuery({
-    queryKey: ["tokenMetadata", tokenId],
-    queryFn: () => getTokenMetadata(tokenId!),
-    enabled: !!tokenId,
-    staleTime: 1000 * 60 * 5, // 5 minutes (token metadata and price)
-    refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
-  });
+export function useToken(tokenId: string | null | undefined) {
+    return useQuery({
+        queryKey: ["tokenMetadata", tokenId],
+        queryFn: () => getTokenMetadata(tokenId!),
+        enabled: !!tokenId,
+        staleTime: 1000 * 60 * 5, // 5 minutes (token metadata and price)
+        refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
+    });
 }
 
 /**
@@ -153,12 +161,12 @@ export function useToken(
  * Returns the pool account ID if the lockup contract has a staking pool registered
  */
 export function useLockupPool(accountId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["lockupPool", accountId],
-    queryFn: () => getLockupPool(accountId!),
-    enabled: !!accountId,
-    staleTime: 1000 * 60 * 10, // 10 minutes (lockup pool associations don't change frequently)
-  });
+    return useQuery({
+        queryKey: ["lockupPool", accountId],
+        queryFn: () => getLockupPool(accountId!),
+        enabled: !!accountId,
+        staleTime: 1000 * 60 * 10, // 10 minutes (lockup pool associations don't change frequently)
+    });
 }
 
 /**
@@ -167,26 +175,12 @@ export function useLockupPool(accountId: string | null | undefined) {
  * Data is cached on the backend from social.near contract
  */
 export function useProfile(accountId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["profile", accountId],
-    queryFn: () => getProfile(accountId!),
-    enabled: !!accountId,
-    staleTime: 1000 * 60 * 10, // 10 minutes (profile data doesn't change frequently)
-  });
-}
-
-/**
- * Query hook to get profile data from NEAR Social for multiple accounts in a single batch request
- * More efficient than making individual requests for each account
- * Returns a record/object mapping account IDs to their profile data
- */
-export function useBatchProfiles(accountIds: string[]) {
-  return useQuery({
-    queryKey: ["batchProfiles", accountIds],
-    queryFn: () => getBatchProfiles(accountIds),
-    enabled: accountIds.length > 0,
-    staleTime: 1000 * 60 * 10, // 10 minutes (profile data doesn't change frequently)
-  });
+    return useQuery({
+        queryKey: ["profile", accountId],
+        queryFn: () => getProfile(accountId!),
+        enabled: !!accountId,
+        staleTime: 1000 * 60 * 10, // 10 minutes (profile data doesn't change frequently)
+    });
 }
 
 /**
@@ -195,12 +189,12 @@ export function useBatchProfiles(accountIds: string[]) {
  * Returns batch payment info including token, submitter, status, and list of payments
  */
 export function useBatchPayment(batchId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["batchPayment", batchId],
-    queryFn: () => getBatchPayment(batchId!),
-    enabled: !!batchId,
-    staleTime: 1000 * 60 * 5, // 5 minutes (batch payment data doesn't change frequently once created)
-  });
+    return useQuery({
+        queryKey: ["batchPayment", batchId],
+        queryFn: () => getBatchPayment(batchId!),
+        enabled: !!batchId,
+        staleTime: 1000 * 60 * 5, // 5 minutes (batch payment data doesn't change frequently once created)
+    });
 }
 
 /**
@@ -209,13 +203,13 @@ export function useBatchPayment(batchId: string | null | undefined) {
  * Returns is_valid: true if the handle is available, false if already taken
  */
 export function useCheckHandleUnused(treasuryId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["checkHandleUnused", treasuryId],
-    queryFn: () => checkHandleUnused(treasuryId!),
-    enabled: !!treasuryId && treasuryId.length > 0,
-    staleTime: 1000 * 60, // 1 minute (handle availability can change)
-    retry: false, // Don't retry on failure
-  });
+    return useQuery({
+        queryKey: ["checkHandleUnused", treasuryId],
+        queryFn: () => checkHandleUnused(treasuryId!),
+        enabled: !!treasuryId && treasuryId.length > 0,
+        staleTime: 1000 * 60, // 1 minute (handle availability can change)
+        retry: false, // Don't retry on failure
+    });
 }
 
 /**
@@ -224,13 +218,13 @@ export function useCheckHandleUnused(treasuryId: string | null | undefined) {
  * Returns exists: true if the account exists, false otherwise
  */
 export function useCheckAccountExists(accountId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["checkAccountExists", accountId],
-    queryFn: () => checkAccountExists(accountId!),
-    enabled: !!accountId && accountId.length > 0,
-    staleTime: 1000 * 60, // 1 minute (account existence can change)
-    retry: false, // Don't retry on failure
-  });
+    return useQuery({
+        queryKey: ["checkAccountExists", accountId],
+        queryFn: () => checkAccountExists(accountId!),
+        enabled: !!accountId && accountId.length > 0,
+        staleTime: 1000 * 60, // 1 minute (account existence can change)
+        retry: false, // Don't retry on failure
+    });
 }
 
 /**
@@ -245,14 +239,14 @@ export function useCheckAccountExists(accountId: string | null | undefined) {
  * @returns Object with tokenIn and tokenOut metadata including defuse asset IDs and network info
  */
 export function useSearchIntentsTokens(params: SearchTokensParams) {
-  const hasParams = !!(params.tokenIn || params.tokenOut);
+    const hasParams = !!(params.tokenIn || params.tokenOut);
 
-  return useQuery({
-    queryKey: ["searchIntentsTokens", params],
-    queryFn: () => searchIntentsTokens(params),
-    enabled: hasParams,
-    staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
-  });
+    return useQuery({
+        queryKey: ["searchIntentsTokens", params],
+        queryFn: () => searchIntentsTokens(params),
+        enabled: hasParams,
+        staleTime: 1000 * 60 * 10, // 10 minutes (token metadata doesn't change frequently)
+    });
 }
 
 /**
@@ -261,33 +255,33 @@ export function useSearchIntentsTokens(params: SearchTokensParams) {
  * Returns list of transactions with amounts, counterparties, and metadata
  */
 export function useRecentActivity(
-  accountId: string | null | undefined,
-  limit: number = 10,
-  offset: number = 0,
-  minUsdValue?: number,
-  transactionType?: string,
-  tokenIds?: string[],
-  startDate?: string,
-  endDate?: string,
+    accountId: string | null | undefined,
+    limit: number = 10,
+    offset: number = 0,
+    minUsdValue?: number,
+    transactionType?: string,
+    tokenIds?: string[],
+    startDate?: string,
+    endDate?: string,
 ) {
-  return useQuery({
-    queryKey: ["recentActivity", accountId, limit, offset, minUsdValue, transactionType, tokenIds, startDate, endDate],
-    queryFn: () => getRecentActivity(accountId!, limit, offset, minUsdValue, transactionType, tokenIds, startDate, endDate),
-    enabled: !!accountId,
-    staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
-  });
+    return useQuery({
+        queryKey: ["recentActivity", accountId, limit, offset, minUsdValue, transactionType, tokenIds, startDate, endDate],
+        queryFn: () => getRecentActivity(accountId!, limit, offset, minUsdValue, transactionType, tokenIds, startDate, endDate),
+        enabled: !!accountId,
+        staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
+    });
 }
 
 /**
  * Hook to fetch export credits for an account
  */
 export function useExportCredits(accountId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["exportCredits", accountId],
-    queryFn: () => getExportCredits(accountId!),
-    enabled: !!accountId,
-    staleTime: Infinity, // Never auto-refresh, only manual refetch
-  });
+    return useQuery({
+        queryKey: ["exportCredits", accountId],
+        queryFn: () => getExportCredits(accountId!),
+        enabled: !!accountId,
+        staleTime: Infinity, // Never auto-refresh, only manual refetch
+    });
 }
 
 /**
@@ -295,14 +289,14 @@ export function useExportCredits(accountId: string | null | undefined) {
  * Only updates when explicitly refetched (after export)
  */
 export function useExportHistory(
-  accountId: string | null | undefined,
-  limit: number = 10,
-  offset: number = 0,
+    accountId: string | null | undefined,
+    limit: number = 10,
+    offset: number = 0,
 ) {
-  return useQuery({
-    queryKey: ["exportHistory", accountId, limit, offset],
-    queryFn: () => getExportHistory(accountId!, limit, offset),
-    enabled: !!accountId,
-    staleTime: Infinity, // Never auto-refresh, only manual refetch
-  });
+    return useQuery({
+        queryKey: ["exportHistory", accountId, limit, offset],
+        queryFn: () => getExportHistory(accountId!, limit, offset),
+        enabled: !!accountId,
+        staleTime: Infinity, // Never auto-refresh, only manual refetch
+    });
 }

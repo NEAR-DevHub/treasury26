@@ -188,7 +188,7 @@ async fn wait_for_price_sync() {
             );
         }
 
-        if start.elapsed().as_secs() % 30 == 0 && start.elapsed().as_secs() > 0 {
+        if start.elapsed().as_secs().is_multiple_of(30) && start.elapsed().as_secs() > 0 {
             println!(
                 "Still syncing prices... {} assets, {} prices so far ({:?})",
                 asset_count,
@@ -223,9 +223,9 @@ async fn test_balance_chart_with_real_data() {
     let response = client
         .get(server.url("/api/balance-history/chart"))
         .query(&[
-            ("account_id", "webassemblymusic-treasury.sputnik-dao.near"),
-            ("start_time", "2025-12-01T00:00:00Z"),
-            ("end_time", "2025-12-04T23:59:59Z"),
+            ("accountId", "webassemblymusic-treasury.sputnik-dao.near"),
+            ("startTime", "2025-12-01T00:00:00Z"),
+            ("endTime", "2025-12-04T23:59:59Z"),
             ("interval", "daily"),
         ])
         .send()
@@ -324,7 +324,7 @@ async fn test_balance_chart_with_real_data() {
     for (token_id, expected_balance, expected_price) in &expected_tokens {
         let token_data = token_map
             .get(*token_id)
-            .expect(&format!("Token {} not found", token_id));
+            .unwrap_or_else(|| panic!("Token {} not found", token_id));
         assert!(
             token_data.is_array(),
             "Token data should be an array for {}",
@@ -344,7 +344,7 @@ async fn test_balance_chart_with_real_data() {
         let balance = last_snapshot
             .get("balance")
             .and_then(|b| b.as_str())
-            .expect(&format!("Balance should be a string for {}", token_id));
+            .unwrap_or_else(|| panic!("Balance should be a string for {}", token_id));
 
         assert_eq!(
             balance, *expected_balance,
@@ -352,14 +352,14 @@ async fn test_balance_chart_with_real_data() {
             token_id, expected_balance, balance
         );
 
-        // Check the price_usd field
+        // Check the priceUsd field
         // Note: Mock data uses DeFiLlama prices from Dec 4, 2025 23:59:55 UTC
-        let actual_price = last_snapshot.get("price_usd").and_then(|p| p.as_f64());
+        let actual_price = last_snapshot.get("priceUsd").and_then(|p| p.as_f64());
         match expected_price {
             Some(expected) => {
                 assert!(
                     actual_price.is_some(),
-                    "Expected price_usd for token {} but got null",
+                    "Expected priceUsd for token {} but got null",
                     token_id
                 );
                 let actual = actual_price.unwrap();
@@ -376,7 +376,7 @@ async fn test_balance_chart_with_real_data() {
             None => {
                 assert!(
                     actual_price.is_none(),
-                    "Expected no price_usd for token {} but got {:?}",
+                    "Expected no priceUsd for token {} but got {:?}",
                     token_id,
                     actual_price
                 );
@@ -411,9 +411,9 @@ async fn test_csv_export_with_real_data() {
     let response = client
         .get(server.url("/api/balance-history/csv"))
         .query(&[
-            ("account_id", "webassemblymusic-treasury.sputnik-dao.near"),
-            ("start_time", "2025-06-01T00:00:00Z"),
-            ("end_time", "2026-01-01T00:00:00Z"),
+            ("accountId", "webassemblymusic-treasury.sputnik-dao.near"),
+            ("startTime", "2025-06-01T00:00:00Z"),
+            ("endTime", "2026-01-01T00:00:00Z"),
         ])
         .send()
         .await
@@ -475,11 +475,13 @@ async fn test_csv_export_with_real_data() {
     );
 
     // Compare with snapshot (hard assertion for regression testing)
-    let snapshot_content = std::fs::read_to_string(snapshot_path).expect(&format!(
-        "Failed to read snapshot file: {}\n\
+    let snapshot_content = std::fs::read_to_string(snapshot_path).unwrap_or_else(|_| {
+        panic!(
+            "Failed to read snapshot file: {}\n\
          To generate new snapshots, run: GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test",
-        snapshot_path
-    ));
+            snapshot_path
+        )
+    });
 
     assert_eq!(
         csv_content, snapshot_content,
@@ -513,9 +515,9 @@ async fn test_chart_api_intervals() {
         let response = client
             .get(server.url("/api/balance-history/chart"))
             .query(&[
-                ("account_id", "webassemblymusic-treasury.sputnik-dao.near"),
-                ("start_time", "2025-06-01T00:00:00Z"),
-                ("end_time", "2025-12-31T23:59:59Z"),
+                ("accountId", "webassemblymusic-treasury.sputnik-dao.near"),
+                ("startTime", "2025-06-01T00:00:00Z"),
+                ("endTime", "2025-12-31T23:59:59Z"),
                 ("interval", interval),
             ])
             .send()
@@ -550,11 +552,13 @@ async fn test_chart_api_intervals() {
         }
 
         // Compare with snapshot (hard assertion for regression testing)
-        let existing_snapshot = std::fs::read_to_string(&snapshot_path).expect(&format!(
-            "Failed to read snapshot file: {}\n\
+        let existing_snapshot = std::fs::read_to_string(&snapshot_path).unwrap_or_else(|_| {
+            panic!(
+                "Failed to read snapshot file: {}\n\
              To generate new snapshots, run: GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test",
-            snapshot_path
-        ));
+                snapshot_path
+            )
+        });
 
         let expected_data: serde_json::Value =
             serde_json::from_str(&existing_snapshot).expect("Failed to parse snapshot");

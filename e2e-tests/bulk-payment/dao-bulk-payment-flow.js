@@ -30,7 +30,11 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as nearAPI from 'near-api-js';
 import { NearRpcClient, tx as rpcTx } from '@near-js/jsonrpc-client';
+import { serialize } from 'borsh';
 const { connect, keyStores, KeyPair, utils } = nearAPI;
+
+// NEP-413 tag prefix: 2^31 + 413 = 2147484061
+const NEP413_TAG = 2147484061;
 
 // ============================================================================
 // Configuration
@@ -123,6 +127,128 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ============================================================================
+// NEP-413 Authentication
+// ============================================================================
+
+// Borsh schema for NEP-413 payload
+const NEP413PayloadSchema = {
+  struct: {
+    message: 'string',
+    nonce: { array: { type: 'u8', len: 32 } },
+    recipient: 'string',
+    callbackUrl: { option: 'string' },
+  }
+};
+
+/**
+ * Create NEP-413 signature for authentication
+ * @param {KeyPair} keyPair - The signing key pair
+ * @param {string} accountId - The account ID
+ * @param {Uint8Array} nonce - 32-byte nonce from challenge
+ * @param {string} recipient - The recipient (app identifier)
+ * @param {string} message - The message to sign
+ */
+function signNep413(keyPair, accountId, nonce, recipient, message) {
+  // Create NEP-413 payload
+  const payload = {
+    message,
+    nonce: Array.from(nonce),
+    recipient,
+    callbackUrl: null,
+  };
+
+  // Borsh serialize the payload
+  const serializedPayload = serialize(NEP413PayloadSchema, payload);
+
+  // Prepend NEP-413 tag (2^31 + 413) as little-endian u32
+  const tagBuffer = Buffer.alloc(4);
+  tagBuffer.writeUInt32LE(NEP413_TAG, 0);
+
+  // Concatenate tag + serialized payload
+  const dataToHash = Buffer.concat([tagBuffer, Buffer.from(serializedPayload)]);
+
+  // SHA256 hash
+  const hash = createHash('sha256').update(dataToHash).digest();
+
+  // Sign the hash
+  const signature = keyPair.sign(hash);
+
+  return {
+    accountId,
+    publicKey: keyPair.getPublicKey().toString(),
+    signature: Buffer.from(signature.signature).toString('base64'),
+    message,
+    nonce: Buffer.from(nonce).toString('base64'),
+    recipient,
+  };
+}
+
+// Global auth cookie storage
+let authCookie = null;
+
+/**
+ * Authenticate with the API using NEP-413 signature
+ * @param {KeyPair} keyPair - The signing key pair
+ * @param {string} accountId - The account ID to authenticate as
+ */
+async function authenticate(keyPair, accountId) {
+  console.log(`\n🔐 Authenticating as ${accountId}...`);
+
+  // Step 1: Get challenge nonce
+  const challengeResponse = await fetch(`${CONFIG.API_URL}/api/auth/challenge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accountId }),
+  });
+
+  if (!challengeResponse.ok) {
+    throw new Error(`Challenge failed: ${await challengeResponse.text()}`);
+  }
+
+  const { nonce: nonceB64 } = await challengeResponse.json();
+  const nonce = Buffer.from(nonceB64, 'base64');
+
+  // Step 2: Sign the nonce with NEP-413
+  const signedPayload = signNep413(
+    keyPair,
+    accountId,
+    nonce,
+    'treasury-sandbox', // recipient identifier
+    nonceB64, // use the nonce as the message
+  );
+
+  // Step 3: Login with signature
+  const loginResponse = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(signedPayload),
+  });
+
+  if (!loginResponse.ok) {
+    throw new Error(`Login failed: ${await loginResponse.text()}`);
+  }
+
+  // Extract the auth cookie from Set-Cookie header
+  const setCookie = loginResponse.headers.get('set-cookie');
+  if (setCookie) {
+    // Parse the cookie name=value part
+    const cookieMatch = setCookie.match(/auth_token=([^;]+)/);
+    if (cookieMatch) {
+      authCookie = `auth_token=${cookieMatch[1]}`;
+    }
+  }
+
+  if (!authCookie) {
+    throw new Error('No auth cookie received from login');
+  }
+
+  const loginData = await loginResponse.json();
+  console.log(`✅ Authenticated as ${loginData.accountId}`);
+
+  return loginData;
+}
+
 /**
  * Make HTTP request to the bulk payment API
  * @param {string} endpoint - API endpoint
@@ -132,25 +258,39 @@ function sleep(ms) {
  */
 async function apiRequest(endpoint, method = 'GET', body = null, expectError = false) {
   const url = `${CONFIG.API_URL}${endpoint}`;
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+
+  // Add auth cookie if we have one
+  if (authCookie) {
+    headers['Cookie'] = authCookie;
+  }
+
   const options = {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
   };
-  
+
   if (body) {
     options.body = JSON.stringify(body);
   }
-  
+
   const response = await fetch(url, options);
-  
+
   if (!response.ok && !expectError) {
     const errorText = await response.text().catch(() => 'Unknown error');
     throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
   }
-  
-  return response.json();
+
+  // Try to parse JSON, but handle non-JSON responses gracefully
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Return a structured error for non-JSON responses
+    return { success: false, error: text };
+  }
 }
 
 // ============================================================================
@@ -411,6 +551,10 @@ const health = await apiRequest('/api/health');
 assert.equal(health.status, 'healthy', 'API must be healthy');
 console.log(`✅ API is healthy: ${JSON.stringify(health)}`);
 
+// Step 2b: Authenticate with the API using NEP-413 signature
+const authKeyPair = KeyPair.fromString(CONFIG.GENESIS_PRIVATE_KEY);
+await authenticate(authKeyPair, account.accountId);
+
 // Step 3: Create DAO
 const daoName = 'testdao';
 const daoAccountId = await createDAO(account, daoName, account.accountId);
@@ -575,10 +719,10 @@ assert.match(listId, /^[0-9a-f]{64}$/, 'list_id must be hex-encoded');
 // Step 7b: Verify API rejects submission with WRONG hash (payload doesn't match list_id)
 console.log('\n🔒 Testing API rejection with mismatched hash...');
 const wrongHashResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
-  list_id: listId,
-  submitter_id: daoAccountId,
-  dao_contract_id: daoAccountId,
-  token_id: 'native',
+  listId: listId,
+  submitterId: daoAccountId,
+  daoContractId: daoAccountId,
+  tokenId: 'native',
   // Tamper with payments - change first recipient's amount
   payments: payments.map((p, i) => i === 0 ? { ...p, amount: '999' } : p),
 }, true); // expectError = true
@@ -591,10 +735,10 @@ console.log(`✅ API correctly rejected tampered payload: ${wrongHashResponse.er
 // Step 7c: Verify API rejects submission WITHOUT a DAO proposal
 console.log('\n🔒 Testing API rejection without DAO proposal...');
 const rejectResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
-  list_id: listId,
-  submitter_id: daoAccountId,
-  dao_contract_id: daoAccountId,
-  token_id: 'native',
+  listId: listId,
+  submitterId: daoAccountId,
+  daoContractId: daoAccountId,
+  tokenId: 'native',
   payments,
 }, true); // expectError = true
 
@@ -619,15 +763,15 @@ const submitListProposalId = await createProposal(
 // Step 9: Submit payment list via API (requires DAO proposal to exist)
 console.log('\n📤 Submitting payment list via API...');
 const submitResponse = await apiRequest('/api/bulk-payment/submit-list', 'POST', {
-  list_id: listId,
-  submitter_id: daoAccountId,
-  dao_contract_id: daoAccountId,
-  token_id: 'native',
+  listId: listId,
+  submitterId: daoAccountId,
+  daoContractId: daoAccountId,
+  tokenId: 'native',
   payments,
 });
 
 assert.equal(submitResponse.success, true, `Submit must succeed: ${submitResponse.error}`);
-assert.equal(submitResponse.list_id, listId, 'Returned list_id must match submitted');
+assert.equal(submitResponse.listId, listId, 'Returned listId must match submitted');
 console.log(`✅ Payment list submitted with ID: ${listId}`);
 
 // Step 10: Approve the payment list proposal (already created in Step 8)
@@ -657,13 +801,13 @@ while (!allProcessed && attempts < maxAttempts) {
   
   const currentStatus = await apiRequest(`/api/bulk-payment/list/${listId}`);
   assert.equal(currentStatus.success, true, `Must be able to get list status: ${currentStatus.error}`);
-  
+
   const { list } = currentStatus;
-  const progress = ((list.processed_payments / list.total_payments) * 100).toFixed(1);
-  console.log(`📊 Progress: ${list.processed_payments}/${list.total_payments} (${progress}%)`);
-  
+  const progress = ((list.processedPayments / list.totalPayments) * 100).toFixed(1);
+  console.log(`📊 Progress: ${list.processedPayments}/${list.totalPayments} (${progress}%)`);
+
   // All payments are complete when there are no pending payments
-  if (list.pending_payments === 0) {
+  if (list.pendingPayments === 0) {
     allProcessed = true;
   }
 }
@@ -731,7 +875,7 @@ for (const payment of finalStatus.payments) {
   assert.equal(txResponse.success, true, 
     `API error for ${recipient}: ${txResponse.error || 'Unknown error'}`);
   
-  const txHash = txResponse.transaction_hash;
+  const txHash = txResponse.transactionHash;
   console.log(`   Transaction hash: ${txHash.substring(0, 16)}...`);
   
   // Get transaction status

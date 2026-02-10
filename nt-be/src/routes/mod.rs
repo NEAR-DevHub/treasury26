@@ -126,10 +126,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::user::profile::get_profile),
         )
         .route(
-            "/api/user/profile/batch",
-            get(handlers::user::profile::get_batch_profiles),
-        )
-        .route(
             "/api/user/check-account-exists",
             get(handlers::user::check_account_exists::check_account_exists),
         )
@@ -157,6 +153,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/proposal/{dao_id}/{proposal_id}/tx",
             get(handlers::proposals::tx::find_proposal_execution_transaction),
+        )
+        .route(
+            "/api/receipt/search",
+            get(handlers::proposals::tx::search_receipt),
         )
         // Lookup endpoints
         .route(
@@ -204,6 +204,11 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/bulk-payment/list/{list_id}/transaction/{recipient}",
             get(handlers::bulkpayment::transactions::get_transaction_hash),
         )
+        // Relay endpoints
+        .route(
+            "/api/relay/delegate-action",
+            post(handlers::relay::submit::relay_delegate_action),
+        )
         // Monitored accounts endpoints
         .route(
             "/api/monitored-accounts",
@@ -214,6 +219,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/monitored-accounts/{account_id}",
             patch(monitored_accounts::update_monitored_account)
                 .delete(monitored_accounts::delete_monitored_account),
+        )
+        .route(
+            "/api/monitored-accounts/{account_id}/dirty",
+            post(monitored_accounts::mark_account_dirty),
         )
         // Intents endpoints
         .route(
@@ -253,6 +262,15 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/dao/mark-dirty",
             post(handlers::dao::mark_dirty),
+        )
+        // Subscription endpoints
+        .route(
+            "/api/subscription/plans",
+            get(handlers::subscription::get_plans),
+        )
+        .route(
+            "/api/subscription/{account_id}",
+            get(handlers::subscription::get_subscription_status),
         )
         .with_state(state)
 }

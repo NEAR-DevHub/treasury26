@@ -15,7 +15,8 @@ interface AuthButtonProps extends React.ComponentProps<typeof Button> {
     balanceCheck?: {
         withProposalBond?: boolean;
     };
-    disabledTooltip?: string;
+    tooltip?: string; // Tooltip content
+    tooltipProps?: Omit<React.ComponentProps<typeof Tooltip>, 'children' | 'content'>; // Additional tooltip props (disabled, contentProps, etc.)
 }
 
 export const NO_WALLET_MESSAGE = "Connect your wallet";
@@ -46,6 +47,8 @@ export function AuthButton({
     disabled,
     balanceCheck,
     onClick,
+    tooltip,
+    tooltipProps,
     ...props
 }: AuthButtonProps) {
     const { accountId } = useNear();
@@ -90,9 +93,19 @@ export function AuthButton({
 
     return (
         <>
-            <Button {...props} disabled={disabled} onClick={handleClick}>
-                {children}
-            </Button>
+            {tooltip ? (
+                <Tooltip content={tooltip} {...tooltipProps}>
+                    <span>
+                        <Button {...props} disabled={disabled} onClick={handleClick}>
+                            {children}
+                        </Button>
+                    </span>
+                </Tooltip>
+            ) : (
+                <Button {...props} disabled={disabled} onClick={handleClick}>
+                    {children}
+                </Button>
+            )}
             <InsufficientBalanceModal
                 isOpen={showInsufficientBalanceModal}
                 onClose={() => setShowInsufficientBalanceModal(false)}
@@ -106,7 +119,8 @@ export function AuthButton({
 interface AuthButtonWithProposalProps extends React.ComponentProps<typeof Button> {
     proposalKind: ProposalKind;
     isDeleteCheck?: boolean;
-    disabledTooltip?: string;
+    tooltip?: string; // Tooltip content
+    tooltipProps?: Omit<React.ComponentProps<typeof Tooltip>, 'children' | 'content'>;
 }
 
 const MIN_VOTE_BALANCE = "0.03";
@@ -117,7 +131,8 @@ export function AuthButtonWithProposal({
     children,
     disabled,
     onClick,
-    disabledTooltip,
+    tooltip,
+    tooltipProps,
     ...props
 }: AuthButtonWithProposalProps) {
     const { accountId } = useNear();
@@ -155,15 +170,21 @@ export function AuthButtonWithProposal({
         return <ErrorMessage message={NO_PERMISSION_MESSAGE} {...props}>{children}</ErrorMessage>;
     }
 
-    if (disabled && disabledTooltip) {
-        return <ErrorMessage message={disabledTooltip} {...props}>{children}</ErrorMessage>;
-    }
-
     return (
         <>
-            <Button {...props} disabled={disabled} onClick={handleClick}>
-                {children}
-            </Button>
+            {tooltip ? (
+                <Tooltip content={tooltip} {...tooltipProps}>
+                    <span>
+                        <Button {...props} disabled={disabled} onClick={handleClick}>
+                            {children}
+                        </Button>
+                    </span>
+                </Tooltip>
+            ) : (
+                <Button {...props} disabled={disabled} onClick={handleClick}>
+                    {children}
+                </Button>
+            )}
             <InsufficientBalanceModal
                 isOpen={showInsufficientBalanceModal}
                 onClose={() => setShowInsufficientBalanceModal(false)}

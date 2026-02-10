@@ -134,6 +134,35 @@ async fn main() {
         });
     }
 
+    // Spawn dirty account priority monitoring
+    if !state.env_vars.disable_balance_monitoring {
+        let state_clone = state.clone();
+        tokio::spawn(async move {
+            use nt_be::handlers::balance_changes::dirty_monitor::run_dirty_monitor;
+            use std::collections::HashMap;
+            use tokio::task::JoinHandle;
+
+            log::info!("Starting dirty account priority monitor (5 second poll interval)");
+
+            // Wait a bit before first run to let server fully start
+            tokio::time::sleep(Duration::from_secs(10)).await;
+
+            let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
+            let mut interval = tokio::time::interval(Duration::from_secs(5));
+
+            loop {
+                interval.tick().await;
+                run_dirty_monitor(
+                    &state_clone.db_pool,
+                    &state_clone.archival_network,
+                    state_clone.transfer_hint_service.as_ref(),
+                    &mut active_tasks,
+                )
+                .await;
+            }
+        });
+    }
+
     // Spawn DAO list sync service (fetches DAOs from sputnik-dao.near every 5 minutes)
     {
         let pool = state.db_pool.clone();

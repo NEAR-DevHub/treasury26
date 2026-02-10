@@ -41,7 +41,15 @@ export function SelectListSkeleton() {
     );
 }
 
-export function SelectListIcon({ icon, gradient, alt }: { icon: string; gradient?: string; alt: string }) {
+export function SelectListIcon({
+    icon,
+    gradient,
+    alt,
+}: {
+    icon: string;
+    gradient?: string;
+    alt: string;
+}) {
     const isImageUrl = icon?.startsWith("http") || icon?.startsWith("data:");
 
     if (isImageUrl) {
@@ -61,7 +69,7 @@ export function SelectListIcon({ icon, gradient, alt }: { icon: string; gradient
             <div
                 className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center text-white font-bold",
-                    gradient || "bg-linear-to-br from-blue-500 to-purple-500"
+                    gradient || "bg-linear-to-br from-blue-500 to-purple-500",
                 )}
             >
                 <span>{icon}</span>
@@ -93,7 +101,7 @@ export function SelectList<T extends SelectListItem>({
                     variant="ghost"
                     className={cn(
                         "w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!",
-                        selectedId === item.id && "bg-muted"
+                        selectedId === item.id && "bg-muted",
                     )}
                 >
                     {renderIcon ? (
@@ -109,11 +117,11 @@ export function SelectList<T extends SelectListItem>({
                         renderContent(item)
                     ) : (
                         <div className="flex-1 text-left">
-                            <div className="font-semibold">
+                            <div className="font-semibold uppercase">
                                 {item.symbol || item.name}
                             </div>
                             {item.symbol && (
-                                <div className="text-sm text-muted-foreground">
+                                <div className="text-sm text-muted-foreground ">
                                     {item.name}
                                 </div>
                             )}

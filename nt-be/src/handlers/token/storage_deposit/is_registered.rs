@@ -13,14 +13,14 @@ use crate::{
 };
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetStorageDepositQuery {
-    #[serde(rename = "accountId")]
     pub account_id: AccountId,
-    #[serde(rename = "tokenId")]
     pub token_id: AccountId,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct StorageDepositResponse {
     pub account_id: String,
     pub token_id: String,
@@ -80,10 +80,9 @@ pub async fn is_storage_deposit_registered(
 
 /// Request body for batch storage deposit check
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StorageDepositRequest {
-    #[serde(rename = "accountId")]
     pub account_id: AccountId,
-    #[serde(rename = "tokenId")]
     pub token_id: AccountId,
 }
 

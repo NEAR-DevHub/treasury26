@@ -1742,15 +1742,15 @@ mod tests {
         let state = init_test_state().await;
 
         // Create a simulated gap based on real test data
-        // Block 151386339: balance changed from "6.1002111266305371" to "11.1002111266305371" NEAR
+        // Block 151386339: balance changed from "0.688221126630537100000000" to "5.688221126630537100000000" NEAR
         use std::str::FromStr;
         let gap = BalanceGap {
             account_id: "webassemblymusic-treasury.sputnik-dao.near".to_string(),
             token_id: "NEAR".to_string(),
             start_block: 151386300,
             end_block: 151386400,
-            actual_balance_after: BigDecimal::from_str("6.1002111266305371").unwrap(),
-            expected_balance_before: BigDecimal::from_str("11.1002111266305371").unwrap(),
+            actual_balance_after: BigDecimal::from_str("0.688221126630537100000000").unwrap(),
+            expected_balance_before: BigDecimal::from_str("5.688221126630537100000000").unwrap(),
         };
 
         // We can't actually insert without a real DB, but we can test the binary search part

@@ -13,50 +13,45 @@ use crate::{
 };
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchTokensQuery {
-    #[serde(rename = "tokenIn")]
     pub token_in: Option<String>,
-    #[serde(rename = "tokenOut")]
     pub token_out: Option<String>,
-    #[serde(rename = "intentsTokenContractId")]
     pub intents_token_contract_id: Option<String>,
-    #[serde(rename = "destinationNetwork")]
     pub destination_network: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct NetworkInfo {
-    #[serde(rename = "chainId")]
     pub chain_id: String,
-    #[serde(rename = "chainName")]
     pub chain_name: String,
-    #[serde(rename = "contractAddress", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub contract_address: Option<String>,
     pub decimals: u8,
     pub bridge: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct TokenSearchResult {
-    #[serde(rename = "defuseAssetId")]
     pub defuse_asset_id: String,
     pub symbol: String,
     pub name: String,
     pub decimals: u8,
     pub icon: String,
-    #[serde(rename = "originChainName")]
     pub origin_chain_name: String,
-    #[serde(rename = "unifiedAssetId")]
     pub unified_asset_id: String,
-    #[serde(rename = "networkInfo", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub network_info: Option<NetworkInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchTokensResponse {
-    #[serde(rename = "tokenIn", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub token_in: Option<TokenSearchResult>,
-    #[serde(rename = "tokenOut", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub token_out: Option<TokenSearchResult>,
 }
 

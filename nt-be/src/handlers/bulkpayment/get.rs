@@ -13,8 +13,8 @@ use crate::{
 };
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchPaymentQuery {
-    #[serde(rename = "batchId")]
     pub batch_id: String,
 }
 

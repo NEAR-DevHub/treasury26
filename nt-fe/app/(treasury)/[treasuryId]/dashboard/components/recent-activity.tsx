@@ -13,7 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowDownToLine, ArrowUpToLine, Clock, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
-import { usePlanDetails } from "@/hooks/use-plan-details";
+import { useSubscription } from "@/hooks/use-subscription";
+import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { cn } from "@/lib/utils";
 import { formatHistoryDuration } from "@/lib/utils/plan-utils";
@@ -41,6 +42,9 @@ export function RecentActivity() {
     const [hideSmallTransactions, setHideSmallTransactions] = useState(false);
     const [selectedActivity, setSelectedActivity] = useState<RecentActivityType | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const { data: proposalsData, isLoading: isProposalsLoading } =
+        useProposals(treasuryId);
+    const isEmptyProposals = proposalsData?.proposals?.length === 0;
 
     const {
         data: response,
@@ -52,10 +56,10 @@ export function RecentActivity() {
         hideSmallTransactions ? 1 : undefined,
     );
 
-    const { data: planDetails } = usePlanDetails(treasuryId);
+    const { data: planDetails } = useSubscription(treasuryId);
 
     const activities = response?.data || [];
-    const historyMonths = planDetails?.history_months;
+    const historyMonths = planDetails?.planConfig?.limits?.historyLookupMonths;
 
     const handleActivityClick = (activity: RecentActivityType) => {
         setSelectedActivity(activity);
@@ -138,7 +142,7 @@ export function RecentActivity() {
                                     {getActivityFrom(
                                         activity.amount,
                                         activity.counterparty,
-                                        activity.receiver_id,
+                                        activity.receiverId,
                                     )}
                                 </div>
                             </div>
@@ -166,13 +170,13 @@ export function RecentActivity() {
                                 >
                                     {formatAmount(
                                         activity.amount,
-                                        activity.token_metadata.decimals,
+                                        activity.tokenMetadata.decimals,
                                     )}{" "}
-                                    {activity.token_metadata.symbol}
+                                    {activity.tokenMetadata.symbol}
                                 </div>
                                 <div className="text-sm text-muted-foreground whitespace-nowrap">
                                     <FormattedDate
-                                        date={new Date(activity.block_time)}
+                                        date={new Date(activity.blockTime)}
                                         includeTime
                                     />
                                 </div>
@@ -245,8 +249,16 @@ export function RecentActivity() {
                     ) : activities.length === 0 ? (
                         <EmptyState
                             icon={Clock}
-                            title="Nothing to show yet"
-                            description="Your transactions and actions will appear here once they happen"
+                            title={
+                                isEmptyProposals
+                                    ? "Nothing to show yet"
+                                    : "Loading your activity"
+                            }
+                            description={
+                                isEmptyProposals
+                                    ? "Your transactions and actions will appear here once they happen"
+                                    : "Your transactions are on the way. This might take some time."
+                            }
                         />
                     ) : (
                         <>

@@ -95,6 +95,7 @@ impl Interval {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChartRequest {
     pub account_id: String,
     pub start_time: DateTime<Utc>,
@@ -105,6 +106,7 @@ pub struct ChartRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BalanceSnapshot {
     pub timestamp: String,   // ISO 8601 format
     pub balance: BigDecimal, // Decimal-adjusted balance
@@ -960,6 +962,7 @@ mod tests {
 // ============================================================================
 
 #[derive(Debug, Serialize, FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct ExportHistoryItem {
     pub id: i64,
     pub account_id: String,
@@ -972,6 +975,7 @@ pub struct ExportHistoryItem {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExportHistoryQuery {
     pub account_id: String,
     pub limit: Option<i64>,
@@ -1105,13 +1109,14 @@ async fn create_export_record(
     Ok(export_id)
 }
 
-/// Get export credits for an account
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExportCreditsQuery {
     pub account_id: String,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExportCreditsResponse {
     pub export_credits: i32, // Remaining credits in DB
     pub credits_used: i32,   // Calculated: total - remaining

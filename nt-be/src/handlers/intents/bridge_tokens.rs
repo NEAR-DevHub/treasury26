@@ -1,9 +1,5 @@
 use crate::utils::cache::CacheTier;
-use axum::{
-    Json,
-    extract::{Query, State},
-    http::StatusCode,
-};
+use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -12,25 +8,16 @@ use std::sync::Arc;
 use super::supported_tokens::fetch_supported_tokens_data;
 use crate::{
     AppState,
+    constants::intents_chains::ChainIcons,
     handlers::token::metadata::{TokenMetadata, fetch_tokens_metadata},
 };
-
-#[derive(Deserialize)]
-pub struct BridgeTokensQuery {
-    #[serde(default = "default_theme")]
-    pub theme: String,
-}
-
-fn default_theme() -> String {
-    "light".to_string()
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkOption {
     pub id: String, // This will be the intents_token_id
     pub name: String,
-    pub icon: Option<String>,
+    pub chain_icons: Option<ChainIcons>,
     pub chain_id: String, // This will be like "eth:1"
     pub decimals: u8,
 }
@@ -53,9 +40,8 @@ pub struct DepositAssetsResponse {
 
 pub async fn get_bridge_tokens(
     State(state): State<Arc<AppState>>,
-    Query(query): Query<BridgeTokensQuery>,
 ) -> Result<Json<DepositAssetsResponse>, (StatusCode, String)> {
-    let cache_key = format!("deposit-assets:{}", query.theme);
+    let cache_key = "deposit-assets".to_string();
     let state_clone = state.clone();
 
     let result = state
@@ -155,16 +141,10 @@ pub async fn get_bridge_tokens(
                 };
 
                 // Get chain name from metadata
-                let net_name = meta.chain_name.as_ref().unwrap_or(&String::new()).clone();
+                let net_name = meta.network.as_ref().or(meta.chain_name.as_ref()).cloned();
 
-                // Select the appropriate icon based on theme
-                let net_icon = meta.chain_icons.as_ref().map(|icons| {
-                    if query.theme == "dark" {
-                        icons.dark.clone()
-                    } else {
-                        icons.light.clone()
-                    }
-                });
+                // Get chain icons (both light and dark variants)
+                let chain_icons = meta.chain_icons.clone();
 
                 let decimals = meta.decimals;
 
@@ -173,9 +153,9 @@ pub async fn get_bridge_tokens(
                     let network_exists = asset.networks.iter().any(|n| n.id == intents_id);
                     if !network_exists {
                         asset.networks.push(NetworkOption {
+                            name: net_name.unwrap_or_default(),
                             id: intents_id.to_string(), // Use intents_token_id as the network ID
-                            name: net_name,
-                            icon: net_icon,
+                            chain_icons,
                             chain_id,
                             decimals,
                         });

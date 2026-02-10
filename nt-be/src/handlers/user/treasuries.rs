@@ -12,14 +12,14 @@ use std::sync::Arc;
 use crate::AppState;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserTreasuriesQuery {
-    #[serde(rename = "accountId")]
     pub account_id: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Treasury {
-    #[serde(rename = "daoId")]
     pub dao_id: AccountId,
     pub config: TreasuryConfig,
 }
