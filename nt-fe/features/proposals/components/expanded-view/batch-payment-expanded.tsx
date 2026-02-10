@@ -11,8 +11,8 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ArrowUpRight, ChevronDown } from "lucide-react";
-import { RequestErrorState } from "../request-error-state";
+import { ArrowUpRight, ChevronDown, SearchX } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 import { Address } from "@/components/address";
 import { User } from "@/components/user";
@@ -168,7 +168,13 @@ export function BatchPaymentRequestExpanded({
 
     // Error state
     if (isError || !batchData) {
-        return <RequestErrorState />;
+        return (
+            <EmptyState
+                icon={SearchX}
+                title="Oops! Something went wrong"
+                description="We couldn't find any data to show here."
+            />
+        );
     }
 
     let tokenId = data.tokenId;
