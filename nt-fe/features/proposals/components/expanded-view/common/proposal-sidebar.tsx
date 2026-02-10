@@ -23,6 +23,7 @@ import {
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
 import { cn } from "@/lib/utils";
+import { NotEnoughBalance } from "../../not-enough-balance";
 
 interface ProposalSidebarProps {
     proposal: Proposal;
@@ -314,28 +315,9 @@ export function ProposalSidebar({
             )}
 
             {/* Insufficient Balance Warning */}
-            {isPending && insufficientBalanceInfo.hasInsufficientBalance && (
-                <InfoAlert
-                    className="inline-flex"
-                    message={
-                        <span>
-                            This request can&apos;t be approved because the
-                            treasury has insufficient{" "}
-                            <strong>
-                                {insufficientBalanceInfo.tokenSymbol}
-                            </strong>{" "}
-                            balance. Add{" "}
-                            <strong>
-                                {insufficientBalanceInfo.differenceDisplay}{" "}
-                                {insufficientBalanceInfo.tokenSymbol}
-                            </strong>{" "}
-                            to{" "}
-                            {insufficientBalanceInfo.type === "bond"
-                                ? "cover proposal bond costs"
-                                : "continue"}
-                            .
-                        </span>
-                    }
+            {isPending && (
+                <NotEnoughBalance
+                    insufficientBalanceInfo={insufficientBalanceInfo}
                 />
             )}
 
