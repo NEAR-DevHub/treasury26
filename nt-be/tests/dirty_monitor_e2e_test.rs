@@ -223,24 +223,14 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
     // Run monitor cycle up to baseline block — this establishes the "current state"
     // and processes staking rewards for testing-astradao (simulating the busy worker)
     let start = Instant::now();
-    let intents_api_key = std::env::var("INTENTS_EXPLORER_API_KEY").ok();
-    let intents_api_url = std::env::var("INTENTS_EXPLORER_API_URL")
-        .unwrap_or_else(|_| "https://explorer.near-intents.org/api/v0".to_string());
-    run_monitor_cycle(
-        &pool,
-        &network,
-        BASELINE_BLOCK,
-        None,
-        intents_api_key.as_deref(),
-        &intents_api_url,
-    )
-    .await
-    .map_err(|e| {
-        sqlx::Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    run_monitor_cycle(&pool, &network, BASELINE_BLOCK, None)
+        .await
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
     let main_cycle_duration = start.elapsed();
     println!(
         "Main monitoring cycle completed in {:?}",
