@@ -22,8 +22,9 @@
 //! 4. Return the matching transaction hash
 
 use crate::handlers::balance_changes::utils::with_transport_retry;
+use crate::utils::jsonrpc::create_rpc_client;
 use near_api::{Chain, NetworkConfig, Reference};
-use near_jsonrpc_client::{JsonRpcClient, auth, methods};
+use near_jsonrpc_client::{JsonRpcClient, methods};
 use near_jsonrpc_primitives::types::receipts::ReceiptReference;
 use near_primitives::types::{BlockId, BlockReference};
 use near_primitives::views::FinalExecutionOutcomeViewEnum;
@@ -195,25 +196,6 @@ pub struct ReceiptTransaction {
     pub transaction_hash: String,
     /// The signer of the originating transaction
     pub signer_id: String,
-}
-
-/// Create a JSON-RPC client from network config
-fn create_rpc_client(
-    network: &NetworkConfig,
-) -> Result<JsonRpcClient, Box<dyn Error + Send + Sync>> {
-    let rpc_endpoint = network
-        .rpc_endpoints
-        .first()
-        .ok_or("No RPC endpoint configured")?;
-
-    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
-
-    if let Some(bearer) = &rpc_endpoint.bearer_header {
-        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
-        client = client.header(auth::Authorization::bearer(token)?);
-    }
-
-    Ok(client)
 }
 
 /// Resolve a receipt_id to its originating transaction hash
