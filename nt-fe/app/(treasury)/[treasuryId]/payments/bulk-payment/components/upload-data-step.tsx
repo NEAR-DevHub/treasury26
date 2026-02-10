@@ -253,7 +253,7 @@ export function UploadDataStep({
                 <PageCard className="gap-2">
                     {/* Header */}
                     <div className="flex flex-col gap-3">
-                        <div className="flex flex-col mb-6">
+                        <div className="flex flex-col mb-3">
                             <div className="flex items-center gap-2">
                                 {handleBack && (
                                     <Button
@@ -276,9 +276,9 @@ export function UploadDataStep({
                         </div>
                         {/* Credit Exhaustion Banner */}
                         {availableCredits === 0 && subscription && (
-                            <Alert variant="info" className="mb-6">
+                            <Alert variant="info" className="mb-3">
                                 <Info className="h-4 w-4 mt-[2px]" />
-                                <AlertTitle>
+                                <AlertTitle className="font-semibold">
                                     You've used all your{" "}
                                     {isTrialPlan(subscription.planConfig)
                                         ? "credits"
@@ -321,7 +321,7 @@ export function UploadDataStep({
                             </div>
                         </div>
                         {/* Step 2: Provide Payment Data */}
-                        <div className="mb-6">
+                        <div className="mb-4">
                             <div className="flex gap-2 mb-4">
                                 <NumberBadge number={2} variant="secondary" />
                                 <div className="flex-1 flex flex-col gap-2">
@@ -339,7 +339,7 @@ export function UploadDataStep({
                                             setDataErrors(null);
                                         }}
                                     >
-                                        <TabsList className="w-fit">
+                                        <TabsList>
                                             <TabsTrigger value="upload">
                                                 Upload File
                                             </TabsTrigger>
@@ -354,11 +354,10 @@ export function UploadDataStep({
                                                 {!uploadedFile ? (
                                                     <>
                                                         <div
-                                                            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                                                                isDragging
-                                                                    ? "border-primary bg-primary/5"
-                                                                    : "border-border bg-muted"
-                                                            }`}
+                                                            className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${isDragging
+                                                                ? "border-primary bg-primary/5"
+                                                                : "border-border bg-muted"
+                                                                }`}
                                                             onDrop={handleDrop}
                                                             onDragOver={
                                                                 handleDragOver
@@ -368,7 +367,7 @@ export function UploadDataStep({
                                                             }
                                                         >
                                                             <div className="flex flex-col items-center gap-4">
-                                                                <Upload className="w-12 h-12 text-muted-foreground" />
+                                                                <Upload className="w-6 h-6 text-muted-foreground" />
                                                                 <div>
                                                                     <p className="text-base mb-2">
                                                                         <Button
@@ -390,7 +389,7 @@ export function UploadDataStep({
                                                                             Choose
                                                                             File
                                                                         </Button>{" "}
-                                                                        <span className="text-muted-foreground">
+                                                                        <span className="text-muted-foreground font-medium">
                                                                             or
                                                                             drag
                                                                             and
@@ -453,23 +452,21 @@ export function UploadDataStep({
                                                     </>
                                                 ) : (
                                                     <div
-                                                        className={`rounded-lg p-4 flex items-center justify-between ${
-                                                            dataErrors &&
+                                                        className={`rounded-lg p-4 flex items-center justify-between ${dataErrors &&
                                                             dataErrors.length >
-                                                                0
-                                                                ? "bg-destructive/10 border border-destructive"
-                                                                : "bg-muted/50"
-                                                        }`}
+                                                            0
+                                                            ? "bg-destructive/10 border border-destructive"
+                                                            : "bg-muted/50"
+                                                            }`}
                                                     >
                                                         <div className="flex items-center gap-3">
                                                             <FileText
-                                                                className={`w-5 h-5 ${
-                                                                    dataErrors &&
+                                                                className={`w-5 h-5 ${dataErrors &&
                                                                     dataErrors.length >
-                                                                        0
-                                                                        ? "text-destructive"
-                                                                        : "text-primary"
-                                                                }`}
+                                                                    0
+                                                                    ? "text-destructive"
+                                                                    : "text-primary"
+                                                                    }`}
                                                             />
                                                             <div>
                                                                 <p className="text-sm font-medium">
@@ -504,13 +501,12 @@ export function UploadDataStep({
                                                                     null,
                                                                 );
                                                             }}
-                                                            className={`h-8 w-8 ${
-                                                                dataErrors &&
+                                                            className={`h-8 w-8 ${dataErrors &&
                                                                 dataErrors.length >
-                                                                    0
-                                                                    ? "text-destructive hover:text-destructive/80"
-                                                                    : "text-muted-foreground hover:text-foreground"
-                                                            }`}
+                                                                0
+                                                                ? "text-destructive hover:text-destructive/80"
+                                                                : "text-muted-foreground hover:text-foreground"
+                                                                }`}
                                                         >
                                                             <X className="w-4 h-4" />
                                                         </Button>
@@ -544,19 +540,18 @@ export function UploadDataStep({
                                                         if (
                                                             dataErrors &&
                                                             dataErrors.length >
-                                                                0
+                                                            0
                                                         ) {
                                                             setDataErrors(null);
                                                         }
                                                     }}
                                                     placeholder={`alice.near, 100.00\nbob.near, 100.00\ncharlie.near, 100.00`}
                                                     rows={8}
-                                                    className={`resize-none font-mono text-sm bg-muted focus:outline-none ${
-                                                        dataErrors &&
+                                                    className={`resize-none font-mono text-sm bg-muted focus:outline-none ${dataErrors &&
                                                         dataErrors.length > 0
-                                                            ? "border-2 border-destructive focus:border-destructive"
-                                                            : ""
-                                                    }`}
+                                                        ? "border-2 border-destructive focus:border-destructive"
+                                                        : ""
+                                                        }`}
                                                     disabled={
                                                         availableCredits === 0
                                                     }
@@ -606,7 +601,7 @@ export function UploadDataStep({
                     style={{
                         backgroundColor: "var(--color-general-tertiary)",
                     }}
-                    className="gap-2 w-full"
+                    className="gap-3 w-full"
                 >
                     <h3 className="text-lg font-semibold">
                         Bulk Payment Requirements
@@ -615,7 +610,7 @@ export function UploadDataStep({
                         <div className="flex items-start gap-3">
                             <FileText className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
                             <div>
-                                <p className="text-sm font-medium">
+                                <p className="text-sm">
                                     Max {MAX_RECIPIENTS_PER_BULK_PAYMENT}{" "}
                                     transactions per import
                                 </p>
@@ -624,7 +619,7 @@ export function UploadDataStep({
                         <div className="flex items-start gap-3">
                             <DollarSign className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
                             <div>
-                                <p className="text-sm font-medium">
+                                <p className="text-sm">
                                     Single token and network
                                 </p>
                             </div>
@@ -637,14 +632,14 @@ export function UploadDataStep({
                     style={
                         availableCredits === 0
                             ? {
-                                  border: "1px solid var(--general-success-foreground)",
-                                  background:
-                                      "var(--general-success-background-faded)",
-                              }
+                                border: "1px solid var(--general-success-foreground)",
+                                background:
+                                    "var(--general-success-background-faded)",
+                            }
                             : {
-                                  backgroundColor:
-                                      "var(--color-general-tertiary)",
-                              }
+                                backgroundColor:
+                                    "var(--color-general-tertiary)",
+                            }
                     }
                     className="w-full"
                 >

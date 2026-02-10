@@ -42,10 +42,10 @@ interface TokenInputProps<
     title?: string;
     amountName: Path<TFieldValues>;
     tokenName: TTokenPath extends Path<TFieldValues>
-        ? PathValue<TFieldValues, TTokenPath> extends Token
-            ? TTokenPath
-            : never
-        : never;
+    ? PathValue<TFieldValues, TTokenPath> extends Token
+    ? TTokenPath
+    : never
+    : never;
     tokenSelect?: {
         disabled?: boolean;
         locked?: boolean;
@@ -155,9 +155,9 @@ export function TokenInput<
                                                                 ),
                                                             )
                                                             .toString() as PathValue<
-                                                            TFieldValues,
-                                                            Path<TFieldValues>
-                                                        >,
+                                                                TFieldValues,
+                                                                Path<TFieldValues>
+                                                            >,
                                                     );
                                                 }
                                             }}
@@ -172,7 +172,7 @@ export function TokenInput<
                 >
                     <>
                         <div className="flex justify-between items-center">
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                                 <LargeInput
                                     type={readOnly ? "text" : "number"}
                                     borderless
@@ -180,24 +180,23 @@ export function TokenInput<
                                         readOnly
                                             ? undefined
                                             : (e) =>
-                                                  field.onChange(
-                                                      e.target.value.replace(
-                                                          /^0+(?=\d)/,
-                                                          "",
-                                                      ),
-                                                  )
+                                                field.onChange(
+                                                    e.target.value.replace(
+                                                        /^0+(?=\d)/,
+                                                        "",
+                                                    ),
+                                                )
                                     }
                                     onBlur={readOnly ? undefined : field.onBlur}
                                     value={
                                         loading
                                             ? "..."
                                             : customValue !== undefined
-                                              ? customValue
-                                              : field.value.toString()
+                                                ? customValue
+                                                : field.value.toString()
                                     }
                                     placeholder="0"
                                     className={cn(
-                                        "text-3xl!",
                                         readOnly && "text-muted-foreground",
                                     )}
                                     readOnly={readOnly}
@@ -228,17 +227,17 @@ export function TokenInput<
                             className={cn(
                                 "text-muted-foreground text-xs invisible",
                                 estimatedUSDValue !== null &&
-                                    estimatedUSDValue > 0 &&
-                                    "visible",
+                                estimatedUSDValue > 0 &&
+                                "visible",
                             )}
                         >
                             {!isTokenLoading &&
-                            estimatedUSDValue !== null &&
-                            estimatedUSDValue > 0
+                                estimatedUSDValue !== null &&
+                                estimatedUSDValue > 0
                                 ? `≈ ${formatCurrency(estimatedUSDValue)}`
                                 : isTokenLoading
-                                  ? "Loading price..."
-                                  : "Invisible"}
+                                    ? "Loading price..."
+                                    : "Invisible"}
                         </p>
                         {hasInsufficientBalance && (
                             <p className="text-general-info-foreground text-sm mt-2">

@@ -22,6 +22,7 @@ import { CreateRequestButton } from "@/components/create-request-button";
 import { useQueryClient } from "@tanstack/react-query";
 
 const COLOR_OPTIONS = [
+  "#000000", // black (appears as white in dark mode)
   "#6B7280", // gray
   "#EF4444", // red
   "#F97316", // orange
@@ -359,8 +360,8 @@ export function GeneralTab() {
                       className={`h-8 w-8 rounded-full transition-all hover:scale-110 ${field.value === color
                         ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
                         : ""
-                        }`}
-                      style={{ backgroundColor: color }}
+                        } ${color === "#000000" ? "bg-black dark:bg-white" : ""}`}
+                      style={color === "#000000" ? {} : { backgroundColor: color }}
                       aria-label={`Select color ${color}`}
                     />
                   ))}

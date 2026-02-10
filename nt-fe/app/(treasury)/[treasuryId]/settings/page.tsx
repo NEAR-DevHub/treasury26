@@ -21,7 +21,7 @@ export default function SettingsPage() {
       title="Settings"
       description="Adjust your application settings"
     >
-      <div className="w-full max-w-4xl mx-auto px-4">
+      <div className="w-full max-w-4xl mx-auto">
         <div className="flex mb-6">
           <TabGroup tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>

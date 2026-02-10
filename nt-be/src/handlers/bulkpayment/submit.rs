@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
+use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::{AppState, auth::AuthUser};
 
 const MAX_RECIPIENTS_PER_BULK_PAYMENT: usize = 25;
@@ -291,7 +292,56 @@ pub async fn submit_list(
         ));
     }
 
-    // Step 2: Verify that a pending DAO proposal exists with this list_id
+    // Step 2: Check if treasury has available batch payment credits
+    let account_plan = get_account_plan_info(&state.db_pool, &request.dao_contract_id)
+        .await
+        .map_err(|e| {
+            log::error!(
+                "Failed to fetch account plan info for {}: {}",
+                request.dao_contract_id,
+                e
+            );
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(SubmitListResponse {
+                    success: false,
+                    list_id: None,
+                    error: Some(format!("Failed to check subscription status: {}", e)),
+                }),
+            )
+        })?;
+
+    // Check if account exists and has credits
+    match account_plan {
+        Some(plan) => {
+            if plan.batch_payment_credits <= 0 {
+                return Err((
+                    StatusCode::PAYMENT_REQUIRED,
+                    Json(SubmitListResponse {
+                        success: false,
+                        list_id: None,
+                        error: Some(format!(
+                            "Insufficient batch payment credits. Your treasury has {} credits remaining. Please upgrade your plan or wait for the monthly reset.",
+                            plan.batch_payment_credits
+                        )),
+                    }),
+                ));
+            }
+            log::info!(
+                "Treasury {} has {} batch payment credits available",
+                request.dao_contract_id,
+                plan.batch_payment_credits
+            );
+        }
+        None => {
+            log::warn!(
+                "Treasury {} not found in monitored accounts. Proceeding without credit check.",
+                request.dao_contract_id
+            );
+        }
+    }
+
+    // Step 3: Verify that a pending DAO proposal exists with this list_id
     match verify_dao_proposal(&state, &request.dao_contract_id, &request.list_id).await {
         Ok(true) => {
             // Proposal exists, proceed
@@ -321,7 +371,7 @@ pub async fn submit_list(
         }
     }
 
-    // Step 3: Submit the list to the contract
+    // Step 4: Submit the list to the contract
     let payments: Vec<serde_json::Value> = request
         .payments
         .iter()
@@ -366,47 +416,11 @@ pub async fn submit_list(
             // Check if the transaction execution succeeded
             match result.into_result() {
                 Ok(_) => {
-                    // Step 4: Decrement credits in monitored_accounts table
+                    // Step 5: Decrement credits using shared subscription function
                     log::info!(
-                        "Bulk payment submitted successfully fyurtur.near,0.01
-yurtur-treasury.sputnik-dao.near,0.01or treasury {}. Decrementing credits...",
+                        "Bulk payment submitted successfully for treasury {}. Decrementing credits...",
                         request.dao_contract_id
                     );
-
-                    // First, check current credits
-                    let current_credits_result = sqlx::query_as::<_, (i32,)>(
-                        r#"
-                        SELECT batch_payment_credits
-                        FROM monitored_accounts
-                        WHERE account_id = $1
-                        "#,
-                    )
-                    .bind(&request.dao_contract_id)
-                    .fetch_optional(&state.db_pool)
-                    .await;
-
-                    match current_credits_result {
-                        Ok(Some((current_credits,))) => {
-                            log::info!(
-                                "Treasury {} currently has {} credits before decrement",
-                                request.dao_contract_id,
-                                current_credits
-                            );
-                        }
-                        Ok(None) => {
-                            log::warn!(
-                                "Treasury {} not found in monitored_accounts table",
-                                request.dao_contract_id
-                            );
-                        }
-                        Err(e) => {
-                            log::error!(
-                                "Failed to check current credits for {}: {}",
-                                request.dao_contract_id,
-                                e
-                            );
-                        }
-                    }
 
                     let db_result = sqlx::query_as::<_, (i32,)>(
                         r#"
