@@ -136,12 +136,12 @@ pub async fn add_monitored_account(
 
     // New registration - insert with Pro plan and credits (launch promotion)
     let (export_credits, batch_payment_credits, gas_covered_transactions) =
-        get_initial_credits(PlanType::Pro);
+        get_initial_credits(PlanType::Plus);
 
     let account = sqlx::query_as::<_, MonitoredAccount>(
         r#"
         INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits, gas_covered_transactions, plan_type, dirty_at)
-        VALUES ($1, true, $2, $3, $4, 'pro', NOW())
+        VALUES ($1, true, $2, $3, $4, 'plus', NOW())
         RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
                   export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
         "#,

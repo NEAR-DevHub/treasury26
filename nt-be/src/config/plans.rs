@@ -125,7 +125,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: Some(50_000_000), // $500k
                 overage_rate_bps: 20,                         // 0.20%
                 exchange_fee_bps: 20,                         // 0.20%
-                gas_covered_transactions: Some(100),          // 10 gas covered transactions
+                gas_covered_transactions: Some(1000),          // 10 gas covered transactions
                 monthly_export_credits: Some(5),
                 trial_export_credits: None,
                 monthly_batch_payment_credits: Some(10),
@@ -152,7 +152,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: Some(100_000_000), // $1M
                 overage_rate_bps: 10,                           // 0.10%
                 exchange_fee_bps: 10,                           // 0.10%
-                gas_covered_transactions: Some(1000),          // 1000 gas covered transactions
+                gas_covered_transactions: Some(2000),          // 1000 gas covered transactions
                 monthly_export_credits: Some(10),
                 trial_export_credits: None,
                 monthly_batch_payment_credits: Some(100),
@@ -406,9 +406,9 @@ mod tests {
 
         // Gas-covered credits
         assert!(has_gas_covered_credits(PlanType::Enterprise, 0));
-        assert!(has_gas_covered_credits(PlanType::Free, 1));
+        assert!(has_gas_covered_credits(PlanType::Free, 10));
         assert!(!has_gas_covered_credits(PlanType::Free, 0));
-        assert!(has_gas_covered_credits(PlanType::Pro, 5));
+        assert!(has_gas_covered_credits(PlanType::Pro, 1000));
         assert!(!has_gas_covered_credits(PlanType::Pro, 0));
     }
 

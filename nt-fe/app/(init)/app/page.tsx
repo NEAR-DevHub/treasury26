@@ -85,8 +85,8 @@ export default function AppRedirect() {
                             src="/logo.svg"
                             alt="logo"
                             width={0}
-                            height={0}
-                            className="w-[200px] h-auto"
+                            height={40}
+                            className="h-10 lg:hidden w-auto"
                         />
                         <div className="flex w-full flex-col items-center justify-center gap-6 ">
                             <div className="flex w-full flex-col gap-2 text-center">
@@ -115,26 +115,6 @@ export default function AppRedirect() {
                                     )}
                                     {buttonText}
                                 </Button>
-                                {authError && (
-                                    <div className="w-full max-w-md p-3 rounded-md bg-red-50 border border-red-200">
-                                        <p className="text-sm text-red-800 font-medium">
-                                            Authentication failed
-                                        </p>
-                                        <p className="text-xs text-red-600 mt-1">
-                                            {authError.includes("0xb005") ||
-                                            authError.includes("UNKNOWN_ERROR")
-                                                ? "Please make sure your Ledger device is unlocked and the NEAR app is open. You may need to approve the signature on your device."
-                                                : authError.includes(
-                                                        "0x5515",
-                                                    ) ||
-                                                    authError.includes(
-                                                        "Locked device",
-                                                    )
-                                                  ? "Your Ledger device is locked. Please unlock it and try again."
-                                                  : authError}
-                                        </p>
-                                    </div>
-                                )}
                                 <p className="text-center text-sm">
                                     Don't have a wallet?{" "}
                                     <Link
