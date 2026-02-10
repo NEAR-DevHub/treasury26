@@ -77,7 +77,7 @@ export default function AppRedirect() {
             />
             <div className="flex relative w-full h-full items-center justify-between overflow-hidden">
                 <div className="w-full lg:w-2/5 h-full p-2 lg:p-4 flex flex-col justify-center min-w-0">
-                    <div className="w-full min-h-[30%] flex items-center  lg:hidden">
+                    <div className="w-full min-h-[30%] flex items-center lg:hidden">
                         <GradientTitle />
                     </div>
                     <div className="w-full gap-12 flex flex-col p-4 items-center h-full justify-center bg-white rounded-2xl lg:max-w-4xl">
@@ -86,7 +86,7 @@ export default function AppRedirect() {
                             alt="logo"
                             width={0}
                             height={40}
-                            className="h-10 lg:hidden w-auto"
+                            className="h-10 w-auto"
                         />
                         <div className="flex w-full flex-col items-center justify-center gap-6 ">
                             <div className="flex w-full flex-col gap-2 text-center">
