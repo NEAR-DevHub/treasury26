@@ -306,11 +306,14 @@ export function extractExchangeRequestData(
 
     // For NEAR exchanges, we need to find the transfer action
     // Filter out near_deposit and storage_deposit actions and find the actual transfer
+    // Support both ft_transfer (new) and ft_transfer_call (legacy) for backward compatibility
     const action = functionCall.actions.find(
         (a) =>
             a.method_name !== "near_deposit" &&
             a.method_name !== "storage_deposit" &&
-            (a.method_name === "mt_transfer" || a.method_name === "ft_transfer")
+            (a.method_name === "mt_transfer" ||
+                a.method_name === "ft_transfer" ||
+                a.method_name === "ft_transfer_call") // Legacy support
     );
 
     if (!action) {
@@ -364,15 +367,16 @@ export function extractExchangeRequestData(
     // 1. Native NEAR: ft_transfer from wrap.near WITH near_deposit action, tokenIn = near
     // 2. FT tokens on NEAR: ft_transfer from token contract, depositAddress in receiver_id, tokenIn = token contract
     // 3. Intents tokens: mt_transfer to intents.near with token_id, depositAddress in receiver_id
+    // 4. Legacy ft_transfer_call/mt_transfer_call: same logic as above
     let tokenIn: string;
     let depositAddress: string;
 
-    if (action.method_name === "mt_transfer") {
+    if (action.method_name === "mt_transfer" || action.method_name === "mt_transfer_call") {
         // Intents tokens: token_id and depositAddress are in args directly
         tokenIn = args.token_id || "";
         depositAddress = args.receiver_id || "";
-    } else if (action.method_name === "ft_transfer") {
-        // ft_transfer: depositAddress is directly in receiver_id, tokenIn is the contract being called
+    } else if (action.method_name === "ft_transfer" || action.method_name === "ft_transfer_call") {
+        // ft_transfer/ft_transfer_call: depositAddress is directly in receiver_id, tokenIn is the contract being called
         depositAddress = args.receiver_id || "";
 
         // Check if there's a near_deposit action - if so, it's a Native NEAR exchange
