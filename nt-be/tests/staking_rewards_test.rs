@@ -582,16 +582,9 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
         first_cycle_block, first_cycle_epoch
     );
 
-    run_monitor_cycle(
-        &pool,
-        &network,
-        first_cycle_block,
-        None,
-        None,
-        "https://explorer.near-intents.org/api/v0",
-    )
-    .await
-    .expect("First monitor cycle should succeed");
+    run_monitor_cycle(&pool, &network, first_cycle_block, None)
+        .await
+        .expect("First monitor cycle should succeed");
 
     // Check if staking snapshots were created
     let snapshots_after_cycle1: Vec<(i64, String, String)> = sqlx::query_as(
@@ -627,16 +620,9 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
         second_cycle_block, second_cycle_epoch
     );
 
-    run_monitor_cycle(
-        &pool,
-        &network,
-        second_cycle_block,
-        None,
-        None,
-        "https://explorer.near-intents.org/api/v0",
-    )
-    .await
-    .expect("Second monitor cycle should succeed");
+    run_monitor_cycle(&pool, &network, second_cycle_block, None)
+        .await
+        .expect("Second monitor cycle should succeed");
 
     // Check snapshots after second cycle
     let snapshots_after_cycle2: Vec<(i64, String, String)> = sqlx::query_as(
@@ -672,16 +658,9 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
         third_cycle_block, third_cycle_epoch
     );
 
-    run_monitor_cycle(
-        &pool,
-        &network,
-        third_cycle_block,
-        None,
-        None,
-        "https://explorer.near-intents.org/api/v0",
-    )
-    .await
-    .expect("Third monitor cycle should succeed");
+    run_monitor_cycle(&pool, &network, third_cycle_block, None)
+        .await
+        .expect("Third monitor cycle should succeed");
 
     // Final verification: only consider STAKING_SNAPSHOT records here
     let final_snapshots: Vec<(i64, String, String, String)> = sqlx::query_as(
@@ -1002,16 +981,9 @@ async fn test_track_and_fill_staking_rewards(pool: PgPool) -> sqlx::Result<()> {
             cycle_epoch
         );
 
-        run_monitor_cycle(
-            &pool,
-            &network,
-            cycle_block,
-            None,
-            None,
-            "https://explorer.near-intents.org/api/v0",
-        )
-        .await
-        .expect("Monitor cycle should succeed");
+        run_monitor_cycle(&pool, &network, cycle_block, None)
+            .await
+            .expect("Monitor cycle should succeed");
     }
 
     // Check results: should have both STAKING_SNAPSHOT and STAKING_REWARD records

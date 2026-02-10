@@ -125,7 +125,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: Some(50_000_000), // $500k
                 overage_rate_bps: 20,                         // 0.20%
                 exchange_fee_bps: 20,                         // 0.20%
-                gas_covered_transactions: Some(1000),          // 10 gas covered transactions
+                gas_covered_transactions: Some(1000),          // 1000 gas covered transactions
                 monthly_export_credits: Some(5),
                 trial_export_credits: None,
                 monthly_batch_payment_credits: Some(10),
@@ -152,7 +152,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: Some(100_000_000), // $1M
                 overage_rate_bps: 10,                           // 0.10%
                 exchange_fee_bps: 10,                           // 0.10%
-                gas_covered_transactions: Some(2000),          // 1000 gas covered transactions
+                gas_covered_transactions: Some(2000),          // 2000 gas covered transactions
                 monthly_export_credits: Some(10),
                 trial_export_credits: None,
                 monthly_batch_payment_credits: Some(100),
@@ -376,13 +376,13 @@ mod tests {
         let (exports, batch, gas) = get_initial_credits(PlanType::Plus);
         assert_eq!(exports, 5);
         assert_eq!(batch, 10);
-        assert_eq!(gas, 100);
+        assert_eq!(gas, 1000);
 
         // Pro plan: 10 exports, 100 batch payments
         let (exports, batch, gas) = get_initial_credits(PlanType::Pro);
         assert_eq!(exports, 10);
         assert_eq!(batch, 100);
-        assert_eq!(gas, 1000);
+        assert_eq!(gas, 2000);
 
         // Enterprise: unlimited (0 as there's no limit to track)
         let (exports, batch, gas) = get_initial_credits(PlanType::Enterprise);

@@ -74,8 +74,6 @@ async fn main() {
                     &state_clone.archival_network,
                     up_to_block,
                     state_clone.transfer_hint_service.as_ref(),
-                    state_clone.env_vars.intents_explorer_api_key.as_deref(),
-                    &state_clone.env_vars.intents_explorer_api_url,
                 )
                 .await
                 {
@@ -159,6 +157,8 @@ async fn main() {
                     &state_clone.archival_network,
                     state_clone.transfer_hint_service.as_ref(),
                     &mut active_tasks,
+                    state_clone.env_vars.intents_explorer_api_key.as_deref(),
+                    &state_clone.env_vars.intents_explorer_api_url,
                 )
                 .await;
             }

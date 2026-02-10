@@ -16,6 +16,7 @@ use tokio::task::JoinHandle;
 
 use super::gap_filler::fill_gaps_with_hints;
 use super::staking_rewards::is_staking_token;
+use super::swap_detector::{detect_swaps_from_api, store_detected_swaps};
 use super::transfer_hints::TransferHintService;
 
 /// Run one poll cycle of the dirty account monitor.
@@ -30,11 +31,15 @@ use super::transfer_hints::TransferHintService;
 /// * `network` - NEAR archival network configuration
 /// * `hint_service` - Optional shared transfer hint service
 /// * `active_tasks` - Map of account_id -> JoinHandle for in-flight tasks
+/// * `intents_api_key` - Optional Intents Explorer API key for swap detection
+/// * `intents_api_url` - Intents Explorer API base URL
 pub async fn run_dirty_monitor(
     pool: &PgPool,
     network: &NetworkConfig,
     _hint_service: Option<&TransferHintService>,
     active_tasks: &mut HashMap<String, JoinHandle<()>>,
+    intents_api_key: Option<&str>,
+    intents_api_url: &str,
 ) {
     // 1. Clean up finished tasks
     active_tasks.retain(|account_id, handle| {
@@ -78,6 +83,8 @@ pub async fn run_dirty_monitor(
         let pool = pool.clone();
         let network = network.clone();
         let account_id_clone = account_id.clone();
+        let intents_api_key = intents_api_key.map(|s| s.to_string());
+        let intents_api_url = intents_api_url.to_string();
 
         log::info!(
             "[dirty-monitor] Spawning priority task for {} (dirty_at: {})",
@@ -89,8 +96,16 @@ pub async fn run_dirty_monitor(
             // Note: hint_service is not passed to spawned tasks because
             // TransferHintService is not Clone. Binary search fallback is used instead.
             // This can be improved later by wrapping the service in Arc in AppState.
-            if let Err(e) =
-                run_dirty_task(&pool, &network, &account_id_clone, original_dirty_at, None).await
+            if let Err(e) = run_dirty_task(
+                &pool,
+                &network,
+                &account_id_clone,
+                original_dirty_at,
+                None,
+                intents_api_key.as_deref(),
+                &intents_api_url,
+            )
+            .await
             {
                 log::error!(
                     "[dirty-monitor] Task for {} failed: {}",
@@ -115,6 +130,8 @@ async fn run_dirty_task(
     account_id: &str,
     original_dirty_at: DateTime<Utc>,
     hint_service: Option<&TransferHintService>,
+    intents_api_key: Option<&str>,
+    intents_api_url: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Get current block height
     let up_to_block = Chain::block().fetch_from(network).await?.header.height as i64;
@@ -127,6 +144,39 @@ async fn run_dirty_task(
         account_id,
         total_filled
     );
+
+    // Detect and store swaps using Intents Explorer API
+    match detect_swaps_from_api(pool, account_id, intents_api_key, intents_api_url).await {
+        Ok(swaps) => {
+            if !swaps.is_empty() {
+                match store_detected_swaps(pool, &swaps).await {
+                    Ok(inserted) => {
+                        if inserted > 0 {
+                            log::info!(
+                                "[dirty-monitor] {}: Detected and stored {} new swaps",
+                                account_id,
+                                inserted
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        log::error!(
+                            "[dirty-monitor] {}: Error storing detected swaps: {}",
+                            account_id,
+                            e
+                        );
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            log::error!(
+                "[dirty-monitor] {}: Error detecting swaps: {}",
+                account_id,
+                e
+            );
+        }
+    }
 
     // Conditional clear: only clear if dirty_at hasn't changed since we started
     let result = sqlx::query(
@@ -232,7 +282,7 @@ mod tests {
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
         // Should not error with no dirty accounts
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks).await;
+        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
 
         assert!(
             active_tasks.is_empty(),
@@ -259,7 +309,7 @@ mod tests {
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
         // Run dirty monitor — should spawn a task
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks).await;
+        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
 
         assert_eq!(
             active_tasks.len(),
@@ -302,7 +352,7 @@ mod tests {
         active_tasks.insert("test.sputnik-dao.near".to_string(), handle);
 
         // Run dirty monitor — should NOT spawn a duplicate task
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks).await;
+        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
 
         assert_eq!(
             active_tasks.len(),
@@ -334,7 +384,7 @@ mod tests {
         let network = NetworkConfig::mainnet();
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks).await;
+        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
 
         assert!(
             active_tasks.is_empty(),
@@ -475,7 +525,7 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
         // Run dirty monitor — should clean up the finished task
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks).await;
+        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
 
         assert!(
             active_tasks.is_empty(),

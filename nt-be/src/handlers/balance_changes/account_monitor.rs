@@ -5,7 +5,6 @@ use std::collections::HashSet;
 use super::balance::ft::get_balance_at_block as get_ft_balance;
 use super::gap_filler::{fill_gaps_with_hints, insert_snapshot_record};
 use super::staking_rewards::{is_staking_token, track_and_fill_staking_rewards};
-use super::swap_detector::{detect_swaps_from_api, store_detected_swaps};
 use super::token_discovery::snapshot_intents_tokens;
 use super::transfer_hints::TransferHintService;
 
@@ -24,15 +23,11 @@ use super::transfer_hints::TransferHintService;
 /// * `network` - NEAR network configuration (archival RPC)
 /// * `up_to_block` - Process gaps up to this block height
 /// * `hint_service` - Optional transfer hint service for accelerated gap filling
-/// * `intents_api_key` - Optional Intents Explorer API key for swap detection
-/// * `intents_api_url` - Intents Explorer API base URL
 pub async fn run_monitor_cycle(
     pool: &PgPool,
     network: &NetworkConfig,
     up_to_block: i64,
     hint_service: Option<&TransferHintService>,
-    intents_api_key: Option<&str>,
-    intents_api_url: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Get all enabled monitored accounts
     let accounts = sqlx::query!(
@@ -194,30 +189,6 @@ pub async fn run_monitor_cycle(
             }
             Err(e) => {
                 eprintln!("  {}: Error tracking staking rewards: {}", account_id, e);
-            }
-        }
-
-        // Detect and store swaps for this account using Intents Explorer API
-        match detect_swaps_from_api(pool, account_id, intents_api_key, intents_api_url).await {
-            Ok(swaps) => {
-                if !swaps.is_empty() {
-                    match store_detected_swaps(pool, &swaps).await {
-                        Ok(inserted) => {
-                            if inserted > 0 {
-                                println!(
-                                    "  {}: Detected and stored {} new swaps",
-                                    account_id, inserted
-                                );
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("  {}: Error storing detected swaps: {}", account_id, e);
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("  {}: Error detecting swaps: {}", account_id, e);
             }
         }
     }
@@ -444,8 +415,6 @@ mod tests {
             &network,
             177_000_000,
             state.transfer_hint_service.as_ref(),
-            None, // No API key for test
-            "https://explorer.near-intents.org/api/v0",
         )
         .await;
         assert!(result.is_ok());
