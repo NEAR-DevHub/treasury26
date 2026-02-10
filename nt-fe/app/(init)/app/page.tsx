@@ -10,6 +10,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useTreasury } from "@/hooks/use-treasury";
+import Logo from "@/components/logo";
 
 function GradientTitle() {
     return (
@@ -81,13 +82,7 @@ export default function AppRedirect() {
                         <GradientTitle />
                     </div>
                     <div className="w-full gap-12 flex flex-col p-4 items-center h-full justify-center bg-white rounded-2xl lg:max-w-4xl">
-                        <Image
-                            src="/logo.svg"
-                            alt="logo"
-                            width={0}
-                            height={40}
-                            className="h-10 w-auto"
-                        />
+                        <Logo size="lg" />
                         <div className="flex w-full flex-col items-center justify-center gap-6 ">
                             <div className="flex w-full flex-col gap-2 text-center">
                                 <h1 className="text-2xl font-semibold">
