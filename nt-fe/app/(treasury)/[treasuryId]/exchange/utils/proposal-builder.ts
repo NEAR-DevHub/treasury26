@@ -41,15 +41,12 @@ export function buildProposalDescription(
   return encodeToMarkdown({
     proposal_action: "asset-exchange",
     notes: `**Must be executed before ${deadline}** for transferring tokens to 1Click's deposit address for swap execution.`,
-    tokenIn: sellToken.symbol,
     tokenInAddress: sellToken.address,
-    tokenOut: receiveToken.symbol,
     tokenOutAddress: receiveToken.address,
     amountIn: proposalData.quote.amountInFormatted,
     amountOut: proposalData.quote.amountOutFormatted,
     slippage: slippageTolerance.toString(),
     quoteDeadline: deadline,
-    destinationNetwork: receiveToken.network,
     timeEstimate: proposalData.quote.timeEstimate
       ? `${proposalData.quote.timeEstimate} seconds`
       : undefined,
@@ -64,7 +61,6 @@ export function buildProposalDescription(
 export function buildNativeNEARProposal(params: ProposalBuilderParams): ProposalResult {
   const { proposalData, sellToken, receiveToken, slippageTolerance } = params;
   const amountInSmallestUnit = proposalData.quote.amountIn;
-  const originAsset = "wrap.near";
 
   return {
     description: buildProposalDescription(
@@ -84,15 +80,22 @@ export function buildNativeNEARProposal(params: ProposalBuilderParams): Proposal
             gas: "10000000000000", // 10 TGas
           },
           {
-            method_name: "ft_transfer_call",
+            method_name: "storage_deposit",
             args: Buffer.from(
               JSON.stringify({
-                receiver_id: "intents.near",
+                account_id: proposalData.quote.depositAddress,
+                registration_only: true,
+              })
+            ).toString("base64"),
+            deposit: "1250000000000000000000", // 0.00125 NEAR for storage
+            gas: "10000000000000", // 10 TGas
+          },
+          {
+            method_name: "ft_transfer",
+            args: Buffer.from(
+              JSON.stringify({
+                receiver_id: proposalData.quote.depositAddress,
                 amount: amountInSmallestUnit,
-                msg: JSON.stringify({
-                  receiver_id: proposalData.quote.depositAddress,
-                  token_id: originAsset,
-                }),
               })
             ).toString("base64"),
             deposit: "1", // 1 yoctoNEAR for storage
@@ -106,7 +109,7 @@ export function buildNativeNEARProposal(params: ProposalBuilderParams): Proposal
 
 /**
  * Builds the proposal structure for fungible token swaps
- * - For FT tokens (network === "near"): Use ft_transfer_call on the token contract
+ * - For FT tokens (network === "near"): Use ft_transfer on the token contract
  * - For Intents tokens (network !== "near"): Use mt_transfer on intents.near
  */
 export function buildFungibleTokenProposal(params: ProposalBuilderParams): ProposalResult {
@@ -116,7 +119,7 @@ export function buildFungibleTokenProposal(params: ProposalBuilderParams): Propo
   const isNearToken = sellToken.network === "near" && !sellToken.address.startsWith("nep141:");
 
   if (isNearToken) {
-    // For NEAR FT tokens, use ft_transfer_call on the token contract
+    // For NEAR FT tokens, use ft_transfer on the token contract
     return {
       description: buildProposalDescription(
         proposalData,
@@ -129,14 +132,22 @@ export function buildFungibleTokenProposal(params: ProposalBuilderParams): Propo
           receiver_id: sellToken.address, // Call the token contract directly
           actions: [
             {
-              method_name: "ft_transfer_call",
+              method_name: "storage_deposit",
               args: Buffer.from(
                 JSON.stringify({
-                  receiver_id: "intents.near",
+                  account_id: proposalData.quote.depositAddress,
+                  registration_only: true,
+                })
+              ).toString("base64"),
+              deposit: "1250000000000000000000", // 0.00125 NEAR for storage
+              gas: "10000000000000", // 10 TGas
+            },
+            {
+              method_name: "ft_transfer",
+              args: Buffer.from(
+                JSON.stringify({
+                  receiver_id: proposalData.quote.depositAddress,
                   amount: amountInSmallestUnit,
-                  msg: JSON.stringify({
-                    receiver_id: proposalData.quote.depositAddress,
-                  }),
                 })
               ).toString("base64"),
               deposit: "1", // 1 yoctoNEAR for storage

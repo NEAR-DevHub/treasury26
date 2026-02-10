@@ -11,12 +11,11 @@ export function formatAssetForIntentsAPI(
 }
 
 /**
- * Determines deposit and refund type based on the origin asset's network
- * Returns the same value for both deposit and refund
+ * Determines refund type based on the origin asset's network
  * - If residency === "Intents": Token is on Intents → INTENTS
  * - Otherwise: Token is on NEAR: FT or Native NEAR → ORIGIN_CHAIN
  */
-export function getDepositAndRefundType(residency: string): "INTENTS" | "ORIGIN_CHAIN" {
+export function getRefundType(residency: string): "INTENTS" | "ORIGIN_CHAIN" {
   return residency === "Intents" ? "INTENTS" : "ORIGIN_CHAIN";
 }
 

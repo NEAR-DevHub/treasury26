@@ -3,7 +3,7 @@ import { UseFormReturn } from "react-hook-form";
 import Big from "big.js";
 import { getIntentsQuote, IntentsQuoteResponse } from "@/lib/api";
 import { Token } from "@/components/token-input";
-import { formatAssetForIntentsAPI, getDepositAndRefundType, getRecipientType, getUserFriendlyErrorMessage } from "../utils";
+import { formatAssetForIntentsAPI, getRefundType, getRecipientType, getUserFriendlyErrorMessage } from "../utils";
 
 interface UseExchangeQuoteParams {
   selectedTreasury: string | null | undefined;
@@ -52,7 +52,7 @@ export function useExchangeQuote({
 
         const originAsset = formatAssetForIntentsAPI(sellToken.address);
         const destinationAsset = formatAssetForIntentsAPI(receiveToken.address);
-        const depositAndRefundType = getDepositAndRefundType(sellToken.residency || "");
+        const refundType = getRefundType(sellToken.residency || "");
         const recipientType = getRecipientType(receiveToken.residency || "");
 
         const quote = await getIntentsQuote(
@@ -60,11 +60,11 @@ export function useExchangeQuote({
             swapType: "EXACT_INPUT",
             slippageTolerance: Math.round(slippageTolerance * 100), // Convert to basis points
             originAsset,
-            depositType: depositAndRefundType,
+            depositType: 'INTENTS',
             destinationAsset,
             amount: parsedAmount,
             refundTo: selectedTreasury,
-            refundType: depositAndRefundType,
+            refundType: refundType,
             recipient: selectedTreasury,
             recipientType: recipientType,
             deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours

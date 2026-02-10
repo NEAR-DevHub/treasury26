@@ -20,13 +20,13 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
 
   // Legacy fallback: use search hook for old proposals without addresses
   const { data: legacyTokensData } = useSearchIntentsTokens({
-    tokenIn: data.tokenInSymbol || data.tokenIn,
+    tokenIn: data.tokenIn,
     tokenOut: data.tokenOut,
     intentsTokenContractId: data.intentsTokenContractId,
     destinationNetwork: data.destinationNetwork,
   }, !hasAddresses);
 
-  // Use new token data if available, otherwise fall back to legacy search
+  // Use addresses if available, otherwise fall back to legacy search
   const finalTokenInId = data.tokenInAddress || legacyTokensData?.tokenIn?.defuseAssetId || data.tokenIn;
   const finalTokenOutId = data.tokenOutAddress || legacyTokensData?.tokenOut?.defuseAssetId || data.tokenOut;
 

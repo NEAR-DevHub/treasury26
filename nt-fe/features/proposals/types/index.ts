@@ -158,13 +158,13 @@ export interface SwapRequestData {
     quoteSignature?: string;
     depositAddress?: string;
     tokenIn: string; // Token ID extracted from actions (e.g., "wrap.near")
-    tokenInSymbol?: string; // Token symbol from description (e.g., "NEAR")
-    tokenInAddress?: string; // Token address from description (e.g., "near" or "nep141:...")
+    tokenInSymbol?: string; // LEGACY: Token symbol for old proposals (e.g., "NEAR")
+    tokenInAddress?: string; // NEW: Token address for new proposals (e.g., "near")
     sourceNetwork: string;
-    destinationNetwork: string;
+    destinationNetwork?: string; // LEGACY: Destination network - only for old proposals
     amountIn: string;
-    tokenOut: string; // Token symbol from description (e.g., "USDT")
-    tokenOutAddress?: string; // Token address from description
+    tokenOut: string; // Token symbol (LEGACY for old proposals, empty for new ones)
+    tokenOutAddress?: string; // NEW: Token address for new proposals
     amountOut: string;
     slippage?: string;
     quoteDeadline?: string;

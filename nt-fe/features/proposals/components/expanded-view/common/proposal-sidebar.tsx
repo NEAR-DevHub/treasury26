@@ -255,6 +255,7 @@ export function ProposalSidebar({
     const isPending = status === "Pending";
     const proposalType = getProposalUIKind(proposal);
     const isExchangeProposal = proposalType === "Exchange";
+    const isFailed = status === "Failed";
     const isExecuted = status === "Executed";
 
     // Extract deposit address for exchange proposals
@@ -267,12 +268,12 @@ export function ProposalSidebar({
         }
     }
 
-    // Fetch transaction data only for non-exchange proposals
+    // Fetch transaction data for non-exchange proposals, or for failed exchange proposals
     const { data: transaction } = useProposalTransaction(
         treasuryId,
         proposal,
         policy,
-        !isExchangeProposal
+        !isExchangeProposal || isFailed
     );
 
     // Fetch swap status for executed exchange proposals
@@ -339,10 +340,10 @@ export function ProposalSidebar({
             </div>
 
             {/* Transaction Links */}
-            {isExecuted && (
+            {(isExecuted || isFailed) && (
                 <>
                     {/* For exchange proposals, show intents explorer link */}
-                    {isExchangeProposal && depositAddress ? (
+                    {!isFailed && isExchangeProposal && depositAddress ? (
                         <Link
                             href={`https://explorer.near-intents.org/transactions/${depositAddress}`}
                             target="_blank"
