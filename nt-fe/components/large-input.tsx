@@ -33,11 +33,11 @@ export function LargeInput({ className, search, borderless, suffix, value, ...pr
 
             // Font size options with approximate character widths (in px per character)
             const fontSizes = [
-                { class: "!text-3xl", charWidth: 24 }, // ~24px per char
-                { class: "!text-2xl", charWidth: 18 }, // ~18px per char
-                { class: "!text-xl", charWidth: 14 },  // ~14px per char
-                { class: "!text-lg", charWidth: 12 },  // ~12px per char
-                { class: "!text-base", charWidth: 10 }, // ~10px per char
+                { class: "!text-3xl", charWidth: 20 }, // ~20px per char
+                { class: "!text-2xl", charWidth: 15 }, // ~15px per char
+                { class: "!text-xl", charWidth: 12 },  // ~12px per char
+                { class: "!text-lg", charWidth: 10 },  // ~10px per char
+                { class: "!text-base", charWidth: 8 }, // ~8px per char
             ];
 
             // Find the largest font size that fits
