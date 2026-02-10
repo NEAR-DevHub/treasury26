@@ -65,13 +65,13 @@ export default function AppRedirect() {
         <div className="relative h-screen w-full overflow-hidden">
             <GradFlow
                 config={{
-                    color1: { r: 102, g: 180, b: 255 },
-                    color2: { r: 25, g: 25, b: 26 },
-                    color3: { r: 0, g: 200, b: 110 },
-                    speed: 0.6,
-                    scale: 2,
-                    type: "animated",
-                    noise: 0.18,
+                    color1: { r: 0, g: 67, b: 224 },
+                    color2: { r: 255, g: 255, b: 255 },
+                    color3: { r: 9, g: 83, b: 255 },
+                    speed: 0.4,
+                    scale: 1,
+                    type: "stripe",
+                    noise: 0.08,
                 }}
                 className="absolute inset-0"
             />
