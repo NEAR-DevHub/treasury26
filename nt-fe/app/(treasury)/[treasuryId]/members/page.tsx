@@ -958,69 +958,61 @@ export default function MembersPage() {
                                 </TableCell>
                                 <TableCell className="pr-6">
                                     <div className="flex justify-end gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Tooltip
-                                            content={editValidation.reason}
-                                            disabled={
-                                                editValidation.canModify ||
-                                                !editValidation.reason ||
-                                                !canAddMember // Only show validation tooltip if user has permission
+                                        <AuthButton
+                                            permissionKind="policy"
+                                            permissionAction="AddProposal"
+                                            balanceCheck={{
+                                                withProposalBond: true,
+                                            }}
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() =>
+                                                handleEditMember(member)
                                             }
-                                            contentProps={{ className: "max-w-[280px]" }}
-                                        >
-                                            <span>
-                                                <AuthButton
-                                                    permissionKind="policy"
-                                                    permissionAction="AddProposal"
-                                                    balanceCheck={{
-                                                        withProposalBond: true,
-                                                    }}
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() =>
-                                                        handleEditMember(member)
-                                                    }
-                                                    disabled={
-                                                        hasPendingMemberRequest ||
-                                                        !editValidation.canModify
-                                                    }
-                                                    className="h-8 w-8"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </AuthButton>
-                                            </span>
-                                        </Tooltip>
-                                        <Tooltip
-                                            content={deleteValidation.reason}
                                             disabled={
-                                                deleteValidation.canModify ||
-                                                !deleteValidation.reason ||
-                                                !canAddMember // Only show validation tooltip if user has permission (otherwise AuthButton shows permission tooltip)
+                                                hasPendingMemberRequest ||
+                                                !editValidation.canModify
                                             }
-                                            contentProps={{ className: "max-w-[280px]" }}
+                                            className="h-8 w-8"
+                                            tooltip={editValidation.reason}
+                                            tooltipProps={{
+                                                disabled:
+                                                    editValidation.canModify ||
+                                                    !editValidation.reason ||
+                                                    !canAddMember,
+                                                contentProps: { className: "max-w-[280px]" }
+                                            }}
                                         >
-                                            <span>
-                                                <AuthButton
-                                                    permissionKind="policy"
-                                                    permissionAction="AddProposal"
-                                                    balanceCheck={{
-                                                        withProposalBond: true,
-                                                    }}
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => {
-                                                        setMemberToDelete(member);
-                                                        setIsDeleteModalOpen(true);
-                                                    }}
-                                                    disabled={
-                                                        hasPendingMemberRequest ||
-                                                        !deleteValidation.canModify
-                                                    }
-                                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </AuthButton>
-                                            </span>
-                                        </Tooltip>
+                                            <Pencil className="w-4 h-4" />
+                                        </AuthButton>
+                                        <AuthButton
+                                            permissionKind="policy"
+                                            permissionAction="AddProposal"
+                                            balanceCheck={{
+                                                withProposalBond: true,
+                                            }}
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                                setMemberToDelete(member);
+                                                setIsDeleteModalOpen(true);
+                                            }}
+                                            disabled={
+                                                hasPendingMemberRequest ||
+                                                !deleteValidation.canModify
+                                            }
+                                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                            tooltip={deleteValidation.reason}
+                                            tooltipProps={{
+                                                disabled:
+                                                    deleteValidation.canModify ||
+                                                    !deleteValidation.reason ||
+                                                    !canAddMember,
+                                                contentProps: { className: "max-w-[280px]" }
+                                            }}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </AuthButton>
                                     </div>
                                 </TableCell>
                             </TableRow>

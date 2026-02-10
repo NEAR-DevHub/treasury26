@@ -105,7 +105,7 @@ export function PendingRequestItem({
                                         e.preventDefault();
                                         onVote("Reject");
                                     }}
-                                    disabledTooltip={NO_VOTE_MESSAGE}
+                                    tooltip={isUserVoter ? NO_VOTE_MESSAGE : undefined}
                                     disabled={isUserVoter}
                                 >
                                     <X className="size-3.5" />
@@ -140,7 +140,7 @@ export function PendingRequestItem({
                                             onVote("Approve");
                                         }}
                                         disabled={isUserVoter}
-                                        disabledTooltip={NO_VOTE_MESSAGE}
+                                        tooltip={isUserVoter ? NO_VOTE_MESSAGE : undefined}
                                     >
                                         <Check className="size-3.5" />
                                         Approve
