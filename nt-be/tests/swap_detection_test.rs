@@ -119,12 +119,11 @@ async fn test_store_detected_swaps(pool: PgPool) -> sqlx::Result<()> {
         .await
         .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
-    let db_swaps_after: Vec<(String,)> = sqlx::query_as(
-        "SELECT solver_transaction_hash FROM detected_swaps WHERE account_id = $1",
-    )
-    .bind(account_id)
-    .fetch_all(&pool)
-    .await?;
+    let db_swaps_after: Vec<(String,)> =
+        sqlx::query_as("SELECT solver_transaction_hash FROM detected_swaps WHERE account_id = $1")
+            .bind(account_id)
+            .fetch_all(&pool)
+            .await?;
 
     assert_eq!(
         db_swaps_after.len(),
