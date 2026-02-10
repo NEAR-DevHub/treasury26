@@ -17,7 +17,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { cn } from "@/lib/utils";
-import { formatHistoryDuration } from "@/lib/utils/plan-utils";
+import { formatHistoryDuration } from "../utils/history-utils";
 import { useState, useMemo } from "react";
 import type { RecentActivity as RecentActivityType } from "@/lib/api";
 import {
@@ -29,8 +29,8 @@ import {
 } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableRow } from "@/components/table";
 import { FormattedDate } from "@/components/formatted-date";
-import { TransactionDetailsModal } from "./transaction-details-modal";
-import { MemberOnlyExportButton } from "./member-only-export-button";
+import { TransactionDetailsModal } from "../../components/transaction-details-modal";
+import { MemberOnlyExportButton } from "../../components/member-only-export-button";
 import Link from "next/link";
 
 const ITEMS_ON_DASHBOARD = 10;
@@ -229,7 +229,7 @@ export function RecentActivity() {
                 <CardContent className="px-0">
                     {isLoading ? (
                         <div className="space-y-4 px-4 py-2">
-                            {[...Array(ITEMS_ON_DASHBOARD)].map((_, i) => (
+                            {[...Array(3)].map((_, i) => (
                                 <div
                                     key={i}
                                     className="flex items-center justify-between"
@@ -298,7 +298,7 @@ export function RecentActivity() {
                                 </Table>
                             </div>
                             <div className="px-6">
-                                <Link href={`/${treasuryId}/activity`}>
+                                <Link href={`/${treasuryId}/dashboard/activity`}>
                                     <Button
                                         variant="outline"
                                         className="w-full mt-4 bg-transparent hover:bg-muted/50"

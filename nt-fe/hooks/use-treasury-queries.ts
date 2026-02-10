@@ -259,13 +259,16 @@ export function useRecentActivity(
     offset: number = 0,
     minUsdValue?: number,
     transactionType?: string,
-    tokenIds?: string[],
+    tokenSymbol?: string,
+    tokenSymbolNot?: string,
+    amountMin?: string,
+    amountMax?: string,
     startDate?: string,
     endDate?: string,
 ) {
     return useQuery({
-        queryKey: ["recentActivity", accountId, limit, offset, minUsdValue, transactionType, tokenIds, startDate, endDate],
-        queryFn: () => getRecentActivity(accountId!, limit, offset, minUsdValue, transactionType, tokenIds, startDate, endDate),
+        queryKey: ["recentActivity", accountId, limit, offset, minUsdValue, transactionType, tokenSymbol, tokenSymbolNot, amountMin, amountMax, startDate, endDate],
+        queryFn: () => getRecentActivity(accountId!, limit, offset, minUsdValue, transactionType, tokenSymbol, tokenSymbolNot, amountMin, amountMax, startDate, endDate),
         enabled: !!accountId,
         staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
     });
@@ -284,6 +287,6 @@ export function useExportHistory(
         queryKey: ["exportHistory", accountId, limit, offset],
         queryFn: () => getExportHistory(accountId!, limit, offset),
         enabled: !!accountId,
-        staleTime: Infinity, // Never auto-refresh, only manual refetch
+        staleTime: Infinity,
     });
 }

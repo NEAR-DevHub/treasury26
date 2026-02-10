@@ -24,16 +24,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAssets, useAggregatedTokens } from "@/hooks/use-assets";
 import { cn } from "@/lib/utils";
-import { endOfDay, startOfDay, subMonths } from "date-fns";
+import { endOfDay, startOfDay, subMonths, subDays } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import { EmptyState } from "@/components/empty-state";
 import { toast } from "sonner";
-import { formatHistoryDuration } from "@/lib/utils/plan-utils";
+import { formatHistoryDuration } from "../activity/utils/history-utils";
 import { format } from "date-fns";
 import { ExportHistoryItem } from "@/lib/api";
 import { Download, Loader2 } from "lucide-react";
 import { User } from "@/components/user";
 import { FormattedDate } from "@/components/formatted-date";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
     useReactTable,
     getCoreRowModel,
@@ -302,7 +303,6 @@ export default function ExportActivityPage() {
         return startOfDay(new Date());
     }, [dateRange?.from]);
 
-
     const handleExport = async () => {
         if (!treasuryId || !dateRange.from || !dateRange.to) {
             toast.error("Invalid date range", {
@@ -539,27 +539,48 @@ export default function ExportActivityPage() {
                                         {/* Time Range */}
                                         <div>
                                             <label className="text-sm font-medium mb-2 block">Time Range</label>
-                                            <DateTimePicker
-                                                mode="range"
-                                                value={dateRange ? { from: dateRange.from, to: dateRange.to } : undefined}
-                                                onChange={(range: any) => {
-                                                    if (range && typeof range === 'object' && 'from' in range) {
-                                                        form.setValue("dateRange", {
-                                                            from: range.from ? startOfDay(range.from) : startOfDay(new Date()),
-                                                            to: range.to ? endOfDay(range.to) : endOfDay(new Date())
-                                                        }, { shouldValidate: true });
-                                                    } else {
-                                                        form.setValue("dateRange", {
-                                                            from: startOfDay(new Date()),
-                                                            to: endOfDay(new Date())
-                                                        }, { shouldValidate: true });
-                                                    }
-                                                }}
-                                                defaultMonth={defaultMonth}
-                                                numberOfMonths={1}
-                                                min={minDate}
-                                                max={new Date()}
-                                            />
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-start bg-transparent! border-2"
+                                                    >
+                                                        <Calendar className="mr-2 h-4 w-4" />
+                                                        <span className="text-sm">
+                                                            {dateRange?.from && dateRange?.to ? (
+                                                                <>
+                                                                    {format(dateRange.from, "MMM dd, yyyy")} - {format(dateRange.to, "MMM dd, yyyy")}
+                                                                </>
+                                                            ) : (
+                                                                "Select date range"
+                                                            )}
+                                                        </span>
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <DateTimePicker
+                                                        mode="range"
+                                                        value={dateRange ? { from: dateRange.from, to: dateRange.to } : undefined}
+                                                        onChange={(range: any) => {
+                                                            if (range && typeof range === 'object' && 'from' in range) {
+                                                                form.setValue("dateRange", {
+                                                                    from: range.from ? startOfDay(range.from) : startOfDay(new Date()),
+                                                                    to: range.to ? endOfDay(range.to) : endOfDay(new Date())
+                                                                }, { shouldValidate: true });
+                                                            } else {
+                                                                form.setValue("dateRange", {
+                                                                    from: startOfDay(new Date()),
+                                                                    to: endOfDay(new Date())
+                                                                }, { shouldValidate: true });
+                                                            }
+                                                        }}
+                                                        defaultMonth={defaultMonth}
+                                                        numberOfMonths={1}
+                                                        min={minDate}
+                                                        max={new Date()}
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
                                         </div>
 
                                         {/* Asset Selection */}

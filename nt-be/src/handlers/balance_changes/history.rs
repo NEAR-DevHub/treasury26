@@ -22,6 +22,7 @@ use std::sync::Arc;
 
 use crate::AppState;
 use crate::config::get_plan_config;
+use crate::constants::intents_tokens::find_token_by_symbol;
 use crate::handlers::balance_changes::query_builder::{BalanceChangeFilters, build_count_query};
 use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::token::TokenMetadata;
@@ -1132,10 +1133,12 @@ pub struct RecentActivityQuery {
     pub offset: Option<i64>,
     pub min_usd_value: Option<f64>,
     pub transaction_type: Option<String>, // "outgoing" | "incoming" | "staking_rewards" (single selection for tabs)
-    #[serde(default, deserialize_with = "comma_separated")]
-    pub token_ids: Option<Vec<String>>,
-    pub start_date: Option<String>, // ISO 8601 format
-    pub end_date: Option<String>,   // ISO 8601 format
+    pub token_symbol: Option<String>, // Single token symbol like "NEAR", "USDC" - will be converted to token IDs (for "Is" operation)
+    pub token_symbol_not: Option<String>, // Single token symbol to exclude (for "Is Not" operation)
+    pub amount_min: Option<String>,   // Minimum amount filter
+    pub amount_max: Option<String>,   // Maximum amount filter
+    pub start_date: Option<String>,   // ISO 8601 format
+    pub end_date: Option<String>,     // ISO 8601 format
 }
 
 #[derive(Debug, Serialize)]
@@ -1167,6 +1170,44 @@ pub async fn get_recent_activity(
 ) -> Result<Json<RecentActivityResponse>, (StatusCode, Json<serde_json::Value>)> {
     let limit = params.limit.unwrap_or(10).min(100);
     let offset = params.offset.unwrap_or(0);
+
+    // Convert token symbol to token IDs if provided
+    let mut token_ids = None;
+    let mut exclude_token_ids = None;
+
+    if let Some(symbol) = &params.token_symbol {
+        if let Some(token) = find_token_by_symbol(&symbol.to_lowercase()) {
+            let mut converted_ids = Vec::new();
+            for grouped_token in token.grouped_tokens {
+                // Extract address after "nep141:" prefix
+                if let Some(address) = grouped_token.defuse_asset_id.split(':').nth(1) {
+                    converted_ids.push(address.to_string());
+                } else {
+                    converted_ids.push(grouped_token.defuse_asset_id);
+                }
+            }
+            if !converted_ids.is_empty() {
+                token_ids = Some(converted_ids);
+            }
+        }
+    }
+
+    if let Some(symbol_not) = &params.token_symbol_not {
+        if let Some(token) = find_token_by_symbol(&symbol_not.to_lowercase()) {
+            let mut converted_ids = Vec::new();
+            for grouped_token in token.grouped_tokens {
+                // Extract address after "nep141:" prefix
+                if let Some(address) = grouped_token.defuse_asset_id.split(':').nth(1) {
+                    converted_ids.push(address.to_string());
+                } else {
+                    converted_ids.push(grouped_token.defuse_asset_id);
+                }
+            }
+            if !converted_ids.is_empty() {
+                exclude_token_ids = Some(converted_ids);
+            }
+        }
+    }
 
     // Get account plan info and calculate date cutoff
     let account_plan = get_account_plan_info(&state.db_pool, &params.account_id)
@@ -1207,11 +1248,11 @@ pub async fn get_recent_activity(
         end_date: end_date
             .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&Utc)),
-        token_ids: params.token_ids.clone(),
-        exclude_token_ids: None,
+        token_ids: token_ids.clone(),
+        exclude_token_ids: exclude_token_ids.clone(),
         transaction_types: params.transaction_type.as_ref().map(|t| vec![t.clone()]),
-        min_amount: None,
-        max_amount: None,
+        min_amount: params.amount_min.as_ref().and_then(|s| s.parse().ok()),
+        max_amount: params.amount_max.as_ref().and_then(|s| s.parse().ok()),
     };
 
     // Count query
@@ -1254,11 +1295,11 @@ pub async fn get_recent_activity(
         offset: Some(offset),
         start_time: start_time_str,
         end_time: end_date.map(|s| s.to_string()),
-        token_ids: params.token_ids.clone(),
-        exclude_token_ids: None,
+        token_ids: token_ids.clone(),
+        exclude_token_ids: exclude_token_ids.clone(),
         transaction_types: params.transaction_type.as_ref().map(|t| vec![t.clone()]),
-        min_amount: None,
-        max_amount: None,
+        min_amount: params.amount_min.as_ref().and_then(|s| s.parse().ok()),
+        max_amount: params.amount_max.as_ref().and_then(|s| s.parse().ok()),
         include_metadata: Some(true), // ✅ Fetch metadata (includes prices)
     };
 

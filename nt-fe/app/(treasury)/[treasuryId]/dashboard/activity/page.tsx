@@ -13,8 +13,8 @@ import { ProposalFilters as GenericFilters, FilterOption } from "@/features/prop
 import { Button } from "@/components/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ListFilter } from "lucide-react";
-import { MemberOnlyExportButton } from "../dashboard/components/member-only-export-button";
-import { getHistoryDescription } from "@/lib/utils/plan-utils";
+import { MemberOnlyExportButton } from "../components/member-only-export-button";
+import { getHistoryDescription } from "./utils/history-utils";
 import { subMonths } from "date-fns";
 
 // Constants
@@ -59,18 +59,39 @@ function ActivityList({ status }: { status?: "incoming" | "outgoing" }) {
 
     // Parse token filter
     const tokenFilter = searchParams.get("token");
-    let tokenIds: string[] | undefined;
+    let tokenSymbol: string | undefined;
+    let tokenSymbolNot: string | undefined;
+    let amountMin: string | undefined;
+    let amountMax: string | undefined;
 
+    console.log("tokenFilter", tokenFilter);
     if (tokenFilter) {
         try {
             const parsed = JSON.parse(tokenFilter);
-            if (parsed.token && parsed.token.id) {
-                tokenIds = [parsed.token.id];
+            // The token filter stores data as: { operation: "Is" | "Is Not", token: { id, name, symbol, icon }, amountOperation, minAmount, maxAmount }
+            if (parsed.token && parsed.token.symbol) {
+                if (parsed.operation === "Is") {
+                    tokenSymbol = parsed.token.symbol;
+                    console.log("tokenSymbol extracted:", tokenSymbol);
+
+                    // Handle amount filters if present
+                    if (parsed.minAmount) {
+                        amountMin = parsed.minAmount;
+                    }
+                    if (parsed.maxAmount) {
+                        amountMax = parsed.maxAmount;
+                    }
+                } else if (parsed.operation === "Is Not") {
+                    tokenSymbolNot = parsed.token.symbol;
+                    console.log("tokenSymbolNot extracted:", tokenSymbolNot);
+                }
             }
         } catch (e) {
             console.error("Failed to parse token filter:", e);
         }
     }
+
+    console.log("Calling useRecentActivity with:", { treasuryId, PAGE_SIZE, offset: page * PAGE_SIZE, minUsdValue, status, tokenSymbol, tokenSymbolNot, amountMin, amountMax, startDate, endDate });
 
     const { data, isLoading } = useRecentActivity(
         treasuryId,
@@ -78,7 +99,10 @@ function ActivityList({ status }: { status?: "incoming" | "outgoing" }) {
         page * PAGE_SIZE,
         minUsdValue,
         status,
-        tokenIds,
+        tokenSymbol,
+        tokenSymbolNot,
+        amountMin,
+        amountMax,
         startDate,
         endDate,
     );

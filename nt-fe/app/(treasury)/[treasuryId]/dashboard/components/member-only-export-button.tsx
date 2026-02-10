@@ -22,7 +22,7 @@ export function MemberOnlyExportButton() {
 
     const handleClick = () => {
         if (isMember && treasuryId) {
-            router.push(`/${treasuryId}/activity/export`);
+            router.push(`/${treasuryId}/dashboard/export`);
         }
     };
 

@@ -149,10 +149,28 @@ async fn fetch_tokens_with_fallback(
     for token_id in &unique_tokens {
         let lookup_key = transform_to_defuse(token_id);
         let metadata = if let Some(meta) = metadata_map.get(&lookup_key) {
-            meta.clone()
+            // Special case: If this is "near", we fetched wrap.near's metadata
+            // Convert it back to "near" token_id but keep the price from wrap.near
+            if token_id == "near" {
+                TokenMetadata {
+                    token_id: "near".to_string(),
+                    name: "NEAR".to_string(),
+                    symbol: "NEAR".to_string(),
+                    decimals: 24,
+                    icon: meta.icon.clone(),
+                    price: meta.price,
+                    price_updated_at: meta.price_updated_at.clone(),
+                    network: meta.network.clone(),
+                    chain_name: meta.chain_name.clone(),
+                    chain_icons: meta.chain_icons.clone(),
+                }
+            } else {
+                meta.clone()
+            }
         } else {
-            if token_id == "near" || token_id.starts_with("nep141:wrap.near") {
-                // NEAR fallback
+            // Fallback when API doesn't return metadata
+            if token_id == "near" {
+                // NEAR fallback with proper decimals and icon
                 TokenMetadata {
                     token_id: "near".to_string(),
                     name: "NEAR".to_string(),
@@ -166,7 +184,7 @@ async fn fetch_tokens_with_fallback(
                     chain_icons: None,
                 }
             } else {
-                // Generic fallback
+                // Generic fallback for other tokens
                 let symbol = token_id
                     .split('.')
                     .next()

@@ -278,7 +278,10 @@ export async function getRecentActivity(
     offset: number = 0,
     minUsdValue?: number,
     transactionType?: string,
-    tokenIds?: string[],
+    tokenSymbol?: string,
+    tokenSymbolNot?: string,
+    amountMin?: string,
+    amountMax?: string,
     startDate?: string,
     endDate?: string,
 ): Promise<RecentActivityResponse | null> {
@@ -297,8 +300,17 @@ export async function getRecentActivity(
         if (transactionType !== undefined && transactionType !== "all") {
             params.transaction_type = transactionType;
         }
-        if (tokenIds && tokenIds.length > 0) {
-            params.token_ids = tokenIds.join(",");
+        if (tokenSymbol) {
+            params.token_symbol = tokenSymbol;
+        }
+        if (tokenSymbolNot) {
+            params.token_symbol_not = tokenSymbolNot;
+        }
+        if (amountMin) {
+            params.amount_min = amountMin;
+        }
+        if (amountMax) {
+            params.amount_max = amountMax;
         }
         if (startDate) {
             params.start_date = startDate;
@@ -1097,16 +1109,6 @@ export async function relayDelegateAction(
         { withCredentials: true },
     );
     return response.data;
-}
-
-// ============================================================================
-// Export Credits & History
-// ============================================================================
-
-export interface ExportCreditsResponse {
-    exportCredits: number;     // Remaining credits
-    creditsUsed: number;       // Used credits (calculated by backend)
-    totalCredits: number;      // Total credits from plan
 }
 
 export interface ExportHistoryItem {
