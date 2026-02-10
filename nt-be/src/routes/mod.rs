@@ -200,10 +200,6 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             patch(monitored_accounts::update_monitored_account)
                 .delete(monitored_accounts::delete_monitored_account),
         )
-        .route(
-            "/api/monitored-accounts/{account_id}/dirty",
-            post(monitored_accounts::mark_account_dirty),
-        )
         // Intents endpoints
         .route(
             "/api/intents/search-tokens",

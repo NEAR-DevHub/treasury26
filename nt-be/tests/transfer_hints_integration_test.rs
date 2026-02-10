@@ -27,17 +27,22 @@ use std::time::Instant;
 
 const TEST_ACCOUNT: &str = "webassemblymusic-treasury.sputnik-dao.near";
 
-/// Test native NEAR transfers detection with hint service enabled.
+/// Test native NEAR and FT transfers detection with hint service enabled.
 ///
-/// Known NEAR transfers for this account:
+/// Runs a single monitor cycle and verifies both token types are detected,
+/// avoiding duplicate RPC calls from running two separate cycles.
+///
+/// Known transfers for this account in block range 178140000-178150000:
 /// - Block 178148638: -0.1 NEAR to petersalomonsen.near
 /// - Block 178142836: +0.1 NEAR from petersalomonsen.near
+/// - Block 178148636: -100000 arizcredits to arizcredits.near
 #[sqlx::test]
-async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
+async fn test_near_and_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     common::load_test_env();
 
     let account_id = TEST_ACCOUNT;
-    let token_id = "near";
+    let near_token = "near";
+    let ft_token = "arizcredits.near";
 
     // Insert account as monitored
     sqlx::query!(
@@ -64,260 +69,154 @@ async fn test_native_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
     let up_to_block = 178_150_000i64;
     let network = common::create_archival_network();
 
-    println!("\n=== Native NEAR Transfer Hints Test ===");
+    println!("\n=== NEAR + FT Transfer Hints Test ===");
     println!("Account: {}", account_id);
     println!("Block range: {} -> {}", seed_block, up_to_block);
 
-    insert_snapshot_record(&pool, &network, account_id, token_id, seed_block)
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
+    // Seed both tokens
+    for token_id in [near_token, ft_token] {
+        insert_snapshot_record(&pool, &network, account_id, token_id, seed_block)
+            .await
+            .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
+        println!(
+            "✓ Seeded initial {} balance at block {}",
+            token_id, seed_block
+        );
+    }
 
-    println!("✓ Seeded initial balance at block {}", seed_block);
-
-    // Query hints
+    // Query NEAR hints (to verify hint quality)
     let hint_service = TransferHintService::new().with_provider(
         FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
     );
-    let hints = hint_service
-        .get_hints(account_id, token_id, seed_block, up_to_block as u64)
+    let near_hints = hint_service
+        .get_hints(account_id, near_token, seed_block, up_to_block as u64)
+        .await;
+    let ft_hints = hint_service
+        .get_hints(account_id, ft_token, seed_block, up_to_block as u64)
         .await;
 
-    let hint_blocks: Vec<u64> = hints.iter().map(|h| h.block_height).collect();
-    println!("✓ FastNear returned {} NEAR transfer hints", hints.len());
-    if !hint_blocks.is_empty() {
-        println!("  Hint blocks: {:?}", hint_blocks);
-    }
+    println!(
+        "✓ FastNear returned {} NEAR hints, {} FT hints",
+        near_hints.len(),
+        ft_hints.len()
+    );
 
-    // Run monitor cycle
-    println!("\n=== Running Monitor Cycle ===");
+    // Run a SINGLE monitor cycle — processes ALL tokens for this account
+    println!("\n=== Running Monitor Cycle (single cycle for all tokens) ===");
     let start = Instant::now();
 
-    run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        Some(&hint_service),
+        None,
+        "https://explorer.near-intents.org/api/v0",
+    )
+    .await
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
 
-    // Fetch collected changes
-    let changes: Vec<(i64, BigDecimal, BigDecimal)> = sqlx::query_as(
-        r#"
-        SELECT block_height, balance_before, balance_after
-        FROM balance_changes
-        WHERE account_id = $1 AND token_id = $2
-        ORDER BY block_height ASC
-        "#,
+    // --- Verify NEAR transfers ---
+    let near_changes: Vec<(i64, BigDecimal, BigDecimal)> = sqlx::query_as(
+        "SELECT block_height, balance_before, balance_after FROM balance_changes
+         WHERE account_id = $1 AND token_id = $2 ORDER BY block_height ASC",
     )
     .bind(account_id)
-    .bind(token_id)
+    .bind(near_token)
     .fetch_all(&pool)
     .await?;
 
-    let collected_blocks: Vec<i64> = changes.iter().map(|(b, _, _)| *b).collect();
-    println!("✓ Collected {} balance changes", changes.len());
-    println!("  Collected blocks: {:?}", collected_blocks);
-
-    // Count non-snapshot changes
-    let transfer_changes: Vec<_> = changes
+    let near_transfers: Vec<_> = near_changes
         .iter()
         .filter(|(_, before, after)| before != after)
         .collect();
-    println!("✓ Found {} actual transfers", transfer_changes.len());
+    let near_blocks: Vec<i64> = near_changes.iter().map(|(b, _, _)| *b).collect();
 
-    // Show transfer details
-    for (block, before, after) in &transfer_changes {
-        let change = after - before;
-        println!("  Block {}: {} NEAR change", block, change);
+    println!("\n--- NEAR results ---");
+    println!(
+        "  Balance changes: {}, Transfers: {}",
+        near_changes.len(),
+        near_transfers.len()
+    );
+    for (block, before, after) in &near_transfers {
+        println!("  Block {}: {} NEAR change", block, after - before);
     }
 
-    // Check that hints provided tx_hash (enables fast resolution without binary search)
-    let hints_with_tx_hash: Vec<_> = hints
+    // Assert NEAR hints have tx_hash
+    let near_hints_with_tx: Vec<_> = near_hints
         .iter()
         .filter(|h| h.transaction_hash.is_some())
         .collect();
-
-    println!("\n=== Results ===");
-    println!("Hints provided: {}", hints.len());
-    println!(
-        "Hints with tx_hash: {}/{} (enables fast tx_status resolution)",
-        hints_with_tx_hash.len(),
-        hints.len()
-    );
-    println!("Balance changes found: {}", transfer_changes.len());
-    println!("Total duration: {:?}", duration);
-
-    // Assert hints have tx_hash - this proves we can use tx_status instead of binary search
     assert!(
-        !hints_with_tx_hash.is_empty(),
-        "Expected hints to have transaction hashes for fast resolution"
+        !near_hints_with_tx.is_empty(),
+        "Expected NEAR hints to have transaction hashes"
     );
 
-    // Assert we detected transfers (the main goal)
     assert!(
-        !transfer_changes.is_empty(),
-        "Expected to detect NEAR transfers for {}",
-        account_id
+        !near_transfers.is_empty(),
+        "Expected to detect NEAR transfers"
     );
-
-    // Check if we detected the known transfer around block 178148637/178148638
-    let found_expected = collected_blocks
+    let found_near = near_blocks
         .iter()
         .any(|b| *b >= 178148635 && *b <= 178148640);
     assert!(
-        found_expected,
-        "Expected to detect transfer around block 178148637, collected: {:?}",
-        collected_blocks
+        found_near,
+        "Expected NEAR transfer around block 178148637, collected: {:?}",
+        near_blocks
     );
 
-    println!(
-        "\n✓ Test passed! Detected {} transfers",
-        transfer_changes.len()
-    );
-
-    Ok(())
-}
-
-/// Test fungible token (FT) transfers with arizcredits.near token.
-///
-/// Known FT transfer:
-/// - Block 178148636: -100000 arizcredits to arizcredits.near
-#[sqlx::test]
-async fn test_ft_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
-    common::load_test_env();
-
-    let account_id = TEST_ACCOUNT;
-    let token_id = "arizcredits.near";
-
-    // Insert account as monitored
-    sqlx::query!(
-        r#"
-        INSERT INTO monitored_accounts (account_id, enabled)
-        VALUES ($1, true)
-        ON CONFLICT (account_id) DO UPDATE SET enabled = true
-        "#,
-        account_id
-    )
-    .execute(&pool)
-    .await?;
-
-    // Clear any existing balance changes
-    sqlx::query!(
-        "DELETE FROM balance_changes WHERE account_id = $1 AND token_id = $2",
-        account_id,
-        token_id
-    )
-    .execute(&pool)
-    .await?;
-
-    // Use a range around known FT transfer at 178148636
-    let seed_block = 178_140_000u64;
-    let up_to_block = 178_150_000i64;
-    let network = common::create_archival_network();
-
-    println!("\n=== FT Transfer Hints Test (arizcredits.near) ===");
-    println!("Account: {}", account_id);
-    println!("Token: {}", token_id);
-    println!("Block range: {} -> {}", seed_block, up_to_block);
-
-    insert_snapshot_record(&pool, &network, account_id, token_id, seed_block)
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
-
-    println!("✓ Seeded initial balance at block {}", seed_block);
-
-    // Query hints for FT
-    let hint_service = TransferHintService::new().with_provider(
-        FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
-    );
-    let hints = hint_service
-        .get_hints(account_id, token_id, seed_block, up_to_block as u64)
-        .await;
-
-    let hint_blocks: Vec<u64> = hints.iter().map(|h| h.block_height).collect();
-    println!("✓ FastNear returned {} FT transfer hints", hints.len());
-    if !hint_blocks.is_empty() {
-        println!("  Hint blocks: {:?}", hint_blocks);
-    }
-
-    // Run monitor cycle
-    println!("\n=== Running Monitor Cycle ===");
-    let start = Instant::now();
-
-    run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
-
-    let duration = start.elapsed();
-    println!("✓ Monitor cycle completed in {:?}", duration);
-
-    // Fetch collected changes
-    let changes: Vec<(i64, BigDecimal, BigDecimal)> = sqlx::query_as(
-        r#"
-        SELECT block_height, balance_before, balance_after
-        FROM balance_changes
-        WHERE account_id = $1 AND token_id = $2
-        ORDER BY block_height ASC
-        "#,
+    // --- Verify FT transfers ---
+    let ft_changes: Vec<(i64, BigDecimal, BigDecimal)> = sqlx::query_as(
+        "SELECT block_height, balance_before, balance_after FROM balance_changes
+         WHERE account_id = $1 AND token_id = $2 ORDER BY block_height ASC",
     )
     .bind(account_id)
-    .bind(token_id)
+    .bind(ft_token)
     .fetch_all(&pool)
     .await?;
 
-    let collected_blocks: Vec<i64> = changes.iter().map(|(b, _, _)| *b).collect();
-    println!("✓ Collected {} balance changes", changes.len());
-    println!("  Collected blocks: {:?}", collected_blocks);
-
-    // Count non-snapshot changes
-    let transfer_changes: Vec<_> = changes
+    let ft_transfers: Vec<_> = ft_changes
         .iter()
         .filter(|(_, before, after)| before != after)
         .collect();
-    println!("✓ Found {} actual FT transfers", transfer_changes.len());
+    let ft_blocks: Vec<i64> = ft_changes.iter().map(|(b, _, _)| *b).collect();
 
-    // Check that hints provided tx_hash (enables fast resolution without binary search)
-    let hints_with_tx_hash: Vec<_> = hints
+    println!("\n--- FT results ---");
+    println!(
+        "  Balance changes: {}, Transfers: {}",
+        ft_changes.len(),
+        ft_transfers.len()
+    );
+
+    let ft_hints_with_tx: Vec<_> = ft_hints
         .iter()
         .filter(|h| h.transaction_hash.is_some())
         .collect();
-
-    println!("\n=== Results ===");
-    println!("Hints provided: {}", hints.len());
-    println!(
-        "Hints with tx_hash: {}/{} (enables fast tx_status resolution)",
-        hints_with_tx_hash.len(),
-        hints.len()
-    );
-    println!("Balance changes found: {}", transfer_changes.len());
-    println!("Total duration: {:?}", duration);
-
-    // Assert hints have tx_hash - this proves we can use tx_status instead of binary search
     assert!(
-        !hints_with_tx_hash.is_empty(),
-        "Expected hints to have transaction hashes for fast resolution"
+        !ft_hints_with_tx.is_empty(),
+        "Expected FT hints to have transaction hashes"
     );
 
-    // Assert we detected FT transfers
     assert!(
-        !transfer_changes.is_empty(),
-        "Expected to detect FT transfers for {} / {}",
-        account_id,
-        token_id
+        !ft_transfers.is_empty(),
+        "Expected to detect FT transfers for {}",
+        ft_token
     );
-
-    // Check if we detected the known FT transfer around block 178148636
-    let found_expected = collected_blocks
-        .iter()
-        .any(|b| *b >= 178148630 && *b <= 178148640);
+    let found_ft = ft_blocks.iter().any(|b| *b >= 178148630 && *b <= 178148640);
     assert!(
-        found_expected,
-        "Expected to detect FT transfer around block 178148636, collected: {:?}",
-        collected_blocks
+        found_ft,
+        "Expected FT transfer around block 178148636, collected: {:?}",
+        ft_blocks
     );
 
     println!(
-        "\n✓ Test passed! Detected {} FT transfers",
-        transfer_changes.len()
+        "\n✓ Test passed! Detected {} NEAR + {} FT transfers in {:?}",
+        near_transfers.len(),
+        ft_transfers.len(),
+        duration
     );
 
     Ok(())
@@ -412,9 +311,16 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     println!("\n=== Running Monitor Cycle ===");
     let start = Instant::now();
 
-    run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        Some(&hint_service),
+        None,
+        "https://explorer.near-intents.org/api/v0",
+    )
+    .await
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
@@ -478,10 +384,9 @@ async fn test_intents_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
 /// This account has many NEAR transfers in a recent block range, providing
 /// a good test case for verifying hint resolution with multiple transfers.
 ///
-/// Known transfers in block range 179074315-179623909:
+/// Known transfers in block range around 179250000-179280000:
 /// - Block ~179253697: +0.1 NEAR (balance went from 96.34 to 96.44)
 /// - Block ~179276524: -0.1 NEAR (balance went from 96.44 to 96.34)
-/// - And more transfers...
 #[sqlx::test]
 async fn test_shitzu_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()> {
     common::load_test_env();
@@ -509,9 +414,9 @@ async fn test_shitzu_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
     .execute(&pool)
     .await?;
 
-    // Use a range with known transfers (from the logs)
-    let seed_block = 179_074_315u64;
-    let up_to_block = 179_623_909i64;
+    // Tight range around known transfers (blocks 179253697, 179276524)
+    let seed_block = 179_250_000u64;
+    let up_to_block = 179_280_000i64;
     let network = common::create_archival_network();
 
     println!("\n=== Shitzu NEAR Transfer Hints Test ===");
@@ -548,9 +453,16 @@ async fn test_shitzu_near_transfers_with_hints(pool: PgPool) -> sqlx::Result<()>
     println!("\n=== Running Monitor Cycle ===");
     let start = Instant::now();
 
-    run_monitor_cycle(&pool, &network, up_to_block, Some(&hint_service))
-        .await
-        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        Some(&hint_service),
+        None,
+        "https://explorer.near-intents.org/api/v0",
+    )
+    .await
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     let duration = start.elapsed();
     println!("✓ Monitor cycle completed in {:?}", duration);
@@ -668,9 +580,9 @@ async fn test_no_duplicate_block_checks(pool: PgPool) -> sqlx::Result<()> {
         FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
     );
 
-    // Use the same range as the working shitzu test
-    let from_block = 179_074_315u64;
-    let to_block = 179_623_909u64;
+    // Tight range around known transfers (blocks 179253697, 179276524)
+    let from_block = 179_250_000u64;
+    let to_block = 179_280_000u64;
 
     // First get hints to understand what we're looking for
     let hints = hint_service
@@ -868,9 +780,9 @@ async fn test_hints_strategy_is_used(pool: PgPool) -> sqlx::Result<()> {
         FastNearProvider::new(network.clone()).with_api_key(common::get_fastnear_api_key()),
     );
 
-    // Use the same range as other tests
-    let from_block = 179_074_315u64;
-    let to_block = 179_623_909u64;
+    // Tight range around known transfers (blocks 179253697, 179276524)
+    let from_block = 179_250_000u64;
+    let to_block = 179_280_000u64;
 
     println!("\n=== Hints Strategy Is Used Test ===");
     println!("Account: {}", account_id);

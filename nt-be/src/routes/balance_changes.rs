@@ -49,6 +49,19 @@ pub struct RecentActivityResponse {
     pub total: i64,
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SwapInfo {
+    pub sent_token_id: Option<String>,
+    pub sent_amount: Option<BigDecimal>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sent_token_metadata: Option<TokenMetadata>,
+    pub received_token_id: String,
+    pub received_amount: BigDecimal,
+    pub received_token_metadata: TokenMetadata,
+    pub solver_transaction_hash: String,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecentActivity {
@@ -62,6 +75,8 @@ pub struct RecentActivity {
     pub amount: BigDecimal,
     pub transaction_hashes: Vec<String>,
     pub receipt_ids: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swap: Option<SwapInfo>,
 }
 
 pub async fn get_balance_changes(
@@ -160,15 +175,81 @@ pub async fn get_recent_activity(
         })
     }
 
-    // Get total count (for pagination)
+    fn resolve_metadata(
+        token_id: &str,
+        metadata_map: &std::collections::HashMap<String, TokenMetadata>,
+    ) -> TokenMetadata {
+        if token_id == "near" {
+            return TokenMetadata {
+                token_id: "near".to_string(),
+                name: "NEAR Protocol".to_string(),
+                symbol: "NEAR".to_string(),
+                decimals: 24,
+                icon: Some(
+                    "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png".to_string(),
+                ),
+                price: None,
+                price_updated_at: None,
+                network: Some("near".to_string()),
+                chain_name: Some("Near Protocol".to_string()),
+                chain_icons: None,
+            };
+        }
+
+        if let Some(lookup_id) = token_id_for_metadata(token_id) {
+            metadata_map.get(&lookup_id).cloned().unwrap_or_else(|| {
+                let symbol = token_id
+                    .split('.')
+                    .next()
+                    .unwrap_or("UNKNOWN")
+                    .to_uppercase();
+                TokenMetadata {
+                    token_id: token_id.to_string(),
+                    name: symbol.clone(),
+                    symbol,
+                    decimals: 18,
+                    icon: None,
+                    price: None,
+                    price_updated_at: None,
+                    network: None,
+                    chain_name: None,
+                    chain_icons: None,
+                }
+            })
+        } else {
+            let symbol = token_id
+                .split('.')
+                .next()
+                .unwrap_or("UNKNOWN")
+                .to_uppercase();
+            TokenMetadata {
+                token_id: token_id.to_string(),
+                name: symbol.clone(),
+                symbol,
+                decimals: 18,
+                icon: None,
+                price: None,
+                price_updated_at: None,
+                network: None,
+                chain_name: None,
+                chain_icons: None,
+            }
+        }
+    }
+
+    // Get total count (for pagination), excluding swap deposit legs
     let total = sqlx::query_scalar::<_, i64>(
         r#"
         SELECT COUNT(*)
-        FROM balance_changes
-        WHERE account_id = $1
-          AND counterparty != 'SNAPSHOT'
-                    AND counterparty != 'STAKING_SNAPSHOT'
-          AND counterparty != 'NOT_REGISTERED'
+        FROM balance_changes bc
+        WHERE bc.account_id = $1
+          AND bc.counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT', 'STAKING_REWARD', 'NOT_REGISTERED')
+          AND bc.id NOT IN (
+            SELECT ds.deposit_balance_change_id
+            FROM detected_swaps ds
+            WHERE ds.account_id = $1
+              AND ds.deposit_balance_change_id IS NOT NULL
+          )
         "#,
     )
     .bind(&params.account_id)
@@ -176,18 +257,22 @@ pub async fn get_recent_activity(
     .await
     .unwrap_or(0);
 
-    // Fetch recent balance changes (exclude SNAPSHOT and NOT_REGISTERED)
+    // Fetch recent balance changes, excluding swap deposit legs
     let changes = sqlx::query_as::<_, BalanceChange>(
         r#"
-        SELECT id, account_id, block_height, block_time, token_id, 
+        SELECT id, account_id, block_height, block_time, token_id,
                receipt_id, transaction_hashes, counterparty, signer_id, receiver_id,
                amount, balance_before, balance_after, created_at
-        FROM balance_changes
-        WHERE account_id = $1
-          AND counterparty != 'SNAPSHOT'
-                    AND counterparty != 'STAKING_SNAPSHOT'
-          AND counterparty != 'NOT_REGISTERED'
-        ORDER BY block_height DESC, id DESC
+        FROM balance_changes bc
+        WHERE bc.account_id = $1
+          AND bc.counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT', 'STAKING_REWARD', 'NOT_REGISTERED')
+          AND bc.id NOT IN (
+            SELECT ds.deposit_balance_change_id
+            FROM detected_swaps ds
+            WHERE ds.account_id = $1
+              AND ds.deposit_balance_change_id IS NOT NULL
+          )
+        ORDER BY bc.block_height DESC, bc.id DESC
         LIMIT $2 OFFSET $3
         "#,
     )
@@ -211,13 +296,66 @@ pub async fn get_recent_activity(
         }
     };
 
-    // Get unique token IDs (excluding native NEAR since we have a fallback)
-    let token_ids: Vec<String> = changes
+    // Look up detected swaps for fulfillment IDs on this page
+    let change_ids: Vec<i64> = changes.iter().map(|c| c.id).collect();
+
+    #[derive(Debug)]
+    struct SwapRecord {
+        fulfillment_balance_change_id: i64,
+        sent_token_id: Option<String>,
+        sent_amount: Option<BigDecimal>,
+        received_token_id: String,
+        received_amount: BigDecimal,
+        solver_transaction_hash: String,
+    }
+
+    let swap_records = sqlx::query_as!(
+        SwapRecord,
+        r#"
+        SELECT
+            fulfillment_balance_change_id,
+            sent_token_id,
+            sent_amount,
+            received_token_id,
+            received_amount,
+            solver_transaction_hash
+        FROM detected_swaps
+        WHERE account_id = $1
+          AND fulfillment_balance_change_id = ANY($2)
+        "#,
+        &params.account_id,
+        &change_ids,
+    )
+    .fetch_all(&state.db_pool)
+    .await
+    .unwrap_or_default();
+
+    // Build swap lookup map
+    let swap_map: std::collections::HashMap<i64, SwapRecord> = swap_records
+        .into_iter()
+        .map(|s| (s.fulfillment_balance_change_id, s))
+        .collect();
+
+    // Get unique token IDs for metadata (from balance changes + swap tokens)
+    let mut token_id_set: std::collections::HashSet<String> = changes
         .iter()
         .filter_map(|c| token_id_for_metadata(&c.token_id))
-        .collect::<std::collections::HashSet<_>>()
-        .into_iter()
         .collect();
+
+    for swap in swap_map.values() {
+        if let Some(meta_id) = swap
+            .sent_token_id
+            .as_ref()
+            .and_then(|id| token_id_for_metadata(id))
+        {
+            token_id_set.insert(meta_id);
+        }
+        if let Some(meta_id) = token_id_for_metadata(&swap.received_token_id) {
+            token_id_set.insert(meta_id);
+        }
+    }
+
+    let token_ids: Vec<String> = token_id_set.into_iter().collect();
 
     // Fetch token metadata using the token metadata handler
     let tokens_metadata = if !token_ids.is_empty() {
@@ -236,80 +374,36 @@ pub async fn get_recent_activity(
         Vec::new()
     };
 
-    // Build a map
+    // Build metadata map
     let mut metadata_map: std::collections::HashMap<String, TokenMetadata> =
         std::collections::HashMap::new();
     for meta in tokens_metadata {
         metadata_map.insert(meta.token_id.clone(), meta);
     }
 
-    // Enrich balance changes with token metadata
+    // Enrich balance changes with token metadata and swap info
     let activities: Vec<RecentActivity> = changes
         .into_iter()
         .map(|change| {
-            let token_metadata = if change.token_id == "near" {
-                // Use fallback for native NEAR (we didn't fetch metadata for it)
-                TokenMetadata {
-                    token_id: "near".to_string(),
-                    name: "NEAR Protocol".to_string(),
-                    symbol: "NEAR".to_string(),
-                    decimals: 24,
-                    icon: Some(
-                        "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png"
-                            .to_string(),
-                    ),
-                    price: None,
-                    price_updated_at: None,
-                    network: Some("near".to_string()),
-                    chain_name: Some("Near Protocol".to_string()),
-                    chain_icons: None,
+            let token_metadata = resolve_metadata(&change.token_id, &metadata_map);
+
+            let swap = swap_map.get(&change.id).map(|s| {
+                let sent_token_metadata = s
+                    .sent_token_id
+                    .as_ref()
+                    .map(|id| resolve_metadata(id, &metadata_map));
+                let received_token_metadata = resolve_metadata(&s.received_token_id, &metadata_map);
+
+                SwapInfo {
+                    sent_token_id: s.sent_token_id.clone(),
+                    sent_amount: s.sent_amount.clone(),
+                    sent_token_metadata,
+                    received_token_id: s.received_token_id.clone(),
+                    received_amount: s.received_amount.clone(),
+                    received_token_metadata,
+                    solver_transaction_hash: s.solver_transaction_hash.clone(),
                 }
-            } else {
-                // Look up metadata
-                if let Some(lookup_id) = token_id_for_metadata(&change.token_id) {
-                    metadata_map.get(&lookup_id).cloned().unwrap_or_else(|| {
-                        // Fallback - extract symbol from token ID
-                        let symbol = change
-                            .token_id
-                            .split('.')
-                            .next()
-                            .unwrap_or("UNKNOWN")
-                            .to_uppercase();
-                        TokenMetadata {
-                            token_id: change.token_id.clone(),
-                            name: symbol.clone(),
-                            symbol,
-                            decimals: 18,
-                            icon: None,
-                            price: None,
-                            price_updated_at: None,
-                            network: None,
-                            chain_name: None,
-                            chain_icons: None,
-                        }
-                    })
-                } else {
-                    // This shouldn't happen, but provide a fallback anyway
-                    let symbol = change
-                        .token_id
-                        .split('.')
-                        .next()
-                        .unwrap_or("UNKNOWN")
-                        .to_uppercase();
-                    TokenMetadata {
-                        token_id: change.token_id.clone(),
-                        name: symbol.clone(),
-                        symbol,
-                        decimals: 18,
-                        icon: None,
-                        price: None,
-                        price_updated_at: None,
-                        network: None,
-                        chain_name: None,
-                        chain_icons: None,
-                    }
-                }
-            };
+            });
 
             RecentActivity {
                 id: change.id,
@@ -322,6 +416,7 @@ pub async fn get_recent_activity(
                 amount: change.amount,
                 receipt_ids: change.receipt_id,
                 transaction_hashes: change.transaction_hashes,
+                swap,
             }
         })
         .collect();

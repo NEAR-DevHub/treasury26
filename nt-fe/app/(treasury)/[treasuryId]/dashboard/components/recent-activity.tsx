@@ -9,7 +9,14 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowDownToLine, ArrowUpToLine, Upload, Clock } from "lucide-react";
+import {
+    ArrowDownToLine,
+    ArrowUpToLine,
+    ArrowRightLeft,
+    ArrowRight,
+    Upload,
+    Clock,
+} from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -88,31 +95,42 @@ export function RecentActivity() {
         })}`;
     };
 
-    const getActivityType = (amount: string) => {
-        const isReceived = parseFloat(amount) > 0;
+    const formatSwapAmount = (amount: string, decimals: number) => {
+        const num = Math.abs(parseFloat(amount));
+        const decimalPlaces = num >= 1 ? 2 : Math.min(6, decimals);
+        return num.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: decimalPlaces,
+        });
+    };
+
+    const getActivityType = (activity: RecentActivityType) => {
+        if (activity.swap) return "Swap";
+        const isReceived = parseFloat(activity.amount) > 0;
         return isReceived ? "Payment Received" : "Payment Sent";
     };
 
     const getActivityFrom = (
-        amount: string,
-        counterparty: string | null,
-        receiverId: string | null,
+        activity: RecentActivityType,
     ) => {
-        const isReceived = parseFloat(amount) > 0;
+        if (activity.swap) return "via NEAR Intents";
+
+        const isReceived = parseFloat(activity.amount) > 0;
 
         // If received → show "From counterparty"
-        if (isReceived && counterparty) {
-            return `from ${counterparty}`;
+        if (isReceived && activity.counterparty) {
+            return `from ${activity.counterparty}`;
         }
 
-        // If sent → show "To receiver"
-        if (!isReceived && receiverId) {
-            return `to ${receiverId}`;
+        // If sent → show "To receiver" (fall back to counterparty)
+        if (!isReceived) {
+            const to = activity.receiverId || activity.counterparty;
+            if (to) return `to ${to}`;
         }
 
         return isReceived
-            ? `from ${counterparty || "unknown"}`
-            : `to ${receiverId || "unknown"}`;
+            ? `from ${activity.counterparty || "unknown"}`
+            : "to unknown";
     };
 
     const handleActivityClick = (activity: RecentActivityType) => {
@@ -133,20 +151,25 @@ export function RecentActivity() {
                 header: "",
                 cell: ({ row }) => {
                     const activity = row.original;
+                    const isSwap = !!activity.swap;
                     const isReceived = parseFloat(activity.amount) > 0;
-                    const activityType = getActivityType(activity.amount);
+                    const activityType = getActivityType(activity);
 
                     return (
                         <div className="flex items-center gap-3">
                             <div
                                 className={cn(
                                     "flex h-10 w-10 items-center justify-center rounded-full shrink-0",
-                                    isReceived
-                                        ? "bg-general-success-background-faded"
-                                        : "bg-general-destructive-background-faded",
+                                    isSwap
+                                        ? "bg-blue-500/10"
+                                        : isReceived
+                                          ? "bg-general-success-background-faded"
+                                          : "bg-general-destructive-background-faded",
                                 )}
                             >
-                                {isReceived ? (
+                                {isSwap ? (
+                                    <ArrowRightLeft className="h-5 w-5 text-blue-500" />
+                                ) : isReceived ? (
                                     <ArrowDownToLine className="h-5 w-5 text-general-success-foreground" />
                                 ) : (
                                     <ArrowUpToLine className="h-5 w-5 text-general-destructive-foreground" />
@@ -157,11 +180,7 @@ export function RecentActivity() {
                                     {activityType}
                                 </div>
                                 <div className="text-md text-muted-foreground font-medium">
-                                    {getActivityFrom(
-                                        activity.amount,
-                                        activity.counterparty,
-                                        activity.receiverId,
-                                    )}
+                                    {getActivityFrom(activity)}
                                 </div>
                             </div>
                         </div>
@@ -174,6 +193,45 @@ export function RecentActivity() {
                 cell: ({ row }) => {
                     const activity = row.original;
                     const isReceived = parseFloat(activity.amount) > 0;
+
+                    if (activity.swap) {
+                        const swap = activity.swap;
+                        return (
+                            <div className="text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                    {swap.sentAmount &&
+                                    swap.sentTokenMetadata ? (
+                                        <span className="font-semibold text-general-destructive-foreground">
+                                            {formatSwapAmount(
+                                                swap.sentAmount,
+                                                swap.sentTokenMetadata
+                                                    .decimals,
+                                            )}{" "}
+                                            {swap.sentTokenMetadata.symbol}
+                                        </span>
+                                    ) : (
+                                        <span className="font-semibold text-muted-foreground">
+                                            ?
+                                        </span>
+                                    )}
+                                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="font-semibold text-general-success-foreground">
+                                        {formatSwapAmount(
+                                            swap.receivedAmount,
+                                            swap.receivedTokenMetadata.decimals,
+                                        )}{" "}
+                                        {swap.receivedTokenMetadata.symbol}
+                                    </span>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                    <FormattedDate
+                                        date={new Date(activity.blockTime)}
+                                        includeTime
+                                    />
+                                </div>
+                            </div>
+                        );
+                    }
 
                     return (
                         <div className="text-right">

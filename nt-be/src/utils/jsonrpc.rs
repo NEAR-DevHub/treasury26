@@ -1,4 +1,26 @@
+use near_api::NetworkConfig;
+use near_jsonrpc_client::{JsonRpcClient, auth};
 use serde::{Deserialize, Serialize};
+use std::error::Error;
+
+/// Create a JSON-RPC client from network config
+pub fn create_rpc_client(
+    network: &NetworkConfig,
+) -> Result<JsonRpcClient, Box<dyn Error + Send + Sync>> {
+    let rpc_endpoint = network
+        .rpc_endpoints
+        .first()
+        .ok_or("No RPC endpoint configured")?;
+
+    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
+
+    if let Some(bearer) = &rpc_endpoint.bearer_header {
+        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
+        client = client.header(auth::Authorization::bearer(token)?);
+    }
+
+    Ok(client)
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JsonRpcRequest<T = serde_json::Value> {
