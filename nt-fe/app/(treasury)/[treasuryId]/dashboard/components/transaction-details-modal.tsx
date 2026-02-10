@@ -146,15 +146,15 @@ export function TransactionDetailsModal({
                             },
                             ...(isLoadingTransaction
                                 ? [
-                                      {
-                                          label: "Transaction",
-                                          value: (
-                                              <Skeleton className="h-5 w-[200px]" />
-                                          ),
-                                      } as InfoItem,
-                                  ]
+                                    {
+                                        label: "Transaction",
+                                        value: (
+                                            <Skeleton className="h-5 w-[200px]" />
+                                        ),
+                                    } as InfoItem,
+                                ]
                                 : transactionHash
-                                  ? [
+                                    ? [
                                         {
                                             label: "Transaction",
                                             value: (
@@ -185,7 +185,7 @@ export function TransactionDetailsModal({
                                             ),
                                         } as InfoItem,
                                     ]
-                                  : []),
+                                    : []),
                         ]}
                     />
                 </div>

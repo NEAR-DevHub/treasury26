@@ -11,7 +11,7 @@ import { Button } from "@/components/button";
 import { ArrowLeft, Calendar, Coins, Mail, Clock, FileX, ChevronDown } from "lucide-react";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
-import { usePlanDetails } from "@/hooks/use-plan-details";
+import { useSubscription } from "@/hooks/use-subscription";
 import { useExportCredits, useExportHistory } from "@/hooks/use-treasury-queries";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { Input } from "@/components/ui/input";
@@ -102,7 +102,7 @@ function parseDateRangeFromUrl(fileUrl: string): { startDate: string; endDate: s
 function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
     const handleDownload = useCallback((item: ExportHistoryItem) => {
         try {
-            const url = new URL(item.file_url, BACKEND_API_BASE);
+            const url = new URL(item.fileUrl, BACKEND_API_BASE);
             const fullUrl = `${BACKEND_API_BASE}${url.pathname}${url.search}`;
 
             const link = document.createElement("a");
@@ -127,7 +127,7 @@ function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
                     return (
                         <div className="text-sm whitespace-normal">
                             <FormattedDate
-                                date={new Date(item.created_at)}
+                                date={new Date(item.createdAt)}
                                 includeTime
                             />
                         </div>
@@ -139,7 +139,7 @@ function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
                 header: "Date Range",
                 cell: ({ row }) => {
                     const item = row.original;
-                    const dateRange = parseDateRangeFromUrl(item.file_url);
+                    const dateRange = parseDateRangeFromUrl(item.fileUrl);
                     return (
                         <div className="text-sm whitespace-normal">
                             {dateRange ? `${dateRange.startDate} - ${dateRange.endDate}` : "N/A"}
@@ -154,7 +154,7 @@ function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
                     const item = row.original;
                     return (
                         <div className="min-w-0">
-                            <User accountId={item.generated_by} size="md" withLink={false} />
+                            <User accountId={item.generatedBy} size="md" withLink={false} />
                         </div>
                     );
                 },
@@ -259,7 +259,7 @@ export default function ExportActivityPage() {
     const router = useRouter();
     const { treasuryId } = useTreasury();
     const { accountId } = useNear();
-    const { data: planDetails, isLoading: planLoading } = usePlanDetails(treasuryId);
+    const { data: planDetails, isLoading: planLoading } = useSubscription(treasuryId);
     const { data: exportCreditsData, refetch: refetchCredits } = useExportCredits(treasuryId);
     const { data: exportHistoryData, refetch: refetchHistory } = useExportHistory(treasuryId);
     const { data: assetsData } = useAssets(treasuryId, { onlyPositiveBalance: false });
@@ -270,9 +270,9 @@ export default function ExportActivityPage() {
 
     // Calculate min date based on plan
     const minDate = useMemo(() => {
-        if (!planDetails?.history_months) return undefined;
-        return subMonths(new Date(), planDetails.history_months);
-    }, [planDetails?.history_months]);
+        if (!planDetails?.planConfig?.limits?.historyLookupMonths) return undefined;
+        return subMonths(new Date(), planDetails.planConfig.limits.historyLookupMonths);
+    }, [planDetails?.planConfig?.limits?.historyLookupMonths]);
 
     const form = useForm<z.infer<typeof exportFormSchema>>({
         resolver: zodResolver(exportFormSchema),
@@ -396,7 +396,7 @@ export default function ExportActivityPage() {
         }
     };
 
-    const historyText = formatHistoryDuration(planDetails?.history_months);
+    const historyText = formatHistoryDuration(planDetails?.planConfig?.limits?.historyLookupMonths);
 
     const toggleSelection = <T extends string>(
         fieldName: "selectedAssets" | "selectedTransactionTypes",
@@ -433,13 +433,13 @@ export default function ExportActivityPage() {
     };
 
     const canGenerateExport = useMemo(() => {
-        const credits = exportCreditsData?.export_credits ?? 0;
+        const credits = exportCreditsData?.exportCredits ?? 0;
         return credits > 0;
     }, [exportCreditsData]);
 
-    const exportCreditsUsed = exportCreditsData?.credits_used ?? 0;
-    const exportCreditsTotal = exportCreditsData?.total_credits ?? planDetails?.export_credit_limit ?? 0;
-    const exportCreditsRemaining = exportCreditsData?.export_credits ?? 0;
+    const exportCreditsUsed = exportCreditsData?.creditsUsed ?? 0;
+    const exportCreditsTotal = exportCreditsData?.totalCredits ?? planDetails?.planConfig?.limits?.monthlyExportCredits ?? 0;
+    const exportCreditsRemaining = exportCreditsData?.exportCredits ?? 0;
 
     // Show loading skeleton
     if (planLoading) {
@@ -712,9 +712,9 @@ export default function ExportActivityPage() {
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold">Export Quota</h3>
                                 <span className="text-sm font-medium border-2 py-1 px-2 rounded-lg">
-                                    {planDetails?.export_credit_limit === null
+                                    {planDetails?.planConfig?.limits?.monthlyExportCredits === null
                                         ? "Unlimited"
-                                        : `${exportCreditsTotal} / ${planDetails?.period === "trial" ? "one-time trial" : planDetails?.period || "month"}`
+                                        : `${exportCreditsTotal} / month`
                                     }
                                 </span>
                             </div>
@@ -735,7 +735,7 @@ export default function ExportActivityPage() {
                                     <div
                                         className="h-full bg-foreground transition-all"
                                         style={{
-                                            width: planDetails?.export_credit_limit === null
+                                            width: planDetails?.planConfig?.limits?.monthlyExportCredits === null
                                                 ? "0%"
                                                 : exportCreditsTotal === 0
                                                     ? "0%"
