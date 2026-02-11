@@ -1,10 +1,11 @@
 //! Token Discovery Service
 //!
 //! Functions to discover new tokens for monitored accounts by analyzing
-//! transaction receipts and querying contract states.
+//! transaction receipts, querying contract states, and checking FastNear balances.
 
 use near_api::NetworkConfig;
 use near_primitives::views::ReceiptView;
+use serde::Deserialize;
 use std::collections::HashSet;
 
 /// Extract FT token contract addresses from a receipt
@@ -69,6 +70,51 @@ pub async fn snapshot_intents_tokens(
     account_id: &str,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     call_mt_tokens_for_owner(network, account_id).await
+}
+
+#[derive(Deserialize, Debug)]
+struct FastNearToken {
+    contract_id: String,
+    balance: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct FastNearResponse {
+    tokens: Option<Vec<FastNearToken>>,
+}
+
+/// Fetch all FT token contract IDs with positive balances from FastNear API
+///
+/// Queries `https://api.fastnear.com/v1/account/{account_id}/full` to get
+/// a real-time view of all fungible tokens held by the account.
+///
+/// # Returns
+/// List of FT contract IDs (e.g. "usdc.near", "wrap.near") that have positive balances.
+pub async fn fetch_fastnear_ft_tokens(
+    http_client: &reqwest::Client,
+    fastnear_api_key: &str,
+    account_id: &str,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let response = http_client
+        .get(format!(
+            "https://api.fastnear.com/v1/account/{}/full",
+            account_id
+        ))
+        .header("Authorization", format!("Bearer {}", fastnear_api_key))
+        .send()
+        .await?;
+
+    let data: FastNearResponse = response.json().await?;
+
+    let tokens = data
+        .tokens
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|t| t.balance.parse::<u128>().unwrap_or(0) > 0)
+        .map(|t| t.contract_id)
+        .collect();
+
+    Ok(tokens)
 }
 
 /// Internal helper to call mt_tokens_for_owner on intents.near contract

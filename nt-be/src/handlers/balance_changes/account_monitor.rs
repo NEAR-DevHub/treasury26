@@ -5,8 +5,19 @@ use std::collections::HashSet;
 use super::balance::ft::get_balance_at_block as get_ft_balance;
 use super::gap_filler::{fill_gaps_with_hints, insert_snapshot_record};
 use super::staking_rewards::{is_staking_token, track_and_fill_staking_rewards};
-use super::token_discovery::snapshot_intents_tokens;
+use super::token_discovery::{fetch_fastnear_ft_tokens, snapshot_intents_tokens};
 use super::transfer_hints::TransferHintService;
+
+/// Configuration for FastNear-based FT token discovery
+///
+/// When provided to `run_monitor_cycle`, enables discovery of FT tokens
+/// via the FastNear API. This catches tokens that wouldn't be found by
+/// the counterparty-based discovery (e.g., direct FT deposits from
+/// accounts the treasury has never transacted with in NEAR).
+pub struct FastNearConfig<'a> {
+    pub http_client: &'a reqwest::Client,
+    pub api_key: &'a str,
+}
 
 /// Run one cycle of monitoring for all enabled accounts
 ///
@@ -15,6 +26,10 @@ use super::transfer_hints::TransferHintService;
 /// 2. For each account:
 ///    - Gets all known tokens for that account from balance_changes
 ///    - Runs gap filling for each token up to the specified block
+///    - Discovers new FT tokens via FastNear API (if configured)
+///    - Discovers new FT tokens from counterparties in balance changes
+///    - Discovers new intents tokens via mt_tokens_for_owner
+///    - Tracks staking rewards
 ///    - Updates last_synced_at timestamp after processing
 /// 3. Handles errors gracefully, continuing with next account if one fails
 ///
@@ -23,11 +38,13 @@ use super::transfer_hints::TransferHintService;
 /// * `network` - NEAR network configuration (archival RPC)
 /// * `up_to_block` - Process gaps up to this block height
 /// * `hint_service` - Optional transfer hint service for accelerated gap filling
+/// * `fastnear` - Optional FastNear config for FT token discovery via balance API
 pub async fn run_monitor_cycle(
     pool: &PgPool,
     network: &NetworkConfig,
     up_to_block: i64,
     hint_service: Option<&TransferHintService>,
+    fastnear: Option<&FastNearConfig<'_>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Get all enabled monitored accounts
     let accounts = sqlx::query!(
@@ -145,6 +162,37 @@ pub async fn run_monitor_cycle(
                 errors.len(),
                 errors
             );
+        }
+
+        // Discover new FT tokens via FastNear balance API
+        // This catches tokens not found by counterparty-based discovery (e.g., direct
+        // FT deposits from accounts the treasury has never transacted with in NEAR)
+        if let Some(fastnear) = fastnear {
+            match discover_ft_tokens_from_fastnear(
+                pool,
+                network,
+                fastnear.http_client,
+                fastnear.api_key,
+                account_id,
+                up_to_block,
+            )
+            .await
+            {
+                Ok(discovered_count) => {
+                    if discovered_count > 0 {
+                        println!(
+                            "  {}: Discovered {} new FT tokens via FastNear",
+                            account_id, discovered_count
+                        );
+                    }
+                }
+                Err(e) => {
+                    eprintln!(
+                        "  {}: Error discovering FT tokens via FastNear: {}",
+                        account_id, e
+                    );
+                }
+            }
         }
 
         // Discover new FT tokens from collected receipts
@@ -321,6 +369,99 @@ async fn discover_ft_tokens_from_receipts(
     Ok(seeded_count)
 }
 
+/// Discover FT tokens via FastNear balance API
+///
+/// This function:
+/// 1. Queries FastNear for all FT tokens with positive balances
+/// 2. Cross-references against already-tracked tokens in balance_changes
+/// 3. For newly discovered tokens, seeds an initial snapshot record
+///
+/// This catches tokens that the counterparty-based discovery misses — for example,
+/// when a treasury receives a direct FT deposit from an account it has never
+/// transacted with in NEAR.
+async fn discover_ft_tokens_from_fastnear(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    http_client: &reqwest::Client,
+    fastnear_api_key: &str,
+    account_id: &str,
+    up_to_block: i64,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    let fastnear_tokens =
+        match fetch_fastnear_ft_tokens(http_client, fastnear_api_key, account_id).await {
+            Ok(tokens) => tokens,
+            Err(e) => {
+                log::debug!(
+                    "Failed to fetch FastNear FT tokens for {}: {}",
+                    account_id,
+                    e
+                );
+                return Ok(0);
+            }
+        };
+
+    if fastnear_tokens.is_empty() {
+        return Ok(0);
+    }
+
+    // Get tokens we already know about
+    let known_tokens: HashSet<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT token_id
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id IS NOT NULL
+        "#,
+    )
+    .bind(account_id)
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .collect();
+
+    // Find new FT tokens not yet tracked
+    let new_tokens: Vec<_> = fastnear_tokens
+        .into_iter()
+        .filter(|t| !known_tokens.contains(t))
+        .collect();
+
+    if new_tokens.is_empty() {
+        return Ok(0);
+    }
+
+    // For each new FT token, insert a snapshot record
+    let mut seeded_count = 0;
+    for token_contract in new_tokens {
+        match insert_snapshot_record(
+            pool,
+            network,
+            account_id,
+            &token_contract,
+            up_to_block as u64,
+        )
+        .await
+        {
+            Ok(_) => {
+                log::info!(
+                    "Discovered FT token {} for account {} via FastNear",
+                    token_contract,
+                    account_id
+                );
+                seeded_count += 1;
+            }
+            Err(e) => {
+                log::warn!(
+                    "Failed to insert snapshot for FastNear-discovered token {} at block {}: {}",
+                    token_contract,
+                    up_to_block,
+                    e
+                );
+            }
+        }
+    }
+
+    Ok(seeded_count)
+}
+
 /// Discover intents tokens via mt_tokens_for_owner snapshot
 ///
 /// This function:
@@ -415,6 +556,7 @@ mod tests {
             &network,
             177_000_000,
             state.transfer_hint_service.as_ref(),
+            None,
         )
         .await;
         assert!(result.is_ok());

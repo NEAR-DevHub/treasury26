@@ -69,11 +69,17 @@ async fn main() {
 
                 log::info!("Processing up to block {}", up_to_block);
 
+                let fastnear_config =
+                    nt_be::handlers::balance_changes::account_monitor::FastNearConfig {
+                        http_client: &state_clone.http_client,
+                        api_key: &state_clone.env_vars.fastnear_api_key,
+                    };
                 match run_monitor_cycle(
                     &state_clone.db_pool,
                     &state_clone.archival_network,
                     up_to_block,
                     state_clone.transfer_hint_service.as_ref(),
+                    Some(&fastnear_config),
                 )
                 .await
                 {
