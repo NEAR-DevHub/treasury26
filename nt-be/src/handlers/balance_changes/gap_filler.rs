@@ -1855,13 +1855,24 @@ pub async fn insert_balance_change_record(
                 receipt.predecessor_id.to_string(),
                 receipt_ids,
             )
-        } else if token_id != "near" {
+        } else if token_id != "near" && !token_id.starts_with("intents.near:") {
             // For FT tokens, receipts execute on the token contract, not the monitored account.
             // Look for ft_transfer/ft_transfer_call receipts on the token contract.
+            // Skip intents tokens — they use a different swap mechanism and their token IDs
+            // are not valid NEAR account IDs.
             resolve_ft_counterparty_from_token_contract(network, account_id, token_id, block_height)
                 .await?
+        } else if token_id.starts_with("intents.near:") {
+            // Intents tokens use a different swap mechanism — counterparty is resolved
+            // later by the swap detector. Use "UNKNOWN" as placeholder.
+            log::debug!(
+                "Intents token {} at block {} — counterparty will be resolved by swap detector",
+                token_id,
+                block_height
+            );
+            (None, None, "UNKNOWN".to_string(), vec![])
         } else {
-            // If no receipt found, we cannot determine counterparty - this is an error condition
+            // If no receipt found for NEAR token, we cannot determine counterparty
             return Err(format!(
                 "No receipt found for block {} - cannot determine counterparty",
                 block_height
