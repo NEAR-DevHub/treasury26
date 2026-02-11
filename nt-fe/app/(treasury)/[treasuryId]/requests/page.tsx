@@ -167,7 +167,7 @@ function NoRequestsFound() {
                     permissionKind="transfer"
                     onClick={() => router.push(`/${treasuryId}/payments`)}
                     permissionAction="AddProposal"
-                    className="gap-1 w-full"
+                    className="gap-1 w-1/2"
                 >
                     <ArrowUpRight className="size-3.5" /> Send
                 </AuthButton>
@@ -175,7 +175,7 @@ function NoRequestsFound() {
                     permissionKind="call"
                     onClick={() => router.push(`/${treasuryId}/exchange`)}
                     permissionAction="AddProposal"
-                    className="gap-1 w-full"
+                    className="gap-1 w-1/2"
                 >
                     <ArrowRightLeft className="size-3.5" /> Exchange
                 </AuthButton>
