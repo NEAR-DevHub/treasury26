@@ -250,7 +250,6 @@ export function ProposalSidebar({
     );
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(
         proposal,
-        policy,
         treasuryId,
     );
 
