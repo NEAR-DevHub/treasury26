@@ -41,6 +41,9 @@ export interface TreasuryConfig {
 export interface Treasury {
     daoId: string;
     config: TreasuryConfig;
+    isMember: boolean;
+    isSaved: boolean;
+    isHidden: boolean;
 }
 
 /**
@@ -49,6 +52,9 @@ export interface Treasury {
  */
 export async function getUserTreasuries(
     accountId: string,
+    options?: {
+        includeHidden?: boolean;
+    },
 ): Promise<Treasury[]> {
     if (!accountId) return [];
 
@@ -56,7 +62,10 @@ export async function getUserTreasuries(
         const url = `${BACKEND_API_BASE}/user/treasuries`;
 
         const response = await axios.get<Treasury[]>(url, {
-            params: { accountId },
+            params: {
+                accountId,
+                includeHidden: options?.includeHidden ?? false,
+            },
         });
         return response.data;
     } catch (error) {
@@ -944,6 +953,70 @@ export async function markDaoDirty(daoId: string): Promise<void> {
     } catch (error) {
         // Don't throw - this is a non-critical optimization
         console.warn(`Failed to mark DAO ${daoId} as dirty:`, error);
+    }
+}
+
+/**
+ * Save a treasury to user's list (used for guest treasuries)
+ */
+export async function saveUserTreasury(
+    accountId: string,
+    daoId: string,
+): Promise<void> {
+    if (!accountId || !daoId) return;
+
+    try {
+        const url = `${BACKEND_API_BASE}/user/treasuries/save`;
+        await axios.post(url, { accountId, daoId });
+    } catch (error) {
+        console.error(
+            `Failed to save treasury ${daoId} for ${accountId}`,
+            error,
+        );
+        throw error;
+    }
+}
+
+/**
+ * Set treasury visibility in user's list
+ */
+export async function setUserTreasuryHidden(
+    accountId: string,
+    daoId: string,
+    hidden: boolean = true,
+): Promise<void> {
+    if (!accountId || !daoId) return;
+
+    try {
+        const url = `${BACKEND_API_BASE}/user/treasuries/hide`;
+        await axios.post(url, { accountId, daoId, hidden });
+    } catch (error) {
+        console.error(
+            `Failed to set hidden=${hidden} for treasury ${daoId} and ${accountId}`,
+            error,
+        );
+        throw error;
+    }
+}
+
+/**
+ * Remove treasury from user's saved list
+ */
+export async function removeUserTreasury(
+    accountId: string,
+    daoId: string,
+): Promise<void> {
+    if (!accountId || !daoId) return;
+
+    try {
+        const url = `${BACKEND_API_BASE}/user/treasuries/remove`;
+        await axios.post(url, { accountId, daoId });
+    } catch (error) {
+        console.error(
+            `Failed to remove saved treasury ${daoId} for ${accountId}`,
+            error,
+        );
+        throw error;
     }
 }
 

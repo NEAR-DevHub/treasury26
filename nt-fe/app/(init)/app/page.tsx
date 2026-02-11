@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useNear } from "@/stores/near-store";
-import { useUserTreasuries } from "@/hooks/use-treasury-queries";
-import { Button } from "@/components/button";
 import { GradFlow } from "gradflow";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
-import { useTreasury } from "@/hooks/use-treasury";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { Button } from "@/components/button";
 import Logo from "@/components/logo";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useUserTreasuries } from "@/hooks/use-treasury-queries";
+import { useNear } from "@/stores/near-store";
 
 function GradientTitle() {
     return (
@@ -36,12 +36,7 @@ export default function AppRedirect() {
         authError,
         clearError,
     } = useNear();
-    const {
-        data: treasuries = [],
-        isLoading,
-        isError,
-    } = useUserTreasuries(accountId);
-    const { lastTreasuryId } = useTreasury();
+    const { lastTreasuryId, treasuries, isLoading } = useTreasury();
 
     useEffect(() => {
         if (!isLoading && treasuries.length > 0) {
@@ -50,12 +45,18 @@ export default function AppRedirect() {
             accountId &&
             treasuries.length === 0 &&
             !isLoading &&
-            !isError &&
             !isInitializing
         ) {
             router.push(`/app/new`);
         }
-    }, [treasuries, isLoading, router]);
+    }, [
+        treasuries,
+        isLoading,
+        router,
+        accountId,
+        isInitializing,
+        lastTreasuryId,
+    ]);
     const buttonText = isInitializing
         ? "Loading..."
         : isAuthenticating || isLoading

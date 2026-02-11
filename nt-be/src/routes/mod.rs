@@ -114,6 +114,18 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::user::treasuries::get_user_treasuries),
         )
         .route(
+            "/api/user/treasuries/save",
+            post(handlers::user::treasuries::save_user_treasury),
+        )
+        .route(
+            "/api/user/treasuries/hide",
+            post(handlers::user::treasuries::hide_user_treasury),
+        )
+        .route(
+            "/api/user/treasuries/remove",
+            post(handlers::user::treasuries::remove_user_treasury),
+        )
+        .route(
             "/api/user/assets",
             get(handlers::user::assets::get_user_assets),
         )

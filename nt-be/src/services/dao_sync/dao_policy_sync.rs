@@ -200,31 +200,11 @@ async fn sync_dao_members(
 
     log::debug!("DAO {}: extracted {} unique members", dao_id, members.len());
 
-    // Transaction: clear old members and insert new ones
+    // Transaction: reconcile policy members without deleting user-saved rows
     let mut tx = pool.begin().await?;
 
-    // Delete existing members for this DAO
-    sqlx::query!("DELETE FROM dao_members WHERE dao_id = $1", dao_id)
-        .execute(&mut *tx)
-        .await?;
-
-    // Insert new members using batch insert
-    if !members.is_empty() {
-        let members_vec: Vec<String> = members.into_iter().collect();
-        let dao_ids: Vec<String> = vec![dao_id.to_string(); members_vec.len()];
-
-        sqlx::query!(
-            r#"
-            INSERT INTO dao_members (dao_id, account_id)
-            SELECT unnest($1::text[]), unnest($2::text[])
-            ON CONFLICT (dao_id, account_id) DO NOTHING
-            "#,
-            &dao_ids,
-            &members_vec
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
+    let members_vec: Vec<String> = members.into_iter().collect();
+    reconcile_policy_membership(&mut tx, dao_id, &members_vec).await?;
 
     // Mark DAO as clean and update sync timestamp
     sqlx::query!(
@@ -239,6 +219,74 @@ async fn sync_dao_members(
     .await?;
 
     tx.commit().await?;
+
+    Ok(())
+}
+
+async fn reconcile_policy_membership(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    dao_id: &str,
+    members_vec: &[String],
+) -> Result<(), sqlx::Error> {
+    // Upsert current policy members as active policy members.
+    // Keep user-managed flags (is_saved / is_hidden) untouched.
+    if !members_vec.is_empty() {
+        let dao_ids: Vec<String> = vec![dao_id.to_string(); members_vec.len()];
+        sqlx::query!(
+            r#"
+            INSERT INTO dao_members (dao_id, account_id, is_policy_member)
+            SELECT unnest($1::text[]), unnest($2::text[]), true
+            ON CONFLICT (dao_id, account_id) DO UPDATE
+            SET is_policy_member = true
+            "#,
+            &dao_ids,
+            members_vec
+        )
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    // Mark previous policy members that are no longer in policy as inactive policy members.
+    if members_vec.is_empty() {
+        sqlx::query!(
+            r#"
+            UPDATE dao_members
+            SET is_policy_member = false
+            WHERE dao_id = $1
+              AND is_policy_member = true
+            "#,
+            dao_id
+        )
+        .execute(&mut **tx)
+        .await?;
+    } else {
+        sqlx::query!(
+            r#"
+            UPDATE dao_members
+            SET is_policy_member = false
+            WHERE dao_id = $1
+              AND is_policy_member = true
+              AND NOT (account_id = ANY($2::text[]))
+            "#,
+            dao_id,
+            members_vec
+        )
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    // Cleanup rows no longer used by policy and not explicitly saved by user.
+    sqlx::query!(
+        r#"
+        DELETE FROM dao_members
+        WHERE dao_id = $1
+          AND is_policy_member = false
+          AND is_saved = false
+        "#,
+        dao_id
+    )
+    .execute(&mut **tx)
+    .await?;
 
     Ok(())
 }
@@ -270,6 +318,7 @@ fn extract_members_from_policy(policy: &serde_json::Value) -> HashSet<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sqlx::PgPool;
 
     #[test]
     fn test_extract_members_from_policy() {
@@ -312,5 +361,139 @@ mod tests {
         assert!(is_permanent_error("CodeDoesNotExist"));
         assert!(!is_permanent_error("Network timeout"));
         assert!(!is_permanent_error("Connection refused"));
+    }
+
+    #[sqlx::test]
+    async fn test_reconcile_policy_membership_preserves_saved_guest_rows(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let dao_id = "test-dao.sputnik-dao.near";
+
+        sqlx::query!(
+            r#"
+            INSERT INTO daos (dao_id, is_dirty, source)
+            VALUES ($1, true, 'manual')
+            "#,
+            dao_id
+        )
+        .execute(&pool)
+        .await?;
+
+        // Existing saved guest row (not policy member) should survive reconciliation.
+        sqlx::query!(
+            r#"
+            INSERT INTO dao_members (dao_id, account_id, is_policy_member, is_saved, is_hidden)
+            VALUES ($1, 'guest.near', false, true, false)
+            "#,
+            dao_id
+        )
+        .execute(&pool)
+        .await?;
+
+        let mut tx = pool.begin().await?;
+        let members = vec!["member1.near".to_string(), "member2.near".to_string()];
+        reconcile_policy_membership(&mut tx, dao_id, &members).await?;
+        tx.commit().await?;
+
+        let guest = sqlx::query!(
+            r#"
+            SELECT is_policy_member, is_saved, is_hidden
+            FROM dao_members
+            WHERE dao_id = $1 AND account_id = 'guest.near'
+            "#,
+            dao_id
+        )
+        .fetch_one(&pool)
+        .await?;
+        assert!(
+            !guest.is_policy_member,
+            "Guest should remain non-policy member"
+        );
+        assert!(guest.is_saved, "Guest should remain saved");
+        assert!(!guest.is_hidden, "Guest visibility should be preserved");
+
+        let members_count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM dao_members
+            WHERE dao_id = $1 AND is_policy_member = true
+            "#,
+            dao_id
+        )
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!(members_count, 2, "Should upsert both policy members");
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn test_reconcile_policy_membership_removes_unsaved_removed_members(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let dao_id = "test-dao-cleanup.sputnik-dao.near";
+
+        sqlx::query!(
+            r#"
+            INSERT INTO daos (dao_id, is_dirty, source)
+            VALUES ($1, true, 'manual')
+            "#,
+            dao_id
+        )
+        .execute(&pool)
+        .await?;
+
+        // Previously policy-managed member
+        sqlx::query!(
+            r#"
+            INSERT INTO dao_members (dao_id, account_id, is_policy_member, is_saved, is_hidden)
+            VALUES ($1, 'old-member.near', true, false, false)
+            "#,
+            dao_id
+        )
+        .execute(&pool)
+        .await?;
+
+        // Saved non-policy row should survive cleanup
+        sqlx::query!(
+            r#"
+            INSERT INTO dao_members (dao_id, account_id, is_policy_member, is_saved, is_hidden)
+            VALUES ($1, 'saved.near', false, true, false)
+            "#,
+            dao_id
+        )
+        .execute(&pool)
+        .await?;
+
+        let mut tx = pool.begin().await?;
+        let members: Vec<String> = Vec::new();
+        reconcile_policy_membership(&mut tx, dao_id, &members).await?;
+        tx.commit().await?;
+
+        let removed_count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM dao_members
+            WHERE dao_id = $1 AND account_id = 'old-member.near'
+            "#,
+            dao_id
+        )
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!(removed_count, 0, "Unsaved removed member should be deleted");
+
+        let saved_count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*) as "count!"
+            FROM dao_members
+            WHERE dao_id = $1 AND account_id = 'saved.near'
+            "#,
+            dao_id
+        )
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!(saved_count, 1, "Saved row should remain");
+
+        Ok(())
     }
 }
