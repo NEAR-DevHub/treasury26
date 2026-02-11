@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{AppState, constants::TREASURY_FACTORY_CONTRACT_ID, services::register_new_dao};
 
+pub const TREASURY_CREATE_DEPOSIT_IN_MICRONEAR: u128 = 5458190;
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTreasuryRequest {
@@ -168,7 +170,9 @@ pub async fn create_treasury(
         .call_function("create", args)
         .transaction()
         .max_gas()
-        .deposit(NearToken::from_micronear(545819))
+        .deposit(NearToken::from_micronear(
+            TREASURY_CREATE_DEPOSIT_IN_MICRONEAR,
+        ))
         .with_signer(state.signer_id.clone(), state.signer.clone())
         .send_to(&state.network)
         .await

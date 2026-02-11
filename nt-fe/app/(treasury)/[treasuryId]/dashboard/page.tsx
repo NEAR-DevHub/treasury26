@@ -13,16 +13,8 @@ import { DepositModal } from "./components/deposit-modal";
 import { InfoBox } from "@/features/onboarding/components/info-box";
 import { DashboardTour } from "@/features/onboarding/steps/dashboard";
 import { useTreasury } from "@/hooks/use-treasury";
-import Big from "big.js";
 
 export default function AppPage() {
-    console.log(
-        Big(6)
-            .mul(Big(10).pow(24))
-            .sub(Big(10).pow(18).mul(Big(541810)))
-            .toFixed(0),
-    );
-
     const { treasuryId } = useTreasury();
     const { data, isLoading, isPending } = useAssets(treasuryId);
     const isAssetsLoading = isLoading || isPending;
