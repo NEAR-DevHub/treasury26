@@ -19,6 +19,7 @@ export interface PlanLimits {
     trialExportCredits: number | null;
     monthlyBatchPaymentCredits: number | null;
     trialBatchPaymentCredits: number | null;
+    gasCoveredTransactions: number | null;
     historyLookupMonths: number;
 }
 
@@ -50,7 +51,9 @@ export interface SubscriptionStatus {
     planConfig: PlanConfig;
     exportCredits: number;
     batchPaymentCredits: number;
+    gasCoveredTransactions: number;
     creditsResetAt: string;
+    monthlyUsedVolumeCents: number;
 }
 
 /**

@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use crate::AppState;
 use crate::config::{PlanType, get_initial_credits};
+use crate::utils::datetime::next_month_start_utc;
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct MonitoredAccount {
@@ -137,11 +138,12 @@ pub async fn add_monitored_account(
     // New registration - insert with Pro plan and credits (launch promotion)
     let (export_credits, batch_payment_credits, gas_covered_transactions) =
         get_initial_credits(PlanType::Plus);
+    let credits_reset_at = next_month_start_utc(Utc::now());
 
     let account = sqlx::query_as::<_, MonitoredAccount>(
         r#"
-        INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits, gas_covered_transactions, plan_type, dirty_at)
-        VALUES ($1, true, $2, $3, $4, 'plus', NOW())
+        INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits, gas_covered_transactions, plan_type, credits_reset_at, dirty_at)
+        VALUES ($1, true, $2, $3, $4, 'plus', $5, NOW())
         RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
                   export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
         "#,
@@ -150,6 +152,7 @@ pub async fn add_monitored_account(
     .bind(export_credits)
     .bind(batch_payment_credits)
     .bind(gas_covered_transactions)
+    .bind(credits_reset_at)
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {

@@ -267,6 +267,25 @@ pub fn get_initial_credits(plan_type: PlanType) -> (i32, i32, i32) {
     )
 }
 
+/// Get monthly reset credits for a plan.
+/// Returns `None` for credit types that should not be reset monthly.
+pub fn get_monthly_reset_credits(plan_type: PlanType) -> (Option<i32>, Option<i32>, Option<i32>) {
+    let config = get_plan_config(plan_type);
+
+    let export_credits = config.limits.monthly_export_credits.map(|v| v as i32);
+    let batch_payment_credits = config
+        .limits
+        .monthly_batch_payment_credits
+        .map(|v| v as i32);
+    let gas_covered_transactions = config.limits.gas_covered_transactions.map(|v| v as i32);
+
+    (
+        export_credits,
+        batch_payment_credits,
+        gas_covered_transactions,
+    )
+}
+
 /// Calculate overage fee for volume exceeding plan limit
 /// Returns fee in USD cents
 pub fn calculate_overage_fee(plan_type: PlanType, volume_cents: u64, limit_cents: u64) -> u64 {
@@ -410,6 +429,30 @@ mod tests {
         assert!(!has_gas_covered_credits(PlanType::Free, 0));
         assert!(has_gas_covered_credits(PlanType::Pro, 1000));
         assert!(!has_gas_covered_credits(PlanType::Pro, 0));
+    }
+
+    #[test]
+    fn test_get_monthly_reset_credits() {
+        let (free_exports, free_batch, free_gas) = get_monthly_reset_credits(PlanType::Free);
+        assert_eq!(free_exports, None);
+        assert_eq!(free_batch, None);
+        assert_eq!(free_gas, Some(10));
+
+        let (plus_exports, plus_batch, plus_gas) = get_monthly_reset_credits(PlanType::Plus);
+        assert_eq!(plus_exports, Some(5));
+        assert_eq!(plus_batch, Some(10));
+        assert_eq!(plus_gas, Some(1000));
+
+        let (pro_exports, pro_batch, pro_gas) = get_monthly_reset_credits(PlanType::Pro);
+        assert_eq!(pro_exports, Some(10));
+        assert_eq!(pro_batch, Some(100));
+        assert_eq!(pro_gas, Some(2000));
+
+        let (enterprise_exports, enterprise_batch, enterprise_gas) =
+            get_monthly_reset_credits(PlanType::Enterprise);
+        assert_eq!(enterprise_exports, None);
+        assert_eq!(enterprise_batch, None);
+        assert_eq!(enterprise_gas, None);
     }
 
     #[test]

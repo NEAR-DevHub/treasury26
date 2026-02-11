@@ -183,6 +183,14 @@ async fn main() {
         });
     }
 
+    // Spawn subscription monthly credit reset service
+    {
+        let pool = state.db_pool.clone();
+        tokio::spawn(async move {
+            nt_be::handlers::subscription::run_monthly_plan_reset_service(pool).await;
+        });
+    }
+
     // Configure CORS - must specify exact origins, methods, and headers when using credentials
     let origins: Vec<HeaderValue> = state
         .env_vars

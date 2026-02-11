@@ -5,6 +5,7 @@ import { ProposalKind } from "@/lib/proposals-api";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useSubscription } from "@/hooks/use-subscription";
 import { useMemo } from "react";
 
 interface AuthButtonProps extends React.ComponentProps<typeof Button> {
@@ -24,6 +25,8 @@ export const NO_WALLET_MESSAGE = "Connect your wallet";
 export const NO_PERMISSION_MESSAGE =
     "You don't have permission to perform this action";
 export const NO_VOTE_MESSAGE = "You have already voted on this proposal";
+export const NO_SPONSORED_TRANSACTIONS_MESSAGE =
+    "No sponsored transactions remaining";
 
 interface ErrorMessageProps extends React.ComponentProps<typeof Button> {
     message: string;
@@ -56,12 +59,22 @@ export function AuthButton({
     const { accountId } = useNear();
     const { treasuryId } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
+    const { data: subscription } = useSubscription(treasuryId);
     const hasAccess = useMemo(() => {
         return !!(
             accountId &&
             hasPermission(policy, accountId, permissionKind, permissionAction)
         );
     }, [policy, accountId, permissionKind, permissionAction]);
+    const hasSponsoredTransactions = useMemo(() => {
+        if (!subscription) return true;
+
+        const totalSponsored =
+            subscription.planConfig.limits.gasCoveredTransactions;
+        if (totalSponsored === null) return true;
+
+        return subscription.gasCoveredTransactions > 0;
+    }, [subscription]);
 
     if (!accountId) {
         return (
@@ -74,6 +87,17 @@ export function AuthButton({
     if (!hasAccess) {
         return (
             <ErrorMessage message={NO_PERMISSION_MESSAGE} {...props}>
+                {children}
+            </ErrorMessage>
+        );
+    }
+
+    if (!hasSponsoredTransactions) {
+        return (
+            <ErrorMessage
+                message={NO_SPONSORED_TRANSACTIONS_MESSAGE}
+                {...props}
+            >
                 {children}
             </ErrorMessage>
         );
@@ -126,6 +150,7 @@ export function AuthButtonWithProposal({
     const { accountId } = useNear();
     const { treasuryId } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
+    const { data: subscription } = useSubscription(treasuryId);
 
     const hasAccess = useMemo(() => {
         if (!policy || !accountId) return false;
@@ -137,6 +162,15 @@ export function AuthButtonWithProposal({
         );
         return approverAccounts.includes(accountId);
     }, [policy, accountId, proposalKind, isDeleteCheck]);
+    const hasSponsoredTransactions = useMemo(() => {
+        if (!subscription) return true;
+
+        const totalSponsored =
+            subscription.planConfig.limits.gasCoveredTransactions;
+        if (totalSponsored === null) return true;
+
+        return subscription.gasCoveredTransactions > 0;
+    }, [subscription]);
 
     if (!accountId) {
         return (
@@ -149,6 +183,17 @@ export function AuthButtonWithProposal({
     if (!hasAccess) {
         return (
             <ErrorMessage message={NO_PERMISSION_MESSAGE} {...props}>
+                {children}
+            </ErrorMessage>
+        );
+    }
+
+    if (!hasSponsoredTransactions) {
+        return (
+            <ErrorMessage
+                message={NO_SPONSORED_TRANSACTIONS_MESSAGE}
+                {...props}
+            >
                 {children}
             </ErrorMessage>
         );
