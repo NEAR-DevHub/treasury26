@@ -1701,3 +1701,115 @@ async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) ->
 
     Ok(())
 }
+
+/// Test that FastNear-based FT token discovery finds tokens that counterparty-based
+/// discovery misses (issue #177).
+///
+/// das-willies.sputnik-dao.near received USDC via a direct FT deposit from an account
+/// it never transacted with in NEAR. The assets list (powered by FastNear) shows the
+/// balance, but the activity tracker (counterparty-based) missed it. With FastNear
+/// discovery enabled in the monitor cycle, the USDC token should be discovered.
+#[sqlx::test]
+async fn test_fastnear_ft_token_discovery(pool: PgPool) -> sqlx::Result<()> {
+    common::load_test_env();
+    use nt_be::handlers::balance_changes::account_monitor::{FastNearConfig, run_monitor_cycle};
+
+    let account_id = "das-willies.sputnik-dao.near";
+    let usdc_contract = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
+
+    println!("\n=== Testing FastNear FT Token Discovery (Issue #177) ===");
+    println!("Account: {}", account_id);
+    println!("Expected discovered token: {}", usdc_contract);
+
+    // Insert the account as monitored
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, true)
+        "#,
+        account_id
+    )
+    .execute(&pool)
+    .await?;
+
+    println!("✓ Account added to monitored_accounts");
+
+    // Verify no balance changes exist initially
+    let initial_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM balance_changes WHERE account_id = $1")
+            .bind(account_id)
+            .fetch_one(&pool)
+            .await?;
+
+    assert_eq!(
+        initial_count.0, 0,
+        "Should start with no balance change records"
+    );
+    println!("✓ Verified empty state (0 records)");
+
+    let network = common::create_archival_network();
+    let http_client = reqwest::Client::new();
+    let fastnear_api_key = common::get_fastnear_api_key();
+
+    let fastnear_config = FastNearConfig {
+        http_client: &http_client,
+        api_key: &fastnear_api_key,
+    };
+
+    let up_to_block = 185_000_000i64;
+
+    println!("\n=== First Monitoring Cycle (with FastNear discovery) ===");
+    println!("Up to block: {}", up_to_block);
+
+    run_monitor_cycle(&pool, &network, up_to_block, None, Some(&fastnear_config))
+        .await
+        .map_err(|e| {
+            sqlx::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
+    // Check that USDC token was discovered via FastNear
+    let usdc_count: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        "#,
+    )
+    .bind(account_id)
+    .bind(usdc_contract)
+    .fetch_one(&pool)
+    .await?;
+
+    println!(
+        "✓ Found {} balance_changes records for USDC token",
+        usdc_count.0
+    );
+
+    assert!(
+        usdc_count.0 > 0,
+        "FastNear discovery should have found USDC token for {} and created a snapshot record",
+        account_id
+    );
+
+    // Also verify NEAR was seeded (standard behavior)
+    let near_count: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = 'near'
+        "#,
+    )
+    .bind(account_id)
+    .fetch_one(&pool)
+    .await?;
+
+    assert!(near_count.0 > 0, "Should have NEAR balance changes as well");
+
+    println!("✓ Found {} NEAR balance change records", near_count.0);
+    println!("\n=== FastNear FT Token Discovery Test Passed ===");
+
+    Ok(())
+}
