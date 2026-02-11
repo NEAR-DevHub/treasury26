@@ -1608,7 +1608,7 @@ async fn resolve_ft_counterparty_from_token_contract(
 
     if receipt_hashes.is_empty() {
         return Err(format!(
-            "No data changes found on token contract {} at block {}",
+            "No receipt found - no data changes on token contract {} at block {}",
             token_id, block_height
         )
         .into());
@@ -1716,7 +1716,7 @@ async fn resolve_ft_counterparty_from_token_contract(
     }
 
     Err(format!(
-        "No FT transfer receipt found at block {} for {}/{}",
+        "No receipt found - no FT transfer receipt at block {} for {}/{}",
         block_height, account_id, token_id
     )
     .into())
