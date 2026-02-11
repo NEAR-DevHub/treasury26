@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT account_id,\n               plan_type::text as \"plan_type!\",\n               export_credits,\n               batch_payment_credits,\n               gas_covered_transactions\n        FROM monitored_accounts\n        WHERE (credits_reset_at AT TIME ZONE 'UTC')::date <= $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "account_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "plan_type!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "export_credits",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "batch_payment_credits",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "gas_covered_transactions",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5afa21483e5ae8f6deca6e2807d6c84fc2574d8f5f656d3ed8c5a78d1efa8a9c"
+}

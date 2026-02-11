@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE monitored_accounts\n            SET export_credits = $2,\n                batch_payment_credits = $3,\n                gas_covered_transactions = $4,\n                credits_reset_at = $5,\n                updated_at = NOW()\n            WHERE account_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "90c7186abb27c7608c958cf1bb1388a2db47b9c46b08a8009a8a3204865d5e8d"
+}
