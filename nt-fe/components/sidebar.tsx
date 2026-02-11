@@ -19,6 +19,7 @@ import { useSaveTreasuryMutation } from "@/hooks/use-treasury-mutations";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
+import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { ApprovalInfo } from "./approval-info";
 import { Button } from "./button";
 import { GuestBadge } from "./guest-badge";
@@ -252,6 +253,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                         );
                     })}
                 </nav>
+
+                <CreateBanner />
 
                 <div
                     className={cn(

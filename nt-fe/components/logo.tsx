@@ -4,6 +4,7 @@ import Image from "next/image";
 
 interface LogoProps {
     size?: "sm" | "md" | "lg";
+    variant?: "full" | "icon";
 }
 
 const sizeClasses = cva("w-auto", {
@@ -19,19 +20,23 @@ const sizeClasses = cva("w-auto", {
     },
 });
 
-export default function Logo({ size = "md" }: LogoProps) {
+export default function Logo({ size = "md", variant = "full" }: LogoProps) {
     const className = sizeClasses({ size });
+
+    const darkSrc = variant === "icon" ? "/favicon_dark.svg" : "/logo_dark.svg";
+    const lightSrc = variant === "icon" ? "/favicon_light.svg" : "/logo.svg";
+
     return (
         <>
             <Image
-                src="/logo_dark.svg"
+                src={darkSrc}
                 alt="Trezu"
                 height={0}
                 width={0}
                 className={cn(className, "dark:block hidden")}
             />
             <Image
-                src="/logo.svg"
+                src={lightSrc}
                 alt="Trezu"
                 height={0}
                 width={0}
