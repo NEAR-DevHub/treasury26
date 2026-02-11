@@ -1712,7 +1712,7 @@ async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) ->
 #[sqlx::test]
 async fn test_fastnear_ft_token_discovery(pool: PgPool) -> sqlx::Result<()> {
     common::load_test_env();
-    use nt_be::handlers::balance_changes::account_monitor::{FastNearConfig, run_monitor_cycle};
+    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
 
     let account_id = "das-willies.sputnik-dao.near";
     let usdc_contract = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
@@ -1751,24 +1751,25 @@ async fn test_fastnear_ft_token_discovery(pool: PgPool) -> sqlx::Result<()> {
     let http_client = reqwest::Client::new();
     let fastnear_api_key = common::get_fastnear_api_key();
 
-    let fastnear_config = FastNearConfig {
-        http_client: &http_client,
-        api_key: &fastnear_api_key,
-    };
-
     let up_to_block = 185_000_000i64;
 
     println!("\n=== First Monitoring Cycle (with FastNear discovery) ===");
     println!("Up to block: {}", up_to_block);
 
-    run_monitor_cycle(&pool, &network, up_to_block, None, Some(&fastnear_config))
-        .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        None,
+        Some((&http_client, &fastnear_api_key)),
+    )
+    .await
+    .map_err(|e| {
+        sqlx::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            e.to_string(),
+        ))
+    })?;
 
     // Check that USDC token was discovered via FastNear
     let usdc_count: (i64,) = sqlx::query_as(

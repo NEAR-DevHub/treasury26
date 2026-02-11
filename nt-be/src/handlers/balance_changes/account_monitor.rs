@@ -8,17 +8,6 @@ use super::staking_rewards::{is_staking_token, track_and_fill_staking_rewards};
 use super::token_discovery::{fetch_fastnear_ft_tokens, snapshot_intents_tokens};
 use super::transfer_hints::TransferHintService;
 
-/// Configuration for FastNear-based FT token discovery
-///
-/// When provided to `run_monitor_cycle`, enables discovery of FT tokens
-/// via the FastNear API. This catches tokens that wouldn't be found by
-/// the counterparty-based discovery (e.g., direct FT deposits from
-/// accounts the treasury has never transacted with in NEAR).
-pub struct FastNearConfig<'a> {
-    pub http_client: &'a reqwest::Client,
-    pub api_key: &'a str,
-}
-
 /// Run one cycle of monitoring for all enabled accounts
 ///
 /// This function:
@@ -38,13 +27,13 @@ pub struct FastNearConfig<'a> {
 /// * `network` - NEAR network configuration (archival RPC)
 /// * `up_to_block` - Process gaps up to this block height
 /// * `hint_service` - Optional transfer hint service for accelerated gap filling
-/// * `fastnear` - Optional FastNear config for FT token discovery via balance API
+/// * `fastnear` - Optional `(http_client, api_key)` for FT token discovery via FastNear balance API
 pub async fn run_monitor_cycle(
     pool: &PgPool,
     network: &NetworkConfig,
     up_to_block: i64,
     hint_service: Option<&TransferHintService>,
-    fastnear: Option<&FastNearConfig<'_>>,
+    fastnear: Option<(&reqwest::Client, &str)>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Get all enabled monitored accounts
     let accounts = sqlx::query!(
@@ -167,12 +156,12 @@ pub async fn run_monitor_cycle(
         // Discover new FT tokens via FastNear balance API
         // This catches tokens not found by counterparty-based discovery (e.g., direct
         // FT deposits from accounts the treasury has never transacted with in NEAR)
-        if let Some(fastnear) = fastnear {
+        if let Some((http_client, api_key)) = fastnear {
             match discover_ft_tokens_from_fastnear(
                 pool,
                 network,
-                fastnear.http_client,
-                fastnear.api_key,
+                http_client,
+                api_key,
                 account_id,
                 up_to_block,
             )
@@ -379,7 +368,7 @@ async fn discover_ft_tokens_from_receipts(
 /// This catches tokens that the counterparty-based discovery misses — for example,
 /// when a treasury receives a direct FT deposit from an account it has never
 /// transacted with in NEAR.
-async fn discover_ft_tokens_from_fastnear(
+pub async fn discover_ft_tokens_from_fastnear(
     pool: &PgPool,
     network: &NetworkConfig,
     http_client: &reqwest::Client,
@@ -391,7 +380,7 @@ async fn discover_ft_tokens_from_fastnear(
         match fetch_fastnear_ft_tokens(http_client, fastnear_api_key, account_id).await {
             Ok(tokens) => tokens,
             Err(e) => {
-                log::debug!(
+                log::warn!(
                     "Failed to fetch FastNear FT tokens for {}: {}",
                     account_id,
                     e

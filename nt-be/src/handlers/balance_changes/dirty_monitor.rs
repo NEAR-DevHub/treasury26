@@ -14,6 +14,7 @@ use sqlx::types::chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
+use super::account_monitor::discover_ft_tokens_from_fastnear;
 use super::gap_filler::fill_gaps_with_hints;
 use super::staking_rewards::is_staking_token;
 use super::swap_detector::{detect_swaps_from_api, store_detected_swaps};
@@ -33,6 +34,8 @@ use super::transfer_hints::TransferHintService;
 /// * `active_tasks` - Map of account_id -> JoinHandle for in-flight tasks
 /// * `intents_api_key` - Optional Intents Explorer API key for swap detection
 /// * `intents_api_url` - Intents Explorer API base URL
+/// * `http_client` - HTTP client for FastNear API calls
+/// * `fastnear_api_key` - FastNear API key for FT token discovery
 pub async fn run_dirty_monitor(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -40,6 +43,8 @@ pub async fn run_dirty_monitor(
     active_tasks: &mut HashMap<String, JoinHandle<()>>,
     intents_api_key: Option<&str>,
     intents_api_url: &str,
+    http_client: &reqwest::Client,
+    fastnear_api_key: &str,
 ) {
     // 1. Clean up finished tasks
     active_tasks.retain(|account_id, handle| {
@@ -85,6 +90,8 @@ pub async fn run_dirty_monitor(
         let account_id_clone = account_id.clone();
         let intents_api_key = intents_api_key.map(|s| s.to_string());
         let intents_api_url = intents_api_url.to_string();
+        let http_client = http_client.clone();
+        let fastnear_api_key = fastnear_api_key.to_string();
 
         log::info!(
             "[dirty-monitor] Spawning priority task for {} (dirty_at: {})",
@@ -104,6 +111,8 @@ pub async fn run_dirty_monitor(
                 None,
                 intents_api_key.as_deref(),
                 &intents_api_url,
+                &http_client,
+                &fastnear_api_key,
             )
             .await
             {
@@ -132,9 +141,40 @@ async fn run_dirty_task(
     hint_service: Option<&TransferHintService>,
     intents_api_key: Option<&str>,
     intents_api_url: &str,
+    http_client: &reqwest::Client,
+    fastnear_api_key: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Get current block height
     let up_to_block = Chain::block().fetch_from(network).await?.header.height as i64;
+
+    // Discover new FT tokens via FastNear before filling gaps, so newly
+    // discovered tokens get their gaps filled in this same task.
+    match discover_ft_tokens_from_fastnear(
+        pool,
+        network,
+        http_client,
+        fastnear_api_key,
+        account_id,
+        up_to_block,
+    )
+    .await
+    {
+        Ok(count) if count > 0 => {
+            log::info!(
+                "[dirty-monitor] {}: Discovered {} new FT tokens via FastNear",
+                account_id,
+                count
+            );
+        }
+        Err(e) => {
+            log::warn!(
+                "[dirty-monitor] {}: Error discovering FT tokens via FastNear: {}",
+                account_id,
+                e
+            );
+        }
+        _ => {}
+    }
 
     let total_filled =
         fill_dirty_account_gaps(pool, network, account_id, up_to_block, hint_service).await?;
@@ -282,7 +322,17 @@ mod tests {
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
         // Should not error with no dirty accounts
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(
+            &pool,
+            &network,
+            None,
+            &mut active_tasks,
+            None,
+            "",
+            &reqwest::Client::new(),
+            "",
+        )
+        .await;
 
         assert!(
             active_tasks.is_empty(),
@@ -309,7 +359,17 @@ mod tests {
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
         // Run dirty monitor — should spawn a task
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(
+            &pool,
+            &network,
+            None,
+            &mut active_tasks,
+            None,
+            "",
+            &reqwest::Client::new(),
+            "",
+        )
+        .await;
 
         assert_eq!(
             active_tasks.len(),
@@ -352,7 +412,17 @@ mod tests {
         active_tasks.insert("test.sputnik-dao.near".to_string(), handle);
 
         // Run dirty monitor — should NOT spawn a duplicate task
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(
+            &pool,
+            &network,
+            None,
+            &mut active_tasks,
+            None,
+            "",
+            &reqwest::Client::new(),
+            "",
+        )
+        .await;
 
         assert_eq!(
             active_tasks.len(),
@@ -384,7 +454,17 @@ mod tests {
         let network = NetworkConfig::mainnet();
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(
+            &pool,
+            &network,
+            None,
+            &mut active_tasks,
+            None,
+            "",
+            &reqwest::Client::new(),
+            "",
+        )
+        .await;
 
         assert!(
             active_tasks.is_empty(),
@@ -525,7 +605,17 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
         // Run dirty monitor — should clean up the finished task
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(
+            &pool,
+            &network,
+            None,
+            &mut active_tasks,
+            None,
+            "",
+            &reqwest::Client::new(),
+            "",
+        )
+        .await;
 
         assert!(
             active_tasks.is_empty(),
