@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useSubscription } from "@/hooks/use-subscription";
 import { useMemo } from "react";
 import { hasPermission } from "@/lib/config-utils";
 
@@ -33,6 +34,7 @@ export function CreateRequestButton({
     const { accountId } = useNear();
     const { treasuryId } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
+    const { data: subscription } = useSubscription(treasuryId);
 
     const isAuthorized = useMemo(() => {
         if (!permissions || !policy || !accountId) return false;
@@ -43,8 +45,22 @@ export function CreateRequestButton({
             hasPermission(policy, accountId, req.kind, req.action),
         );
     }, [permissions, policy, accountId]);
+    const hasSponsoredTransactions = useMemo(() => {
+        if (!subscription) return true;
 
-    const isDisabled = disabled || isSubmitting || !isAuthorized || !accountId;
+        const totalSponsored =
+            subscription.planConfig.limits.gasCoveredTransactions;
+        if (totalSponsored === null) return true;
+
+        return subscription.gasCoveredTransactions > 0;
+    }, [subscription]);
+
+    const isDisabled =
+        disabled ||
+        isSubmitting ||
+        !isAuthorized ||
+        !accountId ||
+        !hasSponsoredTransactions;
 
     return (
         <>
@@ -61,6 +77,8 @@ export function CreateRequestButton({
                     </>
                 ) : !accountId ? (
                     "Connect your wallet"
+                ) : !hasSponsoredTransactions ? (
+                    "No sponsored transactions remaining"
                 ) : !isAuthorized ? (
                     "You don't have permission to create a request"
                 ) : (

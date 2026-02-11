@@ -17,11 +17,13 @@ import {
 import { ApprovalInfo } from "./approval-info";
 import { Button } from "./button";
 import { useProposals } from "@/hooks/use-proposals";
+import { useSubscription } from "@/hooks/use-subscription";
 import { NumberBadge } from "./number-badge";
 import { Pill } from "./pill";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { SupportCenterModal } from "./support-center-modal";
+import { SponsoredActionsLimitNotice } from "./sponsored-actions-limit-notice";
 
 interface NavLinkProps {
     isActive: boolean;
@@ -120,6 +122,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     const { data: proposals } = useProposals(treasuryId, {
         statuses: ["InProgress"],
     });
+    const { data: subscription } = useSubscription(treasuryId);
 
     const { isGuestTreasury, isLoading: isLoadingGuestTreasury } =
         useTreasury();
@@ -235,6 +238,15 @@ export function Sidebar({ onClose }: SidebarProps) {
                         isReduced ? "px-2" : "px-3.5",
                     )}
                 >
+                    {!isGuestTreasury && (
+                        <SponsoredActionsLimitNotice
+                            treasuryId={treasuryId}
+                            subscription={subscription}
+                            showSidebarCard={!isReduced}
+                            enableFloatingPopup={!isMobile}
+                            onContactClick={() => setSupportModalOpen(true)}
+                        />
+                    )}
                     {bottomNavLinks.map((link) => {
                         const href = treasuryId
                             ? `/${treasuryId}${link.path ? `/${link.path}` : ""}`
@@ -256,6 +268,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                             />
                         );
                     })}
+
                     <NavLink
                         id="help-support-link"
                         isActive={false}
