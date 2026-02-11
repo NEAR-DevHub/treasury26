@@ -84,11 +84,15 @@ async function getInstance() {
     const memory = new WebAssembly.Memory({ initial: 1024, maximum: 2048 });
     nearenv.setWasmMemory(memory);
 
-    const wasmModule = await WebAssembly.instantiate(preparedBinary, {
+    const wasmBuffer = new ArrayBuffer(preparedBinary.byteLength);
+    new Uint8Array(wasmBuffer).set(preparedBinary);
+
+    const compiledModule = await WebAssembly.compile(wasmBuffer);
+    const wasmInstance = await WebAssembly.instantiate(compiledModule, {
         env: { memory, ...nearenv.getImports() },
     });
 
-    const exports = wasmModule.instance.exports as unknown as WasmExports;
+    const exports = wasmInstance.exports as unknown as WasmExports;
 
     // Initialize the contract with minimal policy
     nearenv.setPredecessorAccountId(DAO_ACCOUNT);
