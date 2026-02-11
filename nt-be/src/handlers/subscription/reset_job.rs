@@ -1,9 +1,9 @@
 //! Background job to reset monthly plan credits.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Months, Utc};
 use sqlx::PgPool;
 
-use crate::config::{PlanType, get_monthly_reset_credits};
+use crate::config::{PlanType, get_monthly_reset_credits, get_plan_config};
 use crate::utils::datetime::{duration_until_next_utc_midnight, next_month_start_utc};
 
 /// Reset monthly credits for accounts whose reset time is due.
@@ -58,11 +58,64 @@ async fn reset_due_monthly_plan_credits_at(
                 continue;
             }
         };
+        let plan_config = get_plan_config(plan_type);
         let (monthly_export, monthly_batch, monthly_gas) = get_monthly_reset_credits(plan_type);
+
+        let export_allowance = plan_config.limits.monthly_export_credits.unwrap_or(0) as i32;
+        let batch_allowance = plan_config
+            .limits
+            .monthly_batch_payment_credits
+            .unwrap_or(0) as i32;
+        let gas_allowance = plan_config.limits.gas_covered_transactions.unwrap_or(0) as i32;
+
+        let exports_used = (export_allowance - account.export_credits).clamp(0, export_allowance);
+        let batch_payments_used =
+            (batch_allowance - account.batch_payment_credits).clamp(0, batch_allowance);
+        let gas_covered_transactions =
+            (gas_allowance - account.gas_covered_transactions).clamp(0, gas_allowance);
+
+        // Store usage snapshot for the cycle that is about to reset.
+        let ending_cycle = now
+            .date_naive()
+            .with_day(1)
+            .expect("day 1 should always be valid")
+            .checked_sub_months(Months::new(1))
+            .expect("subtracting one month should always be valid");
+        let billing_year = ending_cycle.year();
+        let billing_month = ending_cycle.month() as i32;
+
+        sqlx::query!(
+            r#"
+            INSERT INTO usage_tracking (
+                monitored_account_id,
+                billing_year,
+                billing_month,
+                outbound_volume_cents,
+                exports_used,
+                batch_payments_used,
+                gas_covered_transactions
+            )
+            VALUES ($1, $2, $3, 0, $4, $5, $6)
+            ON CONFLICT (monitored_account_id, billing_year, billing_month)
+            DO UPDATE SET
+                exports_used = EXCLUDED.exports_used,
+                batch_payments_used = EXCLUDED.batch_payments_used,
+                gas_covered_transactions = EXCLUDED.gas_covered_transactions,
+                updated_at = NOW()
+            "#,
+            account.account_id,
+            billing_year,
+            billing_month,
+            exports_used,
+            batch_payments_used,
+            gas_covered_transactions,
+        )
+        .execute(&mut *tx)
+        .await?;
 
         let export_credits = monthly_export.unwrap_or(account.export_credits);
         let batch_payment_credits = monthly_batch.unwrap_or(account.batch_payment_credits);
-        let gas_covered_transactions = monthly_gas.unwrap_or(account.gas_covered_transactions);
+        let gas_credits_after_reset = monthly_gas.unwrap_or(account.gas_covered_transactions);
 
         let update_result = sqlx::query!(
             r#"
@@ -77,7 +130,7 @@ async fn reset_due_monthly_plan_credits_at(
             account.account_id,
             export_credits,
             batch_payment_credits,
-            gas_covered_transactions,
+            gas_credits_after_reset,
             next_reset_at
         )
         .execute(&mut *tx)
@@ -234,6 +287,21 @@ mod tests {
             next_reset_plus > Utc::now(),
             "credits_reset_at should move to next month"
         );
+
+        let plus_usage = sqlx::query!(
+            r#"
+            SELECT exports_used, batch_payments_used, gas_covered_transactions
+            FROM usage_tracking
+            WHERE monitored_account_id = 'plus-reset.sputnik-dao.near'
+            ORDER BY billing_year DESC, billing_month DESC
+            LIMIT 1
+            "#,
+        )
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!(plus_usage.exports_used, 4);
+        assert_eq!(plus_usage.batch_payments_used, 8);
+        assert_eq!(plus_usage.gas_covered_transactions, 997);
 
         Ok(())
     }

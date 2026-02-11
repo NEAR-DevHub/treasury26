@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO usage_tracking (\n                monitored_account_id,\n                billing_year,\n                billing_month,\n                outbound_volume_cents,\n                exports_used,\n                batch_payments_used,\n                gas_covered_transactions\n            )\n            VALUES ($1, $2, $3, 0, $4, $5, $6)\n            ON CONFLICT (monitored_account_id, billing_year, billing_month)\n            DO UPDATE SET\n                exports_used = EXCLUDED.exports_used,\n                batch_payments_used = EXCLUDED.batch_payments_used,\n                gas_covered_transactions = EXCLUDED.gas_covered_transactions,\n                updated_at = NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c486803aad04008bd3cd13be13b040b8f35a945c24a7f64904b2fde132917b14"
+}
