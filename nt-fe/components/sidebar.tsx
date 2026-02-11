@@ -247,8 +247,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                         <SponsoredActionsLimitNotice
                             treasuryId={treasuryId}
                             subscription={subscription}
-                            showSidebarCard={!isReduced}
-                            enableFloatingPopup={!isMobile}
+                            enableFloatingPopup={true}
+                            showSidebarCard={true}
                             onContactClick={() => setSupportModalOpen(true)}
                         />
                     )}
