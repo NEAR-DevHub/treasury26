@@ -1810,6 +1810,64 @@ async fn test_fastnear_ft_token_discovery(pool: PgPool) -> sqlx::Result<()> {
     assert!(near_count.0 > 0, "Should have NEAR balance changes as well");
 
     println!("✓ Found {} NEAR balance change records", near_count.0);
+
+    // === Second Monitoring Cycle (fills USDC gaps) ===
+    // FastNear discovery happens AFTER gap filling in run_monitor_cycle,
+    // so we need a second cycle to fill gaps for newly discovered USDC token.
+    println!("\n=== Second Monitoring Cycle (fill USDC gaps) ===");
+
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        None,
+        Some((&http_client, &fastnear_api_key)),
+    )
+    .await
+    .map_err(|e| {
+        sqlx::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            e.to_string(),
+        ))
+    })?;
+
+    // Check that USDC gap-filled records now exist (not just SNAPSHOT)
+    let usdc_non_snapshot: Vec<(String,)> = sqlx::query_as(
+        r#"
+        SELECT counterparty
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2 AND counterparty != 'SNAPSHOT'
+        ORDER BY block_height DESC
+        "#,
+    )
+    .bind(account_id)
+    .bind(usdc_contract)
+    .fetch_all(&pool)
+    .await?;
+
+    println!(
+        "✓ Found {} non-SNAPSHOT USDC records after second cycle",
+        usdc_non_snapshot.len()
+    );
+
+    assert!(
+        !usdc_non_snapshot.is_empty(),
+        "Second monitor cycle should have filled USDC gaps with actual balance change records"
+    );
+
+    // The most recent USDC balance change should have gagdiez.near as counterparty
+    // (gagdiez.near sent native USDC to das-willies.sputnik-dao.near)
+    let counterparty = &usdc_non_snapshot[0].0;
+    println!(
+        "  Counterparty for most recent USDC change: {}",
+        counterparty
+    );
+
+    assert_eq!(
+        counterparty, "gagdiez.near",
+        "FT balance change counterparty should be gagdiez.near (the sender of USDC)"
+    );
+
     println!("\n=== FastNear FT Token Discovery Test Passed ===");
 
     Ok(())

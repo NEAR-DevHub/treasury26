@@ -1542,6 +1542,186 @@ pub async fn insert_balance_change_with_hint(
     })
 }
 
+/// Resolve FT counterparty by querying the token contract's state changes.
+///
+/// For FT transfers, the receipt executes on the token contract (not the monitored account).
+/// This function:
+/// 1. Queries `EXPERIMENTAL_changes` (data_changes) on the token contract to find the
+///    receipt that caused state changes at this block
+/// 2. Uses `EXPERIMENTAL_receipt` to fetch the receipt details (predecessor, actions)
+/// 3. Parses `ft_transfer`/`ft_transfer_call` args to identify the counterparty
+///
+/// Returns (signer, receiver, counterparty, receipt_ids) matching the format expected by
+/// `insert_balance_change_record`.
+async fn resolve_ft_counterparty_from_token_contract(
+    network: &NetworkConfig,
+    account_id: &str,
+    token_id: &str,
+    block_height: u64,
+) -> Result<(Option<String>, Option<String>, String, Vec<String>), GapFillerError> {
+    use crate::utils::jsonrpc::create_rpc_client;
+    use base64::{Engine, engine::general_purpose};
+    use near_jsonrpc_client::methods;
+    use near_jsonrpc_primitives::types::receipts::ReceiptReference;
+    use near_primitives::types::{BlockId, BlockReference};
+    use near_primitives::views::StateChangesRequestView;
+
+    let client =
+        create_rpc_client(network).map_err(|e| -> GapFillerError { e.to_string().into() })?;
+
+    // Step 1: Query data_changes on the token contract to find the receipt that caused changes
+    let parsed_token_id: near_primitives::types::AccountId = token_id.parse().map_err(
+        |e: near_primitives::account::id::ParseAccountError| -> GapFillerError {
+            e.to_string().into()
+        },
+    )?;
+
+    let changes_response = super::utils::with_transport_retry("ft_data_changes", || {
+        let req = methods::EXPERIMENTAL_changes::RpcStateChangesInBlockByTypeRequest {
+            block_reference: BlockReference::BlockId(BlockId::Height(block_height)),
+            state_changes_request: StateChangesRequestView::DataChanges {
+                account_ids: vec![parsed_token_id.clone()],
+                key_prefix: near_primitives::types::StoreKey::from(vec![]),
+            },
+        };
+        client.call(req)
+    })
+    .await
+    .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+
+    // Collect unique receipt hashes from the state changes
+    let mut receipt_hashes = HashSet::new();
+    for change in &changes_response.changes {
+        use near_primitives::views::StateChangeCauseView;
+        if let StateChangeCauseView::ReceiptProcessing { receipt_hash } = &change.cause {
+            receipt_hashes.insert(receipt_hash.to_string());
+        }
+    }
+
+    log::debug!(
+        "FT counterparty resolution: {} data changes on {} at block {}, {} unique receipts",
+        changes_response.changes.len(),
+        token_id,
+        block_height,
+        receipt_hashes.len()
+    );
+
+    if receipt_hashes.is_empty() {
+        return Err(format!(
+            "No data changes found on token contract {} at block {}",
+            token_id, block_height
+        )
+        .into());
+    }
+
+    // Step 2: For each receipt, fetch it and check if it's an ft_transfer involving our account
+    for receipt_hash in &receipt_hashes {
+        let parsed_receipt_id = match receipt_hash.parse() {
+            Ok(id) => id,
+            Err(_) => continue,
+        };
+
+        let receipt = match super::utils::with_transport_retry("ft_receipt_lookup", || {
+            let req = methods::EXPERIMENTAL_receipt::RpcReceiptRequest {
+                receipt_reference: ReceiptReference {
+                    receipt_id: parsed_receipt_id,
+                },
+            };
+            client.call(req)
+        })
+        .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                log::warn!("Failed to fetch receipt {}: {} - skipping", receipt_hash, e);
+                continue;
+            }
+        };
+
+        // Step 3: Check if this receipt has ft_transfer/ft_transfer_call actions
+
+        if let near_primitives::views::ReceiptEnumView::Action { actions, .. } = &receipt.receipt {
+            for action in actions {
+                if let near_primitives::views::ActionView::FunctionCall { method_name, .. } = action
+                {
+                    if method_name != "ft_transfer" && method_name != "ft_transfer_call" {
+                        continue;
+                    }
+
+                    // Parse args to find the transfer recipient.
+                    // ActionView serializes as {"FunctionCall": {"args": "...", ...}}
+                    let action_json = match serde_json::to_value(action) {
+                        Ok(v) => v,
+                        Err(_) => continue,
+                    };
+                    let fc_obj = match action_json.get("FunctionCall") {
+                        Some(v) => v,
+                        None => continue,
+                    };
+                    let args_b64 = match fc_obj.get("args").and_then(|v| v.as_str()) {
+                        Some(s) => s,
+                        None => continue,
+                    };
+                    let args_bytes = match general_purpose::STANDARD.decode(args_b64) {
+                        Ok(b) => b,
+                        Err(_) => continue,
+                    };
+                    let args_json: serde_json::Value = match serde_json::from_slice(&args_bytes) {
+                        Ok(v) => v,
+                        Err(_) => continue,
+                    };
+                    let transfer_receiver =
+                        match args_json.get("receiver_id").and_then(|v| v.as_str()) {
+                            Some(s) => s,
+                            None => continue,
+                        };
+
+                    let predecessor = receipt.predecessor_id.to_string();
+                    let receipt_id = receipt.receipt_id.to_string();
+
+                    if transfer_receiver == account_id {
+                        // Incoming transfer: someone sent FT to our account
+                        log::info!(
+                            "Resolved FT counterparty: {} sent {} to {} at block {}",
+                            predecessor,
+                            token_id,
+                            account_id,
+                            block_height
+                        );
+                        return Ok((
+                            Some(predecessor.clone()),
+                            Some(token_id.to_string()),
+                            predecessor,
+                            vec![receipt_id],
+                        ));
+                    } else if predecessor == account_id {
+                        // Outgoing transfer: our account sent FT to someone
+                        log::info!(
+                            "Resolved FT counterparty: {} sent {} to {} at block {}",
+                            account_id,
+                            token_id,
+                            transfer_receiver,
+                            block_height
+                        );
+                        return Ok((
+                            Some(account_id.to_string()),
+                            Some(token_id.to_string()),
+                            transfer_receiver.to_string(),
+                            vec![receipt_id],
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    Err(format!(
+        "No FT transfer receipt found at block {} for {}/{}",
+        block_height, account_id, token_id
+    )
+    .into())
+}
+
 /// Helper to insert a balance change record at a specific block
 ///
 /// This is exposed for testing purposes to allow direct insertion of records
@@ -1647,19 +1827,39 @@ pub async fn insert_balance_change_record(
 
     // Get receipt data for additional context (if available)
     // Only use this if we don't have signer/receiver from transaction
-    let (final_signer, final_receiver, final_counterparty) = if signer_id.is_some() {
-        (signer_id, receiver_id, counterparty)
+    let (final_signer, final_receiver, final_counterparty, receipt_ids) = if signer_id.is_some() {
+        // We have transaction info — get receipt_ids from account's receipts
+        let block_data = block_info::get_block_data(network, account_id, block_height)
+            .await
+            .map_err(|e| -> GapFillerError { e.to_string().into() })?;
+        let receipt_ids: Vec<String> = block_data
+            .receipts
+            .iter()
+            .map(|r| r.receipt_id.to_string())
+            .collect();
+        (signer_id, receiver_id, counterparty, receipt_ids)
     } else {
         let block_data = block_info::get_block_data(network, account_id, block_height)
             .await
             .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
         if let Some(receipt) = block_data.receipts.first() {
+            let receipt_ids: Vec<String> = block_data
+                .receipts
+                .iter()
+                .map(|r| r.receipt_id.to_string())
+                .collect();
             (
                 Some(receipt.predecessor_id.to_string()),
                 Some(receipt.receiver_id.to_string()),
                 receipt.predecessor_id.to_string(),
+                receipt_ids,
             )
+        } else if token_id != "near" {
+            // For FT tokens, receipts execute on the token contract, not the monitored account.
+            // Look for ft_transfer/ft_transfer_call receipts on the token contract.
+            resolve_ft_counterparty_from_token_contract(network, account_id, token_id, block_height)
+                .await?
         } else {
             // If no receipt found, we cannot determine counterparty - this is an error condition
             return Err(format!(
@@ -1669,18 +1869,6 @@ pub async fn insert_balance_change_record(
             .into());
         }
     };
-
-    // Always get receipt data for receipt_ids
-    let block_data = block_info::get_block_data(network, account_id, block_height)
-        .await
-        .map_err(|e| -> GapFillerError { e.to_string().into() })?;
-
-    // Build receipt_ids array from block data
-    let receipt_ids: Vec<String> = block_data
-        .receipts
-        .iter()
-        .map(|r| r.receipt_id.to_string())
-        .collect();
 
     // Insert the record
     let block_time = block_timestamp_to_datetime(block_timestamp);
