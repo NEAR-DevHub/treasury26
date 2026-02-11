@@ -40,14 +40,9 @@ async fn test_balance_query_before_account_exists(pool: PgPool) -> sqlx::Result<
         before_creation_block, CREATION_BLOCK
     );
 
-    let result = balance::get_balance_at_block(
-        &pool,
-        &network,
-        ACCOUNT_ID,
-        "near",
-        before_creation_block,
-    )
-    .await;
+    let result =
+        balance::get_balance_at_block(&pool, &network, ACCOUNT_ID, "near", before_creation_block)
+            .await;
 
     match &result {
         Ok(balance) => {
@@ -74,17 +69,15 @@ async fn test_balance_query_before_account_exists(pool: PgPool) -> sqlx::Result<
         after_creation_block
     );
 
-    let balance_after = balance::get_balance_at_block(
-        &pool,
-        &network,
-        ACCOUNT_ID,
-        "near",
-        after_creation_block,
-    )
-    .await
-    .expect("Balance query after creation should succeed");
+    let balance_after =
+        balance::get_balance_at_block(&pool, &network, ACCOUNT_ID, "near", after_creation_block)
+            .await
+            .expect("Balance query after creation should succeed");
 
-    println!("Balance at block {}: {}", after_creation_block, balance_after);
+    println!(
+        "Balance at block {}: {}",
+        after_creation_block, balance_after
+    );
     assert!(
         balance_after > bigdecimal::BigDecimal::from(0),
         "Balance after account creation should be non-zero, got: {}",

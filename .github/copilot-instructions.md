@@ -100,6 +100,15 @@ fill_gaps(&pool, &network, account_id, "discovered-token.near", up_to_block).awa
 
 This ensures tests drive implementation through TDD - they fail until the real functionality is complete.
 
+## Pre-Commit Checks
+
+Always run `cargo fmt` and `cargo clippy` before committing. Code that doesn't pass formatting or has clippy warnings should not be committed.
+
+```bash
+cargo fmt
+cargo clippy --all-targets
+```
+
 ## Pull Request Guidelines
 
 ### Conventional Commits
