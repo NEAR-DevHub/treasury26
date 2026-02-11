@@ -168,7 +168,7 @@ pub async fn create_treasury(
         .call_function("create", args)
         .transaction()
         .max_gas()
-        .deposit(NearToken::from_near(6))
+        .deposit(NearToken::from_micronear(545819))
         .with_signer(state.signer_id.clone(), state.signer.clone())
         .send_to(&state.network)
         .await
