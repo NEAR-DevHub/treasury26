@@ -203,9 +203,10 @@ export function AuthButtonWithProposal({
         <>
             {tooltip ? (
                 <Tooltip content={tooltip} {...tooltipProps}>
-                    <span>
+                    <span className="w-full">
                         <Button
                             {...props}
+                            className="w-full"
                             disabled={disabled}
                             onClick={onClick}
                         >

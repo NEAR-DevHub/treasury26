@@ -55,7 +55,6 @@ export function SponsoredActionsLimitNotice({
         const available = Math.max(subscription.gasCoveredTransactions, 0);
         const used = Math.min(total, Math.max(total - available, 0));
         const availablePercent = (available / total) * 100;
-        const usedPercent = Math.max((used / total) * 100, 0);
 
         return {
             total,
@@ -83,7 +82,7 @@ export function SponsoredActionsLimitNotice({
         setDismissed(storedValue === "1");
     }, [storageKey]);
 
-    if (!usage) {
+    if (!usage || !usage.isLow) {
         return null;
     }
 

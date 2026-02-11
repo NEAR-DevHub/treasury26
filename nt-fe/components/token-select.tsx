@@ -495,7 +495,7 @@ export default function TokenSelect({
                     type="button"
                     variant="outline"
                     className={cn(
-                        "bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3 justify-start",
+                        "bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3! justify-start",
                         classNames?.trigger,
                     )}
                 >

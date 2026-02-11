@@ -167,6 +167,7 @@ export function PendingRequestItem({
 }
 
 export function PendingRequests() {
+    const { accountId } = useNear();
     const { treasuryId } = useTreasury();
     const { data: policy, isLoading: isPolicyLoading } =
         useTreasuryPolicy(treasuryId);
@@ -183,6 +184,7 @@ export function PendingRequests() {
     const { data: pendingRequests, isLoading: isRequestsLoading } =
         useProposals(treasuryId, {
             statuses: ["InProgress"],
+            voter_votes: `${accountId}:No Voted`,
         });
 
     const isLoading = isPolicyLoading || isRequestsLoading;

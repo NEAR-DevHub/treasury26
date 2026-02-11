@@ -190,8 +190,12 @@ export default function RequestsPage() {
     const pathname = usePathname();
     const params = useParams();
     const treasuryId = params?.treasuryId as string | undefined;
+    const { accountId } = useNear();
     const { data: proposals } = useProposals(treasuryId, {
         statuses: ["InProgress"],
+        ...(accountId && {
+            voter_votes: `${accountId}:No Voted`,
+        }),
     });
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const { data: allProposals } = useProposals(treasuryId, {});

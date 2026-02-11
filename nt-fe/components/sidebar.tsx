@@ -24,6 +24,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { SupportCenterModal } from "./support-center-modal";
 import { SponsoredActionsLimitNotice } from "./sponsored-actions-limit-notice";
+import { useNear } from "@/stores/near-store";
 
 interface NavLinkProps {
     isActive: boolean;
@@ -118,9 +119,11 @@ export function Sidebar({ onClose }: SidebarProps) {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [hasInitialized, setHasInitialized] = useState(false);
     const [supportModalOpen, setSupportModalOpen] = useState(false);
+    const { accountId } = useNear();
 
     const { data: proposals } = useProposals(treasuryId, {
         statuses: ["InProgress"],
+        voter_votes: `${accountId}:No Voted`,
     });
     const { data: subscription } = useSubscription(treasuryId);
 
