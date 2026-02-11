@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM dao_members\n        WHERE dao_id = $1\n          AND account_id = $2\n          AND is_policy_member = false\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f0b39c54e8a2fa4cdc1855dcb4697d1364d3ef75b27148c5c12515d163585bc1"
+}
