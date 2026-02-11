@@ -13,16 +13,16 @@ export function getStatusColor(status: string | ProposalStatus): string {
         case "Approved":
         case "Executed":
         case "Paid":
-            return "bg-green-500/10 text-green-600";
+            return "bg-general-success-background-faded text-general-success-foreground";
         case "Rejected":
         case "Failed":
         case "Removed":
-            return "bg-red-500/10 text-red-600";
+            return "bg-general-destructive-background-faded text-general-destructive-foreground";
         case "InProgress":
         case "Pending":
-            return "bg-orange-500/10 text-orange-600";
+            return "bg-general-orange-background-faded text-general-orange-foreground";
         case "Expired":
-            return "bg-gray-500/10 text-gray-600";
+            return "bg-secondary text-secondary-foreground";
         default:
             return "bg-muted text-muted-foreground";
     }
@@ -41,18 +41,20 @@ export function getStatusLabel(status: string | ProposalStatus): string {
     }
 }
 
-export function ProposalStatusPill({ status, className }: ProposalStatusPillProps) {
+export function ProposalStatusPill({
+    status,
+    className,
+}: ProposalStatusPillProps) {
     const label = getStatusLabel(status);
     return (
         <span
             className={cn(
                 "inline-flex px-2 py-1 rounded-md text-xs font-medium",
                 getStatusColor(status),
-                className
+                className,
             )}
         >
             {label}
         </span>
     );
 }
-

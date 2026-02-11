@@ -11,7 +11,14 @@ interface LargeInputProps extends React.ComponentProps<typeof Input> {
     suffix?: string;
 }
 
-export function LargeInput({ className, search, borderless, suffix, value, ...props }: LargeInputProps) {
+export function LargeInput({
+    className,
+    search,
+    borderless,
+    suffix,
+    value,
+    ...props
+}: LargeInputProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const [fontSize, setFontSize] = useState("!text-3xl");
@@ -35,8 +42,8 @@ export function LargeInput({ className, search, borderless, suffix, value, ...pr
             const fontSizes = [
                 { class: "!text-3xl", charWidth: 20 }, // ~20px per char
                 { class: "!text-2xl", charWidth: 15 }, // ~15px per char
-                { class: "!text-xl", charWidth: 12 },  // ~12px per char
-                { class: "!text-lg", charWidth: 10 },  // ~10px per char
+                { class: "!text-xl", charWidth: 12 }, // ~12px per char
+                { class: "!text-lg", charWidth: 10 }, // ~10px per char
                 { class: "!text-base", charWidth: 8 }, // ~8px per char
             ];
 
@@ -76,20 +83,24 @@ export function LargeInput({ className, search, borderless, suffix, value, ...pr
             <Input
                 ref={inputRef}
                 autoComplete="off"
+                autoCorrect="off"
                 {...props}
                 value={value}
                 className={cn(
                     "h-12 shrink-0 p-0 bg-transparent!",
                     search && "pl-10",
                     suffix && "pr-2",
-                    borderless && "border-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                    borderless &&
+                        "border-none focus-visible:ring-0 focus-visible:ring-offset-0",
                     className,
                     fontSize, // Apply dynamic font size last so it takes precedence
                 )}
             />
             {suffix && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <span className={cn("text-muted-foreground", fontSize)}>{suffix}</span>
+                    <span className={cn("text-muted-foreground", fontSize)}>
+                        {suffix}
+                    </span>
                 </div>
             )}
         </div>
