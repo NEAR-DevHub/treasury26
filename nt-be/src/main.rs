@@ -156,17 +156,7 @@ async fn main() {
 
             loop {
                 interval.tick().await;
-                run_dirty_monitor(
-                    &state_clone.db_pool,
-                    &state_clone.archival_network,
-                    state_clone.transfer_hint_service.as_ref(),
-                    &mut active_tasks,
-                    state_clone.env_vars.intents_explorer_api_key.as_deref(),
-                    &state_clone.env_vars.intents_explorer_api_url,
-                    &state_clone.http_client,
-                    &state_clone.env_vars.fastnear_api_key,
-                )
-                .await;
+                run_dirty_monitor(&state_clone, &mut active_tasks).await;
             }
         });
     }
