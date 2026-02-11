@@ -123,7 +123,9 @@ export function Sidebar({ onClose }: SidebarProps) {
 
     const { data: proposals } = useProposals(treasuryId, {
         statuses: ["InProgress"],
-        voter_votes: `${accountId}:No Voted`,
+        ...(accountId && {
+            voter_votes: `${accountId}:No Voted`,
+        }),
     });
     const { data: subscription } = useSubscription(treasuryId);
 

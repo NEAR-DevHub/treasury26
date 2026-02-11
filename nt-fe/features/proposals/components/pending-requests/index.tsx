@@ -184,7 +184,9 @@ export function PendingRequests() {
     const { data: pendingRequests, isLoading: isRequestsLoading } =
         useProposals(treasuryId, {
             statuses: ["InProgress"],
-            voter_votes: `${accountId}:No Voted`,
+            ...(accountId && {
+                voter_votes: `${accountId}:No Voted`,
+            }),
         });
 
     const isLoading = isPolicyLoading || isRequestsLoading;
