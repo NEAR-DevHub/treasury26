@@ -84,14 +84,37 @@ pub struct SimplifiedToken {
 }
 
 #[derive(Deserialize, Debug)]
-struct FastNearToken {
-    contract_id: String,
-    balance: U128,
+pub struct FastNearToken {
+    pub contract_id: String,
+    pub balance: U128,
 }
 
 #[derive(Deserialize, Debug)]
-struct FastNearResponse {
-    tokens: Option<Vec<FastNearToken>>,
+pub struct FastNearResponse {
+    pub tokens: Option<Vec<FastNearToken>>,
+}
+
+/// Fetch full account data from the FastNear API.
+///
+/// Queries `https://api.fastnear.com/v1/account/{account_id}/full` and returns
+/// the parsed response. Shared by the assets endpoint and the monitor cycle's
+/// FT token discovery.
+pub async fn fetch_fastnear_account_full(
+    http_client: &reqwest::Client,
+    fastnear_api_key: &str,
+    account_id: &str,
+) -> Result<FastNearResponse, Box<dyn std::error::Error + Send + Sync>> {
+    let response = http_client
+        .get(format!(
+            "https://api.fastnear.com/v1/account/{}/full",
+            account_id
+        ))
+        .header("Authorization", format!("Bearer {}", fastnear_api_key))
+        .send()
+        .await?
+        .error_for_status()?;
+
+    Ok(response.json().await?)
 }
 
 /// Fetches whitelisted token IDs from the Ref Finance contract via RPC
@@ -134,31 +157,17 @@ async fn fetch_user_balances(
     state: &Arc<AppState>,
     account: &AccountId,
 ) -> Result<FastNearResponse, (StatusCode, String)> {
-    let response = state
-        .http_client
-        .get(format!(
-            "https://api.fastnear.com/v1/account/{}/full",
-            account
-        ))
-        .header(
-            "Authorization",
-            format!("Bearer {}", state.env_vars.fastnear_api_key),
-        )
-        .send()
-        .await
-        .map_err(|e| {
-            eprintln!("Error fetching user balances: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to fetch user balances".to_string(),
-            )
-        })?;
-
-    response.json().await.map_err(|e| {
-        eprintln!("Error parsing balances: {}", e);
+    fetch_fastnear_account_full(
+        &state.http_client,
+        &state.env_vars.fastnear_api_key,
+        account.as_ref(),
+    )
+    .await
+    .map_err(|e| {
+        eprintln!("Error fetching user balances: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to parse balances".to_string(),
+            "Failed to fetch user balances".to_string(),
         )
     })
 }

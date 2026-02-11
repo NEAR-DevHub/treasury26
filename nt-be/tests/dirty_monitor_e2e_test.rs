@@ -223,7 +223,7 @@ async fn test_dirty_monitor_detects_payments_while_main_cycle_busy(
     // Run monitor cycle up to baseline block — this establishes the "current state"
     // and processes staking rewards for testing-astradao (simulating the busy worker)
     let start = Instant::now();
-    run_monitor_cycle(&pool, &network, BASELINE_BLOCK, None)
+    run_monitor_cycle(&pool, &network, BASELINE_BLOCK, None, None)
         .await
         .map_err(|e| {
             sqlx::Error::Io(std::io::Error::new(

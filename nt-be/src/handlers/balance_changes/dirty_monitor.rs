@@ -12,12 +12,15 @@ use near_api::{Chain, NetworkConfig};
 use sqlx::PgPool;
 use sqlx::types::chrono::{DateTime, Utc};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::task::JoinHandle;
 
+use super::account_monitor::discover_ft_tokens_from_fastnear;
 use super::gap_filler::fill_gaps_with_hints;
 use super::staking_rewards::is_staking_token;
 use super::swap_detector::{detect_swaps_from_api, store_detected_swaps};
 use super::transfer_hints::TransferHintService;
+use crate::AppState;
 
 /// Run one poll cycle of the dirty account monitor.
 ///
@@ -25,21 +28,9 @@ use super::transfer_hints::TransferHintService;
 /// 1. Cleans up finished tasks from `active_tasks`
 /// 2. Queries for dirty accounts
 /// 3. Spawns a parallel task for each dirty account not already in-flight
-///
-/// # Arguments
-/// * `pool` - Database connection pool
-/// * `network` - NEAR archival network configuration
-/// * `hint_service` - Optional shared transfer hint service
-/// * `active_tasks` - Map of account_id -> JoinHandle for in-flight tasks
-/// * `intents_api_key` - Optional Intents Explorer API key for swap detection
-/// * `intents_api_url` - Intents Explorer API base URL
 pub async fn run_dirty_monitor(
-    pool: &PgPool,
-    network: &NetworkConfig,
-    _hint_service: Option<&TransferHintService>,
+    state: &Arc<AppState>,
     active_tasks: &mut HashMap<String, JoinHandle<()>>,
-    intents_api_key: Option<&str>,
-    intents_api_url: &str,
 ) {
     // 1. Clean up finished tasks
     active_tasks.retain(|account_id, handle| {
@@ -59,7 +50,7 @@ pub async fn run_dirty_monitor(
         WHERE dirty_at IS NOT NULL AND enabled = true
         "#,
     )
-    .fetch_all(pool)
+    .fetch_all(&state.db_pool)
     .await
     {
         Ok(accounts) => accounts,
@@ -80,11 +71,8 @@ pub async fn run_dirty_monitor(
         }
 
         let original_dirty_at = dirty_at;
-        let pool = pool.clone();
-        let network = network.clone();
+        let state = state.clone();
         let account_id_clone = account_id.clone();
-        let intents_api_key = intents_api_key.map(|s| s.to_string());
-        let intents_api_url = intents_api_url.to_string();
 
         log::info!(
             "[dirty-monitor] Spawning priority task for {} (dirty_at: {})",
@@ -93,20 +81,7 @@ pub async fn run_dirty_monitor(
         );
 
         let handle = tokio::spawn(async move {
-            // Note: hint_service is not passed to spawned tasks because
-            // TransferHintService is not Clone. Binary search fallback is used instead.
-            // This can be improved later by wrapping the service in Arc in AppState.
-            if let Err(e) = run_dirty_task(
-                &pool,
-                &network,
-                &account_id_clone,
-                original_dirty_at,
-                None,
-                intents_api_key.as_deref(),
-                &intents_api_url,
-            )
-            .await
-            {
+            if let Err(e) = run_dirty_task(&state, &account_id_clone, original_dirty_at).await {
                 log::error!(
                     "[dirty-monitor] Task for {} failed: {}",
                     account_id_clone,
@@ -125,19 +100,50 @@ pub async fn run_dirty_monitor(
 /// After all gaps are filled, conditionally clears `dirty_at` only if
 /// it hasn't been updated by the API while this task was running.
 async fn run_dirty_task(
-    pool: &PgPool,
-    network: &NetworkConfig,
+    state: &AppState,
     account_id: &str,
     original_dirty_at: DateTime<Utc>,
-    hint_service: Option<&TransferHintService>,
-    intents_api_key: Option<&str>,
-    intents_api_url: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let pool = &state.db_pool;
+    let network = &state.archival_network;
+
     // Get current block height
     let up_to_block = Chain::block().fetch_from(network).await?.header.height as i64;
 
+    // Discover new FT tokens via FastNear before filling gaps, so newly
+    // discovered tokens get their gaps filled in this same task.
+    match discover_ft_tokens_from_fastnear(
+        pool,
+        network,
+        &state.http_client,
+        &state.env_vars.fastnear_api_key,
+        account_id,
+        up_to_block,
+    )
+    .await
+    {
+        Ok(count) if count > 0 => {
+            log::info!(
+                "[dirty-monitor] {}: Discovered {} new FT tokens via FastNear",
+                account_id,
+                count
+            );
+        }
+        Err(e) => {
+            log::warn!(
+                "[dirty-monitor] {}: Error discovering FT tokens via FastNear: {}",
+                account_id,
+                e
+            );
+        }
+        _ => {}
+    }
+
+    // Note: hint_service is not passed to spawned tasks because
+    // TransferHintService is not Clone. Binary search fallback is used instead.
+    // This can be improved later by wrapping the service in Arc in AppState.
     let total_filled =
-        fill_dirty_account_gaps(pool, network, account_id, up_to_block, hint_service).await?;
+        fill_dirty_account_gaps(pool, network, account_id, up_to_block, None).await?;
 
     log::info!(
         "[dirty-monitor] {} completed: filled {} total gaps",
@@ -146,6 +152,8 @@ async fn run_dirty_task(
     );
 
     // Detect and store swaps using Intents Explorer API
+    let intents_api_key = state.env_vars.intents_explorer_api_key.as_deref();
+    let intents_api_url = &state.env_vars.intents_explorer_api_url;
     match detect_swaps_from_api(pool, account_id, intents_api_key, intents_api_url).await {
         Ok(swaps) => {
             if !swaps.is_empty() {
@@ -275,14 +283,19 @@ pub async fn fill_dirty_account_gaps(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::test_utils::build_test_state;
+
+    fn test_state(pool: PgPool) -> Arc<AppState> {
+        Arc::new(build_test_state(pool))
+    }
 
     #[sqlx::test]
     async fn test_dirty_monitor_no_dirty_accounts(pool: PgPool) -> sqlx::Result<()> {
-        let network = NetworkConfig::mainnet();
+        let state = test_state(pool);
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
         // Should not error with no dirty accounts
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(&state, &mut active_tasks).await;
 
         assert!(
             active_tasks.is_empty(),
@@ -294,6 +307,8 @@ mod tests {
 
     #[sqlx::test]
     async fn test_dirty_monitor_spawns_task_for_dirty_account(pool: PgPool) -> sqlx::Result<()> {
+        let state = test_state(pool);
+
         // Insert a dirty account
         sqlx::query(
             r#"
@@ -302,14 +317,13 @@ mod tests {
             "#,
         )
         .bind("test.sputnik-dao.near")
-        .execute(&pool)
+        .execute(&state.db_pool)
         .await?;
 
-        let network = NetworkConfig::mainnet();
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
         // Run dirty monitor — should spawn a task
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(&state, &mut active_tasks).await;
 
         assert_eq!(
             active_tasks.len(),
@@ -331,6 +345,8 @@ mod tests {
 
     #[sqlx::test]
     async fn test_dirty_monitor_skips_in_flight_accounts(pool: PgPool) -> sqlx::Result<()> {
+        let state = test_state(pool);
+
         // Insert a dirty account
         sqlx::query(
             r#"
@@ -339,10 +355,9 @@ mod tests {
             "#,
         )
         .bind("test.sputnik-dao.near")
-        .execute(&pool)
+        .execute(&state.db_pool)
         .await?;
 
-        let network = NetworkConfig::mainnet();
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
         // Insert a fake in-flight task for this account
@@ -352,7 +367,7 @@ mod tests {
         active_tasks.insert("test.sputnik-dao.near".to_string(), handle);
 
         // Run dirty monitor — should NOT spawn a duplicate task
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(&state, &mut active_tasks).await;
 
         assert_eq!(
             active_tasks.len(),
@@ -370,6 +385,8 @@ mod tests {
 
     #[sqlx::test]
     async fn test_dirty_monitor_skips_disabled_accounts(pool: PgPool) -> sqlx::Result<()> {
+        let state = test_state(pool);
+
         // Insert a dirty but disabled account
         sqlx::query(
             r#"
@@ -378,13 +395,12 @@ mod tests {
             "#,
         )
         .bind("test.sputnik-dao.near")
-        .execute(&pool)
+        .execute(&state.db_pool)
         .await?;
 
-        let network = NetworkConfig::mainnet();
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(&state, &mut active_tasks).await;
 
         assert!(
             active_tasks.is_empty(),
@@ -514,7 +530,7 @@ mod tests {
 
     #[sqlx::test]
     async fn test_cleanup_finished_tasks(pool: PgPool) -> sqlx::Result<()> {
-        let network = NetworkConfig::mainnet();
+        let state = test_state(pool);
         let mut active_tasks: HashMap<String, JoinHandle<()>> = HashMap::new();
 
         // Insert a task that completes immediately
@@ -525,7 +541,7 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
         // Run dirty monitor — should clean up the finished task
-        run_dirty_monitor(&pool, &network, None, &mut active_tasks, None, "").await;
+        run_dirty_monitor(&state, &mut active_tasks).await;
 
         assert!(
             active_tasks.is_empty(),
