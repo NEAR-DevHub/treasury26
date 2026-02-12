@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO auth_challenges (account_id, nonce, expires_at)\n        VALUES ('', $1, NOW() + INTERVAL '15 minutes')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e8950e58b45bdd0f584be8fb7d41474ef410515f070b0c6b1ece86bc20b47319"
+}
