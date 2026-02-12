@@ -262,18 +262,13 @@ export const useNearStore = create<NearStore>((set, get) => ({
             );
 
             // Sign the message with wallet
-            try {
-                await newConnector.connect({
-                    signMessageParams: {
-                        message: LOGIN_MESSAGE,
-                        recipient: LOGIN_RECIPIENT,
-                        nonce: nonceBytes,
-                    },
-                });
-            } catch (error) {
-                console.log("ERROR HAPPENED WHY", error);
-                await newConnector.connect();
-            }
+            await newConnector.connect({
+                signMessageParams: {
+                    message: LOGIN_MESSAGE,
+                    recipient: LOGIN_RECIPIENT,
+                    nonce: nonceBytes,
+                },
+            });
         } catch (error) {
             console.error("Authentication failed:", error);
             set({
