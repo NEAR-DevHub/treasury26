@@ -7,7 +7,7 @@ import { useAssets } from "@/hooks/use-assets";
 import Assets from "./components/assets";
 import BalanceWithGraph from "./components/balance-with-graph";
 import { PendingRequests } from "@/features/proposals/components/pending-requests";
-import { RecentActivity } from "./components/recent-activity";
+import { RecentActivity } from "@/features/activity";
 import { OnboardingProgress } from "@/features/onboarding";
 import { DepositModal } from "./components/deposit-modal";
 import { InfoBox } from "@/features/onboarding/components/info-box";

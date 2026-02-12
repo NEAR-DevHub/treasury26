@@ -3,6 +3,7 @@ pub mod cache;
 pub mod datetime;
 pub mod env;
 pub mod jsonrpc;
+pub mod serde;
 pub mod telegram;
 
 #[cfg(test)]

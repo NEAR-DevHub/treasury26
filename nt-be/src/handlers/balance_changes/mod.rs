@@ -7,6 +7,7 @@ pub mod dirty_monitor;
 pub mod gap_detector;
 pub mod gap_filler;
 pub mod history;
+pub mod query_builder;
 pub mod staking_rewards;
 pub mod swap_detector;
 pub mod token_discovery;

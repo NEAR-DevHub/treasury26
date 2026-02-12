@@ -410,6 +410,7 @@ pub struct BatchPayment {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchPaymentResponse {
     pub token_id: String, // supports Intents format (nep141:xxx)
     pub submitter: AccountId,

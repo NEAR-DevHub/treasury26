@@ -42,6 +42,7 @@ near-primitives = "0.34.3"
 near-openapi-types = "0.7.0"
 once_cell = "1.21.3"
 borsh = "1.5.7"
+rust_xlsxwriter = "0.92.3"
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 axum-extra = { version = "0.10", features = ["typed-header", "cookie"] }
 rand = "0.9"

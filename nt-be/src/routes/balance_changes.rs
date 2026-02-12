@@ -5,22 +5,45 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::query_as;
 use sqlx::types::BigDecimal;
 use sqlx::types::chrono::{DateTime, Utc};
 use std::sync::Arc;
 
 use crate::AppState;
-use crate::handlers::balance_changes::gap_filler;
-use crate::handlers::token::{TokenMetadata, fetch_tokens_metadata};
+use crate::handlers::balance_changes::{gap_filler, query_builder::*};
+use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
+use crate::utils::serde::comma_separated;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BalanceChangesQuery {
     pub account_id: String,
-    pub token_id: Option<String>,
+
+    // Pagination
     pub limit: Option<i64>,
     pub offset: Option<i64>,
-    pub exclude_snapshots: Option<bool>,
+
+    // Date Filtering
+    pub start_time: Option<String>, // ISO 8601 format
+    pub end_time: Option<String>,   // ISO 8601 format
+
+    // Token Filtering (Whitelist OR Blacklist)
+    #[serde(default, deserialize_with = "comma_separated")]
+    pub token_ids: Option<Vec<String>>, // Include ONLY these (whitelist)
+    #[serde(default, deserialize_with = "comma_separated")]
+    pub exclude_token_ids: Option<Vec<String>>, // Exclude these (blacklist)
+
+    // Transaction Type Filtering (can select multiple)
+    #[serde(default, deserialize_with = "comma_separated")]
+    pub transaction_types: Option<Vec<String>>, // "incoming", "outgoing", "staking_rewards"
+
+    // Amount Filtering (decimal-adjusted, requires single token filter)
+    pub min_amount: Option<f64>, // Minimum amount in decimal-adjusted format (e.g., 1.5 NEAR)
+    pub max_amount: Option<f64>, // Maximum amount in decimal-adjusted format (e.g., 100 USDC)
+
+    // Metadata
+    pub include_metadata: Option<bool>, // default: false (enrich with token metadata + prices)
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -42,14 +65,8 @@ pub struct BalanceChange {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecentActivityResponse {
-    pub data: Vec<RecentActivity>,
-    pub total: i64,
-}
-
-#[derive(Debug, Serialize, Clone)]
+/// Swap information attached to balance changes
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SwapInfo {
     pub sent_token_id: Option<String>,
@@ -62,369 +79,216 @@ pub struct SwapInfo {
     pub solver_transaction_hash: String,
 }
 
-#[derive(Debug, Serialize)]
+/// Enriched balance change with optional metadata and swap info
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct RecentActivity {
+pub struct EnrichedBalanceChange {
     pub id: i64,
+    pub account_id: String,
+    pub block_height: i64,
     pub block_time: DateTime<Utc>,
-    pub token_id: String,
-    pub token_metadata: TokenMetadata,
-    pub counterparty: Option<String>,
+    pub token_id: String, // Transformed: "near" for staking
+    pub receipt_id: Vec<String>,
+    pub transaction_hashes: Vec<String>,
+    pub counterparty: Option<String>, // Transformed: pool address for staking
     pub signer_id: Option<String>,
     pub receiver_id: Option<String>,
     pub amount: BigDecimal,
-    pub transaction_hashes: Vec<String>,
-    pub receipt_ids: Vec<String>,
+    pub balance_before: BigDecimal,
+    pub balance_after: BigDecimal,
+    pub created_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub swap: Option<SwapInfo>,
+    pub token_metadata: Option<TokenMetadata>, // Only present if include_metadata: true
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swap: Option<SwapInfo>, // Only present for swap transactions
+}
+
+/// Internal function to fetch and enrich balance changes
+/// This is the single source of truth for all balance change queries
+pub async fn get_balance_changes_internal(
+    state: &Arc<AppState>,
+    params: &BalanceChangesQuery,
+) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
+    // Parse dates
+    let start_date = params
+        .start_time
+        .as_ref()
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc));
+
+    let end_date = params
+        .end_time
+        .as_ref()
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc));
+
+    // Convert decimal-adjusted min/max amounts to raw token units
+    // This only works when filtering by a single token
+    let (min_amount_raw, max_amount_raw) =
+        if params.min_amount.is_some() || params.max_amount.is_some() {
+            // Require single token for min/max amount filtering
+            if let Some(ref tokens) = params.token_ids {
+                if tokens.len() == 1 {
+                    let token_id = &tokens[0];
+
+                    // Fetch metadata to get decimals using the helper function
+                    let metadata_map: std::collections::HashMap<String, TokenMetadata> =
+                        fetch_tokens_with_fallback(state, std::slice::from_ref(token_id)).await;
+                    let metadata = metadata_map.get(token_id);
+
+                    let decimals = metadata.map(|m| m.decimals).unwrap_or(24); // Default to NEAR decimals
+                    let multiplier = 10_f64.powi(decimals as i32);
+
+                    let min_raw = params.min_amount.map(|v| v * multiplier);
+                    let max_raw = params.max_amount.map(|v| v * multiplier);
+
+                    (min_raw, max_raw)
+                } else {
+                    // Multiple tokens - can't determine decimals
+                    (None, None)
+                }
+            } else {
+                // No token filter - can't determine decimals
+                (None, None)
+            }
+        } else {
+            (None, None)
+        };
+
+    // Build filters
+    let filters = BalanceChangeFilters {
+        account_id: params.account_id.clone(),
+        date_cutoff: None, // Only used by recent activity/export with plan limits
+        start_date,
+        end_date,
+        token_ids: params.token_ids.clone(),
+        exclude_token_ids: params.exclude_token_ids.clone(),
+        transaction_types: params.transaction_types.clone(),
+        min_amount: min_amount_raw,
+        max_amount: max_amount_raw,
+    };
+
+    // Build SQL query
+    let select_fields = "id, account_id, block_height, block_time, token_id, receipt_id, transaction_hashes, counterparty, signer_id, receiver_id, amount, balance_before, balance_after, created_at";
+    let (query_str, _next_param_idx) = build_select_query(
+        &filters,
+        select_fields,
+        "block_height DESC, id DESC",
+        true, // with pagination
+    );
+
+    // Bind parameters
+    let limit = params.limit.unwrap_or(100).min(1000);
+    let offset = params.offset.unwrap_or(0);
+
+    let mut query = query_as::<_, BalanceChange>(&query_str).bind(&filters.account_id);
+
+    // Bind date filters in order
+    if let Some(ref cutoff) = filters.date_cutoff {
+        query = query.bind(cutoff);
+    }
+    if let Some(ref start) = filters.start_date {
+        query = query.bind(start);
+    }
+    if let Some(ref end) = filters.end_date {
+        query = query.bind(end);
+    }
+
+    // Bind token filters
+    if let Some(ref tokens) = filters.token_ids {
+        query = query.bind(tokens);
+    } else if let Some(ref exclude_tokens) = filters.exclude_token_ids {
+        query = query.bind(exclude_tokens);
+    }
+
+    // Bind amount filters
+    if let Some(min) = filters.min_amount {
+        query = query.bind(min);
+    }
+    if let Some(max) = filters.max_amount {
+        query = query.bind(max);
+    }
+
+    // Bind pagination
+    query = query.bind(limit).bind(offset);
+
+    // Execute query
+    let changes = query.fetch_all(&state.db_pool).await?;
+
+    // Transform staking tokens and prepare for enrichment
+    let mut enriched_changes: Vec<EnrichedBalanceChange> = changes
+        .into_iter()
+        .map(|change| {
+            // Transform staking tokens
+            let (token_id, counterparty) = if change.token_id.starts_with("staking:") {
+                // Extract pool address from "staking:pool.near"
+                let pool_address = change
+                    .token_id
+                    .strip_prefix("staking:")
+                    .unwrap_or(&change.token_id);
+                ("near".to_string(), Some(pool_address.to_string()))
+            } else {
+                (change.token_id.clone(), change.counterparty.clone())
+            };
+
+            EnrichedBalanceChange {
+                id: change.id,
+                account_id: change.account_id,
+                block_height: change.block_height,
+                block_time: change.block_time,
+                token_id,
+                receipt_id: change.receipt_id,
+                transaction_hashes: change.transaction_hashes,
+                counterparty,
+                signer_id: change.signer_id,
+                receiver_id: change.receiver_id,
+                amount: change.amount,
+                balance_before: change.balance_before,
+                balance_after: change.balance_after,
+                created_at: change.created_at,
+                token_metadata: None, // Will be populated if include_metadata is true
+                swap: None,           // Swap detection not implemented in this endpoint yet
+            }
+        })
+        .collect();
+
+    // Conditionally enrich with metadata (includes prices)
+    if params.include_metadata.unwrap_or(false) {
+        // Collect token IDs and fetch metadata with fallbacks
+        let token_ids: Vec<String> = enriched_changes
+            .iter()
+            .map(|c| c.token_id.clone())
+            .collect();
+
+        let metadata_map = fetch_tokens_with_fallback(state, &token_ids).await;
+
+        // Attach metadata to each change
+        for change in &mut enriched_changes {
+            change.token_metadata = metadata_map.get(&change.token_id).cloned();
+        }
+    }
+
+    Ok(enriched_changes)
 }
 
 pub async fn get_balance_changes(
     State(state): State<Arc<AppState>>,
     Query(params): Query<BalanceChangesQuery>,
-) -> Result<Json<Vec<BalanceChange>>, (StatusCode, Json<Value>)> {
-    let limit = params.limit.unwrap_or(100).min(1000);
-    let offset = params.offset.unwrap_or(0);
-    let exclude_snapshots = params.exclude_snapshots.unwrap_or(false);
-
-    let changes = if let Some(token_id) = params.token_id {
-        sqlx::query_as::<_, BalanceChange>(
-            r#"
-            SELECT id, account_id, block_height, block_time, token_id, 
-                   receipt_id, transaction_hashes, counterparty, signer_id, receiver_id,
-                   amount, balance_before, balance_after, created_at
-            FROM balance_changes
-            WHERE account_id = $1 AND token_id = $2
-              AND (NOT $5::bool OR counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT'))
-            ORDER BY block_height DESC, id DESC
-            LIMIT $3 OFFSET $4
-            "#,
-        )
-        .bind(&params.account_id)
-        .bind(&token_id)
-        .bind(limit)
-        .bind(offset)
-        .bind(exclude_snapshots)
-        .fetch_all(&state.db_pool)
+) -> Result<Json<Vec<EnrichedBalanceChange>>, (StatusCode, Json<Value>)> {
+    let enriched_changes = get_balance_changes_internal(&state, &params)
         .await
-    } else {
-        sqlx::query_as::<_, BalanceChange>(
-            r#"
-            SELECT id, account_id, block_height, block_time, token_id, 
-                   receipt_id, transaction_hashes, counterparty, signer_id, receiver_id,
-                   amount, balance_before, balance_after, created_at
-            FROM balance_changes
-            WHERE account_id = $1
-              AND (NOT $2::bool OR counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT'))
-            ORDER BY block_height DESC, id DESC
-            LIMIT $3 OFFSET $4
-            "#,
-        )
-        .bind(&params.account_id)
-        .bind(exclude_snapshots)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&state.db_pool)
-        .await
-    };
-
-    match changes {
-        Ok(data) => Ok(Json(data)),
-        Err(e) => {
+        .map_err(|e| {
             log::error!("Failed to fetch balance changes: {}", e);
-            Err((
+            (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "error": "Failed to fetch balance changes",
                     "details": e.to_string()
                 })),
-            ))
-        }
-    }
-}
+            )
+        })?;
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecentActivityQuery {
-    pub account_id: String,
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
-}
-
-pub async fn get_recent_activity(
-    State(state): State<Arc<AppState>>,
-    Query(params): Query<RecentActivityQuery>,
-) -> Result<Json<RecentActivityResponse>, (StatusCode, Json<Value>)> {
-    let limit = params.limit.unwrap_or(50).min(100);
-    let offset = params.offset.unwrap_or(0);
-
-    // Helper function to convert token_id to metadata API format
-    fn token_id_for_metadata(token_id: &str) -> Option<String> {
-        // Skip native NEAR - we have a fallback for it
-        if token_id == "near" {
-            return None;
-        }
-
-        Some(if token_id.starts_with("intents.near:") {
-            // Strip "intents.near:" prefix for metadata API
-            token_id.strip_prefix("intents.near:").unwrap().to_string()
-        } else if token_id.starts_with("nep141:") || token_id.starts_with("nep245:") {
-            token_id.to_string()
-        } else {
-            format!("nep141:{}", token_id)
-        })
-    }
-
-    fn resolve_metadata(
-        token_id: &str,
-        metadata_map: &std::collections::HashMap<String, TokenMetadata>,
-    ) -> TokenMetadata {
-        if token_id == "near" {
-            return TokenMetadata {
-                token_id: "near".to_string(),
-                name: "NEAR Protocol".to_string(),
-                symbol: "NEAR".to_string(),
-                decimals: 24,
-                icon: Some(
-                    "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png".to_string(),
-                ),
-                price: None,
-                price_updated_at: None,
-                network: Some("near".to_string()),
-                chain_name: Some("Near Protocol".to_string()),
-                chain_icons: None,
-            };
-        }
-
-        if let Some(lookup_id) = token_id_for_metadata(token_id) {
-            metadata_map.get(&lookup_id).cloned().unwrap_or_else(|| {
-                let symbol = token_id
-                    .split('.')
-                    .next()
-                    .unwrap_or("UNKNOWN")
-                    .to_uppercase();
-                TokenMetadata {
-                    token_id: token_id.to_string(),
-                    name: symbol.clone(),
-                    symbol,
-                    decimals: 18,
-                    icon: None,
-                    price: None,
-                    price_updated_at: None,
-                    network: None,
-                    chain_name: None,
-                    chain_icons: None,
-                }
-            })
-        } else {
-            let symbol = token_id
-                .split('.')
-                .next()
-                .unwrap_or("UNKNOWN")
-                .to_uppercase();
-            TokenMetadata {
-                token_id: token_id.to_string(),
-                name: symbol.clone(),
-                symbol,
-                decimals: 18,
-                icon: None,
-                price: None,
-                price_updated_at: None,
-                network: None,
-                chain_name: None,
-                chain_icons: None,
-            }
-        }
-    }
-
-    // Get total count (for pagination), excluding swap deposit legs
-    let total = sqlx::query_scalar::<_, i64>(
-        r#"
-        SELECT COUNT(*)
-        FROM balance_changes bc
-        WHERE bc.account_id = $1
-          AND bc.counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT', 'STAKING_REWARD', 'NOT_REGISTERED')
-          AND bc.id NOT IN (
-            SELECT ds.deposit_balance_change_id
-            FROM detected_swaps ds
-            WHERE ds.account_id = $1
-              AND ds.deposit_balance_change_id IS NOT NULL
-          )
-        "#,
-    )
-    .bind(&params.account_id)
-    .fetch_one(&state.db_pool)
-    .await
-    .unwrap_or(0);
-
-    // Fetch recent balance changes, excluding swap deposit legs
-    let changes = sqlx::query_as::<_, BalanceChange>(
-        r#"
-        SELECT id, account_id, block_height, block_time, token_id,
-               receipt_id, transaction_hashes, counterparty, signer_id, receiver_id,
-               amount, balance_before, balance_after, created_at
-        FROM balance_changes bc
-        WHERE bc.account_id = $1
-          AND bc.counterparty NOT IN ('SNAPSHOT', 'STAKING_SNAPSHOT', 'STAKING_REWARD', 'NOT_REGISTERED')
-          AND bc.id NOT IN (
-            SELECT ds.deposit_balance_change_id
-            FROM detected_swaps ds
-            WHERE ds.account_id = $1
-              AND ds.deposit_balance_change_id IS NOT NULL
-          )
-        ORDER BY bc.block_height DESC, bc.id DESC
-        LIMIT $2 OFFSET $3
-        "#,
-    )
-    .bind(&params.account_id)
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(&state.db_pool)
-    .await;
-
-    let changes = match changes {
-        Ok(data) => data,
-        Err(e) => {
-            log::error!("Failed to fetch recent activity: {}", e);
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Failed to fetch recent activity",
-                    "details": e.to_string()
-                })),
-            ));
-        }
-    };
-
-    // Look up detected swaps for fulfillment IDs on this page
-    let change_ids: Vec<i64> = changes.iter().map(|c| c.id).collect();
-
-    #[derive(Debug)]
-    struct SwapRecord {
-        fulfillment_balance_change_id: i64,
-        sent_token_id: Option<String>,
-        sent_amount: Option<BigDecimal>,
-        received_token_id: String,
-        received_amount: BigDecimal,
-        solver_transaction_hash: String,
-    }
-
-    let swap_records = sqlx::query_as!(
-        SwapRecord,
-        r#"
-        SELECT
-            fulfillment_balance_change_id,
-            sent_token_id,
-            sent_amount,
-            received_token_id,
-            received_amount,
-            solver_transaction_hash
-        FROM detected_swaps
-        WHERE account_id = $1
-          AND fulfillment_balance_change_id = ANY($2)
-        "#,
-        &params.account_id,
-        &change_ids,
-    )
-    .fetch_all(&state.db_pool)
-    .await
-    .unwrap_or_default();
-
-    // Build swap lookup map
-    let swap_map: std::collections::HashMap<i64, SwapRecord> = swap_records
-        .into_iter()
-        .map(|s| (s.fulfillment_balance_change_id, s))
-        .collect();
-
-    // Get unique token IDs for metadata (from balance changes + swap tokens)
-    let mut token_id_set: std::collections::HashSet<String> = changes
-        .iter()
-        .filter_map(|c| token_id_for_metadata(&c.token_id))
-        .collect();
-
-    for swap in swap_map.values() {
-        if let Some(meta_id) = swap
-            .sent_token_id
-            .as_ref()
-            .and_then(|id| token_id_for_metadata(id))
-        {
-            token_id_set.insert(meta_id);
-        }
-        if let Some(meta_id) = token_id_for_metadata(&swap.received_token_id) {
-            token_id_set.insert(meta_id);
-        }
-    }
-
-    let token_ids: Vec<String> = token_id_set.into_iter().collect();
-
-    // Fetch token metadata using the token metadata handler
-    let tokens_metadata = if !token_ids.is_empty() {
-        fetch_tokens_metadata(&state, &token_ids)
-            .await
-            .map_err(|e| {
-                log::error!("Failed to fetch token metadata: {:?}", e);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({
-                        "error": "Failed to fetch token metadata"
-                    })),
-                )
-            })?
-    } else {
-        Vec::new()
-    };
-
-    // Build metadata map
-    let mut metadata_map: std::collections::HashMap<String, TokenMetadata> =
-        std::collections::HashMap::new();
-    for meta in tokens_metadata {
-        metadata_map.insert(meta.token_id.clone(), meta);
-    }
-
-    // Enrich balance changes with token metadata and swap info
-    let activities: Vec<RecentActivity> = changes
-        .into_iter()
-        .map(|change| {
-            let token_metadata = resolve_metadata(&change.token_id, &metadata_map);
-
-            let swap = swap_map.get(&change.id).map(|s| {
-                let sent_token_metadata = s
-                    .sent_token_id
-                    .as_ref()
-                    .map(|id| resolve_metadata(id, &metadata_map));
-                let received_token_metadata = resolve_metadata(&s.received_token_id, &metadata_map);
-
-                SwapInfo {
-                    sent_token_id: s.sent_token_id.clone(),
-                    sent_amount: s.sent_amount.clone(),
-                    sent_token_metadata,
-                    received_token_id: s.received_token_id.clone(),
-                    received_amount: s.received_amount.clone(),
-                    received_token_metadata,
-                    solver_transaction_hash: s.solver_transaction_hash.clone(),
-                }
-            });
-
-            RecentActivity {
-                id: change.id,
-                block_time: change.block_time,
-                token_id: change.token_id,
-                token_metadata,
-                counterparty: change.counterparty,
-                signer_id: change.signer_id,
-                receiver_id: change.receiver_id,
-                amount: change.amount,
-                receipt_ids: change.receipt_id,
-                transaction_hashes: change.transaction_hashes,
-                swap,
-            }
-        })
-        .collect();
-
-    Ok(Json(RecentActivityResponse {
-        data: activities,
-        total,
-    }))
+    Ok(Json(enriched_changes))
 }
 
 #[derive(Debug, Deserialize)]

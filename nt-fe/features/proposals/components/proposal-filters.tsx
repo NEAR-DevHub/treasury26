@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/input";
 import { DateTimePicker } from "@/components/ui/datepicker";
-import { endOfDay, format, isSameDay, startOfDay, subDays, subMonths } from "date-fns";
+import { endOfDay, format, isSameDay, startOfDay } from "date-fns";
 import { OperationSelect } from "@/components/operation-select";
 import { TokenSelectPopover } from "@/components/token-select-popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,17 +21,6 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { CheckboxFilterContent } from "./checkbox-filter-content";
 import { useDaoUsers, UserListType } from "../hooks/use-dao-users";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-const FILTER_OPTIONS = [
-    { id: "proposal_types", label: "Requests Type" },
-    { id: "created_date", label: "Created Date" },
-    { id: "recipients", label: "Recipient" },
-    { id: "tokens", label: "Token" },
-    { id: "proposers", label: "Requester" },
-    { id: "approvers", label: "Approver" },
-    { id: "my_vote", label: "My Vote Status" },
-];
-
 
 const PROPOSAL_TYPE_OPTIONS = [
     "Payments",
@@ -60,11 +49,20 @@ interface TokenOption {
     icon: string;
 }
 
-interface ProposalFiltersProps {
-    className?: string;
+export interface FilterOption {
+    id: string;
+    label: string;
+    minDate?: Date;
+    maxDate?: Date;
+    hideAmount?: boolean; // Hide amount fields for this filter (for token filter)
 }
 
-export function ProposalFilters({ className }: ProposalFiltersProps) {
+interface ProposalFiltersProps {
+    className?: string;
+    filterOptions: FilterOption[];
+}
+
+export function ProposalFilters({ className, filterOptions }: ProposalFiltersProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -72,13 +70,13 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
 
     const activeFilters = useMemo(() => {
         const filters: string[] = [];
-        FILTER_OPTIONS.forEach((opt) => {
+        filterOptions.forEach((opt) => {
             if (searchParams.has(opt.id)) {
                 filters.push(opt.id);
             }
         });
         return filters;
-    }, [searchParams]);
+    }, [searchParams, filterOptions]);
 
     const updateFilters = useCallback(
         (updates: Record<string, string | null>) => {
@@ -107,7 +105,7 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
         updateFilters({ [id]: null });
     };
 
-    const availableFilters = FILTER_OPTIONS.filter(
+    const availableFilters = filterOptions.filter(
         (opt) => !activeFilters.includes(opt.id)
     );
 
@@ -123,16 +121,22 @@ export function ProposalFilters({ className }: ProposalFiltersProps) {
             </Button>
 
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-                {activeFilters.map((filterId) => (
-                    <FilterPill
-                        key={filterId}
-                        id={filterId}
-                        label={FILTER_OPTIONS.find((o) => o.id === filterId)?.label || ""}
-                        value={searchParams.get(filterId) || ""}
-                        onRemove={() => removeFilter(filterId)}
-                        onUpdate={(val) => updateFilters({ [filterId]: val })}
-                    />
-                ))}
+                {activeFilters.map((filterId) => {
+                    const filterOption = filterOptions.find((o) => o.id === filterId);
+                    return (
+                        <FilterPill
+                            key={filterId}
+                            id={filterId}
+                            label={filterOption?.label || ""}
+                            value={searchParams.get(filterId) || ""}
+                            onRemove={() => removeFilter(filterId)}
+                            onUpdate={(val) => updateFilters({ [filterId]: val })}
+                            minDate={filterOption?.minDate}
+                            maxDate={filterOption?.maxDate}
+                            hideAmount={filterOption?.hideAmount}
+                        />
+                    );
+                })}
 
                 {availableFilters.length > 0 && (
                     <Popover open={isAddFilterOpen} onOpenChange={setIsAddFilterOpen}>
@@ -176,9 +180,12 @@ interface FilterPillProps {
     value: string;
     onRemove: () => void;
     onUpdate: (value: string) => void;
+    minDate?: Date;
+    maxDate?: Date;
+    hideAmount?: boolean;
 }
 
-function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
+function FilterPill({ id, label, value, onRemove, onUpdate, minDate, maxDate, hideAmount }: FilterPillProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     // Single unified parsing - no backward compatibility
@@ -202,9 +209,9 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
             case "proposal_types":
                 return <ProposalTypeFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
             case "created_date":
-                return <CreatedDateFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
-            case "tokens":
-                return <TokenFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
+                return <CreatedDateFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} minDate={minDate} maxDate={maxDate} />;
+            case "token":
+                return <TokenFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} hideAmount={hideAmount} />;
             case "my_vote":
                 return <MyVoteFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
         }
@@ -224,7 +231,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate }: FilterPillProps) {
         if (!filterData) return <span className="font-medium">{displayValue}</span>;
 
         // Token filter display
-        if (id === "tokens" && (filterData as any).token) {
+        if (id === "token" && (filterData as any).token) {
             const { operation, token, amountOperation, minAmount, maxAmount } = filterData as any;
             let amountDisplay = "";
             if (operation === "Is" && (minAmount || maxAmount)) {
@@ -335,6 +342,7 @@ interface TokenFilterContentProps {
     onUpdate: (value: string) => void;
     setIsOpen: (isOpen: boolean) => void;
     onRemove: () => void;
+    hideAmount?: boolean;
 }
 
 interface TokenData {
@@ -344,7 +352,7 @@ interface TokenData {
     maxAmount?: string;
 }
 
-function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilterContentProps) {
+function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove, hideAmount }: TokenFilterContentProps) {
     const { operation, setOperation, data, setData, handleClear } = useFilterState<TokenData>({
         value,
         onUpdate,
@@ -357,7 +365,7 @@ function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilte
         serializeData: (op, d) => ({
             operation: op,
             token: d.token,
-            ...(op === "Is" && {
+            ...(op === "Is" && !hideAmount && {
                 amountOperation: d.amountOperation,
                 minAmount: d.minAmount,
                 maxAmount: d.maxAmount
@@ -397,7 +405,7 @@ function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilte
                 />
             </div>
 
-            {data?.token && operation === "Is" && (
+            {!hideAmount && data?.token && operation === "Is" && (
                 <>
                     <div className="py-2 px-2 flex items-baseline gap-1">
                         <span className="text-xs  text-muted-foreground">Amount</span>
@@ -495,6 +503,8 @@ interface CreatedDateFilterContentProps {
     onUpdate: (value: string) => void;
     setIsOpen: (isOpen: boolean) => void;
     onRemove: () => void;
+    minDate?: Date;
+    maxDate?: Date;
 }
 
 interface DateData {
@@ -504,7 +514,7 @@ interface DateData {
     };
 }
 
-function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: CreatedDateFilterContentProps) {
+function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove, minDate, maxDate }: CreatedDateFilterContentProps) {
     const { operation, setOperation, data, setData, handleClear } = useFilterState<DateData>({
         value,
         onUpdate,
@@ -531,68 +541,6 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: Crea
         setIsOpen(false);
     };
 
-    const commonTimeFilters = useMemo(
-        () => [
-            {
-                label: 'Today',
-                value: {
-                    from: startOfDay(new Date()),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Yesterday',
-                value: {
-                    from: subDays(startOfDay(new Date()), 1),
-                    to: subDays(endOfDay(new Date()), 1),
-                },
-            },
-            {
-                label: 'Last 3 days',
-                value: {
-                    from: subDays(startOfDay(new Date()), 3),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last 7 days',
-                value: {
-                    from: subDays(startOfDay(new Date()), 7),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last 14 days',
-                value: {
-                    from: subDays(startOfDay(new Date()), 14),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last month',
-                value: {
-                    from: subMonths(startOfDay(new Date()), 1),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last 3 months',
-                value: {
-                    from: subMonths(startOfDay(new Date()), 3),
-                    to: endOfDay(new Date()),
-                },
-            },
-            {
-                label: 'Last 6 months',
-                value: {
-                    from: subMonths(startOfDay(new Date()), 6),
-                    to: endOfDay(new Date()),
-                },
-            },
-        ],
-        [],
-    );
-
     const defaultMonth = useMemo(() => {
         if (data?.dateRange?.from) {
             return data.dateRange.from;
@@ -614,7 +562,6 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: Crea
                 <div className="h-full w-full flex items-center justify-center">
                     <DateTimePicker
                         mode="range"
-                        presets={commonTimeFilters}
                         value={data?.dateRange ? { from: data?.dateRange.from, to: data?.dateRange.to } : undefined}
                         onChange={(range) => {
                             if (range && typeof range === 'object' && 'from' in range) {
@@ -630,6 +577,8 @@ function CreatedDateFilterContent({ value, onUpdate, setIsOpen, onRemove }: Crea
                         }}
                         defaultMonth={defaultMonth}
                         numberOfMonths={1}
+                        min={minDate}
+                        max={maxDate}
                     />
                 </div>
             </div>

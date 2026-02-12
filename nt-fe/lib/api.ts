@@ -281,6 +281,7 @@ export interface RecentActivity {
     amount: string;
     transactionHashes: string[];
     receiptIds: string[];
+    valueUsd?: number;
     swap?: SwapInfo;
 }
 
@@ -295,15 +296,44 @@ export interface RecentActivityResponse {
  */
 export async function getRecentActivity(
     accountId: string,
-    limit: number = 50,
+    limit: number = 10,
     offset: number = 0,
+    minUsdValue?: number,
+    transactionType?: string,
+    tokenSymbol?: string,
+    tokenSymbolNot?: string,
+    startDate?: string,
+    endDate?: string,
 ): Promise<RecentActivityResponse | null> {
     if (!accountId) return null;
 
     try {
         const url = `${BACKEND_API_BASE}/recent-activity`;
+        const params: Record<string, string | number> = {
+            accountId: accountId,
+            limit,
+            offset,
+        };
+        if (minUsdValue !== undefined) {
+            params.minUsdValue = minUsdValue;
+        }
+        if (transactionType !== undefined && transactionType !== "all") {
+            params.transactionType = transactionType;
+        }
+        if (tokenSymbol) {
+            params.tokenSymbol = tokenSymbol;
+        }
+        if (tokenSymbolNot) {
+            params.tokenSymbolNot = tokenSymbolNot;
+        }
+        if (startDate) {
+            params.startDate = startDate;
+        }
+        if (endDate) {
+            params.endDate = endDate;
+        }
         const response = await axios.get<RecentActivityResponse>(url, {
-            params: { accountId, limit, offset },
+            params,
         });
         return response.data;
     } catch (error) {
@@ -1155,6 +1185,43 @@ export async function relayDelegateAction(
         url,
         { treasuryId, signedDelegateAction: base64Encoded },
         { withCredentials: true },
+    );
+    return response.data;
+}
+
+export interface ExportHistoryItem {
+    id: number;
+    accountId: string;
+    generatedBy: string;
+    email: string | null;
+    status: string;
+    fileUrl: string;
+    errorMessage: string | null;
+    createdAt: string;
+}
+
+export interface ExportHistoryResponse {
+    data: ExportHistoryItem[];
+    total: number;
+}
+
+/**
+ * Get export history for an account
+ */
+export async function getExportHistory(
+    accountId: string,
+    limit = 10,
+    offset = 0
+): Promise<ExportHistoryResponse> {
+    const response = await axios.get<ExportHistoryResponse>(
+        `${BACKEND_API_BASE}/export-history`,
+        {
+            params: {
+                accountId,
+                limit,
+                offset,
+            },
+        }
     );
     return response.data;
 }

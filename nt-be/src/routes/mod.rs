@@ -10,6 +10,10 @@ use std::sync::Arc;
 use crate::{AppState, auth, handlers};
 
 mod balance_changes;
+pub use balance_changes::{
+    BalanceChangesQuery, EnrichedBalanceChange, get_balance_changes_internal,
+};
+
 mod monitored_accounts;
 
 async fn health_check(
@@ -60,7 +64,7 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         )
         .route(
             "/api/recent-activity",
-            get(balance_changes::get_recent_activity),
+            get(handlers::balance_changes::history::get_recent_activity),
         )
         .route(
             "/api/balance-changes/fill-gaps",
@@ -72,8 +76,8 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::balance_changes::history::get_balance_chart),
         )
         .route(
-            "/api/balance-history/csv",
-            get(handlers::balance_changes::history::export_balance_csv),
+            "/api/balance-history/export",
+            get(handlers::balance_changes::history::export_balance),
         )
         // Token endpoints
         .route(
@@ -183,6 +187,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/bulk-payment/storage-credits",
             get(handlers::bulkpayment::storage_credits::get_storage_credits),
+        )
+        .route(
+            "/api/export-history",
+            get(handlers::balance_changes::history::get_export_history),
         )
         .route(
             "/api/bulk-payment/list/{list_id}",

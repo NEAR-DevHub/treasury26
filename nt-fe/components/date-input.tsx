@@ -1,7 +1,7 @@
 import { InputBlock } from "./input-block";
 import { FormField, FormMessage } from "./ui/form";
 import { Control, FieldValues, Path } from "react-hook-form";
-import { DatePickerPopover, } from "./ui/datepicker";
+import { DatePickerPopover } from "./datepicker";
 
 interface DateInputProps<TFieldValues extends FieldValues = FieldValues> {
     control: Control<TFieldValues>;

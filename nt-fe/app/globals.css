@@ -188,29 +188,19 @@
     --color-general-border: var(--general-border);
     --color-input: var(--input);
     --color-ring: var(--ring);
-    --color-general-success-background-faded: var(
-        --general-success-background-faded
-    );
+    --color-general-success-background-faded: var(--general-success-background-faded);
     --color-general-success-foreground: var(--general-success-foreground);
-    --color-general-destructive-background-faded: var(
-        --general-destructive-background-faded
-    );
-    --color-general-destructive-foreground: var(
-        --general-destructive-foreground
-    );
+    --color-general-destructive-background-faded: var(--general-destructive-background-faded);
+    --color-general-destructive-foreground: var(--general-destructive-foreground);
     --color-general-info-background-faded: var(--general-info-background-faded);
     --color-general-info-border: var(--general-info-border);
     --color-general-info-foreground: var(--general-info-foreground);
-    --color-general-warning-background-faded: var(
-        --general-warning-background-faded
-    );
+    --color-general-warning-background-faded: var(--general-warning-background-faded);
     --color-general-warning-border: var(--general-warning-border);
     --color-general-warning-foreground: var(--general-warning-foreground);
     --color-general-tertiary: var(--general-tertiary);
     --color-general-unofficial-border: var(--general-unofficial-border);
-    --color-general-unofficial-ghost-foreground: var(
-        --general-unofficial-ghost-foreground
-    );
+    --color-general-unofficial-ghost-foreground: var(--general-unofficial-ghost-foreground);
     --color-general-unofficial-accent: var(--general-unofficial-accent);
     --color-general-unofficial-border-3: var(--general-unofficial-border-3);
     --color-general-unofficial-border-5: var(--general-unofficial-border-5);

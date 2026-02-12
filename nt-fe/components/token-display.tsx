@@ -127,3 +127,30 @@ export const BalanceCell = ({
         </div>
     );
 };
+
+export const TokenAmountDisplay = ({
+    icon,
+    symbol,
+    amount,
+    className,
+}: {
+    icon?: string;
+    symbol: string;
+    amount: string;
+    className?: string;
+}) => {
+    return (
+        <div className="flex items-center gap-2">
+            {icon && (
+                <img
+                    src={icon}
+                    alt={symbol}
+                    className="h-6 w-6 rounded-full"
+                />
+            )}
+            <div className={className}>
+                {amount} {symbol}
+            </div>
+        </div>
+    );
+};

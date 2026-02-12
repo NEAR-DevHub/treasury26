@@ -15,6 +15,7 @@ import {
     startOfMonth,
     startOfYear,
     subMonths,
+    subDays,
 } from 'date-fns';
 import {
     Calendar,
@@ -41,6 +42,66 @@ import { cn } from '@/lib/utils';
 
 import { Tooltip } from "@/components/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+// Default preset date ranges for common time periods
+export const DEFAULT_DATE_PRESETS = [
+    {
+        label: 'Today',
+        value: {
+            from: startOfDay(new Date()),
+            to: endOfDay(new Date()),
+        },
+    },
+    {
+        label: 'Yesterday',
+        value: {
+            from: subDays(startOfDay(new Date()), 1),
+            to: subDays(endOfDay(new Date()), 1),
+        },
+    },
+    {
+        label: 'Last 3 days',
+        value: {
+            from: subDays(startOfDay(new Date()), 3),
+            to: endOfDay(new Date()),
+        },
+    },
+    {
+        label: 'Last 7 days',
+        value: {
+            from: subDays(startOfDay(new Date()), 7),
+            to: endOfDay(new Date()),
+        },
+    },
+    {
+        label: 'Last 14 days',
+        value: {
+            from: subDays(startOfDay(new Date()), 14),
+            to: endOfDay(new Date()),
+        },
+    },
+    {
+        label: 'Last month',
+        value: {
+            from: subMonths(startOfDay(new Date()), 1),
+            to: endOfDay(new Date()),
+        },
+    },
+    {
+        label: 'Last 3 months',
+        value: {
+            from: subMonths(startOfDay(new Date()), 3),
+            to: endOfDay(new Date()),
+        },
+    },
+    {
+        label: 'Last 6 months',
+        value: {
+            from: subMonths(startOfDay(new Date()), 6),
+            to: endOfDay(new Date()),
+        },
+    },
+];
 
 export type CalendarProps = Omit<
     React.ComponentProps<typeof DayPicker>,
@@ -165,7 +226,7 @@ export function DateTimePicker({
     mode = 'single',
     defaultMonth,
     numberOfMonths,
-    presets,
+    presets = mode === 'range' ? DEFAULT_DATE_PRESETS : undefined,
     ...props
 }: DateTimePickerProps & CalendarProps) {
     // Helper to check if value is a range

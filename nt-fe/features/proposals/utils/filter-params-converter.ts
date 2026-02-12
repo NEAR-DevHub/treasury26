@@ -85,10 +85,10 @@ export function convertUrlParamsToApiFilters(
     }
   }
 
-  // Handle tokens filter
-  const tokensParam = searchParams.get("tokens");
-  if (tokensParam) {
-    const tokensData = parseFilterData(tokensParam) as {
+  // Handle token filter (singular - only one token can be selected)
+  const tokenParam = searchParams.get("token");
+  if (tokenParam) {
+    const tokenData = parseFilterData(tokenParam) as {
       operation: string;
       token: { id: string; symbol: string };
       amountOperation?: string;
@@ -96,31 +96,31 @@ export function convertUrlParamsToApiFilters(
       maxAmount?: string;
     } | null;
 
-    if (tokensData?.token) {
-      const tokenId = tokensData.token.symbol;
+    if (tokenData?.token) {
+      const tokenId = tokenData.token.symbol;
 
-      if (tokensData.operation === "Is") {
+      if (tokenData.operation === "Is") {
         filters.token = tokenId;
 
         // Handle amount filters
-        if (tokensData.amountOperation && (tokensData.minAmount || tokensData.maxAmount)) {
-          switch (tokensData.amountOperation) {
+        if (tokenData.amountOperation && (tokenData.minAmount || tokenData.maxAmount)) {
+          switch (tokenData.amountOperation) {
             case "Between":
-              if (tokensData.minAmount) filters.amount_min = tokensData.minAmount;
-              if (tokensData.maxAmount) filters.amount_max = tokensData.maxAmount;
+              if (tokenData.minAmount) filters.amount_min = tokenData.minAmount;
+              if (tokenData.maxAmount) filters.amount_max = tokenData.maxAmount;
               break;
             case "Equal":
-              if (tokensData.minAmount) filters.amount_equal = tokensData.minAmount;
+              if (tokenData.minAmount) filters.amount_equal = tokenData.minAmount;
               break;
             case "More Than":
-              if (tokensData.minAmount) filters.amount_min = tokensData.minAmount;
+              if (tokenData.minAmount) filters.amount_min = tokenData.minAmount;
               break;
             case "Less Than":
-              if (tokensData.minAmount) filters.amount_max = tokensData.minAmount;
+              if (tokenData.minAmount) filters.amount_max = tokenData.minAmount;
               break;
           }
         }
-      } else if (tokensData.operation === "Is Not") {
+      } else if (tokenData.operation === "Is Not") {
         filters.token_not = tokenId;
       }
     }
