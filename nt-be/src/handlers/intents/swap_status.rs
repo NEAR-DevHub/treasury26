@@ -59,7 +59,7 @@ pub async fn get_swap_status(
     // Create cache key based on deposit address
     let cache_key = CacheKey::new("swap-status")
         .with(&deposit_address)
-        .with(&deposit_memo.clone().unwrap_or_default())
+        .with(deposit_memo.clone().unwrap_or_default())
         .build();
 
     let http_client = state.http_client.clone();
