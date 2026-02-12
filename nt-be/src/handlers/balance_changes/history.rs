@@ -231,13 +231,14 @@ fn build_export_file_url(params: &ExportRequest, format: &str) -> String {
         url.push_str(&format!("&token_ids={}", token_ids.join(",")));
     }
 
-    if let Some(ref transaction_types) = params.transaction_types {
-        if !transaction_types.is_empty() && !transaction_types.contains(&"all".to_string()) {
-            url.push_str(&format!(
-                "&transaction_types={}",
-                transaction_types.join(",")
-            ));
-        }
+    if let Some(ref transaction_types) = params.transaction_types
+        && !transaction_types.is_empty()
+        && !transaction_types.contains(&"all".to_string())
+    {
+        url.push_str(&format!(
+            "&transaction_types={}",
+            transaction_types.join(",")
+        ));
     }
 
     url
@@ -334,6 +335,7 @@ async fn handle_export(
 // Helper functions
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct BalanceChange {
     block_height: i64,
     block_time: DateTime<Utc>,
@@ -729,7 +731,7 @@ async fn generate_xlsx(
         worksheet.write(row, 1, change.block_time.to_rfc3339())?;
         worksheet.write(row, 2, &change.token_id)?;
         worksheet.write(row, 3, &metadata.symbol)?;
-        worksheet.write(row, 4, &change.counterparty.unwrap_or_default())?;
+        worksheet.write(row, 4, change.counterparty.unwrap_or_default())?;
         worksheet.write(row, 5, change.amount.to_string())?;
         worksheet.write(row, 6, change.balance_before.to_string())?;
         worksheet.write(row, 7, change.balance_after.to_string())?;
@@ -1198,9 +1200,9 @@ pub async fn get_recent_activity(
     let date_cutoff = Some(Utc::now() - Duration::days(history_months as i64 * 30));
 
     // Parse user-provided date range filters
-    let start_date = params.start_date.as_ref().map(|s| s.as_str());
+    let start_date = params.start_date.as_deref();
 
-    let end_date = params.end_date.as_ref().map(|s| s.as_str());
+    let end_date = params.end_date.as_deref();
 
     // Convert token symbol to token IDs using NearBlocks search
     let token_ids: Option<Vec<String>> = if let Some(ref symbol) = params.token_symbol {

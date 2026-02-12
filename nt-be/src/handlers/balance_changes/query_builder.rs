@@ -83,24 +83,25 @@ pub fn build_where_conditions(filters: &BalanceChangeFilters) -> (Vec<String>, u
     }
 
     // Transaction Type Filter (can select multiple: incoming, outgoing, staking_rewards)
-    if let Some(ref types) = filters.transaction_types {
-        if !types.is_empty() && !types.contains(&"all".to_string()) {
-            let mut type_conditions = Vec::new();
+    if let Some(ref types) = filters.transaction_types
+        && !types.is_empty()
+        && !types.contains(&"all".to_string())
+    {
+        let mut type_conditions = Vec::new();
 
-            for t in types {
-                match t.as_str() {
-                    "incoming" => type_conditions.push("amount > 0".to_string()),
-                    "outgoing" => type_conditions.push("amount < 0".to_string()),
-                    "staking_rewards" => {
-                        type_conditions.push("counterparty = 'STAKING_REWARD'".to_string())
-                    }
-                    _ => {} // Invalid - ignore
+        for t in types {
+            match t.as_str() {
+                "incoming" => type_conditions.push("amount > 0".to_string()),
+                "outgoing" => type_conditions.push("amount < 0".to_string()),
+                "staking_rewards" => {
+                    type_conditions.push("counterparty = 'STAKING_REWARD'".to_string())
                 }
+                _ => {} // Invalid - ignore
             }
+        }
 
-            if !type_conditions.is_empty() {
-                conditions.push(format!("({})", type_conditions.join(" OR ")));
-            }
+        if !type_conditions.is_empty() {
+            conditions.push(format!("({})", type_conditions.join(" OR ")));
         }
     }
 
