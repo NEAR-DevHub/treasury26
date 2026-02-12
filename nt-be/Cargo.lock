@@ -2324,6 +2324,7 @@ dependencies = [
  "near-account-id",
  "near-api",
  "near-jsonrpc-client",
+ "near-jsonrpc-primitives",
  "near-openapi-types",
  "near-primitives",
  "once_cell",

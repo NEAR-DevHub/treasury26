@@ -139,9 +139,10 @@ export function MemberInput<
                                     `${name}.${index}.roles` as Path<TFieldValues>
                                 }
                                 render={({ field }) => {
-                                    const currentMember = fields[index] as any;
-                                    const disabledRoles = getDisabledRoles && currentMember
-                                        ? getDisabledRoles(currentMember.accountId, field.value || [])
+                                    const form = useFormContext();
+                                    const accountId = form.watch(`${name}.${index}.accountId`);
+                                    const disabledRoles = getDisabledRoles && accountId
+                                        ? getDisabledRoles(accountId, field.value || [])
                                         : [];
 
                                     return (

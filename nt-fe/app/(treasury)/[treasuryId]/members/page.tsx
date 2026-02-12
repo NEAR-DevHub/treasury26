@@ -291,7 +291,7 @@ export default function MembersPage() {
             const disabledRoles: { roleId: string; reason: string }[] = [];
 
             // Special check for nearn-io.near account
-            const isNearnIoAccount = accountId.toLowerCase() === NEARN_IO_ACCOUNT;
+            const isNearnIoAccount = accountId.toLowerCase() === NEARN_IO_ACCOUNT.toLowerCase();
 
             if (isNearnIoAccount) {
                 // For nearn-io accounts, use priority-based role selection

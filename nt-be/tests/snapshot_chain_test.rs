@@ -26,7 +26,8 @@ fn timestamp_to_datetime(timestamp_nanos: i64) -> DateTime<sqlx::types::chrono::
 /// - Raw 41414178022306048887375898 = 41.414178022306048887375898 NPRO
 ///
 /// This test verifies the system handles FT transfers where receipts go to the token contract
-/// (not the account), resulting in UNKNOWN counterparty records.
+/// (not the account). FT counterparty resolution queries the token contract's state changes
+/// to identify the actual counterparty.
 #[sqlx::test]
 async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> {
     let account_id = "petersalomonsen.near";
@@ -200,7 +201,7 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
     println!("\n--- Step 3: Fill gaps ---");
     let filled = fill_gaps(&pool, &archival_network, account_id, token_id, 178685501)
         .await
-        .expect("Should be able to fill gaps - will insert UNKNOWN counterparty");
+        .expect("Should be able to fill gaps with FT counterparty resolution");
 
     println!("\n✓ Gap filling completed");
     println!("  Filled {} gaps", filled.len());
@@ -226,7 +227,7 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
 
     println!("  ✓ Found balance change at block 177751529: 0 -> 41.414178022306048887375898");
 
-    // Query the filled record to verify it has UNKNOWN counterparty
+    // Query the filled record to verify counterparty was resolved
     let filled_record = sqlx::query!(
         r#"
         SELECT block_height, balance_before::TEXT as "balance_before!", balance_after::TEXT as "balance_after!", 
@@ -253,25 +254,20 @@ async fn test_fill_gap_between_snapshot_chain(pool: PgPool) -> sqlx::Result<()> 
         filled_record.transaction_hashes
     );
 
-    // Verify the record has UNKNOWN counterparty
+    // FT counterparty resolution finds the actual sender via token contract state changes
     assert_eq!(
-        filled_record.counterparty, "UNKNOWN",
-        "Counterparty should be UNKNOWN when receipts cannot be found"
+        filled_record.counterparty, "distribution.nearmobile.near",
+        "Counterparty should be resolved from token contract receipts"
     );
 
-    // Verify no receipt or transaction data
+    // FT counterparty resolution provides the receipt ID
     assert!(
-        filled_record.receipt_id.is_empty(),
-        "Should have no receipt IDs"
-    );
-    assert!(
-        filled_record.transaction_hashes.is_empty(),
-        "Should have no transaction hashes"
+        !filled_record.receipt_id.is_empty(),
+        "Should have receipt IDs from FT counterparty resolution"
     );
 
-    println!("\n✅ TEST PASSED: Gap filled with UNKNOWN counterparty");
-    println!("   Balance change recorded despite missing receipt data");
-    println!("   Counterparty can be resolved later via third-party APIs");
+    println!("\n✅ TEST PASSED: Gap filled with resolved FT counterparty");
+    println!("   Counterparty resolved via token contract state changes");
 
     Ok(())
 }

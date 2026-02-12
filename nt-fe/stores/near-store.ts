@@ -26,10 +26,15 @@ import {
 } from "@/lib/auth-api";
 import { markDaoDirty, relayDelegateAction } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { EventMap } from "@hot-labs/near-connect/build/types";
 import {
-    EventMap,
-    SignDelegateActionsResponse,
-} from "@hot-labs/near-connect/build/types";
+    estimateProposalStorage,
+    estimateVoteStorage,
+} from "@/lib/sputnik-storage";
+
+// Fallbacks if WASM estimator fails to load
+const FALLBACK_PROPOSAL_STORAGE_BYTES = Big(500);
+const FALLBACK_VOTE_STORAGE_BYTES = Big(100);
 
 export interface CreateProposalParams {
     treasuryId: string;
@@ -123,6 +128,12 @@ export const useNearStore = create<NearStore>((set, get) => ({
         try {
             newConnector = new NearConnector({
                 network: "mainnet",
+                footerBranding: {
+                    icon: "/favicon_dark.svg",
+                    link: "https://wallet.near.org/",
+                    linkText: "Need a wallet?",
+                    heading: "More wallets coming soon",
+                },
                 features: {
                     signDelegateAction: true,
                 },
@@ -155,10 +166,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         // Register Ledger wallet after connector is initialized
         newConnector.whenManifestLoaded.then(async () => {
             // Check if WebHID is supported (not on mobile, requires secure context)
-            if (
-                typeof navigator !== "undefined" &&
-                ("hid" in navigator || "usb" in navigator)
-            ) {
+            if (typeof navigator !== "undefined" && "hid" in navigator) {
                 try {
                     await newConnector.registerWallet(ledgerWalletManifest);
                     console.log("Ledger wallet registered successfully");
@@ -411,9 +419,23 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
         const gas = "270000000000000";
 
+        let storageBytes: Big;
+        try {
+            const estimated = await estimateProposalStorage(params.proposal);
+            storageBytes = Big(estimated + 10);
+        } catch (e) {
+            storageBytes = FALLBACK_PROPOSAL_STORAGE_BYTES;
+        }
+
         const proposalTransaction = {
             receiverId: params.treasuryId,
             actions: [
+                {
+                    type: "Transfer",
+                    params: {
+                        deposit: Big(10).pow(19).mul(storageBytes).toFixed(0),
+                    },
+                } as ConnectorAction,
                 {
                     type: "FunctionCall",
                     params: {
@@ -479,22 +501,45 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
         const { signAndSendDelegateAction } = get();
         const gas = Big("300000000000000").div(votes.length).toFixed();
+
+        let voteStorageBytes: Big;
+        try {
+            const action = `Vote${votes[0].vote}`;
+            const estimated = await estimateVoteStorage(undefined, action);
+            voteStorageBytes = Big(estimated + 5);
+        } catch (e) {
+            voteStorageBytes = FALLBACK_VOTE_STORAGE_BYTES;
+        }
+
+        const votesActions = votes.map((vote) => ({
+            type: "FunctionCall",
+            params: {
+                methodName: "act_proposal",
+                args: {
+                    id: vote.proposalId,
+                    action: `Vote${vote.vote}`,
+                    proposal: vote.proposalKind,
+                },
+                gas: gas.toString(),
+                deposit: "0",
+            },
+        }));
+
         const delegateActions = [
             {
                 receiverId: treasuryId,
-                actions: votes.map((vote) => ({
-                    type: "FunctionCall",
-                    params: {
-                        methodName: "act_proposal",
-                        args: {
-                            id: vote.proposalId,
-                            action: `Vote${vote.vote}`,
-                            proposal: vote.proposalKind,
+                actions: [
+                    {
+                        type: "Transfer",
+                        params: {
+                            deposit: Big(10)
+                                .pow(19)
+                                .mul(voteStorageBytes.mul(votes.length))
+                                .toFixed(0),
                         },
-                        gas: gas.toString(),
-                        deposit: "0",
-                    },
-                })),
+                    } as ConnectorAction,
+                    ...votesActions,
+                ],
             },
         ];
 

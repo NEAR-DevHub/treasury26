@@ -36,6 +36,9 @@ pub struct EnvVars {
     pub jwt_expiry_hours: u64,
     // CORS configuration
     pub cors_allowed_origins: Vec<String>,
+    // Intents Explorer API configuration
+    pub intents_explorer_api_key: Option<String>,
+    pub intents_explorer_api_url: String,
 }
 
 impl Default for EnvVars {
@@ -138,6 +141,12 @@ impl Default for EnvVars {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect(),
+            // Intents Explorer API configuration
+            intents_explorer_api_key: std::env::var("INTENTS_EXPLORER_API_KEY")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            intents_explorer_api_url: std::env::var("INTENTS_EXPLORER_API_URL")
+                .unwrap_or_else(|_| "https://explorer.near-intents.org/api/v0".to_string()),
         }
     }
 }

@@ -13,7 +13,6 @@ import { ChevronRight, Check, X, Download, Send } from "lucide-react";
 import Link from "next/link";
 import { ProposalTypeIcon } from "../proposal-type-icon";
 import { TransactionCell } from "../transaction-cell";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { getProposalUIKind } from "../../utils/proposal-utils";
 import { useProposalInsufficientBalance } from "../../hooks/use-proposal-insufficient-balance";
 import { VoteModal } from "../vote-modal";
@@ -25,8 +24,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
-import { Policy } from "@/types/policy";
 import { EmptyState } from "@/components/empty-state";
+import { NotEnoughBalance } from "../not-enough-balance";
 
 const MAX_DISPLAYED_REQUESTS = 4;
 
@@ -62,7 +61,6 @@ function PendingRequestsSkeleton() {
 interface PendingRequestItemProps {
     proposal: Proposal;
     treasuryId: string;
-    policy: Policy;
     onVote: (vote: "Approve" | "Reject") => void;
     onDeposit: (tokenSymbol?: string, tokenNetwork?: string) => void;
 }
@@ -70,14 +68,12 @@ interface PendingRequestItemProps {
 export function PendingRequestItem({
     proposal,
     treasuryId,
-    policy,
     onVote,
     onDeposit,
 }: PendingRequestItemProps) {
     const type = getProposalUIKind(proposal);
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(
         proposal,
-        policy,
         treasuryId,
     );
     const { accountId } = useNear();
@@ -94,9 +90,14 @@ export function PendingRequestItem({
                         withDate={true}
                         textOnly
                     />
-                    <div className="gap-3 grid grid-rows-[0fr] w-full group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
-                        <div className="overflow-hidden w-full">
-                            <div className="pt-4 flex gap-3 invisible w-full group-hover:visible transition-opacity duration-300 ease-in-out">
+                    <div className="gap-3 grid grid-rows-[0fr] pt-4 w-full group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
+                        <div className="overflow-hidden w-full flex flex-col gap-2">
+                            <NotEnoughBalance
+                                insufficientBalanceInfo={
+                                    insufficientBalanceInfo
+                                }
+                            />
+                            <div className="flex gap-3 invisible w-full group-hover:visible transition-opacity duration-300 ease-in-out">
                                 <AuthButtonWithProposal
                                     proposalKind={proposal.kind}
                                     variant="secondary"
@@ -105,7 +106,11 @@ export function PendingRequestItem({
                                         e.preventDefault();
                                         onVote("Reject");
                                     }}
-                                    tooltip={isUserVoter ? NO_VOTE_MESSAGE : undefined}
+                                    tooltip={
+                                        isUserVoter
+                                            ? NO_VOTE_MESSAGE
+                                            : undefined
+                                    }
                                     disabled={isUserVoter}
                                 >
                                     <X className="size-3.5" />
@@ -124,11 +129,7 @@ export function PendingRequestItem({
                                         }}
                                     >
                                         <Download className="size-3.5" />
-                                        Deposit{" "}
-                                        {
-                                            insufficientBalanceInfo.differenceDisplay
-                                        }{" "}
-                                        {insufficientBalanceInfo.tokenSymbol}
+                                        Deposit
                                     </Button>
                                 ) : (
                                     <AuthButtonWithProposal
@@ -140,7 +141,11 @@ export function PendingRequestItem({
                                             onVote("Approve");
                                         }}
                                         disabled={isUserVoter}
-                                        tooltip={isUserVoter ? NO_VOTE_MESSAGE : undefined}
+                                        tooltip={
+                                            isUserVoter
+                                                ? NO_VOTE_MESSAGE
+                                                : undefined
+                                        }
                                     >
                                         <Check className="size-3.5" />
                                         Approve
@@ -157,9 +162,8 @@ export function PendingRequestItem({
 }
 
 export function PendingRequests() {
+    const { accountId } = useNear();
     const { treasuryId } = useTreasury();
-    const { data: policy, isLoading: isPolicyLoading } =
-        useTreasuryPolicy(treasuryId);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
     const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
     const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{
@@ -173,11 +177,14 @@ export function PendingRequests() {
     const { data: pendingRequests, isLoading: isRequestsLoading } =
         useProposals(treasuryId, {
             statuses: ["InProgress"],
+            ...(accountId && {
+                voter_votes: `${accountId}:No Voted`,
+            }),
         });
 
-    const isLoading = isPolicyLoading || isRequestsLoading;
+    const isLoading = isRequestsLoading;
 
-    if (isLoading || !policy) {
+    if (isLoading) {
         return <PendingRequestsSkeleton />;
     }
 
@@ -213,7 +220,7 @@ export function PendingRequests() {
                     )}
                 </div>
 
-                {hasPendingRequests && policy ? (
+                {hasPendingRequests ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
                         {pendingRequests?.proposals
                             ?.slice(0, MAX_DISPLAYED_REQUESTS)
@@ -221,7 +228,6 @@ export function PendingRequests() {
                                 <PendingRequestItem
                                     key={proposal.id}
                                     proposal={proposal}
-                                    policy={policy}
                                     treasuryId={treasuryId!}
                                     onVote={(vote) => {
                                         setVoteInfo({

@@ -3,8 +3,9 @@
 //! Functions to query block metadata including timestamps and receipt data via RPC.
 
 use crate::handlers::balance_changes::utils::with_transport_retry;
+use crate::utils::jsonrpc::create_rpc_client;
 use near_api::{Chain, NetworkConfig, Reference};
-use near_jsonrpc_client::{JsonRpcClient, auth, methods};
+use near_jsonrpc_client::methods;
 use near_primitives::types::{BlockId, BlockReference};
 use near_primitives::views::StateChangesRequestView;
 use serde::{Deserialize, Serialize};
@@ -99,20 +100,7 @@ pub async fn get_block_data(
     let block_hash = block.header.hash.to_string();
     let mut all_receipts = Vec::new();
 
-    // Set up JSON-RPC client for chunk queries
-    let rpc_endpoint = network
-        .rpc_endpoints
-        .first()
-        .ok_or("No RPC endpoint configured")?;
-
-    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
-
-    if let Some(bearer) = &rpc_endpoint.bearer_header {
-        // bearer_header already includes "Bearer " prefix from with_api_key()
-        // Extract just the token part
-        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
-        client = client.header(auth::Authorization::bearer(token)?);
-    }
+    let client = create_rpc_client(network)?;
 
     for chunk_header in &block.chunks {
         let chunk_hash_str = chunk_header.chunk_hash.to_string();
@@ -180,18 +168,7 @@ pub async fn get_all_account_receipts(
 
     let mut all_receipts = Vec::new();
 
-    // Set up JSON-RPC client for chunk queries
-    let rpc_endpoint = network
-        .rpc_endpoints
-        .first()
-        .ok_or("No RPC endpoint configured")?;
-
-    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
-
-    if let Some(bearer) = &rpc_endpoint.bearer_header {
-        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
-        client = client.header(auth::Authorization::bearer(token)?);
-    }
+    let client = create_rpc_client(network)?;
 
     for chunk_header in &block.chunks {
         let chunk_hash_str = chunk_header.chunk_hash.to_string();
@@ -244,18 +221,7 @@ pub async fn get_account_changes(
     account_id: &str,
     block_height: u64,
 ) -> Result<Vec<StateChangeWithCauseView>, Box<dyn std::error::Error + Send + Sync>> {
-    // Set up JSON-RPC client
-    let rpc_endpoint = network
-        .rpc_endpoints
-        .first()
-        .ok_or("No RPC endpoint configured")?;
-
-    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
-
-    if let Some(bearer) = &rpc_endpoint.bearer_header {
-        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
-        client = client.header(auth::Authorization::bearer(token)?);
-    }
+    let client = create_rpc_client(network)?;
 
     let parsed_account_id: near_primitives::types::AccountId = account_id.parse()?;
     let response = with_transport_retry("account_changes", || {
@@ -292,21 +258,9 @@ pub async fn get_transaction(
     near_jsonrpc_client::methods::tx::RpcTransactionResponse,
     Box<dyn std::error::Error + Send + Sync>,
 > {
-    use near_jsonrpc_client::methods;
     use near_primitives::hash::CryptoHash;
 
-    // Set up JSON-RPC client
-    let rpc_endpoint = network
-        .rpc_endpoints
-        .first()
-        .ok_or("No RPC endpoint configured")?;
-
-    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
-
-    if let Some(bearer) = &rpc_endpoint.bearer_header {
-        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
-        client = client.header(auth::Authorization::bearer(token)?);
-    }
+    let client = create_rpc_client(network)?;
 
     let tx_hash_crypto: CryptoHash = tx_hash.parse()?;
     let account_id_parsed: near_primitives::types::AccountId = account_id.parse()?;
@@ -591,18 +545,7 @@ mod tests {
         // Test 4: Get chunk with execution outcomes to see EVENT_JSON logs
         println!("\n--- Query 4: Get chunk with execution outcomes (includes EVENT_JSON logs) ---");
 
-        let rpc_endpoint = state
-            .archival_network
-            .rpc_endpoints
-            .first()
-            .expect("Should have RPC endpoint");
-
-        let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
-
-        if let Some(bearer) = &rpc_endpoint.bearer_header {
-            let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
-            client = client.header(auth::Authorization::bearer(token).unwrap());
-        }
+        let client = create_rpc_client(&state.archival_network).expect("Should create RPC client");
 
         // Get the block first to find the right chunk
         let block = with_transport_retry("test_block", || {

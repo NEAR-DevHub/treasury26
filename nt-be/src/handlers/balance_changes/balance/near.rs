@@ -65,6 +65,15 @@ pub async fn get_balance_at_block(
             }
             Err(e) => {
                 let err_str = e.to_string();
+                // Account doesn't exist at this block - balance is 0
+                if err_str.contains("UnknownAccount") {
+                    log::debug!(
+                        "Account {} does not exist at block {} - returning balance 0",
+                        account_id,
+                        current_block
+                    );
+                    return Ok(bigdecimal::BigDecimal::from(0));
+                }
                 // Check if this is a 422 error (unprocessable entity) or block not found error
                 if err_str.contains("422") || err_str.contains("UnknownBlock") {
                     if offset < max_retries {

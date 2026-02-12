@@ -66,7 +66,21 @@ pub struct BalanceChange {
     pub created_at: DateTime<Utc>,
 }
 
-/// Enriched balance change with optional metadata
+/// Swap information attached to balance changes
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SwapInfo {
+    pub sent_token_id: Option<String>,
+    pub sent_amount: Option<BigDecimal>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sent_token_metadata: Option<TokenMetadata>,
+    pub received_token_id: String,
+    pub received_amount: BigDecimal,
+    pub received_token_metadata: TokenMetadata,
+    pub solver_transaction_hash: String,
+}
+
+/// Enriched balance change with optional metadata and swap info
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct EnrichedBalanceChange {
@@ -86,6 +100,8 @@ pub struct EnrichedBalanceChange {
     pub created_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token_metadata: Option<TokenMetadata>, // Only present if include_metadata: true
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swap: Option<SwapInfo>, // Only present for swap transactions
 }
 
 // Helper function to fetch metadata for multiple tokens with fallback
@@ -342,6 +358,7 @@ pub async fn get_balance_changes_internal(
                 balance_after: change.balance_after,
                 created_at: change.created_at,
                 token_metadata: None, // Will be populated if include_metadata is true
+                swap: None,           // Swap detection not implemented in this endpoint yet
             }
         })
         .collect();

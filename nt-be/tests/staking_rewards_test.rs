@@ -582,7 +582,7 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
         first_cycle_block, first_cycle_epoch
     );
 
-    run_monitor_cycle(&pool, &network, first_cycle_block, None)
+    run_monitor_cycle(&pool, &network, first_cycle_block, None, None)
         .await
         .expect("First monitor cycle should succeed");
 
@@ -620,7 +620,7 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
         second_cycle_block, second_cycle_epoch
     );
 
-    run_monitor_cycle(&pool, &network, second_cycle_block, None)
+    run_monitor_cycle(&pool, &network, second_cycle_block, None, None)
         .await
         .expect("Second monitor cycle should succeed");
 
@@ -658,7 +658,7 @@ async fn test_staking_rewards_end_to_end_with_monitor_cycle(pool: PgPool) -> sql
         third_cycle_block, third_cycle_epoch
     );
 
-    run_monitor_cycle(&pool, &network, third_cycle_block, None)
+    run_monitor_cycle(&pool, &network, third_cycle_block, None, None)
         .await
         .expect("Third monitor cycle should succeed");
 
@@ -981,7 +981,7 @@ async fn test_track_and_fill_staking_rewards(pool: PgPool) -> sqlx::Result<()> {
             cycle_epoch
         );
 
-        run_monitor_cycle(&pool, &network, cycle_block, None)
+        run_monitor_cycle(&pool, &network, cycle_block, None, None)
             .await
             .expect("Monitor cycle should succeed");
     }

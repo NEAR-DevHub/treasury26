@@ -39,8 +39,8 @@ export default function BalanceChart({ data = [], symbol }: BalanceChartProps) {
             <div className="h-[180px]">
                 <EmptyState
                     icon={ChartSpline}
-                    title="Nothing to show yet"
-                    description="No balance history available"
+                    title="Loading your balance history"
+                    description="Your balance history is on the way. This might take some time."
                 />
             </div>
         );

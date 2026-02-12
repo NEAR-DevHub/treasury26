@@ -355,89 +355,95 @@ export default function BalanceWithGraph({
 
     return (
         <PageCard>
-            <div className="flex justify-around gap-4 mb-6">
-                <div className="flex-1">
-                    <h3 className="text-xs font-medium text-muted-foreground">
-                        Total Balance
-                    </h3>
-                    <p className="text-3xl font-bold mt-2">
-                        {formatCurrency(Number(balance))}
-                    </p>
-                </div>
-                <div className="flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
-                    <Select
-                        value={selectedToken}
-                        onValueChange={setSelectedToken}
-                    >
-                        <SelectTrigger
-                            size="sm"
-                            className="min-w-[140px] w-full"
+            <div className="mb-6">
+                <div className="flex justify-between gap-4">
+                    <div className="flex-1">
+                        <h3 className="text-xs font-medium text-muted-foreground">
+                            Total Balance
+                        </h3>
+                        <p className="text-3xl font-bold mt-2">
+                            {formatCurrency(Number(balance))}
+                        </p>
+                    </div>
+                    <div className="hidden md:flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
+                        <Select
+                            value={selectedToken}
+                            onValueChange={setSelectedToken}
                         >
-                            <SelectValue>
-                                {selectedToken === "all" ? (
+                            <SelectTrigger
+                                size="sm"
+                                className="min-w-[140px] w-full"
+                            >
+                                <SelectValue>
+                                    {selectedToken === "all" ? (
+                                        <div className="flex items-center gap-2">
+                                            <Coins className="size-4" />
+                                            <span>All Tokens</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            {selectedTokenGroup?.icon && (
+                                                <img
+                                                    src={
+                                                        selectedTokenGroup.icon
+                                                    }
+                                                    alt={
+                                                        selectedTokenGroup.symbol
+                                                    }
+                                                    width={16}
+                                                    height={16}
+                                                    className="rounded-full"
+                                                />
+                                            )}
+                                            <span>{selectedToken}</span>
+                                        </div>
+                                    )}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">
                                     <div className="flex items-center gap-2">
                                         <Coins className="size-4" />
                                         <span>All Tokens</span>
                                     </div>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        {selectedTokenGroup?.icon && (
-                                            <img
-                                                src={selectedTokenGroup.icon}
-                                                alt={selectedTokenGroup.symbol}
-                                                width={16}
-                                                height={16}
-                                                className="rounded-full"
-                                            />
-                                        )}
-                                        <span>{selectedToken}</span>
-                                    </div>
-                                )}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">
-                                <div className="flex items-center gap-2">
-                                    <Coins className="size-4" />
-                                    <span>All Tokens</span>
-                                </div>
-                            </SelectItem>
-                            {groupedTokens.map((group) => (
-                                <SelectItem
-                                    key={group.symbol}
-                                    value={group.symbol}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        {group.icon && (
-                                            <img
-                                                src={group.icon}
-                                                alt={group.symbol}
-                                                width={16}
-                                                height={16}
-                                                className="rounded-full"
-                                            />
-                                        )}
-                                        <span>{group.symbol}</span>
-                                    </div>
                                 </SelectItem>
+                                {groupedTokens.map((group) => (
+                                    <SelectItem
+                                        key={group.symbol}
+                                        value={group.symbol}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {group.icon && (
+                                                <img
+                                                    src={group.icon}
+                                                    alt={group.symbol}
+                                                    width={16}
+                                                    height={16}
+                                                    className="rounded-full"
+                                                />
+                                            )}
+                                            <span>{group.symbol}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <ToggleGroup
+                            type="single"
+                            size="sm"
+                            variant={"outline"}
+                            value={selectedPeriod}
+                            onValueChange={(e) =>
+                                e && setSelectedPeriod(e as TimePeriod)
+                            }
+                        >
+                            {TIME_PERIODS.map((e) => (
+                                <ToggleGroupItem key={e} value={e}>
+                                    {e}
+                                </ToggleGroupItem>
                             ))}
-                        </SelectContent>
-                    </Select>
-                    <ToggleGroup
-                        type="single"
-                        size="sm"
-                        variant={"outline"}
-                        value={selectedPeriod}
-                        onValueChange={(e) =>
-                            e && setSelectedPeriod(e as TimePeriod)
-                        }
-                    >
-                        {TIME_PERIODS.map((e) => (
-                            <ToggleGroupItem key={e} value={e}>
-                                {e}
-                            </ToggleGroupItem>
-                        ))}
-                    </ToggleGroup>
+                        </ToggleGroup>
+                    </div>
                 </div>
             </div>
 
@@ -466,6 +472,74 @@ export default function BalanceWithGraph({
                 {/*<AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
                     <Database className="size-4" /> Earn
                 </AuthButton> */}
+            </div>
+            <div className="mt-3 flex gap-2 md:hidden">
+                <Select value={selectedToken} onValueChange={setSelectedToken}>
+                    <SelectTrigger size="sm" className="w-[140px]">
+                        <SelectValue>
+                            {selectedToken === "all" ? (
+                                <div className="flex items-center gap-2">
+                                    <Coins className="size-4" />
+                                    <span>All Tokens</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    {selectedTokenGroup?.icon && (
+                                        <img
+                                            src={selectedTokenGroup.icon}
+                                            alt={selectedTokenGroup.symbol}
+                                            width={16}
+                                            height={16}
+                                            className="rounded-full"
+                                        />
+                                    )}
+                                    <span>{selectedToken}</span>
+                                </div>
+                            )}
+                        </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">
+                            <div className="flex items-center gap-2">
+                                <Coins className="size-4" />
+                                <span>All Tokens</span>
+                            </div>
+                        </SelectItem>
+                        {groupedTokens.map((group) => (
+                            <SelectItem key={group.symbol} value={group.symbol}>
+                                <div className="flex items-center gap-2">
+                                    {group.icon && (
+                                        <img
+                                            src={group.icon}
+                                            alt={group.symbol}
+                                            width={16}
+                                            height={16}
+                                            className="rounded-full"
+                                        />
+                                    )}
+                                    <span>{group.symbol}</span>
+                                </div>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Select
+                    value={selectedPeriod}
+                    onValueChange={(value) =>
+                        setSelectedPeriod(value as TimePeriod)
+                    }
+                >
+                    <SelectTrigger size="sm" className="w-[92px]">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {TIME_PERIODS.map((period) => (
+                            <SelectItem key={period} value={period}>
+                                {period}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
             {isLoading ? (
                 <div className="h-56 w-full space-y-3 p-4">

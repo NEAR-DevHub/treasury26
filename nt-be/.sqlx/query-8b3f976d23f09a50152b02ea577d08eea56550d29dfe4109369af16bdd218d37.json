@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            dao_id,\n            is_policy_member AS \"is_member!\",\n            is_saved AS \"is_saved!\",\n            is_hidden AS \"is_hidden!\"\n        FROM dao_members\n        WHERE account_id = $1\n          AND (is_policy_member = true OR is_saved = true)\n        ORDER BY dao_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "dao_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "is_member!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_saved!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_hidden!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8b3f976d23f09a50152b02ea577d08eea56550d29dfe4109369af16bdd218d37"
+}

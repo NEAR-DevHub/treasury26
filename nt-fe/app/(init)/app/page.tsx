@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useNear } from "@/stores/near-store";
-import { useUserTreasuries } from "@/hooks/use-treasury-queries";
-import { Button } from "@/components/button";
 import { GradFlow } from "gradflow";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { Button } from "@/components/button";
+import Logo from "@/components/logo";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useUserTreasuries } from "@/hooks/use-treasury-queries";
+import { useNear } from "@/stores/near-store";
 
 function GradientTitle() {
     return (
@@ -35,12 +36,7 @@ export default function AppRedirect() {
         authError,
         clearError,
     } = useNear();
-    const {
-        data: treasuries = [],
-        isLoading,
-        isError,
-    } = useUserTreasuries(accountId);
-    const { lastTreasuryId } = useTreasury();
+    const { lastTreasuryId, treasuries, isLoading } = useTreasury();
 
     useEffect(() => {
         if (!isLoading && treasuries.length > 0) {
@@ -49,12 +45,18 @@ export default function AppRedirect() {
             accountId &&
             treasuries.length === 0 &&
             !isLoading &&
-            !isError &&
             !isInitializing
         ) {
             router.push(`/app/new`);
         }
-    }, [treasuries, isLoading, router]);
+    }, [
+        treasuries,
+        isLoading,
+        router,
+        accountId,
+        isInitializing,
+        lastTreasuryId,
+    ]);
     const buttonText = isInitializing
         ? "Loading..."
         : isAuthenticating || isLoading
@@ -65,29 +67,23 @@ export default function AppRedirect() {
         <div className="relative h-screen w-full overflow-hidden">
             <GradFlow
                 config={{
-                    color1: { r: 102, g: 180, b: 255 },
-                    color2: { r: 25, g: 25, b: 26 },
-                    color3: { r: 0, g: 200, b: 110 },
-                    speed: 0.6,
-                    scale: 2,
-                    type: "animated",
-                    noise: 0.18,
+                    color1: { r: 0, g: 67, b: 224 },
+                    color2: { r: 255, g: 255, b: 255 },
+                    color3: { r: 9, g: 83, b: 255 },
+                    speed: 0.4,
+                    scale: 1,
+                    type: "stripe",
+                    noise: 0.08,
                 }}
                 className="absolute inset-0"
             />
             <div className="flex relative w-full h-full items-center justify-between overflow-hidden">
                 <div className="w-full lg:w-2/5 h-full p-2 lg:p-4 flex flex-col justify-center min-w-0">
-                    <div className="w-full min-h-[30%] flex items-center  lg:hidden">
+                    <div className="w-full min-h-[30%] flex items-center lg:hidden">
                         <GradientTitle />
                     </div>
                     <div className="w-full gap-12 flex flex-col p-4 items-center h-full justify-center bg-white rounded-2xl lg:max-w-4xl">
-                        <Image
-                            src="/logo.svg"
-                            alt="logo"
-                            width={0}
-                            height={0}
-                            className="w-[200px] h-auto"
-                        />
+                        <Logo size="lg" />
                         <div className="flex w-full flex-col items-center justify-center gap-6 ">
                             <div className="flex w-full flex-col gap-2 text-center">
                                 <h1 className="text-2xl font-semibold">
@@ -115,26 +111,6 @@ export default function AppRedirect() {
                                     )}
                                     {buttonText}
                                 </Button>
-                                {authError && (
-                                    <div className="w-full max-w-md p-3 rounded-md bg-red-50 border border-red-200">
-                                        <p className="text-sm text-red-800 font-medium">
-                                            Authentication failed
-                                        </p>
-                                        <p className="text-xs text-red-600 mt-1">
-                                            {authError.includes("0xb005") ||
-                                            authError.includes("UNKNOWN_ERROR")
-                                                ? "Please make sure your Ledger device is unlocked and the NEAR app is open. You may need to approve the signature on your device."
-                                                : authError.includes(
-                                                        "0x5515",
-                                                    ) ||
-                                                    authError.includes(
-                                                        "Locked device",
-                                                    )
-                                                  ? "Your Ledger device is locked. Please unlock it and try again."
-                                                  : authError}
-                                        </p>
-                                    </div>
-                                )}
                                 <p className="text-center text-sm">
                                     Don't have a wallet?{" "}
                                     <Link

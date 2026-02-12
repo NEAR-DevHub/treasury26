@@ -35,6 +35,18 @@ export default function RootLayout({
             className={`${geistSans.variable} ${geistMono.variable}`}
         >
             <head>
+                <link
+                    rel="icon"
+                    href="/favicon_light.svg"
+                    type="image/svg+xml"
+                    media="(prefers-color-scheme: light)"
+                />
+                <link
+                    rel="icon"
+                    href="/favicon_dark.svg"
+                    type="image/svg+xml"
+                    media="(prefers-color-scheme: dark)"
+                />
                 <script
                     dangerouslySetInnerHTML={{
                         __html: `

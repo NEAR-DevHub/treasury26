@@ -1,0 +1,256 @@
+[
+  {
+    "id": 2438,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 164984437,
+    "blockTime": "2025-09-21T08:21:02.492Z",
+    "tokenId": "intents.near:nep141:btc.omft.near",
+    "receiptId": [
+      "8GV8GSAEHzH6hYhhePvsdWhQWcCgWmqX9BXKwzuQfUv1"
+    ],
+    "transactionHashes": [
+      "88jaU7nLqYKtgHqyoHZkXdjLbCVvNyYy7f1MxNUGt3w9"
+    ],
+    "counterparty": "solver-priv-liq.near",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "0.00017269",
+    "balanceBefore": "0.00566984",
+    "balanceAfter": "0.00584253",
+    "createdAt": "2026-01-27T21:10:24.557361Z"
+  },
+  {
+    "id": 2111,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 164985114,
+    "blockTime": "2025-09-21T08:27:55.430Z",
+    "tokenId": "intents.near:nep141:xrp.omft.near",
+    "receiptId": [
+      "EnUv3PZxeqKbYfJF7VwNQgE6Fi6HJNfBqpeowUoq4AE9"
+    ],
+    "transactionHashes": [
+      "YpX6WbefEoXw5g6c3bu3Kj3yeT4VNUJHCe7bqFz4waH"
+    ],
+    "counterparty": "solver-priv-liq.near",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "16.69236700",
+    "balanceBefore": "0",
+    "balanceAfter": "16.69236700",
+    "createdAt": "2026-01-27T20:39:44.498474Z"
+  },
+  {
+    "id": 2113,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 165015235,
+    "blockTime": "2025-09-21T13:36:42.160Z",
+    "tokenId": "intents.near:nep245:v2_1.omni.hot.tg:43114_11111111111111111111",
+    "receiptId": [
+      "98nuTL5DFYgH2tjzibHUgtZDGohMWygLSVQycX985iMn"
+    ],
+    "transactionHashes": [
+      "CmwU7dUCTsUXcqwQC7U2bPUbxdZB88iSDsmXqWSf96BT"
+    ],
+    "counterparty": "solver-priv-liq.near",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "1.51476544231523885200",
+    "balanceBefore": "0",
+    "balanceAfter": "1.51476544231523885200",
+    "createdAt": "2026-01-27T20:39:50.463403Z"
+  },
+  {
+    "id": 2108,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 165016722,
+    "blockTime": "2025-09-21T13:51:52.228Z",
+    "tokenId": "intents.near:nep141:sol.omft.near",
+    "receiptId": [
+      "Hc44mqKWVUr5mhyAcAbEcBzCQzBk17UaMqmJypZZ5SBw"
+    ],
+    "transactionHashes": [
+      "AMRFsjbVZP98pkt64pc52d1dwj9UWpefBDZbTddKFneK"
+    ],
+    "counterparty": "solver-priv-liq.near",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "0.08342401",
+    "balanceBefore": "0",
+    "balanceAfter": "0.08342401",
+    "createdAt": "2026-01-27T20:39:34.801183Z"
+  },
+  {
+    "id": 2103,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 165197852,
+    "blockTime": "2025-09-22T20:52:21.934Z",
+    "tokenId": "intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "receiptId": [
+      "8GWVQH1qQkZnFZvRZWhCd3qnFKXEEU9iN6wdVbBAXYoy"
+    ],
+    "transactionHashes": [
+      "3iRJJSGi92KwVcJEasyo4sq51LGxEpcEFeTmnk7VpGjM"
+    ],
+    "counterparty": "solver-priv-liq.near",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "22.54697700",
+    "balanceBefore": "102.28604300",
+    "balanceAfter": "124.83302000",
+    "createdAt": "2026-01-27T20:39:16.689435Z"
+  },
+  {
+    "id": 2106,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 165387179,
+    "blockTime": "2025-09-24T06:07:04.369Z",
+    "tokenId": "intents.near:nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near",
+    "receiptId": [
+      "J7FQJNZbjo9S18gtFhC3vicEbT8a9GrLtJnDokL2WBwG"
+    ],
+    "transactionHashes": [
+      "C1rafJ8axZCsom6u4dJhGSdTSvrB7K2fmhmzCXvcbBW5"
+    ],
+    "counterparty": "peanut-trade.near",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "22.54364600",
+    "balanceBefore": "0",
+    "balanceAfter": "22.54364600",
+    "createdAt": "2026-01-27T20:39:27.169506Z"
+  },
+  {
+    "id": 1427,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 165467543,
+    "blockTime": "2025-09-24T20:18:53.758Z",
+    "tokenId": "near:total",
+    "receiptId": [
+      "C5tfsNUxNU9MbfVJs2ahtmrviP2PjLwUi49VPUrr646q"
+    ],
+    "transactionHashes": [
+      "3AdFL75DyBqJqacRHXtBCC7WW9d3ciixphAUK6RpzgHf"
+    ],
+    "counterparty": "petersalomonsen.near",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "0.1000546127120932",
+    "balanceBefore": "26.506624381779614399999978",
+    "balanceAfter": "26.606678994491707599999978",
+    "createdAt": "2026-01-27T19:22:21.629406Z"
+  },
+  {
+    "id": 656,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 171108229,
+    "blockTime": "2025-11-03T21:29:09.720700Z",
+    "tokenId": "near:total",
+    "receiptId": [
+      "3HomN6ewxCfWYDvrvPmkXYT9W4iVkaqTwxFUYmWeyHMa"
+    ],
+    "transactionHashes": [],
+    "counterparty": "petersalomonsen.near",
+    "signerId": "petersalomonsen.near",
+    "receiverId": "webassemblymusic-treasury.sputnik-dao.near",
+    "amount": "0.000087685746775499999999",
+    "balanceBefore": "26.606481186616591299999978",
+    "balanceAfter": "26.606568872363366799999977",
+    "createdAt": "2026-01-27T17:55:33.959111Z"
+  },
+  {
+    "id": 884,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 171108230,
+    "blockTime": "2025-11-03T21:29:10.446089Z",
+    "tokenId": "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "receiptId": [
+      "6bqKjx8UVTzJZ5WgrQVikL4jZ23CRTgqJjFCLVSCdtBU"
+    ],
+    "transactionHashes": [],
+    "counterparty": "webassemblymusic-treasury.sputnik-dao.near",
+    "signerId": "webassemblymusic-treasury.sputnik-dao.near",
+    "receiverId": "webassemblymusic-treasury.sputnik-dao.near",
+    "amount": "-10",
+    "balanceBefore": "129",
+    "balanceAfter": "119",
+    "createdAt": "2026-01-27T18:15:52.624841Z"
+  },
+  {
+    "id": 601,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 171108231,
+    "blockTime": "2025-11-03T21:29:11.053424Z",
+    "tokenId": "near:total",
+    "receiptId": [
+      "BVZWLYDTpcVHbZtyd1cb3uUJu8Rs5WbkeZPyAxSJDJD7"
+    ],
+    "transactionHashes": [],
+    "counterparty": "intents.near",
+    "signerId": "intents.near",
+    "receiverId": "webassemblymusic-treasury.sputnik-dao.near",
+    "amount": "-0.0999354132510231",
+    "balanceBefore": "26.606568872363366799999977",
+    "balanceAfter": "26.506633459112343699999977",
+    "createdAt": "2026-01-27T17:50:48.882839Z"
+  },
+  {
+    "id": 886,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 171108241,
+    "blockTime": "2025-11-03T21:29:17.002Z",
+    "tokenId": "intents.near:nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+    "receiptId": [
+      "8k8oSLc2fzQUgnrefNGkmX9Nrwmg4szzuTBg5xm7QtfD"
+    ],
+    "transactionHashes": [
+      "6LLejN4izEV5qu8xYHZPGbzY6i5yQCGSscPzNyiezt6r"
+    ],
+    "counterparty": "solver-multichain-asset.near",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "9.99998000",
+    "balanceBefore": "0",
+    "balanceAfter": "9.99998000",
+    "createdAt": "2026-01-27T18:15:58.906443Z"
+  },
+  {
+    "id": 808,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 175445340,
+    "blockTime": "2025-12-04T20:56:32.266Z",
+    "tokenId": "near:total",
+    "receiptId": [
+      "23o3EuG6xWKQXbSki1ntNfEWe4yD8CmhrKKtVTzKdv2g"
+    ],
+    "transactionHashes": [
+      "5zcj5uW2i6Dt9w4tTw6oAfvvnsUmmrvUgi7fAAynqKUr"
+    ],
+    "counterparty": "system",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "0.3000423931801773",
+    "balanceBefore": "26.607060975726849399999977",
+    "balanceAfter": "26.907103368907026699999977",
+    "createdAt": "2026-01-27T18:08:41.349576Z"
+  },
+  {
+    "id": 187,
+    "accountId": "webassemblymusic-treasury.sputnik-dao.near",
+    "blockHeight": 179943999,
+    "blockTime": "2026-01-06T06:37:43.778Z",
+    "tokenId": "intents.near:nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "receiptId": [
+      "2joNSGgBpikRuCUnRjrdGRhRgtBrfedkqMQFjh7oEfiM"
+    ],
+    "transactionHashes": [
+      "8ztgFfUYdKpFw4jrhioRePCfPL2kiyGhjAP1rNb3aFfb"
+    ],
+    "counterparty": "solver-priv-liq.near",
+    "signerId": null,
+    "receiverId": null,
+    "amount": "0.17880900",
+    "balanceBefore": "124.83302000",
+    "balanceAfter": "125.01182900",
+    "createdAt": "2026-01-27T17:06:21.922756Z"
+  }
+]

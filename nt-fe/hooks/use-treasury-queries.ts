@@ -26,9 +26,23 @@ import {
  * Requires Near instance for blockchain queries
  */
 export function useUserTreasuries(accountId: string | null | undefined) {
+    return useUserTreasuriesWithOptions(accountId, { includeHidden: false });
+}
+
+export function useUserTreasuriesWithOptions(
+    accountId: string | null | undefined,
+    options?: { includeHidden?: boolean },
+) {
     return useQuery({
-        queryKey: ["userTreasuries", accountId],
-        queryFn: () => getUserTreasuries(accountId!),
+        queryKey: [
+            "userTreasuries",
+            accountId,
+            options?.includeHidden ?? false,
+        ],
+        queryFn: () =>
+            getUserTreasuries(accountId!, {
+                includeHidden: options?.includeHidden ?? false,
+            }),
         enabled: !!accountId,
         staleTime: 1000 * 60 * 5, // 5 minutes
     });

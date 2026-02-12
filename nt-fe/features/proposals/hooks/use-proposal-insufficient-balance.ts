@@ -6,7 +6,6 @@ import { Proposal } from "@/lib/proposals-api";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { getProposalRequiredFunds } from "../utils/proposal-utils";
 import { formatBalance } from "@/lib/utils";
-import { Policy } from "@/types/policy";
 
 export interface InsufficientBalanceInfo {
     hasInsufficientBalance: boolean;
@@ -24,7 +23,6 @@ export interface InsufficientBalanceInfo {
  */
 export function useProposalInsufficientBalance(
     proposal: Proposal | null | undefined,
-    policy: Policy | null | undefined,
     treasuryId: string | null | undefined,
 ): {
     data: InsufficientBalanceInfo;
@@ -40,8 +38,6 @@ export function useProposalInsufficientBalance(
     );
     const { data: tokenBalanceData, isLoading: isTokenBalanceLoading } =
         useTokenBalance(treasuryId, requiredFunds?.tokenId, tokenData?.network);
-    const { data: nearBalanceData, isLoading: isNearBalanceLoading } =
-        useTokenBalance(treasuryId, "near", "near");
 
     const insufficientBalanceInfo = useMemo((): InsufficientBalanceInfo => {
         if (tokenBalanceData && requiredFunds) {
@@ -62,52 +58,11 @@ export function useProposalInsufficientBalance(
             }
         }
 
-        if (nearBalanceData && policy) {
-            const proposalBond = Big(policy?.proposal_bond || "0");
-            const nearBalance = Big(nearBalanceData?.balance || "0");
-            if (proposalBond.gt(nearBalance)) {
-                return {
-                    hasInsufficientBalance: true,
-                    tokenSymbol: "NEAR",
-                    tokenNetwork: "near",
-                    type: "bond",
-                    differenceDisplay: formatBalance(
-                        proposalBond.sub(nearBalance).toString(),
-                        24,
-                    ),
-                };
-            }
-        }
-
-        if (
-            requiredFunds?.tokenId === "near" &&
-            requiredFunds &&
-            nearBalanceData
-        ) {
-            const requiredBig = Big(requiredFunds?.amount || "0").add(
-                Big(policy?.proposal_bond || "0"),
-            );
-            const nearBalance = Big(nearBalanceData?.balance || "0");
-            if (requiredBig.gt(nearBalance)) {
-                return {
-                    hasInsufficientBalance: true,
-                    tokenSymbol: "NEAR",
-                    tokenNetwork: "near",
-                    type: "bond",
-                    differenceDisplay: formatBalance(
-                        requiredBig.sub(nearBalance).toString(),
-                        24,
-                    ),
-                };
-            }
-        }
-
         return { hasInsufficientBalance: false };
-    }, [requiredFunds, tokenBalanceData, tokenData, policy, nearBalanceData]);
+    }, [requiredFunds, tokenBalanceData, tokenData]);
 
     return {
         data: insufficientBalanceInfo,
-        isLoading:
-            isTokenLoading || isTokenBalanceLoading || isNearBalanceLoading,
+        isLoading: isTokenLoading || isTokenBalanceLoading,
     };
 }
