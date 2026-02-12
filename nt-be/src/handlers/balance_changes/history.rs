@@ -15,7 +15,7 @@ use axum::{
 use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{DateTime, Duration, Months, NaiveDate, Utc};
 use rust_xlsxwriter::{Color, Format, Workbook};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -27,8 +27,10 @@ use crate::handlers::balance_changes::query_builder::{BalanceChangeFilters, buil
 use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::token::TokenMetadata;
 use crate::routes::{BalanceChangesQuery, get_balance_changes_internal};
+use crate::utils::serde::comma_separated;
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct BalanceChangeRow {
     pub id: i64,
     pub account_id: String,
@@ -49,21 +51,6 @@ pub struct BalanceChangeRow {
 // ============================================================================
 // Shared Helper Functions
 // ============================================================================
-
-/// Deserializer for comma-separated values
-/// Accepts either a comma-separated string or None
-fn comma_separated<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s: Option<String> = Option::deserialize(deserializer)?;
-    Ok(s.map(|s| {
-        s.split(',')
-            .map(|item| item.trim().to_string())
-            .filter(|item| !item.is_empty())
-            .collect()
-    }))
-}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -181,6 +168,7 @@ pub async fn get_balance_chart(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExportRequest {
     pub account_id: String,
     pub start_time: DateTime<Utc>,
@@ -990,6 +978,7 @@ pub struct ExportHistoryQuery {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExportHistoryResponse {
     pub data: Vec<ExportHistoryItem>,
     pub total: i64,
@@ -1045,6 +1034,7 @@ pub async fn get_export_history(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateExportRequest {
     pub account_id: String,
     pub generated_by: String,
@@ -1127,6 +1117,7 @@ pub struct ExportCreditsQuery {
 // ============================================================================
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecentActivityQuery {
     pub account_id: String,
     pub limit: Option<i64>,
@@ -1142,6 +1133,7 @@ pub struct RecentActivityQuery {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecentActivityResponse {
     pub data: Vec<RecentActivity>,
     pub total: i64,

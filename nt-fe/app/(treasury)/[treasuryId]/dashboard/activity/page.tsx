@@ -8,13 +8,13 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityTable } from "./components/activity-table";
+import { ActivityTable } from "@/features/activity";
 import { ProposalFilters as GenericFilters, FilterOption } from "@/features/proposals/components/proposal-filters";
 import { Button } from "@/components/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ListFilter } from "lucide-react";
-import { MemberOnlyExportButton } from "../components/member-only-export-button";
-import { getHistoryDescription } from "./utils/history-utils";
+import { MemberOnlyExportButton } from "@/components/member-only-export-button";
+import { getHistoryDescription } from "@/features/activity";
 import { subMonths } from "date-fns";
 
 // Constants

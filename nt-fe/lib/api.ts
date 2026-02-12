@@ -290,33 +290,33 @@ export async function getRecentActivity(
     try {
         const url = `${BACKEND_API_BASE}/recent-activity`;
         const params: Record<string, string | number> = {
-            account_id: accountId,
+            accountId: accountId,
             limit,
             offset,
         };
         if (minUsdValue !== undefined) {
-            params.min_usd_value = minUsdValue;
+            params.minUsdValue = minUsdValue;
         }
         if (transactionType !== undefined && transactionType !== "all") {
-            params.transaction_type = transactionType;
+            params.transactionType = transactionType;
         }
         if (tokenSymbol) {
-            params.token_symbol = tokenSymbol;
+            params.tokenSymbol = tokenSymbol;
         }
         if (tokenSymbolNot) {
-            params.token_symbol_not = tokenSymbolNot;
+            params.tokenSymbolNot = tokenSymbolNot;
         }
         if (amountMin) {
-            params.amount_min = amountMin;
+            params.amountMin = amountMin;
         }
         if (amountMax) {
-            params.amount_max = amountMax;
+            params.amountMax = amountMax;
         }
         if (startDate) {
-            params.start_date = startDate;
+            params.startDate = startDate;
         }
         if (endDate) {
-            params.end_date = endDate;
+            params.endDate = endDate;
         }
         const response = await axios.get<RecentActivityResponse>(url, {
             params,

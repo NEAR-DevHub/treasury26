@@ -14,14 +14,7 @@ use std::sync::Arc;
 use crate::AppState;
 use crate::handlers::balance_changes::{gap_filler, query_builder::*};
 use crate::handlers::token::{TokenMetadata, fetch_tokens_metadata};
-
-fn comma_separated<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let opt: Option<String> = Option::deserialize(deserializer)?;
-    Ok(opt.map(|s| s.split(',').map(|item| item.trim().to_string()).collect()))
-}
+use crate::utils::serde::comma_separated;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,6 +68,7 @@ pub struct BalanceChange {
 
 /// Enriched balance change with optional metadata
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct EnrichedBalanceChange {
     pub id: i64,
     pub account_id: String,
@@ -114,13 +108,8 @@ async fn fetch_tokens_with_fallback(
         }
     };
 
-    // Remove duplicates
-    let unique_tokens: Vec<String> = token_ids
-        .iter()
-        .cloned()
-        .collect::<std::collections::HashSet<_>>()
-        .into_iter()
-        .collect();
+    // Remove duplicates using HashSet
+    let unique_tokens: std::collections::HashSet<String> = token_ids.iter().cloned().collect();
 
     // Transform to defuse format
     let defuse_ids: Vec<String> = unique_tokens
@@ -437,6 +426,13 @@ pub async fn fill_gaps(
             }
         }
     };
+
+    log::info!(
+        "fill_gaps request: account={}, token={}, up_to_block={}",
+        params.account_id,
+        params.token_id,
+        up_to_block
+    );
 
     match gap_filler::fill_gaps(
         &state.db_pool,
