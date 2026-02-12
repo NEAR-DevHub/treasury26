@@ -32,12 +32,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
     DRY_QUOTE_REFRESH_INTERVAL,
     PROPOSAL_REFRESH_INTERVAL,
+    ETH_TOKEN,
 } from "./constants";
 import { WarningAlert } from "@/components/warning-alert";
 import { useFormatDate } from "@/components/formatted-date";
 import {
     calculateMarketPriceDifference,
-    getUserFriendlyErrorMessage,
 } from "./utils";
 import { useCountdownTimer } from "./hooks/use-countdown-timer";
 import { useExchangeQuote } from "./hooks/use-exchange-quote";
@@ -242,11 +242,7 @@ function Step1({ handleNext }: StepProps) {
                     type="button"
                     onClick={handleContinue}
                     variant="default"
-                    className={cn(
-                        "w-full h-10 rounded-none font-medium",
-                        (areSameTokens || !hasValidAmount || !quoteData) &&
-                        "bg-muted text-muted-foreground hover:bg-muted",
-                    )}
+                    className="w-full h-10 rounded-none font-medium"
                     disabled={areSameTokens || !hasValidAmount || !quoteData}
                 >
                     {areSameTokens
@@ -560,7 +556,7 @@ export default function ExchangePage() {
             sellAmount: "",
             sellToken: defaultSellToken,
             receiveAmount: "0",
-            receiveToken: NEAR_TOKEN,
+            receiveToken: ETH_TOKEN,
             slippageTolerance: 0.5,
         },
     });
