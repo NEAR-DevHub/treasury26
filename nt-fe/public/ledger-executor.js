@@ -11,7 +11,6 @@ import {
     encodeTransaction,
     encodeDelegateAction,
     SignedTransaction,
-    DelegateAction,
     buildDelegateAction,
     SignedDelegate,
     actionCreators,
@@ -671,7 +670,11 @@ async function showLedgerApprovalUI(
  * @param {string} implicitAccountId - Optional implicit account ID for the button
  * @param {Function} onVerify - Optional async function to verify the account (receives accountId, returns true or throws)
  */
-async function promptForAccountId(implicitAccountId = "", onVerify = null) {
+async function promptForAccountId(
+    implicitAccountId = "",
+    onVerify = null,
+    hideOnSuccess = true,
+) {
     await window.selector.ui.showIframe();
 
     const root = document.getElementById("root");
@@ -754,7 +757,7 @@ async function promptForAccountId(implicitAccountId = "", onVerify = null) {
                         await onVerify(accountId);
                         root.innerHTML = "";
                         root.style.display = "none";
-                        window.selector.ui.hideIframe();
+                        if (hideOnSuccess) window.selector.ui.hideIframe();
                         resolve(accountId);
                     } catch (error) {
                         // Show error and allow retry
@@ -764,7 +767,7 @@ async function promptForAccountId(implicitAccountId = "", onVerify = null) {
                 } else {
                     root.innerHTML = "";
                     root.style.display = "none";
-                    window.selector.ui.hideIframe();
+                    if (hideOnSuccess) window.selector.ui.hideIframe();
                     resolve(accountId);
                 }
             });
@@ -905,6 +908,46 @@ function buildNearActions(actions) {
 }
 
 /**
+ * Build a borsh-serialized NEP-413 payload for message signing
+ * @param {string} message - The message to sign
+ * @param {string} recipient - The recipient
+ * @param {Uint8Array} nonce - 32-byte nonce
+ * @returns {Uint8Array} - Serialized payload
+ */
+function buildNep413Payload(message, recipient, nonce) {
+    const messageBytes = new TextEncoder().encode(message);
+    const recipientBytes = new TextEncoder().encode(recipient);
+
+    const payloadSize =
+        4 + messageBytes.length + 32 + 4 + recipientBytes.length + 1;
+
+    const payload = new Uint8Array(payloadSize);
+    const view = new DataView(payload.buffer);
+    let offset = 0;
+
+    // Write message (length-prefixed string)
+    view.setUint32(offset, messageBytes.length, true);
+    offset += 4;
+    payload.set(messageBytes, offset);
+    offset += messageBytes.length;
+
+    // Write nonce (32 fixed bytes)
+    payload.set(nonce, offset);
+    offset += 32;
+
+    // Write recipient (length-prefixed string)
+    view.setUint32(offset, recipientBytes.length, true);
+    offset += 4;
+    payload.set(recipientBytes, offset);
+    offset += recipientBytes.length;
+
+    // Write callback_url (Option<String> = None)
+    payload[offset] = 0;
+
+    return payload;
+}
+
+/**
  * Main Ledger Wallet implementation
  */
 class LedgerWallet {
@@ -950,58 +993,108 @@ class LedgerWallet {
     }
 
     /**
+     * Core sign-in flow: connect Ledger, select derivation path, get public key, prompt for account ID.
+     * Does NOT hide the iframe on completion — caller is responsible for UI cleanup.
+     * @returns {{ accounts: Array, derivationPath: string }}
+     */
+    async _performSignInFlow(params) {
+        // Prompt user to connect Ledger (provides user gesture for WebHID)
+        await promptForLedgerConnect(this.ledger);
+
+        // Let user select derivation path
+        const defaultDerivationPath = await this.getDerivationPath();
+        const derivationPath = await promptForDerivationPath(
+            defaultDerivationPath,
+        );
+
+        // Get public key from Ledger (requires user approval on device)
+        const publicKeyString = await showLedgerApprovalUI(
+            "Approve on Ledger",
+            "Please approve the request on your Ledger device to share your public key.",
+            () => this.ledger.getPublicKey(derivationPath),
+        );
+        const publicKey = `ed25519:${publicKeyString}`;
+
+        // Calculate implicit account ID (hex-encoded public key bytes)
+        const publicKeyBytes = baseDecode(publicKeyString);
+        const implicitAccountId = Buffer.from(publicKeyBytes).toString("hex");
+
+        // Verification function to check account access
+        const network = params?.network || "mainnet";
+        const verifyAccount = async (accountId) => {
+            await verifyAccessKey(network, accountId, publicKey);
+        };
+
+        // Prompt user for account ID with inline verification (don't hide — caller handles UI)
+        const accountId = await promptForAccountId(
+            implicitAccountId,
+            verifyAccount,
+            false,
+        );
+
+        // Store the account information
+        const accounts = [{ accountId, publicKey }];
+        await window.selector.storage.set(
+            STORAGE_KEY_ACCOUNTS,
+            JSON.stringify(accounts),
+        );
+        await window.selector.storage.set(
+            STORAGE_KEY_DERIVATION_PATH,
+            derivationPath,
+        );
+
+        return { accounts, derivationPath };
+    }
+
+    /**
      * Sign in with Ledger device
      */
     async signIn(params) {
         try {
-            // Prompt user to connect Ledger (provides user gesture for WebHID)
-            await promptForLedgerConnect(this.ledger);
-
-            // Let user select derivation path
-            const defaultDerivationPath = await this.getDerivationPath();
-            const derivationPath = await promptForDerivationPath(
-                defaultDerivationPath,
-            );
-
-            // Get public key from Ledger (requires user approval on device)
-            const publicKeyString = await showLedgerApprovalUI(
-                "Approve on Ledger",
-                "Please approve the request on your Ledger device to share your public key.",
-                () => this.ledger.getPublicKey(derivationPath),
-            );
-            const publicKey = `ed25519:${publicKeyString}`;
-
-            // Calculate implicit account ID (hex-encoded public key bytes)
-            const publicKeyBytes = baseDecode(publicKeyString);
-            const implicitAccountId =
-                Buffer.from(publicKeyBytes).toString("hex");
-
-            // Verification function to check account access
-            const network = params?.network || "mainnet";
-            const verifyAccount = async (accountId) => {
-                await verifyAccessKey(network, accountId, publicKey);
-            };
-
-            // Prompt user for account ID with inline verification
-            const accountId = await promptForAccountId(
-                implicitAccountId,
-                verifyAccount,
-            );
-
-            // Store the account information
-            const accounts = [{ accountId, publicKey }];
-            await window.selector.storage.set(
-                STORAGE_KEY_ACCOUNTS,
-                JSON.stringify(accounts),
-            );
-            await window.selector.storage.set(
-                STORAGE_KEY_DERIVATION_PATH,
-                derivationPath,
-            );
-
+            const { accounts } = await this._performSignInFlow(params);
+            window.selector.ui.hideIframe();
             return accounts;
         } catch (error) {
-            // Disconnect on error
+            if (this.ledger.isConnected()) {
+                await this.ledger.disconnect();
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Sign in and sign a message in one flow (NEP-413)
+     */
+    async signInAndSignMessage(params) {
+        try {
+            const { accounts, derivationPath } =
+                await this._performSignInFlow(params);
+
+            const { message, recipient, nonce } = params.messageParams;
+            const payload = buildNep413Payload(
+                message,
+                recipient || "",
+                nonce || new Uint8Array(32),
+            );
+
+            const signature = await showLedgerApprovalUI(
+                "Sign Message",
+                "Please review and approve the message signing on your Ledger device.",
+                () => this.ledger.signMessage(payload, derivationPath),
+                true,
+            );
+
+            const signatureBase64 = btoa(String.fromCharCode(...signature));
+
+            return accounts.map((account) => ({
+                ...account,
+                signedMessage: {
+                    accountId: account.accountId,
+                    publicKey: account.publicKey,
+                    signature: signatureBase64,
+                },
+            }));
+        } catch (error) {
             if (this.ledger.isConnected()) {
                 await this.ledger.disconnect();
             }
@@ -1195,63 +1288,20 @@ class LedgerWallet {
     async signMessage(params) {
         const accounts = await this._ensureReady();
 
-        // Build NEP-413 message payload using borsh serialization
         const message = params.message;
         const recipient = params.recipient || "";
         const nonce = params.nonce || new Uint8Array(32);
 
-        // NEP-413 payload structure (borsh serialized):
-        // - message: string (4 bytes length + utf8 bytes)
-        // - nonce: [u8; 32] (32 fixed bytes)
-        // - recipient: string (4 bytes length + utf8 bytes)
-        // - callback_url: Option<String> (1 byte for Some/None + optional string)
+        const payload = buildNep413Payload(message, recipient, nonce);
 
-        // Manually construct borsh-serialized payload
-        const messageBytes = new TextEncoder().encode(message);
-        const recipientBytes = new TextEncoder().encode(recipient);
-
-        // Calculate total size
-        const payloadSize =
-            4 +
-            messageBytes.length + // message (length + data)
-            32 + // nonce (fixed 32 bytes)
-            4 +
-            recipientBytes.length + // recipient (length + data)
-            1; // callback_url (0 = None)
-
-        const payload = new Uint8Array(payloadSize);
-        const view = new DataView(payload.buffer);
-        let offset = 0;
-
-        // Write message (length-prefixed string)
-        view.setUint32(offset, messageBytes.length, true);
-        offset += 4;
-        payload.set(messageBytes, offset);
-        offset += messageBytes.length;
-
-        // Write nonce (32 fixed bytes)
-        payload.set(nonce, offset);
-        offset += 32;
-
-        // Write recipient (length-prefixed string)
-        view.setUint32(offset, recipientBytes.length, true);
-        offset += 4;
-        payload.set(recipientBytes, offset);
-        offset += recipientBytes.length;
-
-        // Write callback_url (Option<String> = None)
-        payload[offset] = 0; // 0 = None
-
-        // Sign with Ledger (requires user approval on device)
         const derivationPath = await this.getDerivationPath();
         const signature = await showLedgerApprovalUI(
             "Sign Message",
             "Please review and approve the message signing on your Ledger device.",
             () => this.ledger.signMessage(payload, derivationPath),
-            true, // Hide on success since we're done with UI
+            true,
         );
 
-        // Convert signature to base64 (backend expects base64, not base58)
         const signatureBase64 = btoa(String.fromCharCode(...signature));
 
         return {
