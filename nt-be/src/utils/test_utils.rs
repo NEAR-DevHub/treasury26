@@ -54,6 +54,18 @@ pub async fn init_test_state() -> AppState {
         .connect_lazy(&env_vars.database_url)
         .expect("Failed to create lazy pool");
 
+    build_test_state(db_pool)
+}
+
+/// Initialize app state with a provided database pool.
+///
+/// Use this in `#[sqlx::test]` tests that receive a pool from the macro
+/// but also need a full AppState (e.g. for dirty_monitor which takes AppState).
+#[cfg(test)]
+pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
+    load_test_env();
+
+    let env_vars = crate::utils::env::EnvVars::default();
     let http_client = reqwest::Client::new();
 
     // Initialize price service with DeFiLlama provider (free, no API key required)

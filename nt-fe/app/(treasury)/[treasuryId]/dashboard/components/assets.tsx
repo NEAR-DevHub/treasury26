@@ -32,10 +32,10 @@ export default function Assets({ tokens, isLoading }: Props) {
         [aggregatedTokens],
     );
 
-    const shouldWeHide = total > 1 && isThereSomethingToHide;
+    const shouldShowLessThanDollar = total > 1 && isThereSomethingToHide;
 
     useEffect(() => {
-        if (shouldWeHide) {
+        if (shouldShowLessThanDollar) {
             setFilterLessThanDollar(true);
         }
     }, [isLoading, aggregatedTokens]);
@@ -70,20 +70,19 @@ export default function Assets({ tokens, isLoading }: Props) {
         <PageCard className="flex flex-col gap-5">
             <div className="flex justify-between">
                 <StepperHeader title="Assets" />
-                {shouldWeHide && (
-                    <div className="flex gap-2">
-                        <Checkbox
-                            checked={filterLessThanDollar}
-                            onCheckedChange={(value) =>
-                                setFilterLessThanDollar(value as boolean)
-                            }
-                            defaultChecked={total > 1}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            {"Hide assets <1 USD"}
-                        </p>
-                    </div>
-                )}
+                <div className="flex gap-2">
+                    <Checkbox
+                        checked={filterLessThanDollar}
+                        onCheckedChange={(value) =>
+                            setFilterLessThanDollar(value as boolean)
+                        }
+                        disabled={!shouldShowLessThanDollar}
+                        defaultChecked={!shouldShowLessThanDollar && total > 1}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        {"Hide assets <1 USD"}
+                    </p>
+                </div>
             </div>
             {renderContent()}
         </PageCard>

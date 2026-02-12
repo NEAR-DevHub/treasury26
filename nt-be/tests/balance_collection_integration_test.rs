@@ -674,7 +674,7 @@ async fn test_near_snapshot_with_existing_intents_tokens(pool: PgPool) -> sqlx::
     let network = common::create_archival_network();
     let up_to_block = 182_490_734i64; // Current block as of Jan 24, 2026
 
-    run_monitor_cycle(&pool, &network, up_to_block, None)
+    run_monitor_cycle(&pool, &network, up_to_block, None, None)
         .await
         .map_err(|e| {
             sqlx::Error::Io(std::io::Error::new(
@@ -793,7 +793,7 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     println!("Running monitoring cycle...");
     let network = common::create_archival_network();
     let up_to_block = 177_000_000i64;
-    run_monitor_cycle(&pool, &network, up_to_block, None)
+    run_monitor_cycle(&pool, &network, up_to_block, None, None)
         .await
         .map_err(|e| {
             sqlx::Error::Io(std::io::Error::new(
@@ -854,7 +854,7 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
     let sync_time = after_sync.last_synced_at;
 
     // Run another cycle
-    run_monitor_cycle(&pool, &network, up_to_block, None)
+    run_monitor_cycle(&pool, &network, up_to_block, None, None)
         .await
         .map_err(|e| {
             sqlx::Error::Io(std::io::Error::new(
@@ -1163,7 +1163,7 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     println!("\n=== First Monitoring Cycle ===");
     println!("Up to block: {}", up_to_block);
 
-    run_monitor_cycle(&pool, &network, up_to_block, None)
+    run_monitor_cycle(&pool, &network, up_to_block, None, None)
         .await
         .map_err(|e| {
             sqlx::Error::Io(std::io::Error::new(
@@ -1195,7 +1195,7 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     println!("The second cycle should collect balance changes for discovered tokens");
 
     // Run second monitoring cycle - should pick up discovered FT tokens
-    run_monitor_cycle(&pool, &network, up_to_block, None)
+    run_monitor_cycle(&pool, &network, up_to_block, None, None)
         .await
         .map_err(|e| {
             sqlx::Error::Io(std::io::Error::new(
@@ -1623,7 +1623,7 @@ async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) ->
     .await?;
 
     // Run monitor cycle - should discover intents tokens and find balance changes
-    run_monitor_cycle(&pool, &network, monitor_block, None)
+    run_monitor_cycle(&pool, &network, monitor_block, None, None)
         .await
         .expect("Monitor cycle should complete");
 
@@ -1644,7 +1644,7 @@ async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) ->
     );
 
     // Run second monitor cycle to fill gaps for discovered intents tokens
-    run_monitor_cycle(&pool, &network, monitor_block, None)
+    run_monitor_cycle(&pool, &network, monitor_block, None, None)
         .await
         .expect("Second monitor cycle should complete");
 
@@ -1698,6 +1698,177 @@ async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) ->
         "\n✓ Found BTC intents balance change: {} BTC at block 165324279",
         block_165324279_change.amount
     );
+
+    Ok(())
+}
+
+/// Test that FastNear-based FT token discovery finds tokens that counterparty-based
+/// discovery misses (issue #177).
+///
+/// das-willies.sputnik-dao.near received USDC via a direct FT deposit from an account
+/// it never transacted with in NEAR. The assets list (powered by FastNear) shows the
+/// balance, but the activity tracker (counterparty-based) missed it. With FastNear
+/// discovery enabled in the monitor cycle, the USDC token should be discovered.
+#[sqlx::test]
+async fn test_fastnear_ft_token_discovery(pool: PgPool) -> sqlx::Result<()> {
+    common::load_test_env();
+    use nt_be::handlers::balance_changes::account_monitor::run_monitor_cycle;
+
+    let account_id = "das-willies.sputnik-dao.near";
+    let usdc_contract = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
+
+    println!("\n=== Testing FastNear FT Token Discovery (Issue #177) ===");
+    println!("Account: {}", account_id);
+    println!("Expected discovered token: {}", usdc_contract);
+
+    // Insert the account as monitored
+    sqlx::query!(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled)
+        VALUES ($1, true)
+        "#,
+        account_id
+    )
+    .execute(&pool)
+    .await?;
+
+    println!("✓ Account added to monitored_accounts");
+
+    // Verify no balance changes exist initially
+    let initial_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM balance_changes WHERE account_id = $1")
+            .bind(account_id)
+            .fetch_one(&pool)
+            .await?;
+
+    assert_eq!(
+        initial_count.0, 0,
+        "Should start with no balance change records"
+    );
+    println!("✓ Verified empty state (0 records)");
+
+    let network = common::create_archival_network();
+    let http_client = reqwest::Client::new();
+    let fastnear_api_key = common::get_fastnear_api_key();
+
+    let up_to_block = 185_000_000i64;
+
+    println!("\n=== First Monitoring Cycle (with FastNear discovery) ===");
+    println!("Up to block: {}", up_to_block);
+
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        None,
+        Some((&http_client, &fastnear_api_key)),
+    )
+    .await
+    .map_err(|e| {
+        sqlx::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            e.to_string(),
+        ))
+    })?;
+
+    // Check that USDC token was discovered via FastNear
+    let usdc_count: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2
+        "#,
+    )
+    .bind(account_id)
+    .bind(usdc_contract)
+    .fetch_one(&pool)
+    .await?;
+
+    println!(
+        "✓ Found {} balance_changes records for USDC token",
+        usdc_count.0
+    );
+
+    assert!(
+        usdc_count.0 > 0,
+        "FastNear discovery should have found USDC token for {} and created a snapshot record",
+        account_id
+    );
+
+    // Also verify NEAR was seeded (standard behavior)
+    let near_count: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = 'near'
+        "#,
+    )
+    .bind(account_id)
+    .fetch_one(&pool)
+    .await?;
+
+    assert!(near_count.0 > 0, "Should have NEAR balance changes as well");
+
+    println!("✓ Found {} NEAR balance change records", near_count.0);
+
+    // === Second Monitoring Cycle (fills USDC gaps) ===
+    // FastNear discovery happens AFTER gap filling in run_monitor_cycle,
+    // so we need a second cycle to fill gaps for newly discovered USDC token.
+    println!("\n=== Second Monitoring Cycle (fill USDC gaps) ===");
+
+    run_monitor_cycle(
+        &pool,
+        &network,
+        up_to_block,
+        None,
+        Some((&http_client, &fastnear_api_key)),
+    )
+    .await
+    .map_err(|e| {
+        sqlx::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            e.to_string(),
+        ))
+    })?;
+
+    // Check that USDC gap-filled records now exist (not just SNAPSHOT)
+    let usdc_non_snapshot: Vec<(String,)> = sqlx::query_as(
+        r#"
+        SELECT counterparty
+        FROM balance_changes
+        WHERE account_id = $1 AND token_id = $2 AND counterparty != 'SNAPSHOT'
+        ORDER BY block_height DESC
+        "#,
+    )
+    .bind(account_id)
+    .bind(usdc_contract)
+    .fetch_all(&pool)
+    .await?;
+
+    println!(
+        "✓ Found {} non-SNAPSHOT USDC records after second cycle",
+        usdc_non_snapshot.len()
+    );
+
+    assert!(
+        !usdc_non_snapshot.is_empty(),
+        "Second monitor cycle should have filled USDC gaps with actual balance change records"
+    );
+
+    // The most recent USDC balance change should have gagdiez.near as counterparty
+    // (gagdiez.near sent native USDC to das-willies.sputnik-dao.near)
+    let counterparty = &usdc_non_snapshot[0].0;
+    println!(
+        "  Counterparty for most recent USDC change: {}",
+        counterparty
+    );
+
+    assert_eq!(
+        counterparty, "gagdiez.near",
+        "FT balance change counterparty should be gagdiez.near (the sender of USDC)"
+    );
+
+    println!("\n=== FastNear FT Token Discovery Test Passed ===");
 
     Ok(())
 }

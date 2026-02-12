@@ -41,6 +41,7 @@ import {
 import { Button } from "@/components/button";
 import { ArrowDownToLine } from "lucide-react";
 import Link from "next/link";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const paymentFormSchema = z
     .object({
@@ -73,6 +74,7 @@ function Step1({ handleNext }: StepProps) {
 
     const amount = form.watch("amount");
     const address = form.watch("address");
+    const isMobile = useMediaQuery("(max-width: 768px)");
 
     const handleContinue = () => {
         form.trigger().then((isValid) => {
@@ -86,14 +88,17 @@ function Step1({ handleNext }: StepProps) {
         <PageCard>
             <div className="flex justify-between items-center">
                 <StepperHeader title="New Payment" />
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     <Link href={`/${treasuryId}/payments/bulk-payment`}>
                         <Button
                             variant="ghost"
+                            size={isMobile ? "icon" : "default"}
                             className="flex items-center gap-2 border-2"
                         >
                             <ArrowDownToLine className="w-4 h-4" />
-                            Bulk Payments
+                            <span className="hidden md:block">
+                                Bulk Payments
+                            </span>
                         </Button>
                     </Link>
                     <PendingButton

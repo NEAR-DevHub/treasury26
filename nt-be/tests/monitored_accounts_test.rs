@@ -1,5 +1,6 @@
 mod common;
 
+use chrono::{DateTime, Datelike, Months, Utc};
 use common::TestServer;
 
 #[tokio::test]
@@ -30,6 +31,29 @@ async fn test_monitored_accounts_crud() {
     assert_eq!(added["enabled"], true);
     assert!(added["createdAt"].is_string());
     assert!(added["updatedAt"].is_string());
+    let credits_reset_at = DateTime::parse_from_rfc3339(
+        added["creditsResetAt"]
+            .as_str()
+            .expect("creditsResetAt should be a string"),
+    )
+    .expect("creditsResetAt should be a valid RFC3339 datetime")
+    .with_timezone(&Utc);
+
+    let now = Utc::now();
+    let expected_reset_at = DateTime::<Utc>::from_naive_utc_and_offset(
+        now.date_naive()
+            .with_day(1)
+            .expect("day 1 should always be valid")
+            .and_hms_opt(0, 0, 0)
+            .expect("00:00:00 should always be valid")
+            .checked_add_months(Months::new(1))
+            .expect("adding one month should always be valid"),
+        Utc,
+    );
+    assert_eq!(
+        credits_reset_at, expected_reset_at,
+        "New account should have credits_reset_at at next UTC month start"
+    );
 
     // Test 2: List all monitored accounts
     let response = client

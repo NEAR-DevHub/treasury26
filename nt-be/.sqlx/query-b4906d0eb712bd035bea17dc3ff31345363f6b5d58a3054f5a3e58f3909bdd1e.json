@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE dao_members\n            SET is_policy_member = false\n            WHERE dao_id = $1\n              AND is_policy_member = true\n              AND NOT (account_id = ANY($2::text[]))\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b4906d0eb712bd035bea17dc3ff31345363f6b5d58a3054f5a3e58f3909bdd1e"
+}

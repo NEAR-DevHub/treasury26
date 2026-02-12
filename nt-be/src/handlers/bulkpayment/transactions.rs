@@ -4,13 +4,14 @@ use axum::{
     http::StatusCode,
 };
 use near_api::{Chain, NetworkConfig, Reference};
-use near_jsonrpc_client::{JsonRpcClient, auth, methods};
+use near_jsonrpc_client::methods;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::{
     AppState,
     utils::cache::{CacheKey, CacheTier},
+    utils::jsonrpc::create_rpc_client,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -357,18 +358,7 @@ async fn lookup_transaction_hash(
         .fetch_from(network)
         .await?;
 
-    // Set up JSON-RPC client for chunk queries
-    let rpc_endpoint = network
-        .rpc_endpoints
-        .first()
-        .ok_or("No RPC endpoint configured")?;
-
-    let mut client = JsonRpcClient::connect(rpc_endpoint.url.as_str());
-
-    if let Some(bearer) = &rpc_endpoint.bearer_header {
-        let token = bearer.strip_prefix("Bearer ").unwrap_or(bearer);
-        client = client.header(auth::Authorization::bearer(token)?);
-    }
+    let client = create_rpc_client(network)?;
 
     // Search each chunk for transactions to the bulk payment contract
     for chunk_header in &block.chunks {

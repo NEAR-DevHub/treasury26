@@ -8,10 +8,14 @@ import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { VoteModal } from "@/features/proposals/components/vote-modal";
 import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
-import { getKindFromProposal, ProposalPermissionKind } from "@/lib/config-utils";
+import {
+    getKindFromProposal,
+    ProposalPermissionKind,
+} from "@/lib/config-utils";
 import { ProposalKind } from "@/lib/proposals-api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageCard } from "@/components/card";
+import { redirect } from "next/navigation";
 
 interface RequestPageProps {
     params: Promise<{
@@ -33,37 +37,72 @@ function RequestPageSkeleton() {
                     <Skeleton className="h-[200px] w-full" />
                 </PageCard>
             </div>
-        </div >
+        </div>
     );
 }
 
 export default function RequestPage({ params }: RequestPageProps) {
     const { id } = use(params);
     const { treasuryId } = useTreasury();
-    const { data: proposal, isLoading: isLoadingProposal, } = useProposal(treasuryId, id);
-    const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(treasuryId, proposal?.submission_time);
+    const { data: proposal, isLoading: isLoadingProposal } = useProposal(
+        treasuryId,
+        id,
+    );
+    const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(
+        treasuryId,
+        proposal?.submission_time,
+    );
 
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
     const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
-    const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{ tokenSymbol?: string, tokenNetwork?: string }>({});
-    const [voteInfo, setVoteInfo] = useState<{ vote: "Approve" | "Reject" | "Remove"; proposalIds: { proposalId: number; kind: ProposalPermissionKind }[] }>({ vote: "Approve", proposalIds: [] });
+    const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{
+        tokenSymbol?: string;
+        tokenNetwork?: string;
+    }>({});
+    const [voteInfo, setVoteInfo] = useState<{
+        vote: "Approve" | "Reject" | "Remove";
+        proposalIds: { proposalId: number; kind: ProposalPermissionKind }[];
+    }>({ vote: "Approve", proposalIds: [] });
 
-    if (isLoadingProposal || isLoadingPolicy || !proposal || !policy) {
+    if (isLoadingProposal || isLoadingPolicy) {
         return (
-            <PageComponentLayout title={`Request #${id}`} description="Details for Request" backButton={`/${treasuryId}/requests`}>
+            <PageComponentLayout
+                title={`Request #${id}`}
+                description="Details for Request"
+                backButton={`/${treasuryId}/requests`}
+            >
                 <RequestPageSkeleton />
             </PageComponentLayout>
         );
     }
 
+    if (!proposal || !policy) {
+        redirect(`/${treasuryId}/requests`);
+    }
+
     return (
-        <PageComponentLayout title={`Request #${proposal?.id}`} description="Details for Request" backButton={`/${treasuryId}/requests`}>
+        <PageComponentLayout
+            title={`Request #${proposal?.id}`}
+            description="Details for Request"
+            backButton={`/${treasuryId}/requests`}
+        >
             <ExpandedView
                 proposal={proposal}
                 policy={policy}
                 hideOpenInNewTab
                 onVote={(vote) => {
-                    setVoteInfo({ vote, proposalIds: [{ proposalId: proposal?.id ?? 0, kind: getKindFromProposal(proposal?.kind as ProposalKind) ?? "call" }] });
+                    setVoteInfo({
+                        vote,
+                        proposalIds: [
+                            {
+                                proposalId: proposal?.id ?? 0,
+                                kind:
+                                    getKindFromProposal(
+                                        proposal?.kind as ProposalKind,
+                                    ) ?? "call",
+                            },
+                        ],
+                    });
                     setIsVoteModalOpen(true);
                 }}
                 onDeposit={(tokenSymbol, tokenNetwork) => {

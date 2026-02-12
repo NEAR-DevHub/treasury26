@@ -125,7 +125,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: Some(50_000_000), // $500k
                 overage_rate_bps: 20,                         // 0.20%
                 exchange_fee_bps: 20,                         // 0.20%
-                gas_covered_transactions: Some(100),          // 10 gas covered transactions
+                gas_covered_transactions: Some(1000),          // 1000 gas covered transactions
                 monthly_export_credits: Some(5),
                 trial_export_credits: None,
                 monthly_batch_payment_credits: Some(10),
@@ -152,7 +152,7 @@ pub fn get_plans_config() -> HashMap<PlanType, PlanConfig> {
                 monthly_volume_limit_cents: Some(100_000_000), // $1M
                 overage_rate_bps: 10,                           // 0.10%
                 exchange_fee_bps: 10,                           // 0.10%
-                gas_covered_transactions: Some(1000),          // 1000 gas covered transactions
+                gas_covered_transactions: Some(2000),          // 2000 gas covered transactions
                 monthly_export_credits: Some(10),
                 trial_export_credits: None,
                 monthly_batch_payment_credits: Some(100),
@@ -243,7 +243,7 @@ pub fn has_gas_covered_credits(plan_type: PlanType, current_credits: i32) -> boo
 }
 
 /// Get the initial credits for a plan (used when creating or resetting)
-pub fn get_initial_credits(plan_type: PlanType) -> (i32, i32) {
+pub fn get_initial_credits(plan_type: PlanType) -> (i32, i32, i32) {
     let config = get_plan_config(plan_type);
 
     let export_credits = config
@@ -258,7 +258,32 @@ pub fn get_initial_credits(plan_type: PlanType) -> (i32, i32) {
         .or(config.limits.trial_batch_payment_credits)
         .unwrap_or(0) as i32;
 
-    (export_credits, batch_payment_credits)
+    let gas_covered_transactions = config.limits.gas_covered_transactions.unwrap_or(0) as i32;
+
+    (
+        export_credits,
+        batch_payment_credits,
+        gas_covered_transactions,
+    )
+}
+
+/// Get monthly reset credits for a plan.
+/// Returns `None` for credit types that should not be reset monthly.
+pub fn get_monthly_reset_credits(plan_type: PlanType) -> (Option<i32>, Option<i32>, Option<i32>) {
+    let config = get_plan_config(plan_type);
+
+    let export_credits = config.limits.monthly_export_credits.map(|v| v as i32);
+    let batch_payment_credits = config
+        .limits
+        .monthly_batch_payment_credits
+        .map(|v| v as i32);
+    let gas_covered_transactions = config.limits.gas_covered_transactions.map(|v| v as i32);
+
+    (
+        export_credits,
+        batch_payment_credits,
+        gas_covered_transactions,
+    )
 }
 
 /// Calculate overage fee for volume exceeding plan limit
@@ -361,24 +386,28 @@ mod tests {
     #[test]
     fn test_initial_credits() {
         // Free plan: 3 trial credits each
-        let (exports, batch) = get_initial_credits(PlanType::Free);
+        let (exports, batch, gas) = get_initial_credits(PlanType::Free);
         assert_eq!(exports, 3);
         assert_eq!(batch, 3);
+        assert_eq!(gas, 10);
 
         // Plus plan: 5 exports, 10 batch payments
-        let (exports, batch) = get_initial_credits(PlanType::Plus);
+        let (exports, batch, gas) = get_initial_credits(PlanType::Plus);
         assert_eq!(exports, 5);
         assert_eq!(batch, 10);
+        assert_eq!(gas, 1000);
 
         // Pro plan: 10 exports, 100 batch payments
-        let (exports, batch) = get_initial_credits(PlanType::Pro);
+        let (exports, batch, gas) = get_initial_credits(PlanType::Pro);
         assert_eq!(exports, 10);
         assert_eq!(batch, 100);
+        assert_eq!(gas, 2000);
 
         // Enterprise: unlimited (0 as there's no limit to track)
-        let (exports, batch) = get_initial_credits(PlanType::Enterprise);
+        let (exports, batch, gas) = get_initial_credits(PlanType::Enterprise);
         assert_eq!(exports, 0);
         assert_eq!(batch, 0);
+        assert_eq!(gas, 0);
     }
 
     #[test]
@@ -396,10 +425,34 @@ mod tests {
 
         // Gas-covered credits
         assert!(has_gas_covered_credits(PlanType::Enterprise, 0));
-        assert!(has_gas_covered_credits(PlanType::Free, 1));
+        assert!(has_gas_covered_credits(PlanType::Free, 10));
         assert!(!has_gas_covered_credits(PlanType::Free, 0));
-        assert!(has_gas_covered_credits(PlanType::Pro, 5));
+        assert!(has_gas_covered_credits(PlanType::Pro, 1000));
         assert!(!has_gas_covered_credits(PlanType::Pro, 0));
+    }
+
+    #[test]
+    fn test_get_monthly_reset_credits() {
+        let (free_exports, free_batch, free_gas) = get_monthly_reset_credits(PlanType::Free);
+        assert_eq!(free_exports, None);
+        assert_eq!(free_batch, None);
+        assert_eq!(free_gas, Some(10));
+
+        let (plus_exports, plus_batch, plus_gas) = get_monthly_reset_credits(PlanType::Plus);
+        assert_eq!(plus_exports, Some(5));
+        assert_eq!(plus_batch, Some(10));
+        assert_eq!(plus_gas, Some(1000));
+
+        let (pro_exports, pro_batch, pro_gas) = get_monthly_reset_credits(PlanType::Pro);
+        assert_eq!(pro_exports, Some(10));
+        assert_eq!(pro_batch, Some(100));
+        assert_eq!(pro_gas, Some(2000));
+
+        let (enterprise_exports, enterprise_batch, enterprise_gas) =
+            get_monthly_reset_credits(PlanType::Enterprise);
+        assert_eq!(enterprise_exports, None);
+        assert_eq!(enterprise_batch, None);
+        assert_eq!(enterprise_gas, None);
     }
 
     #[test]

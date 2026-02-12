@@ -29,6 +29,8 @@
     --general-unofficial-accent: rgba(229, 229, 229);
     --general-success-background-faded: rgb(220, 252, 231);
     --general-success-foreground: rgb(21, 128, 61);
+    --general-orange-background-faded: rgb(255, 237, 213);
+    --general-orange-foreground: rgb(194, 65, 12);
     --general-destructive-background-faded: rgb(254, 242, 242);
     --general-destructive-foreground: rgb(220, 38, 38);
     --general-info-background-faded: rgb(239, 246, 255);
@@ -119,10 +121,12 @@
     --sidebar-accent-foreground: rgb(250, 250, 250);
     --sidebar-border: rgb(30, 30, 30);
     --sidebar-ring: rgb(82, 82, 82);
-    --general-success-background-faded: rgb(5, 46, 22);
+    --general-success-background-faded: rgb(11, 46, 37);
     --general-success-foreground: rgb(34, 197, 94);
     --general-destructive-background-faded: rgb(69, 10, 10);
-    --general-destructive-foreground: rgb(158, 64, 66);
+    --general-destructive-foreground: rgb(220, 38, 38);
+    --general-orange-background-faded: rgb(67, 20, 7);
+    --general-orange-foreground: rgb(251, 146, 60);
     --general-info-background-faded: rgb(23, 37, 84);
     --general-info-border: rgb(30, 58, 138);
     --general-info-foreground: rgb(147, 197, 253);
@@ -212,6 +216,10 @@
     --color-general-unofficial-border-5: var(--general-unofficial-border-5);
     --color-general-secondary: var(--general-secondary);
     --color-general-unofficial-outline: var(--general-unofficial-outline);
+    --color-general-orange-background-faded: var(
+        --general-orange-background-faded
+    );
+    --color-general-orange-foreground: var(--general-orange-foreground);
 
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);

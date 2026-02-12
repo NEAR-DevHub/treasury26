@@ -328,7 +328,7 @@ export default function BulkPaymentPage() {
                 });
 
                 await queryClient.invalidateQueries({
-                    queryKey: ["bulkPaymentCredits", selectedTreasury],
+                    queryKey: ["subscription", selectedTreasury],
                 });
 
                 form.reset();

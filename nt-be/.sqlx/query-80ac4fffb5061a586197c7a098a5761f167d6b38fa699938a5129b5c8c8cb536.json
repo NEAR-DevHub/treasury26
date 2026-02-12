@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE dao_members\n        SET is_saved = false\n        WHERE dao_id = $1\n          AND account_id = $2\n          AND is_policy_member = true\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "80ac4fffb5061a586197c7a098a5761f167d6b38fa699938a5129b5c8c8cb536"
+}

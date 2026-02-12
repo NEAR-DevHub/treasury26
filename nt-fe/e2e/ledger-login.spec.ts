@@ -67,7 +67,28 @@ const mockWebHID = `
         
         let responseData;
         
-        if (cla === 0x80) { // NEAR app
+        if (cla === 0xB0) { // Standard Ledger dashboard commands
+          switch (ins) {
+            case 0x01: // GET_APP_AND_VERSION
+              console.log('[Mock Ledger] GET_APP_AND_VERSION');
+              // Response: format(1) + name_len(1) + name + version_len(1) + version + flags(1) + SW_OK
+              const appName = [0x4E, 0x45, 0x41, 0x52]; // "NEAR"
+              const version = [0x31, 0x2E, 0x30, 0x2E, 0x30]; // "1.0.0"
+              responseData = new Uint8Array([
+                0x01,            // format
+                appName.length,  // app name length
+                ...appName,      // app name bytes
+                version.length,  // version length
+                ...version,      // version bytes
+                0x00,            // flags
+                0x90, 0x00       // SW_OK
+              ]);
+              break;
+            default:
+              console.log('[Mock Ledger] Unknown dashboard INS:', ins.toString(16));
+              responseData = new Uint8Array([0x6D, 0x00]); // SW_INS_NOT_SUPPORTED
+          }
+        } else if (cla === 0x80) { // NEAR app
           switch (ins) {
             case 0x04: // GET_PUBLIC_KEY
               console.log('[Mock Ledger] GET_PUBLIC_KEY');
@@ -87,6 +108,7 @@ const mockWebHID = `
               responseData = new Uint8Array([0x6D, 0x00]); // SW_INS_NOT_SUPPORTED
           }
         } else {
+          console.log('[Mock Ledger] Unknown CLA:', cla.toString(16));
           responseData = new Uint8Array([0x6E, 0x00]); // SW_CLA_NOT_SUPPORTED
         }
         
@@ -206,29 +228,87 @@ test("Ledger login flow", async ({ page, context }) => {
     // This is critical because TransportWebHID from the CDN will access navigator.hid
     await context.addInitScript(mockWebHID);
 
-    // Intercept RPC calls to FastNEAR and redirect to local sandbox
+    // Intercept RPC calls to FastNEAR and return mock responses
     // The ledger-executor.js calls mainnet RPC for access key verification
-    // The sandbox already has test.near with our mock public key
     await context.route(
         /rpc\.(mainnet|testnet)\.fastnear\.com/,
         async (route) => {
             const request = route.request();
             const postData = request.postData();
+            const body = postData ? JSON.parse(postData) : {};
 
-            console.log("Intercepting FastNEAR RPC, redirecting to sandbox");
+            console.log("Intercepting FastNEAR RPC:", body.method);
 
-            // Forward the request to local sandbox
-            const response = await fetch("http://localhost:3030", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: postData,
-            });
+            let result;
+            if (body.method === "query") {
+                const requestType = body.params?.request_type;
+                if (requestType === "view_access_key") {
+                    // Return a full access key for the mock public key
+                    result = {
+                        jsonrpc: "2.0",
+                        id: body.id,
+                        result: {
+                            block_hash: "A".repeat(44),
+                            block_height: 100000000,
+                            nonce: 1,
+                            permission: "FullAccess",
+                        },
+                    };
+                } else if (requestType === "view_access_key_list") {
+                    // Return a list containing the mock public key
+                    result = {
+                        jsonrpc: "2.0",
+                        id: body.id,
+                        result: {
+                            block_hash: "A".repeat(44),
+                            block_height: 100000000,
+                            keys: [
+                                {
+                                    public_key:
+                                        "ed25519:5BGSaf6YjVm7565VzWQHNxoyEjwr3jUpRJSGjREvU9dB",
+                                    access_key: {
+                                        nonce: 1,
+                                        permission: "FullAccess",
+                                    },
+                                },
+                            ],
+                        },
+                    };
+                } else if (requestType === "view_account") {
+                    result = {
+                        jsonrpc: "2.0",
+                        id: body.id,
+                        result: {
+                            amount: "1000000000000000000000000",
+                            locked: "0",
+                            code_hash: "11111111111111111111111111111111",
+                            storage_usage: 182,
+                            storage_paid_at: 0,
+                            block_height: 100000000,
+                            block_hash: "A".repeat(44),
+                        },
+                    };
+                } else {
+                    // Generic success for other query types
+                    result = {
+                        jsonrpc: "2.0",
+                        id: body.id,
+                        result: {},
+                    };
+                }
+            } else {
+                // Generic success for non-query methods
+                result = {
+                    jsonrpc: "2.0",
+                    id: body.id,
+                    result: {},
+                };
+            }
 
-            const body = await response.text();
             await route.fulfill({
-                status: response.status,
+                status: 200,
                 contentType: "application/json",
-                body,
+                body: JSON.stringify(result),
             });
         },
     );
@@ -250,8 +330,8 @@ test("Ledger login flow", async ({ page, context }) => {
             status: 200,
             contentType: "application/json",
             body: JSON.stringify({
-                account_id: "test.near",
-                terms_accepted: true, // Simulate terms already accepted
+                accountId: "test.near",
+                termsAccepted: true, // Simulate terms already accepted
             }),
         });
     });
@@ -262,8 +342,8 @@ test("Ledger login flow", async ({ page, context }) => {
             status: 200,
             contentType: "application/json",
             body: JSON.stringify({
-                account_id: "test.near",
-                terms_accepted: true,
+                accountId: "test.near",
+                termsAccepted: true,
             }),
         });
     });
@@ -308,9 +388,20 @@ test("Ledger login flow", async ({ page, context }) => {
     await page.waitForTimeout(2000); // Pause to show the device connection happening
 
     // After clicking Connect Ledger:
-    // 1. Gets public key from Ledger (mock handles this)
-    // 2. Shows account ID input prompt
-    // Note: The 500ms mock delay prevents race condition with iframe hide/show transitions
+    // 1. GET_APP_AND_VERSION is sent (mock responds with "NEAR" app)
+    // 2. "Select Derivation Path" dialog appears
+    // 3. User clicks Continue (default Account 2 selected)
+    // 4. GET_PUBLIC_KEY is sent (mock responds with test public key)
+    // 5. Account ID input prompt appears
+
+    // Handle the "Select Derivation Path" dialog - click Continue with default selection
+    const continueBtn = iframe.getByRole("button", { name: /continue/i });
+    await expect(continueBtn).toBeVisible({ timeout: 10000 });
+    console.log("Derivation path dialog visible, clicking Continue with default selection");
+    await page.waitForTimeout(1500); // Pause to show the derivation path dialog
+    await continueBtn.click();
+    console.log("Clicked Continue on derivation path dialog");
+    await page.waitForTimeout(2000); // Pause for GET_PUBLIC_KEY mock response
 
     // Wait for account ID input to appear
     const accountIdInput = iframe.getByPlaceholder("example.near");

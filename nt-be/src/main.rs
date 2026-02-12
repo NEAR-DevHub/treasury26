@@ -74,6 +74,10 @@ async fn main() {
                     &state_clone.archival_network,
                     up_to_block,
                     state_clone.transfer_hint_service.as_ref(),
+                    Some((
+                        &state_clone.http_client,
+                        &state_clone.env_vars.fastnear_api_key,
+                    )),
                 )
                 .await
                 {
@@ -152,13 +156,7 @@ async fn main() {
 
             loop {
                 interval.tick().await;
-                run_dirty_monitor(
-                    &state_clone.db_pool,
-                    &state_clone.archival_network,
-                    state_clone.transfer_hint_service.as_ref(),
-                    &mut active_tasks,
-                )
-                .await;
+                run_dirty_monitor(&state_clone, &mut active_tasks).await;
             }
         });
     }
@@ -178,6 +176,14 @@ async fn main() {
         let network = state.network.clone();
         tokio::spawn(async move {
             nt_be::services::run_dao_policy_sync_service(pool, network).await;
+        });
+    }
+
+    // Spawn subscription monthly credit reset service
+    {
+        let pool = state.db_pool.clone();
+        tokio::spawn(async move {
+            nt_be::handlers::subscription::run_monthly_plan_reset_service(pool).await;
         });
     }
 

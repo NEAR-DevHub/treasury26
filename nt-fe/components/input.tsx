@@ -7,11 +7,20 @@ interface InputProps extends React.ComponentProps<typeof ShadcnInput> {
     search?: boolean;
 }
 
-export function Input({ className, value, onChange, clearable = true, search, ...props }: InputProps) {
+export function Input({
+    className,
+    value,
+    onChange,
+    clearable = true,
+    search,
+    ...props
+}: InputProps) {
     const showClear = clearable && value && onChange;
 
     const handleClear = () => {
-        onChange?.({ target: { value: "" } } as React.ChangeEvent<HTMLInputElement>);
+        onChange?.({
+            target: { value: "" },
+        } as React.ChangeEvent<HTMLInputElement>);
     };
 
     return (
@@ -22,7 +31,14 @@ export function Input({ className, value, onChange, clearable = true, search, ..
             <ShadcnInput
                 value={value}
                 onChange={onChange}
-                className={cn("bg-muted border-0", search && "pl-8", showClear && "pr-8", className)}
+                autoComplete="off"
+                autoCorrect="off"
+                className={cn(
+                    "bg-muted border-0",
+                    search && "pl-8",
+                    showClear && "pr-8",
+                    className,
+                )}
                 {...props}
             />
             {showClear && (

@@ -15,13 +15,19 @@
     },
     "ghcr.io/devcontainers/features/desktop-lite:1": {}
   },
-  "forwardPorts": [6080, 5901],
+  "forwardPorts": [6080, 5901, 5432, 5433],
   "portsAttributes": {
     "6080": {
       "label": "desktop"
     },
     "5901": {
       "label": "vnc"
+    },
+    "5432": {
+      "label": "postgres-dev"
+    },
+    "5433": {
+      "label": "postgres-test"
     }
   },
   "customizations": {
@@ -38,5 +44,10 @@
     "storage": "64gb"
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
-  "remoteUser": "vscode"
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "DATABASE_URL": "postgresql://treasury_test:test_password@localhost:5433/treasury_test_db",
+    "RUST_LOG": "info"
+  }
 }

@@ -1,27 +1,32 @@
 "use client";
 
-import { usePathname, useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { TreasurySelector } from "./treasury-selector";
-import { cn } from "@/lib/utils";
 import {
-    Send,
-    CreditCard,
-    Users,
-    Settings,
-    HelpCircle,
-    type LucideIcon,
     ArrowRightLeft,
     ChartColumn,
+    CreditCard,
+    HelpCircle,
+    type LucideIcon,
+    Send,
+    Settings,
+    Users,
 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useProposals } from "@/hooks/use-proposals";
+import { useSubscription } from "@/hooks/use-subscription";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useSaveTreasuryMutation } from "@/hooks/use-treasury-mutations";
+import { cn } from "@/lib/utils";
+import { useNear } from "@/stores/near-store";
+import { useResponsiveSidebar } from "@/stores/sidebar-store";
+import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { ApprovalInfo } from "./approval-info";
 import { Button } from "./button";
-import { useProposals } from "@/hooks/use-proposals";
+import { GuestBadge } from "./guest-badge";
 import { NumberBadge } from "./number-badge";
-import { Pill } from "./pill";
-import { useTreasury } from "@/hooks/use-treasury";
-import { useResponsiveSidebar } from "@/stores/sidebar-store";
+import { SponsoredActionsLimitNotice } from "./sponsored-actions-limit-notice";
 import { SupportCenterModal } from "./support-center-modal";
+import { TreasurySelector } from "./treasury-selector";
 
 interface NavLinkProps {
     isActive: boolean;
@@ -111,21 +116,29 @@ interface SidebarProps {
 export function Sidebar({ onClose }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const params = useParams();
-    const treasuryId = params?.treasuryId as string | undefined;
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [hasInitialized, setHasInitialized] = useState(false);
     const [supportModalOpen, setSupportModalOpen] = useState(false);
+    const { accountId } = useNear();
 
+    const {
+        isGuestTreasury,
+        isLoading: isLoadingGuestTreasury,
+        treasuryId,
+        isSaved,
+    } = useTreasury();
     const { data: proposals } = useProposals(treasuryId, {
         statuses: ["InProgress"],
+        ...(accountId && {
+            voter_votes: `${accountId}:No Voted`,
+        }),
     });
+    const { data: subscription } = useSubscription(treasuryId);
 
-    const { isGuestTreasury, isLoading: isLoadingGuestTreasury } =
-        useTreasury();
     const { isMobile, mounted, isSidebarOpen: isOpen } = useResponsiveSidebar();
 
     const isReduced = !isMobile && !isOpen;
+    const saveTreasuryMutation = useSaveTreasuryMutation(accountId, treasuryId);
 
     // Mark as initialized after first render with mounted state
     useEffect(() => {
@@ -182,12 +195,24 @@ export function Sidebar({ onClose }: SidebarProps) {
                             )}
                         >
                             {isGuestTreasury && !isLoadingGuestTreasury ? (
-                                <Pill
-                                    variant="info"
-                                    side="right"
-                                    title="Guest"
-                                    info="You are a guest of this treasury. You can only view the data. Creating requests, adding members, or making any changes is not allowed because you are not a member of the team."
-                                />
+                                <div className="flex gap-2">
+                                    <GuestBadge showTooltip side="right" />
+                                    {accountId && !isReduced && !isSaved && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-fit h-6 justify-center gap-2"
+                                            onClick={() =>
+                                                saveTreasuryMutation.mutate()
+                                            }
+                                            disabled={
+                                                saveTreasuryMutation.isPending
+                                            }
+                                        >
+                                            Save
+                                        </Button>
+                                    )}
+                                </div>
                             ) : (
                                 <ApprovalInfo variant="pupil" side="right" />
                             )}
@@ -229,12 +254,23 @@ export function Sidebar({ onClose }: SidebarProps) {
                     })}
                 </nav>
 
+                <CreateBanner />
+
                 <div
                     className={cn(
                         "flex flex-col gap-1 pb-2",
                         isReduced ? "px-2" : "px-3.5",
                     )}
                 >
+                    {!isGuestTreasury && (
+                        <SponsoredActionsLimitNotice
+                            treasuryId={treasuryId}
+                            subscription={subscription}
+                            enableFloatingPopup={true}
+                            showSidebarCard={true}
+                            onContactClick={() => setSupportModalOpen(true)}
+                        />
+                    )}
                     {bottomNavLinks.map((link) => {
                         const href = treasuryId
                             ? `/${treasuryId}${link.path ? `/${link.path}` : ""}`
@@ -256,6 +292,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                             />
                         );
                     })}
+
                     <NavLink
                         id="help-support-link"
                         isActive={false}

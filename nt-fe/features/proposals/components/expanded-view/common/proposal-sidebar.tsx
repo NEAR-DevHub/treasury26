@@ -26,6 +26,7 @@ import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
 import { cn } from "@/lib/utils";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
+import { NotEnoughBalance } from "../../not-enough-balance";
 
 interface ProposalSidebarProps {
     proposal: Proposal;
@@ -172,7 +173,7 @@ function VotingSection({
                 </div>
             </div>
 
-            <div className="ml-5">
+            <div className="ml-5 flex flex-col gap-1">
                 {votesArray.map(([account, vote]) => {
                     return (
                         <div key={account} className="flex items-center gap-2">
@@ -180,6 +181,7 @@ function VotingSection({
                                 accountId={account}
                                 vote={vote}
                                 iconOnly={false}
+                                expired={proposalStatus === "Expired"}
                             />
                         </div>
                     );
@@ -246,7 +248,6 @@ export function ProposalSidebar({
     const { treasuryId } = useTreasury();
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(
         proposal,
-        policy,
         treasuryId,
     );
 
@@ -421,28 +422,9 @@ export function ProposalSidebar({
             )}
 
             {/* Insufficient Balance Warning */}
-            {isPending && insufficientBalanceInfo.hasInsufficientBalance && (
-                <InfoAlert
-                    className="inline-flex"
-                    message={
-                        <span>
-                            This request can&apos;t be approved because the
-                            treasury has insufficient{" "}
-                            <strong>
-                                {insufficientBalanceInfo.tokenSymbol}
-                            </strong>{" "}
-                            balance. Add{" "}
-                            <strong>
-                                {insufficientBalanceInfo.differenceDisplay}{" "}
-                                {insufficientBalanceInfo.tokenSymbol}
-                            </strong>{" "}
-                            to{" "}
-                            {insufficientBalanceInfo.type === "bond"
-                                ? "cover proposal bond costs"
-                                : "continue"}
-                            .
-                        </span>
-                    }
+            {isPending && (
+                <NotEnoughBalance
+                    insufficientBalanceInfo={insufficientBalanceInfo}
                 />
             )}
 

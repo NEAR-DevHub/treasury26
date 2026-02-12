@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use crate::AppState;
 use crate::config::{PlanType, get_initial_credits};
+use crate::utils::datetime::next_month_start_utc;
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct MonitoredAccount {
@@ -61,7 +62,9 @@ pub struct UpdateAccountRequest {
 
 /// Add/register a monitored account
 /// - If not registered: creates new record with default credits (10 export, 120 batch payment)
-/// - If already registered: returns existing record without changes
+/// - If already registered: updates dirty_at to trigger priority gap filling
+///
+/// Called on every treasury open via the frontend's `openTreasury` hook.
 pub async fn add_monitored_account(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<AddAccountRequest>,
@@ -96,8 +99,27 @@ pub async fn add_monitored_account(
         )
     })?;
 
-    if let Some(account) = existing {
-        // Already registered - return without changes
+    if let Some(_account) = existing {
+        // Already registered - update dirty_at to trigger priority gap filling
+        let account = sqlx::query_as::<_, MonitoredAccount>(
+            r#"
+            UPDATE monitored_accounts
+            SET dirty_at = NOW(), updated_at = NOW()
+            WHERE account_id = $1
+            RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
+                      export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
+            "#,
+        )
+        .bind(&payload.account_id)
+        .fetch_one(&state.db_pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Database error: {}", e) })),
+            )
+        })?;
+
         return Ok(Json(AddAccountResponse {
             account_id: account.account_id,
             enabled: account.enabled,
@@ -114,12 +136,14 @@ pub async fn add_monitored_account(
     }
 
     // New registration - insert with Pro plan and credits (launch promotion)
-    let (export_credits, batch_payment_credits) = get_initial_credits(PlanType::Pro);
+    let (export_credits, batch_payment_credits, gas_covered_transactions) =
+        get_initial_credits(PlanType::Plus);
+    let credits_reset_at = next_month_start_utc(Utc::now());
 
     let account = sqlx::query_as::<_, MonitoredAccount>(
         r#"
-        INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits, plan_type)
-        VALUES ($1, true, $2, $3, 'pro')
+        INSERT INTO monitored_accounts (account_id, enabled, export_credits, batch_payment_credits, gas_covered_transactions, plan_type, credits_reset_at, dirty_at)
+        VALUES ($1, true, $2, $3, $4, 'plus', $5, NOW())
         RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
                   export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
         "#,
@@ -127,6 +151,8 @@ pub async fn add_monitored_account(
     .bind(&payload.account_id)
     .bind(export_credits)
     .bind(batch_payment_credits)
+    .bind(gas_covered_transactions)
+    .bind(credits_reset_at)
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
@@ -257,53 +283,4 @@ pub async fn delete_monitored_account(
     }
 
     Ok(StatusCode::NO_CONTENT)
-}
-
-#[derive(Debug, Deserialize)]
-pub struct MarkDirtyRequest {
-    /// How many hours back to fill gaps for. Defaults to 24.
-    pub hours_back: Option<i64>,
-}
-
-/// Mark a monitored account as dirty to trigger priority gap filling
-///
-/// Sets `dirty_at` to `NOW() - hours_back` (default 24 hours).
-/// The dirty account watcher will spawn a parallel task to fill gaps
-/// from `dirty_at` to now, most-recent-first.
-pub async fn mark_account_dirty(
-    State(state): State<Arc<AppState>>,
-    Path(account_id): Path<String>,
-    Json(payload): Json<MarkDirtyRequest>,
-) -> Result<Json<MonitoredAccount>, (StatusCode, Json<Value>)> {
-    let hours_back = payload.hours_back.unwrap_or(24);
-
-    let account = sqlx::query_as::<_, MonitoredAccount>(
-        r#"
-        UPDATE monitored_accounts
-        SET dirty_at = NOW() - make_interval(hours => $2),
-            updated_at = NOW()
-        WHERE account_id = $1 AND enabled = true
-        RETURNING account_id, enabled, last_synced_at, created_at, updated_at,
-                  export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
-        "#,
-    )
-    .bind(&account_id)
-    .bind(hours_back as f64)
-    .fetch_optional(&state.db_pool)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Database error: {}", e) })),
-        )
-    })?;
-
-    account
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": "Account not found or not enabled" })),
-            )
-        })
-        .map(Json)
 }
