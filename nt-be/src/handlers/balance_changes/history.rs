@@ -22,7 +22,6 @@ use std::sync::Arc;
 
 use crate::AppState;
 use crate::config::get_plan_config;
-use crate::constants::intents_tokens::find_token_by_symbol;
 use crate::handlers::balance_changes::query_builder::{BalanceChangeFilters, build_count_query};
 use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::token::TokenMetadata;
@@ -1124,12 +1123,10 @@ pub struct RecentActivityQuery {
     pub offset: Option<i64>,
     pub min_usd_value: Option<f64>,
     pub transaction_type: Option<String>, // "outgoing" | "incoming" | "staking_rewards" (single selection for tabs)
-    pub token_symbol: Option<String>, // Single token symbol like "NEAR", "USDC" - will be converted to token IDs (for "Is" operation)
-    pub token_symbol_not: Option<String>, // Single token symbol to exclude (for "Is Not" operation)
-    pub amount_min: Option<String>,   // Minimum amount filter
-    pub amount_max: Option<String>,   // Maximum amount filter
-    pub start_date: Option<String>,   // ISO 8601 format
-    pub end_date: Option<String>,     // ISO 8601 format
+    pub token_symbol: Option<String>,
+    pub token_symbol_not: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1137,6 +1134,19 @@ pub struct RecentActivityQuery {
 pub struct RecentActivityResponse {
     pub data: Vec<RecentActivity>,
     pub total: i64,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SwapInfo {
+    pub sent_token_id: Option<String>,
+    pub sent_amount: Option<BigDecimal>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sent_token_metadata: Option<TokenMetadata>,
+    pub received_token_id: String,
+    pub received_amount: BigDecimal,
+    pub received_token_metadata: TokenMetadata,
+    pub solver_transaction_hash: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -1154,6 +1164,8 @@ pub struct RecentActivity {
     pub receipt_ids: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value_usd: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swap: Option<SwapInfo>,
 }
 
 pub async fn get_recent_activity(
@@ -1162,44 +1174,6 @@ pub async fn get_recent_activity(
 ) -> Result<Json<RecentActivityResponse>, (StatusCode, Json<serde_json::Value>)> {
     let limit = params.limit.unwrap_or(10).min(100);
     let offset = params.offset.unwrap_or(0);
-
-    // Convert token symbol to token IDs if provided
-    let mut token_ids = None;
-    let mut exclude_token_ids = None;
-
-    if let Some(symbol) = &params.token_symbol {
-        if let Some(token) = find_token_by_symbol(&symbol.to_lowercase()) {
-            let mut converted_ids = Vec::new();
-            for grouped_token in token.grouped_tokens {
-                // Extract address after "nep141:" prefix
-                if let Some(address) = grouped_token.defuse_asset_id.split(':').nth(1) {
-                    converted_ids.push(address.to_string());
-                } else {
-                    converted_ids.push(grouped_token.defuse_asset_id);
-                }
-            }
-            if !converted_ids.is_empty() {
-                token_ids = Some(converted_ids);
-            }
-        }
-    }
-
-    if let Some(symbol_not) = &params.token_symbol_not {
-        if let Some(token) = find_token_by_symbol(&symbol_not.to_lowercase()) {
-            let mut converted_ids = Vec::new();
-            for grouped_token in token.grouped_tokens {
-                // Extract address after "nep141:" prefix
-                if let Some(address) = grouped_token.defuse_asset_id.split(':').nth(1) {
-                    converted_ids.push(address.to_string());
-                } else {
-                    converted_ids.push(grouped_token.defuse_asset_id);
-                }
-            }
-            if !converted_ids.is_empty() {
-                exclude_token_ids = Some(converted_ids);
-            }
-        }
-    }
 
     // Get account plan info and calculate date cutoff
     let account_plan = get_account_plan_info(&state.db_pool, &params.account_id)
@@ -1228,6 +1202,63 @@ pub async fn get_recent_activity(
 
     let end_date = params.end_date.as_ref().map(|s| s.as_str());
 
+    // Convert token symbol to token IDs using NearBlocks search
+    let token_ids: Option<Vec<String>> = if let Some(ref symbol) = params.token_symbol {
+        match crate::handlers::token::search_token_by_symbol(&state, symbol).await {
+            Ok(addresses) => {
+                log::info!(
+                    "Found {} token addresses for symbol '{}'",
+                    addresses.len(),
+                    symbol
+                );
+                if addresses.is_empty() {
+                    None
+                } else {
+                    Some(addresses)
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to search token by symbol '{}': {:?}", symbol, e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(
+                        serde_json::json!({ "error": format!("Failed to search token: {:?}", e) }),
+                    ),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
+    let exclude_token_ids: Option<Vec<String>> = if let Some(ref symbol) = params.token_symbol_not {
+        match crate::handlers::token::search_token_by_symbol(&state, symbol).await {
+            Ok(addresses) => {
+                log::info!(
+                    "Found {} token addresses to exclude for symbol '{}'",
+                    addresses.len(),
+                    symbol
+                );
+                if addresses.is_empty() {
+                    None
+                } else {
+                    Some(addresses)
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to search token by symbol '{}': {:?}", symbol, e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(
+                        serde_json::json!({ "error": format!("Failed to search token: {:?}", e) }),
+                    ),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
     // Build query filters for total count (need to count before USD filtering)
     let count_date_cutoff_str: Option<String> = date_cutoff.map(|dt| dt.to_rfc3339());
 
@@ -1243,8 +1274,8 @@ pub async fn get_recent_activity(
         token_ids: token_ids.clone(),
         exclude_token_ids: exclude_token_ids.clone(),
         transaction_types: params.transaction_type.as_ref().map(|t| vec![t.clone()]),
-        min_amount: params.amount_min.as_ref().and_then(|s| s.parse().ok()),
-        max_amount: params.amount_max.as_ref().and_then(|s| s.parse().ok()),
+        min_amount: None,
+        max_amount: None,
     };
 
     // Count query
@@ -1264,6 +1295,8 @@ pub async fn get_recent_activity(
     }
     if let Some(ref tokens) = filters.token_ids {
         count_query = count_query.bind(tokens);
+    } else if let Some(ref exclude_tokens) = filters.exclude_token_ids {
+        count_query = count_query.bind(exclude_tokens);
     }
 
     let total: i64 = count_query.fetch_one(&state.db_pool).await.unwrap_or(0);
@@ -1290,8 +1323,8 @@ pub async fn get_recent_activity(
         token_ids: token_ids.clone(),
         exclude_token_ids: exclude_token_ids.clone(),
         transaction_types: params.transaction_type.as_ref().map(|t| vec![t.clone()]),
-        min_amount: params.amount_min.as_ref().and_then(|s| s.parse().ok()),
-        max_amount: params.amount_max.as_ref().and_then(|s| s.parse().ok()),
+        min_amount: None,
+        max_amount: None,
         include_metadata: Some(true), // ✅ Fetch metadata (includes prices)
     };
 
@@ -1308,7 +1341,111 @@ pub async fn get_recent_activity(
             )
         })?;
 
-    // Convert enriched changes to RecentActivity format
+    // Look up detected swaps for fulfillment IDs on this page
+    let change_ids: Vec<i64> = enriched_changes.iter().map(|c| c.id).collect();
+
+    #[derive(Debug)]
+    struct SwapRecord {
+        fulfillment_balance_change_id: i64,
+        sent_token_id: Option<String>,
+        sent_amount: Option<BigDecimal>,
+        received_token_id: String,
+        received_amount: BigDecimal,
+        solver_transaction_hash: String,
+    }
+
+    let swap_records = if !change_ids.is_empty() {
+        sqlx::query_as!(
+            SwapRecord,
+            r#"
+            SELECT
+                fulfillment_balance_change_id,
+                sent_token_id,
+                sent_amount,
+                received_token_id,
+                received_amount,
+                solver_transaction_hash
+            FROM detected_swaps
+            WHERE account_id = $1
+              AND fulfillment_balance_change_id = ANY($2)
+            "#,
+            &params.account_id,
+            &change_ids,
+        )
+        .fetch_all(&state.db_pool)
+        .await
+        .unwrap_or_default()
+    } else {
+        vec![]
+    };
+
+    // Build swap lookup map
+    let swap_map: std::collections::HashMap<i64, SwapRecord> = swap_records
+        .into_iter()
+        .map(|s| (s.fulfillment_balance_change_id, s))
+        .collect();
+
+    // Helper function to resolve metadata for a token_id
+    fn resolve_swap_metadata(
+        token_id: &str,
+        metadata_map: &std::collections::HashMap<String, TokenMetadata>,
+    ) -> TokenMetadata {
+        // Check if metadata exists in the map
+        if let Some(meta) = metadata_map.get(token_id) {
+            return meta.clone();
+        }
+
+        // Fallback: create a basic metadata object
+        let symbol = token_id
+            .split('.')
+            .next()
+            .unwrap_or("UNKNOWN")
+            .to_uppercase();
+        TokenMetadata {
+            token_id: token_id.to_string(),
+            name: symbol.clone(),
+            symbol,
+            decimals: 18,
+            icon: None,
+            price: None,
+            price_updated_at: None,
+            network: None,
+            chain_name: None,
+            chain_icons: None,
+        }
+    }
+
+    // Collect unique swap token IDs that are not already in enriched_changes
+    let mut swap_token_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for swap in swap_map.values() {
+        if let Some(ref sent_token_id) = swap.sent_token_id {
+            swap_token_ids.insert(sent_token_id.clone());
+        }
+        swap_token_ids.insert(swap.received_token_id.clone());
+    }
+
+    // Build metadata map from enriched changes (which already have metadata)
+    let mut metadata_map: std::collections::HashMap<String, TokenMetadata> =
+        std::collections::HashMap::new();
+    for change in &enriched_changes {
+        if let Some(ref meta) = change.token_metadata {
+            metadata_map.insert(change.token_id.clone(), meta.clone());
+        }
+    }
+
+    // Fetch metadata for any swap tokens not already in our map
+    let additional_token_ids: Vec<String> = swap_token_ids
+        .into_iter()
+        .filter(|id| !metadata_map.contains_key(id))
+        .collect();
+
+    if !additional_token_ids.is_empty() {
+        use crate::handlers::token::fetch_tokens_with_fallback;
+        let additional_metadata = fetch_tokens_with_fallback(&state, &additional_token_ids).await;
+        metadata_map.extend(additional_metadata);
+    }
+
+    // Convert enriched changes to RecentActivity format with swap info
     let activities: Vec<RecentActivity> = enriched_changes
         .into_iter()
         .filter_map(|change| {
@@ -1338,6 +1475,26 @@ pub async fn get_recent_activity(
                 }
             }
 
+            // Check if this change has swap info
+            let swap = swap_map.get(&change.id).map(|s| {
+                let sent_token_metadata = s
+                    .sent_token_id
+                    .as_ref()
+                    .map(|id| resolve_swap_metadata(id, &metadata_map));
+                let received_token_metadata =
+                    resolve_swap_metadata(&s.received_token_id, &metadata_map);
+
+                SwapInfo {
+                    sent_token_id: s.sent_token_id.clone(),
+                    sent_amount: s.sent_amount.clone(),
+                    sent_token_metadata,
+                    received_token_id: s.received_token_id.clone(),
+                    received_amount: s.received_amount.clone(),
+                    received_token_metadata,
+                    solver_transaction_hash: s.solver_transaction_hash.clone(),
+                }
+            });
+
             Some(RecentActivity {
                 id: change.id,
                 block_time: change.block_time,
@@ -1350,13 +1507,25 @@ pub async fn get_recent_activity(
                 transaction_hashes: change.transaction_hashes,
                 receipt_ids: change.receipt_id,
                 value_usd,
+                swap,
             })
         })
-        .take(limit as usize) // Only return the requested number of results
-        .collect();
+        .collect::<Vec<_>>();
+
+    // If we're filtering by USD, we need to return the actual filtered total
+    // since we can't count USD-filtered items in SQL
+    let actual_total = if params.min_usd_value.is_some() {
+        activities.len() as i64
+    } else {
+        total
+    };
+
+    // Only return the requested number of results (pagination)
+    let paginated_activities: Vec<RecentActivity> =
+        activities.into_iter().take(limit as usize).collect();
 
     Ok(Json(RecentActivityResponse {
-        data: activities,
-        total,
+        data: paginated_activities,
+        total: actual_total,
     }))
 }

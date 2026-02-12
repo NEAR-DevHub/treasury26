@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TokenAmountDisplay } from "@/components/token-display";
+import { TransactionHashCell } from "@/features/activity";
 
 interface ActivityTableProps {
     activities: RecentActivity[];
@@ -166,25 +167,10 @@ export function ActivityTable({
                                             </span>
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
-                                            {activity.transactionHashes.length > 0 && (
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <a
-                                                        href={`https://nearblocks.io/txns/${activity.transactionHashes[0]}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-sm underline hover:no-underline"
-                                                    >
-                                                        {activity.transactionHashes[0].slice(0, 12)}...
-                                                    </a>
-                                                    <CopyButton
-                                                        text={activity.transactionHashes[0]}
-                                                        toastMessage="Transaction hash copied"
-                                                        className="h-6 w-6 p-0"
-                                                        iconClassName="h-3 w-3"
-                                                        variant="ghost"
-                                                    />
-                                                </div>
-                                            )}
+                                            <TransactionHashCell
+                                                transactionHashes={activity.transactionHashes}
+                                                receiptIds={activity.receiptIds}
+                                            />
                                         </TableCell>
                                     </TableRow>
                                 );

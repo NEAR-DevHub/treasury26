@@ -18,7 +18,7 @@ import { getHistoryDescription } from "@/features/activity";
 import { subMonths } from "date-fns";
 
 // Constants
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 15;
 const FILTER_PANEL_MAX_HEIGHT = '500px';
 
 function ActivityList({ status }: { status?: "incoming" | "outgoing" }) {
@@ -61,37 +61,28 @@ function ActivityList({ status }: { status?: "incoming" | "outgoing" }) {
     const tokenFilter = searchParams.get("token");
     let tokenSymbol: string | undefined;
     let tokenSymbolNot: string | undefined;
-    let amountMin: string | undefined;
-    let amountMax: string | undefined;
 
-    console.log("tokenFilter", tokenFilter);
     if (tokenFilter) {
         try {
             const parsed = JSON.parse(tokenFilter);
-            // The token filter stores data as: { operation: "Is" | "Is Not", token: { id, name, symbol, icon }, amountOperation, minAmount, maxAmount }
-            if (parsed.token && parsed.token.symbol) {
-                if (parsed.operation === "Is") {
-                    tokenSymbol = parsed.token.symbol;
-                    console.log("tokenSymbol extracted:", tokenSymbol);
+            // The token filter stores data as: { operation: "Is" | "Is Not", token: { id, symbol, name, icon } }
+            if (parsed.token) {
+                const symbol = parsed.token.symbol;
 
-                    // Handle amount filters if present
-                    if (parsed.minAmount) {
-                        amountMin = parsed.minAmount;
+                if (!symbol) {
+                    console.error("Token filter is missing 'symbol' field:", parsed.token);
+                } else {
+                    if (parsed.operation === "Is") {
+                        tokenSymbol = symbol;
+                    } else if (parsed.operation === "Is Not") {
+                        tokenSymbolNot = symbol;
                     }
-                    if (parsed.maxAmount) {
-                        amountMax = parsed.maxAmount;
-                    }
-                } else if (parsed.operation === "Is Not") {
-                    tokenSymbolNot = parsed.token.symbol;
-                    console.log("tokenSymbolNot extracted:", tokenSymbolNot);
                 }
             }
         } catch (e) {
             console.error("Failed to parse token filter:", e);
         }
     }
-
-    console.log("Calling useRecentActivity with:", { treasuryId, PAGE_SIZE, offset: page * PAGE_SIZE, minUsdValue, status, tokenSymbol, tokenSymbolNot, amountMin, amountMax, startDate, endDate });
 
     const { data, isLoading } = useRecentActivity(
         treasuryId,
@@ -101,8 +92,6 @@ function ActivityList({ status }: { status?: "incoming" | "outgoing" }) {
         status,
         tokenSymbol,
         tokenSymbolNot,
-        amountMin,
-        amountMax,
         startDate,
         endDate,
     );
@@ -147,7 +136,8 @@ export default function ActivityPage() {
             },
             {
                 id: "token",
-                label: "Token"
+                label: "Token",
+                hideAmount: true
             },
         ];
     }, [subscriptionData?.planConfig?.limits?.historyLookupMonths]);
@@ -192,7 +182,8 @@ export default function ActivityPage() {
                             <TabsTrigger value="incoming">Received</TabsTrigger>
                         </TabsList>
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
+                            {/* TODO: Uncomment after price integration */}
+                            {/* <div className="flex items-center gap-2">
                                 <Checkbox
                                     id="hide-small-transactions"
                                     checked={hideSmallTransactions}
@@ -204,7 +195,7 @@ export default function ActivityPage() {
                                 >
                                     Hide transactions &lt;1USD
                                 </label>
-                            </div>
+                            </div> */}
                             <Button
                                 variant="secondary"
                                 className="flex gap-1.5 relative"

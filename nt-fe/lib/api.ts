@@ -302,8 +302,6 @@ export async function getRecentActivity(
     transactionType?: string,
     tokenSymbol?: string,
     tokenSymbolNot?: string,
-    amountMin?: string,
-    amountMax?: string,
     startDate?: string,
     endDate?: string,
 ): Promise<RecentActivityResponse | null> {
@@ -327,12 +325,6 @@ export async function getRecentActivity(
         }
         if (tokenSymbolNot) {
             params.tokenSymbolNot = tokenSymbolNot;
-        }
-        if (amountMin) {
-            params.amountMin = amountMin;
-        }
-        if (amountMax) {
-            params.amountMax = amountMax;
         }
         if (startDate) {
             params.startDate = startDate;

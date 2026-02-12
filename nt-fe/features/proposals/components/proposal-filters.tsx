@@ -54,6 +54,7 @@ export interface FilterOption {
     label: string;
     minDate?: Date;
     maxDate?: Date;
+    hideAmount?: boolean; // Hide amount fields for this filter (for token filter)
 }
 
 interface ProposalFiltersProps {
@@ -132,6 +133,7 @@ export function ProposalFilters({ className, filterOptions }: ProposalFiltersPro
                             onUpdate={(val) => updateFilters({ [filterId]: val })}
                             minDate={filterOption?.minDate}
                             maxDate={filterOption?.maxDate}
+                            hideAmount={filterOption?.hideAmount}
                         />
                     );
                 })}
@@ -180,9 +182,10 @@ interface FilterPillProps {
     onUpdate: (value: string) => void;
     minDate?: Date;
     maxDate?: Date;
+    hideAmount?: boolean;
 }
 
-function FilterPill({ id, label, value, onRemove, onUpdate, minDate, maxDate }: FilterPillProps) {
+function FilterPill({ id, label, value, onRemove, onUpdate, minDate, maxDate, hideAmount }: FilterPillProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     // Single unified parsing - no backward compatibility
@@ -208,7 +211,7 @@ function FilterPill({ id, label, value, onRemove, onUpdate, minDate, maxDate }: 
             case "created_date":
                 return <CreatedDateFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} minDate={minDate} maxDate={maxDate} />;
             case "token":
-                return <TokenFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
+                return <TokenFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} hideAmount={hideAmount} />;
             case "my_vote":
                 return <MyVoteFilterContent value={value} onUpdate={onUpdate} setIsOpen={setIsOpen} onRemove={onRemove} />;
         }
@@ -339,6 +342,7 @@ interface TokenFilterContentProps {
     onUpdate: (value: string) => void;
     setIsOpen: (isOpen: boolean) => void;
     onRemove: () => void;
+    hideAmount?: boolean;
 }
 
 interface TokenData {
@@ -348,7 +352,7 @@ interface TokenData {
     maxAmount?: string;
 }
 
-function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilterContentProps) {
+function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove, hideAmount }: TokenFilterContentProps) {
     const { operation, setOperation, data, setData, handleClear } = useFilterState<TokenData>({
         value,
         onUpdate,
@@ -361,7 +365,7 @@ function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilte
         serializeData: (op, d) => ({
             operation: op,
             token: d.token,
-            ...(op === "Is" && {
+            ...(op === "Is" && !hideAmount && {
                 amountOperation: d.amountOperation,
                 minAmount: d.minAmount,
                 maxAmount: d.maxAmount
@@ -401,7 +405,7 @@ function TokenFilterContent({ value, onUpdate, setIsOpen, onRemove }: TokenFilte
                 />
             </div>
 
-            {data?.token && operation === "Is" && (
+            {!hideAmount && data?.token && operation === "Is" && (
                 <>
                     <div className="py-2 px-2 flex items-baseline gap-1">
                         <span className="text-xs  text-muted-foreground">Amount</span>

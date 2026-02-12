@@ -158,17 +158,11 @@ export function TransactionDetailsModal({
                                         {
                                             label: "Transaction",
                                             value: (
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center">
                                                     <span className="font-mono max-w-[200px] truncate">
                                                         {transactionHash}
                                                     </span>
-                                                    <CopyButton
-                                                        text={transactionHash}
-                                                        toastMessage="Transaction hash copied to clipboard"
-                                                        variant="ghost"
-                                                        size="icon-sm"
-                                                        tooltipContent="Copy Transaction Hash"
-                                                    />
+
                                                     <Button
                                                         variant="ghost"
                                                         size="icon-sm"
@@ -181,6 +175,13 @@ export function TransactionDetailsModal({
                                                     >
                                                         <ExternalLink className="h-3 w-3" />
                                                     </Button>
+                                                    <CopyButton
+                                                        text={transactionHash}
+                                                        toastMessage="Transaction hash copied to clipboard"
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        tooltipContent="Copy Transaction Hash"
+                                                    />
                                                 </div>
                                             ),
                                         } as InfoItem,

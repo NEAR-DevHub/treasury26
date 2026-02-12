@@ -275,14 +275,12 @@ export function useRecentActivity(
     transactionType?: string,
     tokenSymbol?: string,
     tokenSymbolNot?: string,
-    amountMin?: string,
-    amountMax?: string,
     startDate?: string,
     endDate?: string,
 ) {
     return useQuery({
-        queryKey: ["recentActivity", accountId, limit, offset, minUsdValue, transactionType, tokenSymbol, tokenSymbolNot, amountMin, amountMax, startDate, endDate],
-        queryFn: () => getRecentActivity(accountId!, limit, offset, minUsdValue, transactionType, tokenSymbol, tokenSymbolNot, amountMin, amountMax, startDate, endDate),
+        queryKey: ["recentActivity", accountId, limit, offset, minUsdValue, transactionType, tokenSymbol, tokenSymbolNot, startDate, endDate],
+        queryFn: () => getRecentActivity(accountId!, limit, offset, minUsdValue, transactionType, tokenSymbol, tokenSymbolNot, startDate, endDate),
         enabled: !!accountId,
         staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
     });

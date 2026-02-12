@@ -477,183 +477,183 @@ export default function ExportActivityPage() {
 
     return (
         <Form {...form}>
-            <PageComponentLayout
-                title="Dashboard"
-                description="Manage your treasury assets and track activity"
-            >
-                <div className="flex flex-wrap justify-center gap-6 w-full">
-                    {/* Main Content */}
-                    <div className="flex-1 min-w-0 max-w-3xl">
-                        <PageCard className="gap-2">
-                            <div className="flex flex-col gap-3">
-                                <div className="flex flex-col pb-3">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Button
-                                            variant="unstyled"
-                                            size="icon"
-                                            onClick={() => router.push(`/${treasuryId}/dashboard`)}
-                                            className="p-0!"
-                                        >
-                                            <ArrowLeft className="w-5 h-5" />
-                                        </Button>
-                                        <h4 className="text-lg font-bold">Export Recent Transactions</h4>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        Export generation and downloads are available to team members only.
-                                    </p>
+        <PageComponentLayout
+            title="Dashboard"
+            description="Manage your treasury assets and track activity"
+        >
+            <div className="flex flex-wrap justify-center gap-6 w-full">
+                {/* Main Content */}
+                <div className="flex-1 min-w-0 max-w-3xl">
+                    <PageCard className="gap-2">
+                        <div className="flex flex-col gap-3">
+                            <div className="flex flex-col pb-3">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Button
+                                        variant="unstyled"
+                                        size="icon"
+                                        onClick={() => router.push(`/${treasuryId}/dashboard`)}
+                                        className="p-0!"
+                                    >
+                                        <ArrowLeft className="w-5 h-5" />
+                                    </Button>
+                                    <h4 className="text-lg font-bold">Export Recent Transactions</h4>
                                 </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Export generation and downloads are available to team members only.
+                                </p>
+                            </div>
 
-                                <Tabs value={currentTab} onValueChange={setCurrentTab} className="gap-0">
-                                    <TabsList className="w-fit border-none">
-                                        <TabsTrigger value="generate">Generate Export</TabsTrigger>
-                                        <TabsTrigger value="history">History</TabsTrigger>
-                                    </TabsList>
+                            <Tabs value={currentTab} onValueChange={setCurrentTab} className="gap-0">
+                                <TabsList className="w-fit border-none">
+                                    <TabsTrigger value="generate">Generate Export</TabsTrigger>
+                                    <TabsTrigger value="history">History</TabsTrigger>
+                                </TabsList>
 
-                                    <TabsContent value="generate" className="mt-4">
-                                        <div className="space-y-4">
-                                            {/* Document Type */}
-                                            <div>
-                                                <label className="text-sm font-medium mb-2 block">Document Type</label>
-                                                <div className="flex gap-2">
-                                                    {DOCUMENT_TYPES.map((type) => (
-                                                        <Button
-                                                            key={type.value}
-                                                            variant="unstyled"
-                                                            onClick={() => form.setValue("documentType", type.value, { shouldValidate: true })}
-                                                            className={cn(
-                                                                "flex-1 border",
-                                                                documentType === type.value
-                                                                    ? "bg-secondary"
-                                                                    : ""
+                                <TabsContent value="generate" className="mt-4">
+                                    <div className="space-y-4">
+                                        {/* Document Type */}
+                                        <div>
+                                            <label className="text-sm font-medium mb-2 block">Document Type</label>
+                                            <div className="flex gap-2">
+                                                {DOCUMENT_TYPES.map((type) => (
+                                                    <Button
+                                                        key={type.value}
+                                                        variant="unstyled"
+                                                        onClick={() => form.setValue("documentType", type.value, { shouldValidate: true })}
+                                                        className={cn(
+                                                            "flex-1 border",
+                                                            documentType === type.value
+                                                                ? "bg-secondary"
+                                                                : ""
+                                                        )}
+                                                        style={{
+                                                            borderColor: documentType === type.value
+                                                                ? 'var(--general-unofficial-border-5)'
+                                                                : 'var(--general-unofficial-border-3)',
+                                                        }}
+                                                    >
+                                                        {type.label}
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Time Range */}
+                                        <div>
+                                            <label className="text-sm font-medium mb-2 block">Time Range</label>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-start bg-transparent! border-2"
+                                                    >
+                                                        <Calendar className="mr-2 h-4 w-4" />
+                                                        <span className="text-sm">
+                                                            {dateRange?.from && dateRange?.to ? (
+                                                                <>
+                                                                    {format(dateRange.from, "MMM dd, yyyy")} - {format(dateRange.to, "MMM dd, yyyy")}
+                                                                </>
+                                                            ) : (
+                                                                "Select date range"
                                                             )}
-                                                            style={{
-                                                                borderColor: documentType === type.value
-                                                                    ? 'var(--general-unofficial-border-5)'
-                                                                    : 'var(--general-unofficial-border-3)',
-                                                            }}
-                                                        >
-                                                            {type.label}
-                                                        </Button>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                                        </span>
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <DateTimePicker
+                                                        mode="range"
+                                                        value={dateRange ? { from: dateRange.from, to: dateRange.to } : undefined}
+                                                        onChange={(range: any) => {
+                                                            if (range && typeof range === 'object' && 'from' in range) {
+                                                                form.setValue("dateRange", {
+                                                                    from: range.from ? startOfDay(range.from) : startOfDay(new Date()),
+                                                                    to: range.to ? endOfDay(range.to) : endOfDay(new Date())
+                                                                }, { shouldValidate: true });
+                                                            } else {
+                                                                form.setValue("dateRange", {
+                                                                    from: startOfDay(new Date()),
+                                                                    to: endOfDay(new Date())
+                                                                }, { shouldValidate: true });
+                                                            }
+                                                        }}
+                                                        defaultMonth={defaultMonth}
+                                                        numberOfMonths={1}
+                                                        min={minDate}
+                                                        max={new Date()}
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
 
-                                            {/* Time Range */}
-                                            <div>
-                                                <label className="text-sm font-medium mb-2 block">Time Range</label>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            className="w-full justify-start bg-transparent! border-2"
-                                                        >
-                                                            <Calendar className="mr-2 h-4 w-4" />
-                                                            <span className="text-sm">
-                                                                {dateRange?.from && dateRange?.to ? (
-                                                                    <>
-                                                                        {format(dateRange.from, "MMM dd, yyyy")} - {format(dateRange.to, "MMM dd, yyyy")}
-                                                                    </>
-                                                                ) : (
-                                                                    "Select date range"
-                                                                )}
-                                                            </span>
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                        <DateTimePicker
-                                                            mode="range"
-                                                            value={dateRange ? { from: dateRange.from, to: dateRange.to } : undefined}
-                                                            onChange={(range: any) => {
-                                                                if (range && typeof range === 'object' && 'from' in range) {
-                                                                    form.setValue("dateRange", {
-                                                                        from: range.from ? startOfDay(range.from) : startOfDay(new Date()),
-                                                                        to: range.to ? endOfDay(range.to) : endOfDay(new Date())
-                                                                    }, { shouldValidate: true });
-                                                                } else {
-                                                                    form.setValue("dateRange", {
-                                                                        from: startOfDay(new Date()),
-                                                                        to: endOfDay(new Date())
-                                                                    }, { shouldValidate: true });
-                                                                }
-                                                            }}
-                                                            defaultMonth={defaultMonth}
-                                                            numberOfMonths={1}
-                                                            min={minDate}
-                                                            max={new Date()}
-                                                        />
-                                                    </PopoverContent>
-                                                </Popover>
-                                            </div>
-
-                                            {/* Asset Selection */}
-                                            <div>
-                                                <label className="text-sm font-medium mb-2 block">Asset</label>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="outline" className="w-full justify-between bg-transparent! border-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <Coins className="w-4 h-4" />
-                                                                {getSelectedAssetsLabel()}
-                                                            </div>
-                                                            <ChevronDown className="w-4 h-4 opacity-50" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent className="min-w-(--radix-dropdown-menu-trigger-width)" align="start">
+                                        {/* Asset Selection */}
+                                        <div>
+                                            <label className="text-sm font-medium mb-2 block">Asset</label>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline" className="w-full justify-between bg-transparent! border-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <Coins className="w-4 h-4" />
+                                                            {getSelectedAssetsLabel()}
+                                                        </div>
+                                                        <ChevronDown className="w-4 h-4 opacity-50" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent className="min-w-(--radix-dropdown-menu-trigger-width)" align="start">
+                                                    <DropdownMenuCheckboxItem
+                                                        checked={selectedAssets.includes("all")}
+                                                        onCheckedChange={() => toggleAsset("all")}
+                                                        onSelect={(e) => e.preventDefault()}
+                                                    >
+                                                        <div className="flex items-center">
+                                                            <Coins className="w-4 h-4 mr-2" />
+                                                            All Assets
+                                                        </div>
+                                                    </DropdownMenuCheckboxItem>
+                                                    {aggregatedTokens.map((token: any) => (
                                                         <DropdownMenuCheckboxItem
-                                                            checked={selectedAssets.includes("all")}
-                                                            onCheckedChange={() => toggleAsset("all")}
+                                                            key={token.symbol}
+                                                            checked={selectedAssets.includes(token.symbol)}
+                                                            onCheckedChange={() => toggleAsset(token.symbol)}
                                                             onSelect={(e) => e.preventDefault()}
                                                         >
                                                             <div className="flex items-center">
-                                                                <Coins className="w-4 h-4 mr-2" />
-                                                                All Assets
+                                                                {token.icon && (
+                                                                    <img src={token.icon} alt={token.symbol} className="w-4 h-4 rounded-full mr-2" />
+                                                                )}
+                                                                {token.symbol}
                                                             </div>
                                                         </DropdownMenuCheckboxItem>
-                                                        {aggregatedTokens.map((token: any) => (
-                                                            <DropdownMenuCheckboxItem
-                                                                key={token.symbol}
-                                                                checked={selectedAssets.includes(token.symbol)}
-                                                                onCheckedChange={() => toggleAsset(token.symbol)}
-                                                                onSelect={(e) => e.preventDefault()}
-                                                            >
-                                                                <div className="flex items-center">
-                                                                    {token.icon && (
-                                                                        <img src={token.icon} alt={token.symbol} className="w-4 h-4 rounded-full mr-2" />
-                                                                    )}
-                                                                    {token.symbol}
-                                                                </div>
-                                                            </DropdownMenuCheckboxItem>
-                                                        ))}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
+                                                    ))}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
 
-                                            {/* Transaction Type */}
-                                            <div>
-                                                <label className="text-sm font-medium mb-2 block">Transaction Type</label>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="outline" className="w-full justify-between bg-transparent! border-2">
-                                                            {getSelectedTypesLabel()}
-                                                            <ChevronDown className="w-4 h-4 opacity-50" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent className="min-w-(--radix-dropdown-menu-trigger-width)" align="start">
-                                                        {TRANSACTION_TYPES.map((type) => (
-                                                            <DropdownMenuCheckboxItem
-                                                                key={type.value}
-                                                                checked={selectedTransactionTypes.includes(type.value)}
-                                                                onCheckedChange={() => toggleTransactionType(type.value)}
-                                                                onSelect={(e) => e.preventDefault()}
-                                                            >
-                                                                {type.label}
-                                                            </DropdownMenuCheckboxItem>
-                                                        ))}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
+                                        {/* Transaction Type */}
+                                        <div>
+                                            <label className="text-sm font-medium mb-2 block">Transaction Type</label>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline" className="w-full justify-between bg-transparent! border-2">
+                                                        {getSelectedTypesLabel()}
+                                                        <ChevronDown className="w-4 h-4 opacity-50" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent className="min-w-(--radix-dropdown-menu-trigger-width)" align="start">
+                                                    {TRANSACTION_TYPES.map((type) => (
+                                                        <DropdownMenuCheckboxItem
+                                                            key={type.value}
+                                                            checked={selectedTransactionTypes.includes(type.value)}
+                                                            onCheckedChange={() => toggleTransactionType(type.value)}
+                                                            onSelect={(e) => e.preventDefault()}
+                                                        >
+                                                            {type.label}
+                                                        </DropdownMenuCheckboxItem>
+                                                    ))}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
 
-                                            {/* Email */}
+                                        {/* Email */}
                                             <FormField
                                                 control={form.control}
                                                 name="email"
@@ -661,150 +661,150 @@ export default function ExportActivityPage() {
                                                     <FormItem>
                                                         <FormLabel>Email</FormLabel>
                                                         <FormControl>
-                                                            <Input
-                                                                type="email"
-                                                                placeholder="example@mail.com"
+                                            <Input
+                                                type="email"
+                                                placeholder="example@mail.com"
                                                                 {...field}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
                                                         {!form.formState.errors.email && (
                                                             <FormDescription>
-                                                                We respect your privacy - your email is used only for export notifications and is not stored.
+                                                    We respect your privacy - your email is used only for export notifications and is not stored.
                                                             </FormDescription>
-                                                        )}
+                                            )}
                                                     </FormItem>
                                                 )}
                                             />
 
-                                            {/* Export Button */}
-                                            <Button
-                                                onClick={handleExport}
-                                                disabled={
-                                                    !dateRange.from ||
-                                                    !dateRange.to ||
-                                                    isExporting ||
-                                                    !canGenerateExport ||
-                                                    !!form.formState.errors.email
-                                                }
-                                                className="w-full mt-3"
-                                            >
-                                                {isExporting ? "Exporting..." : "Export"}
-                                            </Button>
-                                        </div>
-                                    </TabsContent>
-
-                                    <TabsContent value="history" className="mt-4">
-                                        {!exportHistoryData || exportHistoryData.data.length === 0 ? (
-                                            <EmptyState
-                                                icon={FileX}
-                                                title="No exports yet"
-                                                description="Your exported files from the last month will appear here once they're generated."
-                                            />
-                                        ) : (
-                                            <ExportHistoryTable items={exportHistoryData.data} />
-                                        )}
-                                    </TabsContent>
-                                </Tabs>
-                            </div>
-                        </PageCard>
-                    </div>
-
-                    {/* Sidebar */}
-                    <div className="flex flex-col gap-4 w-full lg:w-80 shrink-0">
-                        {/* Export Requirements */}
-                        <PageCard
-                            style={{
-                                backgroundColor: "var(--color-general-tertiary)",
-                            }}
-                            className="gap-2 w-full"
-                        >
-                            <h5 className="font-semibold">Export Requirements</h5>
-                            <div className="space-y-3 text-sm">
-                                <div className="flex gap-2.5">
-                                    <Calendar className="w-5 h-5 shrink-0 mt-0.5" />
-                                    <span>
-                                        You can export data from the {historyText}.
-                                    </span>
-                                </div>
-                                <div className="flex gap-2.5">
-                                    <Mail className="w-5 h-5 shrink-0 mt-0.5" />
-                                    <span>
-                                        We'll notify you by email when the export is ready.
-                                    </span>
-                                </div>
-                                <div className="flex gap-2.5">
-                                    <Clock className="w-5 h-5 shrink-0 mt-0.5" />
-                                    <span>
-                                        Exported files are available for download for 48 hours.
-                                    </span>
-                                </div>
-                            </div>
-                        </PageCard>
-
-                        {/* Export Quota */}
-                        <PageCard
-                            style={{
-                                backgroundColor: "var(--color-general-tertiary)",
-                            }}
-                            className="w-full"
-                        >
-                            <div className="space-y-3">
-                                {/* Header */}
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold">Export Quota</h3>
-                                    <span className="text-sm font-medium border-2 py-1 px-2 rounded-lg">
-                                        {planDetails?.planConfig?.limits?.monthlyExportCredits === null
-                                            ? "Unlimited"
-                                            : `${exportCreditsTotal} / month`
-                                        }
-                                    </span>
-                                </div>
-
-                                {/* Credits Display */}
-                                <div className="space-y-2 border-b-[0.2px] border-general-unofficial-border pb-4">
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="font-semibold">
-                                            {exportCreditsRemaining} Available
-                                        </span>
-                                        <span className="text-muted-foreground text-xs">
-                                            {exportCreditsUsed} Used
-                                        </span>
+                                        {/* Export Button */}
+                                        <Button
+                                            onClick={handleExport}
+                                            disabled={
+                                                !dateRange.from ||
+                                                !dateRange.to ||
+                                                isExporting ||
+                                                !canGenerateExport ||
+                                                !!form.formState.errors.email
+                                            }
+                                            className="w-full mt-3"
+                                        >
+                                            {isExporting ? "Exporting..." : "Export"}
+                                        </Button>
                                     </div>
+                                </TabsContent>
 
-                                    {/* Progress bar */}
-                                    <div className="w-full h-2 bg-general-unofficial-accent rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-foreground transition-all"
-                                            style={{
-                                                width: planDetails?.planConfig?.limits?.monthlyExportCredits === null
-                                                    ? "0%"
-                                                    : exportCreditsTotal === 0
-                                                        ? "0%"
-                                                        : `${Math.min(100, (exportCreditsUsed / exportCreditsTotal) * 100)}%`
-                                            }}
+                                <TabsContent value="history" className="mt-4">
+                                    {!exportHistoryData || exportHistoryData.data.length === 0 ? (
+                                        <EmptyState
+                                            icon={FileX}
+                                            title="No exports yet"
+                                            description="Your exported files from the last month will appear here once they're generated."
                                         />
-                                    </div>
+                                    ) : (
+                                        <ExportHistoryTable items={exportHistoryData.data} />
+                                    )}
+                                </TabsContent>
+                            </Tabs>
+                        </div>
+                    </PageCard>
+                </div>
+
+                {/* Sidebar */}
+                <div className="flex flex-col gap-4 w-full lg:w-80 shrink-0">
+                    {/* Export Requirements */}
+                    <PageCard
+                        style={{
+                            backgroundColor: "var(--color-general-tertiary)",
+                        }}
+                        className="gap-2 w-full"
+                    >
+                        <h5 className="font-semibold">Export Requirements</h5>
+                        <div className="space-y-3 text-sm">
+                            <div className="flex gap-2.5">
+                                <Calendar className="w-5 h-5 shrink-0 mt-0.5" />
+                                <span>
+                                    You can export data from the {historyText}.
+                                </span>
+                            </div>
+                            <div className="flex gap-2.5">
+                                <Mail className="w-5 h-5 shrink-0 mt-0.5" />
+                                <span>
+                                    We'll notify you by email when the export is ready.
+                                </span>
+                            </div>
+                            <div className="flex gap-2.5">
+                                <Clock className="w-5 h-5 shrink-0 mt-0.5" />
+                                <span>
+                                    Exported files are available for download for 48 hours.
+                                </span>
+                            </div>
+                        </div>
+                    </PageCard>
+
+                    {/* Export Quota */}
+                    <PageCard
+                        style={{
+                            backgroundColor: "var(--color-general-tertiary)",
+                        }}
+                        className="w-full"
+                    >
+                        <div className="space-y-3">
+                            {/* Header */}
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold">Export Quota</h3>
+                                <span className="text-sm font-medium border-2 py-1 px-2 rounded-lg">
+                                    {planDetails?.planConfig?.limits?.monthlyExportCredits === null
+                                        ? "Unlimited"
+                                        : `${exportCreditsTotal} / month`
+                                    }
+                                </span>
+                            </div>
+
+                            {/* Credits Display */}
+                            <div className="space-y-2 border-b-[0.2px] border-general-unofficial-border pb-4">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-semibold">
+                                        {exportCreditsRemaining} Available
+                                    </span>
+                                    <span className="text-muted-foreground text-xs">
+                                        {exportCreditsUsed} Used
+                                    </span>
                                 </div>
 
-                                {/* Upgrade CTA */}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-secondary-foreground">
-                                        Looking for more flexibility?
-                                    </span>
-                                    <Button
-                                        variant={exportCreditsRemaining === 0 ? "default" : "outline"}
-                                        size="sm"
-                                        className="p-3!"
-                                    >
-                                        Upgrade Plan
-                                    </Button>
+                                {/* Progress bar */}
+                                <div className="w-full h-2 bg-general-unofficial-accent rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-foreground transition-all"
+                                        style={{
+                                            width: planDetails?.planConfig?.limits?.monthlyExportCredits === null
+                                                ? "0%"
+                                                : exportCreditsTotal === 0
+                                                    ? "0%"
+                                                    : `${Math.min(100, (exportCreditsUsed / exportCreditsTotal) * 100)}%`
+                                        }}
+                                    />
                                 </div>
                             </div>
-                        </PageCard>
-                    </div>
+
+                            {/* Upgrade CTA */}
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-secondary-foreground">
+                                    Looking for more flexibility?
+                                </span>
+                                <Button
+                                    variant={exportCreditsRemaining === 0 ? "default" : "outline"}
+                                    size="sm"
+                                    className="p-3!"
+                                >
+                                    Upgrade Plan
+                                </Button>
+                            </div>
+                        </div>
+                    </PageCard>
                 </div>
-            </PageComponentLayout>
+            </div>
+        </PageComponentLayout>
         </Form>
     );
 }

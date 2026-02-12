@@ -208,7 +208,8 @@ export function RecentActivity() {
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
+                        {/* TODO: Uncomment after price integration */}
+                        {/* <div className="flex items-center gap-2">
                             <Checkbox
                                 id="hide-small"
                                 checked={hideSmallTransactions}
@@ -222,7 +223,7 @@ export function RecentActivity() {
                             >
                                 Hide transactions &lt;1USD
                             </label>
-                        </div>
+                        </div> */}
                         <MemberOnlyExportButton />
                     </div>
                 </CardHeader>

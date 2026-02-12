@@ -12,7 +12,7 @@ use crate::{
     constants::intents_chains::{ChainIcons, get_chain_metadata_by_name},
     handlers::proposals::scraper::fetch_ft_metadata,
     handlers::proxy::external::fetch_proxy_api,
-    utils::cache::{CacheKey, CacheTier},
+    utils::cache::{Cache, CacheKey, CacheTier},
 };
 
 #[derive(Deserialize)]
@@ -62,6 +62,28 @@ struct RefSdkToken {
     pub chain_name: Option<String>,
     pub chain_name_snake_case: Option<String>,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NearBlocksTokenResponse {
+    tokens: Vec<NearBlocksToken>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct NearBlocksToken {
+    contract: String,
+    name: String,
+    symbol: String,
+    decimals: u8,
+    icon: Option<String>,
+    reference: Option<String>,
+    price: Option<String>,
+    total_supply: Option<String>,
+    onchain_market_cap: Option<String>,
+    change_24: Option<String>,
+    market_cap: Option<String>,
+    volume_24h: Option<String>,
 }
 
 /// Fetches token metadata from Ref SDK API by defuse asset IDs
@@ -211,6 +233,326 @@ pub async fn fetch_tokens_metadata(
     Ok(metadata_responses)
 }
 
+/// Fetches FT metadata from NearBlocks API
+///
+/// # Arguments
+/// * `cache` - Application cache
+/// * `http_client` - HTTP client for making requests
+/// * `nearblocks_api_key` - API key for NearBlocks
+/// * `token_id` - Token contract ID (e.g., "wrap.near", "usdt.tether-token.near")
+///
+/// # Returns
+/// * `Ok(TokenMetadata)` - Token metadata with price information
+/// * `Err((StatusCode, String))` - Error with status code and message
+async fn fetch_nearblocks_ft_metadata(
+    cache: &Cache,
+    http_client: &reqwest::Client,
+    nearblocks_api_key: &str,
+    token_id: &str,
+) -> Result<TokenMetadata, (StatusCode, String)> {
+    let cache_key = CacheKey::new("nearblocks-ft-metadata")
+        .with(token_id.to_string())
+        .build();
+
+    // Clone needed values for the async block
+    let http_client = http_client.clone();
+    let nearblocks_api_key = nearblocks_api_key.to_string();
+    let token_id_str = token_id.to_string();
+
+    let result = cache
+        .cached_json(CacheTier::LongTerm, cache_key, async move {
+            // For "near" token, search for wrap.near to get price
+            let search_query = if token_id_str == "near" {
+                "wrap.near"
+            } else {
+                &token_id_str
+            };
+
+            let url = format!("https://api.nearblocks.io/v1/fts/?search={}", search_query);
+
+            let response = http_client
+                .get(&url)
+                .header("accept", "application/json")
+                .header("Authorization", format!("Bearer {}", nearblocks_api_key))
+                .send()
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to fetch from NearBlocks: {}", e),
+                    )
+                })?;
+
+            if !response.status().is_success() {
+                return Err((
+                    StatusCode::from_u16(response.status().as_u16())
+                        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                    format!("NearBlocks API error: {}", response.status()),
+                ));
+            }
+
+            let data: NearBlocksTokenResponse = response.json().await.map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to parse NearBlocks response: {}", e),
+                )
+            })?;
+
+            let token = data.tokens.into_iter().next().ok_or((
+                StatusCode::NOT_FOUND,
+                "No token found in NearBlocks response".to_string(),
+            ))?;
+
+            let price = token.price.as_ref().and_then(|p| p.parse::<f64>().ok());
+
+            // If searching for "near", return NEAR metadata with wrap.near's price
+            let metadata = if token_id_str == "near" {
+                TokenMetadata {
+                    token_id: "near".to_string(),
+                    name: "NEAR".to_string(),
+                    symbol: "NEAR".to_string(),
+                    decimals: 24,
+                    icon: token.icon,
+                    price,
+                    price_updated_at: price.map(|_| chrono::Utc::now().to_rfc3339()),
+                    network: Some("near".to_string()),
+                    chain_name: Some("Near Protocol".to_string()),
+                    chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
+                }
+            } else {
+                TokenMetadata {
+                    token_id: token_id_str.clone(),
+                    name: token.name,
+                    symbol: token.symbol,
+                    decimals: token.decimals,
+                    icon: token.icon,
+                    price,
+                    price_updated_at: price.map(|_| chrono::Utc::now().to_rfc3339()),
+                    network: Some("near".to_string()),
+                    chain_name: Some("Near Protocol".to_string()),
+                    chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
+                }
+            };
+
+            Ok(metadata)
+        })
+        .await;
+
+    match result {
+        Ok((_status, json)) => {
+            // Deserialize from Json<Value> to TokenMetadata
+            serde_json::from_value(json.0).map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to deserialize token metadata: {}", e),
+                )
+            })
+        }
+        Err((_cache_err, err_string)) => Err((StatusCode::INTERNAL_SERVER_ERROR, err_string)),
+    }
+}
+
+/// Fetches token metadata with automatic fallback strategy
+///
+/// This function handles both defuse asset IDs (prefixed with "nep141:", "intents.near:")
+/// and regular NEAR FT contract IDs. It uses multiple sources:
+/// 1. Defuse API for tokens with prefixes
+/// 2. NearBlocks API for regular FT contracts (includes price data)
+/// 3. Generic fallback if both fail
+///
+/// # Arguments
+/// * `state` - Application state
+/// * `token_ids` - List of token IDs (can be mixed defuse IDs and FT contract IDs)
+///
+/// # Returns
+/// * `HashMap<String, TokenMetadata>` - Map of token ID to metadata
+pub async fn fetch_tokens_with_fallback(
+    state: &Arc<AppState>,
+    token_ids: &[String],
+) -> HashMap<String, TokenMetadata> {
+    if token_ids.is_empty() {
+        return HashMap::new();
+    }
+
+    // Remove duplicates using HashSet
+    let unique_tokens: std::collections::HashSet<String> = token_ids.iter().cloned().collect();
+
+    // Separate tokens into two categories:
+    // 1. Tokens with prefixes (intents.near:, nep141:) - fetch from Defuse API
+    // 2. Regular token contract IDs - fetch from NearBlocks API
+    let mut api_tokens = Vec::new();
+    let mut direct_tokens = Vec::new();
+
+    for token_id in &unique_tokens {
+        if token_id == "near"
+            || token_id.starts_with("intents.near:")
+            || token_id.starts_with("nep141:")
+        {
+            api_tokens.push(token_id.clone());
+        } else {
+            direct_tokens.push(token_id.clone());
+        }
+    }
+
+    let mut result = HashMap::new();
+
+    // Fetch tokens with prefixes from Defuse API
+    if !api_tokens.is_empty() {
+        let transform_to_defuse = |token_id: &str| -> String {
+            if token_id == "near" {
+                "nep141:wrap.near".to_string()
+            } else if let Some(stripped) = token_id.strip_prefix("intents.near:") {
+                stripped.to_string()
+            } else {
+                format!("nep141:{}", token_id)
+            }
+        };
+
+        let defuse_ids: Vec<String> = api_tokens
+            .iter()
+            .map(|id| transform_to_defuse(id))
+            .collect();
+
+        match fetch_tokens_metadata(state, &defuse_ids).await {
+            Ok(metadata_from_api) => {
+                let metadata_map: HashMap<String, TokenMetadata> = metadata_from_api
+                    .into_iter()
+                    .map(|meta| (meta.token_id.clone(), meta))
+                    .collect();
+
+                for token_id in &api_tokens {
+                    let lookup_key = transform_to_defuse(token_id);
+                    if let Some(meta) = metadata_map.get(&lookup_key) {
+                        // Special case: If this is "near", we fetched wrap.near's metadata
+                        if token_id == "near" {
+                            result.insert(
+                                token_id.clone(),
+                                TokenMetadata {
+                                    token_id: "near".to_string(),
+                                    name: "NEAR".to_string(),
+                                    symbol: "NEAR".to_string(),
+                                    decimals: 24,
+                                    icon: meta.icon.clone(),
+                                    price: meta.price,
+                                    price_updated_at: meta.price_updated_at.clone(),
+                                    network: meta.network.clone(),
+                                    chain_name: meta.chain_name.clone(),
+                                    chain_icons: meta.chain_icons.clone(),
+                                },
+                            );
+                        } else {
+                            result.insert(token_id.clone(), meta.clone());
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to fetch metadata from Defuse API: {:?}", e);
+            }
+        }
+    }
+
+    // Fetch regular FT contracts from NearBlocks API
+    if !direct_tokens.is_empty() {
+        if let Some(nearblocks_api_key) = state.env_vars.nearblocks_api_key.as_ref() {
+            for token_id in &direct_tokens {
+                match fetch_nearblocks_ft_metadata(
+                    &state.cache,
+                    &state.http_client,
+                    nearblocks_api_key,
+                    token_id,
+                )
+                .await
+                {
+                    Ok(metadata) => {
+                        result.insert(token_id.clone(), metadata);
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "Failed to fetch metadata from NearBlocks for {}: {:?}, using fallback",
+                            token_id,
+                            e
+                        );
+                        // Use generic fallback
+                        let symbol = token_id
+                            .split('.')
+                            .next()
+                            .unwrap_or(token_id)
+                            .to_uppercase();
+                        result.insert(
+                            token_id.clone(),
+                            TokenMetadata {
+                                token_id: token_id.to_string(),
+                                name: symbol.clone(),
+                                symbol,
+                                decimals: 18,
+                                icon: None,
+                                price: None,
+                                price_updated_at: None,
+                                network: Some("near".to_string()),
+                                chain_name: Some("Near Protocol".to_string()),
+                                chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
+                            },
+                        );
+                    }
+                }
+            }
+        } else {
+            // No NearBlocks API key, use generic fallback for all direct tokens
+            for token_id in &direct_tokens {
+                let symbol = token_id
+                    .split('.')
+                    .next()
+                    .unwrap_or(token_id)
+                    .to_uppercase();
+                result.insert(
+                    token_id.clone(),
+                    TokenMetadata {
+                        token_id: token_id.to_string(),
+                        name: symbol.clone(),
+                        symbol,
+                        decimals: 18,
+                        icon: None,
+                        price: None,
+                        price_updated_at: None,
+                        network: Some("near".to_string()),
+                        chain_name: Some("Near Protocol".to_string()),
+                        chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
+                    },
+                );
+            }
+        }
+    }
+
+    // Final fallback: For any token that still doesn't have metadata, add generic fallback
+    for token_id in &unique_tokens {
+        if !result.contains_key(token_id) {
+            let symbol = token_id
+                .split('.')
+                .next()
+                .unwrap_or(token_id)
+                .to_uppercase();
+            result.insert(
+                token_id.clone(),
+                TokenMetadata {
+                    token_id: token_id.to_string(),
+                    name: symbol.clone(),
+                    symbol,
+                    decimals: 18,
+                    icon: None,
+                    price: None,
+                    price_updated_at: None,
+                    network: Some("near".to_string()),
+                    chain_name: Some("Near Protocol".to_string()),
+                    chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
+                },
+            );
+        }
+    }
+
+    result
+}
+
 pub async fn get_token_metadata(
     State(state): State<Arc<AppState>>,
     Query(mut params): Query<TokenMetadataQuery>,
@@ -246,6 +588,100 @@ pub async fn get_token_metadata(
             }
 
             Ok::<_, (StatusCode, String)>(metadata)
+        })
+        .await
+}
+
+/// NearBlocks FT search response
+#[derive(Deserialize, Debug)]
+struct NearBlocksSearchResponse {
+    tokens: Vec<NearBlocksToken>,
+}
+
+/// Search for FT token contract addresses by symbol using NearBlocks API
+/// Returns a list of token contract addresses sorted by:
+/// 1. Exact symbol match first
+/// 2. Then by onchain_market_cap (descending)
+pub async fn search_token_by_symbol(
+    state: &Arc<AppState>,
+    symbol: &str,
+) -> Result<Vec<String>, (StatusCode, String)> {
+    let cache_key = format!("search-token-{}", symbol.to_lowercase());
+
+    state
+        .cache
+        .cached(CacheTier::LongTerm, cache_key, async move {
+            let url = format!(
+                "https://api.nearblocks.io/v1/fts/?search={}",
+                if symbol.to_lowercase() == "near" {
+                    "wrap.near"
+                } else {
+                    symbol
+                }
+            );
+
+            let response = state
+                .http_client
+                .get(&url)
+                .header(
+                    "Authorization",
+                    format!(
+                        "Bearer {}",
+                        std::env::var("NEARBLOCKS_API_KEY").unwrap_or_default()
+                    ),
+                )
+                .send()
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to search token: {}", e),
+                    )
+                })?;
+
+            let search_response: NearBlocksSearchResponse = response.json().await.map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to parse search response: {}", e),
+                )
+            })?;
+
+            // Sort tokens: exact match first, then by market cap
+            let mut tokens = search_response.tokens;
+            let symbol_upper = symbol.to_uppercase();
+
+            tokens.sort_by(|a, b| {
+                // First, prioritize exact symbol matches
+                let a_exact = a.symbol.to_uppercase() == symbol_upper;
+                let b_exact = b.symbol.to_uppercase() == symbol_upper;
+
+                match (a_exact, b_exact) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => {
+                        // If both or neither are exact matches, sort by market cap
+                        let a_cap = a
+                            .onchain_market_cap
+                            .as_ref()
+                            .and_then(|s| s.parse::<f64>().ok())
+                            .unwrap_or(0.0);
+                        let b_cap = b
+                            .onchain_market_cap
+                            .as_ref()
+                            .and_then(|s| s.parse::<f64>().ok())
+                            .unwrap_or(0.0);
+                        b_cap
+                            .partial_cmp(&a_cap)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    }
+                }
+            });
+
+            // Return all contract addresses
+            let contract_addresses: Vec<String> =
+                tokens.iter().map(|t| t.contract.clone()).collect();
+
+            Ok::<_, (StatusCode, String)>(contract_addresses)
         })
         .await
 }

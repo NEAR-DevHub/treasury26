@@ -15,9 +15,9 @@ pub struct BalanceChangeFilters {
     pub exclude_token_ids: Option<Vec<String>>, // Exclude these
 
     // Transaction Type Filtering (can select multiple)
-    // "incoming" = received payments (amount > 0, excludes staking)
+    // "incoming" = received payments (amount > 0, includes staking rewards)
     // "outgoing" = sent payments (amount < 0)
-    // "staking_rewards" = staking rewards (counterparty = 'STAKING_REWARD')
+    // "staking_rewards" = staking rewards only (counterparty = 'STAKING_REWARD')
     pub transaction_types: Option<Vec<String>>,
 
     // Amount Filtering
@@ -32,6 +32,11 @@ pub fn build_where_conditions(filters: &BalanceChangeFilters) -> (Vec<String>, u
         "counterparty != 'SNAPSHOT'".to_string(),
         "counterparty != 'STAKING_SNAPSHOT'".to_string(),
         "counterparty != 'NOT_REGISTERED'".to_string(),
+        "token_id != 'near:total'".to_string(), // Exclude internal aggregate token
+        // Exclude swap deposit legs - these are shown as part of the swap fulfillment
+        format!(
+            "id NOT IN (SELECT deposit_balance_change_id FROM detected_swaps WHERE account_id = $1 AND deposit_balance_change_id IS NOT NULL)"
+        ),
     ];
 
     let mut param_index = 2;
@@ -56,11 +61,24 @@ pub fn build_where_conditions(filters: &BalanceChangeFilters) -> (Vec<String>, u
     }
 
     // Token Filtering (Whitelist takes precedence over blacklist)
+    // Note: token_id in DB can be in formats:
+    //   - "near" (native NEAR)
+    //   - "wrap.near" (wrapped NEAR - what the UI sends when filtering by NEAR symbol)
+    //   - "staking:pool.near" (staking tokens - transformed to "near" during enrichment)
+    //   - "intents.near:nep141:contract.near" (intents with prefix)
+    // We need to match both exact token_id and suffix matches for prefixed tokens
+    // Special case: if "wrap.near" is in the list, also match "staking:%" and "near" to include staking rewards
     if filters.token_ids.is_some() {
-        conditions.push(format!("token_id = ANY(${})", param_index));
+        conditions.push(format!(
+            "(token_id = ANY(${0}) OR token_id LIKE ANY(ARRAY(SELECT '%:' || unnest(${0}))) OR (${0} @> ARRAY['wrap.near'::text] AND (token_id LIKE 'staking:%' OR token_id = 'near')))",
+            param_index
+        ));
         param_index += 1;
     } else if filters.exclude_token_ids.is_some() {
-        conditions.push(format!("token_id != ALL(${})", param_index));
+        conditions.push(format!(
+            "(token_id != ALL(${0}) AND NOT (token_id LIKE ANY(ARRAY(SELECT '%:' || unnest(${0})))) AND NOT (${0} @> ARRAY['wrap.near'::text] AND (token_id LIKE 'staking:%' OR token_id = 'near')))",
+            param_index
+        ));
         param_index += 1;
     }
 
@@ -71,8 +89,7 @@ pub fn build_where_conditions(filters: &BalanceChangeFilters) -> (Vec<String>, u
 
             for t in types {
                 match t.as_str() {
-                    "incoming" => type_conditions
-                        .push("(amount > 0 AND counterparty != 'STAKING_REWARD')".to_string()),
+                    "incoming" => type_conditions.push("amount > 0".to_string()),
                     "outgoing" => type_conditions.push("amount < 0".to_string()),
                     "staking_rewards" => {
                         type_conditions.push("counterparty = 'STAKING_REWARD'".to_string())
@@ -160,7 +177,7 @@ mod tests {
 
         let (conditions, param_index) = build_where_conditions(&filters);
 
-        assert_eq!(conditions.len(), 4); // Base conditions only
+        assert_eq!(conditions.len(), 5); // Base conditions: account_id, 3x counterparty filters, near:total filter
         assert_eq!(param_index, 2);
     }
 
@@ -180,7 +197,7 @@ mod tests {
 
         let (conditions, param_index) = build_where_conditions(&filters);
 
-        assert_eq!(conditions.len(), 7); // Base + date + token + txn_type
+        assert_eq!(conditions.len(), 8); // Base (5) + date (1) + token (1) + txn_type (1)
         assert_eq!(param_index, 4); // 1 (account_id) + 1 (date) + 1 (tokens) + starts at 2
         assert!(conditions.contains(&"block_time >= $2".to_string()));
         assert!(conditions.contains(&"token_id = ANY($3)".to_string()));

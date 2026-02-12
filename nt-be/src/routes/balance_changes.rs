@@ -8,12 +8,11 @@ use serde_json::Value;
 use sqlx::query_as;
 use sqlx::types::BigDecimal;
 use sqlx::types::chrono::{DateTime, Utc};
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::AppState;
 use crate::handlers::balance_changes::{gap_filler, query_builder::*};
-use crate::handlers::token::{TokenMetadata, fetch_tokens_metadata};
+use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::utils::serde::comma_separated;
 
 #[derive(Debug, Deserialize)]
@@ -67,7 +66,7 @@ pub struct BalanceChange {
 }
 
 /// Swap information attached to balance changes
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SwapInfo {
     pub sent_token_id: Option<String>,
@@ -81,7 +80,7 @@ pub struct SwapInfo {
 }
 
 /// Enriched balance change with optional metadata and swap info
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct EnrichedBalanceChange {
     pub id: i64,
@@ -102,117 +101,6 @@ pub struct EnrichedBalanceChange {
     pub token_metadata: Option<TokenMetadata>, // Only present if include_metadata: true
     #[serde(skip_serializing_if = "Option::is_none")]
     pub swap: Option<SwapInfo>, // Only present for swap transactions
-}
-
-// Helper function to fetch metadata for multiple tokens with fallback
-async fn fetch_tokens_with_fallback(
-    state: &Arc<AppState>,
-    token_ids: &[String],
-) -> HashMap<String, TokenMetadata> {
-    if token_ids.is_empty() {
-        return HashMap::new();
-    }
-
-    // Helper to transform database token ID to defuse asset ID format
-    let transform_to_defuse = |token_id: &str| -> String {
-        if token_id == "near" {
-            "nep141:wrap.near".to_string()
-        } else if let Some(stripped) = token_id.strip_prefix("intents.near:") {
-            stripped.to_string()
-        } else {
-            format!("nep141:{}", token_id)
-        }
-    };
-
-    // Remove duplicates using HashSet
-    let unique_tokens: std::collections::HashSet<String> = token_ids.iter().cloned().collect();
-
-    // Transform to defuse format
-    let defuse_ids: Vec<String> = unique_tokens
-        .iter()
-        .map(|id| transform_to_defuse(id))
-        .collect();
-
-    // Fetch from API
-    let metadata_from_api = match fetch_tokens_metadata(state, &defuse_ids).await {
-        Ok(metadata) => metadata,
-        Err(e) => {
-            log::error!("Failed to fetch metadata from API: {:?}", e);
-            Vec::new()
-        }
-    };
-
-    // Build map keyed by defuse ID
-    let metadata_map: HashMap<String, TokenMetadata> = metadata_from_api
-        .into_iter()
-        .map(|meta| (meta.token_id.clone(), meta))
-        .collect();
-
-    // For each requested token, look up or use fallback
-    let mut result = HashMap::new();
-
-    for token_id in &unique_tokens {
-        let lookup_key = transform_to_defuse(token_id);
-        let metadata = if let Some(meta) = metadata_map.get(&lookup_key) {
-            // Special case: If this is "near", we fetched wrap.near's metadata
-            // Convert it back to "near" token_id but keep the price from wrap.near
-            if token_id == "near" {
-                TokenMetadata {
-                    token_id: "near".to_string(),
-                    name: "NEAR".to_string(),
-                    symbol: "NEAR".to_string(),
-                    decimals: 24,
-                    icon: meta.icon.clone(),
-                    price: meta.price,
-                    price_updated_at: meta.price_updated_at.clone(),
-                    network: meta.network.clone(),
-                    chain_name: meta.chain_name.clone(),
-                    chain_icons: meta.chain_icons.clone(),
-                }
-            } else {
-                meta.clone()
-            }
-        } else {
-            // Fallback when API doesn't return metadata
-            if token_id == "near" {
-                // NEAR fallback with proper decimals and icon
-                TokenMetadata {
-                    token_id: "near".to_string(),
-                    name: "NEAR".to_string(),
-                    symbol: "NEAR".to_string(),
-                    decimals: 24,
-                    icon: Some("https://assets.ref.finance/images/near.png".to_string()),
-                    price: None,
-                    price_updated_at: None,
-                    network: Some("near".to_string()),
-                    chain_name: Some("Near Protocol".to_string()),
-                    chain_icons: None,
-                }
-            } else {
-                // Generic fallback for other tokens
-                let symbol = token_id
-                    .split('.')
-                    .next()
-                    .unwrap_or(token_id)
-                    .to_uppercase();
-                TokenMetadata {
-                    token_id: token_id.to_string(),
-                    name: symbol.clone(),
-                    symbol,
-                    decimals: 18,
-                    icon: None,
-                    price: None,
-                    price_updated_at: None,
-                    network: Some("near".to_string()),
-                    chain_name: Some("Near Protocol".to_string()),
-                    chain_icons: None,
-                }
-            }
-        };
-        result.insert(token_id.clone(), metadata);
-    }
-
-    result
 }
 
 /// Internal function to fetch and enrich balance changes
@@ -244,7 +132,8 @@ pub async fn get_balance_changes_internal(
                     let token_id = &tokens[0];
 
                     // Fetch metadata to get decimals using the helper function
-                    let metadata_map = fetch_tokens_with_fallback(state, &[token_id.clone()]).await;
+                    let metadata_map: std::collections::HashMap<String, TokenMetadata> =
+                        fetch_tokens_with_fallback(state, &[token_id.clone()]).await;
                     let metadata = metadata_map.get(token_id);
 
                     let decimals = metadata.map(|m| m.decimals).unwrap_or(24); // Default to NEAR decimals
@@ -386,7 +275,6 @@ pub async fn get_balance_changes(
     State(state): State<Arc<AppState>>,
     Query(params): Query<BalanceChangesQuery>,
 ) -> Result<Json<Vec<EnrichedBalanceChange>>, (StatusCode, Json<Value>)> {
-    // Use internal function for all the logic
     let enriched_changes = get_balance_changes_internal(&state, &params)
         .await
         .map_err(|e| {
