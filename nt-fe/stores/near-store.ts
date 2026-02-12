@@ -10,7 +10,7 @@ import {
 import { Vote as ProposalVote } from "@/lib/proposals-api";
 import { ProposalPermissionKind } from "@/lib/config-utils";
 import { toast } from "sonner";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { useQueryClient } from "@tanstack/react-query";
 import {
     ledgerWalletManifest,

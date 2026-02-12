@@ -25,7 +25,7 @@ import { Textarea } from "@/components/textarea";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { encodeToMarkdown, formatCurrency } from "@/lib/utils";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { ConnectorAction } from "@hot-labs/near-connect";
 import { NEAR_TOKEN } from "@/constants/token";
 import { AmountSummary } from "@/components/amount-summary";

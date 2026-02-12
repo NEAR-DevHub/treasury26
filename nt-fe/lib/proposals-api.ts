@@ -1,7 +1,7 @@
 import { getProposalStatus } from "@/features/proposals/utils/proposal-utils";
 import { Policy, VotePolicy } from "@/types/policy";
 import axios from "axios";
-import Big from "big.js";
+import Big from "@/lib/big";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -511,8 +511,8 @@ export async function getProposalTransaction(
             status === "Executed" || status === "Failed"
                 ? "VoteApprove"
                 : status === "Rejected"
-                    ? "VoteReject"
-                    : "VoteRemove";
+                  ? "VoteReject"
+                  : "VoteRemove";
 
         // Build query parameters for time constraints
         const params: Record<string, string> = {

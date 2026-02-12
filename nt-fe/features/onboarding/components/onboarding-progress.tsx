@@ -8,7 +8,7 @@ import { Button } from "@/components/button";
 import { StepIcon } from "@/features/proposals/components/expanded-view/common/proposal-sidebar";
 import { useAssets } from "@/hooks/use-assets";
 import { TreasuryAsset } from "@/lib/api";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { availableBalance } from "@/lib/balance";

@@ -14,7 +14,7 @@ import { cn, formatBalance } from "@/lib/utils";
 import { ChainIcons } from "@/lib/api";
 import { useAggregatedTokens } from "@/hooks/use-assets";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { TokenDisplay } from "./token-display-with-network";
 import { NetworkIconDisplay } from "./token-display";
 import { Input } from "./input";

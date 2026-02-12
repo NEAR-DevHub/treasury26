@@ -8,7 +8,7 @@ import { Textarea } from "@/components/textarea";
 import { Edit2, Trash2 } from "lucide-react";
 import { StepProps, ReviewStep } from "@/components/step-wizard";
 import { WarningAlert } from "@/components/warning-alert";
-import Big from "big.js";
+import Big from "@/lib/big";
 import {
     Dialog,
     DialogContent,

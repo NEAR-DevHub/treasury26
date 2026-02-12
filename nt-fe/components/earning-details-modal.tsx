@@ -15,7 +15,7 @@ import {
     buildEarningOverviewItems,
     hasStakingActivity,
 } from "@/lib/earning-utils";
-import Big from "big.js";
+import Big from "@/lib/big";
 import {
     Collapsible,
     CollapsibleContent,

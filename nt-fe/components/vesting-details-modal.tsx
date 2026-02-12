@@ -18,7 +18,7 @@ import {
     buildEarningOverviewItems,
     hasStakingActivity,
 } from "@/lib/earning-utils";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
     Collapsible,

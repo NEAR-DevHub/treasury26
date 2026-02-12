@@ -23,7 +23,7 @@ import { formatBalance, formatCurrency } from "@/lib/utils";
 import type { ChartInterval } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthButton } from "@/components/auth-button";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { totalBalance } from "@/lib/balance";
 import { useRouter } from "next/navigation";
 

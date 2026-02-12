@@ -9,7 +9,7 @@ import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { toast } from "sonner";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import {
     UploadDataStep,

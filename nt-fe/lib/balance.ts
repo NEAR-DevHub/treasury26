@@ -1,5 +1,4 @@
-import { Big } from "big.js";
-import { formatNearAmount } from "./utils";
+import { Big } from "@/lib/big";
 
 export interface LockupBalance {
     total: Big;
@@ -30,7 +29,6 @@ export type Balance =
     | { type: "Staked"; staking: StakingBalance }
     | { type: "Vested"; lockup: LockupBalance };
 
-
 interface LockupBalanceRaw {
     total: string;
     totalAllocated: string;
@@ -60,7 +58,10 @@ export type BalanceRaw =
     | { Staked: StakingBalanceRaw }
     | { Vested: LockupBalanceRaw };
 
-export function transformBalance(raw: BalanceRaw): { balance: Balance; total: Big } {
+export function transformBalance(raw: BalanceRaw): {
+    balance: Balance;
+    total: Big;
+} {
     if ("Standard" in raw) {
         const total = Big(raw.Standard.total);
         const locked = Big(raw.Standard.locked);
@@ -112,7 +113,9 @@ export function totalBalance(balance: Balance): Big {
     if (balance.type === "Standard") {
         return balance.total;
     } else if (balance.type === "Staked") {
-        return balance.staking.stakedBalance.add(balance.staking.unstakedBalance);
+        return balance.staking.stakedBalance.add(
+            balance.staking.unstakedBalance,
+        );
     } else if (balance.type === "Vested") {
         return balance.lockup.total;
     }
@@ -124,9 +127,13 @@ export function availableBalance(balance: Balance): Big {
         return balance.total.sub(balance.locked);
     } else if (balance.type === "Staked") {
         // Available for withdraw if canWithdraw is true
-        return balance.staking.canWithdraw ? balance.staking.unstakedBalance : Big(0);
+        return balance.staking.canWithdraw
+            ? balance.staking.unstakedBalance
+            : Big(0);
     } else if (balance.type === "Vested") {
-        const restriction = balance.lockup.unvested.lt(balance.lockup.staked) ? balance.lockup.staked : balance.lockup.unvested;
+        const restriction = balance.lockup.unvested.lt(balance.lockup.staked)
+            ? balance.lockup.staked
+            : balance.lockup.unvested;
         const available = balance.lockup.total
             .sub(restriction)
             .sub(balance.lockup.storageLocked);
@@ -140,10 +147,14 @@ export function lockedBalance(balance: Balance): Big {
         return balance.locked;
     } else if (balance.type === "Staked") {
         // Staked balance + pending unstaked (not yet withdrawable)
-        const pendingUnstaked = balance.staking.canWithdraw ? Big(0) : balance.staking.unstakedBalance;
+        const pendingUnstaked = balance.staking.canWithdraw
+            ? Big(0)
+            : balance.staking.unstakedBalance;
         return balance.staking.stakedBalance.add(pendingUnstaked);
     } else if (balance.type === "Vested") {
-        const largestLockup = balance.lockup.unvested.gt(balance.lockup.staked) ? balance.lockup.unvested : balance.lockup.staked;
+        const largestLockup = balance.lockup.unvested.gt(balance.lockup.staked)
+            ? balance.lockup.unvested
+            : balance.lockup.staked;
         return largestLockup.add(balance.lockup.storageLocked);
     }
     return Big(0);

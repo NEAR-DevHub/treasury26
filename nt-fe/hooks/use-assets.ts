@@ -3,7 +3,7 @@ import { getTreasuryAssets } from "@/lib/api";
 import { useMemo } from "react";
 import { TreasuryAsset } from "@/lib/api";
 import { formatBalance } from "@/lib/utils";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { availableBalance, totalBalance } from "@/lib/balance";
 
 const isTokenValidByOptions = (

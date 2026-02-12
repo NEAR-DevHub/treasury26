@@ -1,4 +1,4 @@
-import Big from "big.js";
+import Big from "@/lib/big";
 import { InfoItem } from "@/components/info-display";
 
 interface EarningOverviewParams {

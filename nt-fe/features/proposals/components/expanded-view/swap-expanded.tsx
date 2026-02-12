@@ -3,181 +3,249 @@ import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { SwapRequestData } from "../../types/index";
 import { formatBalance } from "@/lib/utils";
 import { useMemo } from "react";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { Address } from "@/components/address";
 import { Rate } from "@/components/rate";
 import { useToken, useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
 import { FormattedDate } from "@/components/formatted-date";
 
 interface SwapExpandedProps {
-  data: SwapRequestData;
+    data: SwapRequestData;
 }
 
 function IntentsSwapExpanded({ data }: SwapExpandedProps) {
-  // For new proposals: use token addresses from description
-  // For old proposals: use search hook with symbols as fallback
-  const hasAddresses = !!(data.tokenInAddress && data.tokenOutAddress);
+    // For new proposals: use token addresses from description
+    // For old proposals: use search hook with symbols as fallback
+    const hasAddresses = !!(data.tokenInAddress && data.tokenOutAddress);
 
-  // Legacy fallback: use search hook for old proposals without addresses
-  const { data: legacyTokensData } = useSearchIntentsTokens({
-    tokenIn: data.tokenIn,
-    tokenOut: data.tokenOut,
-    intentsTokenContractId: data.intentsTokenContractId,
-    destinationNetwork: data.destinationNetwork,
-  }, !hasAddresses);
+    // Legacy fallback: use search hook for old proposals without addresses
+    const { data: legacyTokensData } = useSearchIntentsTokens(
+        {
+            tokenIn: data.tokenIn,
+            tokenOut: data.tokenOut,
+            intentsTokenContractId: data.intentsTokenContractId,
+            destinationNetwork: data.destinationNetwork,
+        },
+        !hasAddresses,
+    );
 
-  // Use addresses if available, otherwise fall back to legacy search
-  const finalTokenInId = data.tokenInAddress || legacyTokensData?.tokenIn?.defuseAssetId || data.tokenIn;
-  const finalTokenOutId = data.tokenOutAddress || legacyTokensData?.tokenOut?.defuseAssetId || data.tokenOut;
+    // Use addresses if available, otherwise fall back to legacy search
+    const finalTokenInId =
+        data.tokenInAddress ||
+        legacyTokensData?.tokenIn?.defuseAssetId ||
+        data.tokenIn;
+    const finalTokenOutId =
+        data.tokenOutAddress ||
+        legacyTokensData?.tokenOut?.defuseAssetId ||
+        data.tokenOut;
 
-  const minimumReceived = useMemo(() => {
-    return Big(data.amountOut).mul(Big(100 - Number(data.slippage || 0))).div(100);
-  }, [data.amountOut, data.slippage]);
+    const minimumReceived = useMemo(() => {
+        return Big(data.amountOut)
+            .mul(Big(100 - Number(data.slippage || 0)))
+            .div(100);
+    }, [data.amountOut, data.slippage]);
 
-  const infoItems: InfoItem[] = [
-    {
-      label: "Send",
-      value: <Amount amount={data.amountIn} showNetwork tokenId={finalTokenInId} />
-    },
-    {
-      label: "Receive",
-      value: <Amount amountWithDecimals={data.amountOut} showNetwork tokenId={finalTokenOutId} />
-    },
-    {
-      label: "Rate",
-      value: <Rate tokenIn={finalTokenInId} tokenOut={finalTokenOutId} amountIn={Big(data.amountIn)} amountOutWithDecimals={data.amountOut} />,
+    const infoItems: InfoItem[] = [
+        {
+            label: "Send",
+            value: (
+                <Amount
+                    amount={data.amountIn}
+                    showNetwork
+                    tokenId={finalTokenInId}
+                />
+            ),
+        },
+        {
+            label: "Receive",
+            value: (
+                <Amount
+                    amountWithDecimals={data.amountOut}
+                    showNetwork
+                    tokenId={finalTokenOutId}
+                />
+            ),
+        },
+        {
+            label: "Rate",
+            value: (
+                <Rate
+                    tokenIn={finalTokenInId}
+                    tokenOut={finalTokenOutId}
+                    amountIn={Big(data.amountIn)}
+                    amountOutWithDecimals={data.amountOut}
+                />
+            ),
+        },
+    ];
+
+    let expandableItems: InfoItem[] = [];
+
+    if (data.slippage) {
+        expandableItems.push({
+            label: "Price Slippage Limit",
+            value: <span>{data.slippage}%</span>,
+            info: "This is the slippage limit defined for this request. If the market rate changes beyond this threshold during execution, the request will automatically fail.",
+        });
     }
-  ];
 
-  let expandableItems: InfoItem[] = [];
+    if (data.timeEstimate) {
+        expandableItems.push({
+            label: "Estimated Time",
+            value: <span>{data.timeEstimate}</span>,
+            info: "Estimated time for the swap to be executed after the deposit transaction is confirmed.",
+        });
+    }
 
-  if (data.slippage) {
     expandableItems.push({
-      label: "Price Slippage Limit",
-      value: <span>{data.slippage}%</span>,
-      info: "This is the slippage limit defined for this request. If the market rate changes beyond this threshold during execution, the request will automatically fail."
+        label: "Minimum Received",
+        value: (
+            <Amount
+                amountWithDecimals={minimumReceived.toString()}
+                showNetwork
+                tokenId={finalTokenOutId}
+            />
+        ),
+        info: "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request.",
     });
-  }
 
-  if (data.timeEstimate) {
-    expandableItems.push({
-      label: "Estimated Time",
-      value: <span>{data.timeEstimate}</span>,
-      info: "Estimated time for the swap to be executed after the deposit transaction is confirmed."
-    });
-  }
+    if (data.depositAddress) {
+        expandableItems.push({
+            label: "Deposit Address",
+            value: <Address address={data.depositAddress} copyable={true} />,
+            info: "The 1Click deposit address where tokens will be sent for the cross-chain swap execution.",
+        });
+    }
 
-  expandableItems.push({
-    label: "Minimum Received",
-    value: <Amount amountWithDecimals={minimumReceived.toString()} showNetwork tokenId={finalTokenOutId} />,
-    info: "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request."
-  });
+    if (data.quoteSignature) {
+        expandableItems.push({
+            label: "Quote Signature",
+            value: (
+                <Address
+                    address={data.quoteSignature}
+                    copyable={true}
+                    prefixLength={16}
+                />
+            ),
+            info: "The cryptographic signature from 1Click API that validates this quote.",
+        });
+    }
 
-  if (data.depositAddress) {
-    expandableItems.push({
-      label: "Deposit Address",
-      value: <Address address={data.depositAddress} copyable={true} />,
-      info: "The 1Click deposit address where tokens will be sent for the cross-chain swap execution."
-    });
-  }
+    if (data.quoteDeadline) {
+        expandableItems.push({
+            label: "1-Click Quote Deadline",
+            value: <FormattedDate date={data.quoteDeadline} />,
+            info: "Time when the deposit address becomes inactive and funds may be lost.",
+        });
+    }
 
-  if (data.quoteSignature) {
-    expandableItems.push({
-      label: "Quote Signature",
-      value: <Address address={data.quoteSignature} copyable={true} prefixLength={16} />,
-      info: "The cryptographic signature from 1Click API that validates this quote."
-    });
-  }
-
-  if (data.quoteDeadline) {
-    expandableItems.push({
-      label: "1-Click Quote Deadline",
-      value: <FormattedDate date={data.quoteDeadline} />,
-      info: "Time when the deposit address becomes inactive and funds may be lost."
-    });
-  }
-
-  return (
-    <InfoDisplay items={infoItems} expandableItems={expandableItems} />
-  );
+    return <InfoDisplay items={infoItems} expandableItems={expandableItems} />;
 }
 
 function NearWrapSwapExpanded({ data }: SwapExpandedProps) {
+    const infoItems: InfoItem[] = [
+        {
+            label: "Send",
+            value: (
+                <Amount
+                    amount={data.amountIn}
+                    showNetwork
+                    tokenId={data.tokenIn}
+                />
+            ),
+        },
+        {
+            label: "Receive",
+            value: (
+                <Amount
+                    amount={data.amountOut}
+                    showNetwork
+                    tokenId={data.tokenOut}
+                />
+            ),
+        },
+        {
+            label: "Rate",
+            value: (
+                <Rate
+                    tokenIn={data.tokenIn}
+                    tokenOut={data.tokenOut}
+                    amountIn={Big(data.amountIn)}
+                    amountOut={Big(data.amountOut)}
+                />
+            ),
+        },
+    ];
 
-  const infoItems: InfoItem[] = [
-    {
-      label: "Send",
-      value: <Amount amount={data.amountIn} showNetwork tokenId={data.tokenIn} />
-    },
-    {
-      label: "Receive",
-      value: <Amount amount={data.amountOut} showNetwork tokenId={data.tokenOut} />
-    },
-    {
-      label: "Rate",
-      value: <Rate tokenIn={data.tokenIn} tokenOut={data.tokenOut} amountIn={Big(data.amountIn)} amountOut={Big(data.amountOut)} />,
+    let expandableItems: InfoItem[] = [];
+
+    if (data.slippage) {
+        expandableItems.push({
+            label: "Price Slippage Limit",
+            value: <span>{data.slippage}%</span>,
+            info: "This is the slippage limit defined for this request. If the market rate changes beyond this threshold during execution, the request will automatically fail.",
+        });
     }
-  ];
 
-  let expandableItems: InfoItem[] = [];
+    if (data.timeEstimate) {
+        expandableItems.push({
+            label: "Estimated Time",
+            value: <span>{data.timeEstimate}</span>,
+            info: "Estimated time for the swap to be executed after the deposit transaction is confirmed.",
+        });
+    }
 
-  if (data.slippage) {
     expandableItems.push({
-      label: "Price Slippage Limit",
-      value: <span>{data.slippage}%</span>,
-      info: "This is the slippage limit defined for this request. If the market rate changes beyond this threshold during execution, the request will automatically fail."
+        label: "Minimum Received",
+        value: (
+            <Amount
+                amount={data.amountOut}
+                showNetwork
+                tokenId={data.tokenOut}
+            />
+        ),
+        info: "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request.",
     });
-  }
 
-  if (data.timeEstimate) {
-    expandableItems.push({
-      label: "Estimated Time",
-      value: <span>{data.timeEstimate}</span>,
-      info: "Estimated time for the swap to be executed after the deposit transaction is confirmed."
-    });
-  }
+    if (data.depositAddress) {
+        expandableItems.push({
+            label: "Deposit Address",
+            value: <Address address={data.depositAddress} copyable={true} />,
+            info: "The 1Click deposit address where tokens will be sent for the cross-chain swap execution.",
+        });
+    }
 
-  expandableItems.push({
-    label: "Minimum Received",
-    value: <Amount amount={data.amountOut} showNetwork tokenId={data.tokenOut} />,
-    info: "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request."
-  });
+    if (data.quoteSignature) {
+        expandableItems.push({
+            label: "Quote Signature",
+            value: (
+                <Address
+                    address={data.quoteSignature}
+                    copyable={true}
+                    prefixLength={16}
+                />
+            ),
+            info: "The cryptographic signature from 1Click API that validates this quote.",
+        });
+    }
 
-  if (data.depositAddress) {
-    expandableItems.push({
-      label: "Deposit Address",
-      value: <Address address={data.depositAddress} copyable={true} />,
-      info: "The 1Click deposit address where tokens will be sent for the cross-chain swap execution."
-    });
-  }
-
-  if (data.quoteSignature) {
-    expandableItems.push({
-      label: "Quote Signature",
-      value: <Address address={data.quoteSignature} copyable={true} prefixLength={16} />,
-      info: "The cryptographic signature from 1Click API that validates this quote."
-    });
-  }
-
-  if (data.quoteDeadline) {
-    expandableItems.push({
-      label: "1-Click Quote Deadline",
-      value: <FormattedDate date={data.quoteDeadline} />,
-      info: "Time when the deposit address becomes inactive and funds may be lost."
-    });
-  }
-  return (
-    <InfoDisplay items={infoItems} expandableItems={expandableItems} />
-  );
+    if (data.quoteDeadline) {
+        expandableItems.push({
+            label: "1-Click Quote Deadline",
+            value: <FormattedDate date={data.quoteDeadline} />,
+            info: "Time when the deposit address becomes inactive and funds may be lost.",
+        });
+    }
+    return <InfoDisplay items={infoItems} expandableItems={expandableItems} />;
 }
 
 export function SwapExpanded({ data }: SwapExpandedProps) {
-  switch (data.source) {
-    case "exchange":
-      return <IntentsSwapExpanded data={data} />;
-    case "wrap.near":
-      return <NearWrapSwapExpanded data={data} />;
-    default:
-      return null;
-  }
+    switch (data.source) {
+        case "exchange":
+            return <IntentsSwapExpanded data={data} />;
+        case "wrap.near":
+            return <NearWrapSwapExpanded data={data} />;
+        default:
+            return null;
+    }
 }

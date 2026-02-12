@@ -18,8 +18,7 @@ import {
     useWatch,
 } from "react-hook-form";
 import z from "zod";
-import Big from "big.js";
-import { availableBalance } from "@/lib/balance";
+import Big from "@/lib/big";
 
 export const tokenSchema = z.object({
     address: z.string(),
@@ -42,10 +41,10 @@ interface TokenInputProps<
     title?: string;
     amountName: Path<TFieldValues>;
     tokenName: TTokenPath extends Path<TFieldValues>
-    ? PathValue<TFieldValues, TTokenPath> extends Token
-    ? TTokenPath
-    : never
-    : never;
+        ? PathValue<TFieldValues, TTokenPath> extends Token
+            ? TTokenPath
+            : never
+        : never;
     tokenSelect?: {
         disabled?: boolean;
         locked?: boolean;
@@ -97,8 +96,11 @@ export function TokenInput<
     const { data: tokenData, isLoading: isTokenLoading } = useToken(
         token?.address || "",
     );
-    const { data: tokenBalanceData, isLoading: isTokenBalanceLoading } =
-        useTokenBalance(treasuryId, token?.address || "", tokenData?.network);
+    const { data: tokenBalanceData } = useTokenBalance(
+        treasuryId,
+        token?.address || "",
+        tokenData?.network,
+    );
 
     const hasInsufficientBalance = useMemo(() => {
         if (!showInsufficientBalance) return false;
@@ -107,7 +109,7 @@ export function TokenInput<
         }
 
         const decimals = token?.decimals || 24;
-        const amountInSmallestUnits = Big(amount).times(Big(10).pow(decimals));
+        const amountInSmallestUnits = Big(amount).mul(Big(10).pow(decimals));
 
         return amountInSmallestUnits.gt(tokenBalanceData.balance);
     }, [showInsufficientBalance, tokenBalanceData, amount, token?.decimals]);
@@ -160,10 +162,12 @@ export function TokenInput<
                                                                     token.decimals,
                                                                 ),
                                                             )
-                                                            .toString() as PathValue<
-                                                                TFieldValues,
-                                                                Path<TFieldValues>
-                                                            >,
+                                                            .toFixed(
+                                                                token.decimals,
+                                                            ) as PathValue<
+                                                            TFieldValues,
+                                                            Path<TFieldValues>
+                                                        >,
                                                     );
                                                 }
                                             }}
@@ -187,20 +191,20 @@ export function TokenInput<
                                         readOnly
                                             ? undefined
                                             : (e) =>
-                                                field.onChange(
-                                                    e.target.value.replace(
-                                                        /^0+(?=\d)/,
-                                                        "",
-                                                    ),
-                                                )
+                                                  field.onChange(
+                                                      e.target.value.replace(
+                                                          /^0+(?=\d)/,
+                                                          "",
+                                                      ),
+                                                  )
                                     }
                                     onBlur={readOnly ? undefined : field.onBlur}
                                     value={
                                         loading
                                             ? "..."
                                             : customValue !== undefined
-                                                ? customValue
-                                                : field.value.toString()
+                                              ? customValue
+                                              : field.value.toString()
                                     }
                                     placeholder="0"
                                     className={cn(
@@ -234,17 +238,17 @@ export function TokenInput<
                             className={cn(
                                 "text-muted-foreground text-xs invisible",
                                 estimatedUSDValue !== null &&
-                                estimatedUSDValue > 0 &&
-                                "visible",
+                                    estimatedUSDValue > 0 &&
+                                    "visible",
                             )}
                         >
                             {!isTokenLoading &&
-                                estimatedUSDValue !== null &&
-                                estimatedUSDValue > 0
+                            estimatedUSDValue !== null &&
+                            estimatedUSDValue > 0
                                 ? `≈ ${formatCurrency(estimatedUSDValue)}`
                                 : isTokenLoading
-                                    ? "Loading price..."
-                                    : "Invisible"}
+                                  ? "Loading price..."
+                                  : "Invisible"}
                         </p>
                         {hasInsufficientBalance && (
                             <p className="text-general-info-foreground text-sm mt-2">

@@ -1,7 +1,7 @@
 import { ChainIcons, TreasuryAsset } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useThemeStore } from "@/stores/theme-store";
-import Big from "big.js";
+import Big from "@/lib/big";
 
 interface NetworkIconDisplayProps {
     chainIcons: ChainIcons | null;

@@ -36,7 +36,7 @@ import { Button } from "@/components/button";
 import { TreasuryAsset } from "@/lib/api";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import { useAggregatedTokens, AggregatedAsset } from "@/hooks/use-assets";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { NetworkDisplay, BalanceCell } from "./token-display";
 import { availableBalance, lockedBalance } from "@/lib/balance";
 import { VestingDetailsModal } from "./vesting-details-modal";

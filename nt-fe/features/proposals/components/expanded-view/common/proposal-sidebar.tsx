@@ -16,7 +16,7 @@ import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-p
 import { UserVote } from "../../user-vote";
 import { useProposalTransaction, useSwapStatus } from "@/hooks/use-proposals";
 import Link from "next/link";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { User } from "@/components/user";
 import {
     AuthButtonWithProposal,
@@ -265,8 +265,7 @@ export function ProposalSidebar({
         try {
             const { data } = extractProposalData(proposal);
             depositAddress = (data as any).depositAddress;
-        } catch (e) {
-        }
+        } catch (e) {}
     }
 
     // Fetch transaction data for non-exchange proposals, or for failed exchange proposals
@@ -274,14 +273,14 @@ export function ProposalSidebar({
         treasuryId,
         proposal,
         policy,
-        !isExchangeProposal || isFailed
+        !isExchangeProposal || isFailed,
     );
 
     // Fetch swap status for executed exchange proposals
     const { data: swapStatus } = useSwapStatus(
         depositAddress || null,
         undefined,
-        isExchangeProposal && isExecuted && !!depositAddress
+        isExchangeProposal && isExecuted && !!depositAddress,
     );
 
     const expiresAt = new Date(
@@ -294,9 +293,9 @@ export function ProposalSidebar({
     // For exchange proposals, calculate 24-hour expiration
     const exchange24HourExpiry = isExchangeProposal
         ? new Date(
-            Big(proposal.submission_time).div(1000000).toNumber() +
-            EXCHANGE_EXPIRY_MS,
-        )
+              Big(proposal.submission_time).div(1000000).toNumber() +
+                  EXCHANGE_EXPIRY_MS,
+          )
         : null;
 
     let timestamp;
@@ -304,7 +303,10 @@ export function ProposalSidebar({
         case "Expired":
         case "Pending":
             // Use 24-hour expiry for exchange proposals, otherwise use policy period
-            timestamp = (isExchangeProposal && exchange24HourExpiry) ? exchange24HourExpiry : expiresAt;
+            timestamp =
+                isExchangeProposal && exchange24HourExpiry
+                    ? exchange24HourExpiry
+                    : expiresAt;
             break;
 
         default:
@@ -362,7 +364,8 @@ export function ProposalSidebar({
                                 rel="noopener noreferrer"
                                 className="flex font-medium text-sm items-center gap-1.5"
                             >
-                                View Transaction <ArrowUpRight className="size-4" />
+                                View Transaction{" "}
+                                <ArrowUpRight className="size-4" />
                             </Link>
                         )
                     )}
@@ -376,28 +379,32 @@ export function ProposalSidebar({
                         swapStatus.status === "PENDING_DEPOSIT" ||
                         swapStatus.status === "INCOMPLETE_DEPOSIT" ||
                         swapStatus.status === "PROCESSING") && (
-                            <InfoAlert
-                                className="inline-flex"
-                                message={
-                                    <span>
-                                        <strong>Exchanging Tokens</strong>
-                                        <br />
-                                        This request has been approved by the team. Token
-                                        exchange is now in progress and may take some time.
-                                    </span>
-                                }
-                            />
-                        )}
+                        <InfoAlert
+                            className="inline-flex"
+                            message={
+                                <span>
+                                    <strong>Exchanging Tokens</strong>
+                                    <br />
+                                    This request has been approved by the team.
+                                    Token exchange is now in progress and may
+                                    take some time.
+                                </span>
+                            }
+                        />
+                    )}
 
                     {/* Failed/Refunded Status */}
-                    {(swapStatus.status === "FAILED" || swapStatus.status === "REFUNDED") && (
+                    {(swapStatus.status === "FAILED" ||
+                        swapStatus.status === "REFUNDED") && (
                         <InfoAlert
                             className="inline-flex"
                             message={
                                 <span>
                                     <strong>Request Failed</strong>
                                     <br />
-                                    The team approved this request, but it failed due to rate fluctuations. Please create a new request and try again.
+                                    The team approved this request, but it
+                                    failed due to rate fluctuations. Please
+                                    create a new request and try again.
                                 </span>
                             }
                         />
@@ -414,8 +421,8 @@ export function ProposalSidebar({
                             <strong>Voting period: 24 hours</strong>
                             <br />
                             This exchange request has a 24-hour voting duration.
-                            Approve this request within this time, or the request
-                            will expire.
+                            Approve this request within this time, or the
+                            request will expire.
                         </span>
                     }
                 />

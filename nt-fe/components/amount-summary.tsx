@@ -1,4 +1,4 @@
-import Big from "big.js";
+import Big from "@/lib/big";
 import { InputBlock } from "./input-block";
 import { Token } from "./token-input";
 import { formatCurrency } from "@/lib/utils";

@@ -30,7 +30,7 @@ import { useFormatDate } from "@/components/formatted-date";
 import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/hooks/use-treasury";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { useMemo, useState } from "react";
 import { useForm, useFormContext } from "react-hook-form";
 import z from "zod";

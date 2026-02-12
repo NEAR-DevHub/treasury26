@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import Big from "big.js";
+import Big from "@/lib/big";
 import { Proposal } from "@/lib/proposals-api";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { getProposalRequiredFunds } from "../utils/proposal-utils";
