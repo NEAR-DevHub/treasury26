@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM auth_challenges WHERE nonce = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d58857ac85e2ac89ee03e6c0a11d82ba3bea289cfecec8c2d9a3f7bc07abf3e9"
+}

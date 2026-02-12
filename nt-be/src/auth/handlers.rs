@@ -84,13 +84,13 @@ pub async fn login(
         .map_err(|_| AuthError::InvalidNonce("Nonce must be 32 bytes".to_string()))?;
 
     // Verify the challenge exists and hasn't expired
-    let challenge = sqlx::query(
+    let challenge = sqlx::query!(
         r#"
         SELECT id FROM auth_challenges
         WHERE nonce = $1 AND expires_at > NOW()
         "#,
+        request.nonce.0.as_slice()
     )
-    .bind(request.nonce.0.as_slice())
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
@@ -100,11 +100,13 @@ pub async fn login(
     }
 
     // Delete the used challenge
-    sqlx::query("DELETE FROM auth_challenges WHERE nonce = $1")
-        .bind(request.nonce.0.as_slice())
-        .execute(&state.db_pool)
-        .await
-        .ok();
+    sqlx::query!(
+        "DELETE FROM auth_challenges WHERE nonce = $1",
+        request.nonce.0.as_slice()
+    )
+    .execute(&state.db_pool)
+    .await
+    .ok();
 
     let signature_type = request.public_key.key_type();
     let signature = Signature::from_parts(signature_type, &request.signature.0)
