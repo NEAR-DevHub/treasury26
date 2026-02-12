@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{AppState, constants::TREASURY_FACTORY_CONTRACT_ID, services::register_new_dao};
 
-pub const TREASURY_CREATE_DEPOSIT_IN_MICRONEAR: u128 = 5418043;
+pub const TREASURY_CREATE_DEPOSIT_IN_MICRONEAR: u128 = 5418190;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -212,4 +212,19 @@ pub async fn create_treasury(
     }
 
     Ok(Json(CreateTreasuryResponse { treasury }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_create_treasury() {
+        let token = NearToken::from_micronear(TREASURY_CREATE_DEPOSIT_IN_MICRONEAR)
+            .saturating_add(NearToken::from_yoctonear(40000000000000000000));
+        println!("{}", token.as_micronear());
+        println!("{}", token.as_yoctonear());
+
+        assert!(false);
+    }
 }
