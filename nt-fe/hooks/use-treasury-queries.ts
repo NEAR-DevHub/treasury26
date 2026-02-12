@@ -250,7 +250,10 @@ export function useCheckAccountExists(accountId: string | null | undefined) {
  * @param params.destinationNetwork - Chain ID to match for tokenOut network (e.g., "near", "eth")
  * @returns Object with tokenIn and tokenOut metadata including defuse asset IDs and network info
  */
-export function useSearchIntentsTokens(params: SearchTokensParams, enabled: boolean = true) {
+export function useSearchIntentsTokens(
+    params: SearchTokensParams,
+    enabled: boolean = true,
+) {
     const hasParams = !!(params.tokenIn || params.tokenOut);
 
     return useQuery({
@@ -275,6 +278,6 @@ export function useRecentActivity(
         queryKey: ["recentActivity", accountId, limit, offset],
         queryFn: () => getRecentActivity(accountId!, limit, offset),
         enabled: !!accountId,
-        staleTime: 1000 * 30, // 30 seconds (activity changes frequently)
+        staleTime: 1000 * 5, // 5 seconds (activity changes frequently)
     });
 }
