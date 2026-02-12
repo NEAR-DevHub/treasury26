@@ -4,6 +4,11 @@ import { Policy } from "@/types/policy";
 import { ProposalUIKind } from "../types/index";
 import { decodeArgs, decodeProposalDescription } from "@/lib/utils";
 
+// Exchange proposal expiration constants
+export const EXCHANGE_EXPIRY_HOURS = 24;
+export const EXCHANGE_EXPIRY_NS = EXCHANGE_EXPIRY_HOURS * 60 * 60 * 1_000_000_000; // 24 hours in nanoseconds
+export const EXCHANGE_EXPIRY_MS = EXCHANGE_EXPIRY_HOURS * 60 * 60 * 1000; // 24 hours in milliseconds
+
 const BULK_PAYMENT_CONTRACT_ID = process.env.NEXT_PUBLIC_BULK_PAYMENT_CONTRACT_ID || "bulkpayment.near";
 
 function isVestingProposal(proposal: Proposal): boolean {
@@ -234,6 +239,7 @@ export function getProposalStatus(
 ): UIProposalStatus {
     const proposalPeriod = parseInt(policy.proposal_period);
     const submissionTime = parseInt(proposal.submission_time);
+
     switch (proposal.status) {
         case "Approved":
             return "Executed";
@@ -242,9 +248,19 @@ export function getProposalStatus(
         case "Failed":
             return "Failed";
         case "InProgress":
+            // For exchange proposals, check if 24 hours have passed
+            const proposalType = getProposalUIKind(proposal);
+            if (proposalType === "Exchange") {
+                if ((submissionTime + EXCHANGE_EXPIRY_NS) / 1_000_000 < Date.now()) {
+                    return "Expired";
+                }
+            }
+
+            // Check if proposal has expired based on policy period
             if ((submissionTime + proposalPeriod) / 1_000_000 < Date.now()) {
                 return "Expired";
             }
+
             return "Pending";
         default:
             return proposal.status;
@@ -284,7 +300,7 @@ export function getProposalRequiredFunds(
                 return {
                     tokenId:
                         ftTransferAction.method_name === "mt_transfer" ||
-                        ftTransferAction.method_name === "mt_transfer_call"
+                            ftTransferAction.method_name === "mt_transfer_call"
                             ? args.token_id
                             : functionCall.receiver_id,
                     amount: args.amount,

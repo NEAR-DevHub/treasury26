@@ -3,7 +3,7 @@ import { UseFormReturn } from "react-hook-form";
 import Big from "big.js";
 import { getIntentsQuote, IntentsQuoteResponse } from "@/lib/api";
 import { Token } from "@/components/token-input";
-import { formatAssetForIntentsAPI, getDepositAndRefundType, getUserFriendlyErrorMessage } from "../utils";
+import { formatAssetForIntentsAPI, getRecipientType, getUserFriendlyErrorMessage, getDepositAndRefundType } from "../utils";
 
 interface UseExchangeQuoteParams {
   selectedTreasury: string | null | undefined;
@@ -51,8 +51,9 @@ export function useExchangeQuote({
           .toFixed();
 
         const originAsset = formatAssetForIntentsAPI(sellToken.address);
-        const destinationAsset = receiveToken.address;
-        const depositAndRefundType = getDepositAndRefundType(sellToken.network);
+        const destinationAsset = formatAssetForIntentsAPI(receiveToken.address);
+        const depositAndRefundType = getDepositAndRefundType(sellToken.residency || "");
+        const recipientType = getRecipientType(receiveToken.residency || "");
 
         const quote = await getIntentsQuote(
           {
@@ -65,7 +66,7 @@ export function useExchangeQuote({
             refundTo: selectedTreasury,
             refundType: depositAndRefundType,
             recipient: selectedTreasury,
-            recipientType: "INTENTS", // Always INTENTS
+            recipientType: recipientType,
             deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
             quoteWaitingTimeMs: 3000,
           },
@@ -86,7 +87,7 @@ export function useExchangeQuote({
         return null;
       } catch (error: any) {
         console.error("Error fetching quote:", error);
-        
+
         if (isDryRun) {
           // Only show errors for dry run (user is still on Step 1)
           const userMessage = getUserFriendlyErrorMessage(error?.message || "Failed to fetch quote");

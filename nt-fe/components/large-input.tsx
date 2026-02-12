@@ -9,6 +9,11 @@ interface LargeInputProps extends React.ComponentProps<typeof Input> {
     search?: boolean;
     borderless?: boolean;
     suffix?: string;
+    /**
+     * When true, font size will dynamically adjust based on input length to prevent overflow.
+     * Default: false
+     */
+    dynamicFontSize?: boolean;
 }
 
 export function LargeInput({
@@ -17,13 +22,20 @@ export function LargeInput({
     borderless,
     suffix,
     value,
+    dynamicFontSize = false,
     ...props
 }: LargeInputProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const [fontSize, setFontSize] = useState("!text-3xl");
+    const [fontSize, setFontSize] = useState("!text-xl");
 
     useEffect(() => {
+        // Skip dynamic font sizing if not enabled
+        if (!dynamicFontSize) {
+            setFontSize("!text-xl");
+            return;
+        }
+
         const calculateFontSize = () => {
             if (!containerRef.current || !inputRef.current) return;
 
@@ -71,7 +83,7 @@ export function LargeInput({
         return () => {
             resizeObserver.disconnect();
         };
-    }, [value, suffix]);
+    }, [value, suffix, dynamicFontSize]);
 
     return (
         <div ref={containerRef} className="relative">
@@ -91,7 +103,7 @@ export function LargeInput({
                     search && "pl-10",
                     suffix && "pr-2",
                     borderless &&
-                        "border-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                    "border-none focus-visible:ring-0 focus-visible:ring-offset-0",
                     className,
                     fontSize, // Apply dynamic font size last so it takes precedence
                 )}

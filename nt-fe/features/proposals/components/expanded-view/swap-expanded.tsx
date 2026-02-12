@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import Big from "big.js";
 import { Address } from "@/components/address";
 import { Rate } from "@/components/rate";
-import { useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
+import { useToken, useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
 import { FormattedDate } from "@/components/formatted-date";
 
 interface SwapExpandedProps {
@@ -14,12 +14,22 @@ interface SwapExpandedProps {
 }
 
 function IntentsSwapExpanded({ data }: SwapExpandedProps) {
-  const { data: tokensData } = useSearchIntentsTokens({
+  // For new proposals: use token addresses from description
+  // For old proposals: use search hook with symbols as fallback
+  const hasAddresses = !!(data.tokenInAddress && data.tokenOutAddress);
+
+  // Legacy fallback: use search hook for old proposals without addresses
+  const { data: legacyTokensData } = useSearchIntentsTokens({
     tokenIn: data.tokenIn,
     tokenOut: data.tokenOut,
     intentsTokenContractId: data.intentsTokenContractId,
     destinationNetwork: data.destinationNetwork,
-  });
+  }, !hasAddresses);
+
+  // Use addresses if available, otherwise fall back to legacy search
+  const finalTokenInId = data.tokenInAddress || legacyTokensData?.tokenIn?.defuseAssetId || data.tokenIn;
+  const finalTokenOutId = data.tokenOutAddress || legacyTokensData?.tokenOut?.defuseAssetId || data.tokenOut;
+
   const minimumReceived = useMemo(() => {
     return Big(data.amountOut).mul(Big(100 - Number(data.slippage || 0))).div(100);
   }, [data.amountOut, data.slippage]);
@@ -27,15 +37,15 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
   const infoItems: InfoItem[] = [
     {
       label: "Send",
-      value: <Amount amount={data.amountIn} showNetwork tokenId={tokensData?.tokenIn?.defuseAssetId || data.tokenIn} />
+      value: <Amount amount={data.amountIn} showNetwork tokenId={finalTokenInId} />
     },
     {
       label: "Receive",
-      value: <Amount amountWithDecimals={data.amountOut} showNetwork network={data.destinationNetwork} tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} />
+      value: <Amount amountWithDecimals={data.amountOut} showNetwork tokenId={finalTokenOutId} />
     },
     {
       label: "Rate",
-      value: <Rate tokenIn={tokensData?.tokenIn?.unifiedAssetId || data.tokenIn} tokenOut={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} amountIn={Big(data.amountIn)} amountOutWithDecimals={data.amountOut} />,
+      value: <Rate tokenIn={finalTokenInId} tokenOut={finalTokenOutId} amountIn={Big(data.amountIn)} amountOutWithDecimals={data.amountOut} />,
     }
   ];
 
@@ -59,7 +69,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
 
   expandableItems.push({
     label: "Minimum Received",
-    value: <Amount amountWithDecimals={minimumReceived.toString()} showNetwork network={data.destinationNetwork} tokenId={tokensData?.tokenOut?.defuseAssetId || data.tokenOut} />,
+    value: <Amount amountWithDecimals={minimumReceived.toString()} showNetwork tokenId={finalTokenOutId} />,
     info: "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request."
   });
 

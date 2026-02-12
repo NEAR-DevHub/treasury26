@@ -324,11 +324,27 @@ pub fn get_status_display(
     submission_time: u64,
     period: u64,
     pending_label: &str,
+    proposal: Option<&Proposal>,
 ) -> String {
     match status {
         ProposalStatus::InProgress => {
             let current_time = get_current_time_nanos().0;
-            if submission_time + period < current_time {
+
+            // For exchange proposals, use 24-hour expiration instead of policy period
+            let expiration_period = if let Some(p) = proposal {
+                if extract_from_description(&p.description, "proposalaction")
+                    == Some("asset-exchange".to_string())
+                {
+                    // 24 hours in nanoseconds
+                    24 * 60 * 60 * 1_000_000_000
+                } else {
+                    period
+                }
+            } else {
+                period
+            };
+
+            if submission_time + expiration_period < current_time {
                 "Expired".to_string()
             } else {
                 pending_label.to_string()

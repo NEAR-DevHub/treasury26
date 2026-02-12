@@ -113,6 +113,7 @@ function Step1({ handleNext }: StepProps) {
                 amountName="amount"
                 tokenName="token"
                 showInsufficientBalance={true}
+                dynamicFontSize={true}
             />
             <RecipientInput control={form.control} name="address" />
             <div className="rounded-lg border bg-card p-0 overflow-hidden">

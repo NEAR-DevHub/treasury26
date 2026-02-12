@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
+import { useThemeStore } from "@/stores/theme-store";
 import { cn, formatBalance } from "@/lib/utils";
 import { NEAR_TOKEN } from "@/constants/token";
 import { CreateRequestButton } from "@/components/create-request-button";
@@ -31,12 +32,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
     DRY_QUOTE_REFRESH_INTERVAL,
     PROPOSAL_REFRESH_INTERVAL,
+    ETH_TOKEN,
 } from "./constants";
 import { WarningAlert } from "@/components/warning-alert";
 import { useFormatDate } from "@/components/formatted-date";
 import {
     calculateMarketPriceDifference,
-    getUserFriendlyErrorMessage,
 } from "./utils";
 import { useCountdownTimer } from "./hooks/use-countdown-timer";
 import { useExchangeQuote } from "./hooks/use-exchange-quote";
@@ -70,6 +71,7 @@ function Step1({ handleNext }: StepProps) {
         ExchangeFormValues & { slippageTolerance?: number }
     >();
     const { treasuryId: selectedTreasury } = useTreasury();
+    const { theme } = useThemeStore();
     const sellToken = form.watch("sellToken");
     const receiveToken = form.watch("receiveToken");
     const sellAmount = form.watch("sellAmount");
@@ -187,6 +189,7 @@ function Step1({ handleNext }: StepProps) {
                     amountName="sellAmount"
                     tokenName="sellToken"
                     showInsufficientBalance={true}
+                    dynamicFontSize={true}
                 />
                 {/* Swap Arrow */}
                 <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
@@ -214,6 +217,7 @@ function Step1({ handleNext }: StepProps) {
                 readOnly={true}
                 loading={isLoadingQuote}
                 customValue={quoteData?.quote.amountOutFormatted || ""}
+                dynamicFontSize={true}
             />
 
             {/* Rate and Slippage */}
@@ -240,18 +244,14 @@ function Step1({ handleNext }: StepProps) {
                     type="button"
                     onClick={handleContinue}
                     variant="default"
-                    className={cn(
-                        "w-full h-10 rounded-none font-medium",
-                        (areSameTokens || !hasValidAmount || !quoteData) &&
-                            "bg-muted text-muted-foreground hover:bg-muted",
-                    )}
+                    className="w-full h-10 rounded-none font-medium"
                     disabled={areSameTokens || !hasValidAmount || !quoteData}
                 >
                     {areSameTokens
                         ? "Tokens must be different"
                         : !hasValidAmount
-                          ? "Enter an amount to exchange "
-                          : "Review Exchange"}
+                            ? "Enter an amount to exchange "
+                            : "Review Exchange"}
                 </Button>
             </div>
 
@@ -259,7 +259,7 @@ function Step1({ handleNext }: StepProps) {
                 <span>Powered by</span>
                 <span className="font-semibold flex items-center gap-1">
                     <img
-                        src="/near-intents.svg"
+                        src={theme === "dark" ? "/near-intents-dark.svg" : "/near-intents-light.svg"}
                         alt="NEAR Intents"
                         className="h-3"
                     />
@@ -321,15 +321,15 @@ function Step2({ handleBack }: StepProps) {
 
     const marketPriceDifference = localLiveQuoteData
         ? calculateMarketPriceDifference(
-              localLiveQuoteData.quote.amountInUsd,
-              localLiveQuoteData.quote.amountOutUsd,
-              localLiveQuoteData.quote.amountIn,
-              localLiveQuoteData.quote.amountOut,
-              sellToken.decimals,
-              receiveToken.decimals,
-              sellTokenData?.price,
-              receiveTokenData?.price,
-          )
+            localLiveQuoteData.quote.amountInUsd,
+            localLiveQuoteData.quote.amountOutUsd,
+            localLiveQuoteData.quote.amountIn,
+            localLiveQuoteData.quote.amountOut,
+            sellToken.decimals,
+            receiveToken.decimals,
+            sellTokenData?.price,
+            receiveTokenData?.price,
+        )
         : null;
 
     return (
@@ -417,24 +417,24 @@ function Step2({ handleBack }: StepProps) {
                                 size="sm"
                                 items={[
                                     ...(marketPriceDifference &&
-                                    marketPriceDifference.hasMarketData
+                                        marketPriceDifference.hasMarketData
                                         ? [
-                                              {
-                                                  label: "Price Difference",
-                                                  value: (
-                                                      <span className="font-medium">
-                                                          {marketPriceDifference.isFavorable
-                                                              ? "+"
-                                                              : ""}
-                                                          {
-                                                              marketPriceDifference.percentDifference
-                                                          }
-                                                          %
-                                                      </span>
-                                                  ),
-                                                  info: "Difference between the quote rate and the current market rate. Positive values indicate a better rate than market.",
-                                              },
-                                          ]
+                                            {
+                                                label: "Price Difference",
+                                                value: (
+                                                    <span className="font-medium">
+                                                        {marketPriceDifference.isFavorable
+                                                            ? "+"
+                                                            : ""}
+                                                        {
+                                                            marketPriceDifference.percentDifference
+                                                        }
+                                                        %
+                                                    </span>
+                                                ),
+                                                info: "Difference between the quote rate and the current market rate. Positive values indicate a better rate than market.",
+                                            },
+                                        ]
                                         : []),
                                     {
                                         label: "Estimated Time",
@@ -558,7 +558,7 @@ export default function ExchangePage() {
             sellAmount: "",
             sellToken: defaultSellToken,
             receiveAmount: "0",
-            receiveToken: NEAR_TOKEN,
+            receiveToken: ETH_TOKEN,
             slippageTolerance: 0.5,
         },
     });
@@ -591,21 +591,18 @@ export default function ExchangePage() {
                 proposalBond,
             };
 
-            if (isSellingNativeNEAR) {
-                const proposal = buildNativeNEARProposal(proposalParams);
-                await createProposal("Exchange request submitted", {
-                    treasuryId: selectedTreasury,
-                    proposal,
-                    proposalBond,
-                });
-            } else {
-                const proposal = buildFungibleTokenProposal(proposalParams);
-                await createProposal("Exchange request submitted", {
-                    treasuryId: selectedTreasury,
-                    proposal,
-                    proposalBond,
-                });
-            }
+            const result = isSellingNativeNEAR
+                ? buildNativeNEARProposal(proposalParams)
+                : buildFungibleTokenProposal(proposalParams);
+
+            await createProposal("Exchange request submitted", {
+                treasuryId: selectedTreasury,
+                proposal: result.proposal,
+                proposalBond,
+                additionalTransactions: result.storageDepositTransaction
+                    ? [result.storageDepositTransaction]
+                    : undefined,
+            });
 
             form.reset();
             setStep(0);

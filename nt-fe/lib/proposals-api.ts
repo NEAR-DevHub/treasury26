@@ -511,8 +511,8 @@ export async function getProposalTransaction(
             status === "Executed" || status === "Failed"
                 ? "VoteApprove"
                 : status === "Rejected"
-                  ? "VoteReject"
-                  : "VoteRemove";
+                    ? "VoteReject"
+                    : "VoteRemove";
 
         // Build query parameters for time constraints
         const params: Record<string, string> = {
@@ -528,6 +528,52 @@ export async function getProposalTransaction(
     } catch (error) {
         console.error(
             `Error getting transaction for proposal ${daoId}/${proposal.id}`,
+            error,
+        );
+        return null;
+    }
+}
+
+/**
+ * Swap status types and API
+ */
+export type SwapStatus =
+    | "KNOWN_DEPOSIT_TX"
+    | "PENDING_DEPOSIT"
+    | "INCOMPLETE_DEPOSIT"
+    | "PROCESSING"
+    | "SUCCESS"
+    | "REFUNDED"
+    | "FAILED";
+
+export interface SwapStatusResponse {
+    status: SwapStatus;
+    updatedAt: string;
+}
+
+/**
+ * Get swap execution status for an asset exchange proposal
+ */
+export async function getSwapStatus(
+    depositAddress: string,
+    depositMemo?: string,
+): Promise<SwapStatusResponse | null> {
+    if (!depositAddress) {
+        return null;
+    }
+
+    try {
+        let url = `${BACKEND_API_BASE}/intents/swap-status?depositAddress=${depositAddress}`;
+
+        if (depositMemo) {
+            url += `&depositMemo=${depositMemo}`;
+        }
+
+        const response = await axios.get<SwapStatusResponse>(url);
+        return response.data;
+    } catch (error) {
+        console.error(
+            `Error getting swap status for deposit address ${depositAddress}`,
             error,
         );
         return null;

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getProposals, ProposalFilters, getProposal, getProposalTransaction, Proposal } from "@/lib/proposals-api";
+import { getProposals, ProposalFilters, getProposal, getProposalTransaction, Proposal, getSwapStatus } from "@/lib/proposals-api";
 import { Policy } from "@/types/policy";
 
 /**
@@ -57,13 +57,14 @@ export function useProposal(daoId: string | null | undefined, proposalId: string
 export function useProposalTransaction(
   daoId: string | null | undefined,
   proposal: Proposal | null | undefined,
-  policy: Policy | null | undefined
+  policy: Policy | null | undefined,
+  enabled: boolean = true
 
 ) {
   return useQuery({
     queryKey: ["proposal-transaction", daoId, proposal?.id, policy],
     queryFn: () => getProposalTransaction(daoId!, proposal!, policy!),
-    enabled: !!daoId && !!proposal && !!policy,
+    enabled: enabled && !!daoId && !!proposal && !!policy,
     staleTime: 1000 * 60 * 5, // 5 minutes (transaction data is more stable)
     retry: (failureCount, error) => {
       // Don't retry on 404 (not found) errors
@@ -74,6 +75,46 @@ export function useProposalTransaction(
         }
       }
       return failureCount < 3;
+    },
+  });
+}
+
+/**
+ * Query hook to get swap execution status for asset exchange proposals
+ * Fetches from 1Click API via backend proxy
+ *
+ * @param depositAddress - The deposit address from the swap quote
+ * @param depositMemo - Optional deposit memo if included in quote
+ * @param enabled - Whether the query should be enabled (default: true if depositAddress exists)
+ *
+ */
+export function useSwapStatus(
+  depositAddress: string | null | undefined,
+  depositMemo?: string | null,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ["swap-status", depositAddress, depositMemo],
+    queryFn: () => getSwapStatus(depositAddress!, depositMemo || undefined),
+    enabled: enabled && !!depositAddress,
+    staleTime: 1000 * 60, // 1 minute
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // If status is terminal (SUCCESS, REFUNDED, FAILED), stop polling
+      if (data?.status === "SUCCESS" || data?.status === "REFUNDED" || data?.status === "FAILED") {
+        return false;
+      }
+      return 1000 * 60; // 1 minute
+    },
+    retry: (failureCount, error) => {
+      // Don't retry on 404 (deposit address not found)
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as any;
+        if (axiosError.response?.status === 404) {
+          return false;
+        }
+      }
+      return failureCount < 2;
     },
   });
 }

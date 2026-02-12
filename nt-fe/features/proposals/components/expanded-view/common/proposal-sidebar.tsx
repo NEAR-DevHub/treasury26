@@ -9,10 +9,12 @@ import { useTreasury } from "@/hooks/use-treasury";
 import {
     getProposalStatus,
     UIProposalStatus,
+    getProposalUIKind,
+    EXCHANGE_EXPIRY_MS,
 } from "@/features/proposals/utils/proposal-utils";
 import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
 import { UserVote } from "../../user-vote";
-import { useProposalTransaction } from "@/hooks/use-proposals";
+import { useProposalTransaction, useSwapStatus } from "@/hooks/use-proposals";
 import Link from "next/link";
 import Big from "big.js";
 import { User } from "@/components/user";
@@ -23,6 +25,7 @@ import {
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
 import { cn } from "@/lib/utils";
+import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import { NotEnoughBalance } from "../../not-enough-balance";
 
 interface ProposalSidebarProps {
@@ -243,11 +246,6 @@ export function ProposalSidebar({
 }: ProposalSidebarProps) {
     const { accountId } = useNear();
     const { treasuryId } = useTreasury();
-    const { data: transaction } = useProposalTransaction(
-        treasuryId,
-        proposal,
-        policy,
-    );
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(
         proposal,
         treasuryId,
@@ -256,6 +254,35 @@ export function ProposalSidebar({
     const status = getProposalStatus(proposal, policy);
     const isUserVoter = !!proposal.votes[accountId ?? ""];
     const isPending = status === "Pending";
+    const proposalType = getProposalUIKind(proposal);
+    const isExchangeProposal = proposalType === "Exchange";
+    const isFailed = status === "Failed";
+    const isExecuted = status === "Executed";
+
+    // Extract deposit address for exchange proposals
+    let depositAddress: string | undefined;
+    if (isExchangeProposal) {
+        try {
+            const { data } = extractProposalData(proposal);
+            depositAddress = (data as any).depositAddress;
+        } catch (e) {
+        }
+    }
+
+    // Fetch transaction data for non-exchange proposals, or for failed exchange proposals
+    const { data: transaction } = useProposalTransaction(
+        treasuryId,
+        proposal,
+        policy,
+        !isExchangeProposal || isFailed
+    );
+
+    // Fetch swap status for executed exchange proposals
+    const { data: swapStatus } = useSwapStatus(
+        depositAddress || null,
+        undefined,
+        isExchangeProposal && isExecuted && !!depositAddress
+    );
 
     const expiresAt = new Date(
         Big(proposal.submission_time)
@@ -263,11 +290,21 @@ export function ProposalSidebar({
             .div(1000000)
             .toNumber(),
     );
+
+    // For exchange proposals, calculate 24-hour expiration
+    const exchange24HourExpiry = isExchangeProposal
+        ? new Date(
+            Big(proposal.submission_time).div(1000000).toNumber() +
+            EXCHANGE_EXPIRY_MS,
+        )
+        : null;
+
     let timestamp;
     switch (status) {
         case "Expired":
         case "Pending":
-            timestamp = expiresAt;
+            // Use 24-hour expiry for exchange proposals, otherwise use policy period
+            timestamp = (isExchangeProposal && exchange24HourExpiry) ? exchange24HourExpiry : expiresAt;
             break;
 
         default:
@@ -303,15 +340,85 @@ export function ProposalSidebar({
                 <div className="absolute left-[11px] top-1 bottom-2 w-px bg-muted-foreground/20" />
             </div>
 
-            {transaction && (
-                <Link
-                    href={transaction.nearblocks_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex font-medium text-sm items-center gap-1.5"
-                >
-                    View Transaction <ArrowUpRight className="size-4" />
-                </Link>
+            {/* Transaction Links */}
+            {(isExecuted || isFailed) && (
+                <>
+                    {/* For exchange proposals, show intents explorer link */}
+                    {!isFailed && isExchangeProposal && depositAddress ? (
+                        <Link
+                            href={`https://explorer.near-intents.org/transactions/${depositAddress}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex font-medium text-sm items-center gap-1.5"
+                        >
+                            View Transaction <ArrowUpRight className="size-4" />
+                        </Link>
+                    ) : (
+                        /* For other proposals, show regular transaction link */
+                        transaction && (
+                            <Link
+                                href={transaction.nearblocks_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex font-medium text-sm items-center gap-1.5"
+                            >
+                                View Transaction <ArrowUpRight className="size-4" />
+                            </Link>
+                        )
+                    )}
+                </>
+            )}
+
+            {/* Exchange Swap Status - Show for executed exchange proposals */}
+            {isExecuted && isExchangeProposal && swapStatus && (
+                <>
+                    {(swapStatus.status === "KNOWN_DEPOSIT_TX" ||
+                        swapStatus.status === "PENDING_DEPOSIT" ||
+                        swapStatus.status === "INCOMPLETE_DEPOSIT" ||
+                        swapStatus.status === "PROCESSING") && (
+                            <InfoAlert
+                                className="inline-flex"
+                                message={
+                                    <span>
+                                        <strong>Exchanging Tokens</strong>
+                                        <br />
+                                        This request has been approved by the team. Token
+                                        exchange is now in progress and may take some time.
+                                    </span>
+                                }
+                            />
+                        )}
+
+                    {/* Failed/Refunded Status */}
+                    {(swapStatus.status === "FAILED" || swapStatus.status === "REFUNDED") && (
+                        <InfoAlert
+                            className="inline-flex"
+                            message={
+                                <span>
+                                    <strong>Request Failed</strong>
+                                    <br />
+                                    The team approved this request, but it failed due to rate fluctuations. Please create a new request and try again.
+                                </span>
+                            }
+                        />
+                    )}
+                </>
+            )}
+
+            {/* Exchange Proposal 24-Hour Warning */}
+            {isPending && isExchangeProposal && exchange24HourExpiry && (
+                <InfoAlert
+                    className="inline-flex"
+                    message={
+                        <span>
+                            <strong>Voting period: 24 hours</strong>
+                            <br />
+                            This exchange request has a 24-hour voting duration.
+                            Approve this request within this time, or the request
+                            will expire.
+                        </span>
+                    }
+                />
             )}
 
             {/* Insufficient Balance Warning */}
