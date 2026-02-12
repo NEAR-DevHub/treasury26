@@ -20,6 +20,7 @@ import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TokenAmountDisplay } from "@/components/token-display";
 import { TransactionHashCell } from "@/features/activity";
+import { getFromAccount, getToAccount } from "@/features/activity/utils/history-utils";
 
 interface ActivityTableProps {
     activities: RecentActivity[];
@@ -57,30 +58,6 @@ export function ActivityTable({
 
     const getTypeLabel = (amount: string) => {
         return parseFloat(amount) > 0 ? "Payment Received" : "Payment Send";
-    };
-
-    /**
-     * Determines the sender of a transaction
-     * For received payments: show the counterparty who sent funds
-     * For sent payments: show the signer who initiated the transaction
-     */
-    const getFromAccount = (activity: RecentActivity, isReceived: boolean) => {
-        if (isReceived && activity.counterparty) {
-            return activity.counterparty;
-        }
-        return activity.signerId || "—";
-    };
-
-    /**
-     * Determines the recipient of a transaction
-     * For sent payments: show receiverId (primary), fallback to counterparty, then treasuryId
-     * For received payments: show treasuryId (the treasury is always the recipient)
-     */
-    const getToAccount = (activity: RecentActivity, isReceived: boolean) => {
-        if (!isReceived) {
-            return activity.receiverId || activity.counterparty || treasuryId || "—";
-        }
-        return treasuryId || "—";
     };
 
 
@@ -163,7 +140,7 @@ export function ActivityTable({
                                         </TableCell>
                                         <TableCell>
                                             <span className="text-sm">
-                                                {getToAccount(activity, isReceived)}
+                                                {getToAccount(activity, isReceived, treasuryId)}
                                             </span>
                                         </TableCell>
                                         <TableCell className="text-right pr-6">

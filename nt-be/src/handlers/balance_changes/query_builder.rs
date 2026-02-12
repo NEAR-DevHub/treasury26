@@ -178,7 +178,7 @@ mod tests {
 
         let (conditions, param_index) = build_where_conditions(&filters);
 
-        assert_eq!(conditions.len(), 5); // Base conditions: account_id, 3x counterparty filters, near:total filter
+        assert_eq!(conditions.len(), 6); // Base conditions: account_id, 3x counterparty filters, near:total filter, swap deposit exclusion subquery
         assert_eq!(param_index, 2);
     }
 
@@ -198,10 +198,10 @@ mod tests {
 
         let (conditions, param_index) = build_where_conditions(&filters);
 
-        assert_eq!(conditions.len(), 8); // Base (5) + date (1) + token (1) + txn_type (1)
+        assert_eq!(conditions.len(), 9); // Base (6) + date (1) + token (1) + txn_type (1)
         assert_eq!(param_index, 4); // 1 (account_id) + 1 (date) + 1 (tokens) + starts at 2
         assert!(conditions.contains(&"block_time >= $2".to_string()));
-        assert!(conditions.contains(&"token_id = ANY($3)".to_string()));
+        assert!(conditions.iter().any(|c| c.contains("token_id = ANY($3)")));
         assert!(conditions.iter().any(|c| c.contains("amount < 0")));
     }
 }

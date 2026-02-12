@@ -51,3 +51,49 @@ export function getHistoryDescription(
     return `Sent and received transactions (${duration})`;
 }
 
+/**
+ * Activity type for helper functions
+ */
+export interface ActivityAccount {
+    counterparty: string | null;
+    signerId: string | null;
+    receiverId: string | null;
+}
+
+/**
+ * Determines the sender of a transaction
+ * For received payments: show counterparty (the sender)
+ * For sent payments: show signerId (the account that initiated the transaction)
+ * 
+ * @param activity - The activity object containing counterparty and signerId
+ * @param isReceived - Whether this is a received payment (amount > 0)
+ * @returns The sender account ID or "—" if not available
+ */
+export function getFromAccount(activity: ActivityAccount, isReceived: boolean): string {
+    if (isReceived && activity.counterparty) {
+        return activity.counterparty;
+    }
+    return activity.signerId || "—";
+}
+
+/**
+ * Determines the recipient of a transaction
+ * For sent payments: show receiverId (primary), fallback to counterparty, then treasuryId
+ * For received payments: show treasuryId (the treasury is always the recipient)
+ * 
+ * @param activity - The activity object containing receiverId and counterparty
+ * @param isReceived - Whether this is a received payment (amount > 0)
+ * @param treasuryId - The treasury account ID (recipient for received payments)
+ * @returns The recipient account ID or "—" if not available
+ */
+export function getToAccount(
+    activity: ActivityAccount,
+    isReceived: boolean,
+    treasuryId: string | null | undefined
+): string {
+    if (!isReceived) {
+        return activity.receiverId || activity.counterparty || treasuryId || "—";
+    }
+    return treasuryId || "—";
+}
+

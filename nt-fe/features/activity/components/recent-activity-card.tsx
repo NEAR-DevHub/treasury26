@@ -23,7 +23,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { cn } from "@/lib/utils";
-import { formatHistoryDuration } from "../utils/history-utils";
+import { formatHistoryDuration, getFromAccount, getToAccount } from "../utils/history-utils";
 import { useState, useMemo, useEffect } from "react";
 import type { RecentActivity as RecentActivityType } from "@/lib/api";
 
@@ -233,20 +233,15 @@ export function RecentActivity() {
 
         const isReceived = parseFloat(activity.amount) > 0;
 
-        // If received → show "From counterparty"
-        if (isReceived && activity.counterparty) {
-            return `from ${activity.counterparty}`;
+        // For received payments: show sender
+        if (isReceived) {
+            const from = getFromAccount(activity, isReceived);
+            return from !== "—" ? `from ${from}` : "from unknown";
         }
 
-        // If sent → show "To receiver" (fall back to counterparty)
-        if (!isReceived) {
-            const to = activity.receiverId || activity.counterparty;
-            if (to) return `to ${to}`;
-        }
-
-        return isReceived
-            ? `from ${activity.counterparty || "unknown"}`
-            : "to unknown";
+        // For sent payments: show recipient
+        const to = getToAccount(activity, isReceived, treasuryId);
+        return to !== "—" ? `to ${to}` : "to unknown";
     };
 
     const historyDescription = formatHistoryDuration(historyMonths);
