@@ -11,13 +11,6 @@ use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// Request body for creating a challenge
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ChallengeRequest {
-    pub account_id: String,
-}
-
 /// Response body for challenge creation
 #[derive(Debug, Serialize)]
 pub struct ChallengeResponse {
@@ -49,7 +42,6 @@ pub struct MeResponse {
 /// Create a new authentication challenge (nonce) for the account
 pub async fn create_challenge(
     State(state): State<Arc<AppState>>,
-    Json(request): Json<ChallengeRequest>,
 ) -> Result<Json<ChallengeResponse>, AuthError> {
     // Generate a 32-byte random nonce
     let mut nonce = [0u8; 32];
@@ -59,9 +51,8 @@ pub async fn create_challenge(
     sqlx::query!(
         r#"
         INSERT INTO auth_challenges (account_id, nonce, expires_at)
-        VALUES ($1, $2, NOW() + INTERVAL '15 minutes')
+        VALUES ('', $1, NOW() + INTERVAL '15 minutes')
         "#,
-        request.account_id,
         &nonce[..]
     )
     .execute(&state.db_pool)
@@ -85,15 +76,21 @@ pub async fn login(
     jar: CookieJar,
     Json(request): Json<LoginRequest>,
 ) -> Result<(CookieJar, Json<MeResponse>), AuthError> {
+    let nonce_32: [u8; 32] = request
+        .nonce
+        .0
+        .as_slice()
+        .try_into()
+        .map_err(|_| AuthError::InvalidNonce("Nonce must be 32 bytes".to_string()))?;
+
     // Verify the challenge exists and hasn't expired
-    let challenge = sqlx::query!(
+    let challenge = sqlx::query(
         r#"
         SELECT id FROM auth_challenges
-        WHERE account_id = $1 AND nonce = $2 AND expires_at > NOW()
+        WHERE nonce = $1 AND expires_at > NOW()
         "#,
-        request.account_id.as_str(),
-        &request.nonce.0[..]
     )
+    .bind(request.nonce.0.as_slice())
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
@@ -103,23 +100,18 @@ pub async fn login(
     }
 
     // Delete the used challenge
-    sqlx::query!(
-        "DELETE FROM auth_challenges WHERE account_id = $1 AND nonce = $2",
-        request.account_id.as_str(),
-        &request.nonce.0[..]
-    )
-    .execute(&state.db_pool)
-    .await
-    .ok();
+    sqlx::query("DELETE FROM auth_challenges WHERE nonce = $1")
+        .bind(request.nonce.0.as_slice())
+        .execute(&state.db_pool)
+        .await
+        .ok();
 
     let signature_type = request.public_key.key_type();
     let signature = Signature::from_parts(signature_type, &request.signature.0)
         .map_err(|e| AuthError::InvalidSignature(format!("Invalid signature: {}", e)))?;
     let verified = NEP413Payload {
         message: request.message,
-        nonce: request.nonce.0[..32]
-            .try_into()
-            .map_err(|_| AuthError::InvalidNonce("Nonce must be 32 bytes".to_string()))?,
+        nonce: nonce_32,
         recipient: request.recipient,
         callback_url: request.callback_url,
     }

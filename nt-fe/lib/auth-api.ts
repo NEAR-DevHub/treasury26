@@ -35,15 +35,12 @@ export interface AuthUserInfo {
 // ============================================================================
 
 /**
- * Request an authentication challenge (nonce) for the account
- * The nonce must be signed by the wallet to prove ownership
+ * Request an authentication challenge (nonce).
  */
-export async function getAuthChallenge(
-    accountId: string,
-): Promise<AuthChallengeResponse> {
+export async function getAuthChallenge(): Promise<AuthChallengeResponse> {
     const response = await axios.post<AuthChallengeResponse>(
         `${BACKEND_API_BASE}/auth/challenge`,
-        { accountId: accountId },
+        {},
         { withCredentials: true },
     );
     return response.data;
