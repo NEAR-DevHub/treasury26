@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{AppState, constants::TREASURY_FACTORY_CONTRACT_ID, services::register_new_dao};
 
-pub const TREASURY_CREATE_DEPOSIT_IN_MICRONEAR: u128 = 5458190;
+pub const TREASURY_CREATE_DEPOSIT_IN_MICRONEAR: u128 = 5418043;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
