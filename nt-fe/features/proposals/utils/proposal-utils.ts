@@ -6,10 +6,12 @@ import { decodeArgs, decodeProposalDescription } from "@/lib/utils";
 
 // Exchange proposal expiration constants
 export const EXCHANGE_EXPIRY_HOURS = 24;
-export const EXCHANGE_EXPIRY_NS = EXCHANGE_EXPIRY_HOURS * 60 * 60 * 1_000_000_000; // 24 hours in nanoseconds
+export const EXCHANGE_EXPIRY_NS =
+    EXCHANGE_EXPIRY_HOURS * 60 * 60 * 1_000_000_000; // 24 hours in nanoseconds
 export const EXCHANGE_EXPIRY_MS = EXCHANGE_EXPIRY_HOURS * 60 * 60 * 1000; // 24 hours in milliseconds
 
-const BULK_PAYMENT_CONTRACT_ID = process.env.NEXT_PUBLIC_BULK_PAYMENT_CONTRACT_ID || "bulkpayment.near";
+const BULK_PAYMENT_CONTRACT_ID =
+    process.env.NEXT_PUBLIC_BULK_PAYMENT_CONTRACT_ID || "bulkpayment.near";
 
 function isVestingProposal(proposal: Proposal): boolean {
     if (!("FunctionCall" in proposal.kind)) return false;
@@ -27,14 +29,24 @@ function isBatchPaymentProposal(proposal: Proposal): boolean {
 
     // Check if calling bulk payment contract directly (NEAR payments)
     if (functionCall.receiver_id === BULK_PAYMENT_CONTRACT_ID) {
-        if (functionCall.actions.some(action => action.method_name === 'approve_list')) {
+        if (
+            functionCall.actions.some(
+                (action) => action.method_name === "approve_list",
+            )
+        ) {
             return true;
         }
     }
 
     // Check if calling intents contract
-    if (functionCall.actions.some(action => action.method_name === 'mt_transfer_call')) {
-        const mtTransferAction = functionCall.actions.find(action => action.method_name === 'mt_transfer_call');
+    if (
+        functionCall.actions.some(
+            (action) => action.method_name === "mt_transfer_call",
+        )
+    ) {
+        const mtTransferAction = functionCall.actions.find(
+            (action) => action.method_name === "mt_transfer_call",
+        );
         if (mtTransferAction) {
             const args = decodeArgs(mtTransferAction.args);
             if (args?.receiver_id === BULK_PAYMENT_CONTRACT_ID) {
@@ -44,8 +56,14 @@ function isBatchPaymentProposal(proposal: Proposal): boolean {
     }
 
     // Check if calling ft contract
-    if (functionCall.actions.some(action => action.method_name === 'ft_transfer_call')) {
-        const ftTransferAction = functionCall.actions.find(action => action.method_name === 'ft_transfer_call');
+    if (
+        functionCall.actions.some(
+            (action) => action.method_name === "ft_transfer_call",
+        )
+    ) {
+        const ftTransferAction = functionCall.actions.find(
+            (action) => action.method_name === "ft_transfer_call",
+        );
         if (ftTransferAction) {
             const args = decodeArgs(ftTransferAction.args);
             if (args?.receiver_id === BULK_PAYMENT_CONTRACT_ID) {
@@ -251,7 +269,10 @@ export function getProposalStatus(
             // For exchange proposals, check if 24 hours have passed
             const proposalType = getProposalUIKind(proposal);
             if (proposalType === "Exchange") {
-                if ((submissionTime + EXCHANGE_EXPIRY_NS) / 1_000_000 < Date.now()) {
+                if (
+                    (submissionTime + EXCHANGE_EXPIRY_NS) / 1_000_000 <
+                    Date.now()
+                ) {
                     return "Expired";
                 }
             }
@@ -286,6 +307,30 @@ export function getProposalRequiredFunds(
         const functionCall = proposal.kind.FunctionCall;
         const actions = functionCall.actions;
 
+        // Check for near_withdraw (wrap.near unwrap)
+        const nearWithdrawAction = actions.find(
+            (a) => a.method_name === "near_withdraw",
+        );
+        if (nearWithdrawAction && functionCall.receiver_id === "wrap.near") {
+            const args = decodeArgs(nearWithdrawAction.args);
+            if (args?.amount) {
+                return { tokenId: "wrap.near", amount: args.amount };
+            }
+        }
+
+        // Check for near_deposit (wrap.near wrap) - uses deposit amount
+        const nearDepositAction = actions.find(
+            (a) => a.method_name === "near_deposit",
+        );
+        if (nearDepositAction && functionCall.receiver_id === "wrap.near") {
+            if (
+                nearDepositAction.deposit &&
+                nearDepositAction.deposit !== "0"
+            ) {
+                return { tokenId: "near", amount: nearDepositAction.deposit };
+            }
+        }
+
         // Check for ft_transfer or ft_transfer_call (Payment Request)
         const ftTransferAction = actions.find(
             (a) =>
@@ -300,7 +345,7 @@ export function getProposalRequiredFunds(
                 return {
                     tokenId:
                         ftTransferAction.method_name === "mt_transfer" ||
-                            ftTransferAction.method_name === "mt_transfer_call"
+                        ftTransferAction.method_name === "mt_transfer_call"
                             ? args.token_id
                             : functionCall.receiver_id,
                     amount: args.amount,
@@ -329,30 +374,6 @@ export function getProposalRequiredFunds(
             const args = decodeArgs(mtTransferAction.args);
             if (args?.amount && args?.token_id) {
                 return { tokenId: args.token_id, amount: args.amount };
-            }
-        }
-
-        // Check for near_withdraw (wrap.near unwrap)
-        const nearWithdrawAction = actions.find(
-            (a) => a.method_name === "near_withdraw",
-        );
-        if (nearWithdrawAction && functionCall.receiver_id === "wrap.near") {
-            const args = decodeArgs(nearWithdrawAction.args);
-            if (args?.amount) {
-                return { tokenId: "wrap.near", amount: args.amount };
-            }
-        }
-
-        // Check for near_deposit (wrap.near wrap) - uses deposit amount
-        const nearDepositAction = actions.find(
-            (a) => a.method_name === "near_deposit",
-        );
-        if (nearDepositAction && functionCall.receiver_id === "wrap.near") {
-            if (
-                nearDepositAction.deposit &&
-                nearDepositAction.deposit !== "0"
-            ) {
-                return { tokenId: "near", amount: nearDepositAction.deposit };
             }
         }
 
