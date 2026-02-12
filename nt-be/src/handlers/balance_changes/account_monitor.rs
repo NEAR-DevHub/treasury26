@@ -457,7 +457,7 @@ pub async fn discover_ft_tokens_from_fastnear(
 /// 1. Calls mt_tokens_for_owner on intents.near to get all tokens held by the account
 /// 2. For newly discovered intents tokens, seeds an initial balance change record
 /// 3. The next monitoring cycle will automatically fill gaps for these tokens
-async fn discover_intents_tokens(
+pub async fn discover_intents_tokens(
     pool: &PgPool,
     network: &NetworkConfig,
     account_id: &str,

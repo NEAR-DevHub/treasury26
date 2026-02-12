@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
-use super::account_monitor::discover_ft_tokens_from_fastnear;
+use super::account_monitor::{discover_ft_tokens_from_fastnear, discover_intents_tokens};
 use super::gap_filler::fill_gaps_with_hints;
 use super::staking_rewards::is_staking_token;
 use super::swap_detector::{detect_swaps_from_api, store_detected_swaps};
@@ -132,6 +132,25 @@ async fn run_dirty_task(
         Err(e) => {
             log::warn!(
                 "[dirty-monitor] {}: Error discovering FT tokens via FastNear: {}",
+                account_id,
+                e
+            );
+        }
+        _ => {}
+    }
+
+    // Discover intents tokens via mt_tokens_for_owner snapshot
+    match discover_intents_tokens(pool, network, account_id, up_to_block).await {
+        Ok(count) if count > 0 => {
+            log::info!(
+                "[dirty-monitor] {}: Discovered {} new intents tokens",
+                account_id,
+                count
+            );
+        }
+        Err(e) => {
+            log::warn!(
+                "[dirty-monitor] {}: Error discovering intents tokens: {}",
                 account_id,
                 e
             );

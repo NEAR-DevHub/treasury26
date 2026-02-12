@@ -1,4 +1,5 @@
-use near_api::{NetworkConfig, RPCEndpoint};
+use near_api::{NetworkConfig, RPCEndpoint, Signer};
+use nt_be::AppState;
 use std::process::{Child, Command};
 use std::sync::Once;
 use std::time::Duration;
@@ -47,6 +48,75 @@ pub fn create_archival_network() -> NetworkConfig {
 pub fn get_fastnear_api_key() -> String {
     load_test_env();
     std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env")
+}
+
+/// Build a full AppState for integration tests that need dirty monitor, etc.
+///
+/// Mirrors `src/utils/test_utils.rs::build_test_state()` but accessible from
+/// integration tests (which can't use #[cfg(test)] items from the library).
+pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
+    load_test_env();
+
+    let env_vars = nt_be::utils::env::EnvVars::default();
+    let http_client = reqwest::Client::new();
+
+    let base_url = &env_vars.defillama_api_base_url;
+    let defillama_client =
+        nt_be::services::DeFiLlamaClient::with_base_url(http_client.clone(), base_url.clone());
+    let price_service = nt_be::services::PriceLookupService::new(db_pool.clone(), defillama_client);
+
+    let network = NetworkConfig {
+        rpc_endpoints: vec![
+            RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
+                .with_api_key(env_vars.fastnear_api_key.clone()),
+        ],
+        ..NetworkConfig::mainnet()
+    };
+
+    let archival_network = NetworkConfig {
+        rpc_endpoints: vec![
+            RPCEndpoint::new(
+                "https://archival-rpc.mainnet.fastnear.com/"
+                    .parse()
+                    .unwrap(),
+            )
+            .with_api_key(env_vars.fastnear_api_key.clone()),
+        ],
+        ..NetworkConfig::mainnet()
+    };
+
+    let transfer_hint_service = if env_vars.transfer_hints_enabled {
+        use nt_be::handlers::balance_changes::transfer_hints::{
+            TransferHintService, fastnear::FastNearProvider,
+        };
+        let provider = if let Some(base_url) = &env_vars.transfer_hints_base_url {
+            FastNearProvider::with_base_url(archival_network.clone(), base_url.clone())
+        } else {
+            FastNearProvider::new(archival_network.clone())
+        }
+        .with_api_key(&env_vars.fastnear_api_key);
+        Some(TransferHintService::new().with_provider(provider))
+    } else {
+        None
+    };
+
+    AppState {
+        cache: nt_be::utils::cache::Cache::new(),
+        telegram_client: nt_be::utils::telegram::TelegramClient::default(),
+        http_client,
+        signer: Signer::from_secret_key(env_vars.signer_key.clone())
+            .expect("Failed to create signer."),
+        bulk_payment_signer: Signer::from_secret_key(env_vars.bulk_payment_signer.clone())
+            .expect("Failed to create bulk payment signer"),
+        signer_id: env_vars.signer_id.clone(),
+        network,
+        archival_network,
+        bulk_payment_contract_id: env_vars.bulk_payment_contract_id.clone(),
+        env_vars,
+        db_pool,
+        price_service,
+        transfer_hint_service,
+    }
 }
 
 /// Start a mock DeFiLlama server with test data
