@@ -65,6 +65,11 @@ interface TokenInputProps<
      * Default: false
      */
     showInsufficientBalance?: boolean;
+    /**
+     * When true, font size will dynamically adjust based on input length to prevent overflow.
+     * Default: false
+     */
+    dynamicFontSize?: boolean;
 }
 
 export function TokenInput<
@@ -81,6 +86,7 @@ export function TokenInput<
     customValue,
     infoMessage,
     showInsufficientBalance = false,
+    dynamicFontSize = false,
 }: TokenInputProps<TFieldValues, TTokenPath>) {
     const { treasuryId } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
@@ -176,6 +182,7 @@ export function TokenInput<
                                 <LargeInput
                                     type={readOnly ? "text" : "number"}
                                     borderless
+                                    dynamicFontSize={dynamicFontSize}
                                     onChange={
                                         readOnly
                                             ? undefined

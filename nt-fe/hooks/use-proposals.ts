@@ -97,14 +97,14 @@ export function useSwapStatus(
     queryKey: ["swap-status", depositAddress, depositMemo],
     queryFn: () => getSwapStatus(depositAddress!, depositMemo || undefined),
     enabled: enabled && !!depositAddress,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60, // 1 minute
     refetchInterval: (query) => {
       const data = query.state.data;
       // If status is terminal (SUCCESS, REFUNDED, FAILED), stop polling
       if (data?.status === "SUCCESS" || data?.status === "REFUNDED" || data?.status === "FAILED") {
         return false;
       }
-      return 1000 * 60 * 5;
+      return 1000 * 60; // 1 minute
     },
     retry: (failureCount, error) => {
       // Don't retry on 404 (deposit address not found)

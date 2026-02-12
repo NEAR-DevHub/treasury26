@@ -189,6 +189,7 @@ function Step1({ handleNext }: StepProps) {
                     amountName="sellAmount"
                     tokenName="sellToken"
                     showInsufficientBalance={true}
+                    dynamicFontSize={true}
                 />
                 {/* Swap Arrow */}
                 <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
@@ -216,6 +217,7 @@ function Step1({ handleNext }: StepProps) {
                 readOnly={true}
                 loading={isLoadingQuote}
                 customValue={quoteData?.quote.amountOutFormatted || ""}
+                dynamicFontSize={true}
             />
 
             {/* Rate and Slippage */}
@@ -589,21 +591,18 @@ export default function ExchangePage() {
                 proposalBond,
             };
 
-            if (isSellingNativeNEAR) {
-                const proposal = buildNativeNEARProposal(proposalParams);
-                await createProposal("Exchange request submitted", {
-                    treasuryId: selectedTreasury,
-                    proposal,
-                    proposalBond,
-                });
-            } else {
-                const proposal = buildFungibleTokenProposal(proposalParams);
-                await createProposal("Exchange request submitted", {
-                    treasuryId: selectedTreasury,
-                    proposal,
-                    proposalBond,
-                });
-            }
+            const result = isSellingNativeNEAR
+                ? buildNativeNEARProposal(proposalParams)
+                : buildFungibleTokenProposal(proposalParams);
+
+            await createProposal("Exchange request submitted", {
+                treasuryId: selectedTreasury,
+                proposal: result.proposal,
+                proposalBond,
+                additionalTransactions: result.storageDepositTransaction
+                    ? [result.storageDepositTransaction]
+                    : undefined,
+            });
 
             form.reset();
             setStep(0);
