@@ -422,7 +422,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         let storageBytes: Big;
         try {
             const estimated = await estimateProposalStorage(params.proposal);
-            storageBytes = Big(estimated + 10);
+            storageBytes = Big(estimated + 50);
         } catch (e) {
             storageBytes = FALLBACK_PROPOSAL_STORAGE_BYTES;
         }
@@ -506,7 +506,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         try {
             const action = `Vote${votes[0].vote}`;
             const estimated = await estimateVoteStorage(undefined, action);
-            voteStorageBytes = Big(estimated + 5);
+            voteStorageBytes = Big(estimated + 10);
         } catch (e) {
             voteStorageBytes = FALLBACK_VOTE_STORAGE_BYTES;
         }
