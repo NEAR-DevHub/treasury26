@@ -153,7 +153,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     if (!mounted) {
         // Render placeholder that preserves layout space
         return (
-            <div className="hidden lg:block lg:static lg:w-16 h-screen bg-card border-r" />
+            <div className="hidden lg:block lg:static lg:w-16 h-dvh lg:h-screen bg-card border-r" />
         );
     }
 
@@ -170,7 +170,7 @@ export function Sidebar({ onClose }: SidebarProps) {
             {/* Sidebar */}
             <div
                 className={cn(
-                    "fixed left-0 top-0 z-40 flex gap-2 h-screen flex-col bg-card border-r lg:static lg:z-auto overflow-hidden",
+                    "fixed left-0 top-0 z-40 flex gap-2 h-dvh lg:h-screen flex-col bg-card border-r lg:static lg:z-auto overflow-hidden max-lg:pt-[env(safe-area-inset-top)]",
                     hasInitialized && "transition-all duration-300",
                     isMobile
                         ? isOpen
@@ -258,7 +258,7 @@ export function Sidebar({ onClose }: SidebarProps) {
 
                 <div
                     className={cn(
-                        "flex flex-col gap-1 pb-2",
+                        "flex flex-col gap-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:pb-2",
                         isReduced ? "px-2" : "px-3.5",
                     )}
                 >
