@@ -94,14 +94,6 @@ Fix any build or test failures before proceeding.
 When done, commit with a message referencing the issue:
   feat: <description>
   Closes #<issue-number>
-
-Then create a PR:
-  gh pr create --title '<short title>' --body 'Closes #<issue-number>
-  ## Summary
-  <what was done>
-  ## Test plan
-  - cargo build passes
-  - cargo test passes'
 "
 ```
 
@@ -121,11 +113,17 @@ docker exec $(docker ps -q --filter label=devcontainer.local_folder=$(pwd)) \
 
 ## Step 6: Report result
 
-After Claude Code finishes, check the result:
+After Claude Code finishes, check the commits from the host:
 
 ```bash
-devcontainer exec --workspace-folder . git log --oneline -5
-devcontainer exec --workspace-folder . gh pr list --head $(git branch --show-current)
+git log --oneline -5
 ```
 
-Report the PR URL to the user, or any errors if the implementation failed.
+Push the branch and create a draft PR from the host (gh is not authenticated in the container):
+
+```bash
+git push -u origin <branch-name>
+gh pr create --draft --title "<short title>" --body "Closes #<issue-number>"
+```
+
+Report the PR URL to the user.
