@@ -68,6 +68,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         )
         // Balance history endpoints
         .route(
+            "/api/balance-history/completeness",
+            get(balance_changes::get_completeness),
+        )
+        .route(
             "/api/balance-history/chart",
             get(handlers::balance_changes::history::get_balance_chart),
         )

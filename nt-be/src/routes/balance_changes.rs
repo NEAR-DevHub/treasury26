@@ -10,6 +10,7 @@ use sqlx::types::chrono::{DateTime, Utc};
 use std::sync::Arc;
 
 use crate::AppState;
+use crate::handlers::balance_changes::completeness;
 use crate::handlers::balance_changes::gap_filler;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_metadata};
 
@@ -44,9 +45,19 @@ pub struct BalanceChange {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BalanceChangesResponse {
+    pub data: Vec<BalanceChange>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_synced_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecentActivityResponse {
     pub data: Vec<RecentActivity>,
     pub total: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_synced_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -82,15 +93,17 @@ pub struct RecentActivity {
 pub async fn get_balance_changes(
     State(state): State<Arc<AppState>>,
     Query(params): Query<BalanceChangesQuery>,
-) -> Result<Json<Vec<BalanceChange>>, (StatusCode, Json<Value>)> {
+) -> Result<Json<BalanceChangesResponse>, (StatusCode, Json<Value>)> {
     let limit = params.limit.unwrap_or(100).min(1000);
     let offset = params.offset.unwrap_or(0);
     let exclude_snapshots = params.exclude_snapshots.unwrap_or(false);
 
+    let last_synced_at = fetch_last_synced_at(&state.db_pool, &params.account_id).await;
+
     let changes = if let Some(token_id) = params.token_id {
         sqlx::query_as::<_, BalanceChange>(
             r#"
-            SELECT id, account_id, block_height, block_time, token_id, 
+            SELECT id, account_id, block_height, block_time, token_id,
                    receipt_id, transaction_hashes, counterparty, signer_id, receiver_id,
                    amount, balance_before, balance_after, created_at
             FROM balance_changes
@@ -110,7 +123,7 @@ pub async fn get_balance_changes(
     } else {
         sqlx::query_as::<_, BalanceChange>(
             r#"
-            SELECT id, account_id, block_height, block_time, token_id, 
+            SELECT id, account_id, block_height, block_time, token_id,
                    receipt_id, transaction_hashes, counterparty, signer_id, receiver_id,
                    amount, balance_before, balance_after, created_at
             FROM balance_changes
@@ -129,7 +142,10 @@ pub async fn get_balance_changes(
     };
 
     match changes {
-        Ok(data) => Ok(Json(data)),
+        Ok(data) => Ok(Json(BalanceChangesResponse {
+            data,
+            last_synced_at,
+        })),
         Err(e) => {
             log::error!("Failed to fetch balance changes: {}", e);
             Err((
@@ -157,6 +173,8 @@ pub async fn get_recent_activity(
 ) -> Result<Json<RecentActivityResponse>, (StatusCode, Json<Value>)> {
     let limit = params.limit.unwrap_or(50).min(100);
     let offset = params.offset.unwrap_or(0);
+
+    let last_synced_at = fetch_last_synced_at(&state.db_pool, &params.account_id).await;
 
     // Helper function to convert token_id to metadata API format
     fn token_id_for_metadata(token_id: &str) -> Option<String> {
@@ -424,6 +442,7 @@ pub async fn get_recent_activity(
     Ok(Json(RecentActivityResponse {
         data: activities,
         total,
+        last_synced_at,
     }))
 }
 
@@ -503,9 +522,68 @@ pub async fn fill_gaps(
     }
 }
 
+async fn fetch_last_synced_at(pool: &sqlx::PgPool, account_id: &str) -> Option<DateTime<Utc>> {
+    sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
+        "SELECT last_synced_at FROM monitored_accounts WHERE account_id = $1",
+    )
+    .bind(account_id)
+    .fetch_optional(pool)
+    .await
+    .ok()
+    .flatten() // unwrap Option<Option<DateTime>> from fetch_optional
+    .flatten() // unwrap Option<DateTime> from nullable column
+}
+
 async fn get_current_block_height(
     _network: &near_api::NetworkConfig,
 ) -> Result<u64, Box<dyn std::error::Error>> {
     let block = near_api::Chain::block().fetch_from_mainnet().await?;
     Ok(block.header.height)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletenessQuery {
+    pub account_id: String,
+}
+
+pub async fn get_completeness(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<CompletenessQuery>,
+) -> Result<Json<completeness::CompletenessResponse>, (StatusCode, Json<Value>)> {
+    // Get current block height for gap detection
+    let up_to_block = match get_current_block_height(&state.network).await {
+        Ok(height) => height as i64,
+        Err(e) => {
+            log::error!("Failed to get current block height: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Failed to get current block height",
+                    "details": e.to_string()
+                })),
+            ));
+        }
+    };
+
+    match completeness::check_completeness(
+        &state.db_pool,
+        &state.archival_network,
+        &params.account_id,
+        up_to_block,
+    )
+    .await
+    {
+        Ok(response) => Ok(Json(response)),
+        Err(e) => {
+            log::error!("Failed to check completeness: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Failed to check completeness",
+                    "details": e.to_string()
+                })),
+            ))
+        }
+    }
 }
