@@ -82,13 +82,33 @@ pub struct BalanceSnapshot {
     pub value_usd: Option<f64>, // balance * price_usd (null if unavailable)
 }
 
+/// Chart response with metadata
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChartResponse {
+    #[serde(flatten)]
+    pub data: HashMap<String, Vec<BalanceSnapshot>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_synced_at: Option<DateTime<Utc>>,
+}
+
 /// Chart API - returns balance snapshots at intervals
 ///
-/// Response format: { "token_id": [{"timestamp": "...", "balance": "...", "price_usd": ..., "value_usd": ...}] }
+/// Response format: { "token_id": [...], "lastSyncedAt": "..." }
 pub async fn get_balance_chart(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ChartRequest>,
-) -> Result<Json<HashMap<String, Vec<BalanceSnapshot>>>, (StatusCode, String)> {
+) -> Result<Json<ChartResponse>, (StatusCode, String)> {
+    let last_synced_at = sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
+        "SELECT last_synced_at FROM monitored_accounts WHERE account_id = $1",
+    )
+    .bind(&params.account_id)
+    .fetch_optional(&state.db_pool)
+    .await
+    .ok()
+    .flatten() // unwrap Option<Option<DateTime>> from fetch_optional
+    .flatten(); // unwrap Option<DateTime> from nullable column
+
     // Load prior balances (most recent balance_after for each token before start_time)
     let prior_balances = load_prior_balances(
         &state.db_pool,
@@ -122,7 +142,10 @@ pub async fn get_balance_chart(
     // Enrich snapshots with price data
     enrich_snapshots_with_prices(&mut snapshots, &state.price_service).await;
 
-    Ok(Json(snapshots))
+    Ok(Json(ChartResponse {
+        data: snapshots,
+        last_synced_at,
+    }))
 }
 
 #[derive(Debug, Deserialize)]
