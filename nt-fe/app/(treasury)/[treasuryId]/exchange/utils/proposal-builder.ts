@@ -8,6 +8,7 @@ import {
 } from "@/lib/near-proposal-builders";
 import { encodeToMarkdown, jsonToBase64 } from "@/lib/utils";
 import { getBatchStorageDepositIsRegistered } from "@/lib/api";
+import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
 interface ProposalBuilderParams {
     proposalData: IntentsQuoteResponse;
@@ -72,7 +73,7 @@ export function buildProposalDescription(
         slippage: slippageTolerance.toString(),
         quoteDeadline: deadline,
         timeEstimate: proposalData.quote.timeEstimate
-            ? `${proposalData.quote.timeEstimate} seconds`
+            ? proposalData.quote.timeEstimate.toString()
             : undefined,
         depositAddress: proposalData.quote.depositAddress,
         signature: proposalData.signature,
@@ -117,7 +118,7 @@ export async function buildNativeNEARProposal(
 
     // Check if treasury is registered on wrap.near
     const registrations = await getBatchStorageDepositIsRegistered([
-        { accountId: treasuryId, tokenId: "wrap.near" },
+        { accountId: treasuryId, tokenId: WRAP_NEAR_TOKEN_ID },
     ]);
 
     const isTreasuryRegistered =
@@ -126,14 +127,14 @@ export async function buildNativeNEARProposal(
     // 1. Storage deposit for treasury account on wrap.near (only if not registered)
     if (!isTreasuryRegistered) {
         additionalTransactions.push(
-            buildNep141StorageDepositTx("wrap.near", treasuryId),
+            buildNep141StorageDepositTx(WRAP_NEAR_TOKEN_ID, treasuryId),
         );
     }
 
     // 2. Storage deposit for deposit address on wrap.near (always needed)
     additionalTransactions.push(
         buildNep141StorageDepositTx(
-            "wrap.near",
+            WRAP_NEAR_TOKEN_ID,
             proposalData.quote.depositAddress,
         ),
     );
@@ -148,7 +149,7 @@ export async function buildNativeNEARProposal(
             ),
             kind: {
                 FunctionCall: {
-                    receiver_id: "wrap.near",
+                    receiver_id: WRAP_NEAR_TOKEN_ID,
                     actions: [
                         {
                             method_name: "near_deposit",
@@ -195,7 +196,7 @@ export async function buildFungibleTokenProposal(
     const amountInSmallestUnit = proposalData.quote.amountIn;
     const originAsset = sellToken.address;
     const isNearToken =
-        sellToken.network === "near" &&
+        sellToken.network === NEAR_NETWORK_ID &&
         !sellToken.address.startsWith("nep141:") &&
         !sellToken.address.startsWith("nep245:");
 
@@ -318,7 +319,7 @@ export async function buildNEARDepositProposal(
 
     // Check if treasury is registered on wrap.near
     const registrations = await getBatchStorageDepositIsRegistered([
-        { accountId: treasuryId, tokenId: "wrap.near" },
+        { accountId: treasuryId, tokenId: WRAP_NEAR_TOKEN_ID },
     ]);
     const isTreasuryRegistered =
         registrations.length > 0 && registrations[0].isRegistered;
@@ -328,7 +329,7 @@ export async function buildNEARDepositProposal(
     // Only add storage deposit if not registered
     if (!isTreasuryRegistered) {
         additionalTransactions.push(
-            buildNep141StorageDepositTx("wrap.near", treasuryId),
+            buildNep141StorageDepositTx(WRAP_NEAR_TOKEN_ID, treasuryId),
         );
     }
 
@@ -342,7 +343,7 @@ export async function buildNEARDepositProposal(
             ),
             kind: {
                 FunctionCall: {
-                    receiver_id: "wrap.near",
+                    receiver_id: WRAP_NEAR_TOKEN_ID,
                     actions: [
                         {
                             method_name: "near_deposit",
@@ -380,7 +381,7 @@ export function buildNEARWithdrawProposal(
             ),
             kind: {
                 FunctionCall: {
-                    receiver_id: "wrap.near",
+                    receiver_id: WRAP_NEAR_TOKEN_ID,
                     actions: [
                         {
                             method_name: "near_withdraw",

@@ -143,9 +143,9 @@ pub async fn fetch_lockup_contract(
 pub const GENERIC_POOL_ID: &AccountIdRef = AccountIdRef::new_or_panic("allnodes.poolv1.near");
 
 /// Response from staking pool's get_account method
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StakingPoolAccount {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub unstaked_balance: NearToken,
     pub staked_balance: NearToken,
     pub can_withdraw: bool,
@@ -161,7 +161,7 @@ pub struct LockupBalance {
     pub staked: NearToken,
     pub unstaked_balance: NearToken,
     pub can_withdraw: bool,
-    pub staking_pool_id: Option<String>,
+    pub staking_pool_id: Option<AccountId>,
 }
 
 #[allow(clippy::type_complexity)]
@@ -179,7 +179,11 @@ pub fn blockchain_lockup_builder(
         )>,
     >,
 > {
-    let postprocess = MultiQueryHandler::default();
+    let postprocess = MultiQueryHandler::new((
+        AccountViewHandler,
+        CallResultHandler::<NearToken>::new(),
+        CallResultHandler::<StakingPoolAccount>::new(),
+    ));
     MultiRequestBuilder::new(postprocess, Reference::Final)
         .add_query_builder(AccountAPI(lockup_account_id.clone()).view())
         .add_query_builder(
@@ -214,7 +218,7 @@ pub fn blockchain_lockup_builder(
                     unstaked_balance: staking_account.data.unstaked_balance,
                     can_withdraw: staking_account.data.can_withdraw,
                     total_allocated: lockup_original_amount,
-                    staking_pool_id: Some(pool_account_id.to_string()),
+                    staking_pool_id: Some(pool_account_id.clone()),
                 }
             },
         )

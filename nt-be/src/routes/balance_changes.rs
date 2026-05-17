@@ -3,6 +3,7 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
+use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::query_as;
@@ -20,7 +21,7 @@ use crate::{AppState, auth::OptionalAuthUser};
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BalanceChangesQuery {
-    pub account_id: String,
+    pub account_id: AccountId,
 
     // Pagination
     pub limit: Option<i64>,
@@ -223,7 +224,7 @@ pub async fn get_balance_changes_internal(
         with_pagination,
     );
 
-    let mut query = query_as::<_, BalanceChange>(&query_str).bind(&filters.account_id);
+    let mut query = query_as::<_, BalanceChange>(&query_str).bind(filters.account_id.as_str());
 
     // Bind date filters in order
     if let Some(ref cutoff) = filters.date_cutoff {
@@ -402,7 +403,7 @@ pub async fn get_balance_changes(
     user: OptionalAuthUser,
     Query(mut params): Query<BalanceChangesQuery>,
 ) -> Result<Json<Vec<EnrichedBalanceChange>>, (StatusCode, Json<Value>)> {
-    user.verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+    user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await
         .map_err(|(status, message)| (status, Json(serde_json::json!({ "error": message }))))?;
 
@@ -430,7 +431,7 @@ pub async fn get_balance_changes(
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FillGapsRequest {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub token_id: String,
     pub up_to_block: Option<i64>,
 }
@@ -439,7 +440,7 @@ pub struct FillGapsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct FillGapsResponse {
     pub gaps_filled: usize,
-    pub account_id: String,
+    pub account_id: AccountId,
     pub token_id: String,
     pub up_to_block: i64,
 }
@@ -449,7 +450,7 @@ pub async fn fill_gaps(
     user: OptionalAuthUser,
     Json(params): Json<FillGapsRequest>,
 ) -> Result<Json<FillGapsResponse>, (StatusCode, Json<Value>)> {
-    user.verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+    user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await
         .map_err(|(status, message)| (status, Json(serde_json::json!({ "error": message }))))?;
 
@@ -483,7 +484,7 @@ pub async fn fill_gaps(
     match gap_filler::fill_gaps(
         &state.db_pool,
         &state.archival_network,
-        &params.account_id,
+        params.account_id.as_str(),
         &params.token_id,
         up_to_block,
     )
@@ -518,7 +519,7 @@ async fn get_current_block_height(
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CompletenessQuery {
-    pub account_id: String,
+    pub account_id: AccountId,
     /// Start of the time range (ISO 8601)
     pub from: DateTime<Utc>,
     /// End of the time range (ISO 8601)
@@ -530,7 +531,7 @@ pub async fn get_completeness(
     user: OptionalAuthUser,
     Query(params): Query<CompletenessQuery>,
 ) -> Result<Json<completeness::CompletenessResponse>, (StatusCode, Json<Value>)> {
-    user.verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+    user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await
         .map_err(|(status, message)| (status, Json(serde_json::json!({ "error": message }))))?;
 

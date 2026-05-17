@@ -25,7 +25,7 @@ use crate::{
         intents_tokens::{find_token_by_symbol, find_unified_asset_id},
     },
     handlers::intents::confidential::balances::fetch_confidential_balances,
-    handlers::token::{TokenMetadata as TokenMetadataResponse, fetch_tokens_with_defuse_extension},
+    handlers::token::{TokenMetadata as TokenMetadataResponse, fetch_tokens_metadata_enriched},
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -445,7 +445,7 @@ pub async fn compute_user_assets(
     let ft_lockup_positions;
 
     if is_confidential {
-        intents_balances = fetch_confidential_balances(state, account.as_ref()).await?;
+        intents_balances = fetch_confidential_balances(state, account).await?;
         ref_tokens_with_balances = Vec::new();
         near_balance = None;
         lockup_balance = None;
@@ -555,7 +555,7 @@ pub async fn compute_user_assets(
     token_ids_to_fetch.push("near".to_string());
 
     let metadata_map = if !token_ids_to_fetch.is_empty() {
-        fetch_tokens_with_defuse_extension(state, &token_ids_to_fetch).await
+        fetch_tokens_metadata_enriched(state, &token_ids_to_fetch).await
     } else {
         HashMap::new()
     };
@@ -802,7 +802,7 @@ pub async fn get_user_assets(
 ) -> Result<Json<Vec<SimplifiedToken>>, (StatusCode, String)> {
     let account = params.account_id.clone();
     let is_confidential = auth
-        .verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+        .verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await?;
 
     let cache_key = format!("{}-user-assets", account);

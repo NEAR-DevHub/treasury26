@@ -14,6 +14,8 @@ use axum::{
 };
 use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::{DateTime, Months, NaiveDate, Utc};
+use near_account_id::AccountIdRef;
+use near_api::AccountId;
 use rust_xlsxwriter::{Color, Format, Workbook};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
@@ -83,7 +85,7 @@ impl Interval {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChartRequest {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
     pub interval: Interval,
@@ -120,13 +122,13 @@ pub async fn get_balance_chart(
     user: OptionalAuthUser,
     Query(params): Query<ChartRequest>,
 ) -> Result<Json<ChartResponse>, (StatusCode, String)> {
-    user.verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+    user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await?;
 
     let last_synced_at = sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
         "SELECT last_synced_at FROM monitored_accounts WHERE account_id = $1",
     )
-    .bind(&params.account_id)
+    .bind(params.account_id.as_str())
     .fetch_optional(&state.db_pool)
     .await
     .ok()
@@ -136,7 +138,7 @@ pub async fn get_balance_chart(
     // Load prior balances (most recent balance_after for each token before start_time)
     let prior_balances = load_prior_balances(
         &state.db_pool,
-        &params.account_id,
+        params.account_id.as_str(),
         params.start_time,
         params.token_ids.as_ref(),
     )
@@ -158,10 +160,13 @@ pub async fn get_balance_chart(
     // For each interval timestamp, fetch the cumulative sponsored NEAR amount up to
     // that point. We hide sponsor.trezu.near deposits and CreateAccount amounts from
     // users, so the chart subtracts them to show the balance without our top-ups.
-    let sponsor_totals =
-        load_sponsor_totals_per_interval(&state.db_pool, &params.account_id, &interval_timestamps)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let sponsor_totals = load_sponsor_totals_per_interval(
+        &state.db_pool,
+        params.account_id.as_str(),
+        &interval_timestamps,
+    )
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let query = BalanceChangesQuery {
         account_id: params.account_id.clone(),
@@ -247,7 +252,7 @@ pub async fn get_balance_chart(
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportRequest {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
     #[serde(default, deserialize_with = "comma_separated")]
@@ -270,7 +275,7 @@ pub async fn export_balance(
     user: OptionalAuthUser,
     Query(params): Query<ExportRequest>,
 ) -> Result<Response, (StatusCode, String)> {
-    user.verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+    user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await?;
 
     // Validate format
@@ -304,7 +309,7 @@ fn build_export_file_url(params: &ExportRequest, format: &str) -> String {
     let mut url = format!(
         "/api/balance-history/export?format={}&accountId={}&startTime={}&endTime={}",
         format,
-        encode(&params.account_id),
+        encode(params.account_id.as_str()),
         encode(&params.start_time.to_rfc3339()),
         encode(&params.end_time.to_rfc3339())
     );
@@ -333,7 +338,12 @@ async fn handle_export(
     format: &str,
 ) -> Result<(String, Vec<u8>, &'static str), (StatusCode, String)> {
     // Validate date range based on plan
-    validate_export_date_range(&state.db_pool, &params.account_id, params.start_time).await?;
+    validate_export_date_range(
+        &state.db_pool,
+        params.account_id.as_str(),
+        params.start_time,
+    )
+    .await?;
 
     // Generate export data
     let (data, content_type) = match format {
@@ -394,11 +404,11 @@ async fn handle_export(
     let _export_id = create_export_record(
         &state.db_pool,
         CreateExportRequest {
-            account_id: params.account_id.clone(),
+            account_id: params.account_id.to_string(),
             generated_by: params
                 .generated_by
                 .clone()
-                .unwrap_or_else(|| params.account_id.clone()),
+                .unwrap_or_else(|| params.account_id.to_string()),
             email: params.email.clone(),
             file_url,
         },
@@ -408,7 +418,7 @@ async fn handle_export(
 
     crate::services::platform_metrics::record_event(
         &state.db_pool,
-        &params.account_id,
+        params.account_id.as_str(),
         "exports_used",
     )
     .await;
@@ -678,14 +688,14 @@ async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
 
 /// Helper function to build BalanceChangesQuery for export
 fn build_export_query(
-    account_id: &str,
+    account_id: &AccountIdRef,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
     transaction_types: Option<&Vec<String>>,
 ) -> BalanceChangesQuery {
     BalanceChangesQuery {
-        account_id: account_id.to_string(),
+        account_id: account_id.to_owned(),
         limit: None, // Export all
         offset: None,
         start_time: Some(start_date.to_rfc3339()),
@@ -808,7 +818,7 @@ fn transform_to_export_records(
 /// Generate CSV from enriched balance changes
 async fn generate_csv(
     state: &Arc<AppState>,
-    account_id: &str,
+    account_id: &AccountIdRef,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
@@ -822,7 +832,7 @@ async fn generate_csv(
         transaction_types,
     );
     let enriched = get_balance_changes_internal(state, &query).await?;
-    let records = transform_to_export_records(enriched, account_id);
+    let records = transform_to_export_records(enriched, account_id.as_str());
 
     let mut csv = String::new();
 
@@ -858,7 +868,7 @@ async fn generate_csv(
 /// Generate JSON from enriched balance changes
 async fn generate_json(
     state: &Arc<AppState>,
-    account_id: &str,
+    account_id: &AccountIdRef,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
@@ -872,7 +882,7 @@ async fn generate_json(
         transaction_types,
     );
     let enriched = get_balance_changes_internal(state, &query).await?;
-    let records = transform_to_export_records(enriched, account_id);
+    let records = transform_to_export_records(enriched, account_id.as_str());
 
     // Convert to JSON-friendly format
     let json_records: Vec<serde_json::Value> = records
@@ -902,7 +912,7 @@ async fn generate_json(
 /// Generate XLSX from enriched balance changes
 async fn generate_xlsx(
     state: &Arc<AppState>,
-    account_id: &str,
+    account_id: &AccountIdRef,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
@@ -916,7 +926,7 @@ async fn generate_xlsx(
         transaction_types,
     );
     let enriched = get_balance_changes_internal(state, &query).await?;
-    let records = transform_to_export_records(enriched, account_id);
+    let records = transform_to_export_records(enriched, account_id.as_str());
 
     // Create workbook
     let mut workbook = Workbook::new();
@@ -1200,7 +1210,7 @@ pub struct ExportHistoryItem {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportHistoryQuery {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub from_date: Option<String>, // ISO 8601 date string
@@ -1219,7 +1229,7 @@ pub async fn get_export_history(
     user: OptionalAuthUser,
     Query(params): Query<ExportHistoryQuery>,
 ) -> Result<Json<ExportHistoryResponse>, (StatusCode, String)> {
-    user.verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+    user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await?;
 
     let limit = params.limit.unwrap_or(10).min(100);
@@ -1230,9 +1240,9 @@ pub async fn get_export_history(
     // 1. Exports created on or after 1st of current month, OR
     // 2. Exports created within last 48 hours (even if from previous month)
     let where_clause = r#"
-        WHERE account_id = $1 
+        WHERE account_id = $1
         AND (
-            created_at >= DATE_TRUNC('month', NOW()) 
+            created_at >= DATE_TRUNC('month', NOW())
             OR created_at >= NOW() - INTERVAL '48 hours'
         )
     "#;
@@ -1240,7 +1250,7 @@ pub async fn get_export_history(
     // Get total count
     let total_query = format!("SELECT COUNT(*) FROM export_history {}", where_clause);
     let total = sqlx::query_scalar::<_, i64>(&total_query)
-        .bind(&params.account_id)
+        .bind(params.account_id.as_str())
         .fetch_one(&state.db_pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -1248,7 +1258,7 @@ pub async fn get_export_history(
     // Get export history records
     let data_query = format!(
         r#"
-        SELECT 
+        SELECT
             id,
             account_id,
             generated_by,
@@ -1267,7 +1277,7 @@ pub async fn get_export_history(
     );
 
     let data = sqlx::query_as::<_, ExportHistoryItem>(&data_query)
-        .bind(&params.account_id)
+        .bind(params.account_id.as_str())
         .bind(limit)
         .bind(offset)
         .fetch_all(&state.db_pool)
@@ -1384,7 +1394,7 @@ pub struct ExportCreditsQuery {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecentActivityQuery {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub min_usd_value: Option<f64>,
@@ -1414,7 +1424,7 @@ pub struct RecentActivityResponse {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecentActivitySendersQuery {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub transaction_type: Option<String>,
 }
 
@@ -1427,7 +1437,7 @@ pub struct RecentActivitySendersResponse {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecentActivityRecipientsQuery {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub transaction_type: Option<String>,
 }
 
@@ -1480,7 +1490,7 @@ pub async fn get_recent_activity(
     user: OptionalAuthUser,
     Query(params): Query<RecentActivityQuery>,
 ) -> Result<Json<RecentActivityResponse>, (StatusCode, Json<serde_json::Value>)> {
-    user.verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+    user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await
         .map_err(|(status, message)| (status, Json(serde_json::json!({ "error": message }))))?;
 
@@ -1488,7 +1498,7 @@ pub async fn get_recent_activity(
     let offset = params.offset.unwrap_or(0);
 
     // Get account plan info and calculate date cutoff
-    let account_plan = get_account_plan_info(&state.db_pool, &params.account_id)
+    let account_plan = get_account_plan_info(&state.db_pool, params.account_id.as_str())
         .await
         .map_err(|e| {
             log::error!("Failed to fetch account plan info: {}", e);
@@ -1602,8 +1612,8 @@ pub async fn get_recent_activity(
 
     // Count query
     let count_query_str = build_count_query(&filters);
-    let mut count_query =
-        sqlx::query_scalar::<sqlx::Postgres, i64>(&count_query_str).bind(&params.account_id);
+    let mut count_query = sqlx::query_scalar::<sqlx::Postgres, i64>(&count_query_str)
+        .bind(params.account_id.as_str());
 
     // Bind date parameters in order
     if let Some(ref cutoff) = filters.date_cutoff {
@@ -1746,7 +1756,7 @@ pub async fn get_recent_activity(
               AND (fulfillment_balance_change_id = ANY($2)
                    OR deposit_balance_change_id = ANY($2))
             "#,
-            &params.account_id,
+            params.account_id.as_str(),
             &change_ids,
         )
         .fetch_all(&state.db_pool)
@@ -1927,7 +1937,7 @@ pub async fn get_recent_activity_senders(
     user: OptionalAuthUser,
     Query(params): Query<RecentActivitySendersQuery>,
 ) -> Result<Json<RecentActivitySendersResponse>, (StatusCode, Json<serde_json::Value>)> {
-    user.verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+    user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await
         .map_err(|(status, message)| (status, Json(serde_json::json!({ "error": message }))))?;
 
@@ -1972,7 +1982,7 @@ pub async fn get_recent_activity_senders(
     );
 
     let options_query =
-        sqlx::query_scalar::<sqlx::Postgres, String>(&query).bind(&params.account_id);
+        sqlx::query_scalar::<sqlx::Postgres, String>(&query).bind(params.account_id.as_str());
 
     let options = options_query.fetch_all(&state.db_pool).await.map_err(|e| {
         log::error!("Failed to fetch recent activity senders: {}", e);
@@ -1993,7 +2003,7 @@ pub async fn get_recent_activity_recipients(
     user: OptionalAuthUser,
     Query(params): Query<RecentActivityRecipientsQuery>,
 ) -> Result<Json<RecentActivityRecipientsResponse>, (StatusCode, Json<serde_json::Value>)> {
-    user.verify_member_if_confidential(&state.db_pool, params.account_id.as_str())
+    user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await
         .map_err(|(status, message)| (status, Json(serde_json::json!({ "error": message }))))?;
 
@@ -2038,7 +2048,7 @@ pub async fn get_recent_activity_recipients(
     );
 
     let options_query =
-        sqlx::query_scalar::<sqlx::Postgres, String>(&query).bind(&params.account_id);
+        sqlx::query_scalar::<sqlx::Postgres, String>(&query).bind(params.account_id.as_str());
 
     let options = options_query.fetch_all(&state.db_pool).await.map_err(|e| {
         log::error!("Failed to fetch recent activity recipients: {}", e);

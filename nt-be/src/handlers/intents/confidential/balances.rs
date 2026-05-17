@@ -4,6 +4,7 @@
 //! polling worker. Returns raw `(token_id, available)` pairs; callers are
 //! responsible for decimal adjustment if needed.
 
+use near_account_id::AccountIdRef;
 use reqwest::StatusCode;
 use serde::Deserialize;
 
@@ -29,7 +30,7 @@ struct BalancesResponse {
 /// the raw on-chain amount (pre-decimal-adjustment). Zero balances are filtered.
 pub async fn fetch_confidential_balances(
     state: &AppState,
-    dao_id: &str,
+    dao_id: &AccountIdRef,
 ) -> Result<Vec<(String, String)>, (StatusCode, String)> {
     let access_token = refresh_dao_jwt(state, dao_id).await?;
 

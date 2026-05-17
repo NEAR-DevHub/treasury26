@@ -36,7 +36,9 @@
         "viewAll": "Tout voir",
         "viewDetails": "Voir les détails",
         "noResults": "Aucun résultat trouvé",
-        "add": "Ajouter"
+        "add": "Ajouter",
+        "confidentialDataTooltip": "Votre activité financière est privée et sécurisée. Seuls vous et votre équipe pouvez accéder à ces informations.",
+        "confidentialAddressTooltip": "Les actifs seront reçus sur une adresse confidentielle."
     },
     "languageSwitcher": {
         "label": "Langue",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "Pour soutenir les nouveaux projets, TREZU couvre tous les frais ponctuels de déploiement et de stockage réseau.",
         "createButton": "Créer la trésorerie",
         "connectWalletCreate": "Connecter le portefeuille pour créer la trésorerie",
+        "walletNotSupportedTitle": "Wallet pas encore prise en charge",
+        "walletNotSupportedDescription": "{wallet} n'est pas encore prise en charge, mais nous y travaillons. Vous pouvez continuer avec un wallet NEAR pris en charge ou Ledger.",
+        "connectNear": "Connecter NEAR",
+        "connectLedger": "Connecter Ledger",
         "unexpectedError": "Une erreur inattendue s'est produite",
         "creationFailed": "Échec de la création de la trésorerie. Veuillez réessayer.",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "Invité",
         "tooltip": "Vous êtes un invité de cette trésorerie. Vous ne pouvez consulter que les données."
-    },
-    "exportButton": {
-        "confidentialTooltip": "L'export n'est pas encore disponible en mode confidentiel. Cette fonctionnalité arrive bientôt !"
     },
     "sponsoredActions": {
         "titleExhausted": "Actions sponsorisées utilisées",
@@ -1539,7 +1542,6 @@
         "incompatible": "Incompatible",
         "comingSoon": "Bientôt disponible",
         "forMembersOnly": "Réservé aux membres",
-        "nearComName": "near.com",
         "nearComDescription": "Réseau confidentiel pour near.com et trezu",
         "nearDescription": "Réseau pour retrait public"
     },

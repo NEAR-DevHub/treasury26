@@ -3,7 +3,7 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
-use near_api::Contract;
+use near_api::{AccountId, Contract};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -19,7 +19,7 @@ pub struct ProfileQuery {
     pub account_id: String,
     /// When provided and the caller is an authenticated DAO member, the address
     /// book name for this treasury will be returned as `addressBookName`.
-    pub dao_id: Option<String>,
+    pub dao_id: Option<AccountId>,
 }
 
 #[derive(Deserialize)]
@@ -126,7 +126,7 @@ pub async fn get_profile(
     {
         let ab_name = sqlx::query_scalar!(
             "SELECT name FROM address_book WHERE dao_id = $1 AND address = $2",
-            dao_id,
+            dao_id.as_str(),
             params.account_id.trim()
         )
         .fetch_optional(&state.db_pool)

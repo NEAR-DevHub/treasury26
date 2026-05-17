@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            dao_id,\n            is_policy_member AS \"is_member!\",\n            is_saved AS \"is_saved!\",\n            is_hidden AS \"is_hidden!\",\n            COALESCE(ma.is_confidential_account, false) AS \"is_confidential!\"\n        FROM dao_members dm\n        LEFT JOIN monitored_accounts ma ON ma.account_id = dm.dao_id\n        WHERE dm.account_id = $1\n          AND (is_policy_member = true OR is_saved = true)\n        ORDER BY dao_id\n        ",
+  "query": "\n        SELECT\n            dao_id,\n            is_policy_member AS \"is_member!\",\n            is_saved AS \"is_saved!\",\n            is_hidden AS \"is_hidden!\",\n            COALESCE(ma.is_confidential_account, false) AS \"is_confidential!\"\n        FROM dao_members dm\n        LEFT JOIN monitored_accounts ma ON ma.account_id = dm.dao_id\n        WHERE dm.account_id = $1\n          AND (is_policy_member = true OR is_saved = true)\n          AND ($2::bool = true OR dm.is_hidden = false)\n        ORDER BY dao_id\n        ",
   "describe": {
     "columns": [
       {
@@ -31,7 +31,8 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Bool"
       ]
     },
     "nullable": [
@@ -42,5 +43,5 @@
       null
     ]
   },
-  "hash": "872ab368f214ae5293fbc2f30db265d29af51bedc66956c2156c8973a1bf78f6"
+  "hash": "00eda14448d5dffe1997687968a6e7b29efd569996b3328ac2b1be5186b7a22a"
 }

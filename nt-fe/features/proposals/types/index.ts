@@ -1,6 +1,7 @@
 import { ProposalPermissionKind } from "@/lib/config-utils";
 import { Proposal } from "@/lib/proposals-api";
 import { Policy } from "@/types/policy";
+import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
 /**
  * UI representation of proposal kinds
@@ -193,7 +194,7 @@ export interface ConfidentialRequestData {
 }
 
 export interface SwapRequestData {
-    source: "exchange" | "wrap.near";
+    source: "exchange" | typeof WRAP_NEAR_TOKEN_ID;
     timeEstimate?: string;
     intentsTokenContractId?: string;
     quoteSignature?: string;

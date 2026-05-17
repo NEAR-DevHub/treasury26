@@ -12,6 +12,7 @@ import {
 } from "../types/index";
 import { decodeArgs, decodeProposalDescription, nanosToMs } from "@/lib/utils";
 import { extractProposalData } from "./proposal-extractors";
+import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
 // Exchange custom deadline (capped by proposal_period).
 // Pure wrap/unwrap (single wrap.near near_deposit/near_withdraw) uses normal proposal period.
@@ -109,7 +110,7 @@ function processFTTransferProposal(
     }
 
     if (
-        functionCall.receiver_id === "wrap.near" &&
+        functionCall.receiver_id === WRAP_NEAR_TOKEN_ID &&
         functionCall.actions.some(
             (action) =>
                 action.method_name === "near_withdraw" ||
@@ -309,7 +310,10 @@ function isNormalPeriodWrapProposal(proposal: Proposal): boolean {
     const functionCall = proposal.kind.FunctionCall;
     const actions = functionCall.actions ?? [];
 
-    if (functionCall.receiver_id !== "wrap.near" || actions.length !== 1) {
+    if (
+        functionCall.receiver_id !== WRAP_NEAR_TOKEN_ID ||
+        actions.length !== 1
+    ) {
         return false;
     }
 

@@ -36,7 +36,9 @@
         "viewAll": "View All",
         "viewDetails": "View details",
         "noResults": "No results found",
-        "add": "Add"
+        "add": "Add",
+        "confidentialDataTooltip": "Your financial activity is private and secure. Only you and your team can access this information.",
+        "confidentialAddressTooltip": "Assets will be received on a confidential address."
     },
     "languageSwitcher": {
         "label": "Language",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "To support new projects, TREZU covers all one-time deployment and network storage fees.",
         "createButton": "Create Treasury",
         "connectWalletCreate": "Connect Wallet To Create Treasury",
+        "walletNotSupportedTitle": "Wallet not supported yet",
+        "walletNotSupportedDescription": "{wallet} is not supported yet, but we are working on it. You can continue using a supported NEAR wallet or Ledger.",
+        "connectNear": "Connect NEAR",
+        "connectLedger": "Connect Ledger",
         "unexpectedError": "An unexpected error occurred",
         "creationFailed": "Failed to create treasury. Please try again.",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "Guest",
         "tooltip": "You are a guest of this treasury. You can only view the data."
-    },
-    "exportButton": {
-        "confidentialTooltip": "Export is not available in confidential mode yet. This feature is coming soon!"
     },
     "sponsoredActions": {
         "titleExhausted": "Sponsored Actions Used",
@@ -1539,7 +1542,6 @@
         "incompatible": "Incompatible",
         "comingSoon": "Coming Soon",
         "forMembersOnly": "For Members Only",
-        "nearComName": "near.com",
         "nearComDescription": "Confidential network of near.com and trezu",
         "nearDescription": "Network for public withdrawal"
     },

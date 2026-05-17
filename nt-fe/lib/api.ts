@@ -1,6 +1,7 @@
 import { Policy } from "@/types/policy";
 import axios from "axios";
 import Big from "@/lib/big";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { Balance, BalanceRaw, transformBalance } from "./balance";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
@@ -590,7 +591,7 @@ export async function getTokenMetadata(
     const noPrefixNoNear =
         !token.startsWith("nep141:") &&
         !token.startsWith("nep245:") &&
-        token.toLowerCase() !== "near";
+        token.toLowerCase() !== NEAR_NETWORK_ID;
 
     if (noPrefixNoNear && token.split(":").length === 2) {
         token = `nep245:${token}`;

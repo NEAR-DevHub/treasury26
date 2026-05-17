@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/card";
 import { Pill } from "@/components/pill";
 import { cn } from "@/lib/utils";
+import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
 
 function buildTreasuryFormSchema(messages: {
     nameMin: string;
@@ -160,7 +161,9 @@ function Step1({ handleNext, handleBack }: StepProps) {
             "details.accountName",
         ]);
         if (isValid && handleNext) {
-            trackEvent("treasury-creation-step-1-completed");
+            trackEvent("onboarding_step_completed", {
+                step_name: "details",
+            });
             handleNext();
         }
     };
@@ -343,7 +346,8 @@ function Step2({ handleBack, handleNext }: StepProps) {
         }
 
         if (isValid && handleNext) {
-            trackEvent("treasury-creation-step-2-completed", {
+            trackEvent("onboarding_step_completed", {
+                step_name: "members",
                 members_count: form.getValues("members").length,
             });
             handleNext();
@@ -520,7 +524,11 @@ export function Feature({
                 icon={pillIcon}
                 title={pillTitle}
                 variant={pillStyle}
-                className="shrink-0"
+                className={cn(
+                    "shrink-0",
+                    icon === "team" &&
+                        "bg-black text-white dark:bg-white dark:text-black [&_svg]:text-white dark:[&_svg]:text-black",
+                )}
             />
         </div>
     );
@@ -589,7 +597,8 @@ function Step3({ handleBack, handleNext }: StepProps) {
     const form = useFormContext<TreasuryFormValues>();
     const handleSelect = (type: "confidential" | "public") => {
         form.setValue("isConfidential", type === "confidential");
-        trackEvent("treasury-creation-step-3-completed", {
+        trackEvent("onboarding_step_completed", {
+            step_name: "treasury_type",
             treasury_type: type,
         });
         if (handleNext) {
@@ -693,10 +702,8 @@ function Step4({
     const { details } = form.watch();
     const { members } = form.watch();
     const { isConfidential } = form.watch();
+    const [showWalletSelector, setShowWalletSelector] = useState(false);
 
-    useEffect(() => {
-        trackEvent("treasury-creation-step-4-viewed");
-    }, []);
     const financialMembers = members.filter((m: Member) =>
         m.roles.includes("financial"),
     ).length;
@@ -707,6 +714,18 @@ function Step4({
     const governanceThreshold = details.governanceThreshold;
     const financialThresholdVisual = `${financialThreshold}/${financialMembers}`;
     const governanceThresholdVisual = `${governanceThreshold}/${governanceMembers}`;
+    if (showWalletSelector && !accountId) {
+        return (
+            <ConnectWalletSelector
+                title={tCreate("connectWalletCreate")}
+                source="/app/new"
+                connectFlow="new_user"
+                isConnectingWallet={isConnectingWallet}
+                onBack={() => setShowWalletSelector(false)}
+                onConnectSupported={connectWallet}
+            />
+        );
+    }
 
     return (
         <PageCard>
@@ -771,11 +790,7 @@ function Step4({
             </Alert>
 
             <InlineNextButton
-                text={
-                    accountId
-                        ? tCreate("createButton")
-                        : tCreate("connectWalletCreate")
-                }
+                text={tCreate("createButton")}
                 loading={
                     accountId ? form.formState.isSubmitting : isConnectingWallet
                 }
@@ -783,7 +798,7 @@ function Step4({
                     accountId
                         ? undefined
                         : () => {
-                              connectWallet();
+                              setShowWalletSelector(true);
                           }
                 }
             />
@@ -881,7 +896,8 @@ export default function NewTreasuryPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const queryClient = useQueryClient();
-    const shouldSkipSurvey = searchParams.get("skipSurvey") === "1";
+    const isOnboardingSurveyFlow = searchParams.get("entry") === "new_user";
+    const shouldSkipSurvey = !isOnboardingSurveyFlow;
     const [step, setStep] = useState(0);
     const [resumeOnboardingFromBack, setResumeOnboardingFromBack] =
         useState(false);
@@ -932,6 +948,10 @@ export default function NewTreasuryPage() {
             return;
         }
 
+        trackEvent("onboarding_step_completed", {
+            step_name: "review",
+        });
+
         const governors = data.members
             .filter((m) => m.roles.includes("governance"))
             .map((m) => m.accountId);
@@ -973,13 +993,9 @@ export default function NewTreasuryPage() {
                         })),
                     );
                     setCreatedTreasuryId(treasuryId);
-                    trackEvent("treasury-created", {
-                        treasury_id: treasuryId,
+                    trackEvent("onboarding_completed", {
                         source: "/app/new",
-                        members_count:
-                            request.governors.length +
-                            request.financiers.length +
-                            request.requestors.length,
+                        treasury_id: treasuryId,
                     });
                     queryClient.invalidateQueries({
                         queryKey: ["userTreasuries", accountId],

@@ -1,3 +1,5 @@
+use near_account_id::AccountIdRef;
+use near_api::AccountId;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +17,7 @@ pub mod prepare_auth;
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticateRequest {
     /// The DAO account ID (e.g., "mydao.sputnik-dao.near")
-    pub dao_id: String,
+    pub dao_id: AccountId,
     /// The signed authentication data
     pub signed_data: serde_json::Value,
 }
@@ -32,7 +34,7 @@ struct AuthenticateResponse {
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticateResult {
     pub success: bool,
-    pub dao_id: String,
+    pub dao_id: AccountId,
     pub expires_in: i64,
 }
 
@@ -40,7 +42,7 @@ pub struct AuthenticateResult {
 /// Called internally before making authenticated API calls.
 pub async fn refresh_dao_jwt(
     state: &AppState,
-    dao_id: &str,
+    dao_id: &AccountIdRef,
 ) -> Result<String, (StatusCode, String)> {
     // Load tokens from DB
     let row = sqlx::query!(
@@ -49,7 +51,7 @@ pub async fn refresh_dao_jwt(
         FROM monitored_accounts
         WHERE account_id = $1
         "#,
-        dao_id,
+        dao_id.as_str(),
     )
     .fetch_optional(&state.db_pool)
     .await
@@ -153,7 +155,7 @@ pub async fn refresh_dao_jwt(
         "#,
         auth_response.access_token,
         new_expires_at,
-        dao_id,
+        dao_id.as_str(),
     )
     .execute(&state.db_pool)
     .await

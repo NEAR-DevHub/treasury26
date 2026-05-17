@@ -5,6 +5,7 @@ import {
 import type { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
 import type { Token } from "@/components/token-input";
 import { default_near_token } from "@/constants/token";
+import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import {
     type AdditionalTx,
     buildNativeNearIntentsKind,
@@ -73,19 +74,19 @@ export async function buildNativeNEARIntentsProposal(params: {
     const { treasuryId, depositAddress, amountIn } = params;
 
     const registrations = await getBatchStorageDepositIsRegistered([
-        { accountId: treasuryId, tokenId: "wrap.near" },
-        { accountId: depositAddress, tokenId: "wrap.near" },
+        { accountId: treasuryId, tokenId: WRAP_NEAR_TOKEN_ID },
+        { accountId: depositAddress, tokenId: WRAP_NEAR_TOKEN_ID },
     ]);
 
     const additionalTransactions: AdditionalTx[] = [];
     if (!registrations[0]?.isRegistered) {
         additionalTransactions.push(
-            buildNep141StorageDepositTx("wrap.near", treasuryId),
+            buildNep141StorageDepositTx(WRAP_NEAR_TOKEN_ID, treasuryId),
         );
     }
     if (!registrations[1]?.isRegistered) {
         additionalTransactions.push(
-            buildNep141StorageDepositTx("wrap.near", depositAddress),
+            buildNep141StorageDepositTx(WRAP_NEAR_TOKEN_ID, depositAddress),
         );
     }
 

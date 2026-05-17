@@ -3,6 +3,7 @@ import Big from "@/lib/big";
 import { validateAddress } from "@/lib/address-validation";
 import type { BlockchainType } from "@/lib/blockchain-utils";
 import { formatSmartAmount } from "@/lib/utils";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 const intentsSdk = new IntentsSDK({
     referral: "",
@@ -41,7 +42,7 @@ export function isIntentsCrossChainToken(token: {
         !!token.address &&
         (token.address.startsWith("nep141:") ||
             token.address.startsWith("nep245:")) &&
-        (token.network || "").toLowerCase() !== "near"
+        (token.network || "").toLowerCase() !== NEAR_NETWORK_ID
     );
 }
 
@@ -55,9 +56,9 @@ export function isNearChainNativeToken(token: {
     const residency = (token.residency || "").toLowerCase();
 
     return (
-        address === "near" &&
-        (!network || network === "near") &&
-        (!residency || residency === "near")
+        address === NEAR_NETWORK_ID &&
+        (!network || network === NEAR_NETWORK_ID) &&
+        (!residency || residency === NEAR_NETWORK_ID)
     );
 }
 
@@ -69,10 +70,10 @@ export function isNearChainFtToken(token: {
     const address = (token.address || "").toLowerCase();
     const network = (token.network || "").toLowerCase();
     const residency = (token.residency || "").toLowerCase();
-    const isNearNetwork = !network || network === "near";
+    const isNearNetwork = !network || network === NEAR_NETWORK_ID;
     const isNearStyleFtAddress =
         !!address &&
-        address !== "near" &&
+        address !== NEAR_NETWORK_ID &&
         !address.startsWith("nep141:") &&
         !address.startsWith("nep245:");
 

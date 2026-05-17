@@ -79,6 +79,10 @@ static DEFUSE_TO_UNIFIED_MAP_CELL: OnceLock<HashMap<String, String>> = OnceLock:
 /// Static map of unified tokens by lowercase symbol for fast lookup
 static SYMBOL_TOKENS_MAP_CELL: OnceLock<HashMap<String, UnifiedTokenInfo>> = OnceLock::new();
 
+/// Static multi-map of base tokens by defuseAssetId (preserves duplicates)
+static DEFUSE_TOKENS_MULTI_MAP_CELL: OnceLock<HashMap<String, Vec<BaseTokenInfo>>> =
+    OnceLock::new();
+
 /// Get the map of unified tokens, loading from JSON if not already loaded
 pub fn get_tokens_map() -> &'static HashMap<String, UnifiedTokenInfo> {
     TOKENS_MAP_CELL.get_or_init(|| {
@@ -135,6 +139,45 @@ pub fn find_token_by_defuse_asset_id(defuse_asset_id: &str) -> Option<&'static B
     get_defuse_tokens_map().get(defuse_asset_id)
 }
 
+/// Find all base tokens sharing the same defuseAssetId.
+pub fn find_tokens_by_defuse_asset_id(defuse_asset_id: &str) -> Vec<&'static BaseTokenInfo> {
+    get_defuse_tokens_multi_map()
+        .get(defuse_asset_id)
+        .map(|v| v.iter().collect())
+        .unwrap_or_default()
+}
+
+/// Find the best base token for a defuseAssetId by matching deployment address.
+///
+/// If multiple entries share a defuseAssetId, this uses deployment addresses to disambiguate.
+/// Falls back to the first entry when no address matches.
+pub fn find_token_by_defuse_asset_id_and_address(
+    defuse_asset_id: &str,
+    address_candidates: &[String],
+) -> Option<&'static BaseTokenInfo> {
+    let tokens = get_defuse_tokens_multi_map().get(defuse_asset_id)?;
+    if tokens.is_empty() {
+        return None;
+    }
+    if address_candidates.is_empty() {
+        return tokens.first();
+    }
+
+    for token in tokens {
+        for deployment in &token.deployments {
+            if let TokenDeployment::Fungible { address, .. } = deployment
+                && address_candidates
+                    .iter()
+                    .any(|candidate| candidate.eq_ignore_ascii_case(address))
+            {
+                return Some(token);
+            }
+        }
+    }
+
+    tokens.first()
+}
+
 /// Get the map of defuse_asset_id -> unified_asset_id for reverse lookup
 pub fn get_defuse_to_unified_map() -> &'static HashMap<String, String> {
     DEFUSE_TO_UNIFIED_MAP_CELL.get_or_init(|| {
@@ -150,6 +193,26 @@ pub fn get_defuse_to_unified_map() -> &'static HashMap<String, String> {
                 // over synthetic entries from standalone base tokens
                 map.entry(base_token.defuse_asset_id.clone())
                     .or_insert_with(|| unified_token.unified_asset_id.clone());
+            }
+        }
+        map
+    })
+}
+
+/// Get the multimap of defuseAssetId -> all matching base tokens.
+pub fn get_defuse_tokens_multi_map() -> &'static HashMap<String, Vec<BaseTokenInfo>> {
+    DEFUSE_TOKENS_MULTI_MAP_CELL.get_or_init(|| {
+        let tokens = load_tokens_from_json().unwrap_or_else(|e| {
+            eprintln!("Failed to load tokens from JSON: {}", e);
+            vec![]
+        });
+
+        let mut map: HashMap<String, Vec<BaseTokenInfo>> = HashMap::new();
+        for unified_token in tokens {
+            for base_token in unified_token.grouped_tokens {
+                map.entry(base_token.defuse_asset_id.clone())
+                    .or_default()
+                    .push(base_token);
             }
         }
         map

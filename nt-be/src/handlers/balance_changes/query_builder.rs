@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use near_api::AccountId;
 
 /// The relayer account that sponsors users with NEAR for storage deposits.
 /// Transactions from/to this account are hidden from users in all activity views.
@@ -27,7 +28,7 @@ pub const TO_ACCOUNT_EXPR: &str = "CASE \
 /// Common parameters for filtering balance changes
 #[derive(Debug, Clone)]
 pub struct BalanceChangeFilters {
-    pub account_id: String,
+    pub account_id: AccountId,
 
     // Date Filtering
     pub date_cutoff: Option<DateTime<Utc>>, // Minimum date (for plan limits)
@@ -299,7 +300,7 @@ mod tests {
     #[test]
     fn test_build_where_conditions_basic() {
         let filters = BalanceChangeFilters {
-            account_id: "test.near".to_string(),
+            account_id: "test.near".parse().unwrap(),
             date_cutoff: None,
             start_date: None,
             end_date: None,
@@ -326,7 +327,7 @@ mod tests {
     #[test]
     fn test_build_where_conditions_with_filters() {
         let filters = BalanceChangeFilters {
-            account_id: "test.near".to_string(),
+            account_id: "test.near".parse().unwrap(),
             date_cutoff: Some(Utc::now()),
             start_date: None,
             end_date: None,

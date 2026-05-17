@@ -29,6 +29,7 @@ import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { computePolicyDiff } from "../../utils/policy-diff-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 interface ChangePolicyExpandedProps {
     data: ChangePolicyData;
@@ -59,7 +60,13 @@ function formatFieldValue(
         field === "proposal_period" || field === "bounty_forgiveness_period";
 
     if (isAmountField) {
-        return <Amount amount={value} showNetwork tokenId="near" />;
+        return (
+            <Amount
+                amount={value}
+                showNetworkTooltip
+                tokenId={NEAR_NETWORK_ID}
+            />
+        );
     }
     if (isDurationField) {
         return <span>{formatNanosecondDuration(value)}</span>;

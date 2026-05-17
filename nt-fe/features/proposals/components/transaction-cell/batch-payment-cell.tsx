@@ -6,6 +6,7 @@ import {
 import { useBatchPayment } from "@/hooks/use-treasury-queries";
 import { TokenCell } from "./token-cell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 interface BatchPaymentCellProps {
     data: BatchPaymentRequestData;
@@ -37,7 +38,7 @@ export function BatchPaymentCell({
 
     let tokenId = data.tokenId;
     if (batchData?.tokenId?.toLowerCase() === "native") {
-        tokenId = "near";
+        tokenId = NEAR_NETWORK_ID;
     }
 
     const tokenData = {

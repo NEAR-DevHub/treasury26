@@ -14,6 +14,7 @@ import { Button } from "@/components/button";
 import Logo from "@/components/icons/logo";
 import { Input } from "@/components/input";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { LoadingScreen } from "@/components/loading-screen";
 import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
 import { APP_ACTIVE_TREASURY, LANDING_PAGE } from "@/constants/config";
@@ -110,7 +111,7 @@ function OnboardingChoiceCard({
             onClick={onClick}
             disabled={disabled}
             className={cn(
-                "group h-[246px] w-full max-w-[329px] rounded-xl border px-2 py-5 text-left transition-all duration-200 md:h-[452px] md:w-[310px] md:max-w-none md:p-6",
+                "group h-[246px] w-full max-w-[329px] rounded-xl border px-2 py-5 text-left transition-all duration-200 md:h-[320px] md:w-[320px] md:max-w-none md:p-6 lg:h-[360px] lg:w-[360px]",
                 "flex flex-col items-center justify-center gap-3 shadow-none md:gap-8",
                 active
                     ? "bg-onboarding-primary text-primary-foreground border-border hover:bg-onboarding-primary/95"
@@ -355,10 +356,9 @@ export function Content() {
     const [contact, setContact] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
-    const existingUserConnectPendingRef = useRef(false);
+    const landingViewTrackedRef = useRef(false);
     const {
         accountId,
-        connect,
         isInitializing,
         isAuthenticating,
         authError,
@@ -416,7 +416,7 @@ export function Content() {
             !isInitializing
         ) {
             if (onboardingPath === "new_user" && creationAvailable) {
-                router.push(`/app/new`);
+                router.push(`/app/new?entry=new_user`);
             }
         }
     }, [
@@ -431,13 +431,12 @@ export function Content() {
     ]);
 
     useEffect(() => {
-        if (!existingUserConnectPendingRef.current || !accountId) return;
-        existingUserConnectPendingRef.current = false;
-        trackEvent("wallet-connected", {
-            source: "welcome-existing-user",
-            account_id: accountId,
+        if (landingViewTrackedRef.current) return;
+        landingViewTrackedRef.current = true;
+        trackEvent("onboarding_landing_viewed", {
+            source: "/",
         });
-    }, [accountId]);
+    }, []);
 
     const handleWhitelistSubmit = async () => {
         if (!contact.trim()) return;
@@ -459,42 +458,30 @@ export function Content() {
     const triggerWalletConnect = (path: "new_user" | "existing_user") => {
         if (authError) clearError();
         setOnboardingPath(path);
-        trackEvent("onboarding-path-selected", {
+        trackEvent("onboarding_path_selected", {
             path,
-            user_type: path === "existing_user" ? "existing" : "new",
         });
 
         if (path === "new_user") {
-            router.push("/app/new");
+            router.push("/app/new?entry=new_user");
             return;
         }
 
-        if (accountId) {
-            if (!isLoading && treasuries.length > 0) {
-                router.push(`/${preferredTreasuryId}`);
-                return;
-            }
-            if (treasuries.length === 0) {
-                requestCreateTreasuryPromptOpen();
-            }
+        if (accountId && !isLoading && preferredTreasuryId) {
+            router.push(`/${preferredTreasuryId}`);
             return;
         }
 
-        existingUserConnectPendingRef.current = true;
-        connect();
+        if (accountId && !isLoading && treasuries.length === 0) {
+            requestCreateTreasuryPromptOpen();
+            return;
+        }
+
+        router.push("/login?context=existing_user");
     };
 
     if (isDecisionPending) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-muted">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                        {tCommon("loading")}
-                    </p>
-                </div>
-            </div>
-        );
+        return <LoadingScreen />;
     }
 
     if (showWhitelist) {
@@ -559,7 +546,7 @@ export function Content() {
                     </div>
 
                     <motion.div
-                        className="mx-auto mt-10 w-full max-w-[361px] rounded-2xl border border-border bg-card p-4 md:max-w-[676px] md:p-5"
+                        className="mx-auto mt-10 w-full max-w-[320px] rounded-2xl border border-border bg-card p-4 md:max-w-[704px] md:p-5 lg:max-w-[784px]"
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{

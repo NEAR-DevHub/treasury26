@@ -28,16 +28,25 @@ export function useTreasury() {
         [treasuries],
     );
 
+    // For authenticated users, wait for user treasuries before attempting guest lookup.
+    // This avoids blocking UI on an unnecessary guest-config request for members.
+    const shouldLoadGuestConfig =
+        !!treasuryId &&
+        !currentTreasury &&
+        (!accountId || !isLoadingTreasuries);
+
     // Fetch config for treasury from URL if it's not in user's list
     const { data: guestTreasuryConfig, isLoading: isLoadingGuestConfig } =
-        useTreasuryConfig(treasuryId && !currentTreasury ? treasuryId : null);
+        useTreasuryConfig(shouldLoadGuestConfig ? treasuryId : null);
 
     // A treasury can be in the list because user saved it, but still be a guest.
     const isGuestTreasury =
         !!treasuryId &&
         (currentTreasury ? !currentTreasury.isMember : !!guestTreasuryConfig);
     const isLoading =
-        isLoadingTreasuries || isLoadingGuestConfig || isInitializing;
+        isInitializing ||
+        (accountId ? isLoadingTreasuries : false) ||
+        (shouldLoadGuestConfig && isLoadingGuestConfig);
     const treasuryNotFound =
         !isLoading && !!treasuryId && !currentTreasury && !guestTreasuryConfig;
     const isConfidential =

@@ -2,6 +2,7 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
+use near_account_id::AccountIdRef;
 use near_api::{AccountId, Contract, Reference, types::json::U64};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -20,7 +21,7 @@ pub struct GetTreasuryPolicyQuery {
 
 pub async fn fetch_treasury_policy_cached(
     state: &Arc<AppState>,
-    treasury_id: &AccountId,
+    treasury_id: &AccountIdRef,
     at_before: Option<u64>,
 ) -> Result<serde_json::Value, (StatusCode, String)> {
     let at_before = at_before.unwrap_or(0);
@@ -50,7 +51,7 @@ pub async fn fetch_treasury_policy_cached(
                 Reference::Optimistic
             };
 
-            Contract(treasury_id.clone())
+            Contract(treasury_id.to_owned())
                 .call_function("get_policy", ())
                 .read_only::<serde_json::Value>()
                 .at(at)

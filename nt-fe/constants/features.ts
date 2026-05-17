@@ -8,11 +8,11 @@
  *   NEXT_PUBLIC_STAGING=true
  */
 
-const staging =
+export const isStaging =
     process.env.NEXT_PUBLIC_STAGING === "true" ||
     process.env.NODE_ENV === "development";
 
-export const features = staging
+export const features = isStaging
     ? {
           integrations: true,
           extraLocales: true,

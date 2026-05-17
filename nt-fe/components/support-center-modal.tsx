@@ -174,7 +174,7 @@ export function SupportCenterModal({
     );
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[448px]">
+            <DialogContent className="sm:max-w-[448px] sm:max-h-[90vh]">
                 <DialogHeader>
                     <DialogTitle className="text-left">
                         {t("title")}

@@ -87,7 +87,6 @@ interface AssetMetrics {
     hasEarning: boolean;
 }
 
-const DEFAULT_DECIMALS = 24;
 const SORT_BUTTON_CLASS =
     "inline-flex items-center gap-1 hover:text-foreground hover:bg-transparent px-1! uppercase text-xxs";
 
@@ -184,6 +183,17 @@ function displayAmount(rawAmount: Big.Big, decimals: number): Big.Big {
     return Big(formatBalance(rawAmount, decimals, decimals));
 }
 
+function sumTokenAmountsByNetwork(
+    networks: NetworkAsset[],
+    getRawAmount: (network: NetworkAsset) => Big.Big,
+): Big.Big {
+    return networks.reduce(
+        (sum, network) =>
+            sum.add(displayAmount(getRawAmount(network), network.decimals)),
+        Big(0),
+    );
+}
+
 function defaultSortForView(view: ViewMode): {
     key: SortKey;
     dir: SortDirection;
@@ -234,8 +244,7 @@ interface MobileEarningPoolRow {
 }
 
 interface MobileModalData {
-    primaryDecimals: number;
-    summaryRaw: Big.Big;
+    summaryAmount: Big.Big;
     summaryUsd: number;
     summaryLabel: string;
     listLabel: string;
@@ -279,10 +288,7 @@ function MobileAssetViewModal({
                                 {mobileModalData.summaryLabel}
                             </span>
                             <BalanceCell
-                                balance={displayAmount(
-                                    mobileModalData.summaryRaw,
-                                    mobileModalData.primaryDecimals,
-                                )}
+                                balance={mobileModalData.summaryAmount}
                                 symbol={selectedAsset.id}
                                 balanceUSD={mobileModalData.summaryUsd}
                             />
@@ -426,23 +432,15 @@ function buildMobileModalData(
         return [];
     });
 
-    const primaryDecimals =
-        selectedAsset.networks[0]?.decimals ?? DEFAULT_DECIMALS;
-    const summaryRaw =
+    const summaryAmount =
         view === "available"
-            ? availableNetworks.reduce(
-                  (sum, n) => sum.add(networkAvailableRawForAvailableView(n)),
-                  Big(0),
+            ? sumTokenAmountsByNetwork(
+                  availableNetworks,
+                  networkAvailableRawForAvailableView,
               )
             : view === "locked"
-              ? lockedNetworks.reduce(
-                    (sum, n) => sum.add(networkLockedRaw(n)),
-                    Big(0),
-                )
-              : earningNetworks.reduce(
-                    (sum, n) => sum.add(networkEarningRaw(n)),
-                    Big(0),
-                );
+              ? sumTokenAmountsByNetwork(lockedNetworks, networkLockedRaw)
+              : sumTokenAmountsByNetwork(earningNetworks, networkEarningRaw);
     const summaryUsd =
         view === "available"
             ? availableNetworks.reduce(
@@ -480,8 +478,7 @@ function buildMobileModalData(
               : labels.poolBreakdown;
 
     return {
-        primaryDecimals,
-        summaryRaw,
+        summaryAmount,
         summaryUsd,
         summaryLabel,
         listLabel,
@@ -501,11 +498,10 @@ interface BaseAssetViewProps {
     asset: AggregatedAsset;
     isMobile: boolean;
     isExpanded: boolean;
-    primaryDecimals?: number;
 }
 
 interface AvailableViewProps extends BaseAssetViewProps {
-    availableRaw?: Big.Big;
+    availableAmount?: Big.Big;
     availableUsd?: number;
     weight?: number;
     availableNetworks?: NetworkAsset[];
@@ -518,8 +514,7 @@ function AvailableView({
     asset,
     isMobile,
     isExpanded,
-    primaryDecimals,
-    availableRaw,
+    availableAmount,
     availableUsd,
     weight,
     availableNetworks,
@@ -533,10 +528,7 @@ function AvailableView({
             <>
                 <TableCell className="p-4 text-right">
                     <BalanceCell
-                        balance={displayAmount(
-                            availableRaw ?? Big(0),
-                            primaryDecimals ?? DEFAULT_DECIMALS,
-                        )}
+                        balance={availableAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={availableUsd ?? 0}
                     />
@@ -777,11 +769,11 @@ function mergeAvailableNetworks(
 }
 
 interface LockedViewProps extends BaseAssetViewProps {
-    lockedRaw?: Big.Big;
+    lockedAmount?: Big.Big;
     lockedUsd?: number;
-    unlockedRaw?: Big.Big;
+    unlockedAmount?: Big.Big;
     unlockedUsd?: number;
-    totalAllocatedRaw?: Big.Big;
+    totalAllocatedAmount?: Big.Big;
     totalAllocatedUsd?: number;
     lockedNetworks?: NetworkAsset[];
     ftLockupInstanceCount?: number;
@@ -793,12 +785,11 @@ function LockedView({
     asset,
     isMobile,
     isExpanded,
-    primaryDecimals,
-    lockedRaw,
+    lockedAmount,
     lockedUsd,
-    unlockedRaw,
+    unlockedAmount,
     unlockedUsd,
-    totalAllocatedRaw,
+    totalAllocatedAmount,
     totalAllocatedUsd,
     lockedNetworks,
     ftLockupInstanceCount,
@@ -811,20 +802,14 @@ function LockedView({
             <>
                 <TableCell className="p-4 text-right hidden sm:table-cell">
                     <BalanceCell
-                        balance={displayAmount(
-                            lockedRaw ?? Big(0),
-                            primaryDecimals ?? DEFAULT_DECIMALS,
-                        )}
+                        balance={lockedAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={lockedUsd ?? 0}
                     />
                 </TableCell>
                 <TableCell className="p-4 text-right">
                     <BalanceCell
-                        balance={displayAmount(
-                            unlockedRaw ?? Big(0),
-                            primaryDecimals ?? DEFAULT_DECIMALS,
-                        )}
+                        balance={unlockedAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={unlockedUsd ?? 0}
                     />
@@ -834,10 +819,7 @@ function LockedView({
                 </TableCell>
                 <TableCell className="p-4 text-right hidden sm:table-cell">
                     <BalanceCell
-                        balance={displayAmount(
-                            totalAllocatedRaw ?? Big(0),
-                            primaryDecimals ?? DEFAULT_DECIMALS,
-                        )}
+                        balance={totalAllocatedAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={totalAllocatedUsd ?? 0}
                     />
@@ -1017,9 +999,9 @@ function LockedView({
 }
 
 interface EarningViewProps extends BaseAssetViewProps {
-    earningRaw?: Big.Big;
+    earningAmount?: Big.Big;
     earningUsd?: number;
-    earningWithdrawRaw?: Big.Big;
+    earningWithdrawAmount?: Big.Big;
     earningWithdrawUsd?: number;
     earningNetworks?: NetworkAsset[];
     earningPoolRows?: MobileEarningPoolRow[];
@@ -1030,10 +1012,9 @@ function EarningView({
     asset,
     isMobile,
     isExpanded,
-    primaryDecimals,
-    earningRaw,
+    earningAmount,
     earningUsd,
-    earningWithdrawRaw,
+    earningWithdrawAmount,
     earningWithdrawUsd,
     earningNetworks,
     earningPoolRows,
@@ -1045,10 +1026,7 @@ function EarningView({
             <>
                 <TableCell className="p-4 text-right">
                     <BalanceCell
-                        balance={displayAmount(
-                            earningRaw ?? Big(0),
-                            primaryDecimals ?? DEFAULT_DECIMALS,
-                        )}
+                        balance={earningAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={earningUsd ?? 0}
                     />
@@ -1058,10 +1036,7 @@ function EarningView({
                 </TableCell>
                 <TableCell className="p-4 text-right hidden sm:table-cell">
                     <BalanceCell
-                        balance={displayAmount(
-                            earningWithdrawRaw ?? Big(0),
-                            primaryDecimals ?? DEFAULT_DECIMALS,
-                        )}
+                        balance={earningWithdrawAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={earningWithdrawUsd ?? 0}
                     />
@@ -1838,8 +1813,6 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                     <TableBody>
                         {viewAssets.map(({ asset, weight }) => {
                             const isExpanded = !!expanded[asset.id];
-                            const primaryDecimals =
-                                asset.networks[0]?.decimals ?? DEFAULT_DECIMALS;
                             const availableNetworks = asset.networks.filter(
                                 (n) =>
                                     n.residency !== "Staked" &&
@@ -1871,34 +1844,30 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                             n.balance.lockup.staked.gt(0))) &&
                                     networkEarningRaw(n).gt(0),
                             );
-                            const earningFromLockedRaw = lockedNetworks.reduce(
-                                (sum, n) =>
+                            const earningFromLockedAmount =
+                                sumTokenAmountsByNetwork(lockedNetworks, (n) =>
                                     n.balance.type === "Vested"
-                                        ? sum.add(n.balance.lockup.staked)
-                                        : sum,
-                                Big(0),
-                            );
-                            const allocatedLockedRaw = lockedNetworks.reduce(
-                                (sum, n) =>
-                                    sum.add(
-                                        networkLockedRaw(n).add(
-                                            networkAvailableRaw(n),
-                                        ),
+                                        ? n.balance.lockup.staked
+                                        : Big(0),
+                                );
+                            const allocatedLockedAmount =
+                                sumTokenAmountsByNetwork(lockedNetworks, (n) =>
+                                    networkLockedRaw(n).add(
+                                        networkAvailableRaw(n),
                                     ),
-                                Big(0),
-                            );
+                                );
                             const hasLockedEarningNotice =
-                                view === "locked" && earningFromLockedRaw.gt(0);
+                                view === "locked" &&
+                                earningFromLockedAmount.gt(0);
                             const isFullLockedInEarning =
-                                allocatedLockedRaw.gt(0) &&
-                                earningFromLockedRaw.gte(allocatedLockedRaw);
+                                allocatedLockedAmount.gt(0) &&
+                                earningFromLockedAmount.gte(
+                                    allocatedLockedAmount,
+                                );
 
-                            const availableRaw = availableNetworks.reduce(
-                                (sum, n) =>
-                                    sum.add(
-                                        networkAvailableRawForAvailableView(n),
-                                    ),
-                                Big(0),
+                            const availableAmount = sumTokenAmountsByNetwork(
+                                availableNetworks,
+                                networkAvailableRawForAvailableView,
                             );
                             const availableUsd = availableNetworks.reduce(
                                 (sum, n) =>
@@ -1911,16 +1880,16 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                 0,
                             );
 
-                            const lockedRaw = lockedNetworks.reduce(
-                                (sum, n) => sum.add(networkLockedRaw(n)),
-                                Big(0),
+                            const lockedAmount = sumTokenAmountsByNetwork(
+                                lockedNetworks,
+                                networkLockedRaw,
                             );
-                            const unlockedRaw = lockedNetworks.reduce(
-                                (sum, n) => sum.add(networkAvailableRaw(n)),
-                                Big(0),
+                            const unlockedAmount = sumTokenAmountsByNetwork(
+                                lockedNetworks,
+                                networkAvailableRaw,
                             );
-                            const totalAllocatedRaw =
-                                lockedRaw.add(unlockedRaw);
+                            const totalAllocatedAmount =
+                                lockedAmount.add(unlockedAmount);
                             const lockedUsd = lockedNetworks.reduce(
                                 (sum, n) =>
                                     sum +
@@ -1943,21 +1912,9 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                             );
                             const totalAllocatedUsd = lockedUsd + unlockedUsd;
 
-                            const earningRaw = earningNetworks.reduce(
-                                (sum, n) => sum.add(networkEarningRaw(n)),
-                                Big(0),
-                            );
-                            const earningWithdrawRaw = earningNetworks.reduce(
-                                (sum, n) =>
-                                    n.balance.type === "Vested"
-                                        ? sum.add(
-                                              n.balance.lockup.canWithdraw
-                                                  ? n.balance.lockup
-                                                        .unstakedBalance
-                                                  : Big(0),
-                                          )
-                                        : sum.add(availableBalance(n.balance)),
-                                Big(0),
+                            const earningAmount = sumTokenAmountsByNetwork(
+                                earningNetworks,
+                                networkEarningRaw,
                             );
                             const earningUsd = earningNetworks.reduce(
                                 (sum, n) =>
@@ -1969,6 +1926,17 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                     ),
                                 0,
                             );
+                            const earningWithdrawAmount =
+                                sumTokenAmountsByNetwork(
+                                    earningNetworks,
+                                    (n) =>
+                                        n.balance.type === "Vested"
+                                            ? n.balance.lockup.canWithdraw
+                                                ? n.balance.lockup
+                                                      .unstakedBalance
+                                                : Big(0)
+                                            : availableBalance(n.balance),
+                                );
                             const earningWithdrawUsd = earningNetworks.reduce(
                                 (sum, n) =>
                                     sum +
@@ -2024,10 +1992,9 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                                 asset={asset}
                                                 isMobile={false}
                                                 isExpanded={false}
-                                                primaryDecimals={
-                                                    primaryDecimals
+                                                availableAmount={
+                                                    availableAmount
                                                 }
-                                                availableRaw={availableRaw}
                                                 availableUsd={availableUsd}
                                                 weight={weight}
                                             />
@@ -2038,15 +2005,12 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                                 asset={asset}
                                                 isMobile={false}
                                                 isExpanded={false}
-                                                primaryDecimals={
-                                                    primaryDecimals
-                                                }
-                                                lockedRaw={lockedRaw}
+                                                lockedAmount={lockedAmount}
                                                 lockedUsd={lockedUsd}
-                                                unlockedRaw={unlockedRaw}
+                                                unlockedAmount={unlockedAmount}
                                                 unlockedUsd={unlockedUsd}
-                                                totalAllocatedRaw={
-                                                    totalAllocatedRaw
+                                                totalAllocatedAmount={
+                                                    totalAllocatedAmount
                                                 }
                                                 totalAllocatedUsd={
                                                     totalAllocatedUsd
@@ -2059,13 +2023,10 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                                 asset={asset}
                                                 isMobile={false}
                                                 isExpanded={false}
-                                                primaryDecimals={
-                                                    primaryDecimals
-                                                }
-                                                earningRaw={earningRaw}
+                                                earningAmount={earningAmount}
                                                 earningUsd={earningUsd}
-                                                earningWithdrawRaw={
-                                                    earningWithdrawRaw
+                                                earningWithdrawAmount={
+                                                    earningWithdrawAmount
                                                 }
                                                 earningWithdrawUsd={
                                                     earningWithdrawUsd
@@ -2124,10 +2085,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                                               )}{" "}
                                                         {t("currentlyEarning", {
                                                             amount: formatSmartAmount(
-                                                                displayAmount(
-                                                                    earningFromLockedRaw,
-                                                                    primaryDecimals,
-                                                                ),
+                                                                earningFromLockedAmount,
                                                             ),
                                                             symbol: asset.id,
                                                         })}

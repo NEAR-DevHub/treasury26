@@ -1,4 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
+use near_api::AccountId;
 use serde::Deserialize;
 use serde_json::Value;
 use std::sync::Arc;
@@ -38,11 +39,18 @@ pub async fn generate_intent(
     auth_user: AuthUser,
     Json(request): Json<GenerateIntentRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let dao_id = request
+    let dao_id: AccountId = request
         .signer_id
         .strip_prefix("near:")
-        .unwrap_or(&request.signer_id);
-    auth_user.verify_can_add_proposal(&state, dao_id).await?;
+        .unwrap_or(&request.signer_id)
+        .parse()
+        .map_err(|e: near_account_id::ParseAccountError| {
+            (
+                StatusCode::BAD_REQUEST,
+                format!("Invalid signer_id '{}': {}", request.signer_id, e),
+            )
+        })?;
+    auth_user.verify_can_add_proposal(&state, &dao_id).await?;
 
     // Extract deposit_address from quote_metadata.quote.depositAddress
     let deposit_address = request
@@ -73,11 +81,7 @@ pub async fn generate_intent(
     });
 
     // The signer_id is the DAO — use its stored JWT for authentication
-    let dao_id = request
-        .signer_id
-        .strip_prefix("near:")
-        .unwrap_or(&request.signer_id);
-    let access_token = super::refresh_dao_jwt(&state, dao_id).await?;
+    let access_token = super::refresh_dao_jwt(&state, &dao_id).await?;
 
     let mut req = state
         .http_client
@@ -266,7 +270,7 @@ mod tests {
         };
 
         let auth_user = crate::auth::AuthUser {
-            account_id: "test.near".to_string(),
+            account_id: "test.near".parse().unwrap(),
         };
         let generate_result =
             generate_intent(State(state.clone()), auth_user, Json(generate_request)).await;

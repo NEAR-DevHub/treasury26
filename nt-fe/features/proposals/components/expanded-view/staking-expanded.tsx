@@ -37,7 +37,7 @@ export function StakingExpanded({
                 return (
                     <Amount
                         amount={resolvedAmount}
-                        showNetwork
+                        showNetworkTooltip
                         tokenId={data.tokenId}
                     />
                 );
@@ -45,7 +45,11 @@ export function StakingExpanded({
             return <span>{t("allNear")}</span>;
         }
         return (
-            <Amount amount={data.amount} showNetwork tokenId={data.tokenId} />
+            <Amount
+                amount={data.amount}
+                showNetworkTooltip
+                tokenId={data.tokenId}
+            />
         );
     })();
 

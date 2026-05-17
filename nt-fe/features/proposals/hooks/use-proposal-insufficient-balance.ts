@@ -7,6 +7,7 @@ import { useAssets } from "@/hooks/use-assets";
 import { getProposalRequiredFunds } from "../utils/proposal-utils";
 import { formatBalance } from "@/lib/utils";
 import { availableBalance } from "@/lib/balance";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 export interface InsufficientBalanceInfo {
     hasInsufficientBalance: boolean;
@@ -41,7 +42,7 @@ export function useProposalInsufficientBalance(
             const token = assets.tokens.find(
                 (t) =>
                     t.contractId === requiredFunds.tokenId ||
-                    (requiredFunds.tokenId.toLowerCase() === "near" &&
+                    (requiredFunds.tokenId.toLowerCase() === NEAR_NETWORK_ID &&
                         t.contractId == null &&
                         t.residency === "Near"),
             );

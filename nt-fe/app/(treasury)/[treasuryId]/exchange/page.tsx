@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowDown, ChevronRight, Loader2, Shield } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { trackEvent } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useFormContext } from "react-hook-form";
@@ -40,6 +40,7 @@ import { parseTokenQueryParam } from "@/lib/token-query-param";
 import {
     formatBalance,
     formatCurrency,
+    formatDurationSeconds,
     formatTokenDisplayAmount,
 } from "@/lib/utils";
 import { buildConfidentialProposal } from "../../../../features/confidential/utils/proposal-builder";
@@ -64,6 +65,7 @@ import {
     isNEARWithdraw,
     isNEARWrapConversion,
 } from "./utils";
+import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import {
     buildFungibleTokenProposal,
     buildNativeNEARProposal,
@@ -100,7 +102,8 @@ function Step1({ handleNext }: StepProps) {
 
     // Check if sell token is wNEAR (FT NEAR with Ft residency, not Intents)
     const isSellTokenFTNEAR =
-        sellToken.address === "wrap.near" && sellToken.residency === "Ft";
+        sellToken.address === WRAP_NEAR_TOKEN_ID &&
+        sellToken.residency === "Ft";
 
     // Filter function for receive token
     const filterReceiveTokens = useCallback(
@@ -395,6 +398,7 @@ function Step1({ handleNext }: StepProps) {
 
 function Step2({ handleBack }: StepProps) {
     const tEx = useTranslations("exchange");
+    const locale = useLocale();
     const form = useFormContext<ExchangeFormValues>();
     const { treasuryId: selectedTreasury, isConfidential } = useTreasury();
     const sellToken = form.watch("sellToken");
@@ -579,11 +583,11 @@ function Step2({ handleBack }: StepProps) {
                                         : []),
                                     {
                                         label: tEx("info.estimatedTime"),
-                                        value: tEx("info.estimatedTimeValue", {
-                                            seconds:
-                                                localLiveQuoteData.quote
-                                                    .timeEstimate,
-                                        }),
+                                        value: formatDurationSeconds(
+                                            localLiveQuoteData.quote
+                                                .timeEstimate,
+                                            locale,
+                                        ),
                                         info: tEx("info.estimatedTimeTooltip"),
                                     },
                                     {

@@ -36,7 +36,9 @@
         "viewAll": "הצג הכל",
         "viewDetails": "הצג פרטים",
         "noResults": "לא נמצאו תוצאות",
-        "add": "הוספה"
+        "add": "הוספה",
+        "confidentialDataTooltip": "הפעילות הפיננסית שלך פרטית ומאובטחת. רק את/ה והצוות שלך יכולים לגשת למידע הזה.",
+        "confidentialAddressTooltip": "הנכסים יתקבלו בכתובת חסויה."
     },
     "languageSwitcher": {
         "label": "שפה",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "כדי לתמוך בפרויקטים חדשים, TREZU מכסה את כל עמלות הפריסה החד-פעמיות ואחסון הרשת.",
         "createButton": "צור אוצר",
         "connectWalletCreate": "התחבר לארנק כדי ליצור אוצר",
+        "walletNotSupportedTitle": "הארנק עדיין לא נתמך",
+        "walletNotSupportedDescription": "{wallet} עדיין לא נתמך, אבל אנחנו עובדים על זה. אפשר להמשיך עם ארנק NEAR נתמך או Ledger.",
+        "connectNear": "חיבור ל-NEAR",
+        "connectLedger": "חיבור ל-Ledger",
         "unexpectedError": "אירעה שגיאה בלתי צפויה",
         "creationFailed": "יצירת האוצר נכשלה. אנא נסה שוב.",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "אורח",
         "tooltip": "אתה אורח של אוצר זה. אתה יכול לראות רק את הנתונים."
-    },
-    "exportButton": {
-        "confidentialTooltip": "ייצוא אינו זמין עדיין במצב חסוי. תכונה זו תגיע בקרוב!"
     },
     "sponsoredActions": {
         "titleExhausted": "הפעולות הממומנות נוצלו",
@@ -1539,7 +1542,6 @@
         "incompatible": "לא תואם",
         "comingSoon": "בקרוב",
         "forMembersOnly": "לחברים בלבד",
-        "nearComName": "near.com",
         "nearComDescription": "רשת סודית עבור near.com ו-Trezu",
         "nearDescription": "רשת למשיכה ציבורית"
     },

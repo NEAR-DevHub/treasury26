@@ -24,6 +24,7 @@ import {
 import type { BulkPaymentData } from "../schemas";
 import type { TreasuryAsset } from "@/lib/api";
 import Big from "@/lib/big";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 export { parseCsv };
 
@@ -267,7 +268,7 @@ export function parseAmount(
  */
 function validateRecipientAddress(
     address: string,
-    blockchainType: string = "near",
+    blockchainType: string = NEAR_NETWORK_ID,
     labels: Pick<
         BulkParsingLabels,
         | "missingRecipientFirstColumn"
@@ -280,7 +281,7 @@ function validateRecipientAddress(
     }
 
     // For NEAR blockchain, use NEAR-specific validation
-    if (blockchainType === "near") {
+    if (blockchainType === NEAR_NETWORK_ID) {
         if (!isValidNearAddressFormat(address)) {
             return labels.invalidNearAddress(address);
         }
@@ -306,7 +307,7 @@ export function parsePaymentData(
     amountIdx: number,
     startRow: number,
     labels: BulkParsingLabels,
-    blockchain: string = "near",
+    blockchain: string = NEAR_NETWORK_ID,
     expectedTokenSymbol?: string,
 ): {
     payments: BulkPaymentData[];
@@ -521,7 +522,7 @@ function parseAndValidateData(
     input: string,
     fallbackParseErrorMessage: string,
     labels: BulkParsingLabels,
-    blockchain: string = "near",
+    blockchain: string = NEAR_NETWORK_ID,
     expectedTokenSymbol?: string,
 ): {
     payments: BulkPaymentData[];
@@ -600,7 +601,7 @@ export function parseAndValidateCsv(
 } {
     const blockchain = selectedToken?.network
         ? getBlockchainType(selectedToken.network)
-        : "near";
+        : NEAR_NETWORK_ID;
     const tokenSymbol = selectedToken?.symbol;
     return parseAndValidateData(
         csvData,
@@ -626,7 +627,7 @@ export function parseAndValidatePasteData(
     const normalizedInput = pasteData.replace(/\\n/g, "\n").trim();
     const blockchain = selectedToken?.network
         ? getBlockchainType(selectedToken.network)
-        : "near";
+        : NEAR_NETWORK_ID;
     const tokenSymbol = selectedToken?.symbol;
     return parseAndValidateData(
         normalizedInput,

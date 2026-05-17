@@ -113,17 +113,13 @@ async fn verify_relay_access(
         }
 
         let policy = auth_user
-            .fetch_dao_policy(state, request.treasury_id.as_str())
+            .fetch_dao_policy(state, &request.treasury_id)
             .await
             .map_err(|(status, msg)| error_response(status, msg))?;
 
         for vote_action in requested_vote_actions {
             auth_user
-                .verify_can_perform_action_with_policy(
-                    &policy,
-                    request.treasury_id.as_str(),
-                    &vote_action,
-                )
+                .verify_can_perform_action_with_policy(&policy, &request.treasury_id, &vote_action)
                 .map_err(|(status, msg)| error_response(status, msg))?;
         }
 
@@ -131,7 +127,7 @@ async fn verify_relay_access(
     }
 
     auth_user
-        .verify_can_add_proposal(state, request.treasury_id.as_str())
+        .verify_can_add_proposal(state, &request.treasury_id)
         .await
         .map_err(|(status, msg)| error_response(status, msg))
 }

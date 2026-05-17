@@ -386,20 +386,23 @@ test("Ledger login flow", async ({ page, context }) => {
     await page.goto("/");
     await page.waitForTimeout(1500); // Pause to show the initial page
 
-    // Click existing-user onboarding option (this triggers wallet connect modal)
+    // Click existing-user onboarding option (this now routes to /login page)
     await page.getByRole("button", { name: /i already use trezu/i }).click();
     await page.waitForTimeout(1000); // Pause to show the button
 
-    // Verify wallet selector appears
-    await expect(page.getByText("Select wallet")).toBeVisible();
-    await page.waitForTimeout(1500); // Pause to show the wallet selector modal
+    // Verify we are on the dedicated wallet connection page.
+    await expect(page).toHaveURL(/\/login\?context=existing_user$/);
+    await page.waitForTimeout(1500); // Pause to show wallet connection page
 
-    // Verify Ledger option is visible and click it
-    const ledgerOption = page.getByText("Ledger", { exact: true });
+    // Verify Ledger option is visible in available options and click it
+    const ledgerOption = page.getByRole("button", { name: "Ledger" });
     await expect(ledgerOption).toBeVisible();
-    await page.waitForTimeout(1000); // Pause before clicking Ledger
     await ledgerOption.click();
-    await page.waitForTimeout(1500); // Pause to show Ledger iframe loading
+    await page.waitForTimeout(1000);
+
+    // select ledger in near connect wallet page
+    await page.getByText("ledger.com").click();
+    await page.waitForTimeout(1500);
 
     // Wait for the iframe to load
     const iframe = page

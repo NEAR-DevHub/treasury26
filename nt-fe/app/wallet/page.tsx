@@ -14,6 +14,7 @@ import { NearConnector } from "@hot-labs/near-connect";
 import type { Network, EventMap } from "@hot-labs/near-connect/build/types";
 import axios from "axios";
 import Logo from "@/components/icons/logo";
+import { LoadingScreen } from "@/components/loading-screen";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import { TransferExpanded } from "@/features/proposals/components/expanded-view/transfer-expanded";
 import { FunctionCallExpanded } from "@/features/proposals/components/expanded-view/function-call-expanded";
@@ -162,13 +163,7 @@ function sendResultToOpener(data: Record<string, unknown>) {
 
 export default function WalletPage() {
     return (
-        <Suspense
-            fallback={
-                <div className="min-h-screen flex items-center justify-center p-4">
-                    <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
-                </div>
-            }
-        >
+        <Suspense fallback={<LoadingScreen />}>
             <WalletPageContent />
         </Suspense>
     );

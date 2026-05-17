@@ -3,6 +3,11 @@ import { ChainIcons, TreasuryAsset } from "@/lib/api";
 import { cn, formatCurrency, formatSmartAmount } from "@/lib/utils";
 import { useThemeStore } from "@/stores/theme-store";
 import Big from "@/lib/big";
+import {
+    getNetworkDisplayCaseClass,
+    getLocalizedNetworkDisplayName,
+} from "@/lib/intents-network";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
 
 interface NetworkIconDisplayProps {
@@ -10,23 +15,36 @@ interface NetworkIconDisplayProps {
     networkName: string;
     residency?: string;
     networkNameClassName?: string;
+    expandNearComLabel?: boolean;
 }
 
 const NETWORK_DISPLAY_NAMES: Record<string, string> = {
     eth: "Ethereum",
+    ethereum: "Ethereum",
     btc: "Bitcoin",
+    bitcoin: "Bitcoin",
     sol: "Solana",
+    solana: "Solana",
     arb: "Arbitrum",
+    arbitrum: "Arbitrum",
     pol: "Polygon",
+    polygon: "Polygon",
     bsc: "BNB Chain",
     trx: "Tron",
+    tron: "Tron",
     xlm: "Stellar",
+    stellar: "Stellar",
     apt: "Aptos",
+    aptos: "Aptos",
     ada: "Cardano",
+    cardano: "Cardano",
     doge: "Dogecoin",
+    dogecoin: "Dogecoin",
     zec: "Zcash",
+    zcash: "Zcash",
     xrp: "XRP",
     bera: "Berachain",
+    berachain: "Berachain",
     near: "NEAR",
 };
 
@@ -59,9 +77,11 @@ export const NetworkIconDisplay = ({
     networkName,
     residency,
     networkNameClassName,
+    expandNearComLabel = false,
 }: NetworkIconDisplayProps) => {
     const { theme } = useThemeStore();
     const getResidencyLabel = useResidencyLabel();
+    const tAddressBookTable = useTranslations("addressBookTable");
 
     const iconUrl = chainIcons
         ? theme === "dark"
@@ -69,7 +89,13 @@ export const NetworkIconDisplay = ({
             : chainIcons.light
         : null;
 
-    const isNEAR = networkName.toLowerCase() === "near";
+    const isNEAR = networkName.toLowerCase() === NEAR_NETWORK_ID;
+    const displayName = getLocalizedNetworkDisplayName({
+        networkName,
+        networkLabel: tAddressBookTable("network"),
+        fallbackName: getNetworkDisplayName(networkName),
+        expandNearComLabel,
+    });
 
     return (
         <div className="flex items-center gap-3">
@@ -87,13 +113,14 @@ export const NetworkIconDisplay = ({
             <div className="flex flex-col gap-0 items-baseline text-left">
                 <span
                     className={cn(
-                        "font-semibold capitalize",
+                        "font-semibold",
+                        getNetworkDisplayCaseClass(networkName),
                         networkNameClassName,
                     )}
                 >
-                    {getNetworkDisplayName(networkName)}
+                    {displayName}
                 </span>
-                {isNEAR && (
+                {isNEAR && residency && (
                     <span className="text-xs text-muted-foreground">
                         {getResidencyLabel(residency)}
                     </span>
@@ -112,6 +139,7 @@ export const NetworkDisplay = ({
 }) => {
     const { theme } = useThemeStore();
     const tRes = useTranslations("residency");
+    const tAddressBookTable = useTranslations("addressBookTable");
 
     let type;
     switch (asset.residency) {
@@ -125,7 +153,11 @@ export const NetworkDisplay = ({
             type = tRes("fungibleToken");
             break;
         case "Intents":
-            type = "near.com";
+            type = getLocalizedNetworkDisplayName({
+                networkName: "near.com",
+                networkLabel: tAddressBookTable("network"),
+                fallbackName: "near.com",
+            });
             break;
         case "Near":
             type = tRes("nativeToken");

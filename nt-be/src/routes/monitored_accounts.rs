@@ -1,4 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
+use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sqlx::types::chrono::{DateTime, Utc};
@@ -11,13 +12,13 @@ use crate::services::{RegisterMonitoredAccountError, register_or_refresh_monitor
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddAccountRequest {
-    pub account_id: String,
+    pub account_id: AccountId,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddAccountResponse {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub enabled: bool,
     pub is_confidential: bool,
     pub last_synced_at: Option<DateTime<Utc>>,

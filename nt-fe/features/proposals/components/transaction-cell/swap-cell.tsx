@@ -3,6 +3,7 @@ import { SwapRequestData } from "../../types/index";
 import { Amount } from "../amount";
 import { useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
+import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
 interface SwapCellProps {
     data: SwapRequestData;
@@ -41,6 +42,7 @@ export function IntentsSwapCell({ data, textOnly = false }: SwapCellProps) {
                 amount={data.amountIn}
                 tokenId={tokenInId}
                 showUSDValue={false}
+                showNetworkTooltip
                 iconSize="sm"
                 textOnly={textOnly}
             />
@@ -49,6 +51,7 @@ export function IntentsSwapCell({ data, textOnly = false }: SwapCellProps) {
                 amountWithDecimals={data.amountOut}
                 tokenId={tokenOutId}
                 showUSDValue={false}
+                showNetworkTooltip
                 iconSize="sm"
                 textOnly={textOnly}
             />
@@ -63,6 +66,7 @@ export function NearWrapSwapCell({ data, textOnly = false }: SwapCellProps) {
                 amount={data.amountIn}
                 tokenId={data.tokenIn}
                 showUSDValue={false}
+                showNetworkTooltip
                 iconSize="sm"
                 textOnly={textOnly}
             />
@@ -71,6 +75,7 @@ export function NearWrapSwapCell({ data, textOnly = false }: SwapCellProps) {
                 amount={data.amountOut}
                 tokenId={data.tokenOut}
                 showUSDValue={false}
+                showNetworkTooltip
                 iconSize="sm"
                 textOnly={textOnly}
             />
@@ -84,7 +89,7 @@ export function SwapCell(props: SwapCellProps) {
         case "exchange":
             title = <IntentsSwapCell {...props} />;
             break;
-        case "wrap.near":
+        case WRAP_NEAR_TOKEN_ID:
             title = <NearWrapSwapCell {...props} />;
             break;
         default:

@@ -36,7 +36,9 @@
         "viewAll": "Tümünü Görüntüle",
         "viewDetails": "Ayrıntıları görüntüle",
         "noResults": "Sonuç bulunamadı",
-        "add": "Ekle"
+        "add": "Ekle",
+        "confidentialDataTooltip": "Finansal faaliyetleriniz gizli ve güvenlidir. Bu bilgilere yalnızca siz ve ekibiniz erişebilir.",
+        "confidentialAddressTooltip": "Varlıklar gizli bir adreste alınacaktır."
     },
     "languageSwitcher": {
         "label": "Dil",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "Yeni projeleri desteklemek için TREZU, tüm tek seferlik dağıtım ve ağ depolama ücretlerini karşılar.",
         "createButton": "Hazine Oluştur",
         "connectWalletCreate": "Hazine Oluşturmak İçin Cüzdan Bağla",
+        "walletNotSupportedTitle": "Cüzdan henüz desteklenmiyor",
+        "walletNotSupportedDescription": "{wallet} henüz desteklenmiyor, ancak bunun üzerinde çalışıyoruz. Desteklenen bir NEAR cüzdanı veya Ledger ile devam edebilirsiniz.",
+        "connectNear": "NEAR'a Bağlan",
+        "connectLedger": "Ledger'a Bağlan",
         "unexpectedError": "Beklenmedik bir hata oluştu",
         "creationFailed": "Hazine oluşturulamadı. Lütfen tekrar deneyin.",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "Misafir",
         "tooltip": "Bu hazinenin misafirisiniz. Yalnızca verileri görüntüleyebilirsiniz."
-    },
-    "exportButton": {
-        "confidentialTooltip": "Dışa aktarma henüz gizli modda kullanılamıyor. Bu özellik yakında geliyor!"
     },
     "sponsoredActions": {
         "titleExhausted": "Sponsorlu Eylemler Kullanıldı",
@@ -1539,7 +1542,6 @@
         "incompatible": "Uyumsuz",
         "comingSoon": "Yakında",
         "forMembersOnly": "Yalnızca Üyelere Özel",
-        "nearComName": "near.com",
         "nearComDescription": "near.com ve trezu için gizli ağ",
         "nearDescription": "Herkese açık para çekme ağı"
     },

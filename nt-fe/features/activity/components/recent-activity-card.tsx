@@ -17,6 +17,7 @@ import {
     ArrowRight,
     Clock,
     ChevronRight,
+    Shield,
 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
@@ -59,6 +60,8 @@ import Link from "next/link";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { StepperHeader } from "@/components/step-wizard";
 import { ConfidentialState } from "@/components/confidential-state";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { Tooltip } from "@/components/tooltip";
 
 const ITEMS_ON_DASHBOARD = 10;
 const MAX_ITEMS = 100;
@@ -68,7 +71,10 @@ const columnHelper = createColumnHelper<GroupedActivity>();
 // Helper function to detect if an activity is a staking reward
 const isStakingReward = (activity: RecentActivityType): boolean => {
     // Must be NEAR token with positive amount
-    if (activity.tokenId !== "near" || parseFloat(activity.amount) <= 0) {
+    if (
+        activity.tokenId !== NEAR_NETWORK_ID ||
+        parseFloat(activity.amount) <= 0
+    ) {
         return false;
     }
 
@@ -476,7 +482,26 @@ export function RecentActivity() {
             <Card className="gap-3 border-none shadow-none">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3 px-4">
                     <div className="space-y-1">
-                        <StepperHeader title={t("recentTitle")} />
+                        <StepperHeader
+                            title={
+                                isConfidential ? (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <span>{t("recentTitle")}</span>
+                                        <Tooltip
+                                            content={tCommon(
+                                                "confidentialDataTooltip",
+                                            )}
+                                        >
+                                            <span className="inline-flex">
+                                                <Shield className="size-4 fill-foreground" />
+                                            </span>
+                                        </Tooltip>
+                                    </span>
+                                ) : (
+                                    t("recentTitle")
+                                )
+                            }
+                        />
                     </div>
                     <div className="flex items-center gap-2">
                         {/* TODO: Uncomment after price integration */}

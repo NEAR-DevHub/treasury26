@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import {
@@ -28,26 +27,28 @@ export function CreateTreasuryPromptModal({
     onCreateTreasury,
 }: CreateTreasuryPromptModalProps) {
     const t = useTranslations("onboarding.createPrompt");
-    const pathname = usePathname();
-    const isOnboardingPath = pathname === "/";
+    const isOnboardingPath = source === "onboarding";
     const descriptionSuffix = isOnboardingPath
         ? t("suffixDemo")
         : t("suffixExploring");
 
     const trackClick = (button: string) => {
-        trackEvent("create-treasury-prompt-clicked", { button, source });
+        trackEvent("onboarding_cta_clicked", {
+            cta: button,
+            source: source === "onboarding" ? "/" : "app",
+        });
     };
 
     return (
         <Dialog
             open={open}
             onOpenChange={(nextOpen) => {
-                if (!nextOpen) trackClick("dismiss");
+                if (!nextOpen && isOnboardingPath) return;
                 onOpenChange(nextOpen);
             }}
         >
             <DialogContent>
-                <DialogHeader className="mb-1">
+                <DialogHeader className="mb-1" closeButton={!isOnboardingPath}>
                     <DialogTitle className="text-left">
                         {t("title")}
                     </DialogTitle>
@@ -59,7 +60,6 @@ export function CreateTreasuryPromptModal({
                     <Button
                         className="w-full"
                         onClick={() => {
-                            trackClick("create_treasury");
                             onCreateTreasury();
                         }}
                     >

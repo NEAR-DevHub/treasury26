@@ -1,6 +1,6 @@
 use axum::{Json, extract::State, http::StatusCode};
 use near_api::{
-    NearGas, NearToken, Transaction,
+    AccountId, NearGas, NearToken, Transaction,
     types::{Action, tokens::STORAGE_COST_PER_BYTE, transaction::actions::FunctionCallAction},
 };
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,7 @@ pub struct SubmitListRequest {
     pub list_id: String,
     pub timestamp: u64,
     pub submitter_id: String,
-    pub dao_contract_id: String,
+    pub dao_contract_id: AccountId,
     pub token_id: String,
     pub payments: Vec<PaymentInput>,
 }
@@ -165,7 +165,7 @@ pub async fn submit_list(
     }
 
     // Step 3: Check if treasury has available batch payment credits
-    let account_plan = get_account_plan_info(&state.db_pool, &request.dao_contract_id)
+    let account_plan = get_account_plan_info(&state.db_pool, request.dao_contract_id.as_str())
         .await
         .map_err(|e| {
             log::error!(
@@ -273,7 +273,7 @@ pub async fn submit_list(
                 RETURNING batch_payment_credits
                 "#,
                     )
-                    .bind(&request.dao_contract_id)
+                    .bind(request.dao_contract_id.as_str())
                     .fetch_optional(&state.db_pool)
                     .await;
 
@@ -316,7 +316,7 @@ pub async fn submit_list(
 
                     crate::services::platform_metrics::record_event(
                         &state.db_pool,
-                        &request.dao_contract_id,
+                        request.dao_contract_id.as_str(),
                         "batch_payments_used",
                     )
                     .await;

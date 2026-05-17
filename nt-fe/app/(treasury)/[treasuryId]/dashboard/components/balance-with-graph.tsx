@@ -6,6 +6,7 @@ import {
     Coins,
     Download,
     Info,
+    Shield,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -125,6 +126,7 @@ export default function BalanceWithGraph({
     isLoading: isLoadingTokens,
 }: Props) {
     const t = useTranslations("balanceWithGraph");
+    const tCommon = useTranslations("common");
     const locale = useLocale();
     const {
         treasuryId,
@@ -538,6 +540,15 @@ export default function BalanceWithGraph({
                     <div className="flex-1">
                         <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                             {t("totalBalance")}
+                            {isConfidentialTreasury && (
+                                <Tooltip
+                                    content={tCommon("confidentialDataTooltip")}
+                                >
+                                    <span className="inline-flex">
+                                        <Shield className="size-4 fill-foreground" />
+                                    </span>
+                                </Tooltip>
+                            )}
                             {!isConfidential &&
                                 selectedToken === "all" &&
                                 chartExcludedSymbols.length > 0 && (

@@ -46,6 +46,15 @@ impl ChainMetadata {
     }
 }
 
+fn add_chain_alias(metadata: &mut HashMap<String, ChainMetadata>, alias: &str, canonical: &str) {
+    if let Some(canonical_meta) = metadata.get(canonical).cloned() {
+        metadata.insert(
+            alias.to_string(),
+            ChainMetadata::alias(canonical, &canonical_meta),
+        );
+    }
+}
+
 pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
     let mut metadata = HashMap::new();
 
@@ -65,8 +74,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "arbitrum".to_string(),
         ChainMetadata::new("Arbitrum", "arbitrum.svg", "arbitrum.svg"),
     );
-    let arb_alias = ChainMetadata::alias("arbitrum", metadata.get("arbitrum").unwrap());
-    metadata.insert("arb".to_string(), arb_alias);
+    add_chain_alias(&mut metadata, "arb", "arbitrum");
     metadata.insert(
         "bitcoin".to_string(),
         ChainMetadata::new("Bitcoin", "btc.svg", "btc.svg"),
@@ -75,6 +83,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "solana".to_string(),
         ChainMetadata::new("Solana", "solana.svg", "solana.svg"),
     );
+    add_chain_alias(&mut metadata, "sol", "solana");
     metadata.insert(
         "dogecoin".to_string(),
         ChainMetadata::new("Dogecoin", "dogecoin.svg", "dogecoin.svg"),
@@ -127,10 +136,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "berachain".to_string(),
         ChainMetadata::new("BeraChain", "berachain.svg", "berachain.svg"),
     );
-    metadata.insert(
-        "bera".to_string(),
-        ChainMetadata::alias("berachain", metadata.get("berachain").unwrap()),
-    );
+    add_chain_alias(&mut metadata, "bera", "berachain");
     metadata.insert(
         "tron".to_string(),
         ChainMetadata::new("Tron", "tron.svg", "tron.svg"),
@@ -139,14 +145,13 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "polygon".to_string(),
         ChainMetadata::new("Polygon", "polygon.svg", "polygon.svg"),
     );
-    metadata.insert(
-        "pol".to_string(),
-        ChainMetadata::alias("polygon", metadata.get("polygon").unwrap()),
-    );
+    add_chain_alias(&mut metadata, "pol", "polygon");
+    add_chain_alias(&mut metadata, "matic", "polygon");
     metadata.insert(
         "bsc".to_string(),
         ChainMetadata::new("BNB Smart Chain", "bsc.svg", "bsc.svg"),
     );
+    add_chain_alias(&mut metadata, "bnb", "bsc");
     metadata.insert(
         "hyperliquid".to_string(),
         ChainMetadata::new("Hyperliquid", "hyperliquid.svg", "hyperliquid.svg"),
@@ -159,14 +164,12 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "optimism".to_string(),
         ChainMetadata::new("Optimism", "optimism.svg", "optimism_dark.svg"),
     );
-    metadata.insert(
-        "op".to_string(),
-        ChainMetadata::alias("optimism", metadata.get("optimism").unwrap()),
-    );
+    add_chain_alias(&mut metadata, "op", "optimism");
     metadata.insert(
         "avalanche".to_string(),
         ChainMetadata::new("Avalanche", "avalanche.svg", "avalanche.svg"),
     );
+    add_chain_alias(&mut metadata, "avax", "avalanche");
     metadata.insert(
         "sui".to_string(),
         ChainMetadata::new("Sui", "sui.svg", "sui_dark.svg"),
@@ -219,14 +222,23 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "layerx".to_string(),
         ChainMetadata::new("LayerX", "layerx_white.svg", "layerx.svg"),
     );
-    metadata.insert(
-        "xlayer".to_string(),
-        ChainMetadata::alias("layerx", metadata.get("layerx").unwrap()),
-    );
+    add_chain_alias(&mut metadata, "xlayer", "layerx");
     metadata.insert(
         "dash".to_string(),
         ChainMetadata::new("Dash", "dash.svg", "dash.svg"),
     );
+
+    // Common long-form / shorthand aliases used by upstream providers
+    add_chain_alias(&mut metadata, "ethereum", "eth");
+    add_chain_alias(&mut metadata, "btc", "bitcoin");
+    add_chain_alias(&mut metadata, "doge", "dogecoin");
+    add_chain_alias(&mut metadata, "zec", "zcash");
+    add_chain_alias(&mut metadata, "xrp", "xrpledger");
+    add_chain_alias(&mut metadata, "nearprotocol", "near");
+    add_chain_alias(&mut metadata, "near_protocol", "near");
+    add_chain_alias(&mut metadata, "near protocol", "near");
+    add_chain_alias(&mut metadata, "binance smart chain", "bsc");
+    add_chain_alias(&mut metadata, "bnb smart chain", "bsc");
 
     metadata
 });

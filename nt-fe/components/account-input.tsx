@@ -14,6 +14,7 @@ import {
 } from "@/lib/near-validation";
 import { translateNearValidationError } from "@/lib/near-validation-i18n";
 import type { BlockchainType } from "@/lib/blockchain-utils";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 /**
  * Unified Account Input Component
@@ -56,12 +57,12 @@ const AccountInput = ({
     const [hasValidated, setHasValidated] = useState(false); // Track if validation completed
     const hasUserInteractedRef = useRef(false);
 
-    const isNear = blockchain === "near";
+    const isNear = blockchain === NEAR_NETWORK_ID;
 
     // Get blockchain-specific configuration
     const config = useMemo(() => {
         const example =
-            blockchain === "near"
+            blockchain === NEAR_NETWORK_ID
                 ? t("nearExample")
                 : getAddressExample(blockchain);
         return {

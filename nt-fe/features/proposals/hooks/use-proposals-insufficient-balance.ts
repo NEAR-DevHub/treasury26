@@ -6,6 +6,7 @@ import { Proposal } from "@/lib/proposals-api";
 import { useAssets } from "@/hooks/use-assets";
 import { getProposalRequiredFunds } from "../utils/proposal-utils";
 import { availableBalance } from "@/lib/balance";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 /**
  * Hook to check which proposals in a list have insufficient treasury balance for approval.
@@ -34,7 +35,7 @@ export function useProposalsInsufficientBalance(
             const token = assets.tokens.find(
                 (t) =>
                     t.contractId === requiredFunds.tokenId ||
-                    (requiredFunds.tokenId.toLowerCase() === "near" &&
+                    (requiredFunds.tokenId.toLowerCase() === NEAR_NETWORK_ID &&
                         t.contractId == null &&
                         t.residency === "Near"),
             );

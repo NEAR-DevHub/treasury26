@@ -36,7 +36,9 @@
         "viewAll": "전체 보기",
         "viewDetails": "상세 보기",
         "noResults": "결과를 찾을 수 없습니다",
-        "add": "추가"
+        "add": "추가",
+        "confidentialDataTooltip": "귀하의 금융 활동은 비공개이며 안전합니다. 이 정보에는 귀하와 귀하의 팀만 접근할 수 있습니다.",
+        "confidentialAddressTooltip": "자산은 비공개 주소로 수신됩니다."
     },
     "languageSwitcher": {
         "label": "언어",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "신규 프로젝트를 지원하기 위해 TREZU는 모든 일회성 배포 및 네트워크 저장 수수료를 부담합니다.",
         "createButton": "트레저리 생성",
         "connectWalletCreate": "트레저리 생성을 위해 지갑 연결",
+        "walletNotSupportedTitle": "아직 지원되지 않는 지갑입니다",
+        "walletNotSupportedDescription": "{wallet}은(는) 아직 지원되지 않지만, 현재 지원을 준비 중입니다. 지원되는 NEAR 지갑 또는 Ledger로 계속할 수 있습니다.",
+        "connectNear": "NEAR 연결",
+        "connectLedger": "Ledger 연결",
         "unexpectedError": "예기치 않은 오류가 발생했습니다",
         "creationFailed": "트레저리 생성에 실패했습니다. 다시 시도해 주세요.",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "게스트",
         "tooltip": "이 트레저리의 게스트입니다. 데이터 보기만 가능합니다."
-    },
-    "exportButton": {
-        "confidentialTooltip": "내보내기는 아직 비공개 모드에서 사용할 수 없습니다. 이 기능은 곧 출시됩니다!"
     },
     "sponsoredActions": {
         "titleExhausted": "후원 작업 사용됨",
@@ -1539,7 +1542,6 @@
         "incompatible": "호환되지 않음",
         "comingSoon": "곧 제공",
         "forMembersOnly": "회원 전용",
-        "nearComName": "near.com",
         "nearComDescription": "near.com 및 trezu용 기밀 네트워크",
         "nearDescription": "공개 출금을 위한 네트워크"
     },

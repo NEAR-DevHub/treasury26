@@ -16,6 +16,7 @@ import {
     isNEARDeposit,
     isNEARWithdraw,
 } from "../utils";
+import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
 interface UseExchangeQuoteParams {
     selectedTreasury: string | null | undefined;
@@ -71,7 +72,8 @@ export function useExchangeQuote({
                         .toFixed();
 
                     // Fetch token price for USD calculation
-                    const tokenMetadata = await getTokenMetadata("wrap.near");
+                    const tokenMetadata =
+                        await getTokenMetadata(WRAP_NEAR_TOKEN_ID);
                     const tokenPrice = tokenMetadata?.price || 0;
                     const amountUsd = (
                         parseFloat(sellAmount) * tokenPrice
@@ -99,9 +101,13 @@ export function useExchangeQuote({
                         quoteRequest: {
                             swapType: "EXACT_INPUT",
                             slippageTolerance: 0,
-                            originAsset: isDeposit ? "near" : "wrap.near",
+                            originAsset: isDeposit
+                                ? NEAR_NETWORK_ID
+                                : WRAP_NEAR_TOKEN_ID,
                             depositType: "DESTINATION_CHAIN",
-                            destinationAsset: isDeposit ? "wrap.near" : "near",
+                            destinationAsset: isDeposit
+                                ? WRAP_NEAR_TOKEN_ID
+                                : NEAR_NETWORK_ID,
                             amount: amountInRaw,
                             refundTo: selectedTreasury,
                             refundType: "DESTINATION_CHAIN",

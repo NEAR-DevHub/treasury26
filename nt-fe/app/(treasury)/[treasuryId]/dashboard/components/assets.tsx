@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins } from "lucide-react";
+import { Coins, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { AssetsTable, AssetsTableSkeleton } from "@/components/assets-table";
 import { PageCard } from "@/components/card";
@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/empty-state";
 import { StepperHeader } from "@/components/step-wizard";
 import { useAggregatedTokens } from "@/hooks/use-assets";
 import { ConfidentialState } from "@/components/confidential-state";
+import { Tooltip } from "@/components/tooltip";
+import { useTreasury } from "@/hooks/use-treasury";
 import type { TreasuryAsset } from "@/lib/api";
 import { getDashboardBucketVisibility } from "@/lib/dashboard-balance-view";
 
@@ -18,6 +20,8 @@ interface Props {
 
 export default function Assets({ tokens, state }: Props) {
     const t = useTranslations("assetsPage");
+    const tCommon = useTranslations("common");
+    const { isConfidential } = useTreasury();
     const aggregatedTokens = useAggregatedTokens(tokens);
     const bucketVisibility = getDashboardBucketVisibility(tokens);
     const hasTabs = bucketVisibility.showLocked || bucketVisibility.showEarning;
@@ -52,7 +56,26 @@ export default function Assets({ tokens, state }: Props) {
         >
             {!hasTabs && (
                 <div className="flex justify-between">
-                    <StepperHeader title={t("title")} />
+                    <StepperHeader
+                        title={
+                            isConfidential ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span>{t("title")}</span>
+                                    <Tooltip
+                                        content={tCommon(
+                                            "confidentialDataTooltip",
+                                        )}
+                                    >
+                                        <span className="inline-flex">
+                                            <Shield className="size-4 fill-foreground" />
+                                        </span>
+                                    </Tooltip>
+                                </span>
+                            ) : (
+                                t("title")
+                            )
+                        }
+                    />
                 </div>
             )}
             {renderContent()}

@@ -258,7 +258,7 @@ test.describe("sign_transactions: Transfer NEAR proposal preview", () => {
 /* ------------------------------------------------------------------ */
 
 test.describe("sign_transactions: FunctionCall (ft_transfer) proposal preview", () => {
-    test("wallet popup shows ft_transfer method and token.near contract; cancel returns failure", async ({
+    test("wallet popup shows ft_transfer method and usdt.tether-token.near contract; cancel returns failure", async ({
         page,
         context,
     }) => {
@@ -278,12 +278,12 @@ test.describe("sign_transactions: FunctionCall (ft_transfer) proposal preview", 
             timeout: 15_000,
         });
 
-        // The wallet interprets ft_transfer (with receiver_id arg) as an INTENTS
-        // transfer and renders the recipient from the args, not the raw method name.
+        // The wallet renders the recipient from ft_transfer args (receiver_id),
+        // not from the raw function name.
         await expect(popup.locator("text=alice.near").first()).toBeVisible();
 
-        // Amount is shown in INTENTS units (unique to FunctionCall / ft_transfer path)
-        await expect(popup.locator("text=INTENTS").first()).toBeVisible();
+        // Amount is shown in token units for the FT contract used in this call.
+        await expect(popup.getByText("Amount1.00 USDT")).toBeVisible();
 
         await popup.click("button:has-text('Cancel')");
 

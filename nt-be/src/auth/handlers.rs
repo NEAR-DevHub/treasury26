@@ -204,7 +204,7 @@ pub async fn accept_terms(
         UPDATE users SET terms_accepted_at = NOW(), updated_at = NOW()
         WHERE account_id = $1
         "#,
-        auth_user.account_id
+        auth_user.account_id.as_str()
     )
     .execute(&state.db_pool)
     .await
@@ -223,7 +223,7 @@ pub async fn get_me(
         SELECT account_id, terms_accepted_at FROM users
         WHERE account_id = $1
         "#,
-        auth_user.account_id
+        auth_user.account_id.as_str()
     )
     .fetch_optional(&state.db_pool)
     .await

@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { PageComponentLayout } from "@/components/page-component-layout";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { default_near_token } from "@/constants/token";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
@@ -189,7 +190,7 @@ export default function BulkPaymentPage() {
             // Determine token IDs
             const isNEAR =
                 selectedToken.address === default_near_token(false).address &&
-                selectedToken.residency?.toLowerCase() === "near";
+                selectedToken.residency?.toLowerCase() === NEAR_NETWORK_ID;
 
             const tokenIdForHash = isNEAR ? "native" : selectedToken.address;
             const tokenIdForProposal = selectedToken.address;

@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import { useNearStore } from "@/stores/near-store";
 import { AcceptTermsModal } from "./accept-terms-modal";
-import { Loader2 } from "lucide-react";
 import { CreateTreasuryPromptController } from "@/features/onboarding/components/create-treasury-prompt-controller";
+import { LoadingScreen } from "./loading-screen";
 
 interface AuthProviderProps {
     children: React.ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-    const t = useTranslations("common");
     const { isInitializing, isAuthenticated, hasAcceptedTerms, checkAuth } =
         useNearStore();
 
@@ -29,16 +27,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Show loading state while checking auth
     if (!hasCheckedAuth || isInitializing) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                        {t("loading")}
-                    </p>
-                </div>
-            </div>
-        );
+        return <LoadingScreen />;
     }
 
     // Show terms modal if authenticated but terms not accepted

@@ -4,6 +4,7 @@
 //! Uses `find_gaps_in_time_range()` to detect interior gaps per token
 //! and returns the gap list so callers can assess export completeness.
 
+use near_account_id::{AccountId, AccountIdRef};
 use serde::Serialize;
 use sqlx::PgPool;
 use sqlx::types::chrono::{DateTime, Utc};
@@ -24,7 +25,7 @@ pub struct TokenCompleteness {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CompletenessResponse {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub from: DateTime<Utc>,
     pub to: DateTime<Utc>,
     pub tokens: Vec<TokenCompleteness>,
@@ -33,7 +34,7 @@ pub struct CompletenessResponse {
 /// Check completeness for all tokens of an account within a time range
 pub async fn check_completeness(
     pool: &PgPool,
-    account_id: &str,
+    account_id: &AccountIdRef,
     from: DateTime<Utc>,
     to: DateTime<Utc>,
 ) -> Result<CompletenessResponse, Box<dyn std::error::Error + Send + Sync>> {
@@ -47,7 +48,7 @@ pub async fn check_completeness(
         ORDER BY token_id
         "#,
     )
-    .bind(account_id)
+    .bind(account_id.as_str())
     .bind(from)
     .bind(to)
     .fetch_all(pool)
@@ -57,7 +58,8 @@ pub async fn check_completeness(
 
     for token_id in token_ids {
         let gaps =
-            gap_detector::find_gaps_in_time_range(pool, account_id, &token_id, from, to).await?;
+            gap_detector::find_gaps_in_time_range(pool, account_id.as_str(), &token_id, from, to)
+                .await?;
         let gap_count = gaps.len();
         let has_gaps = gap_count > 0;
 
@@ -70,7 +72,7 @@ pub async fn check_completeness(
     }
 
     Ok(CompletenessResponse {
-        account_id: account_id.to_string(),
+        account_id: account_id.to_owned(),
         from,
         to,
         tokens,
@@ -139,7 +141,7 @@ mod tests {
         let from = block_timestamp_to_datetime(0);
         let to = block_timestamp_to_datetime(500 * 1_000_000_000);
 
-        let response = check_completeness(&pool, "test.near", from, to)
+        let response = check_completeness(&pool, "test.near".try_into().unwrap(), from, to)
             .await
             .unwrap();
 
@@ -168,7 +170,7 @@ mod tests {
         let from = block_timestamp_to_datetime(0);
         let to = block_timestamp_to_datetime(400 * 1_000_000_000);
 
-        let response = check_completeness(&pool, "test.near", from, to)
+        let response = check_completeness(&pool, "test.near".try_into().unwrap(), from, to)
             .await
             .unwrap();
 
@@ -191,7 +193,7 @@ mod tests {
         let from = block_timestamp_to_datetime(250 * 1_000_000_000);
         let to = block_timestamp_to_datetime(450 * 1_000_000_000);
 
-        let response = check_completeness(&pool, "test.near", from, to)
+        let response = check_completeness(&pool, "test.near".try_into().unwrap(), from, to)
             .await
             .unwrap();
 
@@ -234,7 +236,7 @@ mod tests {
         let from = block_timestamp_to_datetime(0);
         let to = block_timestamp_to_datetime(300 * 1_000_000_000);
 
-        let response = check_completeness(&pool, "test.near", from, to)
+        let response = check_completeness(&pool, "test.near".try_into().unwrap(), from, to)
             .await
             .unwrap();
 
@@ -265,7 +267,7 @@ mod tests {
         let from = block_timestamp_to_datetime(500 * 1_000_000_000);
         let to = block_timestamp_to_datetime(600 * 1_000_000_000);
 
-        let response = check_completeness(&pool, "test.near", from, to)
+        let response = check_completeness(&pool, "test.near".try_into().unwrap(), from, to)
             .await
             .unwrap();
 

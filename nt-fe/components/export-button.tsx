@@ -9,9 +9,8 @@ import { trackEvent } from "@/lib/analytics";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 export function ExportButton() {
-    const t = useTranslations("exportButton");
     const tCommon = useTranslations("common");
-    const { treasuryId, isConfidential } = useTreasury();
+    const { treasuryId } = useTreasury();
     const router = useRouter();
     const isMobile = useMediaQuery("(max-width: 640px)");
 
@@ -26,10 +25,6 @@ export function ExportButton() {
     return (
         <Button
             variant="secondary"
-            disabled={isConfidential}
-            tooltipContent={
-                isConfidential ? t("confidentialTooltip") : undefined
-            }
             onClick={handleClick}
             className="h-9 px-3"
             size={isMobile ? "icon" : "default"}

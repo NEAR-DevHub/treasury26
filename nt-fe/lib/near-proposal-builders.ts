@@ -5,6 +5,7 @@ import {
     STORAGE_DEPOSIT_GAS,
 } from "@/lib/near-ft-gas";
 import { jsonToBase64 } from "@/lib/utils";
+import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
 type FunctionCallTxAction = {
     type: "FunctionCall";
@@ -74,7 +75,7 @@ export function buildNativeNearIntentsKind(
 ): FunctionCallKind {
     return {
         FunctionCall: {
-            receiver_id: "wrap.near",
+            receiver_id: WRAP_NEAR_TOKEN_ID,
             actions: [
                 {
                     method_name: "near_deposit",

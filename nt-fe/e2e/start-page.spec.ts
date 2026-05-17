@@ -67,6 +67,18 @@ async function setupStartPageMocks(
     });
 }
 
+async function gotoStartPageAndWaitForBootstrapRequests(page: Page) {
+    const authMeResponse = page.waitForResponse((response) =>
+        response.url().includes("/auth/me"),
+    );
+    const userTreasuriesResponse = page.waitForResponse((response) =>
+        response.url().includes("/user/treasuries"),
+    );
+
+    await page.goto("/");
+    await Promise.all([authMeResponse, userTreasuriesResponse]);
+}
+
 test("Start page shows onboarding choices when signed out", async ({
     page,
 }) => {
@@ -82,7 +94,7 @@ test("Start page shows onboarding choices when signed out", async ({
     ).toBeVisible();
 });
 
-test("Signed in + no treasuries + new user selection => redirects to /app/new", async ({
+test("Signed in + no treasuries + new user selection => redirects to /app/new?entry=new_user", async ({
     page,
 }) => {
     await setupStartPageMocks(page, {
@@ -91,13 +103,7 @@ test("Signed in + no treasuries + new user selection => redirects to /app/new", 
         treasuries: [],
     });
 
-    await page.goto("/");
-    await page.waitForResponse((response) =>
-        response.url().includes("/auth/me"),
-    );
-    await page.waitForResponse((response) =>
-        response.url().includes("/user/treasuries"),
-    );
+    await gotoStartPageAndWaitForBootstrapRequests(page);
 
     // New flow: /app/new redirect happens after explicitly choosing new user.
     await page
@@ -106,7 +112,9 @@ test("Signed in + no treasuries + new user selection => redirects to /app/new", 
         })
         .click();
 
-    await expect(page).toHaveURL(/\/app\/new$/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/app\/new\?entry=new_user$/, {
+        timeout: 15000,
+    });
 });
 
 test("Signed in + has treasury => redirects to /{daoId}", async ({ page }) => {
@@ -125,13 +133,7 @@ test("Signed in + has treasury => redirects to /{daoId}", async ({ page }) => {
         ],
     });
 
-    await page.goto("/");
-    await page.waitForResponse((response) =>
-        response.url().includes("/auth/me"),
-    );
-    await page.waitForResponse((response) =>
-        response.url().includes("/user/treasuries"),
-    );
+    await gotoStartPageAndWaitForBootstrapRequests(page);
 
     await expect(page).toHaveURL(
         new RegExp(`/${daoId.replaceAll(".", "\\.")}$`),
@@ -148,13 +150,7 @@ test("Signed in + no treasuries + creation disabled => waitlist is shown", async
         treasuries: [],
     });
 
-    await page.goto("/");
-    await page.waitForResponse((response) =>
-        response.url().includes("/auth/me"),
-    );
-    await page.waitForResponse((response) =>
-        response.url().includes("/user/treasuries"),
-    );
+    await gotoStartPageAndWaitForBootstrapRequests(page);
 
     await expect(page).toHaveURL(/\/$/);
     await expect(

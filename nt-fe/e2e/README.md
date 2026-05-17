@@ -30,6 +30,7 @@ npm run test:e2e:headed
 ### With Docker Sandbox Backend
 
 The tests can run against the full sandbox environment which includes:
+
 - NEAR Sandbox blockchain
 - Treasury Backend API
 - Sputnik DAO Indexer
@@ -70,13 +71,14 @@ e2e/
 The Ledger login test verifies the UI flow for connecting a Ledger hardware wallet:
 
 1. Navigates to `/`
-2. Clicks the "Connect Wallet" button
-3. Verifies the wallet selector modal appears
-4. Clicks on the Ledger option to initiate the flow
+2. Clicks the "I already use Trezu" onboarding option
+3. Verifies redirect to the wallet connection page (`/login?context=existing_user`)
+4. Clicks the Ledger option to initiate the flow
 
 ### Limitations
 
 Due to hardware requirements and the sandboxed iframe architecture:
+
 - Full end-to-end Ledger flow requires actual hardware device
 - WebHID API cannot be fully tested without real USB device
 - Current tests verify the UI flow up to the point of device connection
@@ -90,6 +92,7 @@ Due to hardware requirements and the sandboxed iframe architecture:
 ## CI/CD
 
 Tests run automatically on:
+
 - Push to `main` branch
 - Pull requests targeting `main`
 

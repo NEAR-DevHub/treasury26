@@ -2,6 +2,7 @@
 
 import { ChevronDown, FileText, Loader2, LogIn, LogOut } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/button";
@@ -18,11 +19,12 @@ import { User } from "./user";
 export function SignIn() {
     const t = useTranslations("signIn");
     const tCommon = useTranslations("common");
+    const router = useRouter();
+    const pathname = usePathname();
     const {
         accountId: signedAccountId,
         isInitializing,
         isAuthenticated,
-        connect,
         disconnect,
     } = useNear();
     const [isOpen, setIsOpen] = useState(false);
@@ -31,7 +33,10 @@ export function SignIn() {
     const handleConnect = async () => {
         setIsConnecting(true);
         try {
-            await connect();
+            const params = new URLSearchParams();
+            params.set("returnTo", pathname);
+            params.set("context", "within_treasury");
+            router.push(`/login?${params.toString()}`);
         } finally {
             setIsConnecting(false);
         }

@@ -6,6 +6,7 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
+use futures::stream::{self, StreamExt};
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -16,6 +17,7 @@ use crate::AppState;
 #[serde(rename_all = "camelCase")]
 pub struct UserTreasuriesQuery {
     pub account_id: String,
+    pub include_hidden: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -56,6 +58,7 @@ pub async fn get_user_treasuries(
     Query(params): Query<UserTreasuriesQuery>,
 ) -> Result<Json<Vec<Treasury>>, (StatusCode, String)> {
     let account_id = params.account_id.clone();
+    let include_hidden = params.include_hidden.unwrap_or(false);
 
     if account_id.is_empty() {
         return Err((
@@ -65,7 +68,7 @@ pub async fn get_user_treasuries(
     }
 
     // Query local database for user's DAO memberships and saved treasuries.
-    // Hidden entries are returned as well; frontend decides visibility.
+    // Hidden entries are included only when include_hidden=true.
     let rows = sqlx::query!(
         r#"
         SELECT
@@ -78,9 +81,11 @@ pub async fn get_user_treasuries(
         LEFT JOIN monitored_accounts ma ON ma.account_id = dm.dao_id
         WHERE dm.account_id = $1
           AND (is_policy_member = true OR is_saved = true)
+          AND ($2::bool = true OR dm.is_hidden = false)
         ORDER BY dao_id
         "#,
-        &account_id
+        &account_id,
+        include_hidden
     )
     .fetch_all(&state.db_pool)
     .await
@@ -96,28 +101,43 @@ pub async fn get_user_treasuries(
         return Ok(Json(Vec::new()));
     }
 
+    let fetches = rows.into_iter().map(|row| {
+        let state = state.clone();
+        async move {
+            let dao_id_str = row.dao_id;
+            let dao_id: AccountId = match dao_id_str.parse() {
+                Ok(id) => id,
+                Err(e) => {
+                    log::warn!("Invalid DAO ID in database: {} - {}", dao_id_str, e);
+                    return Ok(None);
+                }
+            };
+
+            let config = fetch_treasury_config(&state, &dao_id, None).await?;
+
+            Ok(Some(Treasury {
+                dao_id,
+                config,
+                is_member: row.is_member,
+                is_saved: row.is_saved,
+                is_hidden: row.is_hidden,
+                is_confidential: row.is_confidential,
+            }))
+        }
+    });
+
     let mut treasuries = Vec::new();
+    let results = stream::iter(fetches)
+        .buffer_unordered(8)
+        .collect::<Vec<Result<Option<Treasury>, (StatusCode, String)>>>()
+        .await;
 
-    for row in rows {
-        let dao_id_str = row.dao_id;
-        let dao_id: AccountId = match dao_id_str.parse() {
-            Ok(id) => id,
-            Err(e) => {
-                log::warn!("Invalid DAO ID in database: {} - {}", dao_id_str, e);
-                continue;
-            }
-        };
-
-        let config = fetch_treasury_config(&state, &dao_id, None).await?;
-
-        treasuries.push(Treasury {
-            dao_id,
-            config,
-            is_member: row.is_member,
-            is_saved: row.is_saved,
-            is_hidden: row.is_hidden,
-            is_confidential: row.is_confidential,
-        })
+    for result in results {
+        match result {
+            Ok(Some(treasury)) => treasuries.push(treasury),
+            Ok(None) => {}
+            Err(err) => return Err(err),
+        }
     }
 
     // Sort: member treasuries first, then by treasury name (fallback: dao_id).

@@ -1,5 +1,11 @@
 import { useThemeStore } from "@/stores/theme-store";
 import { cva, type VariantProps } from "class-variance-authority";
+import { getNetworkDisplayName } from "@/components/token-display";
+import {
+    getNetworkDisplayCaseClass,
+    getLocalizedNetworkDisplayName,
+} from "@/lib/intents-network";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Tooltip } from "@/components/tooltip";
@@ -54,6 +60,12 @@ export function NetworkBadge({
 }: NetworkBadgeProps) {
     const { theme } = useThemeStore();
     const isMobile = useMediaQuery("(max-width: 768px)");
+    const tAddressBookTable = useTranslations("addressBookTable");
+    const displayName = getLocalizedNetworkDisplayName({
+        networkName: name,
+        networkLabel: tAddressBookTable("network"),
+        fallbackName: getNetworkDisplayName(name),
+    });
     const icon =
         theme === "dark" ? (iconDark ?? iconLight) : (iconLight ?? iconDark);
     const iconSize = iconSizeMap[isMobile ? "icon" : (size ?? "sm")];
@@ -64,7 +76,7 @@ export function NetworkBadge({
             {icon && (
                 <img
                     src={icon}
-                    alt={name}
+                    alt={displayName}
                     className={cn(
                         iconSize,
                         name.toLowerCase() === "near protocol"
@@ -73,12 +85,16 @@ export function NetworkBadge({
                     )}
                 />
             )}
-            {!iconOnly && <span>{name}</span>}
+            {!iconOnly && (
+                <span className={cn(getNetworkDisplayCaseClass(name))}>
+                    {displayName}
+                </span>
+            )}
         </span>
     );
 
     if (iconOnly) {
-        return <Tooltip content={name}>{badge}</Tooltip>;
+        return <Tooltip content={displayName}>{badge}</Tooltip>;
     }
 
     return badge;

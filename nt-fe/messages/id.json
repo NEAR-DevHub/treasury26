@@ -36,7 +36,9 @@
         "viewAll": "Lihat Semua",
         "viewDetails": "Lihat detail",
         "noResults": "Tidak ada hasil ditemukan",
-        "add": "Tambah"
+        "add": "Tambah",
+        "confidentialDataTooltip": "Aktivitas keuangan Anda bersifat privat dan aman. Hanya Anda dan tim Anda yang dapat mengakses informasi ini.",
+        "confidentialAddressTooltip": "Aset akan diterima di alamat rahasia."
     },
     "languageSwitcher": {
         "label": "Bahasa",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "Untuk mendukung proyek baru, TREZU menanggung semua biaya deployment dan penyimpanan jaringan satu kali.",
         "createButton": "Buat Treasury",
         "connectWalletCreate": "Hubungkan Dompet Untuk Membuat Treasury",
+        "walletNotSupportedTitle": "Dompet belum didukung",
+        "walletNotSupportedDescription": "{wallet} belum didukung, tetapi kami sedang mengerjakannya. Anda dapat melanjutkan dengan dompet NEAR yang didukung atau Ledger.",
+        "connectNear": "Hubungkan NEAR",
+        "connectLedger": "Hubungkan Ledger",
         "unexpectedError": "Terjadi kesalahan tak terduga",
         "creationFailed": "Gagal membuat treasury. Silakan coba lagi.",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "Tamu",
         "tooltip": "Anda adalah tamu treasury ini. Anda hanya dapat melihat data."
-    },
-    "exportButton": {
-        "confidentialTooltip": "Ekspor belum tersedia dalam mode rahasia. Fitur ini akan segera hadir!"
     },
     "sponsoredActions": {
         "titleExhausted": "Tindakan Tersponsor Terpakai",
@@ -1539,7 +1542,6 @@
         "incompatible": "Tidak Kompatibel",
         "comingSoon": "Segera Hadir",
         "forMembersOnly": "Hanya untuk anggota",
-        "nearComName": "near.com",
         "nearComDescription": "Jaringan rahasia untuk near.com dan trezu",
         "nearDescription": "Jaringan untuk penarikan publik"
     },

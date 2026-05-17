@@ -36,7 +36,9 @@
         "viewAll": "Ver todo",
         "viewDetails": "Ver detalles",
         "noResults": "Sin resultados",
-        "add": "Añadir"
+        "add": "Añadir",
+        "confidentialDataTooltip": "Tu actividad financiera es privada y segura. Solo tú y tu equipo pueden acceder a esta información.",
+        "confidentialAddressTooltip": "Los activos se recibirán en una dirección confidencial."
     },
     "languageSwitcher": {
         "label": "Idioma",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "Para apoyar nuevos proyectos, TREZU cubre todas las comisiones únicas de despliegue y almacenamiento de red.",
         "createButton": "Crear tesorería",
         "connectWalletCreate": "Conecta la cartera para crear tesorería",
+        "walletNotSupportedTitle": "La wallet aún no es compatible",
+        "walletNotSupportedDescription": "{wallet} aún no es compatible, pero estamos trabajando en ello. Puedes continuar con una wallet NEAR compatible o Ledger.",
+        "connectNear": "Conectar NEAR",
+        "connectLedger": "Conectar Ledger",
         "unexpectedError": "Se produjo un error inesperado",
         "creationFailed": "Error al crear la tesorería. Inténtalo de nuevo.",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "Invitado",
         "tooltip": "Eres un invitado de esta tesorería. Solo puedes ver los datos."
-    },
-    "exportButton": {
-        "confidentialTooltip": "La exportación aún no está disponible en modo confidencial. ¡Esta función llegará pronto!"
     },
     "sponsoredActions": {
         "titleExhausted": "Acciones patrocinadas agotadas",
@@ -1539,7 +1542,6 @@
         "incompatible": "Incompatible",
         "comingSoon": "Próximamente",
         "forMembersOnly": "Solo para miembros",
-        "nearComName": "near.com",
         "nearComDescription": "Red confidencial para near.com y trezu",
         "nearDescription": "Red para retiro público"
     },

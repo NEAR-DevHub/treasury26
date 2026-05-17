@@ -15,7 +15,7 @@ const earnAppConfigs: {
 }[] = [
     {
         id: "rhea",
-        goToHref: "https://rhea.finance",
+        goToHref: "https://x.rhea.finance/en/earn",
         howItWorksHref: "https://www.youtube.com/watch?v=gcXBmtbsw34",
     },
     {

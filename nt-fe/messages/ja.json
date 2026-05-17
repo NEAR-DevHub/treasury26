@@ -36,7 +36,9 @@
         "viewAll": "すべて表示",
         "viewDetails": "詳細を表示",
         "noResults": "結果が見つかりませんでした",
-        "add": "追加"
+        "add": "追加",
+        "confidentialDataTooltip": "あなたの財務活動はプライベートで安全です。この情報にアクセスできるのは、あなたとあなたのチームだけです。",
+        "confidentialAddressTooltip": "資産は機密アドレスで受け取られます。"
     },
     "languageSwitcher": {
         "label": "言語",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "新しいプロジェクトを支援するため、TREZUは1回限りのデプロイとネットワークストレージ手数料をすべて負担します。",
         "createButton": "トレジャリーを作成",
         "connectWalletCreate": "トレジャリー作成のためにウォレットを接続",
+        "walletNotSupportedTitle": "このウォレットはまだサポートされていません",
+        "walletNotSupportedDescription": "{wallet} はまだサポートされていませんが、現在対応を進めています。対応済みのNEARウォレットまたはLedgerで続行できます。",
+        "connectNear": "NEARを接続",
+        "connectLedger": "Ledgerを接続",
         "unexpectedError": "予期しないエラーが発生しました",
         "creationFailed": "トレジャリーの作成に失敗しました。もう一度お試しください。",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "ゲスト",
         "tooltip": "あなたはこのトレジャリーのゲストです。データの閲覧のみ可能です。"
-    },
-    "exportButton": {
-        "confidentialTooltip": "機密モードではエクスポートはまだ利用できません。この機能は近日公開予定です!"
     },
     "sponsoredActions": {
         "titleExhausted": "スポンサー付きアクションを使い切りました",
@@ -1539,7 +1542,6 @@
         "incompatible": "非互換",
         "comingSoon": "近日公開",
         "forMembersOnly": "メンバー限定",
-        "nearComName": "near.com",
         "nearComDescription": "near.comとtrezuの機密ネットワーク",
         "nearDescription": "公開出金用ネットワーク"
     },

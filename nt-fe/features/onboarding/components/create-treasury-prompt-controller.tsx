@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryCreationStatus } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
@@ -14,6 +14,7 @@ const MODAL_SUPPRESSED_PATHS = new Set(["/app/new"]);
 export function CreateTreasuryPromptController() {
     const router = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [open, setOpen] = useState(false);
     const lastHandledOpenRequestIdRef = useRef(0);
     const prevIsAuthenticatingRef = useRef(false);
@@ -27,7 +28,10 @@ export function CreateTreasuryPromptController() {
     const { data: creationStatus } = useTreasuryCreationStatus();
 
     const creationAvailable = creationStatus?.creationAvailable ?? true;
-    const isOnboardingPath = pathname === "/";
+    const isOnboardingContext =
+        pathname === "/" ||
+        (pathname === "/login" &&
+            searchParams.get("context") === "existing_user");
     const isSuppressedPath = pathname
         ? MODAL_SUPPRESSED_PATHS.has(pathname)
         : false;
@@ -61,7 +65,7 @@ export function CreateTreasuryPromptController() {
 
     useEffect(() => {
         if (!canOpenPrompt) {
-            if (!isOnboardingPath) {
+            if (!isOnboardingContext) {
                 setOpen(false);
             }
             return;
@@ -71,11 +75,11 @@ export function CreateTreasuryPromptController() {
             lastHandledLoginNonceRef.current = loginNonce;
             openPrompt();
         }
-    }, [canOpenPrompt, isOnboardingPath, loginNonce]);
+    }, [canOpenPrompt, isOnboardingContext, loginNonce]);
 
     useEffect(() => {
         if (!canOpenPrompt) {
-            if (!isOnboardingPath) {
+            if (!isOnboardingContext) {
                 setOpen(false);
             }
             return;
@@ -89,9 +93,9 @@ export function CreateTreasuryPromptController() {
                 createTreasuryPromptOpenRequestId;
             openPrompt();
         }
-    }, [canOpenPrompt, isOnboardingPath, createTreasuryPromptOpenRequestId]);
+    }, [canOpenPrompt, isOnboardingContext, createTreasuryPromptOpenRequestId]);
 
-    const source = isOnboardingPath ? "onboarding" : "app";
+    const source = isOnboardingContext ? "onboarding" : "app";
 
     const openPrompt = () => {
         setOpen(true);

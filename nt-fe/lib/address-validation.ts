@@ -6,6 +6,7 @@
  */
 
 import { BlockchainType } from "./blockchain-utils";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 /**
  * Validation result with optional error message
@@ -144,7 +145,7 @@ export function validateAddress(
     const trimmedAddress = address.trim();
 
     // NEAR addresses are handled by near-validation.ts
-    if (blockchain === "near") {
+    if (blockchain === NEAR_NETWORK_ID) {
         // For synchronous validation, we can only check format
         // Full validation (including blockchain check) must be done async
         return {

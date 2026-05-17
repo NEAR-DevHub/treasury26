@@ -11,8 +11,21 @@ use std::sync::Arc;
 use super::supported_tokens::fetch_supported_tokens_data;
 use crate::{
     AppState, constants::intents_chains::ChainIcons,
-    handlers::token::metadata::fetch_tokens_with_defuse_extension,
+    handlers::token::metadata::fetch_tokens_metadata_enriched,
 };
+
+fn metadata_lookup_key(intents_id: &str) -> String {
+    format!("intents.near:{intents_id}")
+}
+
+fn chain_id_from_defuse_id(defuse_id: &str) -> String {
+    let parts: Vec<&str> = defuse_id.split(':').collect();
+    if parts.len() >= 2 {
+        format!("{}:{}", parts[0], parts[1])
+    } else {
+        parts.first().unwrap_or(&"").to_string()
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -79,20 +92,18 @@ pub async fn get_bridge_tokens(
             }
 
             let tokens: Vec<&Value> = token_map.values().copied().collect();
-            // Prefix with "intents.near:" so fetch_tokens_with_defuse_extension hits the
-            // counterparties fast path (which stores tokens as "intents.near:nep141:...")
+            // Keep lookup keys aligned with caller expectations across all consumers.
             let metadata_ids: Vec<String> = tokens
                 .iter()
                 .filter_map(|t| {
                     t.get("intents_token_id")
                         .and_then(|id| id.as_str())
-                        .map(|id| format!("intents.near:{}", id))
+                        .map(metadata_lookup_key)
                 })
                 .collect();
 
             // Step 4: Batch fetch token metadata using the unified metadata function
-            let metadata_map =
-                fetch_tokens_with_defuse_extension(&state_clone, &metadata_ids).await;
+            let metadata_map = fetch_tokens_metadata_enriched(&state_clone, &metadata_ids).await;
 
             // Step 5: Group by unified_asset_id
             let mut asset_map: HashMap<String, AssetOption> = HashMap::new();
@@ -103,8 +114,7 @@ pub async fn get_bridge_tokens(
                     continue;
                 };
 
-                // Look up with the "intents.near:" prefix we used when fetching
-                let lookup_key = format!("intents.near:{}", intents_id);
+                let lookup_key = metadata_lookup_key(intents_id);
                 let Some(meta) = metadata_map.get(&lookup_key) else {
                     continue;
                 };
@@ -119,20 +129,16 @@ pub async fn get_bridge_tokens(
                     .get("defuse_asset_identifier")
                     .and_then(|d| d.as_str())
                     .unwrap_or("");
-                let parts: Vec<&str> = defuse_id.split(':').collect();
-                let chain_id = if parts.len() >= 2 {
-                    format!("{}:{}", parts[0], parts[1])
-                } else {
-                    parts.first().unwrap_or(&"").to_string()
-                };
+                let chain_id = chain_id_from_defuse_id(defuse_id);
 
                 // Resolve unified_asset_id from tokens.json for proper grouping
                 let group_key = find_unified_asset_id(intents_id)
                     .map(String::from)
                     .unwrap_or_else(|| meta.symbol.to_lowercase());
 
-                // Get chain name from metadata
-                let net_name = meta.network.as_ref().or(meta.chain_name.as_ref()).cloned();
+                // Use chain name from metadata directly.
+                let resolved_network_name =
+                    meta.network.as_ref().or(meta.chain_name.as_ref()).cloned();
 
                 // Extract min deposit and withdrawal amounts
                 let min_deposit_amount = token
@@ -145,8 +151,7 @@ pub async fn get_bridge_tokens(
                     .and_then(|v| v.as_str())
                     .map(String::from);
 
-                // Prefer tokens.json for asset-level name/icon/symbol (reliable static data)
-                // over Ref SDK metadata which can return broken values for OMFT tokens
+                // Prefer tokens.json for asset-level name/icon/symbol when available.
                 let unified = get_tokens_map().get(&group_key);
                 let asset = asset_map
                     .entry(group_key.clone())
@@ -168,7 +173,7 @@ pub async fn get_bridge_tokens(
                 if !asset.networks.iter().any(|n| n.id == intents_id) {
                     asset.networks.push(NetworkOption {
                         symbol: meta.symbol.clone(),
-                        name: net_name.unwrap_or_default(),
+                        name: resolved_network_name.unwrap_or_default(),
                         id: intents_id.to_string(),
                         chain_icons: meta.chain_icons.clone(),
                         chain_id,

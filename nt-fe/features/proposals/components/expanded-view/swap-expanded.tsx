@@ -1,14 +1,16 @@
 import { useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { Amount } from "../amount";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { SwapRequestData } from "../../types/index";
-import { formatBalance } from "@/lib/utils";
+import { formatDurationSeconds } from "@/lib/utils";
 import { useMemo } from "react";
 import Big from "@/lib/big";
 import { Address } from "@/components/address";
 import { Rate } from "@/components/rate";
 import { useToken, useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
 import { FormattedDate } from "@/components/formatted-date";
+import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
 interface SwapExpandedProps {
     data: SwapRequestData;
@@ -16,6 +18,7 @@ interface SwapExpandedProps {
 
 function IntentsSwapExpanded({ data }: SwapExpandedProps) {
     const t = useTranslations("proposals.expanded");
+    const locale = useLocale();
     // For new proposals: use token addresses from description
     // For old proposals: use search hook with symbols as fallback
     const hasAddresses = !!(data.tokenInAddress && data.tokenOutAddress);
@@ -53,7 +56,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
             value: (
                 <Amount
                     amount={data.amountIn}
-                    showNetwork
+                    showNetworkTooltip
                     tokenId={finalTokenInId}
                 />
             ),
@@ -63,7 +66,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
             value: (
                 <Amount
                     amountWithDecimals={data.amountOut}
-                    showNetwork
+                    showNetworkTooltip
                     tokenId={finalTokenOutId}
                 />
             ),
@@ -92,9 +95,14 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
     }
 
     if (data.timeEstimate) {
+        const estimatedSeconds = Number(data.timeEstimate);
+        const formattedDuration = formatDurationSeconds(
+            estimatedSeconds,
+            locale,
+        );
         expandableItems.push({
             label: t("estimatedTime"),
-            value: <span>{data.timeEstimate}</span>,
+            value: <span>{formattedDuration}</span>,
             info: t("estimatedTimeTooltip"),
         });
     }
@@ -104,7 +112,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
         value: (
             <Amount
                 amountWithDecimals={minimumReceived.toString()}
-                showNetwork
+                showNetworkTooltip
                 tokenId={finalTokenOutId}
             />
         ),
@@ -146,13 +154,14 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
 
 function NearWrapSwapExpanded({ data }: SwapExpandedProps) {
     const t = useTranslations("proposals.expanded");
+    const locale = useLocale();
     const infoItems: InfoItem[] = [
         {
             label: t("send"),
             value: (
                 <Amount
                     amount={data.amountIn}
-                    showNetwork
+                    showNetworkTooltip
                     tokenId={data.tokenIn}
                 />
             ),
@@ -162,7 +171,7 @@ function NearWrapSwapExpanded({ data }: SwapExpandedProps) {
             value: (
                 <Amount
                     amount={data.amountOut}
-                    showNetwork
+                    showNetworkTooltip
                     tokenId={data.tokenOut}
                 />
             ),
@@ -191,9 +200,14 @@ function NearWrapSwapExpanded({ data }: SwapExpandedProps) {
     }
 
     if (data.timeEstimate) {
+        const estimatedSeconds = Number(data.timeEstimate);
+        const formattedDuration = formatDurationSeconds(
+            estimatedSeconds,
+            locale,
+        );
         expandableItems.push({
             label: t("estimatedTime"),
-            value: <span>{data.timeEstimate}</span>,
+            value: <span>{formattedDuration}</span>,
             info: t("estimatedTimeTooltip"),
         });
     }
@@ -203,7 +217,7 @@ function NearWrapSwapExpanded({ data }: SwapExpandedProps) {
         value: (
             <Amount
                 amount={data.amountOut}
-                showNetwork
+                showNetworkTooltip
                 tokenId={data.tokenOut}
             />
         ),
@@ -246,7 +260,7 @@ export function SwapExpanded({ data }: SwapExpandedProps) {
     switch (data.source) {
         case "exchange":
             return <IntentsSwapExpanded data={data} />;
-        case "wrap.near":
+        case WRAP_NEAR_TOKEN_ID:
             return <NearWrapSwapExpanded data={data} />;
         default:
             return null;

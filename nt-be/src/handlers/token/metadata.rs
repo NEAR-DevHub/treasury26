@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use axum::{
     Json,
@@ -13,16 +16,17 @@ use crate::{
     constants::{
         NEAR_ICON, WRAP_NEAR_ICON,
         intents_chains::{ChainIcons, get_chain_metadata_by_name},
-        intents_tokens::find_token_by_defuse_asset_id,
+        intents_tokens::{
+            find_token_by_defuse_asset_id, find_token_by_defuse_asset_id_and_address,
+        },
     },
-    handlers::proposals::scraper::fetch_ft_metadata,
-    handlers::proxy::external::fetch_proxy_api,
     utils::cache::{Cache, CacheKey, CacheTier},
 };
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TokenMetadataQuery {
+    #[serde(alias = "token_id")]
     pub token_id: String,
 }
 
@@ -94,27 +98,25 @@ impl TokenMetadata {
     }
 }
 
-/// This is the response from the Ref SDK API.
-///
-/// Sometimes it contains both camelCase and snake_case fields or only one of them.
-/// We need to handle both cases. :)
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-struct RefSdkToken {
-    pub defuse_asset_id: Option<String>,
-    #[serde(rename = "defuse_asset_id")]
-    pub defuse_asset_id_snake_case: Option<String>,
-    pub name: Option<String>,
-    pub symbol: Option<String>,
-    pub decimals: Option<u8>,
-    pub icon: Option<String>,
-    pub price: Option<f64>,
-    pub price_updated_at: Option<String>,
-    #[serde(rename = "price_updated_at")]
-    pub price_updated_at_snake_case: Option<String>,
-    pub chain_name: Option<String>,
-    pub chain_name_snake_case: Option<String>,
-    pub error: Option<String>,
+const CHAINDEFUSER_TOKENS_URL: &str = "https://api-mng-console.chaindefuser.com/api/tokens";
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct ChaindefuserTokensResponse {
+    items: Vec<ChaindefuserToken>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct ChaindefuserToken {
+    defuse_asset_id: String,
+    decimals: u8,
+    blockchain: String,
+    symbol: String,
+    #[serde(default)]
+    price: Option<f64>,
+    #[serde(default)]
+    price_updated_at: Option<String>,
+    #[serde(default)]
+    contract_address: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -139,181 +141,43 @@ struct NearBlocksToken {
     volume_24h: Option<String>,
 }
 
-/// Fetches token metadata from Ref SDK API by defuse asset IDs
-///
-/// # Arguments
-/// * `state` - Application state containing HTTP client and cache
-/// * `defuse_asset_ids` - List of defuse asset IDs to fetch (supports batch)
-///
-/// # Returns
-/// * `Ok(Vec<TokenMetadata>)` - List of token metadata with chain information
-/// * `Err((StatusCode, String))` - Error with status code and message
-pub async fn fetch_tokens_metadata(
+async fn fetch_chaindefuser_tokens(
     state: &Arc<AppState>,
-    defuse_asset_ids: &[String],
-) -> Result<Vec<TokenMetadata>, (StatusCode, String)> {
-    if defuse_asset_ids.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    // Join asset IDs with commas for batch request
-    let mut sorted_ids = defuse_asset_ids.to_vec();
-    sorted_ids.sort();
-    let asset_ids_param = sorted_ids.join(",");
-
-    // Prepare query parameters for the Ref SDK API
-    let mut query_params = HashMap::new();
-    query_params.insert("defuseAssetId".to_string(), asset_ids_param.clone());
-
-    let cache_key = CacheKey::new("ref-tokens-metadata")
-        .with(&asset_ids_param)
-        .build();
-
+) -> Result<ChaindefuserTokensResponse, (StatusCode, String)> {
+    let cache_key = "chaindefuser:tokens".to_string();
     let state_clone = state.clone();
-    let response = state
+    state
         .cache
         .cached(CacheTier::LongTerm, cache_key, async move {
-            // Fetch token data from Ref SDK API
-            fetch_proxy_api(
-                &state_clone.http_client,
-                &state_clone.env_vars.ref_sdk_base_url,
-                "token-by-defuse-asset-id",
-                &query_params,
-            )
-            .await
-        })
-        .await?;
-
-    // Parse as array of objects first
-    let tokens: Vec<RefSdkToken> = serde_json::from_value(response).map_err(|e| {
-        eprintln!("Failed to parse token response: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to parse token metadata response".to_string(),
-        )
-    })?;
-
-    // Map RefSdkToken to TokenMetadata with chain metadata, using fallback for errors
-    let mut metadata_responses: Vec<TokenMetadata> = Vec::new();
-
-    for (idx, token) in tokens.iter().enumerate() {
-        // Handle error entries with fallback
-        if token.error.is_some() {
-            eprintln!("Token has error, trying fallback: {:?}", token.error);
-
-            // Get the original token ID from input to use for fallback
-            if let Some(original_id) = defuse_asset_ids.get(idx) {
-                // Extract the contract ID from defuse asset ID (format: "nep141:contract.near")
-                let contract_id = original_id.split(':').nth(1).unwrap_or(original_id);
-
-                if let Ok(account_id) = contract_id.parse::<near_api::AccountId>() {
-                    match fetch_ft_metadata(&state.cache, &state.network, &account_id).await {
-                        Ok(ft_metadata) => {
-                            metadata_responses.push(TokenMetadata {
-                                token_id: original_id.clone(),
-                                name: ft_metadata.name,
-                                symbol: ft_metadata.symbol,
-                                decimals: ft_metadata.decimals,
-                                icon: ft_metadata.icon,
-                                price: None,
-                                price_updated_at: None,
-                                network: Some("near".to_string()),
-                                chain_name: Some("Near Protocol".to_string()),
-                                chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
-                            });
-                            continue;
-                        }
-                        Err(e) => {
-                            eprintln!(
-                                "Fallback fetch_ft_metadata failed for {}: {:?}",
-                                contract_id, e
-                            );
-                            continue;
-                        }
-                    }
-                }
+            let response = state_clone
+                .http_client
+                .get(CHAINDEFUSER_TOKENS_URL)
+                .header("accept", "application/json")
+                .send()
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to fetch Chaindefuser tokens: {e}"),
+                    )
+                })?;
+            if !response.status().is_success() {
+                return Err((
+                    StatusCode::BAD_GATEWAY,
+                    format!("Chaindefuser tokens API error: {}", response.status()),
+                ));
             }
-            continue;
-        }
-
-        // Skip if missing required fields
-        let Some(token_id) = token
-            .defuse_asset_id
-            .as_ref()
-            .or(token.defuse_asset_id_snake_case.as_ref())
-        else {
-            continue;
-        };
-        let Some(name) = token.name.as_ref() else {
-            continue;
-        };
-        let Some(symbol) = token.symbol.as_ref() else {
-            continue;
-        };
-        let Some(decimals) = token.decimals else {
-            continue;
-        };
-        let Some(chain_name_str) = token
-            .chain_name
-            .as_ref()
-            .or(token.chain_name_snake_case.as_ref())
-        else {
-            continue;
-        };
-
-        let chain_metadata = get_chain_metadata_by_name(chain_name_str);
-        let chain_name = chain_metadata.as_ref().map(|m| m.name.clone());
-        let chain_icons = chain_metadata.map(|m| m.icon);
-
-        // Special handling for wrap.near - if metadata is incomplete, use complete fallback
-        // Check both "nep141:wrap.near" and "wrap.near" (Ref SDK can return either)
-        let is_wrap_near = token_id == "wrap.near";
-        if is_wrap_near && (token.icon.is_none() || token.price.is_none() || chain_icons.is_none())
-        {
-            eprintln!(
-                "[Metadata] 🔧 {} has incomplete metadata from Ref SDK, using complete fallback",
-                token_id
-            );
-            // Use the complete wrap.near metadata with all fields populated
-            let wrap_near_meta = TokenMetadata::create_wrap_near_metadata(
-                token.price,
-                token
-                    .price_updated_at
-                    .as_ref()
-                    .or(token.price_updated_at_snake_case.as_ref())
-                    .cloned(),
-            );
-            metadata_responses.push(wrap_near_meta);
-        } else {
-            // Provide fallback icon: wrap.near → WRAP_NEAR_ICON, others → tokens.json static data
-            let icon = if is_wrap_near && token.icon.is_none() {
-                Some(WRAP_NEAR_ICON.to_string())
-            } else if token.icon.is_none() {
-                find_token_by_defuse_asset_id(token_id).map(|t| t.icon.clone())
-            } else {
-                token.icon.clone()
-            };
-
-            metadata_responses.push(TokenMetadata {
-                token_id: token_id.clone(),
-                name: name.clone(),
-                symbol: symbol.clone(),
-                decimals,
-                icon,
-                price: token.price,
-                price_updated_at: token
-                    .price_updated_at
-                    .as_ref()
-                    .or(token.price_updated_at_snake_case.as_ref())
-                    .cloned(),
-                network: Some(chain_name_str.clone()),
-                chain_name,
-                chain_icons,
-            });
-        }
-    }
-
-    Ok(metadata_responses)
+            response
+                .json::<ChaindefuserTokensResponse>()
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to parse Chaindefuser tokens response: {e}"),
+                    )
+                })
+        })
+        .await
 }
 
 /// Fetches FT metadata from NearBlocks API
@@ -530,21 +394,203 @@ pub async fn fetch_metadata_from_counterparties(
         .collect()
 }
 
-/// Fetches token metadata with automatic fallback strategy
-///
-/// This function handles both defuse asset IDs (prefixed with "nep141:", "intents.near:")
-/// and regular NEAR FT contract IDs. It uses multiple sources in order:
-/// 1. **Counterparties table** (fastest, cached in DB)
-/// 2. Defuse API for tokens with prefixes (for missing tokens only)
-/// 3. NearBlocks API for regular FT contracts (for missing tokens only)
-/// 4. Generic fallback if all fail
-///
-/// # Arguments
-/// * `state` - Application state
-/// * `token_ids` - List of token IDs (can be mixed defuse IDs and FT contract IDs)
-///
-/// # Returns
-/// * `HashMap<String, TokenMetadata>` - Map of token ID to metadata
+fn push_unique(values: &mut Vec<String>, value: String) {
+    if !value.is_empty() && !values.iter().any(|v| v == &value) {
+        values.push(value);
+    }
+}
+
+#[derive(Clone, Default)]
+struct MetadataLookupCandidates {
+    /// Full normalized candidate list derived from the caller input.
+    /// Used by generic checks (e.g. NearBlocks fallback candidate selection).
+    all: Vec<String>,
+    /// Defuse-style identifiers (`nep141:*` / `nep245:*`).
+    /// Used for tokens.json and chaindefuser defuse-id matching.
+    defuse: Vec<String>,
+    /// Contract/account identifiers without defuse prefixes where applicable.
+    /// Used for counterparties lookups and contract-address matching paths.
+    contract: Vec<String>,
+}
+
+fn build_metadata_lookup_candidates(token_id: &str) -> MetadataLookupCandidates {
+    let mut all = Vec::new();
+    let raw = token_id.trim();
+    if raw.is_empty() {
+        return MetadataLookupCandidates::default();
+    }
+    push_unique(&mut all, raw.to_string());
+    let stripped = raw.strip_prefix("intents.near:").unwrap_or(raw);
+    push_unique(&mut all, stripped.to_string());
+
+    if stripped.eq_ignore_ascii_case("near") {
+        push_unique(&mut all, "near".to_string());
+        push_unique(&mut all, "wrap.near".to_string());
+        push_unique(&mut all, "nep141:wrap.near".to_string());
+    } else if stripped.eq_ignore_ascii_case("wrap.near") {
+        push_unique(&mut all, "wrap.near".to_string());
+        push_unique(&mut all, "nep141:wrap.near".to_string());
+    } else if stripped.starts_with("nep141:") || stripped.starts_with("nep245:") {
+        push_unique(&mut all, stripped.to_string());
+    } else {
+        push_unique(&mut all, format!("nep141:{stripped}"));
+    }
+
+    let mut defuse = Vec::new();
+    let mut contract = Vec::new();
+    for candidate in &all {
+        if candidate.starts_with("nep141:") || candidate.starts_with("nep245:") {
+            push_unique(&mut defuse, candidate.clone());
+        }
+        if let Some(rest) = candidate.strip_prefix("nep141:") {
+            push_unique(&mut contract, rest.to_string());
+        } else if !candidate.starts_with("nep245:") && !candidate.starts_with("intents.near:") {
+            push_unique(&mut contract, candidate.clone());
+        }
+    }
+
+    MetadataLookupCandidates {
+        all,
+        defuse,
+        contract,
+    }
+}
+
+pub fn metadata_lookup_candidates(token_id: &str) -> Vec<String> {
+    build_metadata_lookup_candidates(token_id).all
+}
+
+fn tokens_json_metadata_for_defuse(
+    defuse_id: &str,
+    address_candidates: &[String],
+    output_token_id: &str,
+) -> Option<TokenMetadata> {
+    let token = find_token_by_defuse_asset_id_and_address(defuse_id, address_candidates)
+        .or_else(|| find_token_by_defuse_asset_id(defuse_id))?;
+    let deployment_chain_name = {
+        let mut matched: Option<String> = None;
+        for deployment in &token.deployments {
+            if let crate::constants::intents_tokens::TokenDeployment::Fungible {
+                address,
+                chain_name,
+                ..
+            } = deployment
+                && address_candidates
+                    .iter()
+                    .any(|candidate| candidate.eq_ignore_ascii_case(address))
+            {
+                matched = Some(chain_name.clone());
+                break;
+            }
+        }
+        if matched.is_none() && token.deployments.len() == 1 {
+            match &token.deployments[0] {
+                crate::constants::intents_tokens::TokenDeployment::Fungible {
+                    chain_name, ..
+                }
+                | crate::constants::intents_tokens::TokenDeployment::Native {
+                    chain_name, ..
+                } => matched = Some(chain_name.clone()),
+            }
+        }
+        matched
+    };
+    let selected_chain = deployment_chain_name.unwrap_or_else(|| token.origin_chain_name.clone());
+    let chain_metadata = get_chain_metadata_by_name(&selected_chain);
+    Some(TokenMetadata {
+        token_id: output_token_id.to_string(),
+        name: token.name.clone(),
+        symbol: token.symbol.clone(),
+        decimals: token.decimals,
+        icon: Some(token.icon.clone()),
+        price: None,
+        price_updated_at: None,
+        network: Some(selected_chain),
+        chain_name: chain_metadata.as_ref().map(|m| m.name.clone()),
+        chain_icons: chain_metadata.map(|m| m.icon),
+    })
+}
+
+fn chaindefuser_item_to_metadata(item: &ChaindefuserToken, output_token_id: &str) -> TokenMetadata {
+    let static_token = find_token_by_defuse_asset_id(&item.defuse_asset_id);
+    let chain_metadata = get_chain_metadata_by_name(&item.blockchain);
+    TokenMetadata {
+        token_id: output_token_id.to_string(),
+        name: static_token
+            .map(|t| t.name.clone())
+            .unwrap_or_else(|| item.symbol.clone()),
+        symbol: item.symbol.clone(),
+        decimals: item.decimals,
+        icon: static_token.map(|t| t.icon.clone()),
+        price: item.price,
+        price_updated_at: item.price_updated_at.clone(),
+        network: Some(item.blockchain.clone()),
+        chain_name: chain_metadata
+            .as_ref()
+            .map(|m| m.name.clone())
+            .or(Some(item.blockchain.clone())),
+        chain_icons: chain_metadata.map(|m| m.icon),
+    }
+}
+
+fn merge_missing_fields(into: &mut TokenMetadata, from: &TokenMetadata) {
+    if into.icon.is_none() {
+        into.icon = from.icon.clone();
+    }
+    if into.price.is_none() {
+        into.price = from.price;
+        into.price_updated_at = from.price_updated_at.clone();
+    }
+    if into.network.is_none() {
+        into.network = from.network.clone();
+    }
+    if into.chain_name.is_none() {
+        into.chain_name = from.chain_name.clone();
+    }
+    if into.chain_icons.is_none() {
+        into.chain_icons = from.chain_icons.clone();
+    }
+}
+
+fn nearblocks_lookup_candidate(candidates: &[String]) -> Option<String> {
+    candidates.iter().find_map(|candidate| {
+        let without_intents = candidate.strip_prefix("intents.near:").unwrap_or(candidate);
+        let normalized = without_intents
+            .strip_prefix("nep141:")
+            .unwrap_or(without_intents);
+
+        if normalized.starts_with("nep245:") {
+            return None;
+        }
+        if normalized.eq_ignore_ascii_case("near")
+            || normalized.eq_ignore_ascii_case("wrap.near")
+            || normalized.ends_with(".near")
+        {
+            return Some(normalized.to_string());
+        }
+        None
+    })
+}
+
+pub async fn fetch_tokens_metadata(
+    state: &Arc<AppState>,
+    token_ids: &[String],
+) -> Result<Vec<TokenMetadata>, (StatusCode, String)> {
+    let map = fetch_tokens_with_fallback(state, token_ids, true).await;
+    let mut out = Vec::new();
+    let mut seen = HashSet::new();
+    for token_id in token_ids {
+        if seen.insert(token_id)
+            && let Some(meta) = map.get(token_id)
+        {
+            out.push(meta.clone());
+        }
+    }
+    Ok(out)
+}
+
+/// Fetches token metadata with strict source priority:
+/// counterparties -> near/wrap.near canonical -> tokens.json -> Chaindefuser /api/tokens -> NearBlocks.
 pub async fn fetch_tokens_with_fallback(
     state: &Arc<AppState>,
     token_ids: &[String],
@@ -554,324 +600,182 @@ pub async fn fetch_tokens_with_fallback(
         return HashMap::new();
     }
 
-    // Remove duplicates using HashSet
-    let unique_tokens: std::collections::HashSet<String> = token_ids.iter().cloned().collect();
-    let token_ids_vec: Vec<String> = unique_tokens.iter().cloned().collect();
+    let unique_tokens: Vec<String> = token_ids
+        .iter()
+        .cloned()
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
 
-    let mut result: HashMap<String, TokenMetadata>;
-    let missing_tokens: Vec<String>;
-
-    // If chain metadata is required, skip counterparties table because it doesn't have chain data
-    if include_chain_metadata {
-        log::debug!(
-            "Chain metadata requested, skipping counterparties and fetching {} tokens from API",
-            token_ids_vec.len()
-        );
-        result = HashMap::new();
-        missing_tokens = token_ids_vec.clone();
-    } else {
-        // Step 1: Check counterparties table first (fast path!)
-        log::debug!(
-            "Fetching metadata for {} tokens, checking counterparties first",
-            token_ids_vec.len()
-        );
-        result = fetch_metadata_from_counterparties(&state.db_pool, &token_ids_vec).await;
-
-        log::debug!("Found {} tokens in counterparties table", result.len());
-
-        // Step 2: Identify missing tokens that need API fetching
-        missing_tokens = unique_tokens
-            .iter()
-            .filter(|id| !result.contains_key(*id))
-            .cloned()
-            .collect();
-
-        if missing_tokens.is_empty() {
-            log::debug!("All tokens found in counterparties, no API calls needed");
-            return result;
-        }
-    }
-
-    log::debug!(
-        "Need to fetch {} tokens from APIs: {:?}",
-        missing_tokens.len(),
-        missing_tokens
-    );
-
-    // Step 3: Separate missing tokens by source
-    // Tokens with prefixes (intents.near:, nep141:) - fetch from Defuse API
-    // Regular token contract IDs - fetch from NearBlocks API
-    let mut api_tokens = Vec::new();
-    let mut direct_tokens = Vec::new();
-
-    for token_id in &missing_tokens {
-        if token_id == "near"
-            || token_id.starts_with("intents.near:")
-            || token_id.starts_with("nep141:")
-            || token_id.starts_with("nep245:")
-        {
-            api_tokens.push(token_id.clone());
-        } else {
-            direct_tokens.push(token_id.clone());
-        }
-    }
-
-    // Step 4: Fetch missing tokens from appropriate APIs
-    if !api_tokens.is_empty() {
-        let transform_to_defuse = |token_id: &str| -> String {
-            if token_id == "near" {
-                "nep141:wrap.near".to_string()
-            } else if let Some(stripped) = token_id.strip_prefix("intents.near:") {
-                stripped.to_string()
-            } else if token_id.starts_with("nep141:") || token_id.starts_with("nep245:") {
-                token_id.to_string()
-            } else {
-                format!("nep141:{}", token_id)
-            }
-        };
-
-        let defuse_ids: Vec<String> = api_tokens
-            .iter()
-            .map(|id| transform_to_defuse(id))
-            .collect();
-
-        match fetch_tokens_metadata(state, &defuse_ids).await {
-            Ok(metadata_from_api) => {
-                let metadata_map: HashMap<String, TokenMetadata> = metadata_from_api
-                    .into_iter()
-                    .map(|meta| (meta.token_id.clone(), meta))
-                    .collect();
-
-                for token_id in &api_tokens {
-                    let lookup_key = transform_to_defuse(token_id);
-                    if let Some(meta) = metadata_map.get(&lookup_key) {
-                        // Special case: If this is "near", we fetched wrap.near's metadata
-                        if token_id == "near" {
-                            result.insert(
-                                token_id.clone(),
-                                TokenMetadata::create_near_metadata(
-                                    meta.price,
-                                    meta.price_updated_at.clone(),
-                                ),
-                            );
-                        } else {
-                            result.insert(token_id.clone(), meta.clone());
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                log::error!("Failed to fetch metadata from Defuse API: {:?}", e);
-            }
-        }
-    }
-
-    // Fetch regular FT contracts from NearBlocks API
-    if !direct_tokens.is_empty() {
-        if let Some(nearblocks_api_key) = state.env_vars.nearblocks_api_key.as_ref() {
-            for token_id in &direct_tokens {
-                match fetch_nearblocks_ft_metadata(
-                    &state.cache,
-                    &state.http_client,
-                    nearblocks_api_key,
-                    token_id,
-                )
-                .await
-                {
-                    Ok(metadata) => {
-                        result.insert(token_id.clone(), metadata);
-                    }
-                    Err(e) => {
-                        log::warn!(
-                            "Failed to fetch metadata from NearBlocks for {}: {:?}, using fallback",
-                            token_id,
-                            e
-                        );
-                        // Use generic fallback
-                        let symbol = token_id
-                            .split('.')
-                            .next()
-                            .unwrap_or(token_id)
-                            .to_uppercase();
-                        result.insert(
-                            token_id.clone(),
-                            TokenMetadata {
-                                token_id: token_id.to_string(),
-                                name: symbol.clone(),
-                                symbol,
-                                decimals: 18,
-                                icon: None,
-                                price: None,
-                                price_updated_at: None,
-                                network: Some("near".to_string()),
-                                chain_name: Some("Near Protocol".to_string()),
-                                chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
-                            },
-                        );
-                    }
-                }
-            }
-        } else {
-            // No NearBlocks API key, use generic fallback for all direct tokens
-            for token_id in &direct_tokens {
-                let symbol = token_id
-                    .split('.')
-                    .next()
-                    .unwrap_or(token_id)
-                    .to_uppercase();
-                result.insert(
-                    token_id.clone(),
-                    TokenMetadata {
-                        token_id: token_id.to_string(),
-                        name: symbol.clone(),
-                        symbol,
-                        decimals: 18,
-                        icon: None,
-                        price: None,
-                        price_updated_at: None,
-                        network: Some("near".to_string()),
-                        chain_name: Some("Near Protocol".to_string()),
-                        chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
-                    },
-                );
-            }
-        }
-    }
-
-    // Step 5: Final fallback: For any token that STILL doesn't have metadata, add generic fallback
+    let mut lookup_candidates: HashMap<String, MetadataLookupCandidates> = HashMap::new();
+    let mut counterparties_lookup_ids: Vec<String> = Vec::new();
     for token_id in &unique_tokens {
-        if !result.contains_key(token_id) {
-            let symbol = token_id
-                .split('.')
-                .next()
-                .unwrap_or(token_id)
-                .to_uppercase();
-            result.insert(
-                token_id.clone(),
-                TokenMetadata {
-                    token_id: token_id.to_string(),
-                    name: symbol.clone(),
-                    symbol,
-                    decimals: 18,
-                    icon: None,
-                    price: None,
-                    price_updated_at: None,
-                    network: Some("near".to_string()),
-                    chain_name: Some("Near Protocol".to_string()),
-                    chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
-                },
-            );
+        let candidates = build_metadata_lookup_candidates(token_id);
+        for c in &candidates.all {
+            push_unique(&mut counterparties_lookup_ids, c.clone());
         }
+        lookup_candidates.insert(token_id.clone(), candidates);
+    }
+
+    let counterparties_map =
+        fetch_metadata_from_counterparties(&state.db_pool, &counterparties_lookup_ids).await;
+
+    let mut chaindefuser_by_defuse: HashMap<String, ChaindefuserToken> = HashMap::new();
+    let mut chaindefuser_by_contract: HashMap<String, ChaindefuserToken> = HashMap::new();
+    if include_chain_metadata {
+        let chaindefuser_response = fetch_chaindefuser_tokens(state).await.ok();
+        if let Some(response) = chaindefuser_response {
+            for item in response.items {
+                chaindefuser_by_defuse.insert(item.defuse_asset_id.to_lowercase(), item.clone());
+                if let Some(contract_address) = item.contract_address.clone() {
+                    chaindefuser_by_contract.insert(contract_address.to_lowercase(), item);
+                }
+            }
+        }
+    }
+
+    let mut result: HashMap<String, TokenMetadata> = HashMap::new();
+    let mut unresolved_tokens: Vec<String> = Vec::new();
+
+    for token_id in unique_tokens {
+        let candidates = lookup_candidates
+            .get(&token_id)
+            .cloned()
+            .unwrap_or_default();
+        let contract_candidates = candidates.contract.clone();
+        let all_candidates = candidates.all.clone();
+        let mut metadata: Option<TokenMetadata> = None;
+
+        // 1) counterparties
+        if metadata.is_none() {
+            for candidate in &all_candidates {
+                if let Some(cp_meta) = counterparties_map.get(candidate) {
+                    let mut resolved = cp_meta.clone();
+                    resolved.token_id = token_id.clone();
+                    metadata = Some(resolved);
+                    break;
+                }
+            }
+        }
+
+        // 2) canonical near/wrap.near
+        if metadata.is_none() {
+            let stripped = token_id.strip_prefix("intents.near:").unwrap_or(&token_id);
+            if stripped.eq_ignore_ascii_case("near") {
+                let mut meta = TokenMetadata::create_near_metadata(None, None);
+                meta.token_id = token_id.clone();
+                metadata = Some(meta);
+            } else if stripped.eq_ignore_ascii_case("wrap.near") || stripped == "nep141:wrap.near" {
+                let mut meta = TokenMetadata::create_wrap_near_metadata(None, None);
+                meta.token_id = token_id.clone();
+                metadata = Some(meta);
+            }
+        }
+
+        // 3) tokens.json
+        if metadata.is_none() {
+            for defuse_id in &candidates.defuse {
+                if let Some(meta) =
+                    tokens_json_metadata_for_defuse(defuse_id, &contract_candidates, &token_id)
+                {
+                    metadata = Some(meta);
+                    break;
+                }
+            }
+        }
+
+        // 4) chaindefuser /api/tokens (only when chain metadata is requested)
+        if include_chain_metadata {
+            let mut chaindefuser_match: Option<ChaindefuserToken> = None;
+            for defuse_id in &candidates.defuse {
+                if let Some(item) = chaindefuser_by_defuse.get(&defuse_id.to_lowercase()) {
+                    chaindefuser_match = Some(item.clone());
+                    break;
+                }
+            }
+            if chaindefuser_match.is_none() {
+                for contract_candidate in &contract_candidates {
+                    if let Some(item) =
+                        chaindefuser_by_contract.get(&contract_candidate.to_lowercase())
+                    {
+                        chaindefuser_match = Some(item.clone());
+                        break;
+                    }
+                }
+            }
+            if let Some(item) = chaindefuser_match {
+                let api_meta = chaindefuser_item_to_metadata(&item, &token_id);
+                if let Some(existing) = metadata.as_mut() {
+                    merge_missing_fields(existing, &api_meta);
+                } else {
+                    metadata = Some(api_meta);
+                }
+            }
+        }
+
+        // 5) NearBlocks (only for eligible near-like ids)
+        if metadata.is_none()
+            && let Some(nearblocks_api_key) = state.env_vars.nearblocks_api_key.as_ref()
+            && let Some(nearblocks_candidate) = nearblocks_lookup_candidate(&candidates.all)
+            && let Ok(mut near_meta) = fetch_nearblocks_ft_metadata(
+                &state.cache,
+                &state.http_client,
+                nearblocks_api_key,
+                &nearblocks_candidate,
+            )
+            .await
+        {
+            near_meta.token_id = token_id.clone();
+            metadata = Some(near_meta);
+        }
+
+        if let Some(meta) = metadata {
+            result.insert(token_id, meta);
+        } else {
+            unresolved_tokens.push(token_id);
+        }
+    }
+
+    if !unresolved_tokens.is_empty() {
+        let sample = unresolved_tokens
+            .iter()
+            .take(10)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", ");
+        log::warn!(
+            "token metadata unresolved: count={}, sample=[{}]",
+            unresolved_tokens.len(),
+            sample
+        );
     }
 
     result
 }
 
-/// Like [`fetch_tokens_with_fallback`] but also enriches every result with live prices from the
-/// Defuse / Ref SDK API.
-///
-/// `fetch_tokens_with_fallback` uses the counterparties table as a fast path which never carries
-/// price information. This wrapper runs the same metadata resolution and then makes a **single**
-/// batch call to `fetch_tokens_metadata` (Defuse/Ref SDK) to attach `price` and
-/// `price_updated_at` to every token that supports it.
-///
-/// Tokens that the Defuse API does not know about keep `price: None` (same behavior as before).
-///
-/// # Arguments
-/// * `state` - Application state
-/// * `token_ids` - List of token IDs (can be mixed defuse IDs and FT contract IDs)
-///
-/// # Returns
-/// * `HashMap<String, TokenMetadata>` - Map of token ID to metadata with prices attached
-pub async fn fetch_tokens_with_defuse_extension(
+pub async fn fetch_tokens_metadata_enriched(
     state: &Arc<AppState>,
     token_ids: &[String],
 ) -> HashMap<String, TokenMetadata> {
-    let mut result = fetch_tokens_with_fallback(state, token_ids, false).await;
-
+    // Extension users expect full enrichment including chain metadata.
+    let mut result = fetch_tokens_with_fallback(state, token_ids, true).await;
     if result.is_empty() {
         return result;
     }
 
-    // Build defuse asset IDs for all tokens so we can fetch prices in one batch.
-    // Mapping: defuse_id -> original token_id (so we can put the price back).
-    let transform_to_defuse = |token_id: &str| -> String {
-        if token_id == "near" {
-            "nep141:wrap.near".to_string()
-        } else if let Some(stripped) = token_id.strip_prefix("intents.near:") {
-            stripped.to_string()
-        } else if token_id.starts_with("nep141:") || token_id.starts_with("nep245:") {
-            token_id.to_string()
-        } else {
-            format!("nep141:{}", token_id)
-        }
-    };
-
-    // Build reverse map: defuse_id -> all original token IDs.
-    // Multiple aliases can map to the same defuse asset ID (e.g. bare ID and intents.near: prefixed ID),
-    // and all of them should receive enrichment.
-    let mut defuse_to_originals: HashMap<String, Vec<String>> = HashMap::new();
-    for id in result.keys() {
-        let defuse_id = transform_to_defuse(id);
-        defuse_to_originals
-            .entry(defuse_id)
-            .or_default()
-            .push(id.clone());
-    }
-    let defuse_ids: Vec<String> = defuse_to_originals.keys().cloned().collect();
-
-    // Pre-fetch latest DB prices for all tokens (single query) as fallback
-    let all_token_ids: Vec<String> = result.keys().cloned().collect();
+    let requested_ids: Vec<String> = result.keys().cloned().collect();
     let db_prices = state
         .price_service
-        .get_cached_tokens_latest_price(&all_token_ids)
+        .get_cached_tokens_latest_price(&requested_ids)
         .await
         .unwrap_or_default();
 
-    match fetch_tokens_metadata(state, &defuse_ids).await {
-        Ok(price_metadata) => {
-            for meta in price_metadata {
-                if let Some(original_ids) = defuse_to_originals.get(&meta.token_id) {
-                    for original_id in original_ids {
-                        if let Some(entry) = result.get_mut(original_id) {
-                            // Enrich chain fields even when Defuse has no price for the token.
-                            // This fixes counterparties-sourced rows that carry network/chain as None.
-                            if meta.network.is_some() {
-                                entry.network = meta.network.clone();
-                            }
-                            if meta.chain_name.is_some() {
-                                entry.chain_name = meta.chain_name.clone();
-                            }
-                            if meta.chain_icons.is_some() {
-                                entry.chain_icons = meta.chain_icons.clone();
-                            }
-
-                            if let Some(price) = meta.price
-                                && price > 0f64
-                            {
-                                entry.price = meta.price;
-                                entry.price_updated_at = meta.price_updated_at.clone();
-                            } else if let Some(&db_price) = db_prices.get(original_id)
-                                && db_price > 0.0
-                            {
-                                entry.price = Some(db_price);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            log::warn!("fetch_tokens_with_prices: price enrichment failed: {:?}", e);
-            // Defuse failed entirely — fall back to DB prices for all tokens
-            for (token_id, &price) in &db_prices {
-                if price > 0.0
-                    && let Some(entry) = result.get_mut(token_id)
-                    && entry.price.is_none()
-                {
-                    entry.price = Some(price);
-                }
-            }
+    for (token_id, price) in db_prices {
+        if price > 0.0
+            && let Some(entry) = result.get_mut(&token_id)
+            && entry.price.is_none()
+        {
+            entry.price = Some(price);
         }
     }
 
@@ -892,13 +796,11 @@ pub async fn get_token_metadata(
                 params.token_id.eq_ignore_ascii_case("near") || params.token_id.is_empty();
             if is_near {
                 params.token_id = "near".to_string();
-            } else {
-                params.token_id = format!("intents.near:{}", params.token_id);
             }
 
             // Fetch token metadata using the reusable function
             let tokens =
-                fetch_tokens_with_defuse_extension(&state_clone, &[params.token_id.clone()]).await;
+                fetch_tokens_metadata_enriched(&state_clone, &[params.token_id.clone()]).await;
 
             let wrap_metadata = tokens.get(&params.token_id).ok_or_else(|| {
                 (
@@ -1064,4 +966,86 @@ pub async fn search_token_by_symbol(
             Ok::<_, (StatusCode, String)>(contract_addresses)
         })
         .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        build_metadata_lookup_candidates, metadata_lookup_candidates, nearblocks_lookup_candidate,
+        tokens_json_metadata_for_defuse,
+    };
+
+    #[test]
+    fn metadata_lookup_candidates_handles_raw_id() {
+        let candidates = metadata_lookup_candidates("usdt.tether-token.near");
+        assert!(candidates.contains(&"usdt.tether-token.near".to_string()));
+        assert!(candidates.contains(&"nep141:usdt.tether-token.near".to_string()));
+    }
+
+    #[test]
+    fn metadata_lookup_candidates_handles_prefixed_id() {
+        let id = "nep245:v2_1.omni.hot.tg:56_abc";
+        let candidates = build_metadata_lookup_candidates(id);
+        assert!(candidates.all.contains(&id.to_string()));
+        assert_eq!(
+            candidates.defuse,
+            vec![id.to_string()],
+            "prefixed ids should remain stable"
+        );
+    }
+
+    #[test]
+    fn metadata_lookup_candidates_handles_intents_id() {
+        let id = "intents.near:nep141:wrap.near";
+        let candidates = metadata_lookup_candidates(id);
+        assert!(candidates.contains(&id.to_string()));
+        assert!(candidates.contains(&"nep141:wrap.near".to_string()));
+    }
+
+    #[test]
+    fn metadata_lookup_candidates_handles_near_aliases() {
+        let candidates = metadata_lookup_candidates("near");
+        assert!(candidates.contains(&"near".to_string()));
+        assert!(candidates.contains(&"wrap.near".to_string()));
+        assert!(candidates.contains(&"nep141:wrap.near".to_string()));
+    }
+
+    #[test]
+    fn nearblocks_candidate_accepts_only_near_like_ids() {
+        assert_eq!(
+            nearblocks_lookup_candidate(&metadata_lookup_candidates("token.near")),
+            Some("token.near".to_string())
+        );
+        assert_eq!(
+            nearblocks_lookup_candidate(&metadata_lookup_candidates("nep141:token.near")),
+            Some("token.near".to_string())
+        );
+        assert_eq!(
+            nearblocks_lookup_candidate(&metadata_lookup_candidates(
+                "intents.near:nep141:token.near"
+            )),
+            Some("token.near".to_string())
+        );
+        assert_eq!(
+            nearblocks_lookup_candidate(&metadata_lookup_candidates("nep245:v2_1.omni.hot.tg:1_x")),
+            None
+        );
+    }
+
+    #[test]
+    fn contract_candidates_strip_only_nep141_prefix() {
+        let contracts = build_metadata_lookup_candidates("nep141:wrap.near").contract;
+        assert!(contracts.contains(&"wrap.near".to_string()));
+        assert!(!contracts.iter().any(|c| c.starts_with("nep245:")));
+    }
+
+    #[test]
+    fn tokens_json_duplicate_defuse_id_resolves_by_address() {
+        let defuse_id = "nep141:aaaaaa20d9e0e2461697782ef11675f668207961.factory.bridge.near";
+        let near_contract =
+            vec!["aaaaaa20d9e0e2461697782ef11675f668207961.factory.bridge.near".to_string()];
+        let resolved = tokens_json_metadata_for_defuse(defuse_id, &near_contract, defuse_id)
+            .expect("expected token resolution from tokens.json");
+        assert_eq!(resolved.network.as_deref(), Some("near"));
+    }
 }

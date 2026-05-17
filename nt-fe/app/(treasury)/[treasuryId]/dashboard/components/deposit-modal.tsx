@@ -16,6 +16,11 @@ import {
     DialogTitle,
 } from "@/components/modal";
 import { getNetworkDisplayName } from "@/components/token-display";
+import {
+    NEAR_NETWORK_ID,
+    NEAR_COM_DIRECT_NETWORK_ID,
+    NEAR_COM_NETWORK_NAME,
+} from "@/constants/network-ids";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { useAggregatedTokens, useAssets } from "@/hooks/use-assets";
@@ -24,8 +29,14 @@ import { type BridgeNetwork, useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import Big from "@/lib/big";
 import { fetchDepositAddress } from "@/lib/bridge-api";
+import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
 import { buildSectionedOptions } from "@/lib/section-rules";
-import { cn, formatBalance, formatSmartAmount } from "@/lib/utils";
+import {
+    cn,
+    formatBalance,
+    formatSmartAmount,
+    normalizeNearAssetId,
+} from "@/lib/utils";
 import { useThemeStore } from "@/stores/theme-store";
 import { SelectModal } from "./select-modal";
 
@@ -95,8 +106,6 @@ interface NetworkBalanceDisplay {
 }
 
 const STABLE_EMPTY_ARRAY: never[] = [];
-
-const NEAR_DIRECT_NETWORK_ID = "near.com:direct";
 
 export function DepositModal({
     isOpen,
@@ -204,7 +213,8 @@ export function DepositModal({
             return buildSectionedOptions(filteredNetworks, [
                 {
                     title: t("sections.available"),
-                    filter: (network) => network.id === NEAR_DIRECT_NETWORK_ID,
+                    filter: (network) =>
+                        network.id === NEAR_COM_DIRECT_NETWORK_ID,
                 },
                 {
                     title: t("sections.forMembersOnly"),
@@ -232,8 +242,8 @@ export function DepositModal({
                 return !balance || !Big(balance.amount).gt(0);
             })
             .sort((a, b) => {
-                if (a.id === NEAR_DIRECT_NETWORK_ID) return -1;
-                if (b.id === NEAR_DIRECT_NETWORK_ID) return 1;
+                if (a.id === NEAR_COM_DIRECT_NETWORK_ID) return -1;
+                if (b.id === NEAR_COM_DIRECT_NETWORK_ID) return 1;
                 return a.name.localeCompare(b.name);
             });
 
@@ -335,28 +345,25 @@ export function DepositModal({
 
             if (!ownedAsset) return balances;
 
-            const normalizeContractId = (value?: string) =>
-                (value || "").replace(/^nep141:/, "");
-
             // Match each bridge network to treasury-held balances in priority order:
             // 1) exact contract-id match (after normalizing `nep141:` prefix),
             // 2) for NEAR token on NEAR network, aggregate all NEAR residencies,
             // 3) fallback for native chain entries without contractId by chain name.
             // Then sum matched balances into a single display amount per bridge network.
             for (const bridgeNetwork of bridgeNetworks) {
-                const normalizedBridgeId = normalizeContractId(
+                const normalizedBridgeId = normalizeNearAssetId(
                     bridgeNetwork.id,
                 );
                 const byContractId = ownedAsset.networks.filter(
                     (network) =>
-                        normalizeContractId(network.contractId) ===
+                        normalizeNearAssetId(network.contractId) ===
                         normalizedBridgeId,
                 );
 
                 const bridgeNetworkName = bridgeNetwork.name.toLowerCase();
                 const includeAllNearResidencies =
-                    assetId.toLowerCase() === "near" &&
-                    bridgeNetworkName === "near";
+                    assetId.toLowerCase() === NEAR_NETWORK_ID &&
+                    bridgeNetworkName === NEAR_NETWORK_ID;
 
                 const chainMatches = ownedAsset.networks.filter(
                     (network) =>
@@ -403,8 +410,8 @@ export function DepositModal({
         };
 
         const nearDirectNetworkOption = (): SelectOption => ({
-            id: NEAR_DIRECT_NETWORK_ID,
-            name: "near.com",
+            id: NEAR_COM_DIRECT_NETWORK_ID,
+            name: NEAR_COM_NETWORK_NAME,
             description: isConfidential
                 ? tRecipientNetwork("nearComDescription")
                 : undefined,
@@ -608,7 +615,7 @@ export function DepositModal({
             }
             const requestId = ++latestAddressRequestRef.current;
 
-            if (selectedNetwork.id === NEAR_DIRECT_NETWORK_ID) {
+            if (selectedNetwork.id === NEAR_COM_DIRECT_NETWORK_ID) {
                 if (requestId !== latestAddressRequestRef.current) return;
                 setDepositInfo({
                     address: treasuryId,
@@ -625,7 +632,7 @@ export function DepositModal({
                     selectedNetwork.chainId ?? selectedNetwork.id
                 )
                     .toLowerCase()
-                    .includes("near");
+                    .includes(NEAR_NETWORK_ID);
                 if (isNearNetwork) {
                     if (requestId !== latestAddressRequestRef.current) return;
                     setDepositInfo({
@@ -711,7 +718,7 @@ export function DepositModal({
             ""
         )
             .toLowerCase()
-            .includes("near");
+            .includes(NEAR_NETWORK_ID);
 
         if (isNearNetwork) {
             return <span>{address}</span>;
@@ -755,13 +762,15 @@ export function DepositModal({
         );
     };
 
-    const isNearComNetwork = selectedNetwork?.id === NEAR_DIRECT_NETWORK_ID;
-    const showConfidentialDepositWarning = isConfidential && !isNearComNetwork;
+    const isNearComSelected =
+        selectedNetwork?.id === NEAR_COM_DIRECT_NETWORK_ID;
+    const showConfidentialDepositWarning = isConfidential && !isNearComSelected;
     const onlyDepositNetworkName = selectedNetwork
         ? getNetworkDisplayName(selectedNetwork.name)
         : "";
-    const shouldCapitalizeOnlyDepositNetwork =
-        onlyDepositNetworkName.toLowerCase() !== "near.com";
+    const networkDisplayCaseClass = selectedNetwork
+        ? getNetworkDisplayCaseClass(selectedNetwork.name)
+        : "capitalize";
     const shouldBlurConfidentialAddress =
         showConfidentialDepositWarning && !hasAcknowledgedSingleUse;
 
@@ -906,7 +915,15 @@ export function DepositModal({
                                                                     </div>
                                                                 )}
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-foreground font-medium uppercase">
+                                                                    <span
+                                                                        className={cn(
+                                                                            "text-foreground font-medium",
+                                                                            getNetworkDisplayCaseClass(
+                                                                                selectedNetwork.name,
+                                                                                "uppercase",
+                                                                            ),
+                                                                        )}
+                                                                    >
                                                                         {getNetworkDisplayName(
                                                                             selectedNetwork.name,
                                                                         )}
@@ -1119,11 +1136,10 @@ export function DepositModal({
                                                 ),
                                                 networkTag: (chunks) => (
                                                     <span
-                                                        className={`text-foreground ${
-                                                            shouldCapitalizeOnlyDepositNetwork
-                                                                ? "capitalize"
-                                                                : ""
-                                                        }`}
+                                                        className={cn(
+                                                            "text-foreground",
+                                                            networkDisplayCaseClass,
+                                                        )}
                                                     >
                                                         {chunks}
                                                     </span>
@@ -1228,7 +1244,15 @@ export function DepositModal({
                                 const option = item as SelectOption;
                                 return (
                                     <div className="flex-1 text-left">
-                                        <div className="font-semibold uppercase">
+                                        <div
+                                            className={cn(
+                                                "font-semibold",
+                                                getNetworkDisplayCaseClass(
+                                                    option.name,
+                                                    "uppercase",
+                                                ),
+                                            )}
+                                        >
                                             {option.name || option.symbol}
                                         </div>
                                         {option.description && (

@@ -2,6 +2,7 @@ import { getBlockchainType } from "@/lib/blockchain-utils";
 import { getAddressPattern } from "@/lib/address-validation";
 import { isValidNearAddressFormat } from "@/lib/near-validation";
 import type { ChainInfo } from "./chains";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 /**
  * Given a validated address, returns the subset of known chains that are
@@ -23,7 +24,7 @@ export function getCompatibleChains(
     const nearCompatible = isValidNearAddressFormat(address);
 
     return chains.filter((chain) => {
-        if (chain.key === "near") return nearCompatible;
+        if (chain.key === NEAR_NETWORK_ID) return nearCompatible;
 
         const blockchainType = getBlockchainType(chain.key);
         if (blockchainType === "unknown") return false;

@@ -11,6 +11,7 @@ import { Skeleton } from "./ui/skeleton";
 import { CopyButton } from "./copy-button";
 import { Address } from "./address";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -73,7 +74,7 @@ export function UserWithData({
     iconOnly = false,
     withLink = true,
     withHoverCard = false,
-    chainName = "near",
+    chainName = NEAR_NETWORK_ID,
     useAddressBook = false,
 }: UserWithDataProps) {
     const image = `https://i.near.social/magic/large/https://near.social/magic/img/account/${address}`;
@@ -146,7 +147,7 @@ interface TooltipUserProps {
 export function TooltipUser({
     accountId,
     name,
-    chainName = "near",
+    chainName = NEAR_NETWORK_ID,
     useAddressBook = false,
     children,
     triggerProps,
@@ -235,7 +236,7 @@ export function User({
     withLink = true,
     withName = true,
     withHoverCard = false,
-    chainName = "near",
+    chainName = NEAR_NETWORK_ID,
 }: UserProps) {
     const { data: profile, isLoading } = useProfile(
         withName && !nameProp ? accountId : undefined,

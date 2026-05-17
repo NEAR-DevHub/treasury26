@@ -23,6 +23,7 @@ import { ExchangeSummaryCard } from "@/app/(treasury)/[treasuryId]/exchange/comp
 import { formatActivityAmount, formatSmartAmount } from "@/lib/utils";
 import { TransactionHashCell } from "./transaction-hash-cell";
 import { useTreasury } from "@/hooks/use-treasury";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 interface TransactionDetailsModalProps {
     activity: RecentActivity | null;
@@ -135,7 +136,7 @@ export function TransactionDetailsModal({
                                                 .icon || "",
                                         network:
                                             activity.swap.sentTokenMetadata
-                                                .network || "near",
+                                                .network || NEAR_NETWORK_ID,
                                         chainIcons:
                                             activity.swap.sentTokenMetadata
                                                 .chainIcons,
@@ -172,7 +173,7 @@ export function TransactionDetailsModal({
                                             .icon || "",
                                     network:
                                         activity.swap.receivedTokenMetadata
-                                            .network || "near",
+                                            .network || NEAR_NETWORK_ID,
                                     chainIcons:
                                         activity.swap.receivedTokenMetadata
                                             .chainIcons,
@@ -199,7 +200,8 @@ export function TransactionDetailsModal({
                                 name: activity.tokenMetadata.name,
                                 icon: activity.tokenMetadata.icon || "",
                                 network:
-                                    activity.tokenMetadata.network || "near",
+                                    activity.tokenMetadata.network ||
+                                    NEAR_NETWORK_ID,
                                 chainIcons: activity.tokenMetadata.chainIcons,
                             }}
                         />

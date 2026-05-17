@@ -21,13 +21,20 @@ use sqlx::PgPool;
 
 use super::counterparty::{convert_raw_to_decimal, ensure_ft_metadata};
 
-/// Matches v1.signer's `sign: …` log line and captures the DAO predecessor
-/// and payload hash in one pass.
-static V1_SIGNER_SIGN_LOG: Lazy<Regex> = Lazy::new(|| {
+/// Legacy payload form: `predecessor=AccountId("…") … payload_v2: Some(Eddsa(Bytes("<hex>")))`.
+static V1_SIGNER_HEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r#"sign: predecessor=AccountId\("(?P<dao>[^"]+)"\).*payload_v2:\s*Some\(Eddsa\(Bytes\("(?P<hash>[0-9a-fA-F]+)"\)"#,
+        r#"predecessor=AccountId\("(?P<dao>[^"]+)"\).*payload_v2:\s*Some\(Eddsa\(Bytes\("(?P<hash>[0-9a-fA-F]+)"\)"#,
     )
-    .expect("v1.signer sign-log regex is valid")
+    .expect("v1.signer hex sign-log regex is valid")
+});
+
+/// Current payload form: `predecessor=AccountId("…") … payload_v2: Some(Eddsa(BoundedVec { inner: [u8, …] }))`.
+static V1_SIGNER_BYTES: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"predecessor=AccountId\("(?P<dao>[^"]+)"\).*payload_v2:\s*Some\(Eddsa\(BoundedVec\s*\{\s*inner:\s*\[(?P<bytes>[0-9,\s]+)\]"#,
+    )
+    .expect("v1.signer bytes sign-log regex is valid")
 });
 
 /// Extracted signal that a confidential sign call ran.
@@ -37,20 +44,38 @@ pub struct ConfidentialSignCall {
     pub payload_hash: String,
 }
 
+fn decode_bounded_vec_bytes(captured: &str) -> Option<String> {
+    let mut hex = String::with_capacity(64);
+    for token in captured.split(',') {
+        let trimmed = token.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let byte: u8 = trimmed.parse().ok()?;
+        hex.push_str(&format!("{:02x}", byte));
+    }
+    if hex.is_empty() { None } else { Some(hex) }
+}
+
 /// Scan a `v1.signer` outcome's logs for a `sign: predecessor=…` line and
-/// extract the DAO + payload hash if present.
+/// extract the DAO + payload hash if present. Supports both the legacy
+/// `Bytes("<hex>")` form and the current `BoundedVec { inner: [u8, …] }` form.
 pub fn extract_sign_call_from_logs(logs: &str) -> Option<ConfidentialSignCall> {
     for raw_line in logs.split('\n').flat_map(|l| l.split("\\n")) {
         let line = raw_line.trim();
         if !line.starts_with("sign:") {
             continue;
         }
-        if let Some(cap) = V1_SIGNER_SIGN_LOG.captures(line) {
-            let dao = cap.name("dao")?.as_str().to_string();
-            let hash = cap.name("hash")?.as_str().to_ascii_lowercase();
+        if let Some(cap) = V1_SIGNER_HEX.captures(line) {
             return Some(ConfidentialSignCall {
-                dao_id: dao,
-                payload_hash: hash,
+                dao_id: cap.name("dao")?.as_str().to_string(),
+                payload_hash: cap.name("hash")?.as_str().to_ascii_lowercase(),
+            });
+        }
+        if let Some(cap) = V1_SIGNER_BYTES.captures(line) {
+            return Some(ConfidentialSignCall {
+                dao_id: cap.name("dao")?.as_str().to_string(),
+                payload_hash: decode_bounded_vec_bytes(cap.name("bytes")?.as_str())?,
             });
         }
     }
@@ -317,5 +342,18 @@ mod tests {
     fn ignores_non_sign_logs() {
         assert!(extract_sign_call_from_logs("EVENT_JSON:{\"standard\":\"nep141\"}").is_none());
         assert!(extract_sign_call_from_logs("Transfer 100 from a to b").is_none());
+    }
+
+    #[test]
+    fn parses_v1_signer_bounded_vec_payload() {
+        // Real on-chain log captured 2026-05-08, block 197405271 (tobi.sputnik-dao.near).
+        // The signer contract upgraded from `Bytes("<hex>")` to `BoundedVec { inner: [u8;32] }`.
+        let log = r#"sign: predecessor=AccountId("tobi.sputnik-dao.near"), request=SignRequestArgs { path: "tobi.sputnik-dao.near", payload_v2: Some(Eddsa(BoundedVec { inner: [123, 162, 50, 88, 71, 237, 138, 108, 13, 213, 18, 249, 177, 240, 169, 135, 202, 61, 156, 80, 85, 206, 77, 114, 62, 140, 72, 88, 191, 215, 42, 171] })), deprecated_payload: None, domain_id: Some(DomainId(1)), deprecated_key_version: None }"#;
+        let got = extract_sign_call_from_logs(log).expect("should parse new format");
+        assert_eq!(got.dao_id, "tobi.sputnik-dao.near");
+        assert_eq!(
+            got.payload_hash,
+            "7ba2325847ed8a6c0dd512f9b1f0a987ca3d9c5055ce4d723e8c4858bfd72aab"
+        );
     }
 }

@@ -1,4 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
+use near_api::AccountId;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -13,7 +14,7 @@ use crate::auth::OptionalAuthUser;
 #[serde(rename_all = "camelCase")]
 pub struct QuoteRequest {
     /// DAO account ID — used to check confidentiality and route accordingly
-    pub dao_id: Option<String>,
+    pub dao_id: Option<AccountId>,
     /// Set to true for testing without executing
     #[serde(default)]
     pub dry: Option<bool>,

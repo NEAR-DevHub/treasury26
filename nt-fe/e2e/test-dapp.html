@@ -30,7 +30,7 @@
     <div>
         <button id="connect-btn">Connect Wallet</button>
         <button id="transfer-btn" disabled>Transfer 1 NEAR to alice.near</button>
-        <button id="ftcall-btn" disabled>Call ft_transfer on token.near</button>
+        <button id="ftcall-btn" disabled>Call ft_transfer on usdt.tether-token.near</button>
     </div>
     <div id="messages">No messages yet.</div>
 
@@ -148,7 +148,7 @@
 
         document.getElementById("ftcall-btn").addEventListener("click", async () => {
             const transactions = [{
-                receiverId: "token.near",
+                receiverId: "usdt.tether-token.near",
                 actions: [{
                     type: "FunctionCall",
                     params: {

@@ -2,6 +2,7 @@
 //!
 //! These helpers are shared by API routes and internal handlers.
 
+use near_account_id::{AccountId, AccountIdRef};
 use sqlx::PgPool;
 use sqlx::types::chrono::{DateTime, Utc};
 
@@ -10,7 +11,8 @@ use crate::utils::datetime::next_month_start_utc;
 
 #[derive(Debug, serde::Serialize, sqlx::FromRow)]
 pub struct MonitoredAccount {
-    pub account_id: String,
+    #[sqlx(try_from = "String")]
+    pub account_id: AccountId,
     pub enabled: bool,
     pub is_confidential_account: bool,
     pub last_synced_at: Option<DateTime<Utc>>,
@@ -48,7 +50,7 @@ impl From<sqlx::Error> for RegisterMonitoredAccountError {
 /// - New account: creates with default Plus plan credits.
 pub async fn register_or_refresh_monitored_account(
     pool: &PgPool,
-    account_id: &str,
+    account_id: &AccountIdRef,
     is_confidential: bool,
 ) -> Result<RegisterMonitoredAccountResult, RegisterMonitoredAccountError> {
     let existing = sqlx::query_scalar!(
@@ -57,12 +59,12 @@ pub async fn register_or_refresh_monitored_account(
         FROM monitored_accounts
         WHERE account_id = $1
         "#,
-        account_id
+        account_id.as_str()
     )
     .fetch_optional(pool)
     .await?;
 
-    if existing.is_none() && !account_id.ends_with(".sputnik-dao.near") {
+    if existing.is_none() && !account_id.as_str().ends_with(".sputnik-dao.near") {
         return Err(RegisterMonitoredAccountError::NotSputnikDao);
     }
 
@@ -76,7 +78,7 @@ pub async fn register_or_refresh_monitored_account(
                       export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at
             "#,
         )
-        .bind(account_id)
+        .bind(account_id.as_str())
         .fetch_one(pool)
         .await?;
 
@@ -86,7 +88,7 @@ pub async fn register_or_refresh_monitored_account(
             SET is_dirty = true
             WHERE dao_id = $1
             "#,
-            account_id
+            account_id.as_str()
         )
         .execute(pool)
         .await?;
@@ -109,7 +111,7 @@ pub async fn register_or_refresh_monitored_account(
                   export_credits, batch_payment_credits, plan_type, credits_reset_at, dirty_at, is_confidential_account
         "#,
     )
-    .bind(account_id)
+    .bind(account_id.as_str())
     .bind(export_credits)
     .bind(batch_payment_credits)
     .bind(gas_covered_transactions)

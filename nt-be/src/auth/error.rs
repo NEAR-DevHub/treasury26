@@ -42,6 +42,12 @@ impl std::fmt::Display for AuthError {
 
 impl std::error::Error for AuthError {}
 
+impl From<near_account_id::ParseAccountError> for AuthError {
+    fn from(err: near_account_id::ParseAccountError) -> Self {
+        AuthError::InvalidToken(format!("Invalid account id: {}", err))
+    }
+}
+
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {

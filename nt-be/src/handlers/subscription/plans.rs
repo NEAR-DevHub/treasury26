@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use crate::AppState;
 use crate::config::{PlanConfig, PlanType, get_all_plans, get_plan_config};
-use crate::handlers::token::{TokenMetadata, fetch_tokens_metadata};
+use crate::handlers::token::{TokenMetadata, fetch_tokens_metadata, metadata_lookup_candidates};
 
 /// Response for GET /api/subscription/plans
 #[derive(Debug, Serialize)]
@@ -134,23 +134,10 @@ pub async fn calculate_monthly_outbound_volume(
             format!("Failed to fetch outbound amounts: {}", e),
         )
     })?;
-    // Convert token_id to defuse asset ID format for metadata lookup
-    fn token_id_for_metadata(token_id: &str) -> String {
-        if token_id == "near" {
-            "nep141:wrap.near".to_string()
-        } else if token_id.starts_with("intents.near:") {
-            token_id.strip_prefix("intents.near:").unwrap().to_string()
-        } else if token_id.starts_with("nep141:") || token_id.starts_with("nep245:") {
-            token_id.to_string()
-        } else {
-            format!("nep141:{}", token_id)
-        }
-    }
-
     // Collect unique token IDs for metadata lookup
     let token_ids: Vec<String> = outbound_amounts
         .iter()
-        .map(|t| token_id_for_metadata(&t.token_id))
+        .map(|t| t.token_id.clone())
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
         .collect();
@@ -173,14 +160,20 @@ pub async fn calculate_monthly_outbound_volume(
     let mut total_usd_cents: BigDecimal = BigDecimal::from(0);
 
     for outbound in &outbound_amounts {
-        let lookup_id = token_id_for_metadata(&outbound.token_id);
-
         // Get metadata for price and decimals
+        let lookup_candidates = metadata_lookup_candidates(&outbound.token_id);
         let price = if outbound.token_id == "near" {
             // NEAR fallback
-            let near_meta = metadata_map.get("nep141:wrap.near");
-            near_meta.and_then(|m| m.price).unwrap_or(0.0)
-        } else if let Some(meta) = metadata_map.get(&lookup_id) {
+            metadata_map
+                .get("near")
+                .or_else(|| metadata_map.get("wrap.near"))
+                .or_else(|| metadata_map.get("nep141:wrap.near"))
+                .and_then(|m| m.price)
+                .unwrap_or(0.0)
+        } else if let Some(meta) = lookup_candidates
+            .iter()
+            .find_map(|candidate| metadata_map.get(candidate))
+        {
             meta.price.unwrap_or(0.0)
         } else {
             log::warn!(

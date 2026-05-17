@@ -3,7 +3,11 @@
 import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TokenDisplay } from "@/components/token-display-with-network";
+import { getNetworkDisplayName } from "@/components/token-display";
+import { Tooltip } from "@/components/tooltip";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useToken } from "@/hooks/use-treasury-queries";
+import { getLocalizedNetworkDisplayName } from "@/lib/intents-network";
 import {
     formatBalance,
     formatCurrency,
@@ -18,9 +22,53 @@ interface AmountProps {
     tokenId: string;
     showUSDValue?: boolean;
     showNetwork?: boolean;
+    showNetworkTooltip?: boolean;
+    expandNearComLabel?: boolean;
     network?: string; // Optional override for network display
     textOnly?: boolean;
     iconSize?: "sm" | "md" | "lg";
+}
+
+function resolveAmountNetworkLabel({
+    tokenId,
+    tokenNetwork,
+    networkOverride,
+    networkLabelText,
+    expandNearComLabel,
+}: {
+    tokenId: string;
+    tokenNetwork?: string;
+    networkOverride?: string;
+    networkLabelText: string;
+    expandNearComLabel: boolean;
+}): string | undefined {
+    const normalizedTokenId = tokenId.trim().toLowerCase();
+    const isNativeNearToken =
+        normalizedTokenId.length === 0 || normalizedTokenId === NEAR_NETWORK_ID;
+    const resolvedNetwork = isNativeNearToken
+        ? NEAR_NETWORK_ID
+        : (networkOverride ?? tokenNetwork);
+
+    const nearTypeLabel = getNearTokenTypeLabel(
+        isNativeNearToken ? NEAR_NETWORK_ID : tokenId,
+        resolvedNetwork,
+        { expandNearComLabel },
+    );
+
+    if (nearTypeLabel) {
+        return nearTypeLabel;
+    }
+
+    if (!resolvedNetwork) {
+        return undefined;
+    }
+
+    return getLocalizedNetworkDisplayName({
+        networkName: resolvedNetwork,
+        networkLabel: networkLabelText,
+        fallbackName: getNetworkDisplayName(resolvedNetwork),
+        expandNearComLabel,
+    });
 }
 
 export function Amount({
@@ -30,11 +78,14 @@ export function Amount({
     tokenId,
     showUSDValue = true,
     showNetwork = false,
+    showNetworkTooltip = false,
+    expandNearComLabel = false,
     network,
     iconSize = "lg",
 }: AmountProps) {
     const tCommon = useTranslations("common");
     const tAmount = useTranslations("amount");
+    const tAddressBookTable = useTranslations("addressBookTable");
     const { data: tokenData, isLoading } = useToken(tokenId);
     const rawAmountValue = amount
         ? formatBalance(amount, tokenData?.decimals || 24)
@@ -50,6 +101,16 @@ export function Amount({
         const price = tokenData?.price;
         return `≈ ${formatCurrency(parsedAmount * price!)}`;
     }, [tokenData, rawAmountValue, tCommon]);
+    const networkLabel = resolveAmountNetworkLabel({
+        tokenId,
+        tokenNetwork: tokenData?.network,
+        networkOverride: network,
+        networkLabelText: tAddressBookTable("network"),
+        expandNearComLabel,
+    });
+    const networkTooltipContent = networkLabel
+        ? tAmount("network", { network: networkLabel })
+        : null;
 
     if (isLoading) {
         if (textOnly) {
@@ -68,18 +129,31 @@ export function Amount({
     }
 
     if (textOnly) {
-        return (
-            <p className="text-sm font-semibold">
-                {amountValue} {tokenData?.symbol}
+        const textOnlyAmount = (
+            <div className="flex flex-col items-end gap-0.5">
+                <p className="text-sm font-semibold">
+                    {amountValue} {tokenData?.symbol}
+                </p>
                 {showUSDValue && (
                     <span className="text-muted-foreground text-xs">
-                        ({estimatedUSDValue})
+                        {estimatedUSDValue}
                     </span>
                 )}
-            </p>
+            </div>
         );
+
+        if (showNetworkTooltip && networkTooltipContent) {
+            return (
+                <Tooltip content={networkTooltipContent}>
+                    <span>{textOnlyAmount}</span>
+                </Tooltip>
+            );
+        }
+
+        return textOnlyAmount;
     }
-    return (
+
+    const amountContent = (
         <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2">
                 {tokenData && (
@@ -95,27 +169,28 @@ export function Amount({
                         {amountValue} {tokenData?.symbol}
                     </span>
                 )}
-                {showUSDValue && (
-                    <span className="text-muted-foreground text-xs">
-                        ({estimatedUSDValue})
-                    </span>
-                )}
             </div>
+            {showUSDValue && (
+                <span className="text-muted-foreground text-xs">
+                    {estimatedUSDValue}
+                </span>
+            )}
             {showNetwork &&
-                (() => {
-                    const resolvedNetwork = network ?? tokenData?.network;
-                    const nearTypeLabel = getNearTokenTypeLabel(
-                        tokenId,
-                        resolvedNetwork,
-                    );
-                    const label =
-                        nearTypeLabel ?? resolvedNetwork?.toUpperCase();
-                    return label ? (
-                        <span className="text-muted-foreground text-xs">
-                            {tAmount("network", { network: label })}
-                        </span>
-                    ) : null;
-                })()}
+                (networkLabel ? (
+                    <span className="text-muted-foreground text-xs">
+                        {tAmount("network", { network: networkLabel })}
+                    </span>
+                ) : null)}
         </div>
     );
+
+    if (showNetworkTooltip && networkTooltipContent) {
+        return (
+            <Tooltip content={networkTooltipContent}>
+                <div>{amountContent}</div>
+            </Tooltip>
+        );
+    }
+
+    return amountContent;
 }

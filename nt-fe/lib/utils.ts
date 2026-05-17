@@ -1,4 +1,5 @@
 import Big from "@/lib/big";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { clsx, type ClassValue } from "clsx";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
@@ -573,7 +574,7 @@ export const decodeProposalDescription = (key: string, description: string) => {
         }
     }
 
-    return null; // Return null if key not found
+    return undefined;
 };
 
 /** Convert a nanosecond timestamp/duration (string) to milliseconds. */
@@ -587,24 +588,41 @@ export function msToNanos(ms: number): string {
 }
 
 /**
+ * Normalize asset ids for NEAR FT comparisons.
+ *
+ * Some code paths use prefixed ids (e.g. "nep141:token.near") while others
+ * use bare contract ids ("token.near"). This helper makes those comparable.
+ */
+export function normalizeNearAssetId(value?: string | null): string {
+    const normalized = (value || "").trim().toLowerCase();
+    return normalized.startsWith("nep141:")
+        ? normalized.slice("nep141:".length)
+        : normalized;
+}
+
+/**
  * Returns a human-readable NEAR token type label based on the tokenId.
- * - "" or "near" → "Native Token"
- * - starts with "nep141:" or "nep245:" → "Intents Token"
- * - anything else (contract address) → "Fungible Token"
+ * - "" or "near" → "NEAR (Native Token)"
+ * - starts with "nep141:" or "nep245:" → "NEAR (near.com)" or "near.com"
+ * - anything else (contract address) → "NEAR (Fungible Token)"
  *
  * Returns null for non-NEAR networks so callers can fall back to the chain name.
  */
 export function getNearTokenTypeLabel(
     tokenId: string,
     network?: string,
+    options?: { expandNearComLabel?: boolean },
 ): string | null {
-    const resolvedNetwork = network?.toLowerCase() ?? "near";
-    if (resolvedNetwork !== "near") return null;
+    const resolvedNetwork = network?.toLowerCase() ?? NEAR_NETWORK_ID;
+    if (resolvedNetwork !== NEAR_NETWORK_ID) return null;
 
     const id = tokenId.toLowerCase();
-    if (id === "" || id === "near") return "NEAR (Native Token)";
-    if (id.startsWith("nep141:") || id.startsWith("nep245:"))
-        return "NEAR (near.com)";
+    if (id === "" || id === NEAR_NETWORK_ID) return "NEAR (Native Token)";
+    if (id.startsWith("nep141:") || id.startsWith("nep245:")) {
+        return options?.expandNearComLabel === false
+            ? "near.com"
+            : "NEAR (near.com)";
+    }
     return "NEAR (Fungible Token)";
 }
 
@@ -638,4 +656,32 @@ export function formatNanosecondDuration(nanoseconds: string): string {
     } else {
         return `${seconds} second${seconds !== 1 ? "s" : ""}`;
     }
+}
+
+/**
+ * Format seconds using Intl.DurationFormat.
+ * Returns null when input is invalid.
+ */
+export function formatDurationSeconds(
+    value: number | string | null | undefined,
+    locale: string,
+): string | null {
+    const seconds = Number(value);
+    if (!Number.isFinite(seconds)) return null;
+
+    const totalSeconds = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const remainingSeconds = totalSeconds % 60;
+
+    const formatter = new (Intl as any).DurationFormat(locale, {
+        style: "long",
+    });
+    const duration: Record<string, number> = {};
+    if (hours > 0) duration.hours = hours;
+    if (minutes > 0) duration.minutes = minutes;
+    if (remainingSeconds > 0 || Object.keys(duration).length === 0) {
+        duration.seconds = remainingSeconds;
+    }
+    return formatter.format(duration);
 }

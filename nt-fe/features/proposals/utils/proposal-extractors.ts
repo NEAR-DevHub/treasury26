@@ -28,8 +28,30 @@ import { Policy } from "@/types/policy";
 import { getKindFromProposal } from "@/lib/config-utils";
 import { FunctionCallAction } from "@/lib/proposals-api";
 import { IntentsQuoteResponse } from "@/lib/api";
-import { NEAR_COM_NETWORK_ID } from "@/constants/intents";
+import {
+    NEAR_COM_NETWORK_ID,
+    NEAR_NETWORK_ID,
+    WRAP_NEAR_TOKEN_ID,
+} from "@/constants/network-ids";
 import { computeQuoteNetworkFee } from "@/lib/intents-fee";
+
+function normalizeTimeEstimateSeconds(value?: string): string | undefined {
+    if (!value) return undefined;
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+
+    const legacyMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*seconds?$/i);
+    if (legacyMatch) {
+        return legacyMatch[1];
+    }
+
+    const parsed = Number(trimmed);
+    if (Number.isFinite(parsed)) {
+        return parsed.toString();
+    }
+
+    return undefined;
+}
 
 function extractFTTransferData(
     functionCall: FunctionCallKind["FunctionCall"],
@@ -60,11 +82,13 @@ function extractFTTransferData(
         }
         const args = decodeArgs(action.args);
         if (args) {
+            const hasNearDeposit = actions.some(
+                (a) => a.method_name === "near_deposit",
+            );
             return {
-                tokenId:
-                    action.method_name === "transfer"
-                        ? "near"
-                        : functionCall.receiver_id,
+                tokenId: hasNearDeposit
+                    ? NEAR_NETWORK_ID
+                    : functionCall.receiver_id,
                 amount: args.amount || "0",
                 receiver: args.receiver_id || "",
             };
@@ -73,7 +97,7 @@ function extractFTTransferData(
         const args = decodeArgs(actionMTTransfer.args);
         if (args) {
             return {
-                tokenId: args.token_id || "near",
+                tokenId: args.token_id || NEAR_NETWORK_ID,
                 amount: args.amount || "0",
                 receiver: args.receiver_id || "",
             };
@@ -129,7 +153,7 @@ function extractFTTransferData(
 export function extractPaymentRequestData(
     proposal: Proposal,
 ): PaymentRequestData {
-    let tokenId = "near";
+    let tokenId = NEAR_NETWORK_ID;
     let amount = "0";
     let receiver = "";
     const proposalAction = decodeProposalDescription(
@@ -139,7 +163,11 @@ export function extractPaymentRequestData(
 
     if ("Transfer" in proposal.kind) {
         const transfer = proposal.kind.Transfer;
-        tokenId = transfer.token_id.length > 0 ? transfer.token_id : "near";
+        const normalizedTokenId = transfer.token_id?.trim();
+        tokenId =
+            normalizedTokenId && normalizedTokenId.length > 0
+                ? normalizedTokenId
+                : NEAR_NETWORK_ID;
         amount = transfer.amount;
         receiver = transfer.receiver_id;
     } else if ("FunctionCall" in proposal.kind) {
@@ -168,18 +196,28 @@ export function extractPaymentRequestData(
     }
 
     // Intents routing metadata (only present on proposals created via 1Click)
-    const depositAddress =
-        decodeProposalDescription("depositAddress", proposal.description) ||
-        undefined;
-    const quoteSignature =
-        decodeProposalDescription("signature", proposal.description) ||
-        undefined;
-    const networkFee =
-        decodeProposalDescription("networkFee", proposal.description) ||
-        undefined;
-    const destinationAssetId =
-        decodeProposalDescription("destinationNetwork", proposal.description) ||
-        undefined;
+    const depositAddress = decodeProposalDescription(
+        "depositAddress",
+        proposal.description,
+    );
+    const quoteSignature = decodeProposalDescription(
+        "signature",
+        proposal.description,
+    );
+    const networkFee = decodeProposalDescription(
+        "networkFee",
+        proposal.description,
+    );
+    let destinationAssetId = decodeProposalDescription(
+        "destinationNetwork",
+        proposal.description,
+    );
+
+    // Plain native NEAR transfers without 1Click metadata should resolve to
+    // NEAR network (not near.com route) in destination display.
+    if (!destinationAssetId && tokenId === NEAR_NETWORK_ID && !depositAddress) {
+        destinationAssetId = NEAR_NETWORK_ID;
+    }
     return {
         tokenId,
         amount,
@@ -291,7 +329,7 @@ export function extractStakingData(proposal: Proposal): StakingData {
     );
 
     return {
-        tokenId: "near",
+        tokenId: NEAR_NETWORK_ID,
         amount: isFullAmount
             ? "0"
             : args?.amount || stakingAction?.deposit || withdrawAmount || "0",
@@ -320,7 +358,7 @@ export function extractVestingData(proposal: Proposal): VestingData {
 
     if (!firstAction || firstAction.method_name !== "create") {
         return {
-            tokenId: "near",
+            tokenId: NEAR_NETWORK_ID,
             amount: "0",
             receiver: "",
             vestingSchedule: null,
@@ -335,7 +373,7 @@ export function extractVestingData(proposal: Proposal): VestingData {
     const args = decodeArgs(firstAction.args);
     if (!args) {
         return {
-            tokenId: "near",
+            tokenId: NEAR_NETWORK_ID,
             amount: "0",
             receiver: "",
             vestingSchedule: null,
@@ -362,7 +400,7 @@ export function extractVestingData(proposal: Proposal): VestingData {
     const notes = decodeProposalDescription("notes", proposal.description);
 
     return {
-        tokenId: "near",
+        tokenId: NEAR_NETWORK_ID,
         amount: firstAction.deposit,
         receiver: recipient,
         vestingSchedule,
@@ -402,7 +440,7 @@ export function extractExchangeRequestData(
         throw new Error("Proposal is not a Exchange proposal");
     }
 
-    const args = decodeArgs(action?.args);
+    const args = decodeArgs(action.args);
     if (!args) {
         throw new Error("Proposal is not a Exchange proposal");
     }
@@ -445,10 +483,11 @@ export function extractExchangeRequestData(
         "signature",
         proposal.description,
     );
-    const timeEstimate = decodeProposalDescription(
+    const timeEstimateRaw = decodeProposalDescription(
         "timeEstimate",
         proposal.description,
     );
+    const timeEstimate = normalizeTimeEstimateSeconds(timeEstimateRaw);
 
     // Determine tokenIn and depositAddress based on proposal structure:
     // 1. Native NEAR: ft_transfer from wrap.near WITH near_deposit action, tokenIn = near
@@ -477,9 +516,9 @@ export function extractExchangeRequestData(
             (a) => a.method_name === "near_deposit",
         );
 
-        if (hasNearDeposit && functionCall.receiver_id === "wrap.near") {
+        if (hasNearDeposit && functionCall.receiver_id === WRAP_NEAR_TOKEN_ID) {
             // Native NEAR exchange: near -> other token
-            tokenIn = "near";
+            tokenIn = NEAR_NETWORK_ID;
         } else {
             // FT token or wNEAR exchange
             tokenIn = functionCall.receiver_id;
@@ -501,10 +540,10 @@ export function extractExchangeRequestData(
         amountIn,
         amountOut,
         destinationNetwork, // LEGACY: for old proposals
-        sourceNetwork: "near",
+        sourceNetwork: NEAR_NETWORK_ID,
         quoteSignature,
         depositAddress,
-        timeEstimate: timeEstimate || undefined,
+        timeEstimate,
         slippage: slippage || undefined,
         quoteDeadline: quoteDeadline || undefined,
     };
@@ -535,13 +574,13 @@ export function extractNearWrapSwapRequestData(
     const amount = isWrap ? action.deposit || "0" : args.amount || "0";
 
     return {
-        source: "wrap.near",
-        tokenIn: isWrap ? "near" : "wrap.near",
+        source: WRAP_NEAR_TOKEN_ID,
+        tokenIn: isWrap ? NEAR_NETWORK_ID : WRAP_NEAR_TOKEN_ID,
         amountIn: amount,
-        tokenOut: isWrap ? "wrap.near" : "near",
+        tokenOut: isWrap ? WRAP_NEAR_TOKEN_ID : NEAR_NETWORK_ID,
         amountOut: amount,
-        destinationNetwork: "near",
-        sourceNetwork: "near",
+        destinationNetwork: NEAR_NETWORK_ID,
+        sourceNetwork: NEAR_NETWORK_ID,
     };
 }
 
@@ -804,27 +843,23 @@ export function extractConfidentialRequestData(
             title = "Confidential Exchange";
         } else {
             const destinationAsset = quoteRequest.destinationAsset;
+            const recipient = quoteRequest.recipient ?? "";
             const recipientType =
                 typeof quoteRequest.recipientType === "string"
                     ? quoteRequest.recipientType
                     : undefined;
-            const destinationAssetId =
-                destinationAsset &&
-                destinationAsset !== quoteRequest.originAsset
-                    ? destinationAsset
-                    : recipientType === "CONFIDENTIAL_INTENTS" ||
-                        recipientType === "INTENTS"
-                      ? NEAR_COM_NETWORK_ID
-                      : recipientType === "DESTINATION_CHAIN"
-                        ? "near"
-                        : undefined;
+            const isNearComIntentsRoute =
+                recipientType === "CONFIDENTIAL_INTENTS";
+            const destinationAssetId = isNearComIntentsRoute
+                ? NEAR_COM_NETWORK_ID
+                : destinationAsset;
             const networkFee = computeQuoteNetworkFee(quote);
             mapped = {
                 type: "payment",
                 data: {
                     tokenId: quoteRequest.originAsset,
                     amount: quote.amountIn,
-                    receiver: quoteRequest.recipient ?? "",
+                    receiver: recipient,
                     notes: meta?.notes ?? undefined,
                     depositAddress: quote.depositAddress,
                     quoteSignature: quoteResponse.signature,
@@ -891,7 +926,7 @@ export function extractProposalData(
 
                 // Check if this is a simple wrap/unwrap (no exchange)
                 const isSimpleWrapUnwrap =
-                    functionCall.receiver_id === "wrap.near" &&
+                    functionCall.receiver_id === WRAP_NEAR_TOKEN_ID &&
                     functionCall.actions.length === 1 &&
                     functionCall.actions.some(
                         (action) =>

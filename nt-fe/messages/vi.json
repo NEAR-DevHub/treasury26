@@ -36,7 +36,9 @@
         "viewAll": "Xem tất cả",
         "viewDetails": "Xem chi tiết",
         "noResults": "Không tìm thấy kết quả",
-        "add": "Thêm"
+        "add": "Thêm",
+        "confidentialDataTooltip": "Hoạt động tài chính của bạn là riêng tư và an toàn. Chỉ bạn và đội ngũ của bạn mới có thể truy cập thông tin này.",
+        "confidentialAddressTooltip": "Tài sản sẽ được nhận tại một địa chỉ bảo mật."
     },
     "languageSwitcher": {
         "label": "Ngôn ngữ",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "Để hỗ trợ các dự án mới, TREZU bao gồm tất cả phí triển khai một lần và phí lưu trữ mạng.",
         "createButton": "Tạo Ngân quỹ",
         "connectWalletCreate": "Kết nối ví để tạo ngân quỹ",
+        "walletNotSupportedTitle": "Ví chưa được hỗ trợ",
+        "walletNotSupportedDescription": "{wallet} hiện chưa được hỗ trợ, nhưng chúng tôi đang phát triển. Bạn có thể tiếp tục bằng ví NEAR được hỗ trợ hoặc Ledger.",
+        "connectNear": "Kết nối NEAR",
+        "connectLedger": "Kết nối Ledger",
         "unexpectedError": "Đã xảy ra lỗi không mong muốn",
         "creationFailed": "Không thể tạo ngân quỹ. Vui lòng thử lại.",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "Khách",
         "tooltip": "Bạn là khách của ngân quỹ này. Bạn chỉ có thể xem dữ liệu."
-    },
-    "exportButton": {
-        "confidentialTooltip": "Xuất chưa khả dụng ở chế độ bảo mật. Tính năng này sắp ra mắt!"
     },
     "sponsoredActions": {
         "titleExhausted": "Đã sử dụng hết Hành động được tài trợ",
@@ -1539,7 +1542,6 @@
         "incompatible": "Không tương thích",
         "comingSoon": "Sắp ra mắt",
         "forMembersOnly": "Chỉ dành cho thành viên",
-        "nearComName": "near.com",
         "nearComDescription": "Mạng bảo mật của near.com và trezu",
         "nearDescription": "Mạng dành cho rút tiền công khai"
     },

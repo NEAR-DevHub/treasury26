@@ -236,6 +236,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 posthog.identify(loginResponse.accountId, {
                     account_id: loginResponse.accountId,
                 });
+                trackEvent("wallet_connection_completed", {
+                    source: "wallet-sign-in",
+                    account_id: loginResponse.accountId,
+                });
             },
         );
 
@@ -270,6 +274,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     nonce: null,
                 });
                 posthog.identify(loginResponse.accountId, {
+                    account_id: loginResponse.accountId,
+                });
+                trackEvent("wallet_connection_completed", {
+                    source: "wallet-sign-in-and-message",
                     account_id: loginResponse.accountId,
                 });
             },
@@ -357,7 +365,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     },
                 });
             }
-            trackEvent("new-wallet-connected", {
+            trackEvent("wallet_connection_completed", {
                 source: "terms-accepted",
                 account_id: get().walletAccountId ?? undefined,
             });

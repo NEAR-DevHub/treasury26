@@ -4,6 +4,8 @@ use crate::handlers::treasury::policy::fetch_treasury_policy_cached;
 use axum::http::StatusCode;
 use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_extra::extract::CookieJar;
+use near_account_id::AccountIdRef;
+use near_api::AccountId;
 use serde_json::Value;
 use std::sync::Arc;
 
@@ -13,7 +15,7 @@ pub const AUTH_COOKIE_NAME: &str = "auth_token";
 /// Authenticated user extracted from JWT cookie
 #[derive(Debug, Clone)]
 pub struct AuthUser {
-    pub account_id: String,
+    pub account_id: AccountId,
 }
 
 impl AuthUser {
@@ -24,15 +26,15 @@ impl AuthUser {
     pub async fn verify_dao_member(
         &self,
         db: &sqlx::PgPool,
-        dao_id: &str,
+        dao_id: &AccountIdRef,
     ) -> Result<(), AuthError> {
         let member = sqlx::query!(
             r#"
             SELECT 1 AS ok FROM dao_members
             WHERE account_id = $1 AND dao_id = $2 AND is_policy_member = true
             "#,
-            self.account_id,
-            dao_id
+            self.account_id.as_str(),
+            dao_id.as_str()
         )
         .fetch_optional(db)
         .await
@@ -56,7 +58,7 @@ impl AuthUser {
             .unwrap_or(false)
     }
 
-    fn role_applies_to_account(role: &Value, account_id: &str) -> bool {
+    fn role_applies_to_account(role: &Value, account_id: &AccountIdRef) -> bool {
         let Some(kind) = role.get("kind") else {
             return false;
         };
@@ -70,14 +72,14 @@ impl AuthUser {
             .map(|group| {
                 group
                     .iter()
-                    .any(|member| member.as_str() == Some(account_id))
+                    .any(|member| member.as_str() == Some(account_id.as_str()))
             })
             .unwrap_or(false)
     }
 
     fn policy_allows_action_for_account(
         policy: &Value,
-        account_id: &str,
+        account_id: &AccountIdRef,
         action_name: &str,
     ) -> bool {
         policy
@@ -95,24 +97,15 @@ impl AuthUser {
     pub async fn fetch_dao_policy(
         &self,
         state: &Arc<AppState>,
-        dao_id: &str,
+        dao_id: &AccountIdRef,
     ) -> Result<Value, (StatusCode, String)> {
-        let dao_account_id = dao_id.parse().map_err(|e| {
-            (
-                StatusCode::BAD_REQUEST,
-                format!("Invalid treasury account '{}': {}", dao_id, e),
-            )
-        })?;
-
-        let policy = fetch_treasury_policy_cached(state, &dao_account_id, None).await?;
-
-        Ok(policy)
+        fetch_treasury_policy_cached(state, dao_id, None).await
     }
 
     pub fn verify_can_perform_action_with_policy(
         &self,
         policy: &Value,
-        dao_id: &str,
+        dao_id: &AccountIdRef,
         action_name: &str,
     ) -> Result<(), (StatusCode, String)> {
         if Self::policy_allows_action_for_account(policy, &self.account_id, action_name) {
@@ -134,7 +127,7 @@ impl AuthUser {
     pub async fn verify_can_perform_action(
         &self,
         state: &Arc<AppState>,
-        dao_id: &str,
+        dao_id: &AccountIdRef,
         action_name: &str,
     ) -> Result<(), (StatusCode, String)> {
         let policy = self.fetch_dao_policy(state, dao_id).await?;
@@ -146,7 +139,7 @@ impl AuthUser {
     pub async fn verify_can_add_proposal(
         &self,
         state: &Arc<AppState>,
-        dao_id: &str,
+        dao_id: &AccountIdRef,
     ) -> Result<(), (StatusCode, String)> {
         self.verify_can_perform_action(state, dao_id, "AddProposal")
             .await
@@ -155,7 +148,7 @@ impl AuthUser {
     pub async fn verify_member_if_confidential(
         &self,
         db: &sqlx::PgPool,
-        dao_id: &str,
+        dao_id: &AccountIdRef,
     ) -> Result<bool, (StatusCode, String)> {
         OptionalAuthUser::verify_member_if_confidential(
             &OptionalAuthUser(Some(self.clone())),
@@ -205,7 +198,7 @@ impl FromRequestParts<Arc<AppState>> for AuthUser {
         }
 
         Ok(AuthUser {
-            account_id: claims.sub,
+            account_id: claims.sub.parse()?,
         })
     }
 }
@@ -223,7 +216,7 @@ impl OptionalAuthUser {
     pub async fn verify_member_if_confidential(
         &self,
         db: &sqlx::PgPool,
-        dao_id: &str,
+        dao_id: &AccountIdRef,
     ) -> Result<bool, (StatusCode, String)> {
         let row = sqlx::query!(
             r#"
@@ -237,7 +230,7 @@ impl OptionalAuthUser {
                 AND dm.is_policy_member = true
             WHERE ma.account_id = $1
             "#,
-            dao_id,
+            dao_id.as_str(),
             self.0.as_ref().map(|u| u.account_id.as_str()),
         )
         .fetch_optional(db)

@@ -36,7 +36,9 @@
         "viewAll": "Переглянути все",
         "viewDetails": "Переглянути деталі",
         "noResults": "Нічого не знайдено",
-        "add": "Додати"
+        "add": "Додати",
+        "confidentialDataTooltip": "Ваша фінансова активність є приватною та безпечною. Лише ви та ваша команда можуть отримати доступ до цієї інформації.",
+        "confidentialAddressTooltip": "Активи будуть отримані на конфіденційну адресу."
     },
     "languageSwitcher": {
         "label": "Мова",
@@ -1123,6 +1125,10 @@
         "noDeploymentFeeDescription": "Щоб підтримати нові проєкти, TREZU покриває всі одноразові комісії за розгортання та мережеве сховище.",
         "createButton": "Створити скарбницю",
         "connectWalletCreate": "Підключіть гаманець для створення скарбниці",
+        "walletNotSupportedTitle": "Гаманець ще не підтримується",
+        "walletNotSupportedDescription": "{wallet} ще не підтримується, але ми над цим працюємо. Ви можете продовжити з підтримуваним гаманцем NEAR або Ledger.",
+        "connectNear": "Підключити NEAR",
+        "connectLedger": "Підключити Ledger",
         "unexpectedError": "Сталася неочікувана помилка",
         "creationFailed": "Не вдалось створити скарбницю. Спробуйте ще раз.",
         "stepTitles": {
@@ -1278,9 +1284,6 @@
     "guestBadge": {
         "title": "Гість",
         "tooltip": "Ви гість цієї скарбниці. Ви можете лише переглядати дані."
-    },
-    "exportButton": {
-        "confidentialTooltip": "Експорт ще недоступний у конфіденційному режимі. Ця функція скоро з'явиться!"
     },
     "sponsoredActions": {
         "titleExhausted": "Спонсоровані дії вичерпано",
@@ -1539,7 +1542,6 @@
         "incompatible": "Несумісні",
         "comingSoon": "Скоро",
         "forMembersOnly": "Лише для учасників",
-        "nearComName": "near.com",
         "nearComDescription": "Конфіденційна мережа near.com і trezu",
         "nearDescription": "Мережа для публічного виведення"
     },

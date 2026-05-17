@@ -1,4 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
+use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -10,7 +11,7 @@ use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DepositAddressRequest {
-    pub account_id: String,
+    pub account_id: AccountId,
     pub chain: String,
     pub token_id: Option<String>,
     pub amount: Option<String>,
@@ -29,12 +30,13 @@ pub struct DepositAddressResult {
 /// deposit address, then fetch the bridge deposit address for that quote address.
 async fn get_confidential_deposit_address(
     state: &Arc<AppState>,
-    account_id: &str,
+    account_id: &near_account_id::AccountIdRef,
     chain: &str,
     token_id: &str,
     mut amount: u128,
 ) -> Result<DepositAddressResult, (StatusCode, String)> {
     let access_token = super::confidential::refresh_dao_jwt(state, account_id).await?;
+    let account_id = account_id.as_str();
 
     let url = format!("{}/v0/quote", state.env_vars.confidential_api_url);
 
@@ -169,7 +171,7 @@ pub async fn get_deposit_address(
         return Ok(Json(result));
     }
 
-    let result = fetch_bridge_deposit_address(&state, &account_id, &chain).await?;
+    let result = fetch_bridge_deposit_address(&state, account_id.as_str(), &chain).await?;
     Ok(Json(result))
 }
 

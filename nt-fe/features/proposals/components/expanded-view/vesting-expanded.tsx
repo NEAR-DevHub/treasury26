@@ -21,7 +21,7 @@ export function VestingExpanded({ data }: VestingExpandedProps) {
             value: (
                 <Amount
                     amount={data.amount}
-                    showNetwork
+                    showNetworkTooltip
                     tokenId={data.tokenId}
                 />
             ),

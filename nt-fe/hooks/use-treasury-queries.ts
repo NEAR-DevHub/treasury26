@@ -25,6 +25,7 @@ import {
 import { useTreasury } from "./use-treasury";
 import { useAssets } from "./use-assets";
 import { availableBalance } from "@/lib/balance";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 /**
  * Query hook to get user's treasuries with config data
@@ -104,7 +105,7 @@ export function useTokenBalance(
     const balance = assets?.tokens.find(
         (asset) =>
             asset.contractId === tokenId ||
-            (tokenId?.toLowerCase() === "near" &&
+            (tokenId?.toLowerCase() === NEAR_NETWORK_ID &&
                 asset.contractId == null &&
                 asset.residency === "Near"),
     )?.balance;

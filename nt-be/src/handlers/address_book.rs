@@ -5,6 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 use chrono::{DateTime, Utc};
+use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -14,7 +15,7 @@ use crate::{AppState, auth::AuthUser};
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListAddressBookQuery {
-    pub dao_id: String,
+    pub dao_id: AccountId,
 }
 
 #[derive(Deserialize)]
@@ -29,25 +30,24 @@ pub struct CreateAddressBookEntryRequest {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAddressBookRequest {
-    pub dao_id: String,
+    pub dao_id: AccountId,
     pub entries: Vec<CreateAddressBookEntryRequest>,
 }
 
-#[derive(Debug, Serialize, sqlx::FromRow)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddressBookEntry {
     pub id: Uuid,
-    pub dao_id: String,
+    pub dao_id: AccountId,
     pub name: String,
     pub networks: Vec<String>,
     pub address: String,
     pub note: Option<String>,
-    pub created_by: Option<String>,
+    pub created_by: Option<AccountId>,
     pub created_at: DateTime<Utc>,
 }
 
 /// Row returned by the fetch queries (list + export) with joined wallet.
-#[derive(sqlx::FromRow)]
 struct AddressBookRow {
     id: Uuid,
     dao_id: String,
@@ -59,18 +59,20 @@ struct AddressBookRow {
     created_at: DateTime<Utc>,
 }
 
-impl From<AddressBookRow> for AddressBookEntry {
-    fn from(r: AddressBookRow) -> Self {
-        AddressBookEntry {
+impl TryFrom<AddressBookRow> for AddressBookEntry {
+    type Error = near_account_id::ParseAccountError;
+
+    fn try_from(r: AddressBookRow) -> Result<Self, Self::Error> {
+        Ok(AddressBookEntry {
             id: r.id,
-            dao_id: r.dao_id,
+            dao_id: r.dao_id.parse()?,
             name: r.name,
             networks: r.networks,
             address: r.address,
             note: r.note,
-            created_by: r.created_by_wallet,
+            created_by: r.created_by_wallet.map(|s| s.parse()).transpose()?,
             created_at: r.created_at,
-        }
+        })
     }
 }
 
@@ -96,7 +98,7 @@ pub async fn list_address_book(
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Not a DAO policy member".to_string()))?;
 
-    let entries = sqlx::query_as!(
+    let entries: Vec<AddressBookEntry> = sqlx::query_as!(
         AddressBookRow,
         r#"
         SELECT ab.id, ab.dao_id, ab.name, ab.networks, ab.address, ab.note, ab.created_at,
@@ -106,7 +108,7 @@ pub async fn list_address_book(
         WHERE ab.dao_id = $1
         ORDER BY ab.created_at DESC
         "#,
-        params.dao_id
+        params.dao_id.as_str()
     )
     .fetch_all(&state.db_pool)
     .await
@@ -118,8 +120,14 @@ pub async fn list_address_book(
         )
     })?
     .into_iter()
-    .map(AddressBookEntry::from)
-    .collect();
+    .map(AddressBookEntry::try_from)
+    .collect::<Result<_, _>>()
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Invalid account in address book: {}", e),
+        )
+    })?;
 
     Ok(Json(entries))
 }
@@ -143,7 +151,7 @@ pub async fn create_address_book_entries(
 
     let user_id = sqlx::query_scalar!(
         "SELECT id FROM users WHERE account_id = $1",
-        auth_user.account_id
+        auth_user.account_id.as_str()
     )
     .fetch_optional(&state.db_pool)
     .await
@@ -185,7 +193,7 @@ pub async fn create_address_book_entries(
         RETURNING id, dao_id, name, networks, address, note, created_at
         "#,
     )
-    .bind(&req.dao_id)
+    .bind(req.dao_id.as_str())
     .bind(sqlx::types::Json(entries_json))
     .bind(user_id)
     .fetch_all(&state.db_pool)
@@ -198,19 +206,28 @@ pub async fn create_address_book_entries(
         )
     })?;
 
-    let created = rows
-        .into_iter()
-        .map(|row| AddressBookEntry {
-            id: row.id,
-            dao_id: row.dao_id,
-            name: row.name,
-            networks: row.networks,
-            address: row.address,
-            note: row.note,
-            created_by: Some(auth_user.account_id.clone()),
-            created_at: row.created_at,
-        })
-        .collect();
+    let created: Vec<AddressBookEntry> =
+        rows.into_iter()
+            .map(|row| -> Result<AddressBookEntry, (StatusCode, String)> {
+                Ok(AddressBookEntry {
+                    id: row.id,
+                    dao_id: row.dao_id.parse().map_err(
+                        |e: near_account_id::ParseAccountError| {
+                            (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                format!("Invalid dao_id in DB: {}", e),
+                            )
+                        },
+                    )?,
+                    name: row.name,
+                    networks: row.networks,
+                    address: row.address,
+                    note: row.note,
+                    created_by: Some(auth_user.account_id.clone()),
+                    created_at: row.created_at,
+                })
+            })
+            .collect::<Result<_, _>>()?;
 
     Ok(Json(created))
 }
@@ -218,7 +235,7 @@ pub async fn create_address_book_entries(
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportAddressBookQuery {
-    pub dao_id: String,
+    pub dao_id: AccountId,
     /// Comma-separated list of UUIDs to export; omit to export all
     pub ids: Option<String>,
 }
@@ -255,7 +272,7 @@ pub async fn export_address_book(
             WHERE ab.dao_id = $1 AND ab.id = ANY($2)
             ORDER BY ab.created_at DESC
             "#,
-            params.dao_id,
+            params.dao_id.as_str(),
             &ids
         )
         .fetch_all(&state.db_pool)
@@ -277,7 +294,7 @@ pub async fn export_address_book(
             WHERE ab.dao_id = $1
             ORDER BY ab.created_at DESC
             "#,
-            params.dao_id
+            params.dao_id.as_str()
         )
         .fetch_all(&state.db_pool)
         .await
@@ -369,17 +386,24 @@ pub async fn delete_address_book_entries(
         ));
     }
 
-    let dao_id = &rows[0].dao_id;
+    let dao_id_str = &rows[0].dao_id;
+    let dao_id: AccountId = dao_id_str.parse().map_err(|e| {
+        log::error!("Invalid dao_id in address_book row '{}': {}", dao_id_str, e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Invalid dao_id".to_string(),
+        )
+    })?;
 
     auth_user
-        .verify_dao_member(&state.db_pool, dao_id)
+        .verify_dao_member(&state.db_pool, &dao_id)
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Not a DAO policy member".to_string()))?;
 
     sqlx::query!(
         "DELETE FROM address_book WHERE id = ANY($1) AND dao_id = $2",
         &req.ids,
-        dao_id,
+        dao_id_str,
     )
     .execute(&state.db_pool)
     .await

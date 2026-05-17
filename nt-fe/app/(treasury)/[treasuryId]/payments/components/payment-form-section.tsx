@@ -31,6 +31,7 @@ import {
     type RecipientNetworkRuleOption,
 } from "./recipient-network-select";
 import { cn } from "@/lib/utils";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 interface PaymentFormSectionProps<
     TFieldValues extends FieldValues = FieldValues,
@@ -179,7 +180,7 @@ export function PaymentFormSection<
     // the network selector sections instead.
     const blockchainType = useMemo(() => {
         if (!hideRecipientNetwork) return "unknown";
-        if (!selectedNetworkName) return "near";
+        if (!selectedNetworkName) return NEAR_NETWORK_ID;
         return getBlockchainType(selectedNetworkName);
     }, [hideRecipientNetwork, selectedNetworkName]);
 

@@ -12,7 +12,7 @@ use crate::{
         notifications::payload_decoder::{
             collect_notification_token_ids, decode_notification_content,
         },
-        token::metadata::fetch_tokens_with_defuse_extension,
+        token::metadata::fetch_tokens_metadata_enriched,
     },
     utils::telegram::TelegramClient,
 };
@@ -69,7 +69,7 @@ pub async fn run_telegram_dispatch_cycle(
     }
     token_ids_to_fetch.sort();
     token_ids_to_fetch.dedup();
-    let token_metadata_map = fetch_tokens_with_defuse_extension(state, &token_ids_to_fetch).await;
+    let token_metadata_map = fetch_tokens_metadata_enriched(state, &token_ids_to_fetch).await;
 
     let mut sent = 0usize;
 

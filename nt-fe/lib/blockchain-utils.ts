@@ -1,3 +1,5 @@
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+
 /**
  * Maps chainName from backend to blockchain identifiers for address validation
  *
@@ -6,7 +8,7 @@
  */
 
 export type BlockchainType =
-    | "near"
+    | typeof NEAR_NETWORK_ID
     | "bitcoin"
     | "bitcoincash"
     | "litecoin"
@@ -33,8 +35,8 @@ export function getBlockchainType(chainName: string): BlockchainType {
     const chainLower = chainName.toLowerCase();
 
     // NEAR chains
-    if (chainLower === "near") {
-        return "near";
+    if (chainLower === NEAR_NETWORK_ID) {
+        return NEAR_NETWORK_ID;
     }
 
     // Bitcoin
@@ -173,7 +175,7 @@ export function getBlockchainType(chainName: string): BlockchainType {
  */
 export function isNearToken(chainName?: string, residency?: string): boolean {
     if (!chainName) return true; // Default to NEAR if no chainName
-    return getBlockchainType(chainName) === "near";
+    return getBlockchainType(chainName) === NEAR_NETWORK_ID;
 }
 
 /**
@@ -185,7 +187,7 @@ export function requiresCrossChainValidation(
 ): boolean {
     if (!chainName) return false;
     const blockchainType = getBlockchainType(chainName);
-    return blockchainType !== "near" && blockchainType !== "unknown";
+    return blockchainType !== NEAR_NETWORK_ID && blockchainType !== "unknown";
 }
 
 /**
@@ -199,7 +201,7 @@ export function getExplorerAddressUrl(
     const chainLower = chainName.toLowerCase();
 
     switch (blockchainType) {
-        case "near":
+        case NEAR_NETWORK_ID:
             return `https://nearblocks.io/address/${address}`;
 
         case "ethereum":

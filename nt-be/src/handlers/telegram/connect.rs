@@ -4,6 +4,7 @@ use axum::{
     http::StatusCode,
 };
 use chrono::{DateTime, Utc};
+use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use std::sync::Arc;
@@ -28,13 +29,13 @@ pub struct TokenQuery {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DaoIdQuery {
-    pub dao_id: String,
+    pub dao_id: AccountId,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectedTreasury {
-    pub dao_id: String,
+    pub dao_id: AccountId,
 }
 
 #[derive(Serialize)]
@@ -50,7 +51,7 @@ pub struct ChatInfoResponse {
 #[serde(rename_all = "camelCase")]
 pub struct ConnectTreasuriesRequest {
     pub token: Uuid,
-    pub treasury_ids: Vec<String>,
+    pub treasury_ids: Vec<AccountId>,
 }
 
 #[derive(Serialize)]
@@ -58,13 +59,13 @@ pub struct ConnectTreasuriesRequest {
 pub struct ConnectTreasuriesResponse {
     pub connected: bool,
     pub chat_id: i64,
-    pub treasury_ids: Vec<String>,
+    pub treasury_ids: Vec<AccountId>,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TelegramStatusResponse {
-    pub dao_id: String,
+    pub dao_id: AccountId,
     pub connected: bool,
     pub chat_id: Option<i64>,
     pub chat_title: Option<String>,
@@ -73,7 +74,7 @@ pub struct TelegramStatusResponse {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DisconnectRequest {
-    pub dao_id: String,
+    pub dao_id: AccountId,
 }
 
 // ---------------------------------------------------------------------------
@@ -131,7 +132,7 @@ pub async fn get_chat_info(
         ));
     }
 
-    let connected_treasuries = sqlx::query_scalar::<_, String>(
+    let connected_treasuries: Vec<ConnectedTreasury> = sqlx::query_scalar::<_, String>(
         "SELECT dao_id FROM telegram_treasury_connections WHERE chat_id = $1",
     )
     .bind(row.chat_id)
@@ -139,8 +140,14 @@ pub async fn get_chat_info(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
     .into_iter()
-    .map(|dao_id| ConnectedTreasury { dao_id })
-    .collect();
+    .map(|dao_id| dao_id.parse().map(|dao_id| ConnectedTreasury { dao_id }))
+    .collect::<Result<_, near_account_id::ParseAccountError>>()
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Invalid dao_id in DB: {}", e),
+        )
+    })?;
 
     Ok(Json(ChatInfoResponse {
         chat_id: row.chat_id,
@@ -187,7 +194,7 @@ pub async fn connect_treasuries(
 
     // Look up the user's UUID for connected_by
     let user_id = sqlx::query_scalar::<_, Uuid>("SELECT id FROM users WHERE account_id = $1")
-        .bind(&auth_user.account_id)
+        .bind(auth_user.account_id.as_str())
         .fetch_optional(&state.db_pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -234,7 +241,7 @@ pub async fn connect_treasuries(
                 connected_by = EXCLUDED.connected_by,
                 connected_at = now()
             "#,
-            dao_id,
+            dao_id.as_str(),
             chat_id,
             user_id,
         )
@@ -257,7 +264,12 @@ pub async fn connect_treasuries(
         "#,
     )
     .bind(chat_id)
-    .bind(&body.treasury_ids)
+    .bind(
+        body.treasury_ids
+            .iter()
+            .map(|id| id.as_str().to_owned())
+            .collect::<Vec<String>>(),
+    )
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -339,7 +351,7 @@ pub async fn get_status(
         WHERE ttc.dao_id = $1
         "#,
     )
-    .bind(&params.dao_id)
+    .bind(params.dao_id.as_str())
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -385,7 +397,7 @@ pub async fn disconnect_treasury(
     let disconnected_chat_id = sqlx::query_scalar::<_, i64>(
         "DELETE FROM telegram_treasury_connections WHERE dao_id = $1 RETURNING chat_id",
     )
-    .bind(&body.dao_id)
+    .bind(body.dao_id.as_str())
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
