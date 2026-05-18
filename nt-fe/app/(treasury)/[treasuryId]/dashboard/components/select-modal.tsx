@@ -148,7 +148,7 @@ export function SelectModal({
                     "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
                     selectedId === item.id
                         ? "bg-muted hover:bg-muted focus-visible:bg-muted"
-                        : "hover:bg-transparent focus-visible:bg-transparent",
+                        : "hover:bg-muted-foreground/5 focus-visible:bg-muted-foreground/5",
                     item.disabled &&
                         "opacity-60 cursor-not-allowed pointer-events-none",
                 )}
