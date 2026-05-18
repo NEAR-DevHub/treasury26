@@ -8,6 +8,8 @@ use crate::AppState;
 pub mod balances;
 pub mod generate_intent;
 pub mod history;
+pub mod history_store;
+pub mod history_worker;
 pub mod prepare_auth;
 
 /// Request body for authenticating a DAO with the 1Click confidential intents API.

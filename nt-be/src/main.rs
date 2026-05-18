@@ -130,6 +130,13 @@ async fn async_main() {
         });
     }
 
+    {
+        let state_clone = state.clone();
+        tokio::spawn(async move{
+           nt_be::handlers::intents::confidential::history_worker::run_confidential_history_cycle(&state_clone, 5).await
+       });
+    }
+
     // TODO: Re-enable once we have a DefiLlama API key or higher rate limit
     // Spawn usd_value backfill service
     // {
