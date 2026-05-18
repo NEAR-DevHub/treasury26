@@ -1238,6 +1238,7 @@ export function DepositModal({
                             sections={networkSections}
                             searchPlaceholder={t("searchByName")}
                             isLoading={isLoadingAssets}
+                            selectedId={selectedNetwork?.id}
                             fixNear
                             roundIcons={false}
                             renderContent={(item) => {
