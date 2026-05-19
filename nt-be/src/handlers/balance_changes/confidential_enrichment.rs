@@ -16,10 +16,11 @@ use bigdecimal::{BigDecimal, Zero};
 use near_api::NetworkConfig;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serde_json::json;
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::counterparty::{convert_raw_to_decimal, ensure_ft_metadata};
+use crate::handlers::intents::confidential::history_store::link_intent_to_history_event;
 
 /// Legacy payload form: `predecessor=AccountId("…") … payload_v2: Some(Eddsa(Bytes("<hex>")))`.
 static V1_SIGNER_HEX: Lazy<Regex> = Lazy::new(|| {
@@ -42,6 +43,11 @@ static V1_SIGNER_BYTES: Lazy<Regex> = Lazy::new(|| {
 pub struct ConfidentialSignCall {
     pub dao_id: String,
     pub payload_hash: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct SubmittedIntentInfo {
+    pub recipient: Option<String>,
 }
 
 fn decode_bounded_vec_bytes(captured: &str) -> Option<String> {
@@ -80,6 +86,75 @@ pub fn extract_sign_call_from_logs(logs: &str) -> Option<ConfidentialSignCall> {
         }
     }
     None
+}
+
+fn normalize_near_recipient(recipient: &str) -> String {
+    recipient
+        .strip_prefix("near:")
+        .unwrap_or(recipient)
+        .to_string()
+}
+
+fn quote_recipient(quote_metadata: Option<&Value>) -> Option<String> {
+    quote_metadata?
+        .get("quoteRequest")
+        .and_then(|q| q.get("recipient"))
+        .and_then(|v| v.as_str())
+        .map(normalize_near_recipient)
+}
+
+pub async fn mark_confidential_intent_submitted(
+    app_pool: &PgPool,
+    dao_id: &str,
+    payload_hash: &str,
+    executed_at: chrono::DateTime<chrono::Utc>,
+) -> Result<Option<SubmittedIntentInfo>, Box<dyn std::error::Error>> {
+    let row = sqlx::query_as::<_, (Option<Value>,)>(
+        r#"
+        SELECT quote_metadata
+        FROM confidential_intents
+        WHERE dao_id = $1
+          AND payload_hash = $2
+        "#,
+    )
+    .bind(dao_id)
+    .bind(payload_hash)
+    .fetch_optional(app_pool)
+    .await?;
+
+    let Some((quote_metadata,)) = row else {
+        return Ok(None);
+    };
+    let recipient = quote_recipient(quote_metadata.as_ref());
+
+    sqlx::query(
+        r#"
+        UPDATE confidential_intents
+        SET status = 'submitted',
+            executed_at = COALESCE(executed_at, $3),
+            updated_at = NOW()
+        WHERE dao_id = $1
+          AND payload_hash = $2
+        "#,
+    )
+    .bind(dao_id)
+    .bind(payload_hash)
+    .bind(executed_at)
+    .execute(app_pool)
+    .await?;
+
+    if let Some(history_event_id) =
+        link_intent_to_history_event(app_pool, dao_id, payload_hash).await?
+    {
+        log::info!(
+            "[goldsky-enrichment] linked submitted intent {}/{} to history_event_id={}",
+            dao_id,
+            payload_hash,
+            history_event_id
+        );
+    }
+
+    Ok(Some(SubmittedIntentInfo { recipient }))
 }
 
 /// Synthesize an outgoing `balance_change` row for a confidential DAO's swap

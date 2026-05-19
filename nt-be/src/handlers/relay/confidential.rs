@@ -5,7 +5,11 @@
 //! approves the proposal and the MPC signature is in the execution result, the
 //! signed intent is submitted to the 1Click API automatically.
 
-use crate::{AppState, constants::V1_SIGNER_CONTRACT_ID, utils::cache::CacheKey};
+use crate::{
+    AppState, constants::V1_SIGNER_CONTRACT_ID,
+    handlers::intents::confidential::history_store::link_intent_to_history_event,
+    utils::cache::CacheKey,
+};
 use base64::Engine;
 use near_api::types::{Action, transaction::delegate_action::NonDelegateAction};
 use reqwest::StatusCode;
@@ -79,29 +83,40 @@ pub async fn store_pending_intent(
     intent_payload: &Value,
     correlation_id: Option<&str>,
     quote_metadata: Option<&Value>,
+    deposit_address: &str,
     notes: Option<&str>,
 ) -> Result<(), String> {
-    sqlx::query!(
+    sqlx::query(
         r#"
-        INSERT INTO confidential_intents (dao_id, payload_hash, intent_payload, correlation_id, quote_metadata, notes)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO confidential_intents (
+            dao_id,
+            payload_hash,
+            intent_payload,
+            correlation_id,
+            quote_metadata,
+            deposit_address,
+            notes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (dao_id, payload_hash) DO UPDATE SET
             intent_payload = EXCLUDED.intent_payload,
             correlation_id = EXCLUDED.correlation_id,
             quote_metadata = EXCLUDED.quote_metadata,
+            deposit_address = EXCLUDED.deposit_address,
             notes = EXCLUDED.notes,
             intent_type = 'shield',
             status = 'pending',
             submit_result = NULL,
             updated_at = NOW()
         "#,
-        dao_id,
-        payload_hash,
-        intent_payload,
-        correlation_id,
-        quote_metadata,
-        notes,
     )
+    .bind(dao_id)
+    .bind(payload_hash)
+    .bind(intent_payload)
+    .bind(correlation_id)
+    .bind(quote_metadata)
+    .bind(deposit_address)
+    .bind(notes)
     .execute(pool)
     .await
     .map_err(|e| format!("Failed to store pending intent: {}", e))?;
@@ -366,7 +381,7 @@ pub async fn try_auto_submit_intent(
                     );
                 }
 
-                let _ = sqlx::query!(
+                let update_result = sqlx::query!(
                     "UPDATE confidential_intents SET status = 'submitted', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
                     &resp_body,
                     treasury_id,
@@ -374,6 +389,30 @@ pub async fn try_auto_submit_intent(
                 )
                 .execute(&state.db_pool)
                 .await;
+
+                if update_result.is_ok() {
+                    match link_intent_to_history_event(&state.db_pool, treasury_id, payload_hash)
+                        .await
+                    {
+                        Ok(Some(history_event_id)) => {
+                            log::info!(
+                                "Linked submitted confidential intent for {} (hash={}) to history_event_id={}",
+                                treasury_id,
+                                payload_hash,
+                                history_event_id
+                            );
+                        }
+                        Ok(None) => {}
+                        Err(e) => {
+                            log::warn!(
+                                "Failed to link submitted confidential intent for {} (hash={}): {}",
+                                treasury_id,
+                                payload_hash,
+                                e
+                            );
+                        }
+                    }
+                }
             } else {
                 log::error!(
                     "1Click {} failed ({}) for {} (hash={}): {:?}",

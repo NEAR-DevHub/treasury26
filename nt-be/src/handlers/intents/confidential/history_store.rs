@@ -1,7 +1,7 @@
 //! Postgres storage helpers for confidential history ingestion.
 
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 
 use super::history::HistoryEvent;
 
@@ -25,7 +25,7 @@ pub async fn upsert_history_events(
 
     for event in events {
         let item = &event.item;
-        let result = sqlx::query(
+        let row = sqlx::query_as::<_, (i64,)>(
             r#"
             INSERT INTO confidential_history_events (
                 account_id,
@@ -51,6 +51,7 @@ pub async fn upsert_history_events(
                 destination_asset = EXCLUDED.destination_asset,
                 raw_payload = EXCLUDED.raw_payload,
                 updated_at = NOW()
+            RETURNING id
             "#,
         )
         .bind(account_id)
@@ -64,14 +65,138 @@ pub async fn upsert_history_events(
         .bind(&item.origin_asset)
         .bind(&item.destination_asset)
         .bind(&event.raw_payload)
-        .execute(&mut *tx)
+        .fetch_one(&mut *tx)
         .await?;
 
-        rows_touched += result.rows_affected();
+        let history_event_id = row.0;
+        let linked_intent_id = link_history_event_to_intent_tx(
+            &mut tx,
+            history_event_id,
+            account_id,
+            &item.deposit_address,
+            item.recipient.as_deref(),
+        )
+        .await?;
+
+        if let Some(intent_id) = linked_intent_id {
+            log::info!(
+                "[confidential-history] linked history_event_id={} to confidential_intent_id={}",
+                history_event_id,
+                intent_id
+            );
+        }
+
+        rows_touched += 1;
     }
 
     tx.commit().await?;
     Ok(rows_touched)
+}
+
+async fn link_history_event_to_intent_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    history_event_id: i64,
+    account_id: &str,
+    deposit_address: &str,
+    recipient: Option<&str>,
+) -> Result<Option<i32>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        WITH candidate AS (
+            SELECT id
+            FROM confidential_intents
+            WHERE dao_id = $2
+              AND deposit_address = $3
+              AND history_event_id IS NULL
+              AND proposal_id IS NOT NULL
+              AND status = 'submitted'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM confidential_intents existing
+                  WHERE existing.history_event_id = $1
+              )
+              AND (
+                  $4::TEXT IS NULL
+                  OR quote_metadata->'quoteRequest'->>'recipient' = $4
+                  OR quote_metadata->'quoteRequest'->>'recipient' = CONCAT('near:', $4)
+              )
+        ),
+        single_candidate AS (
+            SELECT id
+            FROM candidate
+            WHERE (SELECT COUNT(*) FROM candidate) = 1
+        )
+        UPDATE confidential_intents ci
+        SET history_event_id = $1,
+            updated_at = NOW()
+        FROM single_candidate sc
+        WHERE ci.id = sc.id
+        RETURNING ci.id
+        "#,
+    )
+    .bind(history_event_id)
+    .bind(account_id)
+    .bind(deposit_address)
+    .bind(recipient)
+    .fetch_optional(&mut **tx)
+    .await
+}
+
+pub async fn link_intent_to_history_event(
+    pool: &PgPool,
+    dao_id: &str,
+    payload_hash: &str,
+) -> Result<Option<i64>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        WITH intent AS (
+            SELECT
+                id,
+                dao_id,
+                deposit_address,
+                quote_metadata->'quoteRequest'->>'recipient' AS recipient
+            FROM confidential_intents
+            WHERE dao_id = $1
+              AND payload_hash = $2
+              AND history_event_id IS NULL
+              AND proposal_id IS NOT NULL
+              AND status = 'submitted'
+              AND deposit_address IS NOT NULL
+        ),
+        candidate AS (
+            SELECT he.id AS history_event_id
+            FROM confidential_history_events he
+            JOIN intent i
+              ON he.account_id = i.dao_id
+             AND he.deposit_address = i.deposit_address
+             AND (
+                 i.recipient IS NULL
+                 OR he.recipient = i.recipient
+                 OR CONCAT('near:', he.recipient) = i.recipient
+             )
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM confidential_intents existing
+                WHERE existing.history_event_id = he.id
+            )
+        ),
+        single_candidate AS (
+            SELECT history_event_id
+            FROM candidate
+            WHERE (SELECT COUNT(*) FROM candidate) = 1
+        )
+        UPDATE confidential_intents ci
+        SET history_event_id = sc.history_event_id,
+            updated_at = NOW()
+        FROM intent i, single_candidate sc
+        WHERE ci.id = i.id
+        RETURNING ci.history_event_id
+        "#,
+    )
+    .bind(dao_id)
+    .bind(payload_hash)
+    .fetch_optional(pool)
+    .await
 }
 
 pub async fn load_history_cursor(
@@ -334,5 +459,81 @@ mod tests {
         assert!(accounts.contains(&enabled_confidential));
         assert!(!accounts.contains(&disabled_confidential));
         assert!(!accounts.contains(&enabled_public));
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_link_intent_to_history_event_requires_submitted_proposal() {
+        let pool = test_pool().await;
+        let mut event = sample_history_event();
+        let account_id = format!("test-confidential-link-{}-dao.near", uuid::Uuid::new_v4());
+        let payload_hash = uuid::Uuid::new_v4().simple().to_string();
+
+        event.item.recipient = Some(account_id.clone());
+        if let serde_json::Value::Object(ref mut raw) = event.raw_payload {
+            raw.insert(
+                "recipient".to_string(),
+                serde_json::Value::String(account_id.clone()),
+            );
+        }
+
+        upsert_history_events(&pool, &account_id, &[event.clone()])
+            .await
+            .expect("Bronze upsert should succeed");
+
+        let quote_metadata = serde_json::json!({
+            "quote": {
+                "depositAddress": event.item.deposit_address
+            },
+            "quoteRequest": {
+                "recipient": format!("near:{}", account_id)
+            }
+        });
+
+        sqlx::query(
+            r#"
+            INSERT INTO confidential_intents (
+                dao_id,
+                payload_hash,
+                intent_payload,
+                quote_metadata,
+                deposit_address,
+                status
+            )
+            VALUES ($1, $2, $3, $4, $5, 'submitted')
+            "#,
+        )
+        .bind(&account_id)
+        .bind(&payload_hash)
+        .bind(serde_json::json!({ "message": "test" }))
+        .bind(&quote_metadata)
+        .bind(&event.item.deposit_address)
+        .execute(&pool)
+        .await
+        .expect("intent insert should succeed");
+
+        let blocked = link_intent_to_history_event(&pool, &account_id, &payload_hash)
+            .await
+            .expect("link attempt should succeed");
+        assert!(blocked.is_none(), "proposal_id is required before linking");
+
+        sqlx::query(
+            r#"
+            UPDATE confidential_intents
+            SET proposal_id = 1
+            WHERE dao_id = $1
+              AND payload_hash = $2
+            "#,
+        )
+        .bind(&account_id)
+        .bind(&payload_hash)
+        .execute(&pool)
+        .await
+        .expect("proposal update should succeed");
+
+        let linked = link_intent_to_history_event(&pool, &account_id, &payload_hash)
+            .await
+            .expect("link attempt should succeed");
+        assert!(linked.is_some(), "eligible submitted proposal should link");
     }
 }

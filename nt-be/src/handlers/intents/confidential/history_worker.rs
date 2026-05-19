@@ -56,27 +56,23 @@ pub struct HistoryCycleResult {
     pub accounts: Vec<HistoryCycleAccountResult>,
 }
 
+fn latest_page_poll_cursors() -> (Option<&'static str>, Option<&'static str>) {
+    (None, None)
+}
+
 pub async fn poll_confidential_history_once(
     state: &AppState,
     account_id: &AccountIdRef,
     limit: u32,
 ) -> Result<HistoryPollResult, (StatusCode, String)> {
-    let cursor = load_history_cursor(&state.db_pool, account_id.as_str())
-        .await
-        .map_err(|e| {
-            log::error!(
-                "[confidential-history] {} cursor load failed: {}",
-                account_id,
-                e
-            );
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("history cursor load failed: {}", e),
-            )
-        })?;
+    log::debug!(
+        "[confidential-history] {} latest page poll limit={}",
+        account_id,
+        limit
+    );
 
-    let forward_cursor = cursor.as_ref().and_then(|c| c.forward_cursor.as_deref());
-    let page = fetch_history(state, account_id, limit, forward_cursor, None).await?;
+    let (next_cursor, prev_cursor) = latest_page_poll_cursors();
+    let page = fetch_history(state, account_id, limit, next_cursor, prev_cursor).await?;
 
     let rows_touched = upsert_history_events(&state.db_pool, account_id.as_str(), &page.items)
         .await
@@ -273,6 +269,22 @@ pub async fn backfill_confidential_history_until_done(
     }
 }
 
+pub async fn run_confidential_history_account_cycle(
+    state: &AppState,
+    account_id: &AccountIdRef,
+    limit: u32,
+) -> Result<HistoryCycleAccountResult, (StatusCode, String)> {
+    let forward = poll_confidential_history_once(state, account_id, limit).await?;
+    let backfill = backfill_confidential_history_until_done(state, account_id, limit).await?;
+
+    Ok(HistoryCycleAccountResult {
+        account_id: account_id.as_str().to_string(),
+        forward: Some(forward),
+        backfill: Some(backfill),
+        error: None,
+    })
+}
+
 pub async fn run_confidential_history_cycle(
     state: &AppState,
     limit: u32,
@@ -376,6 +388,14 @@ mod tests {
         load_confidential_history_accounts, load_history_cursor, mark_history_backfill_done,
     };
     use crate::utils::env::EnvVars;
+
+    #[test]
+    fn test_latest_page_poll_uses_no_cursors() {
+        let (next_cursor, prev_cursor) = latest_page_poll_cursors();
+
+        assert!(next_cursor.is_none());
+        assert!(prev_cursor.is_none());
+    }
 
     async fn create_real_api_state() -> Arc<AppState> {
         dotenvy::from_filename(".env").ok();

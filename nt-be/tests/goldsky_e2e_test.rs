@@ -184,6 +184,7 @@ async fn test_goldsky_webassemblymusic(pool: PgPool) {
             &network,
             intents_api_key,
             intents_api_url,
+            None,
         )
         .await
         .unwrap();

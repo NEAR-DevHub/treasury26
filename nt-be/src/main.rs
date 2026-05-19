@@ -132,9 +132,33 @@ async fn async_main() {
 
     {
         let state_clone = state.clone();
-        tokio::spawn(async move{
-           nt_be::handlers::intents::confidential::history_worker::run_confidential_history_cycle(&state_clone, 5).await
-       });
+        tokio::spawn(async move {
+            use nt_be::handlers::intents::confidential::history_worker::run_confidential_history_cycle;
+
+            let interval_secs = std::env::var("CONFIDENTIAL_HISTORY_POLL_INTERVAL_SECONDS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(120u64);
+            let initial_delay = std::env::var("CONFIDENTIAL_HISTORY_POLL_DELAY_SECONDS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(45u64);
+
+            log::info!(
+                "Starting confidential history worker ({}s interval, {}s initial delay)",
+                interval_secs,
+                initial_delay
+            );
+
+            tokio::time::sleep(Duration::from_secs(initial_delay)).await;
+            let mut timer = tokio::time::interval(Duration::from_secs(interval_secs));
+            loop {
+                timer.tick().await;
+                if let Err(e) = run_confidential_history_cycle(&state_clone, 20).await {
+                    log::error!("[confidential-history-poll] cycle failed: {}", e.1);
+                }
+            }
+        });
     }
 
     // TODO: Re-enable once we have a DefiLlama API key or higher rate limit
@@ -189,6 +213,7 @@ async fn async_main() {
         let network = state.archival_network.clone();
         let intents_api_key = state.env_vars.intents_explorer_api_key.clone();
         let intents_api_url = state.env_vars.intents_explorer_api_url.clone();
+        let history_state = state.clone();
         tokio::spawn(async move {
             use nt_be::handlers::balance_changes::goldsky_enrichment::run_enrichment_cycle;
 
@@ -218,6 +243,7 @@ async fn async_main() {
                         &network,
                         intents_api_key.as_deref(),
                         &intents_api_url,
+                        Some(&history_state),
                     )
                     .await
                     {

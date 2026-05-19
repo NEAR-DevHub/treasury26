@@ -187,6 +187,7 @@ async fn test_wnear_swap_deposit_detected_via_enrichment(pool: PgPool) {
             &network,
             Some("test_key"),
             &intents_api_url,
+            None,
         )
         .await
         .unwrap();

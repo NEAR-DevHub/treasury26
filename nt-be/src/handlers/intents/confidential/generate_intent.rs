@@ -146,6 +146,7 @@ pub async fn generate_intent(
             payload,
             correlation_id,
             Some(&request.quote_metadata),
+            &deposit_address,
             request.notes.as_deref(),
         )
         .await

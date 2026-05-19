@@ -130,6 +130,7 @@ async fn run_enrichment(pool: &PgPool, network: &near_api::NetworkConfig) -> usi
             network,
             None,
             "http://unused",
+            None,
         )
         .await
         .unwrap();
