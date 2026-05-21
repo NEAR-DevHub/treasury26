@@ -229,6 +229,8 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     user: {
                         accountId: loginResponse.accountId,
                         termsAccepted: loginResponse.termsAccepted,
+                        hasAcceptedV1Terms:
+                            loginResponse.hasAcceptedV1Terms ?? false,
                     },
                     nonce: null,
                     isAuthenticating: false,
@@ -269,6 +271,8 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     user: {
                         accountId: loginResponse.accountId,
                         termsAccepted: loginResponse.termsAccepted,
+                        hasAcceptedV1Terms:
+                            loginResponse.hasAcceptedV1Terms ?? false,
                     },
                     isAuthenticating: false,
                     nonce: null,
@@ -411,7 +415,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 set({
                     isAuthenticated: true,
                     hasAcceptedTerms: user.termsAccepted,
-                    user,
+                    user: {
+                        ...user,
+                        hasAcceptedV1Terms: user.hasAcceptedV1Terms ?? false,
+                    },
                     walletAccountId: user.accountId,
                 });
                 posthog.identify(user.accountId, {

@@ -1299,7 +1299,11 @@
         "sidebarBody": "Ekibiniz aylık sponsorlu eylemlere ulaştı. {date} tarihinden sonra devam edebilirsiniz veya ⬇️"
     },
     "acceptTerms": {
-        "title": "Devam Etmek İçin Şartları Kabul Edin",
+        "firstTimeTitle": "Devam Etmek İçin Şartları Kabul Edin",
+        "returningTitle": "Şartlarımızı güncelledik",
+        "returningEffectiveDate": "21 Mayıs 2026 itibarıyla geçerlidir",
+        "returningBody": "Hizmet Şartlarımızı ve Gizlilik Politikamızı güncelledik. Trezu'yu kullanmaya devam etmeden önce lütfen inceleyin.",
+        "returningAcceptAndContinue": "Kabul et ve devam et",
         "privacyTitle": "Trezu'da Gizliliğiniz",
         "privacyBody": "Trezu, saklamaya dayalı olmayan bir arayüzdür. Platformun güvenli ve işlevsel kalmasını sağlarken gizliliğinize öncelik veriyoruz.",
         "minimalTitle": "Minimum Veri",

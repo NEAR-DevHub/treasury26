@@ -1299,7 +1299,11 @@
         "sidebarBody": "您的团队已达到本月赞助操作上限。您可以在 {date} 之后继续,或 ⬇️"
     },
     "acceptTerms": {
-        "title": "接受条款以继续",
+        "firstTimeTitle": "接受条款以继续",
+        "returningTitle": "我们的条款已更新",
+        "returningEffectiveDate": "生效日期：2026年5月21日",
+        "returningBody": "我们已更新《服务条款》和《隐私政策》。请在继续使用 Trezu 前先阅读。",
+        "returningAcceptAndContinue": "同意并继续",
         "privacyTitle": "您在 Trezu 的隐私",
         "privacyBody": "Trezu 是一个非托管界面。我们在确保平台安全和功能正常的同时,优先保护您的隐私。",
         "minimalTitle": "最少数据",

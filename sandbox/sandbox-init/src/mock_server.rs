@@ -6,11 +6,15 @@
 //!
 //! Runs on port 4000 inside the sandbox container.
 
-use axum::{Json, Router, extract::State, routing::{get, post}};
+use axum::{
+    extract::State,
+    routing::{get, post},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::sync::{Arc, Mutex};
-use tower_http::cors::{CorsLayer, Any};
+use tower_http::cors::{Any, CorsLayer};
 
 const PORT: u16 = 4000;
 
@@ -41,10 +45,12 @@ pub async fn start(genesis_secret_key: String) {
         .route("/_test/reset", post(reset))
         .route("/_test/sign-delegate-action", post(sign_delegate_action))
         .route("/_test/create-session", post(create_test_session))
-        .layer(CorsLayer::new()
-            .allow_origin(Any)
-            .allow_methods(Any)
-            .allow_headers(Any))
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
+        )
         .with_state(state);
 
     let addr = format!("0.0.0.0:{}", PORT);
@@ -61,7 +67,11 @@ async fn auth_authenticate(Json(body): Json<Value>) -> Json<Value> {
         .pointer("/signedData/payload/message")
         .and_then(|m| m.as_str())
         .and_then(|m| serde_json::from_str::<Value>(m).ok())
-        .and_then(|v| v.get("signer_id").and_then(|s| s.as_str()).map(String::from))
+        .and_then(|v| {
+            v.get("signer_id")
+                .and_then(|s| s.as_str())
+                .map(String::from)
+        })
         .unwrap_or_default();
 
     tracing::info!("Mock auth: {}", signer_id);
@@ -84,8 +94,13 @@ async fn auth_refresh() -> Json<Value> {
 }
 
 async fn quote(Json(body): Json<Value>) -> Json<Value> {
-    let amount = body.get("amount").and_then(|a| a.as_str()).unwrap_or("10000000000000000000000");
-    let deadline = body.get("deadline").and_then(|d| d.as_str())
+    let amount = body
+        .get("amount")
+        .and_then(|a| a.as_str())
+        .unwrap_or("10000000000000000000000");
+    let deadline = body
+        .get("deadline")
+        .and_then(|d| d.as_str())
         .unwrap_or("2099-01-01T00:00:00.000Z");
     let deposit_address = "d32b552aa188face5952516a370bc5a9d91f77a19c48d5b7b16e6c59eb79b08e";
 
@@ -112,8 +127,14 @@ async fn quote(Json(body): Json<Value>) -> Json<Value> {
 }
 
 async fn generate_intent(Json(body): Json<Value>) -> Json<Value> {
-    let signer_id = body.get("signerId").and_then(|s| s.as_str()).unwrap_or("unknown.near");
-    let deposit_address = body.get("depositAddress").and_then(|s| s.as_str()).unwrap_or("mock");
+    let signer_id = body
+        .get("signerId")
+        .and_then(|s| s.as_str())
+        .unwrap_or("unknown.near");
+    let deposit_address = body
+        .get("depositAddress")
+        .and_then(|s| s.as_str())
+        .unwrap_or("mock");
 
     let message = json!({
         "deadline": (chrono::Utc::now() + chrono::Duration::hours(24)).to_rfc3339(),
@@ -123,7 +144,8 @@ async fn generate_intent(Json(body): Json<Value>) -> Json<Value> {
             "tokens": { "nep141:wrap.near": "10000000000000000000000" },
         }],
         "signer_id": signer_id,
-    }).to_string();
+    })
+    .to_string();
 
     // Build a versioned nonce
     let mut nonce = [0u8; 32];
@@ -144,10 +166,7 @@ async fn generate_intent(Json(body): Json<Value>) -> Json<Value> {
     }))
 }
 
-async fn submit_intent(
-    State(state): State<MockState>,
-    Json(body): Json<Value>,
-) -> Json<Value> {
+async fn submit_intent(State(state): State<MockState>, Json(body): Json<Value>) -> Json<Value> {
     let mut intents = state.submitted_intents.lock().unwrap();
     intents.push(body);
     tracing::info!("Mock submit-intent. Total: {}", intents.len());
@@ -188,7 +207,10 @@ async fn reset(State(state): State<MockState>) -> Json<Value> {
 /// Create a test auth session by calling the backend's login endpoint.
 /// Returns the JWT token for use as a cookie.
 async fn create_test_session(Json(body): Json<Value>) -> Json<Value> {
-    let account_id = body.get("accountId").and_then(|v| v.as_str()).unwrap_or("test.near");
+    let account_id = body
+        .get("accountId")
+        .and_then(|v| v.as_str())
+        .unwrap_or("test.near");
     let backend_url = "http://localhost:8080";
 
     let client = reqwest::Client::new();
@@ -239,10 +261,8 @@ async fn create_test_session(Json(body): Json<Value>) -> Json<Value> {
     let mut mac = HmacSha256::new_from_slice(jwt_secret.as_bytes()).unwrap();
     mac.update(signing_input.as_bytes());
     let sig_bytes = mac.finalize().into_bytes();
-    let signature = base64::Engine::encode(
-        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
-        sig_bytes,
-    );
+    let signature =
+        base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, sig_bytes);
 
     let jwt = format!("{}.{}.{}", header, payload, signature);
 
@@ -255,7 +275,7 @@ async fn create_test_session(Json(body): Json<Value>) -> Json<Value> {
     let db_url = "postgresql://postgres:postgres@localhost:5432/treasury";
     if let Ok(pool) = sqlx::PgPool::connect(db_url).await {
         let _ = sqlx::query(
-            "INSERT INTO users (account_id, terms_accepted_at) VALUES ($1, NOW()) ON CONFLICT (account_id) DO NOTHING"
+            "INSERT INTO users (account_id, v1_terms_accepted_at, v2_terms_accepted_at) VALUES ($1, NOW(), NOW()) ON CONFLICT (account_id) DO NOTHING"
         )
         .bind(account_id)
         .execute(&pool)
@@ -320,10 +340,11 @@ async fn sign_delegate_action(
     State(state): State<MockState>,
     Json(req): Json<SignDelegateRequest>,
 ) -> Result<Json<SignDelegateResponse>, String> {
-    use ed25519_dalek::{SigningKey, Signer};
+    use ed25519_dalek::{Signer, SigningKey};
 
     // Parse the genesis secret key
-    let key_str = state.genesis_secret_key
+    let key_str = state
+        .genesis_secret_key
         .strip_prefix("ed25519:")
         .unwrap_or(&state.genesis_secret_key);
     let key_bytes = bs58::decode(key_str)
@@ -360,17 +381,19 @@ async fn sign_delegate_action(
         borsh_bytes.extend_from_slice(&(action.method_name.len() as u32).to_le_bytes());
         borsh_bytes.extend_from_slice(action.method_name.as_bytes());
         // args: Vec<u8>
-        let args_bytes = base64::Engine::decode(
-            &base64::engine::general_purpose::STANDARD,
-            &action.args,
-        ).map_err(|e| format!("bad args base64: {}", e))?;
+        let args_bytes =
+            base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &action.args)
+                .map_err(|e| format!("bad args base64: {}", e))?;
         borsh_bytes.extend_from_slice(&(args_bytes.len() as u32).to_le_bytes());
         borsh_bytes.extend_from_slice(&args_bytes);
         // gas: u64
         let gas: u64 = action.gas.parse().map_err(|e| format!("bad gas: {}", e))?;
         borsh_bytes.extend_from_slice(&gas.to_le_bytes());
         // deposit: u128
-        let deposit: u128 = action.deposit.parse().map_err(|e| format!("bad deposit: {}", e))?;
+        let deposit: u128 = action
+            .deposit
+            .parse()
+            .map_err(|e| format!("bad deposit: {}", e))?;
         borsh_bytes.extend_from_slice(&deposit.to_le_bytes());
     }
 
@@ -403,16 +426,15 @@ async fn sign_delegate_action(
     signed_bytes.push(0); // ED25519
     signed_bytes.extend_from_slice(&signature.to_bytes());
 
-    let encoded = base64::Engine::encode(
-        &base64::engine::general_purpose::STANDARD,
-        &signed_bytes,
-    );
+    let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &signed_bytes);
 
     let pub_key_str = format!("ed25519:{}", bs58::encode(&public_key_bytes).into_string());
 
     tracing::info!(
         "Signed delegate action: sender={}, receiver={}, {} actions",
-        req.sender_id, req.receiver_id, req.actions.len()
+        req.sender_id,
+        req.receiver_id,
+        req.actions.len()
     );
 
     Ok(Json(SignDelegateResponse {

@@ -1299,7 +1299,11 @@
         "sidebarBody": "팀이 월간 후원 작업에 도달했습니다. {date} 이후에 계속하거나 ⬇️"
     },
     "acceptTerms": {
-        "title": "계속하려면 약관에 동의하세요",
+        "firstTimeTitle": "계속하려면 약관에 동의하세요",
+        "returningTitle": "이용약관이 업데이트되었습니다",
+        "returningEffectiveDate": "시행일: 2026년 5월 21일",
+        "returningBody": "이용약관 및 개인정보처리방침이 업데이트되었습니다. Trezu를 계속 사용하시기 전에 내용을 확인해 주세요.",
+        "returningAcceptAndContinue": "동의 후 계속",
         "privacyTitle": "Trezu에서의 개인정보 보호",
         "privacyBody": "Trezu는 비수탁형 인터페이스입니다. 플랫폼이 안전하고 기능적으로 유지되도록 하는 동시에 사용자의 개인정보를 우선시합니다.",
         "minimalTitle": "최소한의 데이터",

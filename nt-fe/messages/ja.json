@@ -1299,7 +1299,11 @@
         "sidebarBody": "チームは月のスポンサー付きアクション上限に達しました。{date}以降に再開できます ⬇️"
     },
     "acceptTerms": {
-        "title": "続行するには利用規約に同意してください",
+        "firstTimeTitle": "続行するには利用規約に同意してください",
+        "returningTitle": "利用規約を更新いたしました",
+        "returningEffectiveDate": "施行日: 2026年5月21日",
+        "returningBody": "利用規約およびプライバシーポリシーを更新いたしました。Trezu の利用を継続する前にご確認ください。",
+        "returningAcceptAndContinue": "同意して続ける",
         "privacyTitle": "Trezuでのプライバシー",
         "privacyBody": "Trezuはノンカストディアル(非保管型)インターフェースです。プラットフォームの安全性と機能性を保ちながら、プライバシーを最優先します。",
         "minimalTitle": "最小限のデータ",

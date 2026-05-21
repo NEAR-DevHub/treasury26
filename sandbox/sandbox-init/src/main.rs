@@ -390,13 +390,11 @@ async fn store_dao_code_in_factory(
         .iter()
         .map(|b| b.as_u64().unwrap() as u8 as char)
         .collect();
-    let code_hash: String =
-        serde_json::from_str(&hash_str).context("Failed to parse code hash")?;
+    let code_hash: String = serde_json::from_str(&hash_str).context("Failed to parse code hash")?;
     info!("Mainnet default DAO code hash: {}", code_hash);
 
     // Fetch DAO WASM from mainnet factory via get_code
-    let code_args =
-        serde_json::json!({"code_hash": code_hash});
+    let code_args = serde_json::json!({"code_hash": code_hash});
     let code_request = serde_json::json!({
         "jsonrpc": "2.0",
         "id": "1",
@@ -475,8 +473,8 @@ async fn deploy_bulk_payment_contract(
 ) -> Result<()> {
     info!("Deploying bulk payment contract to {}", contract_id);
 
-    let contract_code =
-        std::fs::read(wasm_path).context(format!("Failed to read contract WASM from {}", wasm_path))?;
+    let contract_code = std::fs::read(wasm_path)
+        .context(format!("Failed to read contract WASM from {}", wasm_path))?;
 
     info!(
         "Read {} bytes of bulk payment contract",
@@ -501,16 +499,12 @@ async fn deploy_bulk_payment_contract(
     );
 
     // Add a full access key for the API signer (needs to send multi-action transactions)
-    info!(
-        "Adding full access key to {} for API signer",
-        contract_id
-    );
+    info!("Adding full access key to {} for API signer", contract_id);
 
     // Dedicated API access key (hardcoded for sandbox)
-    let api_public_key: PublicKey =
-        "ed25519:C72KRM91LgqMmbKVspQAF9j5dgGGaxYPT5rnnXtLXmsN"
-            .parse()
-            .expect("Failed to parse API public key");
+    let api_public_key: PublicKey = "ed25519:C72KRM91LgqMmbKVspQAF9j5dgGGaxYPT5rnnXtLXmsN"
+        .parse()
+        .expect("Failed to parse API public key");
 
     near_api::Account(contract_id.clone())
         .add_key(AccessKeyPermission::FullAccess, api_public_key)
@@ -584,10 +578,7 @@ async fn deploy_dao_contract(
 }
 
 /// Deploy the mock v1.signer contract (compiled from WAT at build time)
-async fn deploy_mock_signer(
-    network_config: &NetworkConfig,
-    parent_id: &AccountId,
-) -> Result<()> {
+async fn deploy_mock_signer(network_config: &NetworkConfig, parent_id: &AccountId) -> Result<()> {
     let contract_id: AccountId = "v1.signer".parse().unwrap();
     info!("Deploying mock v1.signer contract to {}", contract_id);
 
@@ -602,10 +593,13 @@ async fn deploy_mock_signer(
 
     // Compile WAT → WASM
     let wat_source = include_str!("../../contracts/mock_signer.wat");
-    let wasm_bytes = wat::parse_str(wat_source)
-        .context("Failed to compile mock_signer.wat to WASM")?;
+    let wasm_bytes =
+        wat::parse_str(wat_source).context("Failed to compile mock_signer.wat to WASM")?;
 
-    info!("Compiled mock signer WAT to {} bytes of WASM", wasm_bytes.len());
+    info!(
+        "Compiled mock signer WAT to {} bytes of WASM",
+        wasm_bytes.len()
+    );
 
     near_api::Contract::deploy(contract_id.clone())
         .use_code(wasm_bytes)
@@ -621,9 +615,7 @@ async fn deploy_mock_signer(
 }
 
 /// Deploy the mock v2.ref-finance.near contract (compiled from WAT)
-async fn deploy_mock_ref_finance(
-    network_config: &NetworkConfig,
-) -> Result<()> {
+async fn deploy_mock_ref_finance(network_config: &NetworkConfig) -> Result<()> {
     let contract_id: AccountId = "v2.ref-finance.near".parse().unwrap();
     let parent_id: AccountId = "ref-finance.near".parse().unwrap();
     info!("Deploying mock v2.ref-finance.near contract");
@@ -637,10 +629,13 @@ async fn deploy_mock_ref_finance(
     .await?;
 
     let wat_source = include_str!("../../contracts/mock_ref_finance.wat");
-    let wasm_bytes = wat::parse_str(wat_source)
-        .context("Failed to compile mock_ref_finance.wat to WASM")?;
+    let wasm_bytes =
+        wat::parse_str(wat_source).context("Failed to compile mock_ref_finance.wat to WASM")?;
 
-    info!("Compiled mock ref-finance WAT to {} bytes of WASM", wasm_bytes.len());
+    info!(
+        "Compiled mock ref-finance WAT to {} bytes of WASM",
+        wasm_bytes.len()
+    );
 
     near_api::Contract::deploy(contract_id.clone())
         .use_code(wasm_bytes)
@@ -800,9 +795,7 @@ async fn main() -> Result<()> {
 
         // Store DAO contract code in the factory (required for global contracts)
         // Fetch the DAO WASM from mainnet factory's get_code method
-        if let Err(e) =
-            store_dao_code_in_factory(&network_config, &sputnik_dao_id).await
-        {
+        if let Err(e) = store_dao_code_in_factory(&network_config, &sputnik_dao_id).await {
             error!("Failed to store DAO code in factory: {}", e);
         }
 
@@ -822,9 +815,12 @@ async fn main() -> Result<()> {
         } else {
             let bulk_payment_wasm = format!("{}/bulk_payment.wasm", contracts_dir);
             if std::path::Path::new(&bulk_payment_wasm).exists() {
-                if let Err(e) =
-                    deploy_bulk_payment_contract(&network_config, &bulk_payment_id, &bulk_payment_wasm)
-                        .await
+                if let Err(e) = deploy_bulk_payment_contract(
+                    &network_config,
+                    &bulk_payment_id,
+                    &bulk_payment_wasm,
+                )
+                .await
                 {
                     error!("Failed to deploy bulk payment contract: {}", e);
                 }

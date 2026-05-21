@@ -1299,7 +1299,11 @@
         "sidebarBody": "Tim Anda telah mencapai tindakan tersponsor bulanan. Anda dapat melanjutkan setelah {date} atau ⬇️"
     },
     "acceptTerms": {
-        "title": "Terima Ketentuan untuk Melanjutkan",
+        "firstTimeTitle": "Terima Ketentuan untuk Melanjutkan",
+        "returningTitle": "Ketentuan kami telah diperbarui",
+        "returningEffectiveDate": "Berlaku mulai 21 Mei 2026",
+        "returningBody": "Kami telah memperbarui Ketentuan Layanan dan Kebijakan Privasi kami. Harap tinjau sebelum melanjutkan penggunaan Trezu.",
+        "returningAcceptAndContinue": "Setujui & lanjutkan",
         "privacyTitle": "Privasi Anda di Trezu",
         "privacyBody": "Trezu adalah antarmuka non-kustodian. Kami memprioritaskan privasi Anda sambil memastikan platform tetap aman dan fungsional.",
         "minimalTitle": "Data Minimal",

@@ -1299,7 +1299,11 @@
         "sidebarBody": "Your team has reached the monthly sponsored actions. You can continue after {date} or ⬇️"
     },
     "acceptTerms": {
-        "title": "Accept Terms to Continue",
+        "firstTimeTitle": "Accept Terms to Continue",
+        "returningTitle": "We've updated our Terms",
+        "returningEffectiveDate": "Effective May 21, 2026",
+        "returningBody": "We've made updates to our Terms of Service and Privacy Policy. Please review them before continuing to use Trezu.",
+        "returningAcceptAndContinue": "Accept & continue",
         "privacyTitle": "Your Privacy at Trezu",
         "privacyBody": "Trezu is a non-custodial interface. We prioritize your privacy while ensuring the platform stays secure and functional.",
         "minimalTitle": "Minimal Data",

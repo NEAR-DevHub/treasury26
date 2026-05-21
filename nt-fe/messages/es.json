@@ -1299,7 +1299,11 @@
         "sidebarBody": "Tu equipo ha alcanzado las acciones patrocinadas mensuales. Podrás continuar después del {date} o ⬇️"
     },
     "acceptTerms": {
-        "title": "Acepta los términos para continuar",
+        "firstTimeTitle": "Acepta los términos para continuar",
+        "returningTitle": "Hemos actualizado nuestros términos",
+        "returningEffectiveDate": "Vigente desde el 21 de mayo de 2026",
+        "returningBody": "Hemos realizado actualizaciones en nuestros Términos de servicio y Política de privacidad. Revísalos antes de continuar usando Trezu.",
+        "returningAcceptAndContinue": "Aceptar y continuar",
         "privacyTitle": "Tu privacidad en Trezu",
         "privacyBody": "Trezu es una interfaz no custodial. Damos prioridad a tu privacidad mientras mantenemos la plataforma segura y funcional.",
         "minimalTitle": "Datos mínimos",
