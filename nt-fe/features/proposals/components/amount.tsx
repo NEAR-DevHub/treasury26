@@ -28,6 +28,7 @@ interface AmountProps {
     network?: string; // Optional override for network display
     textOnly?: boolean;
     iconSize?: "sm" | "md" | "lg";
+    usdTextOverride?: string | null;
 }
 
 function resolveAmountNetworkLabel({
@@ -83,19 +84,24 @@ export function Amount({
     expandNearComLabel = false,
     network,
     iconSize = "lg",
+    usdTextOverride = null,
 }: AmountProps) {
     const tCommon = useTranslations("common");
     const tAmount = useTranslations("amount");
     const tAddressBookTable = useTranslations("addressBookTable");
     const requestDisplayContext = useRequestDisplayContext();
     const effectiveShowUSDValue =
-        showUSDValue && (requestDisplayContext?.showUSDValue ?? true);
+        !!usdTextOverride ||
+        (showUSDValue && (requestDisplayContext?.showUSDValue ?? true));
     const { data: tokenData, isLoading } = useToken(tokenId);
     const rawAmountValue = amount
         ? formatBalance(amount, tokenData?.decimals || 24)
         : amountWithDecimals || "0";
     const amountValue = formatTokenDisplayAmount(rawAmountValue);
     const estimatedUSDValue = useMemo(() => {
+        if (usdTextOverride) {
+            return usdTextOverride;
+        }
         const isPriceAvailable = tokenData?.price;
         const parsedAmount = Number(rawAmountValue);
         if (!isPriceAvailable || !rawAmountValue || isNaN(parsedAmount)) {
@@ -104,7 +110,7 @@ export function Amount({
 
         const price = tokenData?.price;
         return `≈ ${formatCurrency(parsedAmount * price!)}`;
-    }, [tokenData, rawAmountValue, tCommon]);
+    }, [usdTextOverride, tokenData, rawAmountValue, tCommon]);
     const networkLabel = resolveAmountNetworkLabel({
         tokenId,
         tokenNetwork: tokenData?.network,

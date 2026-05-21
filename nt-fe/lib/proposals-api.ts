@@ -658,6 +658,20 @@ export interface SwapStatusResponse {
     updatedAt: string;
 }
 
+export interface SwapQuoteResponse {
+    amountInFormatted?: string | null;
+    amountOutFormatted?: string | null;
+    amountInUsd?: string | null;
+    amountOutUsd?: string | null;
+}
+
+export interface TokenPriceAtTimestampResponse {
+    priceUsd: number | null;
+    source: "exact_timestamp" | "daily_eod" | "none" | "upstream_error";
+}
+
+export type ReceiptMetric = "generated" | "print";
+
 /**
  * Get swap execution status for an asset exchange proposal
  */
@@ -720,19 +734,113 @@ export async function getSwapStatus(
     }
 
     try {
-        let url = `${BACKEND_API_BASE}/intents/swap-status?depositAddress=${depositAddress}`;
-
-        if (depositMemo) {
-            url += `&depositMemo=${depositMemo}`;
-        }
-
-        const response = await axios.get<SwapStatusResponse>(url);
+        const response = await axios.get<SwapStatusResponse>(
+            `${BACKEND_API_BASE}/intents/swap-status`,
+            {
+                params: {
+                    depositAddress,
+                    depositMemo,
+                },
+            },
+        );
         return response.data;
     } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
         console.error(
             `Error getting swap status for deposit address ${depositAddress}`,
             error,
         );
+        throw error;
+    }
+}
+
+export async function getQuoteByDepositAddress(
+    depositAddress: string,
+    depositMemo?: string,
+): Promise<SwapQuoteResponse | null> {
+    if (!depositAddress) {
         return null;
+    }
+
+    try {
+        const response = await axios.get<SwapQuoteResponse>(
+            `${BACKEND_API_BASE}/intents/quote-by-deposit-address`,
+            {
+                params: {
+                    depositAddress,
+                    depositMemo,
+                },
+            },
+        );
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+        console.error(
+            `Error getting quote by deposit address ${depositAddress}`,
+            error,
+        );
+        throw error;
+    }
+}
+
+export async function getTokenPriceAtTimestamp(
+    tokenId: string,
+    timestamp: string,
+): Promise<TokenPriceAtTimestampResponse | null> {
+    if (!tokenId || !timestamp) {
+        return null;
+    }
+
+    try {
+        const response = await axios.get<TokenPriceAtTimestampResponse>(
+            `${BACKEND_API_BASE}/prices/token-at-timestamp`,
+            {
+                params: {
+                    tokenId,
+                    timestamp,
+                },
+            },
+        );
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+        console.error(
+            `Error getting token price at timestamp for token ${tokenId}`,
+            error,
+        );
+        throw error;
+    }
+}
+
+export async function recordReceiptMetric(
+    daoId: string,
+    metric: ReceiptMetric,
+): Promise<void> {
+    if (!daoId) {
+        return;
+    }
+
+    try {
+        await axios.post(
+            `${BACKEND_API_BASE}/dao/receipt-metric`,
+            {
+                daoId,
+                metric,
+            },
+            {
+                withCredentials: true,
+            },
+        );
+    } catch (error) {
+        console.error(
+            `Error recording receipt metric '${metric}' for DAO ${daoId}`,
+            error,
+        );
     }
 }

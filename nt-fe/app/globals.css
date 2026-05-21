@@ -313,3 +313,11 @@ input[type="number"] {
 }
 
 @plugin "tailwind-scrollbar";
+
+@media print {
+    .print-color-exact {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        forced-color-adjust: none;
+    }
+}

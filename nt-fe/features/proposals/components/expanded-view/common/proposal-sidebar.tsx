@@ -1,7 +1,14 @@
 import { useTranslations } from "next-intl";
 import { Proposal } from "@/lib/proposals-api";
 import { Button } from "@/components/button";
-import { ArrowUpRight, Check, X, Download, Loader2 } from "lucide-react";
+import {
+    SquareArrowOutUpRight,
+    Check,
+    X,
+    Download,
+    Loader2,
+    FileText,
+} from "lucide-react";
 import { PageCard } from "@/components/card";
 import { Policy } from "@/types/policy";
 import { getApproversAndThreshold } from "@/lib/config-utils";
@@ -10,8 +17,8 @@ import { useTreasury } from "@/hooks/use-treasury";
 import {
     EXCHANGE_EXPIRY_MS,
     getProposalStatus,
-    UIProposalStatus,
     getProposalUIKind,
+    UIProposalStatus,
     getProposalStatusDateInfo,
     isShortExpiryExchangeProposal,
 } from "@/features/proposals/utils/proposal-utils";
@@ -31,8 +38,13 @@ import {
 } from "@/components/auth-button";
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
+import { StepIcon } from "@/components/step-icon";
 import { cn, nanosToMs } from "@/lib/utils";
-import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
+import {
+    extractReceiptProposalData,
+    getProposalExecutedDate,
+    isTerminalSwapStatus,
+} from "@/features/proposals/utils/receipt-utils";
 import { NotEnoughBalance } from "../../not-enough-balance";
 import { VotingDurationImpactModal } from "../../voting-duration-impact-modal";
 import { useState, useEffect } from "react";
@@ -42,74 +54,6 @@ interface ProposalSidebarProps {
     policy: Policy;
     onVote: (vote: "Approve" | "Reject" | "Remove") => void;
     onDeposit: (tokenSymbol?: string, tokenNetwork?: string) => void;
-}
-
-interface StepIconProps {
-    status: "Success" | "Pending" | "Failed" | "Expired";
-    size?: "sm" | "md";
-}
-
-const sizeClass = {
-    sm: "size-4",
-    md: "size-6",
-};
-
-const iconClass = {
-    sm: "size-3",
-    md: "size-4",
-};
-export function StepIcon({ status, size = "md" }: StepIconProps) {
-    switch (status) {
-        case "Success":
-            return (
-                <div
-                    className={cn(
-                        "flex shrink-0 items-center justify-center rounded-full bg-general-success-foreground",
-                        sizeClass[size],
-                    )}
-                >
-                    <Check
-                        className={cn(iconClass[size], "text-white shrink-0")}
-                    />
-                </div>
-            );
-        case "Pending":
-            return (
-                <div
-                    className={cn(
-                        "flex shrink-0 items-center justify-center rounded-full border border-muted-foreground/20 bg-card",
-                        sizeClass[size],
-                    )}
-                />
-            );
-        case "Expired":
-            return (
-                <div
-                    className={cn(
-                        "flex shrink-0 items-center justify-center rounded-full bg-secondary",
-                        sizeClass[size],
-                    )}
-                >
-                    <X
-                        className={cn(
-                            iconClass[size],
-                            "text-muted-foreground shrink-0",
-                        )}
-                    />
-                </div>
-            );
-        case "Failed":
-            return (
-                <div
-                    className={cn(
-                        "flex shrink-0 items-center justify-center rounded-full bg-general-destructive-foreground",
-                        sizeClass[size],
-                    )}
-                >
-                    <X className={cn(iconClass[size], "text-white shrink-0")} />
-                </div>
-            );
-    }
 }
 
 function TransactionCreated({
@@ -172,7 +116,7 @@ function VotingSection({
     );
     const votesArray = Object.entries(votes);
 
-    let proposalStatus = getProposalStatus(proposal, policy);
+    const proposalStatus = getProposalStatus(proposal, policy);
     let statusIconStatus: "Pending" | "Failed" | "Success" = "Pending";
     if (proposalStatus === "Executed" || proposalStatus === "Failed") {
         statusIconStatus = "Success";
@@ -276,9 +220,10 @@ export function ProposalSidebar({
     onDeposit,
 }: ProposalSidebarProps) {
     const t = useTranslations("proposals.expanded");
+    const tReceipt = useTranslations("receiptPage");
     const noVoteMessage = useNoVoteMessage();
     const { accountId } = useNear();
-    const { treasuryId } = useTreasury();
+    const { treasuryId, isConfidential } = useTreasury();
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(
         proposal,
         treasuryId,
@@ -304,14 +249,12 @@ export function ProposalSidebar({
             isVotingDurationChange,
         );
     const status = getProposalStatus(proposal, policy);
+    const proposalType = getProposalUIKind(proposal);
     const isUserVoter = !!proposal.votes[accountId ?? ""];
     const isPending = status === "Pending";
-    const proposalType = getProposalUIKind(proposal);
-    const isExchangeProposal = proposalType === "Exchange";
-    const isPaymentProposal = proposalType === "Payment Request";
-    const isConfidentialRequest = proposalType === "Confidential Request";
     const isFailed = status === "Failed";
     const isExecuted = status === "Executed";
+    const isBatchPaymentProposal = proposalType === "Batch Payment Request";
 
     let newVotingDurationDays = 0;
     if (isVotingDurationChange) {
@@ -324,41 +267,37 @@ export function ProposalSidebar({
         }
     }
 
-    // Extract intents details for exchange/payment/confidential requests.
-    // Confidential metadata is backend-enriched and nested under mapped.data.
-    let depositAddress: string | undefined;
-    let isConfidentialPayment = false;
-    if (isExchangeProposal || isPaymentProposal || isConfidentialRequest) {
-        try {
-            const { data } = extractProposalData(proposal, treasuryId);
-            if (isConfidentialRequest) {
-                const mapped = (data as any)?.mapped;
-                isConfidentialPayment = mapped?.type === "payment";
-                depositAddress = mapped?.data?.depositAddress;
-            } else {
-                depositAddress = (data as any)?.depositAddress;
-            }
-        } catch (e) {}
-    }
-    const isPaymentLikeProposal = isPaymentProposal || isConfidentialPayment;
+    const receiptProposalData = extractReceiptProposalData(
+        proposal,
+        treasuryId,
+    );
+    const depositAddress = receiptProposalData?.depositAddress;
+    const isPaymentLikeProposal = receiptProposalData?.variant === "payment";
 
     // Whether this proposal used the Intents protocol (has a deposit address)
-    const isIntentsRouted = !!depositAddress;
+    const hasDepositAddress = !!depositAddress;
 
     // Fetch transaction data for non-intents proposals, or for failed ones
     const { data: transaction } = useProposalTransaction(
         treasuryId,
         proposal,
         policy,
-        !isIntentsRouted || isFailed,
+        !hasDepositAddress || isFailed,
     );
 
     // Fetch swap status for executed intents proposals (exchange or payment)
     const { data: swapStatus } = useSwapStatus(
         depositAddress || null,
         undefined,
-        isIntentsRouted && isExecuted && !!depositAddress,
+        hasDepositAddress && isExecuted && !!depositAddress,
     );
+    const isSwapTerminalReady =
+        !hasDepositAddress || isTerminalSwapStatus(swapStatus?.status);
+    const canShowReceiptButton =
+        isExecuted &&
+        (isBatchPaymentProposal
+            ? !isConfidential
+            : receiptProposalData !== null && isSwapTerminalReady);
 
     const expiresAt = new Date(
         nanosToMs(
@@ -380,9 +319,8 @@ export function ProposalSidebar({
             break;
 
         default:
-            timestamp = transaction?.timestamp
-                ? new Date(transaction.timestamp / 1000000)
-                : undefined;
+            timestamp =
+                getProposalExecutedDate(swapStatus, transaction) ?? undefined;
             break;
     }
 
@@ -426,13 +364,7 @@ export function ProposalSidebar({
         }
     };
 
-    const handleVotingDurationConfirm = () => {
-        setShowVotingDurationModal(false);
-        setIsCheckingVotingDurationImpact(false);
-        onVote("Approve");
-    };
-
-    const handleNoImpactedProposals = () => {
+    const handleVotingDurationApprove = () => {
         setShowVotingDurationModal(false);
         setIsCheckingVotingDurationImpact(false);
         onVote("Approve");
@@ -471,17 +403,29 @@ export function ProposalSidebar({
 
             {/* Transaction Links */}
             {(isExecuted || isFailed) && (
-                <>
+                <div className="flex flex-col gap-2">
+                    {canShowReceiptButton && (
+                        <Button asChild variant="secondary" className="w-full">
+                            <Link
+                                href={`/${treasuryId}/requests/${proposal.id}/receipt`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <FileText className="size-4" />
+                                {tReceipt("generateReceipt")}
+                            </Link>
+                        </Button>
+                    )}
                     {/* For intents-routed proposals (exchange or payment), show intents explorer link */}
-                    {!isFailed && isIntentsRouted && depositAddress ? (
+                    {!isFailed && hasDepositAddress && depositAddress ? (
                         <Link
                             href={`https://explorer.near-intents.org/transactions/${depositAddress}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex font-medium text-sm items-center gap-1.5"
+                            className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"
                         >
-                            {t("viewTransaction")}{" "}
-                            <ArrowUpRight className="size-4" />
+                            <SquareArrowOutUpRight className="size-4" />
+                            {t("viewTransaction")}
                         </Link>
                     ) : (
                         /* For other proposals, show regular transaction link */
@@ -490,18 +434,18 @@ export function ProposalSidebar({
                                 href={transaction.nearblocks_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex font-medium text-sm items-center gap-1.5"
+                                className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"
                             >
-                                {t("viewTransaction")}{" "}
-                                <ArrowUpRight className="size-4" />
+                                <SquareArrowOutUpRight className="size-4" />
+                                {t("viewTransaction")}
                             </Link>
                         )
                     )}
-                </>
+                </div>
             )}
 
             {/* Swap Status - Show for executed intents-routed proposals (exchange or payment) */}
-            {isExecuted && isIntentsRouted && swapStatus && (
+            {isExecuted && hasDepositAddress && swapStatus && (
                 <>
                     {(swapStatus.status === "KNOWN_DEPOSIT_TX" ||
                         swapStatus.status === "PENDING_DEPOSIT" ||
@@ -620,8 +564,8 @@ export function ProposalSidebar({
                 <VotingDurationImpactModal
                     isOpen={showVotingDurationModal}
                     onClose={handleVotingDurationClose}
-                    onConfirm={handleVotingDurationConfirm}
-                    onNoImpactedProposals={handleNoImpactedProposals}
+                    onConfirm={handleVotingDurationApprove}
+                    onNoImpactedProposals={handleVotingDurationApprove}
                     newDurationDays={newVotingDurationDays}
                     currentPolicy={policy}
                     activeProposals={activeProposals}

@@ -834,6 +834,8 @@ export function extractConfidentialRequestData(
                     amountIn: quote.amountIn,
                     tokenOutAddress: quoteRequest.destinationAsset,
                     amountOut: quote.amountOutFormatted,
+                    quoteAmountInUsd: quote.amountInUsd,
+                    quoteAmountOutUsd: quote.amountOutUsd,
                     slippage: (
                         (quoteRequest.slippageTolerance ?? 0) / 100
                     ).toString(),
@@ -859,6 +861,7 @@ export function extractConfidentialRequestData(
                 data: {
                     tokenId: quoteRequest.originAsset,
                     amount: quote.amountIn,
+                    quoteAmountInUsd: quote.amountInUsd,
                     receiver: recipient,
                     notes: meta?.notes ?? undefined,
                     depositAddress: quote.depositAddress,

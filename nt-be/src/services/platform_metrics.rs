@@ -10,6 +10,8 @@ const ALLOWED: &[&str] = &[
     "batch_payments_used",
     "exports_used",
     "gas_covered_transactions",
+    "receipts_generated",
+    "receipt_prints",
 ];
 
 /// Increment a named event counter in `usage_tracking` for the current billing month.

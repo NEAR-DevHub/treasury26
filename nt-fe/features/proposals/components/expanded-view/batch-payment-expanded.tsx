@@ -13,7 +13,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ArrowUpRight, ChevronDown, SearchX } from "lucide-react";
+import { ArrowUpRight, ChevronDown, FileText, SearchX } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 import { Address } from "@/components/address";
@@ -22,10 +22,10 @@ import Link from "next/link";
 import { StatusPill } from "../proposal-status-pill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Proposal } from "@/lib/proposals-api";
-import { Policy } from "@/types/policy";
 import Big from "@/lib/big";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useRequestDisplayContext } from "./common/request-display-context";
+import { useTreasury } from "@/hooks/use-treasury";
 
 interface PaymentDisplayProps {
     number: number;
@@ -34,6 +34,10 @@ interface PaymentDisplayProps {
     onExpandedClick: () => void;
     tokenId: string;
     batchId: string;
+    proposalId: number;
+    showReceiptButton: boolean;
+    chainName: string;
+    receiptLabel: string;
 }
 
 const paymentStatusToText = (status: PaymentStatus): "Pending" | "Paid" => {
@@ -50,19 +54,20 @@ function PaymentDisplay({
     onExpandedClick,
     tokenId,
     batchId,
+    proposalId,
+    showReceiptButton,
+    chainName,
+    receiptLabel,
 }: PaymentDisplayProps) {
     const t = useTranslations("proposals.expanded");
+    const { treasuryId } = useTreasury();
     const status = paymentStatusToText(payment.status);
     const isPaid = status === "Paid";
     const { data: txData } = useBulkPaymentTransactionHash(
-        isPaid ? batchId : null,
-        isPaid ? payment.recipient : null,
+        isPaid && expanded ? batchId : null,
+        isPaid && expanded ? payment.recipient : null,
     );
     const transactionHash = txData?.transactionHash;
-
-    // Get token metadata to determine blockchain network for recipient address
-    const { data: tokenData } = useToken(tokenId);
-    const chainName = tokenData?.network || NEAR_NETWORK_ID;
 
     // Transaction links are always NEAR (nearblocks)
     const nearBlocksUrl = transactionHash
@@ -139,6 +144,24 @@ function PaymentDisplay({
                         tokenId={tokenId}
                         showUSDValue={false}
                     />
+                    {showReceiptButton && (
+                        <Button
+                            asChild
+                            variant="ghost"
+                            size="icon-sm"
+                            tooltipContent={receiptLabel}
+                            className="h-7 w-7"
+                        >
+                            <Link
+                                href={`/${treasuryId}/requests/${proposalId}/receipt?recipient=${encodeURIComponent(payment.recipient)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <FileText className="size-4" />
+                            </Link>
+                        </Button>
+                    )}
                 </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
@@ -155,16 +178,16 @@ function PaymentDisplay({
 interface BatchPaymentRequestExpandedProps {
     data: BatchPaymentRequestData;
     proposal: Proposal;
-    policy: Policy;
 }
 
 export function BatchPaymentRequestExpanded({
     data,
     proposal,
-    policy,
 }: BatchPaymentRequestExpandedProps) {
     const t = useTranslations("proposals.expanded");
+    const tReceipt = useTranslations("receiptPage");
     const tIntents = useTranslations("intentsQuote");
+    const { isConfidential } = useTreasury();
     const [expanded, setExpanded] = useState<number[]>([]);
     const requestDisplayContext = useRequestDisplayContext()!;
 
@@ -267,6 +290,7 @@ export function BatchPaymentRequestExpanded({
     };
 
     const isAllExpanded = expanded.length === activeBatchData.payments.length;
+    const showReceiptButton = isExecuted && !isConfidential;
     const toggleAllExpanded = () => {
         if (isAllExpanded) {
             setExpanded([]);
@@ -319,11 +343,15 @@ export function BatchPaymentRequestExpanded({
                         <PaymentDisplay
                             tokenId={tokenId}
                             number={index + 1}
-                            key={index}
+                            key={`${data.batchId}-${index}`}
                             payment={payment}
                             expanded={expanded.includes(index)}
                             onExpandedClick={() => onExpandedChanged(index)}
                             batchId={data.batchId}
+                            proposalId={proposal.id}
+                            showReceiptButton={showReceiptButton}
+                            chainName={tokenData?.network || NEAR_NETWORK_ID}
+                            receiptLabel={tReceipt("generateReceipt")}
                         />
                     ))}
                 </div>

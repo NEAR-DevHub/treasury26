@@ -215,6 +215,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/receipt/search",
             get(handlers::proposals::tx::search_receipt),
         )
+        .route(
+            "/api/prices/token-at-timestamp",
+            get(handlers::proposals::tx::get_token_price_at_timestamp),
+        )
         // Lookup endpoints
         .route(
             "/api/lockup/pool",
@@ -281,6 +285,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::intents::swap_status::get_swap_status),
         )
         .route(
+            "/api/intents/quote-by-deposit-address",
+            get(handlers::intents::swap_status::get_quote_by_deposit_address),
+        )
+        .route(
             "/api/intents/status",
             get(handlers::intents::system_status::get_system_status),
         )
@@ -325,6 +333,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/dao/mark-dirty",
             post(handlers::dao::mark_dirty),
+        )
+        .route(
+            "/api/dao/receipt-metric",
+            post(handlers::dao::record_receipt_metric),
         )
         // Subscription endpoints
         .route(

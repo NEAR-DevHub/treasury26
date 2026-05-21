@@ -6,10 +6,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface ConfidentialTransferExpandedProps {
     data: ConfidentialRequestData;
+    isExecuted?: boolean;
 }
 
 export function ConfidentialRequestExpanded({
     data,
+    isExecuted = false,
 }: ConfidentialTransferExpandedProps) {
     const mapped = data.mapped;
 
@@ -28,8 +30,8 @@ export function ConfidentialRequestExpanded({
     }
 
     if (mapped.type === "swap") {
-        return <SwapExpanded data={mapped.data} />;
+        return <SwapExpanded data={mapped.data} isExecuted={isExecuted} />;
     }
 
-    return <TransferExpanded data={mapped.data} />;
+    return <TransferExpanded data={mapped.data} isExecuted={isExecuted} />;
 }

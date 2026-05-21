@@ -46,15 +46,24 @@ function ExpandedViewInternal({
 }: InternalExpandedViewProps) {
     const t = useTranslations("proposals.expanded");
     const { type, data } = extractProposalData(proposal, treasuryId);
+    const proposalStatus = getProposalStatus(proposal, policy);
+    const isExecuted = proposalStatus === "Executed";
 
     switch (type) {
         case "Payment Request": {
             const paymentData = data as PaymentRequestData;
-            return <TransferExpanded data={paymentData} />;
+            return (
+                <TransferExpanded data={paymentData} isExecuted={isExecuted} />
+            );
         }
         case "Confidential Request": {
             const confidentialData = data as ConfidentialRequestData;
-            return <ConfidentialRequestExpanded data={confidentialData} />;
+            return (
+                <ConfidentialRequestExpanded
+                    data={confidentialData}
+                    isExecuted={isExecuted}
+                />
+            );
         }
         case "Function Call": {
             const functionCallData = data as FunctionCallData;
@@ -94,13 +103,12 @@ function ExpandedViewInternal({
                 <BatchPaymentRequestExpanded
                     data={batchPaymentRequestData}
                     proposal={proposal}
-                    policy={policy}
                 />
             );
         }
         case "Exchange": {
             const swapData = data as SwapRequestData;
-            return <SwapExpanded data={swapData} />;
+            return <SwapExpanded data={swapData} isExecuted={isExecuted} />;
         }
         default:
             return (
@@ -142,7 +150,11 @@ export function ExpandedView({
                 isPending,
             }}
         >
-            {ExpandedViewInternal({ proposal, policy, treasuryId })}
+            <ExpandedViewInternal
+                proposal={proposal}
+                policy={policy}
+                treasuryId={treasuryId}
+            />
         </RequestDisplayProvider>
     );
     const requestUrl = `${window.location.origin}/${treasuryId}/requests/${proposal.id}`;
