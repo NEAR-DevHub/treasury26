@@ -77,12 +77,7 @@ export function NetworkBadge({
                 <img
                     src={icon}
                     alt={displayName}
-                    className={cn(
-                        iconSize,
-                        name.toLowerCase() === "near protocol"
-                            ? "p-0.5"
-                            : "rounded-[8px]",
-                    )}
+                    className={cn(iconSize, "rounded-[8px]")}
                 />
             )}
             {!iconOnly && (

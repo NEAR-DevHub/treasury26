@@ -135,7 +135,6 @@ function NetworkSelect({
             <SelectModal
                 multiSelect
                 isOpen={open}
-                fixNear
                 onClose={() => setOpen(false)}
                 onSelect={handleSelect}
                 title={tForm("selectNetworksTitle")}

@@ -48,7 +48,7 @@ const WALLET_OPTIONS: WalletOption[] = [
     {
         id: "solana",
         label: "Solana",
-        imgSrc: "https://near-intents.org/static/icons/network/solana.svg",
+        imgSrc: "https://near.com/static/icons/network/solana.svg",
         supported: false,
         imageClassName: "p-1.5",
     },
@@ -73,7 +73,7 @@ const WALLET_OPTIONS: WalletOption[] = [
     {
         id: "stellar",
         label: "Stellar",
-        imgSrc: "https://near-intents.org/static/icons/network/stellar_white.svg",
+        imgSrc: "https://near.com/static/icons/network/stellar.svg",
         supported: false,
         imageClassName: "p-1.5",
     },

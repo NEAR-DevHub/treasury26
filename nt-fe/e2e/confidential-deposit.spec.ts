@@ -47,8 +47,8 @@ const MOCK_BRIDGE_TOKENS = {
                     name: "Near Protocol",
                     symbol: "NEAR",
                     chainIcons: {
-                        dark: "https://near-intents.org/static/icons/network/near.svg",
-                        light: "https://near-intents.org/static/icons/network/near_dark.svg",
+                        dark: "https://near.com/static/icons/network/near.svg",
+                        light: "https://near.com/static/icons/network/near.svg",
                     },
                     chainId: "near:mainnet",
                     decimals: 24,
@@ -67,8 +67,8 @@ const MOCK_BRIDGE_TOKENS = {
                     name: "Near Protocol",
                     symbol: "USDC",
                     chainIcons: {
-                        dark: "https://near-intents.org/static/icons/network/near.svg",
-                        light: "https://near-intents.org/static/icons/network/near_dark.svg",
+                        dark: "https://near.com/static/icons/network/near.svg",
+                        light: "https://near.com/static/icons/network/near.svg",
                     },
                     chainId: "near:mainnet",
                     decimals: 6,
@@ -78,8 +78,8 @@ const MOCK_BRIDGE_TOKENS = {
                     name: "Ethereum",
                     symbol: "USDC",
                     chainIcons: {
-                        dark: "https://near-intents.org/static/icons/network/eth.svg",
-                        light: "https://near-intents.org/static/icons/network/eth_dark.svg",
+                        dark: "https://near.com/static/icons/network/ethereum.svg",
+                        light: "https://near.com/static/icons/network/ethereum.svg",
                     },
                     chainId: "eth:1",
                     decimals: 6,

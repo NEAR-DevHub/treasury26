@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-const ICON_PREFIX: &str = "https://near-intents.org/static/icons/network/";
+const ICON_PREFIX: &str = "https://near.com/static/icons/network/";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainIcons {
@@ -60,11 +60,11 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
 
     metadata.insert(
         "eth".to_string(),
-        ChainMetadata::new("Ethereum", "ethereum_white.svg", "ethereum.svg"),
+        ChainMetadata::new("Ethereum", "ethereum.svg", "ethereum.svg"),
     );
     metadata.insert(
         "near".to_string(),
-        ChainMetadata::new("Near Protocol", "near.svg", "near_dark.svg"),
+        ChainMetadata::new("Near Protocol", "near.svg", "near.svg"),
     );
     metadata.insert(
         "base".to_string(),
@@ -110,7 +110,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
     );
     metadata.insert(
         "hako".to_string(),
-        ChainMetadata::new("Hako", "hako-dark.svg", "hako-light.svg"),
+        ChainMetadata::new("Hako", "hako-light.svg", "hako-light.svg"),
     );
     metadata.insert(
         "aurora".to_string(),
@@ -118,19 +118,19 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
     );
     metadata.insert(
         "aurora_devnet".to_string(),
-        ChainMetadata::new("Aurora Devnet", "aurora_devnet.svg", "aurora_devnet.svg"),
+        ChainMetadata::new("Aurora Devnet", "aurora.svg", "aurora.svg"),
     );
     metadata.insert(
         "xrpledger".to_string(),
-        ChainMetadata::new("XRP Ledger", "xrpledger_white.svg", "xrpledger.svg"),
+        ChainMetadata::new("XRP Ledger", "xrpledger.svg", "xrpledger.svg"),
     );
     metadata.insert(
         "zcash".to_string(),
-        ChainMetadata::new("Zcash", "zcash.svg", "zcash-icon-black.svg"),
+        ChainMetadata::new("Zcash", "zcash.svg", "zcash.svg"),
     );
     metadata.insert(
         "gnosis".to_string(),
-        ChainMetadata::new("Gnosis", "gnosis_white.svg", "gnosis.svg"),
+        ChainMetadata::new("Gnosis", "gnosis.svg", "gnosis.svg"),
     );
     metadata.insert(
         "berachain".to_string(),
@@ -162,7 +162,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
     );
     metadata.insert(
         "optimism".to_string(),
-        ChainMetadata::new("Optimism", "optimism.svg", "optimism_dark.svg"),
+        ChainMetadata::new("Optimism", "optimism.svg", "optimism.svg"),
     );
     add_chain_alias(&mut metadata, "op", "optimism");
     metadata.insert(
@@ -172,15 +172,15 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
     add_chain_alias(&mut metadata, "avax", "avalanche");
     metadata.insert(
         "sui".to_string(),
-        ChainMetadata::new("Sui", "sui.svg", "sui_dark.svg"),
+        ChainMetadata::new("Sui", "sui.svg", "sui.svg"),
     );
     metadata.insert(
         "stellar".to_string(),
-        ChainMetadata::new("Stellar", "stellar_white.svg", "stellar.svg"),
+        ChainMetadata::new("Stellar", "stellar.svg", "stellar.svg"),
     );
     metadata.insert(
         "aptos".to_string(),
-        ChainMetadata::new("Aptos", "aptos_white.svg", "aptos.svg"),
+        ChainMetadata::new("Aptos", "aptos.svg", "aptos.svg"),
     );
     metadata.insert(
         "cardano".to_string(),
@@ -188,7 +188,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
     );
     metadata.insert(
         "litecoin".to_string(),
-        ChainMetadata::new("Litecoin", "litecoin_white.svg", "litecoin.svg"),
+        ChainMetadata::new("Litecoin", "litecoin.svg", "litecoin.svg"),
     );
     metadata.insert(
         "bitcoincash".to_string(),
@@ -204,7 +204,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
     );
     metadata.insert(
         "plasma".to_string(),
-        ChainMetadata::new("Plasma", "plasma-white.svg", "plasma.svg"),
+        ChainMetadata::new("Plasma", "plasma.svg", "plasma.svg"),
     );
     metadata.insert(
         "scroll".to_string(),
@@ -212,15 +212,15 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
     );
     metadata.insert(
         "aleo".to_string(),
-        ChainMetadata::new("Aleo", "aleo-dark.svg", "aleo-white.svg"),
+        ChainMetadata::new("Aleo", "adi.svg", "adi.svg"),
     );
     metadata.insert(
         "monad".to_string(),
-        ChainMetadata::new("Monad", "monad_white.svg", "monad.svg"),
+        ChainMetadata::new("Monad", "monad.svg", "monad.svg"),
     );
     metadata.insert(
         "layerx".to_string(),
-        ChainMetadata::new("LayerX", "layerx_white.svg", "layerx.svg"),
+        ChainMetadata::new("LayerX", "layerx.svg", "layerx.svg"),
     );
     add_chain_alias(&mut metadata, "xlayer", "layerx");
     metadata.insert(

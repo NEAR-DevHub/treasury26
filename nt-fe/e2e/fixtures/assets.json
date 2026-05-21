@@ -26,8 +26,8 @@
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "dark": "https://near.com/static/icons/network/near.svg",
+            "light": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -45,8 +45,8 @@
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "dark": "https://near.com/static/icons/network/near.svg",
+            "light": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -64,8 +64,8 @@
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "dark": "https://near.com/static/icons/network/near.svg",
+            "light": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -83,8 +83,8 @@
         "name": "NPRO",
         "icon": null,
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "dark": "https://near.com/static/icons/network/near.svg",
+            "light": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -102,8 +102,8 @@
         "name": "AVAX",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/5805.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/avalanche.svg",
-            "light": "https://near-intents.org/static/icons/network/avalanche.svg"
+            "dark": "https://near.com/static/icons/network/avalanche.svg",
+            "light": "https://near.com/static/icons/network/avalanche.svg"
         }
     },
     {
@@ -121,8 +121,8 @@
         "name": "ETH",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/1027.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/ethereum_white.svg",
-            "light": "https://near-intents.org/static/icons/network/ethereum.svg"
+            "dark": "https://near.com/static/icons/network/ethereum.svg",
+            "light": "https://near.com/static/icons/network/ethereum.svg"
         }
     },
     {
@@ -138,8 +138,8 @@
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/ethereum_white.svg",
-            "light": "https://near-intents.org/static/icons/network/ethereum.svg"
+            "dark": "https://near.com/static/icons/network/ethereum.svg",
+            "light": "https://near.com/static/icons/network/ethereum.svg"
         }
     },
     {
@@ -155,8 +155,8 @@
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "dark": "https://near.com/static/icons/network/near.svg",
+            "light": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -172,8 +172,8 @@
         "name": "Solana",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/5426.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/solana.svg",
-            "light": "https://near-intents.org/static/icons/network/solana.svg"
+            "dark": "https://near.com/static/icons/network/solana.svg",
+            "light": "https://near.com/static/icons/network/solana.svg"
         }
     },
     {
@@ -189,8 +189,8 @@
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/solana.svg",
-            "light": "https://near-intents.org/static/icons/network/solana.svg"
+            "dark": "https://near.com/static/icons/network/solana.svg",
+            "light": "https://near.com/static/icons/network/solana.svg"
         }
     },
     {
@@ -206,8 +206,8 @@
         "name": "XRP",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/52.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/xrpledger_white.svg",
-            "light": "https://near-intents.org/static/icons/network/xrpledger.svg"
+            "dark": "https://near.com/static/icons/network/xrpledger.svg",
+            "light": "https://near.com/static/icons/network/xrpledger.svg"
         }
     },
     {
@@ -223,8 +223,8 @@
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/base.svg",
-            "light": "https://near-intents.org/static/icons/network/base.svg"
+            "dark": "https://near.com/static/icons/network/base.svg",
+            "light": "https://near.com/static/icons/network/base.svg"
         }
     },
     {
@@ -240,8 +240,8 @@
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "dark": "https://near.com/static/icons/network/near.svg",
+            "light": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -257,8 +257,8 @@
         "name": "Bitcoin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/1.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/btc.svg",
-            "light": "https://near-intents.org/static/icons/network/btc.svg"
+            "dark": "https://near.com/static/icons/network/btc.svg",
+            "light": "https://near.com/static/icons/network/btc.svg"
         }
     }
 ]

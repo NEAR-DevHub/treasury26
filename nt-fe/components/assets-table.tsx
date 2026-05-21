@@ -1974,7 +1974,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                                 <img
                                                     src={asset.icon}
                                                     alt={asset.name}
-                                                    className="h-10 w-10 rounded-full"
+                                                    className="h-8 w-8 rounded-full"
                                                 />
                                                 <div>
                                                     <p className="font-semibold">
