@@ -27,7 +27,7 @@ export function TreasuryLayoutClient({
 
     if (isStandaloneReceiptView) {
         return (
-            <div className="h-dvh overflow-y-auto bg-muted">
+            <div className="h-dvh overflow-y-auto bg-muted print:h-auto print:overflow-visible print:bg-white">
                 <PrimaryColorProvider treasuryId={treasuryId} />
                 {children}
             </div>

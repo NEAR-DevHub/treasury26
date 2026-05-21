@@ -38,6 +38,11 @@ import {
     isTerminalSwapStatus,
 } from "@/features/proposals/utils/receipt-utils";
 import { NetworkIconDisplay } from "@/components/token-display";
+import {
+    isNearComPaymentRoute,
+    getNearComChainIcons,
+} from "@/lib/intents-network";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { StatusPill } from "@/features/proposals/components/proposal-status-pill";
 import {
     ReceiptSenderSection,
@@ -117,17 +122,16 @@ function ReceiptLabelValueRow({
     valueClassName = "",
 }: ReceiptLabelValueRowProps) {
     return (
-        <div
-            className={cn(
-                "flex items-start justify-between text-sm",
-                "gap-4",
-                className,
-            )}
-        >
-            <p className={cn("text-muted-foreground text-sm", labelClassName)}>
+        <div className={cn("flex items-start gap-6 text-sm", className)}>
+            <p
+                className={cn(
+                    "w-60 shrink-0 text-muted-foreground text-sm",
+                    labelClassName,
+                )}
+            >
                 {label}
             </p>
-            <div className={cn("text-right font-medium", valueClassName)}>
+            <div className={cn("flex-1 text-left font-medium", valueClassName)}>
                 {value}
             </div>
         </div>
@@ -135,11 +139,16 @@ function ReceiptLabelValueRow({
 }
 
 function ReceiptValueSkeleton({ width = "w-24" }: { width?: string }) {
-    return <Skeleton className={cn("ml-auto h-5", width)} />;
+    return <Skeleton className={cn("h-5", width)} />;
 }
 
 function AsyncText({ value }: { value: AsyncValue<string> }) {
+    const tCommon = useTranslations("common");
+
     if (value.isLoading || value.value == null) {
+        if (!value.isLoading) {
+            return tCommon("notAvailable");
+        }
         return <ReceiptValueSkeleton width="w-24" />;
     }
 
@@ -160,7 +169,7 @@ function AsyncNetwork({
 
     const networkChainIcons = metadata.value?.network?.chainIcons ?? null;
     return (
-        <div className="flex justify-end">
+        <div className="flex justify-start">
             <NetworkIconDisplay
                 chainIcons={
                     networkChainIcons?.icon
@@ -170,6 +179,7 @@ function AsyncNetwork({
                 networkName={networkName}
                 networkNameClassName="font-medium"
                 expandNearComLabel
+                className="gap-2"
             />
         </div>
     );
@@ -623,6 +633,10 @@ export default function RequestReceiptPage({
     const transactionDate = getProposalExecutedDate(swapStatus, transaction);
     const isExchangeProposal = receiptProposalVariant === "exchange";
     const hasDepositAddress = !!depositAddress;
+    const isNearComDestination = isNearComPaymentRoute({
+        destinationAssetId: destinationTokenId,
+        depositAddress,
+    });
     const shouldLoadSingleReceiptData = !isBatchPaymentProposal;
     const executedAtIso =
         shouldLoadSingleReceiptData &&
@@ -804,8 +818,15 @@ export default function RequestReceiptPage({
                 token: sourceToken,
                 amount: sourceAmountDisplay,
                 usdValue: sourceAmountUsd,
+                usdLoading: isRateLoading,
             }),
-        [sourceTokenId, sourceToken, sourceAmountDisplay, sourceAmountUsd],
+        [
+            sourceTokenId,
+            sourceToken,
+            sourceAmountDisplay,
+            sourceAmountUsd,
+            isRateLoading,
+        ],
     );
     const destinationTokenInfo = useMemo(
         () =>
@@ -813,15 +834,19 @@ export default function RequestReceiptPage({
                 tokenId: destinationTokenId ?? undefined,
                 token: {
                     ...destinationToken,
-                    network:
-                        destinationToken?.network ??
-                        sourceToken?.network ??
-                        destinationTokenId,
-                    chainIcons:
-                        destinationToken?.chainIcons ?? sourceToken?.chainIcons,
+                    network: isNearComDestination
+                        ? NEAR_COM_NETWORK_ID
+                        : (destinationToken?.network ??
+                          sourceToken?.network ??
+                          destinationTokenId),
+                    chainIcons: isNearComDestination
+                        ? getNearComChainIcons()
+                        : (destinationToken?.chainIcons ??
+                          sourceToken?.chainIcons),
                 },
                 amount: destinationAmountDisplay,
                 usdValue: destinationAmountUsd,
+                usdLoading: isRateLoading,
             }),
         [
             destinationTokenId,
@@ -830,6 +855,8 @@ export default function RequestReceiptPage({
             sourceToken?.chainIcons,
             destinationAmountDisplay,
             destinationAmountUsd,
+            isNearComDestination,
+            isRateLoading,
         ],
     );
 

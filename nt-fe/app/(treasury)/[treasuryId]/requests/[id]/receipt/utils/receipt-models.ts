@@ -146,11 +146,13 @@ export function buildTokenReceiptInfo({
     token,
     amount,
     usdValue,
+    usdLoading = false,
 }: {
     tokenId?: string;
     token?: Partial<TokenMetadata> | null;
     amount: string;
     usdValue: string | null;
+    usdLoading?: boolean;
 }): TokenReceiptInfo {
     return {
         metadata: toAsyncValue(
@@ -167,6 +169,6 @@ export function buildTokenReceiptInfo({
             !token,
         ),
         amount,
-        usd: toAsyncValue(usdValue, usdValue == null),
+        usd: toAsyncValue(usdValue, usdLoading),
     };
 }
