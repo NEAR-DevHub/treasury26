@@ -1741,7 +1741,8 @@
         "otherAssets": "נכסים אחרים",
         "networksWithAssets": "רשתות עם נכסים",
         "supportedNetworks": "רשתות נתמכות",
-        "comingSoon": "בקרוב"
+        "comingSoon": "בקרוב",
+        "networksCount": "{count, plural, one {# רשת} two {# רשתות} many {# רשתות} other {# רשתות}}"
     },
     "intentsQuote": {
         "initializing": "שירות הציטוטים עדיין מאותחל. אנא נסה שוב.",

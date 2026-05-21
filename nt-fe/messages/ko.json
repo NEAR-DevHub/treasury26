@@ -1741,7 +1741,8 @@
         "otherAssets": "기타 자산",
         "networksWithAssets": "자산이 있는 네트워크",
         "supportedNetworks": "지원 네트워크",
-        "comingSoon": "출시 예정"
+        "comingSoon": "출시 예정",
+        "networksCount": "{count, plural, other {#개의 네트워크}}"
     },
     "intentsQuote": {
         "initializing": "견적 서비스가 아직 초기화 중입니다. 다시 시도해 주세요.",

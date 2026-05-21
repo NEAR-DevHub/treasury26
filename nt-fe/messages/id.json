@@ -1741,7 +1741,8 @@
         "otherAssets": "Aset Lainnya",
         "networksWithAssets": "Jaringan dengan aset",
         "supportedNetworks": "Jaringan yang Didukung",
-        "comingSoon": "Segera hadir"
+        "comingSoon": "Segera hadir",
+        "networksCount": "{count, plural, other {# Jaringan}}"
     },
     "intentsQuote": {
         "initializing": "Layanan kuotasi masih diinisialisasi. Silakan coba lagi.",

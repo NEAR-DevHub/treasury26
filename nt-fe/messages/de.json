@@ -1741,7 +1741,8 @@
         "otherAssets": "Andere Vermögenswerte",
         "networksWithAssets": "Netzwerke mit Vermögenswerten",
         "supportedNetworks": "Unterstützte Netzwerke",
-        "comingSoon": "Demnächst verfügbar"
+        "comingSoon": "Demnächst verfügbar",
+        "networksCount": "{count, plural, one {# Netzwerk} other {# Netzwerke}}"
     },
     "intentsQuote": {
         "initializing": "Der Angebotsdienst wird noch initialisiert. Bitte erneut versuchen.",

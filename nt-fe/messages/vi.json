@@ -1741,7 +1741,8 @@
         "otherAssets": "Tài sản khác",
         "networksWithAssets": "Mạng có tài sản",
         "supportedNetworks": "Mạng được hỗ trợ",
-        "comingSoon": "Sắp ra mắt"
+        "comingSoon": "Sắp ra mắt",
+        "networksCount": "{count, plural, other {# Mạng}}"
     },
     "intentsQuote": {
         "initializing": "Dịch vụ báo giá vẫn đang khởi tạo. Vui lòng thử lại.",

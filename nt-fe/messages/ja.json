@@ -1741,7 +1741,8 @@
         "otherAssets": "その他の資産",
         "networksWithAssets": "資産のあるネットワーク",
         "supportedNetworks": "対応ネットワーク",
-        "comingSoon": "近日公開"
+        "comingSoon": "近日公開",
+        "networksCount": "{count, plural, other {# 件のネットワーク}}"
     },
     "intentsQuote": {
         "initializing": "見積りサービスはまだ初期化中です。もう一度お試しください。",

@@ -1741,7 +1741,8 @@
         "otherAssets": "Інші активи",
         "networksWithAssets": "Мережі з активами",
         "supportedNetworks": "Підтримувані мережі",
-        "comingSoon": "Незабаром"
+        "comingSoon": "Незабаром",
+        "networksCount": "{count, plural, one {# мережа} few {# мережі} many {# мереж} other {# мережі}}"
     },
     "intentsQuote": {
         "initializing": "Сервіс котирувань ще ініціалізується. Спробуйте ще раз.",

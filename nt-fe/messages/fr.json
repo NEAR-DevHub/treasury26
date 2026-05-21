@@ -1741,7 +1741,8 @@
         "otherAssets": "Autres actifs",
         "networksWithAssets": "Réseaux avec actifs",
         "supportedNetworks": "Réseaux pris en charge",
-        "comingSoon": "Bientôt disponible"
+        "comingSoon": "Bientôt disponible",
+        "networksCount": "{count, plural, one {# Réseau} other {# Réseaux}}"
     },
     "intentsQuote": {
         "initializing": "Le service de devis est encore en cours d'initialisation. Veuillez réessayer.",

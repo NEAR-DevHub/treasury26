@@ -1741,7 +1741,8 @@
         "otherAssets": "其他资产",
         "networksWithAssets": "包含资产的网络",
         "supportedNetworks": "支持的网络",
-        "comingSoon": "即将推出"
+        "comingSoon": "即将推出",
+        "networksCount": "{count, plural, other {# 个网络}}"
     },
     "intentsQuote": {
         "initializing": "报价服务仍在初始化中。请再试一次。",

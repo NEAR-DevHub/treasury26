@@ -1231,6 +1231,7 @@ export function DepositModal({
                             sections={networkSections}
                             searchPlaceholder={t("searchByName")}
                             isLoading={isLoadingAssets}
+                            selectedId={selectedNetwork?.id}
                             renderContent={(item) => {
                                 const option = item as SelectOption;
                                 return (
