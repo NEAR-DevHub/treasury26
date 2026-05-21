@@ -85,7 +85,7 @@ impl TokenMetadata {
     pub fn create_wrap_near_metadata(price: Option<f64>, price_updated_at: Option<String>) -> Self {
         Self {
             token_id: "wrap.near".to_string(),
-            name: "Wrapped NEAR fungible token".to_string(),
+            name: "NEAR".to_string(),
             symbol: "NEAR".to_string(),
             decimals: 24,
             icon: Some(WRAP_NEAR_ICON.to_string()),
@@ -590,7 +590,10 @@ pub async fn fetch_tokens_metadata(
 }
 
 /// Fetches token metadata with strict source priority:
-/// counterparties -> near/wrap.near canonical -> tokens.json -> Chaindefuser /api/tokens -> NearBlocks.
+/// counterparties -> near/wrap.near canonical -> tokens.json -> Chaindefuser /api/tokens.
+///
+/// When `include_chain_metadata` is false, NearBlocks may be used as a final
+/// asset-metadata fallback (no reliable cross-chain network derivation).
 pub async fn fetch_tokens_with_fallback(
     state: &Arc<AppState>,
     token_ids: &[String],
@@ -623,7 +626,17 @@ pub async fn fetch_tokens_with_fallback(
     let mut chaindefuser_by_defuse: HashMap<String, ChaindefuserToken> = HashMap::new();
     let mut chaindefuser_by_contract: HashMap<String, ChaindefuserToken> = HashMap::new();
     if include_chain_metadata {
-        let chaindefuser_response = fetch_chaindefuser_tokens(state).await.ok();
+        let chaindefuser_response = match fetch_chaindefuser_tokens(state).await {
+            Ok(response) => Some(response),
+            Err((status, err)) => {
+                log::warn!(
+                    "chaindefuser token metadata fetch failed: status={}, error={}",
+                    status,
+                    err
+                );
+                None
+            }
+        };
         if let Some(response) = chaindefuser_response {
             for item in response.items {
                 chaindefuser_by_defuse.insert(item.defuse_asset_id.to_lowercase(), item.clone());
@@ -713,20 +726,34 @@ pub async fn fetch_tokens_with_fallback(
             }
         }
 
-        // 5) NearBlocks (only for eligible near-like ids)
+        // 5) NearBlocks (asset metadata only; skip when chain metadata is required)
         if metadata.is_none()
+            && !include_chain_metadata
             && let Some(nearblocks_api_key) = state.env_vars.nearblocks_api_key.as_ref()
             && let Some(nearblocks_candidate) = nearblocks_lookup_candidate(&candidates.all)
-            && let Ok(mut near_meta) = fetch_nearblocks_ft_metadata(
+        {
+            match fetch_nearblocks_ft_metadata(
                 &state.cache,
                 &state.http_client,
                 nearblocks_api_key,
                 &nearblocks_candidate,
             )
             .await
-        {
-            near_meta.token_id = token_id.clone();
-            metadata = Some(near_meta);
+            {
+                Ok(mut near_meta) => {
+                    near_meta.token_id = token_id.clone();
+                    metadata = Some(near_meta);
+                }
+                Err((status, err)) => {
+                    log::warn!(
+                        "nearblocks token metadata fetch failed: token_id={}, candidate={}, status={}, error={}",
+                        token_id,
+                        nearblocks_candidate,
+                        status,
+                        err
+                    );
+                }
+            }
         }
 
         if let Some(meta) = metadata {

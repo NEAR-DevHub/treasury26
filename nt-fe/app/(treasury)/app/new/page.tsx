@@ -677,7 +677,7 @@ function Step4({
     isConnectingWallet,
 }: StepProps & {
     accountId: string | null;
-    connectWallet: () => Promise<void>;
+    connectWallet: (walletId?: string) => Promise<void>;
     isConnectingWallet: boolean;
 }) {
     const tCreate = useTranslations("createTreasury");

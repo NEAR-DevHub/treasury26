@@ -9,8 +9,7 @@ use crate::{AppState, constants::intents_chains::CHAIN_METADATA};
 pub struct ChainInfo {
     pub key: String,
     pub name: String,
-    pub icon_dark: String,
-    pub icon_light: String,
+    pub icon: String,
 }
 
 pub async fn get_chains(
@@ -22,8 +21,7 @@ pub async fn get_chains(
         .map(|(key, meta)| ChainInfo {
             key: key.clone(),
             name: meta.name.clone(),
-            icon_dark: meta.icon.dark.clone(),
-            icon_light: meta.icon.light.clone(),
+            icon: meta.icon.icon.clone(),
         })
         .collect();
 

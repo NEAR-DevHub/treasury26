@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE users\n        SET\n            v2_terms_accepted_at = NOW(),\n            updated_at = NOW()\n        WHERE account_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e73e4466681ac8412bf33988bfd02272213a24200ffd73a7177946a8b8248aec"
+}

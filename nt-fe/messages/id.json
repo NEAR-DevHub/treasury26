@@ -1299,7 +1299,11 @@
         "sidebarBody": "Tim Anda telah mencapai tindakan tersponsor bulanan. Anda dapat melanjutkan setelah {date} atau ⬇️"
     },
     "acceptTerms": {
-        "title": "Terima Ketentuan untuk Melanjutkan",
+        "firstTimeTitle": "Terima Ketentuan untuk Melanjutkan",
+        "returningTitle": "Ketentuan kami telah diperbarui",
+        "returningEffectiveDate": "Berlaku mulai 21 Mei 2026",
+        "returningBody": "Kami telah memperbarui Ketentuan Layanan dan Kebijakan Privasi kami. Harap tinjau sebelum melanjutkan penggunaan Trezu.",
+        "returningAcceptAndContinue": "Setujui & lanjutkan",
         "privacyTitle": "Privasi Anda di Trezu",
         "privacyBody": "Trezu adalah antarmuka non-kustodian. Kami memprioritaskan privasi Anda sambil memastikan platform tetap aman dan fungsional.",
         "minimalTitle": "Data Minimal",
@@ -1601,6 +1605,7 @@
         "last3Days": "3 hari terakhir",
         "last7Days": "7 hari terakhir",
         "last14Days": "14 hari terakhir",
+        "last30Days": "30 hari terakhir",
         "lastMonth": "Bulan lalu",
         "last3Months": "3 bulan terakhir",
         "last6Months": "6 bulan terakhir"
@@ -1736,7 +1741,8 @@
         "otherAssets": "Aset Lainnya",
         "networksWithAssets": "Jaringan dengan aset",
         "supportedNetworks": "Jaringan yang Didukung",
-        "comingSoon": "Segera hadir"
+        "comingSoon": "Segera hadir",
+        "networksCount": "{count, plural, other {# Jaringan}}"
     },
     "intentsQuote": {
         "initializing": "Layanan kuotasi masih diinisialisasi. Silakan coba lagi.",

@@ -29,6 +29,7 @@ export function SignIn() {
     } = useNear();
     const [isOpen, setIsOpen] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
+    const connectWalletLabel = `${t("connect")} ${t("wallet")}`;
 
     const handleConnect = async () => {
         setIsConnecting(true);
@@ -44,34 +45,61 @@ export function SignIn() {
 
     if (isInitializing) {
         return (
-            <Button disabled className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {tCommon("loading")}
-            </Button>
+            <>
+                <Button
+                    disabled
+                    size="icon"
+                    className="md:hidden"
+                    aria-label={tCommon("loading")}
+                >
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                </Button>
+                <Button disabled className="hidden md:flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {tCommon("loading")}
+                </Button>
+            </>
         );
     }
 
     // Show connect button if not connected or not authenticated
     if (!signedAccountId || !isAuthenticated) {
         return (
-            <Button
-                onClick={handleConnect}
-                disabled={isConnecting}
-                className="flex items-center gap-2"
-            >
-                {isConnecting ? (
-                    <>
+            <>
+                <Button
+                    onClick={handleConnect}
+                    disabled={isConnecting}
+                    size="icon"
+                    className="md:hidden"
+                    aria-label={connectWalletLabel}
+                >
+                    {isConnecting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        {tCommon("connecting")}
-                    </>
-                ) : (
-                    <>
+                    ) : (
                         <LogIn className="h-4 w-4" />
-                        {t("connect")}{" "}
-                        <span className="hidden md:inline">{t("wallet")}</span>
-                    </>
-                )}
-            </Button>
+                    )}
+                </Button>
+                <Button
+                    onClick={handleConnect}
+                    disabled={isConnecting}
+                    className="hidden md:flex items-center gap-2"
+                >
+                    {isConnecting ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {tCommon("connecting")}
+                        </>
+                    ) : (
+                        <>
+                            <LogIn className="h-4 w-4" />
+                            {t("connect")}{" "}
+                            <span className="hidden md:inline">
+                                {t("wallet")}
+                            </span>
+                        </>
+                    )}
+                </Button>
+            </>
         );
     }
 

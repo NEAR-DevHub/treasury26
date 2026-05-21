@@ -398,10 +398,6 @@ test("Ledger login flow", async ({ page, context }) => {
     const ledgerOption = page.getByRole("button", { name: "Ledger" });
     await expect(ledgerOption).toBeVisible();
     await ledgerOption.click();
-    await page.waitForTimeout(1000);
-
-    // select ledger in near connect wallet page
-    await page.getByText("ledger.com").click();
     await page.waitForTimeout(1500);
 
     // Wait for the iframe to load

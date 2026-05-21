@@ -121,7 +121,7 @@ function DialogHeader({
         >
             <div className={cn(centerTitle && "flex-1")}>{children}</div>
             {closeButton && (
-                <BaseDialogClose className="rounded-xs opacity-70 transition-opacity hover:opacity-100 ">
+                <BaseDialogClose className="ring-offset-background focus-visible:ring-ring inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none">
                     <XIcon className="size-4" />
                     <span className="sr-only">{t("close")}</span>
                 </BaseDialogClose>

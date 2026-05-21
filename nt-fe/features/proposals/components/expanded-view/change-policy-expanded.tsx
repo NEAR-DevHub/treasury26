@@ -30,6 +30,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { computePolicyDiff } from "../../utils/policy-diff-utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface ChangePolicyExpandedProps {
     data: ChangePolicyData;
@@ -234,8 +235,9 @@ export function ChangePolicyExpanded({
     const [expandedRemoved, setExpandedRemoved] = useState<number[]>([]);
     const [expandedUpdated, setExpandedUpdated] = useState<number[]>([]);
     const { treasuryId } = useTreasury();
+    const requestDisplayContext = useRequestDisplayContext()!;
 
-    const isPending = proposal.status === "InProgress";
+    const isPending = requestDisplayContext.isPending;
 
     // If not pending, fetch the policy at the time of submission
     const { data: oldPolicy, isLoading: isLoadingTimestamped } =

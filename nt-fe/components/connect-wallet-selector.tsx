@@ -48,7 +48,7 @@ const WALLET_OPTIONS: WalletOption[] = [
     {
         id: "solana",
         label: "Solana",
-        imgSrc: "https://near-intents.org/static/icons/network/solana.svg",
+        imgSrc: "https://near.com/static/icons/network/solana.svg",
         supported: false,
         imageClassName: "p-1.5",
     },
@@ -73,7 +73,7 @@ const WALLET_OPTIONS: WalletOption[] = [
     {
         id: "stellar",
         label: "Stellar",
-        imgSrc: "https://near-intents.org/static/icons/network/stellar_white.svg",
+        imgSrc: "https://near.com/static/icons/network/stellar.svg",
         supported: false,
         imageClassName: "p-1.5",
     },
@@ -104,8 +104,10 @@ interface ConnectWalletSelectorProps {
     connectFlow: "new_user" | "existing_user" | "within_treasury";
     isConnectingWallet?: boolean;
     onBack?: () => void;
-    onConnectSupported: () => Promise<void> | void;
+    onConnectSupported: (walletId?: string) => Promise<void> | void;
 }
+
+const LEDGER_WALLET_ID = "ledger";
 
 export function ConnectWalletSelector({
     title,
@@ -132,7 +134,9 @@ export function ConnectWalletSelector({
         });
 
         if (wallet.supported) {
-            onConnectSupported();
+            onConnectSupported(
+                wallet.id === LEDGER_WALLET_ID ? LEDGER_WALLET_ID : undefined,
+            );
             return;
         }
 

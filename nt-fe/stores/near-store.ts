@@ -109,7 +109,7 @@ interface NearStore {
 
     // Wallet actions
     init: () => Promise<NearConnector | undefined>;
-    connect: () => Promise<void>;
+    connect: (walletId?: string) => Promise<void>;
     disconnect: () => Promise<void>;
 
     // Auth actions
@@ -229,6 +229,8 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     user: {
                         accountId: loginResponse.accountId,
                         termsAccepted: loginResponse.termsAccepted,
+                        hasAcceptedV1Terms:
+                            loginResponse.hasAcceptedV1Terms ?? false,
                     },
                     nonce: null,
                     isAuthenticating: false,
@@ -269,6 +271,8 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     user: {
                         accountId: loginResponse.accountId,
                         termsAccepted: loginResponse.termsAccepted,
+                        hasAcceptedV1Terms:
+                            loginResponse.hasAcceptedV1Terms ?? false,
                     },
                     isAuthenticating: false,
                     nonce: null,
@@ -288,7 +292,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         return newConnector;
     },
 
-    connect: async () => {
+    connect: async (walletId?: string) => {
         const { connector, init } = get();
         const newConnector = connector ?? (await init());
         if (!newConnector) {
@@ -309,6 +313,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
             // Sign the message with wallet
             await newConnector.connect({
+                walletId,
                 signMessageParams: {
                     message: LOGIN_MESSAGE,
                     recipient: LOGIN_RECIPIENT,
@@ -411,7 +416,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 set({
                     isAuthenticated: true,
                     hasAcceptedTerms: user.termsAccepted,
-                    user,
+                    user: {
+                        ...user,
+                        hasAcceptedV1Terms: user.hasAcceptedV1Terms ?? false,
+                    },
                     walletAccountId: user.accountId,
                 });
                 posthog.identify(user.accountId, {

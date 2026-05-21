@@ -15,6 +15,7 @@ import {
     getNearTokenTypeLabel,
 } from "@/lib/utils";
 import { useMemo } from "react";
+import { useRequestDisplayContext } from "./expanded-view/common/request-display-context";
 
 interface AmountProps {
     amount?: string;
@@ -86,6 +87,9 @@ export function Amount({
     const tCommon = useTranslations("common");
     const tAmount = useTranslations("amount");
     const tAddressBookTable = useTranslations("addressBookTable");
+    const requestDisplayContext = useRequestDisplayContext();
+    const effectiveShowUSDValue =
+        showUSDValue && (requestDisplayContext?.showUSDValue ?? true);
     const { data: tokenData, isLoading } = useToken(tokenId);
     const rawAmountValue = amount
         ? formatBalance(amount, tokenData?.decimals || 24)
@@ -121,7 +125,7 @@ export function Amount({
                 <div className="flex items-center gap-2">
                     <Skeleton className="h-8 w-8 rounded-full" />
                     <Skeleton className="h-5 w-20" />
-                    {showUSDValue && <Skeleton className="h-4 w-16" />}
+                    {effectiveShowUSDValue && <Skeleton className="h-4 w-16" />}
                 </div>
                 {showNetwork && <Skeleton className="h-3 w-24" />}
             </div>
@@ -134,7 +138,7 @@ export function Amount({
                 <p className="text-sm font-semibold">
                     {amountValue} {tokenData?.symbol}
                 </p>
-                {showUSDValue && (
+                {effectiveShowUSDValue && (
                     <span className="text-muted-foreground text-xs">
                         {estimatedUSDValue}
                     </span>
@@ -170,7 +174,7 @@ export function Amount({
                     </span>
                 )}
             </div>
-            {showUSDValue && (
+            {effectiveShowUSDValue && (
                 <span className="text-muted-foreground text-xs">
                     {estimatedUSDValue}
                 </span>

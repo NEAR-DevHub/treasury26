@@ -257,38 +257,50 @@ export default function TokenSelect({
         );
     }
 
-    const renderTokenButton = (token: MergedToken) => (
-        <Button
-            key={token.id}
-            onClick={() => handleTokenClick(token)}
-            variant="ghost"
-            type="button"
-            className="w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!"
-        >
-            <SelectListIcon
-                icon={token.icon}
-                alt={token.symbol || token.name}
-            />
-            <div className="flex-1 text-left">
-                <div className="font-semibold">
-                    {token.symbol || token.name}
+    const renderTokenButton = (token: MergedToken) => {
+        const isSelectedAsset = token.networks.some(
+            (network) =>
+                network.id === selectedToken?.address &&
+                network.name === selectedToken?.network,
+        );
+
+        return (
+            <Button
+                key={token.id}
+                onClick={() => handleTokenClick(token)}
+                variant="ghost"
+                type="button"
+                className={cn(
+                    "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
+                    isSelectedAsset &&
+                        "bg-muted hover:bg-muted focus-visible:bg-muted",
+                )}
+            >
+                <SelectListIcon
+                    icon={token.icon}
+                    alt={token.symbol || token.name}
+                />
+                <div className="flex-1 text-left">
+                    <div className="font-semibold">
+                        {token.symbol || token.name}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                        {t("networksCount", { count: token.networks.length })}
+                    </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                    {`${token.networks.length} Network${token.networks.length > 1 ? "s" : ""}`}
-                </div>
-            </div>
-            {token.totalBalance !== undefined && token.totalBalance > 0 && (
-                <div className="flex flex-col items-end">
-                    <span className="font-semibold">
-                        {formatSmartAmount(token.totalBalance)}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                        ≈${token.totalBalanceUSD?.toFixed(2) || "0.00"}
-                    </span>
-                </div>
-            )}
-        </Button>
-    );
+                {token.totalBalance !== undefined && token.totalBalance > 0 && (
+                    <div className="flex flex-col items-end">
+                        <span className="font-semibold">
+                            {formatSmartAmount(token.totalBalance)}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                            ≈${token.totalBalanceUSD?.toFixed(2) || "0.00"}
+                        </span>
+                    </div>
+                )}
+            </Button>
+        );
+    };
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -457,6 +469,9 @@ export default function TokenSelect({
                                 item: MergedNetwork,
                                 idx: number,
                             ) => {
+                                const isSelectedNetwork =
+                                    item.id === selectedToken?.address &&
+                                    item.name === selectedToken?.network;
                                 const isDisabled = disableTokens?.({
                                     address: item.id,
                                     symbol: item.symbol,
@@ -470,7 +485,11 @@ export default function TokenSelect({
                                         variant="ghost"
                                         type="button"
                                         disabled={isDisabled}
-                                        className="w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!"
+                                        className={cn(
+                                            "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
+                                            isSelectedNetwork &&
+                                                "bg-muted hover:bg-muted focus-visible:bg-muted",
+                                        )}
                                     >
                                         <div className="pl-3 w-full">
                                             <div className="flex items-center gap-3">

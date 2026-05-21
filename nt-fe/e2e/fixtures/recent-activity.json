@@ -91,8 +91,7 @@
                 "network": "near",
                 "chainName": "Near Protocol",
                 "chainIcons": {
-                    "dark": "https://near-intents.org/static/icons/network/near.svg",
-                    "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+                    "icon": "https://near.com/static/icons/network/near.svg"
                 }
             },
             "counterparty": "petersalomonsen.near",
@@ -117,8 +116,7 @@
                 "network": "near",
                 "chainName": "Near Protocol",
                 "chainIcons": {
-                    "dark": "https://near-intents.org/static/icons/network/near.svg",
-                    "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+                    "icon": "https://near.com/static/icons/network/near.svg"
                 }
             },
             "counterparty": "petersalomonsen.near",
@@ -143,8 +141,7 @@
                 "network": "near",
                 "chainName": "Near Protocol",
                 "chainIcons": {
-                    "dark": "https://near-intents.org/static/icons/network/near.svg",
-                    "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+                    "icon": "https://near.com/static/icons/network/near.svg"
                 }
             },
             "counterparty": "petersalomonsen.near",
@@ -169,8 +166,7 @@
                 "network": "near",
                 "chainName": "Near Protocol",
                 "chainIcons": {
-                    "dark": "https://near-intents.org/static/icons/network/near.svg",
-                    "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+                    "icon": "https://near.com/static/icons/network/near.svg"
                 }
             },
             "counterparty": "astro-stakers.poolv1.near",
@@ -194,8 +190,7 @@
                 "network": "near",
                 "chainName": "Near Protocol",
                 "chainIcons": {
-                    "dark": "https://near-intents.org/static/icons/network/near.svg",
-                    "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+                    "icon": "https://near.com/static/icons/network/near.svg"
                 }
             },
             "counterparty": "astro-stakers.poolv1.near",
@@ -220,8 +215,7 @@
                 "network": "near",
                 "chainName": "Near Protocol",
                 "chainIcons": {
-                    "dark": "https://near-intents.org/static/icons/network/near.svg",
-                    "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+                    "icon": "https://near.com/static/icons/network/near.svg"
                 }
             },
             "counterparty": "petersalomonsen.near",

@@ -131,9 +131,11 @@ export function TokenInput<
         );
     }, [assetsData?.tokens, token?.address, token?.network]);
 
+    // Treat missing balance as zero so unsupported/unowned selections show the
+    // same insufficient-assets feedback as low-balance selections.
     const tokenBalance = matchedAsset
         ? availableBalance(matchedAsset.balance).toFixed(0)
-        : token?.balance;
+        : (token?.balance ?? "0");
     const tokenPrice = matchedAsset?.price ?? token?.price;
     const tokenDecimals = matchedAsset?.decimals ?? token?.decimals;
 

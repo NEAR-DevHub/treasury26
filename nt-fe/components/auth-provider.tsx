@@ -11,8 +11,13 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-    const { isInitializing, isAuthenticated, hasAcceptedTerms, checkAuth } =
-        useNearStore();
+    const {
+        isInitializing,
+        isAuthenticated,
+        hasAcceptedTerms,
+        checkAuth,
+        user,
+    } = useNearStore();
 
     const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
@@ -36,7 +41,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return (
         <>
             {children}
-            <AcceptTermsModal open={showTermsModal} />
+            <AcceptTermsModal
+                open={showTermsModal}
+                variant={user?.hasAcceptedV1Terms ? "returning" : "firstTime"}
+            />
             <CreateTreasuryPromptController />
         </>
     );

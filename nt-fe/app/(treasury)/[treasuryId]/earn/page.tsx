@@ -48,7 +48,7 @@ const earnAppMedia: Record<
         height: 20,
     },
     nearStaking: {
-        src: "https://near-intents.org/static/icons/network/near.svg",
+        src: "https://near.com/static/icons/network/near.svg",
         className: "h-5 w-5",
         width: 20,
         height: 20,

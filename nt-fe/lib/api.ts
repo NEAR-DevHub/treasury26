@@ -274,8 +274,7 @@ export interface TokenMetadataInfo {
     network?: string;
     chainName?: string;
     chainIcons?: {
-        dark: string;
-        light: string;
+        icon: string;
     };
 }
 
@@ -561,8 +560,7 @@ export async function getBatchStorageDepositIsRegistered(
 }
 
 export interface ChainIcons {
-    dark: string;
-    light: string;
+    icon: string;
 }
 
 export interface TokenMetadata {

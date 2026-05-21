@@ -31,6 +31,7 @@ import { ConfidentialRequestExpanded } from "./confidential-request-expanded";
 import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
 import { useNear } from "@/stores/near-store";
 import { getProposalStatus } from "../../utils/proposal-utils";
+import { RequestDisplayProvider } from "./common/request-display-context";
 
 interface InternalExpandedViewProps {
     proposal: Proposal;
@@ -126,15 +127,27 @@ export function ExpandedView({
     onDeposit,
 }: ExpandedViewProps) {
     const t = useTranslations("proposals.expanded");
-    const { treasuryId } = useTreasury();
+    const { treasuryId, isConfidential } = useTreasury();
     const { accountId } = useNear();
+    const proposalStatus = getProposalStatus(proposal, policy);
+    const isPending = proposalStatus === "Pending";
+    const showUsdValue = isPending;
 
-    const component = ExpandedViewInternal({ proposal, policy, treasuryId });
+    const component = (
+        <RequestDisplayProvider
+            value={{
+                showUSDValue: showUsdValue,
+                isConfidential,
+                proposalStatus,
+                isPending,
+            }}
+        >
+            {ExpandedViewInternal({ proposal, policy, treasuryId })}
+        </RequestDisplayProvider>
+    );
     const requestUrl = `${window.location.origin}/${treasuryId}/requests/${proposal.id}`;
 
-    const ownProposal =
-        proposal.proposer === accountId &&
-        getProposalStatus(proposal, policy) === "Pending";
+    const ownProposal = proposal.proposer === accountId && isPending;
     const isVoted = !!proposal.votes[accountId ?? ""];
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full min-w-0">

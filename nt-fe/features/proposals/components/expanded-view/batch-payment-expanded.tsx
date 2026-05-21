@@ -22,10 +22,10 @@ import Link from "next/link";
 import { StatusPill } from "../proposal-status-pill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Proposal } from "@/lib/proposals-api";
-import { getProposalStatus } from "../../utils/proposal-utils";
 import { Policy } from "@/types/policy";
 import Big from "@/lib/big";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface PaymentDisplayProps {
     number: number;
@@ -166,10 +166,11 @@ export function BatchPaymentRequestExpanded({
     const t = useTranslations("proposals.expanded");
     const tIntents = useTranslations("intentsQuote");
     const [expanded, setExpanded] = useState<number[]>([]);
+    const requestDisplayContext = useRequestDisplayContext()!;
 
     // Check if we should auto-refetch
     // Only refetch if proposal is Executed
-    const proposalStatus = getProposalStatus(proposal, policy);
+    const proposalStatus = requestDisplayContext.proposalStatus;
     const isExecuted = proposalStatus === "Executed";
 
     // First fetch to check if there are pending payments

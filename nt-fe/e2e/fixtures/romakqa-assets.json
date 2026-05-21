@@ -17,8 +17,7 @@
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -72,8 +71,7 @@
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -94,8 +92,7 @@
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -116,8 +113,7 @@
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -138,8 +134,7 @@
         "name": "Gnosis",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/1659.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/gnosis_white.svg",
-            "light": "https://near-intents.org/static/icons/network/gnosis.svg"
+            "icon": "https://near.com/static/icons/network/gnosis.svg"
         }
     },
     {
@@ -160,8 +155,7 @@
         "name": "Dogecoin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/74.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/dogecoin.svg",
-            "light": "https://near-intents.org/static/icons/network/dogecoin.svg"
+            "icon": "https://near.com/static/icons/network/dogecoin.svg"
         }
     },
     {
@@ -182,8 +176,7 @@
         "name": "Solana",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/5426.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/solana.svg",
-            "light": "https://near-intents.org/static/icons/network/solana.svg"
+            "icon": "https://near.com/static/icons/network/solana.svg"
         }
     },
     {
@@ -204,8 +197,7 @@
         "name": "XRP",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/52.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/xrpledger_white.svg",
-            "light": "https://near-intents.org/static/icons/network/xrpledger.svg"
+            "icon": "https://near.com/static/icons/network/xrpledger.svg"
         }
     },
     {
@@ -226,8 +218,7 @@
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/solana.svg",
-            "light": "https://near-intents.org/static/icons/network/solana.svg"
+            "icon": "https://near.com/static/icons/network/solana.svg"
         }
     },
     {
@@ -248,8 +239,7 @@
         "name": "Tether USD",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/825.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -270,8 +260,7 @@
         "name": "OFFICIAL TRUMP",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/35336.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/solana.svg",
-            "light": "https://near-intents.org/static/icons/network/solana.svg"
+            "icon": "https://near.com/static/icons/network/solana.svg"
         }
     },
     {
@@ -292,8 +281,7 @@
         "name": "Tether USD",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/825.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -314,8 +302,7 @@
         "name": "Bitcoin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/1.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/btc.svg",
-            "light": "https://near-intents.org/static/icons/network/btc.svg"
+            "icon": "https://near.com/static/icons/network/btc.svg"
         }
     }
 ]

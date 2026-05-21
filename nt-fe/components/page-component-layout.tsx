@@ -96,13 +96,20 @@ export function PageComponentLayout({
 
                 <div className="flex items-center gap-3">
                     {isStaging && (
-                        <Pill
-                            title="Staging"
-                            icon={
-                                <span className="size-1.5 rounded-full bg-general-orange-foreground" />
-                            }
-                            className="bg-general-orange-background-faded text-general-orange-foreground"
-                        />
+                        <>
+                            <span
+                                className="size-2 rounded-full bg-general-orange-foreground md:hidden"
+                                title="Staging"
+                                aria-label="Staging"
+                            />
+                            <Pill
+                                title="Staging"
+                                icon={
+                                    <span className="size-1.5 rounded-full bg-general-orange-foreground" />
+                                }
+                                className="hidden md:flex bg-general-orange-background-faded text-general-orange-foreground"
+                            />
+                        </>
                     )}
                     <LanguageSwitcher />
                     <Button

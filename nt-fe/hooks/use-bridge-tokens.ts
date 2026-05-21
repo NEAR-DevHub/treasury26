@@ -42,7 +42,9 @@ export function useBridgeTokens(enabled: boolean = true) {
                         name: asset.name || asset.assetName,
                         icon: hasValidIcon
                             ? asset.icon
-                            : asset.symbol?.charAt(0) || "?",
+                            : (asset.name || asset.assetName)
+                                  ?.charAt(0)
+                                  ?.toUpperCase() || "",
                         networks: asset.networks.map((network: any) => ({
                             id: network.id,
                             name: network.name,

@@ -11,8 +11,7 @@ export const ETH_TOKEN = {
     icon: "https://s2.coinmarketcap.com/static/img/coins/128x128/1027.png",
     network: "eth",
     chainIcons: {
-        dark: "https://near-intents.org/static/icons/network/ethereum_white.svg",
-        light: "https://near-intents.org/static/icons/network/ethereum.svg",
+        icon: "https://near.com/static/icons/network/ethereum.svg",
     },
     residency: "Intents",
 } satisfies Token;
@@ -25,8 +24,7 @@ export const BTC_TOKEN = {
     icon: "https://s2.coinmarketcap.com/static/img/coins/128x128/1.png",
     network: "bitcoin",
     chainIcons: {
-        dark: "https://near-intents.org/static/icons/network/btc.svg",
-        light: "https://near-intents.org/static/icons/network/btc.svg",
+        icon: "https://near.com/static/icons/network/btc.svg",
     },
     residency: "Intents",
 } satisfies Token;
