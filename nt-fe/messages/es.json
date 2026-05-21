@@ -1741,7 +1741,8 @@
         "otherAssets": "Otros activos",
         "networksWithAssets": "Redes con activos",
         "supportedNetworks": "Redes compatibles",
-        "comingSoon": "Próximamente"
+        "comingSoon": "Próximamente",
+        "networksCount": "{count, plural, one {# Red} other {# Redes}}"
     },
     "intentsQuote": {
         "initializing": "El servicio de cotización aún se está iniciando. Inténtalo de nuevo.",

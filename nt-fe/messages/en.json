@@ -1741,7 +1741,8 @@
         "otherAssets": "Other Assets",
         "networksWithAssets": "Networks with assets",
         "supportedNetworks": "Supported Networks",
-        "comingSoon": "Coming soon"
+        "comingSoon": "Coming soon",
+        "networksCount": "{count, plural, one {# Network} other {# Networks}}"
     },
     "intentsQuote": {
         "initializing": "Quote service is still initializing. Please try again.",

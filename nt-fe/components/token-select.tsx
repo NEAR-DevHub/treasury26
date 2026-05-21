@@ -285,7 +285,7 @@ export default function TokenSelect({
                         {token.symbol || token.name}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                        {`${token.networks.length} Network${token.networks.length > 1 ? "s" : ""}`}
+                        {t("networksCount", { count: token.networks.length })}
                     </div>
                 </div>
                 {token.totalBalance !== undefined && token.totalBalance > 0 && (

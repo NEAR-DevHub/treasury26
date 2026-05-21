@@ -1741,7 +1741,8 @@
         "otherAssets": "Diğer Varlıklar",
         "networksWithAssets": "Varlıkları olan ağlar",
         "supportedNetworks": "Desteklenen Ağlar",
-        "comingSoon": "Yakında"
+        "comingSoon": "Yakında",
+        "networksCount": "{count, plural, one {# Ağ} other {# Ağ}}"
     },
     "intentsQuote": {
         "initializing": "Teklif servisi hâlâ başlatılıyor. Lütfen tekrar deneyin.",
