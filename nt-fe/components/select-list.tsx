@@ -24,7 +24,6 @@ interface SelectListProps<T extends SelectListItem> {
     renderIcon?: (item: T) => ReactNode;
     renderContent?: (item: T) => ReactNode;
     renderRight?: (item: T) => ReactNode;
-    roundIcons?: boolean;
 }
 
 export function SelectListSkeleton() {
@@ -50,12 +49,10 @@ export function SelectListIcon({
     icon,
     gradient,
     alt,
-    roundIcons = true,
 }: {
     icon?: string;
     gradient?: string;
     alt: string;
-    roundIcons?: boolean;
 }) {
     const isImageUrl =
         icon?.startsWith("http") ||
@@ -69,8 +66,7 @@ export function SelectListIcon({
                     src={icon}
                     alt={alt}
                     className={cn(
-                        "w-full h-full object-contain p-2",
-                        roundIcons && "rounded-full",
+                        "w-full h-full object-contain p-2 rounded-full",
                     )}
                 />
             </div>
@@ -100,7 +96,6 @@ export function SelectList<T extends SelectListItem>({
     renderIcon,
     renderContent,
     renderRight,
-    roundIcons = true,
 }: SelectListProps<T>) {
     const tSelect = useTranslations("selectList");
     const effectiveEmptyMessage = emptyMessage ?? tSelect("noResults");
@@ -127,7 +122,6 @@ export function SelectList<T extends SelectListItem>({
                             icon={item.icon}
                             gradient={item.gradient}
                             alt={item.symbol || item.name}
-                            roundIcons={roundIcons}
                         />
                     )}
                     {renderContent ? (

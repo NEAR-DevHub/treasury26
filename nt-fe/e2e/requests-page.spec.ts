@@ -85,8 +85,7 @@ const TREASURY_ASSETS = [
         name: "Near",
         icon: "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         chainIcons: {
-            dark: "https://near.com/static/icons/network/near.svg",
-            light: "https://near.com/static/icons/network/near.svg",
+            icon: "https://near.com/static/icons/network/near.svg",
         },
     },
 ];

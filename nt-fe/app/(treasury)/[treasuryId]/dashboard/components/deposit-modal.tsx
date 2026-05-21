@@ -37,7 +37,6 @@ import {
     formatSmartAmount,
     normalizeNearAssetId,
 } from "@/lib/utils";
-import { useThemeStore } from "@/stores/theme-store";
 import { SelectModal } from "./select-modal";
 
 interface DepositModalProps {
@@ -124,7 +123,6 @@ export function DepositModal({
         [t],
     );
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
-    const { theme } = useThemeStore();
     const {
         data: { tokens: treasuryAssets } = { tokens: STABLE_EMPTY_ARRAY },
     } = useAssets(treasuryId, {
@@ -298,13 +296,9 @@ export function DepositModal({
             ],
         };
 
-        // Helper: convert a BridgeNetwork to a SelectOption with theme-aware icon
+        // Helper: convert a BridgeNetwork to a SelectOption
         const toNetworkOption = (network: BridgeNetwork): SelectOption => {
-            const iconUrl = network.chainIcons
-                ? theme === "dark"
-                    ? network.chainIcons.dark
-                    : network.chainIcons.light
-                : null;
+            const iconUrl = network.chainIcons?.icon ?? null;
             return {
                 id: network.id,
                 name: network.name,
@@ -558,7 +552,6 @@ export function DepositModal({
         aggregatedTreasuryTokens,
         prefillTokenSymbol,
         prefillNetworkId,
-        theme,
     ]);
 
     // Handle asset selection - show all assets but update network list
@@ -889,7 +882,7 @@ export function DepositModal({
                                                                 selectedNetwork.icon?.startsWith(
                                                                     "/",
                                                                 ) ? (
-                                                                    <div className="w-6 h-6 rounded-full object-cover">
+                                                                    <div className="w-6 h-6 rounded-full overflow-hidden">
                                                                         <img
                                                                             src={
                                                                                 selectedNetwork.icon
@@ -897,7 +890,7 @@ export function DepositModal({
                                                                             alt={
                                                                                 selectedNetwork.name
                                                                             }
-                                                                            className="w-full h-full"
+                                                                            className="w-full h-full rounded-full object-contain"
                                                                         />
                                                                     </div>
                                                                 ) : (
@@ -1238,7 +1231,6 @@ export function DepositModal({
                             sections={networkSections}
                             searchPlaceholder={t("searchByName")}
                             isLoading={isLoadingAssets}
-                            roundIcons={false}
                             renderContent={(item) => {
                                 const option = item as SelectOption;
                                 return (

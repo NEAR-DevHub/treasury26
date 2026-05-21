@@ -74,7 +74,7 @@ function NetworkSelect({
     const options = compatibleChains.map((c) => ({
         id: c.key,
         name: c.name,
-        icon: c.iconLight,
+        icon: c.icon,
     }));
 
     const selectedChains = chains.filter((c) => selected.includes(c.key));
@@ -96,7 +96,7 @@ function NetworkSelect({
             handleSelect({
                 id: compatibleChains[0].key,
                 name: compatibleChains[0].name,
-                icon: compatibleChains[0].iconLight,
+                icon: compatibleChains[0].icon,
             });
         }
     }, [compatibleChains.length]);
@@ -142,7 +142,6 @@ function NetworkSelect({
                 searchPlaceholder={tForm("searchNetworksPlaceholder")}
                 isLoading={isLoading}
                 selectedIds={selected}
-                roundIcons={false}
             />
         </>
     );

@@ -25,7 +25,6 @@ import {
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
 import { cn } from "@/lib/utils";
-import { useThemeStore } from "@/stores/theme-store";
 
 export interface RecipientNetworkOption {
     id: string;
@@ -124,7 +123,6 @@ export function RecipientNetworkSelect({
     const t = useTranslations("recipientNetworkSelect");
     const tAddressBookTable = useTranslations("addressBookTable");
     const { isConfidential } = useTreasury();
-    const { theme } = useThemeStore();
     const [open, setOpen] = useState(false);
 
     // Need bridge networks before the modal opens so we can split available
@@ -155,11 +153,7 @@ export function RecipientNetworkSelect({
         if (!bridgeAssetMatch) return [];
 
         return bridgeAssetMatch.networks.map((network) => {
-            const iconUrl = network.chainIcons
-                ? theme === "dark"
-                    ? network.chainIcons.dark
-                    : network.chainIcons.light
-                : "";
+            const iconUrl = network.chainIcons ? network.chainIcons.icon : "";
             return {
                 id: network.id,
                 name: getNetworkDisplayName(network.name),
@@ -172,7 +166,7 @@ export function RecipientNetworkSelect({
                 networkName: network.name,
             };
         });
-    }, [bridgeAssetMatch, isConfidential, t, theme]);
+    }, [bridgeAssetMatch, isConfidential, t]);
 
     const availableOptions = useMemo(
         () => [nearComOption, ...tokenNetworkOptions],

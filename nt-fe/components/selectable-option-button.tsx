@@ -1,13 +1,10 @@
 import { Check } from "lucide-react";
 import { Button } from "@/components/button";
 import { cn } from "@/lib/utils";
-import { useThemeStore } from "@/stores/theme-store";
 
 export interface SelectableOption {
     label: string;
     iconSrc?: string;
-    iconDark?: string;
-    iconLight?: string;
     iconClassName?: string;
     iconImageClassName?: string;
 }
@@ -25,12 +22,7 @@ export function SelectableOptionButton({
     indicatorType = "checkbox",
     onClick,
 }: SelectableOptionButtonProps) {
-    const { theme } = useThemeStore();
-    const iconSrc =
-        option.iconSrc ??
-        (theme === "dark"
-            ? (option.iconDark ?? option.iconLight)
-            : (option.iconLight ?? option.iconDark));
+    const iconSrc = option.iconSrc;
 
     return (
         <Button

@@ -15,8 +15,7 @@ type NetworkBadgeProps = ComponentProps<typeof NetworkBadge>;
 export interface NetworkListItem {
     key: string;
     name: string;
-    iconDark: string;
-    iconLight: string;
+    icon: string;
 }
 
 interface NetworkListProps {
@@ -56,8 +55,7 @@ export function NetworkList({
                     variant={badgeVariant}
                     iconOnly={badgeIconOnly}
                     size={badgeSize}
-                    iconDark={chain.iconDark}
-                    iconLight={chain.iconLight}
+                    icon={chain.icon}
                 />
             ))}
 
@@ -89,8 +87,7 @@ export function NetworkList({
                                         name={chain.name}
                                         variant={"secondary"}
                                         size={"sm"}
-                                        iconDark={chain.iconDark}
-                                        iconLight={chain.iconLight}
+                                        icon={chain.icon}
                                         className="w-full justify-start"
                                     />
                                 ))}

@@ -6,8 +6,7 @@ import {
 } from "@/constants/network-ids";
 
 export const NEAR_CHAIN_ICONS: ChainIcons = {
-    dark: "https://near.com/static/icons/network/near.svg",
-    light: "https://near.com/static/icons/network/near.svg",
+    icon: "https://near.com/static/icons/network/near.svg",
 };
 
 export const NEAR_COM_ICON = "/near.com.svg";

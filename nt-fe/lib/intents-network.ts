@@ -40,8 +40,7 @@ export function isNearComPaymentRoute({
 
 export function getNearComChainIcons(): ChainIcons {
     return {
-        dark: NEAR_COM_ICON,
-        light: NEAR_COM_ICON,
+        icon: NEAR_COM_ICON,
     };
 }
 
