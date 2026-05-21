@@ -2,7 +2,7 @@
 
 import { ChevronDown, FileText, Loader2, LogIn, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/button";
@@ -21,6 +21,7 @@ export function SignIn() {
     const tCommon = useTranslations("common");
     const router = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const {
         accountId: signedAccountId,
         isInitializing,
@@ -35,7 +36,11 @@ export function SignIn() {
         setIsConnecting(true);
         try {
             const params = new URLSearchParams();
-            params.set("returnTo", pathname);
+            const currentQuery = searchParams.toString();
+            const returnTo = currentQuery
+                ? `${pathname}?${currentQuery}`
+                : pathname;
+            params.set("returnTo", returnTo);
             params.set("context", "within_treasury");
             router.push(`/login?${params.toString()}`);
         } finally {
