@@ -16,7 +16,6 @@ import { useNear } from "@/stores/near-store";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { ScrollArea } from "./ui/scroll-area";
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
 
 interface AcceptTermsModalProps {
@@ -47,7 +46,7 @@ export function AcceptTermsModal({ open, variant }: AcceptTermsModalProps) {
     return (
         <Dialog open={open}>
             <DialogContent
-                className="lg:max-w-lg sm:max-w-sm max-h-[90vh]"
+                className="lg:max-w-lg sm:max-w-sm max-h-[90vh] overflow-hidden"
                 onPointerDownOutside={(e) => e.preventDefault()}
                 onEscapeKeyDown={(e) => e.preventDefault()}
                 onInteractOutside={(e) => e.preventDefault()}
@@ -61,19 +60,19 @@ export function AcceptTermsModal({ open, variant }: AcceptTermsModalProps) {
                     </DialogTitle>
                 </DialogHeader>
 
-                {isReturningUser ? (
-                    <DialogDescription asChild>
-                        <div className="space-y-3 text-sm">
-                            <p className="text-muted-foreground">
-                                {t("returningEffectiveDate")}
-                            </p>
-                            <p className="text-foreground">
-                                {t("returningBody")}
-                            </p>
-                        </div>
-                    </DialogDescription>
-                ) : (
-                    <ScrollArea className="max-h-[60vh]">
+                <div className="flex-1 min-h-0 overflow-y-auto -mx-3 px-3">
+                    {isReturningUser ? (
+                        <DialogDescription asChild>
+                            <div className="space-y-3 text-sm">
+                                <p className="text-muted-foreground">
+                                    {t("returningEffectiveDate")}
+                                </p>
+                                <p className="text-foreground">
+                                    {t("returningBody")}
+                                </p>
+                            </div>
+                        </DialogDescription>
+                    ) : (
                         <DialogDescription asChild>
                             <div className="space-y-3 text-sm text-muted-foreground">
                                 <ul className="space-y-4">
@@ -116,49 +115,48 @@ export function AcceptTermsModal({ open, variant }: AcceptTermsModalProps) {
                                 </ul>
                             </div>
                         </DialogDescription>
-                    </ScrollArea>
-                )}
-
-                <div className="flex items-start gap-3 mt-2">
-                    <Checkbox
-                        id="terms"
-                        checked={accepted}
-                        className="mt-0.5"
-                        onCheckedChange={(checked) =>
-                            setAccepted(checked === true)
-                        }
-                        disabled={isSubmitting}
-                    />
-                    <Label
-                        htmlFor="terms"
-                        className="text-sm text-foreground font-normal inline-block leading-relaxed cursor-pointer"
-                    >
-                        {t.rich("agreement", {
-                            terms: (chunks) => (
-                                <Link
-                                    href={TERMS_OF_SERVICE_URL}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary underline underline-offset-4 hover:text-primary/80"
-                                >
-                                    {chunks}
-                                </Link>
-                            ),
-                            privacy: (chunks) => (
-                                <Link
-                                    href={PRIVACY_POLICY_URL}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary underline underline-offset-4 hover:text-primary/80"
-                                >
-                                    {chunks}
-                                </Link>
-                            ),
-                        })}
-                    </Label>
+                    )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="flex-col gap-3 items-stretch sm:flex-col  pt-0">
+                    <div className="flex items-start gap-3">
+                        <Checkbox
+                            id="terms"
+                            checked={accepted}
+                            className="mt-0.5"
+                            onCheckedChange={(checked) =>
+                                setAccepted(checked === true)
+                            }
+                            disabled={isSubmitting}
+                        />
+                        <Label
+                            htmlFor="terms"
+                            className="text-sm text-foreground font-normal inline-block leading-relaxed cursor-pointer"
+                        >
+                            {t.rich("agreement", {
+                                terms: (chunks) => (
+                                    <Link
+                                        href={TERMS_OF_SERVICE_URL}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary underline underline-offset-4 hover:text-primary/80"
+                                    >
+                                        {chunks}
+                                    </Link>
+                                ),
+                                privacy: (chunks) => (
+                                    <Link
+                                        href={PRIVACY_POLICY_URL}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary underline underline-offset-4 hover:text-primary/80"
+                                    >
+                                        {chunks}
+                                    </Link>
+                                ),
+                            })}
+                        </Label>
+                    </div>
                     <Button
                         onClick={handleAccept}
                         disabled={!accepted || isSubmitting}
