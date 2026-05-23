@@ -215,4 +215,5 @@ export {
     DialogFooter,
     DialogTrigger,
     DialogDescription,
+    useConnectorPopupVisible,
 };
