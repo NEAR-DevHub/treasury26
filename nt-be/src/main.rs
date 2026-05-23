@@ -3,7 +3,7 @@ use axum::{
     http::{HeaderValue, Method, header},
 };
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 fn main() {
@@ -133,30 +133,131 @@ async fn async_main() {
     {
         let state_clone = state.clone();
         tokio::spawn(async move {
-            use nt_be::handlers::intents::confidential::history_worker::run_confidential_history_cycle;
-
-            let interval_secs = std::env::var("CONFIDENTIAL_HISTORY_POLL_INTERVAL_SECONDS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(120u64);
-            let initial_delay = std::env::var("CONFIDENTIAL_HISTORY_POLL_DELAY_SECONDS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(45u64);
+            use nt_be::handlers::intents::confidential::history_worker::{
+                CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS, tick_confidential_history_scheduler,
+            };
 
             log::info!(
-                "Starting confidential history worker ({}s interval, {}s initial delay)",
-                interval_secs,
-                initial_delay
+                "Starting confidential history worker ({}s scheduler tick)",
+                CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS
             );
 
-            tokio::time::sleep(Duration::from_secs(initial_delay)).await;
-            let mut timer = tokio::time::interval(Duration::from_secs(interval_secs));
+            let mut timer = tokio::time::interval(Duration::from_secs(
+                CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS,
+            ));
+            timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
             loop {
                 timer.tick().await;
-                if let Err(e) = run_confidential_history_cycle(&state_clone, 20).await {
-                    log::error!("[confidential-history-poll] cycle failed: {}", e.1);
+                let started_at = Instant::now();
+                match tick_confidential_history_scheduler(&state_clone, 100).await {
+                    Ok(result) => {
+                        log::info!(
+                            "[confidential-history-poll] cycle finished in {:.2}s accounts_seen={} processed={} failed={}",
+                            started_at.elapsed().as_secs_f64(),
+                            result.accounts_seen,
+                            result.accounts_processed,
+                            result.accounts_failed
+                        );
+                    }
+                    Err(e) => {
+                        log::error!(
+                            "[confidential-history-poll] cycle failed in {:.2}s: {}",
+                            started_at.elapsed().as_secs_f64(),
+                            e.1
+                        );
+                    }
                 }
+            }
+        });
+    }
+
+    {
+        let state_clone = state.clone();
+        tokio::spawn(async move {
+            use nt_be::handlers::intents::confidential::balance_snapshots::{
+                HOURLY_SNAPSHOT_CRON_TICK_SECS, tick_confidential_balance_snapshot_cron,
+            };
+
+            log::info!(
+                "Starting confidential balance snapshot cron ({}s tick)",
+                HOURLY_SNAPSHOT_CRON_TICK_SECS
+            );
+
+            let mut timer =
+                tokio::time::interval(Duration::from_secs(HOURLY_SNAPSHOT_CRON_TICK_SECS));
+            timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                timer.tick().await;
+                tick_confidential_balance_snapshot_cron(&state_clone).await;
+            }
+        });
+    }
+
+    {
+        let pool = state.db_pool.clone();
+        tokio::spawn(async move {
+            use nt_be::handlers::intents::confidential::balance_changes_projector::{
+                CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL_SECS,
+                CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,
+                mark_backfilled_confidential_daos_gold_dirty,
+                project_confidential_gold_for_dirty_daos,
+            };
+
+            async fn run_once(pool: &sqlx::PgPool, phase: &str) {
+                match mark_backfilled_confidential_daos_gold_dirty(pool).await {
+                    Ok(rows) => log::info!(
+                        "[confidential-gold] {} reconciliation marked {} backfilled cursor rows dirty",
+                        phase,
+                        rows
+                    ),
+                    Err(e) => log::error!(
+                        "[confidential-gold] {} reconciliation mark-dirty failed: {}",
+                        phase,
+                        e
+                    ),
+                }
+                match project_confidential_gold_for_dirty_daos(
+                    pool,
+                    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,
+                )
+                .await
+                {
+                    Ok(stats) if stats.accounts_seen > 0 => log::info!(
+                        "[confidential-gold] {} reconciliation seen={} projected={} locked={} failed={} rows={} deleted={} errors={}",
+                        phase,
+                        stats.accounts_seen,
+                        stats.accounts_projected,
+                        stats.accounts_skipped_locked,
+                        stats.accounts_failed,
+                        stats.rows_projected,
+                        stats.rows_deleted,
+                        stats.errors_written
+                    ),
+                    Ok(_) => {}
+                    Err(e) => log::error!(
+                        "[confidential-gold] {} reconciliation projection failed: {}",
+                        phase,
+                        e
+                    ),
+                }
+            }
+
+            log::info!(
+                "Starting confidential gold reconciliation ({}s interval, {} workers)",
+                CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL_SECS,
+                CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS
+            );
+
+            run_once(&pool, "startup").await;
+
+            let mut timer = tokio::time::interval(Duration::from_secs(
+                CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL_SECS,
+            ));
+            timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            timer.tick().await; // immediate tick consumed by the startup run above
+            loop {
+                timer.tick().await;
+                run_once(&pool, "daily").await;
             }
         });
     }

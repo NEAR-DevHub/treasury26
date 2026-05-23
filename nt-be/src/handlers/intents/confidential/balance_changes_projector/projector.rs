@@ -1,0 +1,161 @@
+use std::collections::HashSet;
+
+use futures::StreamExt;
+use sqlx::PgPool;
+
+use super::classify::project_row;
+use super::models::{DaoProjectionStats, ProjectionCycleStats};
+use super::repository::{
+    clear_gold_dirty_if_not_advanced, clear_projection_error, delete_stale_gold_rows,
+    earliest_success_for_dao, has_gold_before, load_bronze_suffix, load_dirty_daos,
+    seed_ledger_before, upsert_projection, upsert_projection_error,
+};
+
+pub async fn project_confidential_gold_for_dao(
+    pool: &PgPool,
+    dao_id: &str,
+) -> Result<DaoProjectionStats, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+
+    let got_lock: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtext($1))")
+        .bind(dao_id)
+        .fetch_one(&mut *tx)
+        .await?;
+    if !got_lock {
+        tx.commit().await?;
+        return Ok(DaoProjectionStats {
+            skipped_locked: true,
+            ..DaoProjectionStats::default()
+        });
+    }
+
+    let cursor = sqlx::query_as::<
+        _,
+        (
+            chrono::DateTime<chrono::Utc>,
+            Option<chrono::DateTime<chrono::Utc>>,
+        ),
+    >(
+        r#"
+        SELECT gold_dirty_since, gold_recompute_from
+        FROM confidential_history_cursors
+        WHERE account_id = $1
+          AND gold_dirty_since IS NOT NULL
+        FOR UPDATE
+        "#,
+    )
+    .bind(dao_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let Some((dirty_since, cursor_recompute_from)) = cursor else {
+        tx.commit().await?;
+        return Ok(DaoProjectionStats::default());
+    };
+
+    let earliest_success = earliest_success_for_dao(&mut tx, dao_id).await?;
+    let Some(earliest_success) = earliest_success else {
+        clear_gold_dirty_if_not_advanced(&mut tx, dao_id, dirty_since).await?;
+        tx.commit().await?;
+        return Ok(DaoProjectionStats::default());
+    };
+
+    let mut recompute_from = cursor_recompute_from.unwrap_or(earliest_success);
+    if earliest_success < recompute_from
+        && !has_gold_before(&mut tx, dao_id, recompute_from).await?
+    {
+        recompute_from = earliest_success;
+    }
+
+    let mut stats = DaoProjectionStats::default();
+    let mut ledger = seed_ledger_before(&mut tx, dao_id, recompute_from).await?;
+    let rows = load_bronze_suffix(&mut tx, dao_id, recompute_from).await?;
+    let mut projected_ids = HashSet::new();
+
+    for row in rows {
+        match project_row(&row, &mut ledger) {
+            Ok(Some(projected)) => {
+                projected_ids.insert(projected.history_event_id);
+                upsert_projection(&mut tx, &projected).await?;
+                stats.rows_projected += 1;
+            }
+            Ok(None) => {
+                clear_projection_error(&mut tx, row.id).await?;
+            }
+            Err(reason) => {
+                upsert_projection_error(&mut tx, row.id, dao_id, &reason, &row.raw_payload).await?;
+                stats.errors_written += 1;
+            }
+        }
+    }
+
+    let projected_ids: Vec<i64> = projected_ids.into_iter().collect();
+    stats.rows_deleted =
+        delete_stale_gold_rows(&mut tx, dao_id, recompute_from, &projected_ids).await?;
+
+    clear_gold_dirty_if_not_advanced(&mut tx, dao_id, dirty_since).await?;
+
+    tx.commit().await?;
+    Ok(stats)
+}
+
+pub async fn project_confidential_gold_for_dirty_daos(
+    pool: &PgPool,
+    worker_limit: usize,
+) -> Result<ProjectionCycleStats, sqlx::Error> {
+    let dirty_daos = load_dirty_daos(pool).await?;
+    let accounts_seen = dirty_daos.len();
+    let worker_limit = worker_limit.max(1);
+
+    let mut stream = futures::stream::iter(dirty_daos.into_iter().map(|dao| {
+        let pool = pool.clone();
+        async move {
+            let dao_id = dao.account_id;
+            let dirty_since = dao.gold_dirty_since;
+            let recompute_from = dao.gold_recompute_from;
+            let result = project_confidential_gold_for_dao(&pool, &dao_id).await;
+            (dao_id, dirty_since, recompute_from, result)
+        }
+    }))
+    .buffer_unordered(worker_limit);
+
+    let mut stats = ProjectionCycleStats {
+        accounts_seen,
+        ..ProjectionCycleStats::default()
+    };
+
+    while let Some((dao_id, dirty_since, recompute_from, result)) = stream.next().await {
+        match result {
+            Ok(dao_stats) if dao_stats.skipped_locked => {
+                stats.accounts_skipped_locked += 1;
+            }
+            Ok(dao_stats) => {
+                stats.accounts_projected += 1;
+                stats.rows_projected += dao_stats.rows_projected;
+                stats.rows_deleted += dao_stats.rows_deleted;
+                stats.errors_written += dao_stats.errors_written;
+                log::info!(
+                    "[confidential-gold] projected dao={} dirty_since={} recompute_from={:?} rows={} deleted={} errors={}",
+                    dao_id,
+                    dirty_since,
+                    recompute_from,
+                    dao_stats.rows_projected,
+                    dao_stats.rows_deleted,
+                    dao_stats.errors_written
+                );
+            }
+            Err(e) => {
+                stats.accounts_failed += 1;
+                log::warn!(
+                    "[confidential-gold] projection failed for dao={} dirty_since={} recompute_from={:?}: {}",
+                    dao_id,
+                    dirty_since,
+                    recompute_from,
+                    e
+                );
+            }
+        }
+    }
+
+    Ok(stats)
+}

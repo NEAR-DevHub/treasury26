@@ -1,14 +1,6 @@
-//! Goldsky Enrichment Worker
-//!
-//! Reads indexed execution outcomes from the Goldsky sink database
-//! and writes enriched balance_changes records to the app database.
-//!
-//! Architecture:
-//! - Goldsky sink DB (read-only): `indexed_dao_outcomes` populated by Goldsky pipeline
-//! - App DB (read-write): `balance_changes` + `goldsky_cursors` for progress tracking
-//!
-//! Idempotent: uses INSERT ... ON CONFLICT DO UPDATE so replays overwrite
-//! with potentially higher-quality data.
+//! Reads indexed execution outcomes from the Goldsky sink DB and writes
+//! enriched `balance_changes` to the app DB. Idempotent via INSERT ON CONFLICT
+//! DO UPDATE so replays overwrite with higher-quality data.
 
 use super::balance::get_balance_change_at_block;
 use super::counterparty::ensure_ft_metadata;
@@ -18,12 +10,12 @@ use super::swap_detector::{
 use super::transfer_hints::tx_resolver::{TxActionInfo, resolve_receipt_block_height};
 use super::utils::block_timestamp_to_datetime;
 use crate::AppState;
+use crate::handlers::intents::confidential::balance_changes_projector::refresh_gold_metadata_for_intent;
 use crate::handlers::intents::confidential::history_store::link_intent_to_history_event;
-use crate::handlers::intents::confidential::history_worker::run_confidential_history_account_cycle;
+use crate::handlers::intents::confidential::history_worker::trigger_confidential_history_refresh;
 use crate::handlers::proposals::scraper::{extract_payload_hash_from_kind, fetch_proposal};
 use base64::Engine;
 use bigdecimal::Zero;
-use near_account_id::AccountIdRef;
 use near_api::NetworkConfig;
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -51,8 +43,6 @@ struct IndexedDaoOutcome {
     trigger_block_hash: Option<String>,
     trigger_block_timestamp: i64, // milliseconds since epoch
 }
-
-const CONFIDENTIAL_HISTORY_TRIGGER_LIMIT: u32 = 20;
 
 // ---------------------------------------------------------------------------
 // Parsed event
@@ -613,6 +603,7 @@ async fn update_confidential_intent_proposal(
                 history_event_id
             );
         }
+        refresh_gold_metadata_for_intent(app_pool, dao_id, payload_hash).await?;
         return Ok(true);
     }
 
@@ -676,55 +667,6 @@ async fn handle_confidential_add_proposal(
     Ok(updated)
 }
 
-async fn trigger_confidential_history_account(state: &AppState, account_id: &str) {
-    let account_ref = match AccountIdRef::new(account_id) {
-        Ok(account_ref) => account_ref,
-        Err(e) => {
-            log::warn!(
-                "[goldsky-enrichment] cannot trigger confidential history for invalid account {}: {}",
-                account_id,
-                e
-            );
-            return;
-        }
-    };
-
-    match run_confidential_history_account_cycle(
-        state,
-        account_ref,
-        CONFIDENTIAL_HISTORY_TRIGGER_LIMIT,
-    )
-    .await
-    {
-        Ok(result) => {
-            let forward_items = result
-                .forward
-                .as_ref()
-                .map(|forward| forward.items_fetched)
-                .unwrap_or_default();
-            let backfill_items = result
-                .backfill
-                .as_ref()
-                .map(|backfill| backfill.items_fetched)
-                .unwrap_or_default();
-            log::info!(
-                "[goldsky-enrichment] confidential history refresh {} forward_items={} backfill_items={}",
-                account_id,
-                forward_items,
-                backfill_items
-            );
-        }
-        Err((status, message)) => {
-            log::warn!(
-                "[goldsky-enrichment] confidential history refresh failed for {} ({}): {}",
-                account_id,
-                status,
-                message
-            );
-        }
-    }
-}
-
 async fn trigger_confidential_history_for_execution(
     history_state: Option<&AppState>,
     monitored: &std::collections::HashMap<String, bool>,
@@ -735,7 +677,7 @@ async fn trigger_confidential_history_for_execution(
         return;
     };
 
-    trigger_confidential_history_account(state, dao_id).await;
+    trigger_confidential_history_refresh(state, dao_id).await;
 
     let Some(recipient) = recipient else {
         return;
@@ -744,7 +686,7 @@ async fn trigger_confidential_history_for_execution(
         return;
     }
     if matches!(monitored.get(recipient), Some(true)) {
-        trigger_confidential_history_account(state, recipient).await;
+        trigger_confidential_history_refresh(state, recipient).await;
     }
 }
 
@@ -864,6 +806,8 @@ pub async fn run_enrichment_cycle(
                     &call.dao_id,
                     &call.payload_hash,
                     block_time,
+                    Some(block_height as i64),
+                    outcome.transaction_hash.as_deref(),
                 )
                 .await
                 {

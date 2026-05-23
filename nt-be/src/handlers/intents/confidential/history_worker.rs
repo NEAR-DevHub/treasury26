@@ -1,38 +1,79 @@
+use futures::StreamExt;
 use near_account_id::AccountIdRef;
 use reqwest::StatusCode;
 
 use crate::AppState;
+use crate::handlers::intents::confidential::balance_changes_projector::{
+    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS, project_confidential_gold_for_dao,
+    project_confidential_gold_for_dirty_daos,
+};
+use crate::handlers::intents::confidential::balance_snapshots::snapshot_confidential_dao_balances;
 use crate::handlers::intents::confidential::history::fetch_history;
 use crate::handlers::intents::confidential::history_store::{
-    load_confidential_history_accounts, load_history_cursor, mark_history_backfill_done,
-    save_history_cursors, upsert_history_events,
+    load_due_confidential_history_accounts, load_history_cursor,
+    mark_confidential_history_activity_due, mark_history_backfill_done,
+    record_confidential_history_poll_result, save_backfill_progress, save_latest_page_cursor,
+    upsert_history_events,
 };
+
+pub const CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS: u64 = 10;
+pub const CONFIDENTIAL_HISTORY_TRIGGER_LIMIT: u32 = 50;
+const CONFIDENTIAL_HISTORY_DUE_ACCOUNT_LIMIT: i64 = 100;
+const DEFAULT_CONFIDENTIAL_HISTORY_ACCOUNT_WORKERS: usize = 4;
+
+/// Defensive cap: the drain loop trusts the 1Click `prev_cursor` to eventually
+/// signal `backfill_done`; if the upstream API gets stuck returning a
+/// repeating cursor we bail rather than spin forever.
+const MAX_BACKFILL_DRAIN_PAGES: usize = 1024;
+
+type HandlerResult<T> = Result<T, (StatusCode, String)>;
+
+fn confidential_history_account_workers() -> usize {
+    std::env::var("CONFIDENTIAL_HISTORY_ACCOUNT_WORKERS")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(DEFAULT_CONFIDENTIAL_HISTORY_ACCOUNT_WORKERS)
+        .max(1)
+}
+
+fn internal_err(
+    log_tag: &'static str,
+    op: &'static str,
+    account_id: &str,
+    e: impl std::fmt::Display,
+) -> (StatusCode, String) {
+    log::error!("[{}] {} {} failed: {}", log_tag, account_id, op, e);
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("{} failed: {}", op, e),
+    )
+}
 
 #[derive(Debug, Clone)]
 pub struct HistoryPollResult {
     pub account_id: String,
     pub items_fetched: usize,
     pub rows_touched: u64,
+    pub had_history_changes: bool,
     pub next_cursor: Option<String>,
     pub prev_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BackfillMode {
+    /// One page per call — used by the periodic scheduler to bound 1Click load.
+    OnePage,
+    /// Loop until `backfill_done` — used by the immediate-refresh path.
+    Drain,
 }
 
 #[derive(Debug, Clone)]
 pub struct HistoryBackfillResult {
     pub account_id: String,
-    pub items_fetched: usize,
-    pub rows_touched: u64,
-    pub prev_cursor: Option<String>,
-    pub backfill_done: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct HistoryBackfillDrainResult {
-    pub account_id: String,
     pub pages_fetched: usize,
     pub items_fetched: usize,
     pub rows_touched: u64,
-    pub last_prev_cursor: Option<String>,
+    pub prev_cursor: Option<String>,
     pub backfill_done: bool,
 }
 
@@ -40,8 +81,53 @@ pub struct HistoryBackfillDrainResult {
 pub struct HistoryCycleAccountResult {
     pub account_id: String,
     pub forward: Option<HistoryPollResult>,
-    pub backfill: Option<HistoryBackfillDrainResult>,
+    pub backfill: Option<HistoryBackfillResult>,
     pub error: Option<String>,
+}
+
+impl HistoryCycleAccountResult {
+    fn failed(account_id: String, error: impl Into<String>) -> Self {
+        Self {
+            account_id,
+            forward: None,
+            backfill: None,
+            error: Some(error.into()),
+        }
+    }
+
+    fn failed_after_forward(
+        account_id: String,
+        forward: HistoryPollResult,
+        error: impl Into<String>,
+    ) -> Self {
+        Self {
+            account_id,
+            forward: Some(forward),
+            backfill: None,
+            error: Some(error.into()),
+        }
+    }
+
+    fn succeeded(
+        account_id: String,
+        forward: HistoryPollResult,
+        backfill: Option<HistoryBackfillResult>,
+    ) -> Self {
+        Self {
+            account_id,
+            forward: Some(forward),
+            backfill,
+            error: None,
+        }
+    }
+
+    fn forward_items(&self) -> usize {
+        self.forward.as_ref().map_or(0, |f| f.items_fetched)
+    }
+
+    fn backfill_items(&self) -> usize {
+        self.backfill.as_ref().map_or(0, |b| b.items_fetched)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -56,54 +142,44 @@ pub struct HistoryCycleResult {
     pub accounts: Vec<HistoryCycleAccountResult>,
 }
 
-fn latest_page_poll_cursors() -> (Option<&'static str>, Option<&'static str>) {
-    (None, None)
-}
-
 pub async fn poll_confidential_history_once(
     state: &AppState,
     account_id: &AccountIdRef,
     limit: u32,
-) -> Result<HistoryPollResult, (StatusCode, String)> {
+) -> HandlerResult<HistoryPollResult> {
     log::debug!(
         "[confidential-history] {} latest page poll limit={}",
         account_id,
         limit
     );
 
-    let (next_cursor, prev_cursor) = latest_page_poll_cursors();
-    let page = fetch_history(state, account_id, limit, next_cursor, prev_cursor).await?;
+    let page = fetch_history(state, account_id, limit, None, None).await?;
 
-    let rows_touched = upsert_history_events(&state.db_pool, account_id.as_str(), &page.items)
+    let upsert_result = upsert_history_events(&state.db_pool, account_id.as_str(), &page.items)
         .await
         .map_err(|e| {
-            log::error!(
-                "[confidential-history] {} Bronze upsert failed: {}",
-                account_id,
-                e
-            );
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("history Bronze upsert failed: {}", e),
+            internal_err(
+                "confidential-history",
+                "history Bronze upsert",
+                account_id.as_str(),
+                e,
             )
         })?;
+    let rows_touched = upsert_result.rows_touched;
+    let had_history_changes = upsert_result.rows_inserted > 0 || upsert_result.rows_changed > 0;
 
-    save_history_cursors(
+    save_latest_page_cursor(
         &state.db_pool,
         account_id.as_str(),
         page.next_cursor.as_deref(),
-        page.prev_cursor.as_deref(),
     )
     .await
     .map_err(|e| {
-        log::error!(
-            "[confidential-history] {} cursor save failed: {}",
-            account_id,
-            e
-        );
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("history cursor save failed: {}", e),
+        internal_err(
+            "confidential-history",
+            "history cursor save",
+            account_id.as_str(),
+            e,
         )
     })?;
 
@@ -111,33 +187,57 @@ pub async fn poll_confidential_history_once(
         account_id: account_id.as_str().to_string(),
         items_fetched: page.items.len(),
         rows_touched,
+        had_history_changes,
         next_cursor: page.next_cursor,
         prev_cursor: page.prev_cursor,
     })
 }
 
-pub async fn backfill_confidential_history_once(
+async fn poll_and_record_history(
     state: &AppState,
     account_id: &AccountIdRef,
     limit: u32,
-) -> Result<HistoryBackfillResult, (StatusCode, String)> {
+) -> HandlerResult<HistoryPollResult> {
+    let result = poll_confidential_history_once(state, account_id, limit).await?;
+    record_confidential_history_poll_result(
+        &state.db_pool,
+        account_id.as_str(),
+        result.had_history_changes,
+    )
+    .await
+    .map_err(|e| {
+        internal_err(
+            "confidential-history",
+            "history poll scheduling update",
+            account_id.as_str(),
+            e,
+        )
+    })?;
+    Ok(result)
+}
+
+/// `pages_fetched = 0` signals the no-op path (cursor already marked
+/// `backfill_done`); `1` means one 1Click page was actually fetched.
+async fn backfill_one_page(
+    state: &AppState,
+    account_id: &AccountIdRef,
+    limit: u32,
+) -> HandlerResult<HistoryBackfillResult> {
     let cursor = load_history_cursor(&state.db_pool, account_id.as_str())
         .await
         .map_err(|e| {
-            log::error!(
-                "[confidential-history-backfill] {} cursor load failed: {}",
-                account_id,
-                e
-            );
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("history cursor load failed: {}", e),
+            internal_err(
+                "confidential-history-backfill",
+                "history cursor load",
+                account_id.as_str(),
+                e,
             )
         })?;
 
     if matches!(cursor.as_ref().map(|c| c.backfill_done), Some(true)) {
         return Ok(HistoryBackfillResult {
             account_id: account_id.as_str().to_string(),
+            pages_fetched: 0,
             items_fetched: 0,
             rows_touched: 0,
             prev_cursor: cursor.and_then(|c| c.backward_cursor),
@@ -149,42 +249,38 @@ pub async fn backfill_confidential_history_once(
     let saved_backward_cursor = backward_cursor.map(ToString::to_string);
     let page = fetch_history(state, account_id, limit, None, backward_cursor).await?;
 
-    let rows_touched = upsert_history_events(&state.db_pool, account_id.as_str(), &page.items)
+    let upsert_result = upsert_history_events(&state.db_pool, account_id.as_str(), &page.items)
         .await
         .map_err(|e| {
-            log::error!(
-                "[confidential-history-backfill] {} Bronze upsert failed: {}",
-                account_id,
-                e
-            );
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("history Bronze upsert failed: {}", e),
+            internal_err(
+                "confidential-history-backfill",
+                "history Bronze upsert",
+                account_id.as_str(),
+                e,
             )
         })?;
+    let rows_touched = upsert_result.rows_touched;
 
-    let forward_cursor_to_save = if cursor.is_none() {
+    // Only seed forward_cursor on the very first backfill page for this DAO.
+    let initial_forward_cursor = if cursor.is_none() {
         page.next_cursor.as_deref()
     } else {
         None
     };
 
-    save_history_cursors(
+    save_backfill_progress(
         &state.db_pool,
         account_id.as_str(),
-        forward_cursor_to_save,
         page.prev_cursor.as_deref(),
+        initial_forward_cursor,
     )
     .await
     .map_err(|e| {
-        log::error!(
-            "[confidential-history-backfill] {} cursor save failed: {}",
-            account_id,
-            e
-        );
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("history cursor save failed: {}", e),
+        internal_err(
+            "confidential-history-backfill",
+            "history cursor save",
+            account_id.as_str(),
+            e,
         )
     })?;
 
@@ -195,20 +291,18 @@ pub async fn backfill_confidential_history_once(
         mark_history_backfill_done(&state.db_pool, account_id.as_str())
             .await
             .map_err(|e| {
-                log::error!(
-                    "[confidential-history-backfill] {} mark done failed: {}",
-                    account_id,
-                    e
-                );
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("history backfill mark done failed: {}", e),
+                internal_err(
+                    "confidential-history-backfill",
+                    "history backfill mark done",
+                    account_id.as_str(),
+                    e,
                 )
             })?;
     }
 
     Ok(HistoryBackfillResult {
         account_id: account_id.as_str().to_string(),
+        pages_fetched: 1,
         items_fetched: page.items.len(),
         rows_touched,
         prev_cursor: page.prev_cursor,
@@ -216,164 +310,282 @@ pub async fn backfill_confidential_history_once(
     })
 }
 
-pub async fn backfill_confidential_history_until_done(
+pub async fn backfill_confidential_history(
     state: &AppState,
     account_id: &AccountIdRef,
     limit: u32,
-) -> Result<HistoryBackfillDrainResult, (StatusCode, String)> {
-    let cursor = load_history_cursor(&state.db_pool, account_id.as_str())
-        .await
-        .map_err(|e| {
-            log::error!(
-                "[confidential-history-backfill] {} cursor load failed: {}",
+    mode: BackfillMode,
+) -> HandlerResult<HistoryBackfillResult> {
+    let mut aggregate = HistoryBackfillResult {
+        account_id: account_id.as_str().to_string(),
+        pages_fetched: 0,
+        items_fetched: 0,
+        rows_touched: 0,
+        prev_cursor: None,
+        backfill_done: false,
+    };
+
+    for _ in 0..MAX_BACKFILL_DRAIN_PAGES {
+        let page = backfill_one_page(state, account_id, limit).await?;
+        aggregate.pages_fetched += page.pages_fetched;
+        aggregate.items_fetched += page.items_fetched;
+        aggregate.rows_touched += page.rows_touched;
+        aggregate.prev_cursor = page.prev_cursor;
+        aggregate.backfill_done = page.backfill_done;
+
+        if page.backfill_done || mode == BackfillMode::OnePage {
+            return Ok(aggregate);
+        }
+    }
+
+    log::warn!(
+        "[confidential-history-backfill] {} drain loop hit cap of {} pages without completion",
+        account_id,
+        MAX_BACKFILL_DRAIN_PAGES
+    );
+    Ok(aggregate)
+}
+
+/// Latest-page poll + full backfill drain for one DAO. Used by the immediate
+/// refresh path; the scheduler uses `tick_confidential_history_scheduler`
+/// which only advances one backfill page per due DAO.
+pub async fn run_account_history_full_drain(
+    state: &AppState,
+    account_id: &AccountIdRef,
+    limit: u32,
+) -> HandlerResult<HistoryCycleAccountResult> {
+    let forward = poll_and_record_history(state, account_id, limit).await?;
+    let backfill =
+        backfill_confidential_history(state, account_id, limit, BackfillMode::Drain).await?;
+    Ok(HistoryCycleAccountResult::succeeded(
+        account_id.as_str().to_string(),
+        forward,
+        Some(backfill),
+    ))
+}
+
+/// Marks the DAO as active, drains its history, then projects Gold. Used
+/// after v1.signer submits and after goldsky observes a settled swap.
+pub async fn trigger_confidential_history_refresh(state: &AppState, account_id: &str) {
+    let account_ref = match AccountIdRef::new(account_id) {
+        Ok(account_ref) => account_ref,
+        Err(e) => {
+            log::warn!(
+                "[confidential-history-trigger] cannot refresh invalid account {}: {}",
                 account_id,
                 e
             );
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("history cursor load failed: {}", e),
-            )
-        })?;
+            return;
+        }
+    };
 
-    if matches!(cursor.as_ref().map(|c| c.backfill_done), Some(true)) {
-        return Ok(HistoryBackfillDrainResult {
-            account_id: account_id.as_str().to_string(),
-            pages_fetched: 0,
-            items_fetched: 0,
-            rows_touched: 0,
-            last_prev_cursor: cursor.and_then(|c| c.backward_cursor),
-            backfill_done: true,
-        });
+    if let Err(e) = mark_confidential_history_activity_due(&state.db_pool, account_id).await {
+        log::warn!(
+            "[confidential-history-trigger] cannot mark activity due for {}: {}",
+            account_id,
+            e
+        );
     }
 
-    let mut pages_fetched = 0usize;
-    let mut items_fetched = 0usize;
-    let mut rows_touched = 0u64;
+    match run_account_history_full_drain(state, account_ref, CONFIDENTIAL_HISTORY_TRIGGER_LIMIT)
+        .await
+    {
+        Ok(result) => {
+            log::info!(
+                "[confidential-history-trigger] {} forward_items={} backfill_items={}",
+                account_id,
+                result.forward_items(),
+                result.backfill_items()
+            );
 
-    loop {
-        let page = backfill_confidential_history_once(state, account_id, limit).await?;
-        pages_fetched += 1;
-        items_fetched += page.items_fetched;
-        rows_touched += page.rows_touched;
+            match project_confidential_gold_for_dao(&state.db_pool, account_id).await {
+                Ok(stats) => {
+                    let prefix = if stats.skipped_locked {
+                        "skipped locked "
+                    } else {
+                        ""
+                    };
+                    log::info!(
+                        "[confidential-history-trigger] gold projection {}dao={} rows={} deleted={} errors={}",
+                        prefix,
+                        account_id,
+                        stats.rows_projected,
+                        stats.rows_deleted,
+                        stats.errors_written
+                    );
+                }
+                Err(e) => {
+                    log::warn!(
+                        "[confidential-history-trigger] gold projection failed for {}: {}",
+                        account_id,
+                        e
+                    );
+                }
+            }
 
-        if page.backfill_done {
-            return Ok(HistoryBackfillDrainResult {
-                account_id: account_id.as_str().to_string(),
-                pages_fetched,
-                items_fetched,
-                rows_touched,
-                last_prev_cursor: page.prev_cursor,
-                backfill_done: true,
-            });
+            snapshot_confidential_dao_balances(state, account_id).await;
+        }
+        Err((status, message)) => {
+            log::warn!(
+                "[confidential-history-trigger] refresh failed for {} ({}): {}",
+                account_id,
+                status,
+                message
+            );
         }
     }
 }
 
-pub async fn run_confidential_history_account_cycle(
+async fn process_confidential_history_account(
     state: &AppState,
-    account_id: &AccountIdRef,
+    account_id: String,
     limit: u32,
-) -> Result<HistoryCycleAccountResult, (StatusCode, String)> {
-    let forward = poll_confidential_history_once(state, account_id, limit).await?;
-    let backfill = backfill_confidential_history_until_done(state, account_id, limit).await?;
+) -> HistoryCycleAccountResult {
+    let account_ref = match AccountIdRef::new(&account_id) {
+        Ok(account_ref) => account_ref,
+        Err(e) => {
+            let error = format!("invalid account id: {}", e);
+            log::warn!("[confidential-history-cycle] {}: {}", account_id, error);
+            return HistoryCycleAccountResult::failed(account_id, error);
+        }
+    };
 
-    Ok(HistoryCycleAccountResult {
-        account_id: account_id.as_str().to_string(),
-        forward: Some(forward),
-        backfill: Some(backfill),
-        error: None,
-    })
+    let forward = match poll_and_record_history(state, account_ref, limit).await {
+        Ok(forward) => forward,
+        Err((status, message)) => {
+            let error = format!("forward poll failed ({}): {}", status, message);
+            log::warn!("[confidential-history-cycle] {}: {}", account_id, error);
+            return HistoryCycleAccountResult::failed(account_id, error);
+        }
+    };
+
+    if forward.had_history_changes {
+        snapshot_confidential_dao_balances(state, account_ref.as_str()).await;
+    }
+
+    let backfill =
+        match backfill_confidential_history(state, account_ref, limit, BackfillMode::OnePage).await
+        {
+            Ok(backfill) => backfill,
+            Err((status, message)) => {
+                let error = format!("backfill failed ({}): {}", status, message);
+                log::warn!("[confidential-history-cycle] {}: {}", account_id, error);
+                return HistoryCycleAccountResult::failed_after_forward(account_id, forward, error);
+            }
+        };
+
+    HistoryCycleAccountResult::succeeded(account_id, forward, Some(backfill))
 }
 
-pub async fn run_confidential_history_cycle(
-    state: &AppState,
-    limit: u32,
-) -> Result<HistoryCycleResult, (StatusCode, String)> {
-    let account_ids = load_confidential_history_accounts(&state.db_pool)
-        .await
-        .map_err(|e| {
-            log::error!("[confidential-history-cycle] account load failed: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("history account load failed: {}", e),
-            )
-        })?;
+fn aggregate_history_account_results(
+    accounts_seen: usize,
+    mut accounts: Vec<HistoryCycleAccountResult>,
+) -> HistoryCycleResult {
+    accounts.sort_by(|a, b| a.account_id.cmp(&b.account_id));
 
     let mut result = HistoryCycleResult {
-        accounts_seen: account_ids.len(),
+        accounts_seen,
         accounts_processed: 0,
         accounts_failed: 0,
         forward_items_fetched: 0,
         forward_rows_touched: 0,
         backfill_items_fetched: 0,
         backfill_rows_touched: 0,
-        accounts: Vec::with_capacity(account_ids.len()),
+        accounts: Vec::with_capacity(accounts.len()),
     };
 
-    for account_id in account_ids {
-        let account_ref = match AccountIdRef::new(&account_id) {
-            Ok(account_ref) => account_ref,
-            Err(e) => {
-                let error = format!("invalid account id: {}", e);
-                log::warn!("[confidential-history-cycle] {}: {}", account_id, error);
-                result.accounts_failed += 1;
-                result.accounts.push(HistoryCycleAccountResult {
-                    account_id,
-                    forward: None,
-                    backfill: None,
-                    error: Some(error),
-                });
-                continue;
-            }
-        };
+    for account in accounts {
+        if let Some(forward) = account.forward.as_ref() {
+            result.accounts_processed += 1;
+            result.forward_items_fetched += forward.items_fetched;
+            result.forward_rows_touched += forward.rows_touched;
+        }
 
-        let forward = match poll_confidential_history_once(state, account_ref, limit).await {
-            Ok(forward) => forward,
-            Err((status, message)) => {
-                let error = format!("forward poll failed ({}): {}", status, message);
-                log::warn!("[confidential-history-cycle] {}: {}", account_id, error);
-                result.accounts_failed += 1;
-                result.accounts.push(HistoryCycleAccountResult {
-                    account_id,
-                    forward: None,
-                    backfill: None,
-                    error: Some(error),
-                });
-                continue;
-            }
-        };
+        if let Some(backfill) = account.backfill.as_ref() {
+            result.backfill_items_fetched += backfill.items_fetched;
+            result.backfill_rows_touched += backfill.rows_touched;
+        }
 
-        result.accounts_processed += 1;
-        result.forward_items_fetched += forward.items_fetched;
-        result.forward_rows_touched += forward.rows_touched;
+        if account.error.is_some() {
+            result.accounts_failed += 1;
+        }
 
-        let backfill =
-            match backfill_confidential_history_until_done(state, account_ref, limit).await {
-                Ok(backfill) => {
-                    result.backfill_items_fetched += backfill.items_fetched;
-                    result.backfill_rows_touched += backfill.rows_touched;
-                    Some(backfill)
-                }
-                Err((status, message)) => {
-                    let error = format!("backfill failed ({}): {}", status, message);
-                    log::warn!("[confidential-history-cycle] {}: {}", account_id, error);
-                    result.accounts_failed += 1;
-                    result.accounts.push(HistoryCycleAccountResult {
-                        account_id,
-                        forward: Some(forward),
-                        backfill: None,
-                        error: Some(error),
-                    });
-                    continue;
-                }
-            };
+        result.accounts.push(account);
+    }
 
-        result.accounts.push(HistoryCycleAccountResult {
-            account_id,
-            forward: Some(forward),
-            backfill,
-            error: None,
-        });
+    result
+}
+
+/// One periodic scheduler tick: poll the due DAOs (capped by
+/// `CONFIDENTIAL_HISTORY_DUE_ACCOUNT_LIMIT`), advance at most one backfill page
+/// per DAO, then project Gold for every dirty DAO.
+pub async fn tick_confidential_history_scheduler(
+    state: &AppState,
+    limit: u32,
+) -> HandlerResult<HistoryCycleResult> {
+    let account_ids = load_due_confidential_history_accounts(
+        &state.db_pool,
+        CONFIDENTIAL_HISTORY_DUE_ACCOUNT_LIMIT,
+    )
+    .await
+    .map_err(|e| {
+        log::error!(
+            "[confidential-history-cycle] due account load failed: {}",
+            e
+        );
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("due history account load failed: {}", e),
+        )
+    })?;
+
+    let accounts_seen = account_ids.len();
+    let worker_limit = confidential_history_account_workers();
+    if accounts_seen > 0 {
+        log::info!(
+            "[confidential-history-cycle] processing {} due accounts with {} workers",
+            accounts_seen,
+            worker_limit
+        );
+    }
+
+    let mut stream = futures::stream::iter(account_ids.into_iter().map(|account_id| async move {
+        process_confidential_history_account(state, account_id, limit).await
+    }))
+    .buffer_unordered(worker_limit);
+
+    let mut accounts = Vec::with_capacity(accounts_seen);
+    while let Some(account) = stream.next().await {
+        accounts.push(account);
+    }
+
+    let result = aggregate_history_account_results(accounts_seen, accounts);
+
+    match project_confidential_gold_for_dirty_daos(
+        &state.db_pool,
+        CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,
+    )
+    .await
+    {
+        Ok(stats) if stats.accounts_seen > 0 => {
+            log::info!(
+                "[confidential-history-cycle] gold projection seen={} projected={} locked={} failed={} rows={} deleted={} errors={}",
+                stats.accounts_seen,
+                stats.accounts_projected,
+                stats.accounts_skipped_locked,
+                stats.accounts_failed,
+                stats.rows_projected,
+                stats.rows_deleted,
+                stats.errors_written
+            );
+        }
+        Ok(_) => {}
+        Err(e) => {
+            log::error!(
+                "[confidential-history-cycle] gold projection failed after Bronze cycle: {}",
+                e
+            );
+        }
     }
 
     Ok(result)
@@ -390,11 +602,71 @@ mod tests {
     use crate::utils::env::EnvVars;
 
     #[test]
-    fn test_latest_page_poll_uses_no_cursors() {
-        let (next_cursor, prev_cursor) = latest_page_poll_cursors();
+    fn test_aggregate_history_account_results_counts_and_sorts() {
+        let result = aggregate_history_account_results(
+            3,
+            vec![
+                HistoryCycleAccountResult {
+                    account_id: "b.sputnik-dao.near".to_string(),
+                    forward: Some(HistoryPollResult {
+                        account_id: "b.sputnik-dao.near".to_string(),
+                        items_fetched: 5,
+                        rows_touched: 4,
+                        had_history_changes: true,
+                        next_cursor: Some("next-b".to_string()),
+                        prev_cursor: Some("prev-b".to_string()),
+                    }),
+                    backfill: Some(HistoryBackfillResult {
+                        account_id: "b.sputnik-dao.near".to_string(),
+                        pages_fetched: 1,
+                        items_fetched: 3,
+                        rows_touched: 2,
+                        prev_cursor: Some("older-b".to_string()),
+                        backfill_done: false,
+                    }),
+                    error: None,
+                },
+                HistoryCycleAccountResult {
+                    account_id: "invalid account".to_string(),
+                    forward: None,
+                    backfill: None,
+                    error: Some("invalid account id".to_string()),
+                },
+                HistoryCycleAccountResult {
+                    account_id: "a.sputnik-dao.near".to_string(),
+                    forward: Some(HistoryPollResult {
+                        account_id: "a.sputnik-dao.near".to_string(),
+                        items_fetched: 2,
+                        rows_touched: 1,
+                        had_history_changes: false,
+                        next_cursor: None,
+                        prev_cursor: None,
+                    }),
+                    backfill: None,
+                    error: Some("backfill failed".to_string()),
+                },
+            ],
+        );
 
-        assert!(next_cursor.is_none());
-        assert!(prev_cursor.is_none());
+        assert_eq!(result.accounts_seen, 3);
+        assert_eq!(result.accounts_processed, 2);
+        assert_eq!(result.accounts_failed, 2);
+        assert_eq!(result.forward_items_fetched, 7);
+        assert_eq!(result.forward_rows_touched, 5);
+        assert_eq!(result.backfill_items_fetched, 3);
+        assert_eq!(result.backfill_rows_touched, 2);
+        assert_eq!(
+            result
+                .accounts
+                .iter()
+                .map(|account| account.account_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "a.sputnik-dao.near",
+                "b.sputnik-dao.near",
+                "invalid account"
+            ]
+        );
     }
 
     async fn create_real_api_state() -> Arc<AppState> {
@@ -441,7 +713,10 @@ mod tests {
             .expect("cursor should exist after polling");
         assert_eq!(cursor.account_id, account_id.as_str());
         assert!(cursor.forward_cursor.is_some() || first.next_cursor.is_none());
-        assert!(cursor.backward_cursor.is_some() || first.prev_cursor.is_none());
+        assert!(
+            cursor.backward_cursor.is_none(),
+            "latest-page poll must not touch backward_cursor"
+        );
 
         let second = poll_confidential_history_once(&state, account_id, limit)
             .await
@@ -472,14 +747,14 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn test_backfill_confidential_history_once_ingests_bronze_and_cursor() {
+    async fn test_backfill_one_page_mode_ingests_bronze_and_cursor() {
         let state = create_real_api_state().await;
         let dao_id = std::env::var("CONFIDENTIAL_HISTORY_TEST_DAO")
             .unwrap_or_else(|_| "tobi.sputnik-dao.near".to_string());
         let account_id = AccountIdRef::new(&dao_id).expect("test DAO must be a valid account ID");
         let limit = 5;
 
-        let first = backfill_confidential_history_once(&state, account_id, limit)
+        let first = backfill_confidential_history(&state, account_id, limit, BackfillMode::OnePage)
             .await
             .unwrap_or_else(|(status, msg)| {
                 panic!("first backfill poll failed: {} - {}", status, msg)
@@ -495,11 +770,12 @@ mod tests {
             .expect("cursor should exist after backfill");
         assert_eq!(cursor.account_id, account_id.as_str());
 
-        let second = backfill_confidential_history_once(&state, account_id, limit)
-            .await
-            .unwrap_or_else(|(status, msg)| {
-                panic!("second backfill poll failed: {} - {}", status, msg)
-            });
+        let second =
+            backfill_confidential_history(&state, account_id, limit, BackfillMode::OnePage)
+                .await
+                .unwrap_or_else(|(status, msg)| {
+                    panic!("second backfill poll failed: {} - {}", status, msg)
+                });
         assert!(second.items_fetched <= limit as usize);
 
         let duplicate_count: i64 = sqlx::query_scalar(
@@ -524,7 +800,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn test_backfill_confidential_history_once_returns_when_already_done() {
+    async fn test_backfill_one_page_returns_when_already_done() {
         let state = create_real_api_state().await;
         let suffix = uuid::Uuid::new_v4().simple().to_string();
         let dao_id = format!("test-{}.near", &suffix[..8]);
@@ -534,12 +810,13 @@ mod tests {
             .await
             .expect("mark done should succeed");
 
-        let result = backfill_confidential_history_once(&state, account_id, 5)
+        let result = backfill_confidential_history(&state, account_id, 5, BackfillMode::OnePage)
             .await
             .unwrap_or_else(|(status, msg)| {
                 panic!("done backfill poll failed: {} - {}", status, msg)
             });
 
+        assert_eq!(result.pages_fetched, 0);
         assert_eq!(result.items_fetched, 0);
         assert_eq!(result.rows_touched, 0);
         assert!(result.backfill_done);
@@ -547,7 +824,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn test_backfill_confidential_history_until_done_skips_when_already_done() {
+    async fn test_backfill_drain_skips_when_already_done() {
         let state = create_real_api_state().await;
         let suffix = uuid::Uuid::new_v4().simple().to_string();
         let dao_id = format!("test-{}.near", &suffix[..8]);
@@ -557,7 +834,7 @@ mod tests {
             .await
             .expect("mark done should succeed");
 
-        let result = backfill_confidential_history_until_done(&state, account_id, 5)
+        let result = backfill_confidential_history(&state, account_id, 5, BackfillMode::Drain)
             .await
             .unwrap_or_else(|(status, msg)| {
                 panic!("done backfill drain failed: {} - {}", status, msg)
@@ -572,14 +849,14 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    async fn test_run_confidential_history_cycle_fills_bronze_without_duplicates() {
+    async fn test_tick_confidential_history_scheduler_fills_bronze_without_duplicates() {
         let state = create_real_api_state().await;
         let limit = 5;
 
-        let result = run_confidential_history_cycle(&state, limit)
+        let result = tick_confidential_history_scheduler(&state, limit)
             .await
             .unwrap_or_else(|(status, msg)| panic!("history cycle failed: {} - {}", status, msg));
-        let second_result = run_confidential_history_cycle(&state, limit)
+        let second_result = tick_confidential_history_scheduler(&state, limit)
             .await
             .unwrap_or_else(|(status, msg)| {
                 panic!("second history cycle failed: {} - {}", status, msg)

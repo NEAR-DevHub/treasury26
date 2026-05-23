@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::handlers::balance_changes::completeness;
+use crate::handlers::balance_changes::confidential_list;
 use crate::handlers::balance_changes::{gap_filler, query_builder::*};
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::utils::serde::comma_separated;
@@ -142,6 +143,10 @@ pub async fn get_balance_changes_internal(
     state: &Arc<AppState>,
     params: &BalanceChangesQuery,
 ) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
+    if confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str()).await? {
+        return confidential_list::fetch_balance_change_legs(state, params).await;
+    }
+
     // Parse dates
     let start_date = params
         .start_time

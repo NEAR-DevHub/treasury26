@@ -11,7 +11,7 @@ use crate::{AppState, auth, handlers};
 
 mod balance_changes;
 pub use balance_changes::{
-    BalanceChangesQuery, EnrichedBalanceChange, get_balance_changes_internal,
+    BalanceChangesQuery, EnrichedBalanceChange, SwapInfo, get_balance_changes_internal,
 };
 
 mod monitored_accounts;
@@ -107,6 +107,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/balance-history/chart",
             get(handlers::balance_changes::history::get_balance_chart),
+        )
+        .route(
+            "/api/confidential/balance-chart",
+            get(handlers::intents::confidential::balance_snapshots::get_confidential_balance_chart),
         )
         .route(
             "/api/balance-history/export",

@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::AppState;
 
+pub mod balance_changes_projector;
+pub mod balance_snapshots;
 pub mod balances;
 pub mod generate_intent;
 pub mod history;

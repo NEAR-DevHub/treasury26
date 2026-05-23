@@ -1873,27 +1873,54 @@ pub async fn get_recent_activity(
                 }
             }
 
-            // Check if this change has swap info (as fulfillment or deposit leg)
-            let swap = swap_map.get(&change.id).map(|(role, idx)| {
-                let s = &swap_records[*idx];
-                let sent_token_metadata = s
-                    .sent_token_id
-                    .as_ref()
-                    .map(|id| resolve_swap_metadata(id, &metadata_map));
-                let received_token_metadata =
-                    resolve_swap_metadata(&s.received_token_id, &metadata_map);
+            // Check if this change has swap info (as fulfillment or deposit leg).
+            // Public rows go through the detected_swaps join (`swap_map`).
+            // Confidential rows arrive with `change.swap` already populated by
+            // confidential_list (route-mod `SwapInfo`, no `swap_role`) — those
+            // are always the fulfillment side per the confidential exchange
+            // contract.
+            let swap = swap_map
+                .get(&change.id)
+                .map(|(role, idx)| {
+                    let s = &swap_records[*idx];
+                    let sent_token_metadata = s
+                        .sent_token_id
+                        .as_ref()
+                        .map(|id| resolve_swap_metadata(id, &metadata_map));
+                    let received_token_metadata =
+                        resolve_swap_metadata(&s.received_token_id, &metadata_map);
 
-                SwapInfo {
-                    sent_token_id: s.sent_token_id.clone(),
-                    sent_amount: s.sent_amount.clone(),
-                    sent_token_metadata,
-                    received_token_id: s.received_token_id.clone(),
-                    received_amount: s.received_amount.clone(),
-                    received_token_metadata,
-                    solver_transaction_hash: s.solver_transaction_hash.clone(),
-                    swap_role: role.to_string(),
-                }
-            });
+                    SwapInfo {
+                        sent_token_id: s.sent_token_id.clone(),
+                        sent_amount: s.sent_amount.clone(),
+                        sent_token_metadata,
+                        received_token_id: s.received_token_id.clone(),
+                        received_amount: s.received_amount.clone(),
+                        received_token_metadata,
+                        solver_transaction_hash: s.solver_transaction_hash.clone(),
+                        swap_role: role.to_string(),
+                    }
+                })
+                .or_else(|| {
+                    change.swap.as_ref().map(|s| {
+                        let sent_token_metadata = s
+                            .sent_token_id
+                            .as_ref()
+                            .map(|id| resolve_swap_metadata(id, &metadata_map));
+                        let received_token_metadata =
+                            resolve_swap_metadata(&s.received_token_id, &metadata_map);
+                        SwapInfo {
+                            sent_token_id: s.sent_token_id.clone(),
+                            sent_amount: s.sent_amount.clone(),
+                            sent_token_metadata,
+                            received_token_id: s.received_token_id.clone(),
+                            received_amount: s.received_amount.clone(),
+                            received_token_metadata,
+                            solver_transaction_hash: s.solver_transaction_hash.clone(),
+                            swap_role: "fulfillment".to_string(),
+                        }
+                    })
+                });
 
             Some(RecentActivity {
                 id: change.id,

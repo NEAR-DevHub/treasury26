@@ -20,6 +20,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::counterparty::{convert_raw_to_decimal, ensure_ft_metadata};
+use crate::handlers::intents::confidential::balance_changes_projector::refresh_gold_metadata_for_intent;
 use crate::handlers::intents::confidential::history_store::link_intent_to_history_event;
 
 /// Legacy payload form: `predecessor=AccountId("…") … payload_v2: Some(Eddsa(Bytes("<hex>")))`.
@@ -108,6 +109,8 @@ pub async fn mark_confidential_intent_submitted(
     dao_id: &str,
     payload_hash: &str,
     executed_at: chrono::DateTime<chrono::Utc>,
+    block_height: Option<i64>,
+    transaction_hash: Option<&str>,
 ) -> Result<Option<SubmittedIntentInfo>, Box<dyn std::error::Error>> {
     let row = sqlx::query_as::<_, (Option<Value>,)>(
         r#"
@@ -132,6 +135,8 @@ pub async fn mark_confidential_intent_submitted(
         UPDATE confidential_intents
         SET status = 'submitted',
             executed_at = COALESCE(executed_at, $3),
+            execution_block_height = COALESCE(execution_block_height, $4),
+            execution_transaction_hash = COALESCE(execution_transaction_hash, $5),
             updated_at = NOW()
         WHERE dao_id = $1
           AND payload_hash = $2
@@ -140,6 +145,8 @@ pub async fn mark_confidential_intent_submitted(
     .bind(dao_id)
     .bind(payload_hash)
     .bind(executed_at)
+    .bind(block_height)
+    .bind(transaction_hash)
     .execute(app_pool)
     .await?;
 
@@ -153,6 +160,8 @@ pub async fn mark_confidential_intent_submitted(
             history_event_id
         );
     }
+
+    refresh_gold_metadata_for_intent(app_pool, dao_id, payload_hash).await?;
 
     Ok(Some(SubmittedIntentInfo { recipient }))
 }

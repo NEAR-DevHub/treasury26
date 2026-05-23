@@ -6,8 +6,13 @@
 //! signed intent is submitted to the 1Click API automatically.
 
 use crate::{
-    AppState, constants::V1_SIGNER_CONTRACT_ID,
-    handlers::intents::confidential::history_store::link_intent_to_history_event,
+    AppState,
+    constants::V1_SIGNER_CONTRACT_ID,
+    handlers::intents::confidential::{
+        balance_changes_projector::refresh_gold_metadata_for_intent,
+        history_store::link_intent_to_history_event,
+        history_worker::trigger_confidential_history_refresh,
+    },
     utils::cache::CacheKey,
 };
 use base64::Engine;
@@ -411,6 +416,25 @@ pub async fn try_auto_submit_intent(
                                 e
                             );
                         }
+                    }
+
+                    // Pull fresh Bronze for this DAO so the just-submitted intent's
+                    // 1Click history row is available immediately. Resets the
+                    // activity timestamp + next_poll_at so the scheduler stays
+                    // in the hot tier.
+                    trigger_confidential_history_refresh(state.as_ref(), treasury_id).await;
+
+                    // Must run after the refresh above so the Gold row exists.
+                    if let Err(e) =
+                        refresh_gold_metadata_for_intent(&state.db_pool, treasury_id, payload_hash)
+                            .await
+                    {
+                        log::warn!(
+                            "Failed to refresh confidential gold metadata for {} (hash={}): {}",
+                            treasury_id,
+                            payload_hash,
+                            e
+                        );
                     }
                 }
             } else {
