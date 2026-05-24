@@ -81,7 +81,6 @@ pub async fn fetch_balance_change_legs(
         .as_ref()
         .map(|types| classify_direction_filter(types));
 
-
     let mut builder = QueryBuilder::<sqlx::Postgres>::new(
         r#"
         SELECT
