@@ -153,32 +153,32 @@ pub async fn fetch_balance_change_legs(
         params.to_accounts_not.as_deref(),
     );
 
-    if params.min_amount.is_some() || params.max_amount.is_some() {
-        if let Some(decimals) = single_token_decimals(state, params).await {
-            let mult = 10f64.powi(decimals as i32);
-            let min_raw = params.min_amount.map(|v| v * mult);
-            let max_raw = params.max_amount.map(|v| v * mult);
-            leg_rows.retain(|leg| {
-                let abs = leg
-                    .amount
-                    .clone()
-                    .abs()
-                    .to_string()
-                    .parse::<f64>()
-                    .unwrap_or(0.0);
-                if let Some(min) = min_raw
-                    && abs < min
-                {
-                    return false;
-                }
-                if let Some(max) = max_raw
-                    && abs > max
-                {
-                    return false;
-                }
-                true
-            });
-        }
+    if (params.min_amount.is_some() || params.max_amount.is_some())
+        && let Some(decimals) = single_token_decimals(state, params).await
+    {
+        let mult = 10f64.powi(decimals as i32);
+        let min_raw = params.min_amount.map(|v| v * mult);
+        let max_raw = params.max_amount.map(|v| v * mult);
+        leg_rows.retain(|leg| {
+            let abs = leg
+                .amount
+                .clone()
+                .abs()
+                .to_string()
+                .parse::<f64>()
+                .unwrap_or(0.0);
+            if let Some(min) = min_raw
+                && abs < min
+            {
+                return false;
+            }
+            if let Some(max) = max_raw
+                && abs > max
+            {
+                return false;
+            }
+            true
+        });
     }
 
     let mut enriched: Vec<EnrichedBalanceChange> = leg_rows

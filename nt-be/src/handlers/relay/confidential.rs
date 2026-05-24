@@ -80,16 +80,20 @@ pub(crate) async fn fetch_mpc_public_key(
     Ok(result.data)
 }
 
+pub struct PendingIntentInput<'a> {
+    pub dao_id: &'a str,
+    pub payload_hash: &'a str,
+    pub intent_payload: &'a Value,
+    pub correlation_id: Option<&'a str>,
+    pub quote_metadata: Option<&'a Value>,
+    pub deposit_address: &'a str,
+    pub notes: Option<&'a str>,
+}
+
 /// Store a pending intent for later auto-submission.
 pub async fn store_pending_intent(
     pool: &PgPool,
-    dao_id: &str,
-    payload_hash: &str,
-    intent_payload: &Value,
-    correlation_id: Option<&str>,
-    quote_metadata: Option<&Value>,
-    deposit_address: &str,
-    notes: Option<&str>,
+    input: PendingIntentInput<'_>,
 ) -> Result<(), String> {
     sqlx::query(
         r#"
@@ -115,21 +119,21 @@ pub async fn store_pending_intent(
             updated_at = NOW()
         "#,
     )
-    .bind(dao_id)
-    .bind(payload_hash)
-    .bind(intent_payload)
-    .bind(correlation_id)
-    .bind(quote_metadata)
-    .bind(deposit_address)
-    .bind(notes)
+    .bind(input.dao_id)
+    .bind(input.payload_hash)
+    .bind(input.intent_payload)
+    .bind(input.correlation_id)
+    .bind(input.quote_metadata)
+    .bind(input.deposit_address)
+    .bind(input.notes)
     .execute(pool)
     .await
     .map_err(|e| format!("Failed to store pending intent: {}", e))?;
 
     log::info!(
         "Stored pending confidential intent for {} (hash={})",
-        dao_id,
-        payload_hash
+        input.dao_id,
+        input.payload_hash
     );
     Ok(())
 }

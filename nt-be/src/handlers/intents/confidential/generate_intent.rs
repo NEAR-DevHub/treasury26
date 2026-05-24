@@ -141,13 +141,15 @@ pub async fn generate_intent(
 
         if let Err(e) = crate::handlers::relay::confidential::store_pending_intent(
             &state.db_pool,
-            dao_id,
-            &payload_hash,
-            payload,
-            correlation_id,
-            Some(&request.quote_metadata),
-            &deposit_address,
-            request.notes.as_deref(),
+            crate::handlers::relay::confidential::PendingIntentInput {
+                dao_id,
+                payload_hash: &payload_hash,
+                intent_payload: payload,
+                correlation_id,
+                quote_metadata: Some(&request.quote_metadata),
+                deposit_address: &deposit_address,
+                notes: request.notes.as_deref(),
+            },
         )
         .await
         {
