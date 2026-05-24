@@ -288,6 +288,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_real_fetch_history() {
         let state = create_real_api_state().await;
         let dao_id = AccountIdRef::new("tobi.sputnik-dao.near").unwrap();
@@ -319,6 +320,7 @@ mod tests {
     ///
     /// Run with: cargo test test_real_fetch_history_pagination -- --ignored --nocapture
     #[tokio::test]
+    #[ignore]
     async fn test_real_fetch_history_pagination() {
         let state = create_real_api_state().await;
         let dao_id = AccountIdRef::new("tobi.sputnik-dao.near").unwrap();
