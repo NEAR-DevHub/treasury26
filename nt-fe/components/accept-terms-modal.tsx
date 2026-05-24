@@ -16,18 +16,19 @@ import { useNear } from "@/stores/near-store";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { ScrollArea } from "./ui/scroll-area";
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
 
 interface AcceptTermsModalProps {
     open: boolean;
+    variant: "firstTime" | "returning";
 }
 
-export function AcceptTermsModal({ open }: AcceptTermsModalProps) {
+export function AcceptTermsModal({ open, variant }: AcceptTermsModalProps) {
     const t = useTranslations("acceptTerms");
     const [accepted, setAccepted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { acceptTerms } = useNear();
+    const isReturningUser = variant === "returning";
 
     const handleAccept = async () => {
         if (!accepted) return;
@@ -45,61 +46,80 @@ export function AcceptTermsModal({ open }: AcceptTermsModalProps) {
     return (
         <Dialog open={open}>
             <DialogContent
-                className="lg:max-w-lg sm:max-w-sm max-h-[90vh]"
+                className="lg:max-w-lg sm:max-w-sm max-h-[90vh] overflow-hidden"
                 onPointerDownOutside={(e) => e.preventDefault()}
                 onEscapeKeyDown={(e) => e.preventDefault()}
                 onInteractOutside={(e) => e.preventDefault()}
                 showCloseButton={false}
             >
                 <DialogHeader closeButton={false}>
-                    <DialogTitle>{t("title")}</DialogTitle>
+                    <DialogTitle>
+                        {isReturningUser
+                            ? t("returningTitle")
+                            : t("firstTimeTitle")}
+                    </DialogTitle>
                 </DialogHeader>
 
-                <ScrollArea className="max-h-[60vh]">
-                    <DialogDescription asChild>
-                        <div className="space-y-3 text-sm text-muted-foreground">
-                            <ul className="space-y-4">
-                                <li>
-                                    <p className="text-foreground mb-1">
-                                        {t("privacyTitle")}
-                                    </p>
-                                    {t("privacyBody")}
-                                </li>
-                                <li>
-                                    <p className="text-foreground mb-1">
-                                        {t("minimalTitle")}
-                                    </p>
-                                    {t("minimalBody")}
-                                </li>
-                                <li>
-                                    <p className="text-foreground mb-1">
-                                        {t("noCustodyTitle")}
-                                    </p>
-                                    {t("noCustodyBody")}
-                                </li>
-                                <li>
-                                    <p className="text-foreground mb-1">
-                                        {t("publicTitle")}
-                                    </p>
-                                    {t("publicBody")}
-                                </li>
-                                <li>
-                                    <p className="text-foreground mb-1">
-                                        {t("responsibilityTitle")}
-                                    </p>
-                                    {t("responsibilityBody")}
-                                </li>
-                                <li>
-                                    <p className="text-foreground mb-1">
-                                        {t("futureTitle")}
-                                    </p>
-                                    {t("futureBody")}
-                                </li>
-                            </ul>
-                        </div>
-                    </DialogDescription>
+                <div className="flex-1 min-h-0 overflow-y-auto -mx-3 px-3">
+                    {isReturningUser ? (
+                        <DialogDescription asChild>
+                            <div className="space-y-3 text-sm">
+                                <p className="text-muted-foreground">
+                                    {t("returningEffectiveDate")}
+                                </p>
+                                <p className="text-foreground">
+                                    {t("returningBody")}
+                                </p>
+                            </div>
+                        </DialogDescription>
+                    ) : (
+                        <DialogDescription asChild>
+                            <div className="space-y-3 text-sm text-muted-foreground">
+                                <ul className="space-y-4">
+                                    <li>
+                                        <p className="text-foreground mb-1">
+                                            {t("privacyTitle")}
+                                        </p>
+                                        {t("privacyBody")}
+                                    </li>
+                                    <li>
+                                        <p className="text-foreground mb-1">
+                                            {t("minimalTitle")}
+                                        </p>
+                                        {t("minimalBody")}
+                                    </li>
+                                    <li>
+                                        <p className="text-foreground mb-1">
+                                            {t("noCustodyTitle")}
+                                        </p>
+                                        {t("noCustodyBody")}
+                                    </li>
+                                    <li>
+                                        <p className="text-foreground mb-1">
+                                            {t("publicTitle")}
+                                        </p>
+                                        {t("publicBody")}
+                                    </li>
+                                    <li>
+                                        <p className="text-foreground mb-1">
+                                            {t("responsibilityTitle")}
+                                        </p>
+                                        {t("responsibilityBody")}
+                                    </li>
+                                    <li>
+                                        <p className="text-foreground mb-1">
+                                            {t("futureTitle")}
+                                        </p>
+                                        {t("futureBody")}
+                                    </li>
+                                </ul>
+                            </div>
+                        </DialogDescription>
+                    )}
+                </div>
 
-                    <div className="flex items-start gap-3 mt-2">
+                <DialogFooter className="flex-col gap-3 items-stretch sm:flex-col  pt-0">
+                    <div className="flex items-start gap-3">
                         <Checkbox
                             id="terms"
                             checked={accepted}
@@ -137,24 +157,23 @@ export function AcceptTermsModal({ open }: AcceptTermsModalProps) {
                             })}
                         </Label>
                     </div>
-
-                    <DialogFooter>
-                        <Button
-                            onClick={handleAccept}
-                            disabled={!accepted || isSubmitting}
-                            className="w-full"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    {t("accepting")}
-                                </>
-                            ) : (
-                                t("continue")
-                            )}
-                        </Button>
-                    </DialogFooter>
-                </ScrollArea>
+                    <Button
+                        onClick={handleAccept}
+                        disabled={!accepted || isSubmitting}
+                        className="w-full"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                {t("accepting")}
+                            </>
+                        ) : isReturningUser ? (
+                            t("returningAcceptAndContinue")
+                        ) : (
+                            t("continue")
+                        )}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

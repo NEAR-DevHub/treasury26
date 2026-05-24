@@ -2,7 +2,7 @@
 
 import { ChevronDown, FileText, Loader2, LogIn, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/button";
@@ -21,6 +21,7 @@ export function SignIn() {
     const tCommon = useTranslations("common");
     const router = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const {
         accountId: signedAccountId,
         isInitializing,
@@ -29,12 +30,17 @@ export function SignIn() {
     } = useNear();
     const [isOpen, setIsOpen] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
+    const connectWalletLabel = `${t("connect")} ${t("wallet")}`;
 
     const handleConnect = async () => {
         setIsConnecting(true);
         try {
             const params = new URLSearchParams();
-            params.set("returnTo", pathname);
+            const currentQuery = searchParams.toString();
+            const returnTo = currentQuery
+                ? `${pathname}?${currentQuery}`
+                : pathname;
+            params.set("returnTo", returnTo);
             params.set("context", "within_treasury");
             router.push(`/login?${params.toString()}`);
         } finally {
@@ -44,34 +50,61 @@ export function SignIn() {
 
     if (isInitializing) {
         return (
-            <Button disabled className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {tCommon("loading")}
-            </Button>
+            <>
+                <Button
+                    disabled
+                    size="icon"
+                    className="md:hidden"
+                    aria-label={tCommon("loading")}
+                >
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                </Button>
+                <Button disabled className="hidden md:flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {tCommon("loading")}
+                </Button>
+            </>
         );
     }
 
     // Show connect button if not connected or not authenticated
     if (!signedAccountId || !isAuthenticated) {
         return (
-            <Button
-                onClick={handleConnect}
-                disabled={isConnecting}
-                className="flex items-center gap-2"
-            >
-                {isConnecting ? (
-                    <>
+            <>
+                <Button
+                    onClick={handleConnect}
+                    disabled={isConnecting}
+                    size="icon"
+                    className="md:hidden"
+                    aria-label={connectWalletLabel}
+                >
+                    {isConnecting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        {tCommon("connecting")}
-                    </>
-                ) : (
-                    <>
+                    ) : (
                         <LogIn className="h-4 w-4" />
-                        {t("connect")}{" "}
-                        <span className="hidden md:inline">{t("wallet")}</span>
-                    </>
-                )}
-            </Button>
+                    )}
+                </Button>
+                <Button
+                    onClick={handleConnect}
+                    disabled={isConnecting}
+                    className="hidden md:flex items-center gap-2"
+                >
+                    {isConnecting ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {tCommon("connecting")}
+                        </>
+                    ) : (
+                        <>
+                            <LogIn className="h-4 w-4" />
+                            {t("connect")}{" "}
+                            <span className="hidden md:inline">
+                                {t("wallet")}
+                            </span>
+                        </>
+                    )}
+                </Button>
+            </>
         );
     }
 

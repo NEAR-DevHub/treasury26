@@ -1299,7 +1299,11 @@
         "sidebarBody": "Tu equipo ha alcanzado las acciones patrocinadas mensuales. Podrás continuar después del {date} o ⬇️"
     },
     "acceptTerms": {
-        "title": "Acepta los términos para continuar",
+        "firstTimeTitle": "Acepta los términos para continuar",
+        "returningTitle": "Hemos actualizado nuestros términos",
+        "returningEffectiveDate": "Vigente desde el 21 de mayo de 2026",
+        "returningBody": "Hemos realizado actualizaciones en nuestros Términos de servicio y Política de privacidad. Revísalos antes de continuar usando Trezu.",
+        "returningAcceptAndContinue": "Aceptar y continuar",
         "privacyTitle": "Tu privacidad en Trezu",
         "privacyBody": "Trezu es una interfaz no custodial. Damos prioridad a tu privacidad mientras mantenemos la plataforma segura y funcional.",
         "minimalTitle": "Datos mínimos",
@@ -1601,6 +1605,7 @@
         "last3Days": "Últimos 3 días",
         "last7Days": "Últimos 7 días",
         "last14Days": "Últimos 14 días",
+        "last30Days": "Últimos 30 días",
         "lastMonth": "Último mes",
         "last3Months": "Últimos 3 meses",
         "last6Months": "Últimos 6 meses"
@@ -1736,7 +1741,8 @@
         "otherAssets": "Otros activos",
         "networksWithAssets": "Redes con activos",
         "supportedNetworks": "Redes compatibles",
-        "comingSoon": "Próximamente"
+        "comingSoon": "Próximamente",
+        "networksCount": "{count, plural, one {# Red} other {# Redes}}"
     },
     "intentsQuote": {
         "initializing": "El servicio de cotización aún se está iniciando. Inténtalo de nuevo.",

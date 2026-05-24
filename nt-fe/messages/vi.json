@@ -1299,7 +1299,11 @@
         "sidebarBody": "Đội của bạn đã đạt số hành động được tài trợ trong tháng. Bạn có thể tiếp tục sau {date} hoặc ⬇️"
     },
     "acceptTerms": {
-        "title": "Chấp nhận điều khoản để tiếp tục",
+        "firstTimeTitle": "Chấp nhận điều khoản để tiếp tục",
+        "returningTitle": "Chúng tôi đã cập nhật Điều khoản",
+        "returningEffectiveDate": "Có hiệu lực từ ngày 21 tháng 5 năm 2026",
+        "returningBody": "Chúng tôi đã cập nhật Điều khoản dịch vụ và Chính sách quyền riêng tư. Vui lòng xem lại trước khi tiếp tục sử dụng Trezu.",
+        "returningAcceptAndContinue": "Chấp nhận và tiếp tục",
         "privacyTitle": "Quyền riêng tư của bạn tại Trezu",
         "privacyBody": "Trezu là giao diện không lưu ký. Chúng tôi ưu tiên quyền riêng tư của bạn đồng thời đảm bảo nền tảng vẫn an toàn và hoạt động tốt.",
         "minimalTitle": "Dữ liệu tối thiểu",
@@ -1601,6 +1605,7 @@
         "last3Days": "3 ngày qua",
         "last7Days": "7 ngày qua",
         "last14Days": "14 ngày qua",
+        "last30Days": "30 ngày qua",
         "lastMonth": "Tháng trước",
         "last3Months": "3 tháng qua",
         "last6Months": "6 tháng qua"
@@ -1736,7 +1741,8 @@
         "otherAssets": "Tài sản khác",
         "networksWithAssets": "Mạng có tài sản",
         "supportedNetworks": "Mạng được hỗ trợ",
-        "comingSoon": "Sắp ra mắt"
+        "comingSoon": "Sắp ra mắt",
+        "networksCount": "{count, plural, other {# Mạng}}"
     },
     "intentsQuote": {
         "initializing": "Dịch vụ báo giá vẫn đang khởi tạo. Vui lòng thử lại.",

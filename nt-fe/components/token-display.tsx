@@ -1,7 +1,6 @@
 import { useTranslations } from "next-intl";
 import { ChainIcons, TreasuryAsset } from "@/lib/api";
 import { cn, formatCurrency, formatSmartAmount } from "@/lib/utils";
-import { useThemeStore } from "@/stores/theme-store";
 import Big from "@/lib/big";
 import {
     getNetworkDisplayCaseClass,
@@ -79,15 +78,10 @@ export const NetworkIconDisplay = ({
     networkNameClassName,
     expandNearComLabel = false,
 }: NetworkIconDisplayProps) => {
-    const { theme } = useThemeStore();
     const getResidencyLabel = useResidencyLabel();
     const tAddressBookTable = useTranslations("addressBookTable");
 
-    const iconUrl = chainIcons
-        ? theme === "dark"
-            ? chainIcons.dark
-            : chainIcons.light
-        : null;
+    const iconUrl = chainIcons?.icon ?? null;
 
     const isNEAR = networkName.toLowerCase() === NEAR_NETWORK_ID;
     const displayName = getLocalizedNetworkDisplayName({
@@ -137,7 +131,6 @@ export const NetworkDisplay = ({
     asset: TreasuryAsset;
     subLabel?: string;
 }) => {
-    const { theme } = useThemeStore();
     const tRes = useTranslations("residency");
     const tAddressBookTable = useTranslations("addressBookTable");
 
@@ -164,11 +157,7 @@ export const NetworkDisplay = ({
             break;
     }
 
-    const image = asset.chainIcons
-        ? theme === "light"
-            ? asset.chainIcons.light
-            : asset.chainIcons.dark
-        : asset.icon;
+    const image = asset.chainIcons ? asset.chainIcons.icon : asset.icon;
 
     return (
         <div className="flex items-center gap-3">

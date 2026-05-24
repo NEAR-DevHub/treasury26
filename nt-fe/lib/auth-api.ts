@@ -23,11 +23,13 @@ export interface LoginRequest {
 export interface LoginResponse {
     accountId: string;
     termsAccepted: boolean;
+    hasAcceptedV1Terms?: boolean;
 }
 
 export interface AuthUserInfo {
     accountId: string;
     termsAccepted: boolean;
+    hasAcceptedV1Terms?: boolean;
 }
 
 // ============================================================================

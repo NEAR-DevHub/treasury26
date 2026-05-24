@@ -1,4 +1,3 @@
-import { useThemeStore } from "@/stores/theme-store";
 import { cva, type VariantProps } from "class-variance-authority";
 import { getNetworkDisplayName } from "@/components/token-display";
 import {
@@ -43,22 +42,19 @@ const iconSizeMap = {
 
 interface NetworkBadgeProps extends VariantProps<typeof networkBadgeVariants> {
     name: string;
-    iconDark?: string;
-    iconLight?: string;
+    icon?: string;
     className?: string;
     iconOnly?: boolean;
 }
 
 export function NetworkBadge({
     name,
-    iconDark,
-    iconLight,
+    icon,
     variant,
     size,
     className,
     iconOnly = false,
 }: NetworkBadgeProps) {
-    const { theme } = useThemeStore();
     const isMobile = useMediaQuery("(max-width: 768px)");
     const tAddressBookTable = useTranslations("addressBookTable");
     const displayName = getLocalizedNetworkDisplayName({
@@ -66,8 +62,6 @@ export function NetworkBadge({
         networkLabel: tAddressBookTable("network"),
         fallbackName: getNetworkDisplayName(name),
     });
-    const icon =
-        theme === "dark" ? (iconDark ?? iconLight) : (iconLight ?? iconDark);
     const iconSize = iconSizeMap[isMobile ? "icon" : (size ?? "sm")];
     const badge = (
         <span
@@ -77,12 +71,7 @@ export function NetworkBadge({
                 <img
                     src={icon}
                     alt={displayName}
-                    className={cn(
-                        iconSize,
-                        name.toLowerCase() === "near protocol"
-                            ? "p-0.5"
-                            : "rounded-[8px]",
-                    )}
+                    className={cn(iconSize, "rounded-[8px]")}
                 />
             )}
             {!iconOnly && (

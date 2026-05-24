@@ -10,6 +10,13 @@ import {
     pickLocaleFromAcceptLanguage,
 } from "@/i18n/config";
 
+const ATTRIBUTION_KEYS = [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+] as const;
+
 /**
  * Extract the client's real IP address from request headers.
  */
@@ -75,7 +82,42 @@ function isSanctionedLocation(
     return false;
 }
 
+function appendLoginAttributionFromReturnTo(request: NextRequest) {
+    if (request.nextUrl.pathname !== "/login") return null;
+
+    const loginUrl = request.nextUrl.clone();
+    const searchParams = loginUrl.searchParams;
+    const hasTopLevelAttribution = ATTRIBUTION_KEYS.some((key) =>
+        searchParams.has(key),
+    );
+    if (hasTopLevelAttribution) return null;
+
+    const returnTo = searchParams.get("returnTo");
+    if (!returnTo) return null;
+
+    let returnToUrl: URL;
+    try {
+        returnToUrl = new URL(returnTo, loginUrl.origin);
+    } catch {
+        return null;
+    }
+
+    let hasChanges = false;
+    for (const key of ATTRIBUTION_KEYS) {
+        const value = returnToUrl.searchParams.get(key);
+        if (!value || searchParams.has(key)) continue;
+        searchParams.set(key, value);
+        hasChanges = true;
+    }
+
+    if (!hasChanges) return null;
+    return NextResponse.redirect(loginUrl);
+}
+
 export function proxy(request: NextRequest) {
+    const attributionRedirect = appendLoginAttributionFromReturnTo(request);
+    if (attributionRedirect) return attributionRedirect;
+
     const { countryCode, regionCode } = getGeoInfo(request);
 
     if (isSanctionedLocation(countryCode, regionCode)) {

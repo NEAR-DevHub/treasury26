@@ -1299,7 +1299,11 @@
         "sidebarBody": "Votre équipe a atteint les actions sponsorisées mensuelles. Vous pouvez continuer après {date} ou ⬇️"
     },
     "acceptTerms": {
-        "title": "Acceptez les conditions pour continuer",
+        "firstTimeTitle": "Acceptez les conditions pour continuer",
+        "returningTitle": "Nous avons mis à jour nos conditions",
+        "returningEffectiveDate": "Entrée en vigueur le 21 mai 2026",
+        "returningBody": "Nous avons apporté des mises à jour à nos Conditions d'utilisation et à notre Politique de confidentialité. Veuillez les consulter avant de continuer à utiliser Trezu.",
+        "returningAcceptAndContinue": "Accepter et continuer",
         "privacyTitle": "Votre vie privée chez Trezu",
         "privacyBody": "Trezu est une interface non-custodiale. Nous accordons la priorité à votre vie privée tout en garantissant que la plateforme reste sécurisée et fonctionnelle.",
         "minimalTitle": "Données minimales",
@@ -1601,6 +1605,7 @@
         "last3Days": "3 derniers jours",
         "last7Days": "7 derniers jours",
         "last14Days": "14 derniers jours",
+        "last30Days": "30 derniers jours",
         "lastMonth": "Le mois dernier",
         "last3Months": "3 derniers mois",
         "last6Months": "6 derniers mois"
@@ -1736,7 +1741,8 @@
         "otherAssets": "Autres actifs",
         "networksWithAssets": "Réseaux avec actifs",
         "supportedNetworks": "Réseaux pris en charge",
-        "comingSoon": "Bientôt disponible"
+        "comingSoon": "Bientôt disponible",
+        "networksCount": "{count, plural, one {# Réseau} other {# Réseaux}}"
     },
     "intentsQuote": {
         "initializing": "Le service de devis est encore en cours d'initialisation. Veuillez réessayer.",

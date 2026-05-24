@@ -8,6 +8,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { computeConfigDiff } from "../../utils/config-diff-utils";
 import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
+import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface ChangeConfigExpandedProps {
     data: ChangeConfigData;
@@ -20,8 +21,9 @@ export function ChangeConfigExpanded({
 }: ChangeConfigExpandedProps) {
     const t = useTranslations("proposals.expanded");
     const { treasuryId } = useTreasury();
+    const requestDisplayContext = useRequestDisplayContext()!;
 
-    const isPending = proposal.status === "InProgress";
+    const isPending = requestDisplayContext.isPending;
 
     // If not pending, fetch the config at the time of submission
     const { data: daoConfig, isLoading: isLoadingTimestamped } =

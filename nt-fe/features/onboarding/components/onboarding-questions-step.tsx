@@ -34,8 +34,6 @@ interface QuestionnaireOption {
     id: string;
     label: string;
     iconSrc?: string;
-    iconDark?: string;
-    iconLight?: string;
     iconImageClassName?: string;
 }
 
@@ -474,8 +472,7 @@ export function OnboardingQuestionsStep({
         }
         return {
             ...option,
-            iconDark: chain.iconDark,
-            iconLight: chain.iconLight,
+            iconSrc: chain.icon,
             iconImageClassName:
                 option.id === NEAR_NETWORK_ID ? "p-0.5" : "rounded-full",
         };

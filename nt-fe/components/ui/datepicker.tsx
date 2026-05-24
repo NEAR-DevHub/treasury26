@@ -88,6 +88,7 @@ export interface DatePresetLabels {
     last3Days: string;
     last7Days: string;
     last14Days: string;
+    last30Days: string;
     lastMonth: string;
     last3Months: string;
     last6Months: string;
@@ -131,10 +132,17 @@ export function buildDefaultDatePresets(labels: DatePresetLabels) {
             },
         },
         {
+            label: labels.last30Days,
+            value: {
+                from: subDays(startOfDay(new Date()), 30),
+                to: endOfDay(new Date()),
+            },
+        },
+        {
             label: labels.lastMonth,
             value: {
-                from: subMonths(startOfDay(new Date()), 1),
-                to: endOfDay(new Date()),
+                from: startOfMonth(subMonths(new Date(), 1)),
+                to: endOfMonth(subMonths(new Date(), 1)),
             },
         },
         {
@@ -162,6 +170,7 @@ export function useDefaultDatePresets() {
         last3Days: t("last3Days"),
         last7Days: t("last7Days"),
         last14Days: t("last14Days"),
+        last30Days: t("last30Days"),
         lastMonth: t("lastMonth"),
         last3Months: t("last3Months"),
         last6Months: t("last6Months"),

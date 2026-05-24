@@ -9,6 +9,7 @@ use near_api::types::json::Base64VecU8;
 use near_api::{AccountId, PublicKey};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use std::sync::Arc;
 
 /// Response body for challenge creation
@@ -37,6 +38,15 @@ pub struct LoginRequest {
 pub struct MeResponse {
     pub account_id: String,
     pub terms_accepted: bool,
+    pub has_accepted_v1_terms: bool,
+}
+
+#[derive(Debug, FromRow)]
+struct UserTermsRow {
+    id: uuid::Uuid,
+    account_id: String,
+    v1_terms_accepted_at: Option<chrono::DateTime<chrono::Utc>>,
+    v2_terms_accepted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// Create a new authentication challenge (nonce) for the account
@@ -132,15 +142,15 @@ pub async fn login(
         ));
     }
 
-    let user = sqlx::query!(
+    let user = sqlx::query_as::<_, UserTermsRow>(
         r#"
         INSERT INTO users (account_id)
         VALUES ($1)
         ON CONFLICT (account_id) DO UPDATE SET updated_at = NOW()
-        RETURNING id, account_id, terms_accepted_at
+        RETURNING id, account_id, v1_terms_accepted_at, v2_terms_accepted_at
         "#,
-        request.account_id.as_str()
     )
+    .bind(request.account_id.as_str())
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
@@ -189,7 +199,8 @@ pub async fn login(
         jar,
         Json(MeResponse {
             account_id: user.account_id,
-            terms_accepted: user.terms_accepted_at.is_some(),
+            terms_accepted: user.v2_terms_accepted_at.is_some(),
+            has_accepted_v1_terms: user.v1_terms_accepted_at.is_some(),
         }),
     ))
 }
@@ -201,7 +212,10 @@ pub async fn accept_terms(
 ) -> Result<impl IntoResponse, AuthError> {
     sqlx::query!(
         r#"
-        UPDATE users SET terms_accepted_at = NOW(), updated_at = NOW()
+        UPDATE users
+        SET
+            v2_terms_accepted_at = NOW(),
+            updated_at = NOW()
         WHERE account_id = $1
         "#,
         auth_user.account_id.as_str()
@@ -218,13 +232,14 @@ pub async fn get_me(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
 ) -> Result<Json<MeResponse>, AuthError> {
-    let user = sqlx::query!(
+    let user = sqlx::query_as::<_, UserTermsRow>(
         r#"
-        SELECT account_id, terms_accepted_at FROM users
+        SELECT id, account_id, v1_terms_accepted_at, v2_terms_accepted_at
+        FROM users
         WHERE account_id = $1
         "#,
-        auth_user.account_id.as_str()
     )
+    .bind(auth_user.account_id.as_str())
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
@@ -232,7 +247,8 @@ pub async fn get_me(
     match user {
         Some(user) => Ok(Json(MeResponse {
             account_id: user.account_id,
-            terms_accepted: user.terms_accepted_at.is_some(),
+            terms_accepted: user.v2_terms_accepted_at.is_some(),
+            has_accepted_v1_terms: user.v1_terms_accepted_at.is_some(),
         })),
         None => Err(AuthError::InvalidToken("User not found".to_string())),
     }

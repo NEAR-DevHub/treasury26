@@ -23,6 +23,7 @@ import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { ArrowUpDown } from "./animate-ui/icons/arrow-up-down";
 import { Bookmark } from "./animate-ui/icons/bookmark";
 import { ChartColumn } from "./animate-ui/icons/chart-column";
+import { ChartNoAxesCombined } from "./animate-ui/icons/chart-no-axes-combined";
 import { ContactRound } from "./animate-ui/icons/contact-round";
 import { CreditCard } from "./animate-ui/icons/credit-card";
 import { AnimateIcon, type IconProps } from "./animate-ui/icons/icon";
@@ -134,7 +135,7 @@ const topNavLinks: {
     {
         path: "earn",
         labelKey: "earn",
-        icon: (props) => <ChartColumn {...props} animation="increasing" />,
+        icon: ChartNoAxesCombined,
         id: "earn-new",
     },
 ];

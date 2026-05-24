@@ -26,8 +26,7 @@
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -38,15 +37,17 @@
         "chainName": "Near Protocol",
         "symbol": "wNEAR",
         "balance": {
-            "Standard": { "total": "36538359421329641299999975", "locked": "0" }
+            "Standard": {
+                "total": "36538359421329641299999975",
+                "locked": "0"
+            }
         },
         "decimals": 24,
         "price": "1.048",
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -57,15 +58,17 @@
         "chainName": "Near Protocol",
         "symbol": "wNEAR",
         "balance": {
-            "Standard": { "total": "800000000000000000000000", "locked": "0" }
+            "Standard": {
+                "total": "800000000000000000000000",
+                "locked": "0"
+            }
         },
         "decimals": 24,
         "price": "1.048",
         "name": "Near",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/6535.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -76,15 +79,17 @@
         "chainName": "Near Protocol",
         "symbol": "NPRO",
         "balance": {
-            "Standard": { "total": "250000000000000000000000", "locked": "0" }
+            "Standard": {
+                "total": "250000000000000000000000",
+                "locked": "0"
+            }
         },
         "decimals": 24,
         "price": "0.2000207725966949",
         "name": "NPRO",
         "icon": null,
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -95,15 +100,17 @@
         "chainName": "Avalanche",
         "symbol": "AVAX",
         "balance": {
-            "Standard": { "total": "1514765442315238852", "locked": "0" }
+            "Standard": {
+                "total": "1514765442315238852",
+                "locked": "0"
+            }
         },
         "decimals": 18,
         "price": "9.09",
         "name": "AVAX",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/5805.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/avalanche.svg",
-            "light": "https://near-intents.org/static/icons/network/avalanche.svg"
+            "icon": "https://near.com/static/icons/network/avalanche.svg"
         }
     },
     {
@@ -114,15 +121,17 @@
         "chainName": "Ethereum",
         "symbol": "ETH",
         "balance": {
-            "Standard": { "total": "40015088429776132", "locked": "0" }
+            "Standard": {
+                "total": "40015088429776132",
+                "locked": "0"
+            }
         },
         "decimals": 18,
         "price": "1988.75",
         "name": "ETH",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/1027.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/ethereum_white.svg",
-            "light": "https://near-intents.org/static/icons/network/ethereum.svg"
+            "icon": "https://near.com/static/icons/network/ethereum.svg"
         }
     },
     {
@@ -132,14 +141,18 @@
         "network": "eth",
         "chainName": "Ethereum",
         "symbol": "USDC",
-        "balance": { "Standard": { "total": "125011829", "locked": "0" } },
+        "balance": {
+            "Standard": {
+                "total": "125011829",
+                "locked": "0"
+            }
+        },
         "decimals": 6,
         "price": "0.999912",
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/ethereum_white.svg",
-            "light": "https://near-intents.org/static/icons/network/ethereum.svg"
+            "icon": "https://near.com/static/icons/network/ethereum.svg"
         }
     },
     {
@@ -149,14 +162,18 @@
         "network": "near",
         "chainName": "Near Protocol",
         "symbol": "USDC",
-        "balance": { "Standard": { "total": "119000000", "locked": "0" } },
+        "balance": {
+            "Standard": {
+                "total": "119000000",
+                "locked": "0"
+            }
+        },
         "decimals": 6,
         "price": "0.999912",
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -166,14 +183,18 @@
         "network": "solana",
         "chainName": "Solana",
         "symbol": "SOL",
-        "balance": { "Standard": { "total": "83424010", "locked": "0" } },
+        "balance": {
+            "Standard": {
+                "total": "83424010",
+                "locked": "0"
+            }
+        },
         "decimals": 9,
         "price": "84.14",
         "name": "Solana",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/5426.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/solana.svg",
-            "light": "https://near-intents.org/static/icons/network/solana.svg"
+            "icon": "https://near.com/static/icons/network/solana.svg"
         }
     },
     {
@@ -183,14 +204,18 @@
         "network": "solana",
         "chainName": "Solana",
         "symbol": "USDC",
-        "balance": { "Standard": { "total": "22543646", "locked": "0" } },
+        "balance": {
+            "Standard": {
+                "total": "22543646",
+                "locked": "0"
+            }
+        },
         "decimals": 6,
         "price": "0.999912",
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/solana.svg",
-            "light": "https://near-intents.org/static/icons/network/solana.svg"
+            "icon": "https://near.com/static/icons/network/solana.svg"
         }
     },
     {
@@ -200,14 +225,18 @@
         "network": "xrpledger",
         "chainName": "XRP Ledger",
         "symbol": "XRP",
-        "balance": { "Standard": { "total": "16692367", "locked": "0" } },
+        "balance": {
+            "Standard": {
+                "total": "16692367",
+                "locked": "0"
+            }
+        },
         "decimals": 6,
         "price": "1.48",
         "name": "XRP",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/52.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/xrpledger_white.svg",
-            "light": "https://near-intents.org/static/icons/network/xrpledger.svg"
+            "icon": "https://near.com/static/icons/network/xrpledger.svg"
         }
     },
     {
@@ -217,14 +246,18 @@
         "network": "base",
         "chainName": "Base",
         "symbol": "USDC",
-        "balance": { "Standard": { "total": "9999980", "locked": "0" } },
+        "balance": {
+            "Standard": {
+                "total": "9999980",
+                "locked": "0"
+            }
+        },
         "decimals": 6,
         "price": "0.999912",
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/base.svg",
-            "light": "https://near-intents.org/static/icons/network/base.svg"
+            "icon": "https://near.com/static/icons/network/base.svg"
         }
     },
     {
@@ -234,14 +267,18 @@
         "network": "near",
         "chainName": "Near Protocol",
         "symbol": "USDC",
-        "balance": { "Standard": { "total": "998684", "locked": "0" } },
+        "balance": {
+            "Standard": {
+                "total": "998684",
+                "locked": "0"
+            }
+        },
         "decimals": 6,
         "price": "0.999912",
         "name": "USD Coin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/3408.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/near.svg",
-            "light": "https://near-intents.org/static/icons/network/near_dark.svg"
+            "icon": "https://near.com/static/icons/network/near.svg"
         }
     },
     {
@@ -251,14 +288,18 @@
         "network": "bitcoin",
         "chainName": "Bitcoin",
         "symbol": "BTC",
-        "balance": { "Standard": { "total": "544253", "locked": "0" } },
+        "balance": {
+            "Standard": {
+                "total": "544253",
+                "locked": "0"
+            }
+        },
         "decimals": 8,
         "price": "67540",
         "name": "Bitcoin",
         "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/1.png",
         "chainIcons": {
-            "dark": "https://near-intents.org/static/icons/network/btc.svg",
-            "light": "https://near-intents.org/static/icons/network/btc.svg"
+            "icon": "https://near.com/static/icons/network/btc.svg"
         }
     }
 ]

@@ -1,6 +1,5 @@
 import { ChainIcons } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useThemeStore } from "@/stores/theme-store";
 
 interface TokenDisplayProps {
     symbol: string;
@@ -29,14 +28,7 @@ export const TokenDisplay = ({
     chainIcons,
     iconSize = "md",
 }: TokenDisplayProps) => {
-    const { theme } = useThemeStore();
-
-    const getNetworkIcon = () => {
-        if (!chainIcons) return null;
-        return theme === "light" ? chainIcons.light : chainIcons.dark;
-    };
-
-    const networkIcon = getNetworkIcon();
+    const networkIcon = chainIcons?.icon ?? null;
     const isImageIcon =
         icon && (icon.startsWith("data:image") || icon.startsWith("http"));
 
