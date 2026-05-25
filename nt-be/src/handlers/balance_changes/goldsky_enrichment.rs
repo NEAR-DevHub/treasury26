@@ -1,6 +1,14 @@
-//! Reads indexed execution outcomes from the Goldsky sink DB and writes
-//! enriched `balance_changes` to the app DB. Idempotent via INSERT ON CONFLICT
-//! DO UPDATE so replays overwrite with higher-quality data.
+//! Goldsky Enrichment Worker
+//!
+//! Reads indexed execution outcomes from the Goldsky sink database
+//! and writes enriched balance_changes records to the app database.
+//!
+//! Architecture:
+//! - Goldsky sink DB (read-only): `indexed_dao_outcomes` populated by Goldsky pipeline
+//! - App DB (read-write): `balance_changes` + `goldsky_cursors` for progress tracking
+//!
+//! Idempotent: uses INSERT ... ON CONFLICT DO UPDATE so replays overwrite
+//! with potentially higher-quality data
 
 use super::balance::get_balance_change_at_block;
 use super::counterparty::ensure_ft_metadata;
@@ -668,11 +676,8 @@ async fn handle_confidential_add_proposal(
     Ok(updated)
 }
 
-/// Goldsky observes a confidential intent settle on-chain (v1.signer execution),
-/// but the actual history fetch + Gold projection is expensive and would block
-/// the Goldsky cursor from advancing. Instead, just mark the affected account(s)
-/// due so the periodic confidential-history scheduler picks them up on its next
-/// tick.
+/// Keep the Goldsky cursor moving; history polling and Gold projection run in
+/// the confidential-history scheduler.
 async fn mark_confidential_history_due_for_execution(
     history_state: Option<&AppState>,
     monitored: &std::collections::HashMap<String, bool>,
@@ -1217,7 +1222,6 @@ pub fn spawn_goldsky_enrichment_worker(state: std::sync::Arc<AppState>) {
                             processed
                         );
                     }
-                    // If batch was full, there's likely more data — skip the sleep
                     processed < BATCH_SIZE
                 }
                 Err(e) => {

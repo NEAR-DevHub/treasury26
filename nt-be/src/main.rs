@@ -130,17 +130,14 @@ async fn async_main() {
         });
     }
 
-    //Spawn confidential history worker
     nt_be::handlers::intents::confidential::history_worker::spawn_confidential_history_worker(
         state.clone(),
     );
 
-    //Spawn confidential balance snapshot worker
     nt_be::handlers::intents::confidential::balance_snapshots::spawn_confidential_snapshot_worker(
         state.clone(),
     );
 
-    //Spawn confidential gold reconcilation worker
     nt_be::handlers::intents::confidential::balance_changes_projector::spawn_confidential_gold_reconciliation_worker(
         state.db_pool.clone(),
     );
