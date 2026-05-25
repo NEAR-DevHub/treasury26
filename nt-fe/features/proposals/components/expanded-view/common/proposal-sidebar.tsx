@@ -58,6 +58,14 @@ const iconClass = {
     sm: "size-3",
     md: "size-4",
 };
+
+function parseOptionalDate(value?: string | null) {
+    if (!value) return undefined;
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 export function StepIcon({ status, size = "md" }: StepIconProps) {
     switch (status) {
         case "Success":
@@ -328,11 +336,20 @@ export function ProposalSidebar({
     // Confidential metadata is backend-enriched and nested under mapped.data.
     let depositAddress: string | undefined;
     let isConfidentialPayment = false;
+    let confidentialProposalCreatedAt: Date | undefined;
+    let confidentialExecutedAt: Date | undefined;
     if (isExchangeProposal || isPaymentProposal || isConfidentialRequest) {
         try {
             const { data } = extractProposalData(proposal, treasuryId);
             if (isConfidentialRequest) {
-                const mapped = (data as any)?.mapped;
+                const confidentialData = data as any;
+                confidentialProposalCreatedAt = parseOptionalDate(
+                    confidentialData?.proposalCreatedAt,
+                );
+                confidentialExecutedAt = parseOptionalDate(
+                    confidentialData?.executedAt,
+                );
+                const mapped = confidentialData?.mapped;
                 isConfidentialPayment = mapped?.type === "payment";
                 depositAddress = mapped?.data?.depositAddress;
             } else {
@@ -380,11 +397,16 @@ export function ProposalSidebar({
             break;
 
         default:
-            timestamp = transaction?.timestamp
-                ? new Date(transaction.timestamp / 1000000)
-                : undefined;
+            timestamp =
+                confidentialExecutedAt ??
+                (transaction?.timestamp
+                    ? new Date(transaction.timestamp / 1000000)
+                    : undefined);
             break;
     }
+    const createdAt =
+        confidentialProposalCreatedAt ??
+        new Date(nanosToMs(proposal.submission_time));
 
     const isLastApprovingVote = () => {
         const currentApprovals = Object.values(proposal.votes).filter(
@@ -454,7 +476,7 @@ export function ProposalSidebar({
             <div className="relative flex flex-col gap-4">
                 <TransactionCreated
                     proposer={proposal.proposer}
-                    date={new Date(nanosToMs(proposal.submission_time))}
+                    date={createdAt}
                 />
                 <VotingSection
                     proposal={proposal}

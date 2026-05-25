@@ -329,8 +329,16 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
     let hashes: Vec<&str> = hash_indices.iter().map(|(_, h)| h.as_str()).collect();
 
     // Batch query all matching intents
-    let rows = sqlx::query_as::<_, (String, Option<serde_json::Value>, String, Option<String>, Option<String>)>(
-        "SELECT payload_hash, quote_metadata, status, correlation_id, notes FROM confidential_intents WHERE dao_id = $1 AND payload_hash = ANY($2)",
+    let rows = sqlx::query_as::<_, (
+        String,
+        Option<serde_json::Value>,
+        String,
+        Option<String>,
+        Option<String>,
+        Option<chrono::DateTime<chrono::Utc>>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    )>(
+        "SELECT payload_hash, quote_metadata, status, correlation_id, notes, proposal_created_at, executed_at FROM confidential_intents WHERE dao_id = $1 AND payload_hash = ANY($2)",
     )
     .bind(dao_id)
     .bind(&hashes)
@@ -348,17 +356,29 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
     // Build lookup map: payload_hash → metadata
     let metadata_map: std::collections::HashMap<&str, serde_json::Value> = rows
         .iter()
-        .map(|(hash, quote_meta, status, correlation_id, notes)| {
-            (
-                hash.as_str(),
-                serde_json::json!({
-                    "quote_metadata": quote_meta,
-                    "status": status,
-                    "correlation_id": correlation_id,
-                    "notes": notes,
-                }),
-            )
-        })
+        .map(
+            |(
+                hash,
+                quote_meta,
+                status,
+                correlation_id,
+                notes,
+                proposal_created_at,
+                executed_at,
+            )| {
+                (
+                    hash.as_str(),
+                    serde_json::json!({
+                        "quote_metadata": quote_meta,
+                        "status": status,
+                        "correlation_id": correlation_id,
+                        "notes": notes,
+                        "proposal_created_at": proposal_created_at,
+                        "executed_at": executed_at,
+                    }),
+                )
+            },
+        )
         .collect();
 
     // Attach metadata to proposals

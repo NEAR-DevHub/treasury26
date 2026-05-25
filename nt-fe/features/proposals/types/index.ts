@@ -189,6 +189,8 @@ export interface ConfidentialRequestData {
     correlationId?: string;
     payloadHash?: string;
     status?: string;
+    proposalCreatedAt?: string | null;
+    executedAt?: string | null;
     mapped?: MappedConfidentialRequest;
     title: string;
 }

@@ -259,6 +259,8 @@ export interface Proposal {
         status?: string;
         correlation_id?: string;
         notes?: string;
+        proposal_created_at?: string | null;
+        executed_at?: string | null;
     };
 }
 
