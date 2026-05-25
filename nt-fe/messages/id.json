@@ -317,6 +317,7 @@
             "pending": "Tertunda",
             "type": "Tipe",
             "date": "Tanggal",
+            "request": "Permintaan",
             "from": "Dari",
             "to": "Ke",
             "method": "Metode",

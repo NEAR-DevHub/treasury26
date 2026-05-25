@@ -317,6 +317,7 @@
             "pending": "Ausstehend",
             "type": "Typ",
             "date": "Datum",
+            "request": "Anfrage",
             "from": "Von",
             "to": "An",
             "method": "Methode",

@@ -43,6 +43,7 @@ struct ConfidentialBalanceChangeRow {
     quote_created_at: DateTime<Utc>,
     executed_at: Option<DateTime<Utc>>,
     created_at: DateTime<Utc>,
+    proposal_id: Option<i64>,
 }
 
 /// `true` if `dao_id` is flagged as a confidential treasury in `monitored_accounts`.
@@ -111,6 +112,11 @@ pub async fn fetch_balance_change_legs(
                 recipient, counterparty,
                 block_height, block_time, transaction_hash,
                 quote_created_at, executed_at, created_at,
+                (
+                    SELECT ci.proposal_id
+                    FROM confidential_intents ci
+                    WHERE ci.id = confidential_balance_changes.intent_id
+                ) AS proposal_id,
                 COALESCE(block_time, executed_at, quote_created_at) AS event_time,
                 CASE
                     WHEN transaction_type = 'sent'
@@ -150,7 +156,7 @@ pub async fn fetch_balance_change_legs(
             destination_balance_before, destination_balance_after,
             recipient, counterparty,
             block_height, block_time, transaction_hash,
-            quote_created_at, executed_at, created_at
+            quote_created_at, executed_at, created_at, proposal_id
         FROM legs
         WHERE 1 = 1
         "#,
@@ -326,6 +332,7 @@ struct LegRow {
     block_time: DateTime<Utc>,
     transaction_hash: Option<String>,
     created_at: DateTime<Utc>,
+    proposal_id: Option<i64>,
     usd_value: Option<BigDecimal>,
     action_kind: String,
     swap_sent_token: Option<String>,
@@ -361,6 +368,7 @@ impl LegRow {
             quote_created_at,
             executed_at,
             created_at,
+            proposal_id,
         } = row;
 
         let resolved_block_time = block_time.or(executed_at).unwrap_or(quote_created_at);
@@ -385,6 +393,7 @@ impl LegRow {
                     block_time: resolved_block_time,
                     transaction_hash,
                     created_at,
+                    proposal_id,
                     usd_value: amount_in_usd,
                     action_kind: "ConfidentialSend".to_string(),
                     swap_sent_token: None,
@@ -408,6 +417,7 @@ impl LegRow {
                 block_time: resolved_block_time,
                 transaction_hash,
                 created_at,
+                proposal_id,
                 usd_value: amount_out_usd,
                 action_kind: "ConfidentialDeposit".to_string(),
                 swap_sent_token: None,
@@ -434,6 +444,7 @@ impl LegRow {
                     block_time: resolved_block_time,
                     transaction_hash,
                     created_at,
+                    proposal_id,
                     usd_value: amount_out_usd,
                     action_kind: "ConfidentialExchange".to_string(),
                     swap_sent_token: origin_asset.clone(),
@@ -474,6 +485,7 @@ impl LegRow {
             method_name: None,
             actions: None,
             usd_value: self.usd_value.clone(),
+            proposal_id: self.proposal_id,
         }
     }
 

@@ -135,6 +135,8 @@ pub struct EnrichedBalanceChange {
     pub actions: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usd_value: Option<BigDecimal>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub proposal_id: Option<i64>,
 }
 
 /// Internal function to fetch and enrich balance changes
@@ -331,6 +333,7 @@ pub async fn get_balance_changes_internal(
                 method_name: change.method_name,
                 actions: change.actions,
                 usd_value: change.usd_value,
+                proposal_id: None,
             }
         })
         .collect();

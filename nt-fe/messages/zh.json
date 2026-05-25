@@ -317,6 +317,7 @@
             "pending": "待处理",
             "type": "类型",
             "date": "日期",
+            "request": "请求",
             "from": "发送方",
             "to": "接收方",
             "method": "方法",

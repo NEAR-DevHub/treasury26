@@ -317,6 +317,7 @@
             "pending": "Đang chờ",
             "type": "Loại",
             "date": "Ngày",
+            "request": "Yêu cầu",
             "from": "Từ",
             "to": "Đến",
             "method": "Phương thức",

@@ -317,6 +317,7 @@
             "pending": "Beklemede",
             "type": "Tür",
             "date": "Tarih",
+            "request": "Talep",
             "from": "Kimden",
             "to": "Kime",
             "method": "Metot",

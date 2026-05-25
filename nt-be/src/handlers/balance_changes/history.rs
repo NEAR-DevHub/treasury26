@@ -1478,6 +1478,8 @@ pub struct RecentActivity {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value_usd: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub proposal_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub swap: Option<SwapInfo>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub action_kind: Option<String>,
@@ -1934,6 +1936,7 @@ pub async fn get_recent_activity(
                 transaction_hashes: change.transaction_hashes,
                 receipt_ids: change.receipt_id,
                 value_usd,
+                proposal_id: change.proposal_id,
                 swap,
                 action_kind: change.action_kind,
                 method_name: change.method_name,

@@ -301,6 +301,7 @@ export interface RecentActivity {
     transactionHashes: string[];
     receiptIds: string[];
     valueUsd?: number;
+    proposalId?: number | null;
     swap?: SwapInfo;
     actionKind?: string | null;
     methodName?: string | null;

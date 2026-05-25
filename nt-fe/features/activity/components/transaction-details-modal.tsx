@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -7,6 +8,7 @@ import {
     DialogTitle,
 } from "@/components/modal";
 import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { RecentActivity } from "@/lib/api";
 import { FormattedDate } from "@/components/formatted-date";
@@ -224,6 +226,23 @@ export function TransactionDetailsModal({
                                     />
                                 ),
                             },
+                            ...(activity.proposalId != null
+                                ? [
+                                      {
+                                          label: t("request"),
+                                          value: (
+                                              <Link
+                                                  href={`/${treasuryId}/requests/${activity.proposalId}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-primary underline"
+                                              >
+                                                  #{activity.proposalId}
+                                              </Link>
+                                          ),
+                                      } as InfoItem,
+                                  ]
+                                : []),
                             ...(isSwap && activity.swap
                                 ? [
                                       {
