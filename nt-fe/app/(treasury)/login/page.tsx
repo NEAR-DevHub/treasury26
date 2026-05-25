@@ -9,10 +9,35 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { trackEvent } from "@/lib/analytics";
 import { useNear } from "@/stores/near-store";
 
+const UTM_KEYS = [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+] as const;
+
 function sanitizeReturnTo(raw: string | null): string {
     if (!raw) return "/";
     if (!raw.startsWith("/")) return "/";
     return raw;
+}
+
+function appendUtmParamsToReturnTo(
+    returnTo: string,
+    searchParams: ReturnType<typeof useSearchParams>,
+): string {
+    const url = new URL(returnTo, "https://trezu.app");
+    let hasChanges = false;
+
+    for (const key of UTM_KEYS) {
+        const utmValue = searchParams.get(key);
+        if (!utmValue || url.searchParams.has(key)) continue;
+        url.searchParams.set(key, utmValue);
+        hasChanges = true;
+    }
+
+    if (!hasChanges) return returnTo;
+    return `${url.pathname}${url.search}${url.hash}`;
 }
 
 export default function LoginPage() {
@@ -24,6 +49,10 @@ export default function LoginPage() {
     const { treasuries, lastTreasuryId, isLoading } = useTreasury();
 
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
+    const returnToWithUtms = useMemo(
+        () => appendUtmParamsToReturnTo(returnTo, searchParams),
+        [returnTo, searchParams],
+    );
     const context = searchParams.get("context");
     const connectFlow: "new_user" | "existing_user" | "within_treasury" =
         context === "existing_user" ? "existing_user" : "within_treasury";
@@ -43,7 +72,7 @@ export default function LoginPage() {
         if (!accountId) return;
 
         if (context !== "existing_user") {
-            router.replace(returnTo);
+            router.replace(returnToWithUtms);
             return;
         }
 
@@ -56,7 +85,14 @@ export default function LoginPage() {
             });
             router.replace(`/${preferredTreasuryId}`);
         }
-    }, [accountId, context, isLoading, preferredTreasuryId, returnTo, router]);
+    }, [
+        accountId,
+        context,
+        isLoading,
+        preferredTreasuryId,
+        returnToWithUtms,
+        router,
+    ]);
 
     return (
         <PageComponentLayout title={connectTitle} hideLogin hideCollapseButton>
