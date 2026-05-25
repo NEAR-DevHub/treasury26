@@ -55,11 +55,15 @@ fn classify(
     origin_asset: Option<&str>,
     destination_asset: &str,
 ) -> Classification {
-    if recipient != dao_id && origin_asset.is_none() {
+    // 1Click reports NEAR recipients as either `bob.near` or `near:bob.near`.
+    // Strip the prefix so `near:dao_id` is recognised as a self-deposit/exchange.
+    let recipient_account = recipient.strip_prefix("near:").unwrap_or(recipient);
+
+    if recipient_account != dao_id && origin_asset.is_none() {
         return Classification::Skip;
     }
 
-    if recipient != dao_id {
+    if recipient_account != dao_id {
         return Classification::Project(ProjectionKind::Sent);
     }
 
@@ -348,6 +352,37 @@ mod tests {
         assert!(matches!(
             classify("dao.near", "dao.near", None, "nep141:wrap.near"),
             Classification::Project(ProjectionKind::Deposit)
+        ));
+    }
+
+    #[test]
+    fn test_classification_strips_near_prefix() {
+        assert!(matches!(
+            classify(
+                "tobi.sputnik-dao.near",
+                "near:tobi.sputnik-dao.near",
+                None,
+                "nep141:wrap.near"
+            ),
+            Classification::Project(ProjectionKind::Deposit)
+        ));
+        assert!(matches!(
+            classify(
+                "tobi.sputnik-dao.near",
+                "near:tobi.sputnik-dao.near",
+                Some("nep141:usdt.near"),
+                "nep141:wrap.near"
+            ),
+            Classification::Project(ProjectionKind::Exchange)
+        ));
+        assert!(matches!(
+            classify(
+                "tobi.sputnik-dao.near",
+                "near:external.near",
+                Some("nep141:wrap.near"),
+                "nep141:wrap.near"
+            ),
+            Classification::Project(ProjectionKind::Sent)
         ));
     }
 

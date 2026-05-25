@@ -11,8 +11,9 @@ use super::transfer_hints::tx_resolver::{TxActionInfo, resolve_receipt_block_hei
 use super::utils::block_timestamp_to_datetime;
 use crate::AppState;
 use crate::handlers::intents::confidential::balance_changes_projector::refresh_gold_metadata_for_intent;
-use crate::handlers::intents::confidential::history_store::link_intent_to_history_event;
-use crate::handlers::intents::confidential::history_worker::trigger_confidential_history_refresh;
+use crate::handlers::intents::confidential::history_store::{
+    link_intent_to_history_event, mark_confidential_history_activity_due,
+};
 use crate::handlers::proposals::scraper::{extract_payload_hash_from_kind, fetch_proposal};
 use base64::Engine;
 use bigdecimal::Zero;
@@ -667,7 +668,12 @@ async fn handle_confidential_add_proposal(
     Ok(updated)
 }
 
-async fn trigger_confidential_history_for_execution(
+/// Goldsky observes a confidential intent settle on-chain (v1.signer execution),
+/// but the actual history fetch + Gold projection is expensive and would block
+/// the Goldsky cursor from advancing. Instead, just mark the affected account(s)
+/// due so the periodic confidential-history scheduler picks them up on its next
+/// tick.
+async fn mark_confidential_history_due_for_execution(
     history_state: Option<&AppState>,
     monitored: &std::collections::HashMap<String, bool>,
     dao_id: &str,
@@ -677,7 +683,13 @@ async fn trigger_confidential_history_for_execution(
         return;
     };
 
-    trigger_confidential_history_refresh(state, dao_id).await;
+    if let Err(e) = mark_confidential_history_activity_due(&state.db_pool, dao_id).await {
+        log::warn!(
+            "[goldsky-enrichment] cannot mark confidential history due for {}: {}",
+            dao_id,
+            e
+        );
+    }
 
     let Some(recipient) = recipient else {
         return;
@@ -685,8 +697,14 @@ async fn trigger_confidential_history_for_execution(
     if recipient == dao_id {
         return;
     }
-    if matches!(monitored.get(recipient), Some(true)) {
-        trigger_confidential_history_refresh(state, recipient).await;
+    if matches!(monitored.get(recipient), Some(true))
+        && let Err(e) = mark_confidential_history_activity_due(&state.db_pool, recipient).await
+    {
+        log::warn!(
+            "[goldsky-enrichment] cannot mark confidential history due for {}: {}",
+            recipient,
+            e
+        );
     }
 }
 
@@ -847,7 +865,7 @@ pub async fn run_enrichment_cycle(
                     );
                 }
             }
-            trigger_confidential_history_for_execution(
+            mark_confidential_history_due_for_execution(
                 history_state,
                 &monitored,
                 &call.dao_id,
@@ -1146,6 +1164,72 @@ pub async fn run_enrichment_cycle(
     );
 
     Ok(batch_size)
+}
+
+/// Background worker: reads outcomes from the Goldsky sink DB, writes enriched
+/// balance_changes to the app DB. If the previous batch was full, skip the
+/// sleep — there's likely more data waiting. Disabled when no Goldsky pool is
+/// configured (logs once and returns).
+pub fn spawn_goldsky_enrichment_worker(state: std::sync::Arc<AppState>) {
+    let Some(goldsky_pool) = state.goldsky_pool.clone() else {
+        log::info!("Goldsky enrichment worker disabled (GOLDSKY_DATABASE_URL not set)");
+        return;
+    };
+
+    tokio::spawn(async move {
+        const BATCH_SIZE: usize = 100;
+        let enrichment_initial_delay = std::env::var("ENRICHMENT_INITIAL_DELAY_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10u64);
+        let enrichment_interval = std::env::var("ENRICHMENT_INTERVAL_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(15u64);
+        log::info!(
+            "Starting Goldsky enrichment worker ({}s interval, {}s initial delay)",
+            enrichment_interval,
+            enrichment_initial_delay
+        );
+
+        tokio::time::sleep(std::time::Duration::from_secs(enrichment_initial_delay)).await;
+
+        let app_pool = state.db_pool.clone();
+        let network = state.archival_network.clone();
+        let intents_api_key = state.env_vars.intents_explorer_api_key.clone();
+        let intents_api_url = state.env_vars.intents_explorer_api_url.clone();
+
+        loop {
+            let should_sleep = match run_enrichment_cycle(
+                &goldsky_pool,
+                &app_pool,
+                &network,
+                intents_api_key.as_deref(),
+                &intents_api_url,
+                Some(&state),
+            )
+            .await
+            {
+                Ok(processed) => {
+                    if processed > 0 {
+                        log::info!(
+                            "[goldsky-enrichment] Processed {} outcomes this cycle",
+                            processed
+                        );
+                    }
+                    // If batch was full, there's likely more data — skip the sleep
+                    processed < BATCH_SIZE
+                }
+                Err(e) => {
+                    log::error!("[goldsky-enrichment] Enrichment cycle failed: {}", e);
+                    true
+                }
+            };
+            if should_sleep {
+                tokio::time::sleep(std::time::Duration::from_secs(enrichment_interval)).await;
+            }
+        }
+    });
 }
 
 // ---------------------------------------------------------------------------

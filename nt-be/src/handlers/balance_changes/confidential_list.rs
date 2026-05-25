@@ -9,13 +9,15 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use bigdecimal::{BigDecimal, Zero};
+use bigdecimal::{BigDecimal, FromPrimitive, Zero};
 use chrono::{DateTime, Utc};
 use sqlx::{PgPool, QueryBuilder};
 
 use crate::AppState;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, SwapInfo};
+
+const SENT_LEG_TO_ACCOUNT_EXPR: &str = "regexp_replace(recipient, '^near:', '')";
 
 #[derive(Debug, sqlx::FromRow)]
 struct ConfidentialBalanceChangeRow {
@@ -76,13 +78,70 @@ pub async fn fetch_balance_change_legs(
         .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
         .map(|dt| dt.with_timezone(&Utc));
 
-    let directional = params
+    let directional_types = match params
         .transaction_types
         .as_ref()
-        .map(|types| classify_direction_filter(types));
+        .map(|types| classify_direction_filter(types))
+    {
+        Some(DirectionFilter::Empty) => return Ok(Vec::new()),
+        Some(DirectionFilter::Types(types)) => Some(types),
+        None => None,
+    };
 
+    let min_amount = params.min_amount.and_then(BigDecimal::from_f64);
+    let max_amount = params.max_amount.and_then(BigDecimal::from_f64);
+
+    // Apply token / account / amount / date filters in SQL *before* pagination
+    // so a small limit can't drop legs that would otherwise match the filter
+    // (the old in-Rust filter ran post-limit). Date sort/filter uses
+    // event_time (block_time → executed_at → quote_created_at) rather than
+    // confidential_balance_changes.created_at, which is the projection insert
+    // time and would surface old transactions as today's activity. Amount
+    // bounds compare against the formatted decimal amount directly — gold
+    // already stores amountOutFormatted, not raw token units.
     let mut builder = QueryBuilder::<sqlx::Postgres>::new(
         r#"
+        WITH legs AS (
+            SELECT
+                id, history_event_id, dao_id, transaction_type,
+                origin_asset, destination_asset,
+                amount_in, amount_out, amount_in_usd, amount_out_usd,
+                origin_balance_before, origin_balance_after,
+                destination_balance_before, destination_balance_after,
+                recipient, counterparty,
+                block_height, block_time, transaction_hash,
+                quote_created_at, executed_at, created_at,
+                COALESCE(block_time, executed_at, quote_created_at) AS event_time,
+                CASE
+                    WHEN transaction_type = 'sent'
+                        THEN COALESCE(origin_asset, destination_asset)
+                    ELSE destination_asset
+                END AS leg_token_id,
+                CASE
+                    WHEN transaction_type = 'sent'
+                        THEN -COALESCE(amount_in, 0)
+                    ELSE amount_out
+                END AS leg_amount,
+                CASE
+                    WHEN transaction_type = 'sent' THEN dao_id
+                    ELSE counterparty
+                END AS leg_from_account,
+                CASE
+                    WHEN transaction_type = 'sent' THEN "#,
+    );
+    builder.push(SENT_LEG_TO_ACCOUNT_EXPR);
+    builder.push(
+        r#"
+                    ELSE dao_id
+                END AS leg_to_account
+            FROM confidential_balance_changes
+            WHERE dao_id = "#,
+    );
+    builder.push_bind(&dao_id);
+    builder.push(" AND transaction_type IN ('sent', 'deposit', 'exchange')");
+    builder.push(
+        r#"
+        )
         SELECT
             id, history_event_id, dao_id, transaction_type,
             origin_asset, destination_asset,
@@ -92,32 +151,27 @@ pub async fn fetch_balance_change_legs(
             recipient, counterparty,
             block_height, block_time, transaction_hash,
             quote_created_at, executed_at, created_at
-        FROM confidential_balance_changes
-        WHERE dao_id = "#,
+        FROM legs
+        WHERE 1 = 1
+        "#,
     );
-    builder.push_bind(&dao_id);
 
     if let Some(start) = start_date {
-        builder.push(" AND created_at >= ");
+        builder.push(" AND event_time >= ");
         builder.push_bind(start);
     }
     if let Some(end) = end_date {
-        builder.push(" AND created_at <= ");
+        builder.push(" AND event_time <= ");
         builder.push_bind(end);
     }
 
-    if let Some(filter) = &directional {
-        match filter {
-            DirectionFilter::Empty => return Ok(Vec::new()),
-            DirectionFilter::Types(types) => {
-                builder.push(" AND transaction_type IN (");
-                let mut sep = builder.separated(", ");
-                for t in types {
-                    sep.push_bind(*t);
-                }
-                builder.push(")");
-            }
+    if let Some(types) = directional_types.as_ref() {
+        builder.push(" AND transaction_type IN (");
+        let mut sep = builder.separated(", ");
+        for t in types {
+            sep.push_bind(*t);
         }
+        builder.push(")");
     }
 
     if let Some(tx_hash) = params.tx_hash.as_ref().filter(|s| !s.is_empty()) {
@@ -125,7 +179,48 @@ pub async fn fetch_balance_change_legs(
         builder.push_bind(format!("%{}%", tx_hash));
     }
 
-    builder.push(" ORDER BY created_at DESC, id DESC");
+    if let Some(tokens) = params.token_ids.as_ref().filter(|t| !t.is_empty()) {
+        builder.push(" AND leg_token_id = ANY(");
+        builder.push_bind(tokens.clone());
+        builder.push(")");
+    }
+    if let Some(exclude) = params.exclude_token_ids.as_ref().filter(|t| !t.is_empty()) {
+        builder.push(" AND NOT (leg_token_id = ANY(");
+        builder.push_bind(exclude.clone());
+        builder.push("))");
+    }
+
+    if let Some(from_allow) = params.from_accounts.as_ref().filter(|t| !t.is_empty()) {
+        builder.push(" AND leg_from_account = ANY(");
+        builder.push_bind(from_allow.clone());
+        builder.push(")");
+    }
+    if let Some(from_deny) = params.from_accounts_not.as_ref().filter(|t| !t.is_empty()) {
+        builder.push(" AND NOT (leg_from_account = ANY(");
+        builder.push_bind(from_deny.clone());
+        builder.push("))");
+    }
+    if let Some(to_allow) = params.to_accounts.as_ref().filter(|t| !t.is_empty()) {
+        builder.push(" AND leg_to_account = ANY(");
+        builder.push_bind(to_allow.clone());
+        builder.push(")");
+    }
+    if let Some(to_deny) = params.to_accounts_not.as_ref().filter(|t| !t.is_empty()) {
+        builder.push(" AND NOT (leg_to_account = ANY(");
+        builder.push_bind(to_deny.clone());
+        builder.push("))");
+    }
+
+    if let Some(min) = min_amount {
+        builder.push(" AND ABS(leg_amount) >= ");
+        builder.push_bind(min);
+    }
+    if let Some(max) = max_amount {
+        builder.push(" AND ABS(leg_amount) <= ");
+        builder.push_bind(max);
+    }
+
+    builder.push(" ORDER BY event_time DESC, id DESC");
 
     if params.limit.is_some() || params.offset.is_some() {
         let limit = params.limit.unwrap_or(100).min(1000);
@@ -141,45 +236,7 @@ pub async fn fetch_balance_change_legs(
         .fetch_all(&state.db_pool)
         .await?;
 
-    let mut leg_rows: Vec<LegRow> = rows.into_iter().filter_map(LegRow::from_gold).collect();
-
-    apply_token_filters(
-        &mut leg_rows,
-        params.token_ids.as_deref(),
-        params.exclude_token_ids.as_deref(),
-        params.from_accounts.as_deref(),
-        params.from_accounts_not.as_deref(),
-        params.to_accounts.as_deref(),
-        params.to_accounts_not.as_deref(),
-    );
-
-    if (params.min_amount.is_some() || params.max_amount.is_some())
-        && let Some(decimals) = single_token_decimals(state, params).await
-    {
-        let mult = 10f64.powi(decimals as i32);
-        let min_raw = params.min_amount.map(|v| v * mult);
-        let max_raw = params.max_amount.map(|v| v * mult);
-        leg_rows.retain(|leg| {
-            let abs = leg
-                .amount
-                .clone()
-                .abs()
-                .to_string()
-                .parse::<f64>()
-                .unwrap_or(0.0);
-            if let Some(min) = min_raw
-                && abs < min
-            {
-                return false;
-            }
-            if let Some(max) = max_raw
-                && abs > max
-            {
-                return false;
-            }
-            true
-        });
-    }
+    let leg_rows: Vec<LegRow> = rows.into_iter().filter_map(LegRow::from_gold).collect();
 
     let mut enriched: Vec<EnrichedBalanceChange> = leg_rows
         .iter()
@@ -467,66 +524,6 @@ fn resolve_swap_metadata(
     }
 }
 
-fn apply_token_filters(
-    legs: &mut Vec<LegRow>,
-    token_ids: Option<&[String]>,
-    exclude_token_ids: Option<&[String]>,
-    from_accounts: Option<&[String]>,
-    from_accounts_not: Option<&[String]>,
-    to_accounts: Option<&[String]>,
-    to_accounts_not: Option<&[String]>,
-) {
-    legs.retain(|leg| {
-        if let Some(whitelist) = token_ids
-            && !whitelist.is_empty()
-            && !whitelist.contains(&leg.token_id)
-        {
-            return false;
-        }
-        if let Some(blacklist) = exclude_token_ids
-            && blacklist.contains(&leg.token_id)
-        {
-            return false;
-        }
-
-        let from_account = leg.signer_id.as_deref().unwrap_or("");
-        let to_account = leg.receiver_id.as_deref().unwrap_or("");
-
-        if let Some(allow) = from_accounts
-            && !allow.is_empty()
-            && !allow.iter().any(|a| a == from_account)
-        {
-            return false;
-        }
-        if let Some(deny) = from_accounts_not
-            && deny.iter().any(|a| a == from_account)
-        {
-            return false;
-        }
-        if let Some(allow) = to_accounts
-            && !allow.is_empty()
-            && !allow.iter().any(|a| a == to_account)
-        {
-            return false;
-        }
-        if let Some(deny) = to_accounts_not
-            && deny.iter().any(|a| a == to_account)
-        {
-            return false;
-        }
-        true
-    });
-}
-
-async fn single_token_decimals(state: &Arc<AppState>, params: &BalanceChangesQuery) -> Option<u8> {
-    let tokens = params.token_ids.as_ref()?;
-    if tokens.len() != 1 {
-        return None;
-    }
-    let map = fetch_tokens_with_fallback(state, std::slice::from_ref(&tokens[0]), false).await;
-    map.get(&tokens[0]).map(|m| m.decimals)
-}
-
 async fn attach_prices(state: &Arc<AppState>, enriched: &mut [EnrichedBalanceChange]) {
     let mut token_dates: HashMap<String, HashSet<chrono::NaiveDate>> = HashMap::new();
     for change in enriched.iter() {
@@ -567,5 +564,171 @@ async fn attach_prices(state: &Arc<AppState>, enriched: &mut [EnrichedBalanceCha
         {
             metadata.price = Some(price);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::AppState;
+    use crate::routes::BalanceChangesQuery;
+    use sqlx::PgPool;
+    use std::sync::Arc;
+    use uuid::Uuid;
+
+    fn test_params(
+        dao_id: &str,
+        to_accounts: Option<Vec<String>>,
+        to_accounts_not: Option<Vec<String>>,
+    ) -> BalanceChangesQuery {
+        BalanceChangesQuery {
+            account_id: dao_id.parse().expect("test DAO should be valid"),
+            limit: None,
+            offset: None,
+            start_time: None,
+            end_time: None,
+            token_ids: None,
+            exclude_token_ids: None,
+            transaction_types: None,
+            min_amount: None,
+            max_amount: None,
+            tx_hash: None,
+            from_accounts: None,
+            from_accounts_not: None,
+            to_accounts,
+            to_accounts_not,
+            include_metadata: Some(false),
+            include_prices: Some(false),
+            include_chain_metadata: Some(false),
+            exclude_near_dust: false,
+            exclude_swaps_from_direction: false,
+        }
+    }
+
+    async fn test_state(pool: PgPool) -> Arc<AppState> {
+        Arc::new(
+            AppState::builder()
+                .db_pool(pool)
+                .build()
+                .await
+                .expect("test AppState should build"),
+        )
+    }
+
+    async fn seed_sent_confidential_change(
+        pool: &PgPool,
+        dao_id: &str,
+        recipient: &str,
+    ) -> Result<(), sqlx::Error> {
+        let now = chrono::Utc::now();
+        let deposit_address = format!("deposit-{}", Uuid::new_v4());
+        let event_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO confidential_history_events (
+                account_id, created_at_external, deposit_address, status,
+                deposit_type, recipient_type, recipient, destination_asset, raw_payload
+            )
+            VALUES ($1, $2, $3, 'SUCCESS',
+                'CONFIDENTIAL_INTENTS', 'NEAR', $4, 'nep141:usdc.near', '{}'::jsonb
+            )
+            RETURNING id
+            "#,
+        )
+        .bind(dao_id)
+        .bind(now)
+        .bind(&deposit_address)
+        .bind(recipient)
+        .fetch_one(pool)
+        .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO confidential_balance_changes (
+                history_event_id, dao_id, transaction_type,
+                origin_asset, destination_asset, amount_in, amount_out,
+                origin_balance_before, origin_balance_after,
+                recipient, refund_to, counterparty, deposit_address,
+                quote_created_at, executed_at, block_time
+            )
+            VALUES (
+                $1, $2, 'sent',
+                'nep141:usdc.near', 'nep141:usdc.near', 5, 0,
+                10, 5,
+                $3, $2, $3, $4,
+                $5, $5, $5
+            )
+            "#,
+        )
+        .bind(event_id)
+        .bind(dao_id)
+        .bind(recipient)
+        .bind(&deposit_address)
+        .bind(now)
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn confidential_sent_to_account_filter_sql_strips_near_prefix() {
+        assert_eq!(
+            SENT_LEG_TO_ACCOUNT_EXPR,
+            "regexp_replace(recipient, '^near:', '')"
+        );
+    }
+
+    #[sqlx::test]
+    async fn confidential_to_accounts_filter_matches_prefixed_sent_recipient(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let dao_id = format!("conf-list-{}.sputnik-dao.near", Uuid::new_v4());
+        let state = test_state(pool.clone()).await;
+        seed_sent_confidential_change(&pool, &dao_id, "near:bob.near").await?;
+
+        let included = fetch_balance_change_legs(
+            &state,
+            &test_params(&dao_id, Some(vec!["bob.near".to_string()]), None),
+        )
+        .await
+        .expect("prefixed recipient should be queryable by plain account");
+        assert_eq!(included.len(), 1);
+
+        let excluded = fetch_balance_change_legs(
+            &state,
+            &test_params(&dao_id, None, Some(vec!["bob.near".to_string()])),
+        )
+        .await
+        .expect("prefixed recipient should be excludable by plain account");
+        assert!(excluded.is_empty());
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn confidential_to_accounts_filter_keeps_unprefixed_sent_recipient(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let dao_id = format!("conf-list-{}.sputnik-dao.near", Uuid::new_v4());
+        let state = test_state(pool.clone()).await;
+        seed_sent_confidential_change(&pool, &dao_id, "bob.near").await?;
+
+        let included = fetch_balance_change_legs(
+            &state,
+            &test_params(&dao_id, Some(vec!["bob.near".to_string()]), None),
+        )
+        .await
+        .expect("unprefixed recipient should still match plain account");
+        assert_eq!(included.len(), 1);
+
+        let excluded = fetch_balance_change_legs(
+            &state,
+            &test_params(&dao_id, None, Some(vec!["bob.near".to_string()])),
+        )
+        .await
+        .expect("unprefixed recipient should still be excluded by plain account");
+        assert!(excluded.is_empty());
+
+        Ok(())
     }
 }

@@ -3,7 +3,7 @@ use axum::{
     http::{HeaderValue, Method, header},
 };
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 fn main() {
@@ -130,137 +130,20 @@ async fn async_main() {
         });
     }
 
-    {
-        let state_clone = state.clone();
-        tokio::spawn(async move {
-            use nt_be::handlers::intents::confidential::history_worker::{
-                CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS, tick_confidential_history_scheduler,
-            };
+    //Spawn confidential history worker
+    nt_be::handlers::intents::confidential::history_worker::spawn_confidential_history_worker(
+        state.clone(),
+    );
 
-            log::info!(
-                "Starting confidential history worker ({}s scheduler tick)",
-                CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS
-            );
+    //Spawn confidential balance snapshot worker
+    nt_be::handlers::intents::confidential::balance_snapshots::spawn_confidential_snapshot_worker(
+        state.clone(),
+    );
 
-            let mut timer = tokio::time::interval(Duration::from_secs(
-                CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS,
-            ));
-            timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-            loop {
-                timer.tick().await;
-                let started_at = Instant::now();
-                match tick_confidential_history_scheduler(&state_clone, 100).await {
-                    Ok(result) => {
-                        log::info!(
-                            "[confidential-history-poll] cycle finished in {:.2}s accounts_seen={} processed={} failed={}",
-                            started_at.elapsed().as_secs_f64(),
-                            result.accounts_seen,
-                            result.accounts_processed,
-                            result.accounts_failed
-                        );
-                    }
-                    Err(e) => {
-                        log::error!(
-                            "[confidential-history-poll] cycle failed in {:.2}s: {}",
-                            started_at.elapsed().as_secs_f64(),
-                            e.1
-                        );
-                    }
-                }
-            }
-        });
-    }
-
-    {
-        let state_clone = state.clone();
-        tokio::spawn(async move {
-            use nt_be::handlers::intents::confidential::balance_snapshots::{
-                HOURLY_SNAPSHOT_CRON_TICK_SECS, tick_confidential_balance_snapshot_cron,
-            };
-
-            log::info!(
-                "Starting confidential balance snapshot cron ({}s tick)",
-                HOURLY_SNAPSHOT_CRON_TICK_SECS
-            );
-
-            let mut timer =
-                tokio::time::interval(Duration::from_secs(HOURLY_SNAPSHOT_CRON_TICK_SECS));
-            timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-            loop {
-                timer.tick().await;
-                tick_confidential_balance_snapshot_cron(&state_clone).await;
-            }
-        });
-    }
-
-    {
-        let pool = state.db_pool.clone();
-        tokio::spawn(async move {
-            use nt_be::handlers::intents::confidential::balance_changes_projector::{
-                CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL_SECS,
-                CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,
-                mark_backfilled_confidential_daos_gold_dirty,
-                project_confidential_gold_for_dirty_daos,
-            };
-
-            async fn run_once(pool: &sqlx::PgPool, phase: &str) {
-                match mark_backfilled_confidential_daos_gold_dirty(pool).await {
-                    Ok(rows) => log::info!(
-                        "[confidential-gold] {} reconciliation marked {} backfilled cursor rows dirty",
-                        phase,
-                        rows
-                    ),
-                    Err(e) => log::error!(
-                        "[confidential-gold] {} reconciliation mark-dirty failed: {}",
-                        phase,
-                        e
-                    ),
-                }
-                match project_confidential_gold_for_dirty_daos(
-                    pool,
-                    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,
-                )
-                .await
-                {
-                    Ok(stats) if stats.accounts_seen > 0 => log::info!(
-                        "[confidential-gold] {} reconciliation seen={} projected={} locked={} failed={} rows={} deleted={} errors={}",
-                        phase,
-                        stats.accounts_seen,
-                        stats.accounts_projected,
-                        stats.accounts_skipped_locked,
-                        stats.accounts_failed,
-                        stats.rows_projected,
-                        stats.rows_deleted,
-                        stats.errors_written
-                    ),
-                    Ok(_) => {}
-                    Err(e) => log::error!(
-                        "[confidential-gold] {} reconciliation projection failed: {}",
-                        phase,
-                        e
-                    ),
-                }
-            }
-
-            log::info!(
-                "Starting confidential gold reconciliation ({}s interval, {} workers)",
-                CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL_SECS,
-                CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS
-            );
-
-            run_once(&pool, "startup").await;
-
-            let mut timer = tokio::time::interval(Duration::from_secs(
-                CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL_SECS,
-            ));
-            timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-            timer.tick().await; // immediate tick consumed by the startup run above
-            loop {
-                timer.tick().await;
-                run_once(&pool, "daily").await;
-            }
-        });
-    }
+    //Spawn confidential gold reconcilation worker
+    nt_be::handlers::intents::confidential::balance_changes_projector::spawn_confidential_gold_reconciliation_worker(
+        state.db_pool.clone(),
+    );
 
     // TODO: Re-enable once we have a DefiLlama API key or higher rate limit
     // Spawn usd_value backfill service
@@ -307,71 +190,9 @@ async fn async_main() {
         });
     }
 
-    // Spawn Goldsky enrichment worker (reads from Goldsky sink DB, writes to app DB)
-    if let Some(goldsky_pool) = &state.goldsky_pool {
-        let goldsky_pool = goldsky_pool.clone();
-        let app_pool = state.db_pool.clone();
-        let network = state.archival_network.clone();
-        let intents_api_key = state.env_vars.intents_explorer_api_key.clone();
-        let intents_api_url = state.env_vars.intents_explorer_api_url.clone();
-        let history_state = state.clone();
-        tokio::spawn(async move {
-            use nt_be::handlers::balance_changes::goldsky_enrichment::run_enrichment_cycle;
-
-            const BATCH_SIZE: usize = 100;
-            let enrichment_initial_delay = std::env::var("ENRICHMENT_INITIAL_DELAY_SECONDS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(10u64);
-            let enrichment_interval = std::env::var("ENRICHMENT_INTERVAL_SECONDS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(15u64);
-            log::info!(
-                "Starting Goldsky enrichment worker ({}s interval, {}s initial delay)",
-                enrichment_interval,
-                enrichment_initial_delay
-            );
-
-            // Wait for server to fully start
-            tokio::time::sleep(Duration::from_secs(enrichment_initial_delay)).await;
-
-            loop {
-                let should_sleep = {
-                    match run_enrichment_cycle(
-                        &goldsky_pool,
-                        &app_pool,
-                        &network,
-                        intents_api_key.as_deref(),
-                        &intents_api_url,
-                        Some(&history_state),
-                    )
-                    .await
-                    {
-                        Ok(processed) => {
-                            if processed > 0 {
-                                log::info!(
-                                    "[goldsky-enrichment] Processed {} outcomes this cycle",
-                                    processed
-                                );
-                            }
-                            // If batch was full, there's likely more data — skip the sleep
-                            processed < BATCH_SIZE
-                        }
-                        Err(e) => {
-                            log::error!("[goldsky-enrichment] Enrichment cycle failed: {}", e);
-                            true
-                        }
-                    }
-                };
-                if should_sleep {
-                    tokio::time::sleep(Duration::from_secs(enrichment_interval)).await;
-                }
-            }
-        });
-    } else {
-        log::info!("Goldsky enrichment worker disabled (GOLDSKY_DATABASE_URL not set)");
-    }
+    nt_be::handlers::balance_changes::goldsky_enrichment::spawn_goldsky_enrichment_worker(
+        state.clone(),
+    );
 
     // Spawn notification worker (event detection + Telegram dispatch)
     nt_be::handlers::notifications::run_notification_loop(

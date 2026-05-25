@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::sync::Arc;
 
 use bigdecimal::{BigDecimal, Zero};
 use chrono::{Duration, Utc};
@@ -175,6 +176,25 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &AppState) {
 
         snapshot_confidential_dao_balances(state, &dao_id).await;
     }
+}
+
+/// Background worker: periodically ticks the confidential balance snapshot cron.
+pub fn spawn_confidential_snapshot_worker(state: Arc<AppState>) {
+    tokio::spawn(async move {
+        log::info!(
+            "Starting confidential balance snapshot cron ({}s tick)",
+            HOURLY_SNAPSHOT_CRON_TICK_SECS
+        );
+
+        let mut timer = tokio::time::interval(std::time::Duration::from_secs(
+            HOURLY_SNAPSHOT_CRON_TICK_SECS,
+        ));
+        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            timer.tick().await;
+            tick_confidential_balance_snapshot_cron(&state).await;
+        }
+    });
 }
 
 #[cfg(test)]

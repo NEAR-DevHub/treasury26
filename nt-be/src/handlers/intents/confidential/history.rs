@@ -147,19 +147,9 @@ pub async fn fetch_history_with_token(
             format!("history body read failed: {}", e),
         )
     })?;
-    log::debug!(
-        "[confidential-history] {} raw response: {}",
-        account_id,
-        body_text
-    );
 
     let parsed = parse_history_page(&body_text).map_err(|e| {
-        log::error!(
-            "[confidential-history] {} parse failed: {} (body={})",
-            account_id,
-            e,
-            body_text
-        );
+        log::error!("[confidential-history] {} parse failed: {}", account_id, e);
         (
             StatusCode::BAD_GATEWAY,
             format!("history parse failed: {}", e),

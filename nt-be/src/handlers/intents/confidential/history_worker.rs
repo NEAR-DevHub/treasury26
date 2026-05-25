@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
 use futures::StreamExt;
 use near_account_id::AccountIdRef;
 use reqwest::StatusCode;
@@ -589,6 +592,43 @@ pub async fn tick_confidential_history_scheduler(
     }
 
     Ok(result)
+}
+
+/// Background worker: periodically ticks the confidential history scheduler.
+pub fn spawn_confidential_history_worker(state: Arc<AppState>) {
+    tokio::spawn(async move {
+        log::info!(
+            "Starting confidential history worker ({}s scheduler tick)",
+            CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS
+        );
+
+        let mut timer = tokio::time::interval(Duration::from_secs(
+            CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS,
+        ));
+        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            timer.tick().await;
+            let started_at = Instant::now();
+            match tick_confidential_history_scheduler(&state, 100).await {
+                Ok(result) => {
+                    log::info!(
+                        "[confidential-history-poll] cycle finished in {:.2}s accounts_seen={} processed={} failed={}",
+                        started_at.elapsed().as_secs_f64(),
+                        result.accounts_seen,
+                        result.accounts_processed,
+                        result.accounts_failed
+                    );
+                }
+                Err(e) => {
+                    log::error!(
+                        "[confidential-history-poll] cycle failed in {:.2}s: {}",
+                        started_at.elapsed().as_secs_f64(),
+                        e.1
+                    );
+                }
+            }
+        }
+    });
 }
 
 #[cfg(test)]

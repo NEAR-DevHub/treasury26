@@ -171,6 +171,8 @@ pub async fn mark_confidential_intent_submitted(
 ///
 /// Returns `Ok(true)` if a row was written, `Ok(false)` if no matching intent
 /// record was found.
+/// Still using this for reference/backup purpose once everything works fine we will remove this
+///
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_confidential_outgoing(
     app_pool: &PgPool,

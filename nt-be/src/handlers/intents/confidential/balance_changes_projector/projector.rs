@@ -70,12 +70,19 @@ pub async fn project_confidential_gold_for_dao(
     let mut stats = DaoProjectionStats::default();
     let mut ledger = seed_ledger_before(&mut tx, dao_id, recompute_from).await?;
     let rows = load_bronze_suffix(&mut tx, dao_id, recompute_from).await?;
-    let mut projected_ids = HashSet::new();
+
+    // Preserve gold rows for any bronze event we *considered* and either
+    // projected successfully or could not project (errored). A transient
+    // projection failure must not wipe out a previously good gold row.
+    // Skipped events (Ok(None)) are intentionally excluded — they represent
+    // bronze events that should not have a gold row at all.
+
+    let mut preserve_ids: HashSet<i64> = HashSet::new();
 
     for row in rows {
         match project_row(&row, &mut ledger) {
             Ok(Some(projected)) => {
-                projected_ids.insert(projected.history_event_id);
+                preserve_ids.insert(projected.history_event_id);
                 upsert_projection(&mut tx, &projected).await?;
                 stats.rows_projected += 1;
             }
@@ -83,15 +90,16 @@ pub async fn project_confidential_gold_for_dao(
                 clear_projection_error(&mut tx, row.id).await?;
             }
             Err(reason) => {
+                preserve_ids.insert(row.id);
                 upsert_projection_error(&mut tx, row.id, dao_id, &reason, &row.raw_payload).await?;
                 stats.errors_written += 1;
             }
         }
     }
 
-    let projected_ids: Vec<i64> = projected_ids.into_iter().collect();
+    let preserve_ids: Vec<i64> = preserve_ids.into_iter().collect();
     stats.rows_deleted =
-        delete_stale_gold_rows(&mut tx, dao_id, recompute_from, &projected_ids).await?;
+        delete_stale_gold_rows(&mut tx, dao_id, recompute_from, &preserve_ids).await?;
 
     clear_gold_dirty_if_not_advanced(&mut tx, dao_id, dirty_since).await?;
 

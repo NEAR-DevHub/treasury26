@@ -419,7 +419,7 @@ pub(crate) async fn delete_stale_gold_rows(
     tx: &mut Transaction<'_, Postgres>,
     dao_id: &str,
     recompute_from: DateTime<Utc>,
-    projected_ids: &[i64],
+    preserve_ids: &[i64],
 ) -> Result<u64, sqlx::Error> {
     let result = sqlx::query(
         r#"
@@ -431,7 +431,7 @@ pub(crate) async fn delete_stale_gold_rows(
     )
     .bind(dao_id)
     .bind(recompute_from)
-    .bind(projected_ids)
+    .bind(preserve_ids)
     .execute(&mut **tx)
     .await?;
 
