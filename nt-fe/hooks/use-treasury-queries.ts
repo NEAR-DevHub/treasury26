@@ -182,7 +182,7 @@ export function useToken(tokenId: string | null | undefined) {
 
 export function usePopularAssetsByActivity(
     limit: number = 8,
-    lookbackDays: number = 30,
+    lookbackDays: number = 45,
     enabled: boolean = true,
 ) {
     return useQuery({

@@ -11,7 +11,12 @@ import {
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
 import type { ChainIcons } from "@/lib/api";
 import Big from "@/lib/big";
-import { cn, formatBalance, formatSmartAmount } from "@/lib/utils";
+import {
+    canonicalizeTokenIdForMatch,
+    cn,
+    formatBalance,
+    formatSmartAmount,
+} from "@/lib/utils";
 import { Button } from "./button";
 import { Input } from "./input";
 import {
@@ -106,7 +111,7 @@ export default function TokenSelect({
     const [step, setStep] = useState<"token" | "network">("token");
     const { data: popularAssets = [] } = usePopularAssetsByActivity(
         8,
-        30,
+        45,
         showPopularAssets && open && step === "token",
     );
 
@@ -192,16 +197,33 @@ export default function TokenSelect({
     const popularTokens = useMemo(() => {
         if (!showPopularAssets || popularAssets.length === 0) return [];
 
-        const popularIds = new Set(
-            popularAssets.map((asset) => asset.tokenId.toLowerCase()),
-        );
+        const popularIds = new Set<string>();
+        for (const asset of popularAssets) {
+            popularIds.add(asset.tokenId.toLowerCase());
+            popularIds.add(canonicalizeTokenIdForMatch(asset.tokenId));
+        }
 
         return filteredTokens
             .filter((token) => {
-                if (popularIds.has(token.id.toLowerCase())) return true;
-                return token.networks.some((network) =>
-                    popularIds.has(network.id.toLowerCase()),
-                );
+                const tokenCandidates = new Set<string>([
+                    token.id.toLowerCase(),
+                    canonicalizeTokenIdForMatch(token.id),
+                ]);
+                for (const network of token.networks) {
+                    tokenCandidates.add(network.id.toLowerCase());
+                    tokenCandidates.add(canonicalizeTokenIdForMatch(network.id));
+                    tokenCandidates.add(network.chainId.toLowerCase());
+                    tokenCandidates.add(
+                        canonicalizeTokenIdForMatch(network.chainId),
+                    );
+                }
+
+                for (const candidate of tokenCandidates) {
+                    if (popularIds.has(candidate)) {
+                        return true;
+                    }
+                }
+                return false;
             })
             .slice(0, 8);
     }, [showPopularAssets, popularAssets, filteredTokens]);

@@ -617,7 +617,7 @@ export async function getTokenMetadata(
 
 export async function getPopularAssetsByActivity(
     limit: number = 8,
-    lookbackDays: number = 30,
+    lookbackDays: number = 45,
 ): Promise<TokenMetadata[]> {
     try {
         const response = await axios.get<PopularAssetsByActivityResponse>(

@@ -46,6 +46,7 @@ import { fetchDepositAddress } from "@/lib/bridge-api";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
 import { buildSectionedOptions } from "@/lib/section-rules";
 import {
+    canonicalizeTokenIdForMatch,
     cn,
     formatBalance,
     formatSmartAmount,
@@ -374,7 +375,7 @@ export function DepositModal({
     const [addressSourceTab, setAddressSourceTab] = useState<
         "public" | "confidential"
     >("public");
-    const { data: popularAssets = [] } = usePopularAssetsByActivity(8, 30);
+    const { data: popularAssets = [] } = usePopularAssetsByActivity(8);
 
     const selectedAsset = form.watch("asset");
     const selectedNetwork = form.watch("network");
@@ -608,20 +609,37 @@ export function DepositModal({
             );
         }
 
-        const assetsByNormalizedId = new Map(
-            formattedAssets.map((asset) => [
-                normalizeNearAssetId(asset.id).toLowerCase(),
-                asset,
-            ]),
-        );
+        const assetsByNormalizedId = new Map<string, SelectOption>();
+        for (const asset of formattedAssets) {
+            assetsByNormalizedId.set(canonicalizeTokenIdForMatch(asset.id), asset);
+            assetsByNormalizedId.set(asset.id.toLowerCase(), asset);
+
+            const networks = newAssetNetworksMap.get(asset.id) || [];
+            for (const network of networks) {
+                assetsByNormalizedId.set(
+                    canonicalizeTokenIdForMatch(network.id),
+                    asset,
+                );
+                assetsByNormalizedId.set(network.id.toLowerCase(), asset);
+                if (network.chainId) {
+                    assetsByNormalizedId.set(
+                        canonicalizeTokenIdForMatch(network.chainId),
+                        asset,
+                    );
+                    assetsByNormalizedId.set(network.chainId.toLowerCase(), asset);
+                }
+            }
+        }
         const popularOptions: SelectOption[] = [];
         const seenPopularIds = new Set<string>();
         for (const popularAsset of popularAssets) {
             if (!popularAsset.tokenId) continue;
-            const normalizedPopularId = normalizeNearAssetId(
+            const normalizedPopularId = canonicalizeTokenIdForMatch(
                 popularAsset.tokenId,
-            ).toLowerCase();
-            const matched = assetsByNormalizedId.get(normalizedPopularId);
+            );
+            const matched =
+                assetsByNormalizedId.get(normalizedPopularId) ||
+                assetsByNormalizedId.get(popularAsset.tokenId.toLowerCase());
             if (matched && !seenPopularIds.has(matched.id)) {
                 seenPopularIds.add(matched.id);
                 popularOptions.push(matched);
