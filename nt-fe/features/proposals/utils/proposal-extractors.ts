@@ -819,12 +819,8 @@ export function extractConfidentialRequestData(
 
     const meta = proposal.confidential_metadata;
     const quoteMeta = meta?.quote_metadata;
-    const goldAmountInUsd = parseUsdValue(
-        meta?.gold_metadata?.amount_in_usd,
-    );
-    const goldAmountOutUsd = parseUsdValue(
-        meta?.gold_metadata?.amount_out_usd,
-    );
+    const goldAmountInUsd = parseUsdValue(meta?.gold_metadata?.amount_in_usd);
+    const goldAmountOutUsd = parseUsdValue(meta?.gold_metadata?.amount_out_usd);
 
     let mapped: MappedConfidentialRequest = null;
     let title = "Confidential Request";
