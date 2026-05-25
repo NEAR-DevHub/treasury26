@@ -259,7 +259,6 @@ export function ProposalSidebar({
     const proposalType = getProposalUIKind(proposal);
     const isUserVoter = !!proposal.votes[accountId ?? ""];
     const isPending = status === "Pending";
-    const isFailed = status === "Failed";
     const isExecuted = status === "Executed";
     const isBatchPaymentProposal = proposalType === "Batch Payment Request";
     const isReceiptEligibleKind = isReceiptEligibleProposalKind(proposalType);
@@ -284,21 +283,25 @@ export function ProposalSidebar({
 
     // Whether this proposal used the Intents protocol (has a deposit address)
     const hasDepositAddress = !!depositAddress;
+    const shouldUseTransactionDate = isExecuted;
+    const shouldUseSwapDate = isExecuted && hasDepositAddress;
 
-    // Fetch transaction data for non-intents proposals, or for failed ones
+    // Fetch transaction data for non-intents proposals, or for statuses
+    // whose resolved date/link should come from the chain transaction.
     const { data: transaction, isLoading: isLoadingTransaction } =
         useProposalTransaction(
             treasuryId,
             proposal,
             policy,
-            !hasDepositAddress || isFailed,
+            shouldUseTransactionDate &&
+                (!hasDepositAddress || !shouldUseSwapDate),
         );
 
     // Fetch swap status for executed intents proposals (exchange or payment)
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress || null,
         undefined,
-        hasDepositAddress && isExecuted && !!depositAddress,
+        shouldUseSwapDate,
     );
     const isSwapSuccessReady =
         !hasDepositAddress || swapStatus?.status === "SUCCESS";
@@ -326,23 +329,17 @@ export function ProposalSidebar({
         isShortExpiryExchangeProposal(proposal) &&
         nanosToMs(policy.proposal_period) > EXCHANGE_EXPIRY_MS;
 
-    let timestamp;
-    switch (status) {
-        case "Expired":
-        case "Pending":
-            timestamp = statusDateInfo.date;
-            break;
-
-        default:
-            timestamp =
-                getProposalExecutedDate(swapStatus, transaction) ?? undefined;
-            break;
-    }
+    const timestamp = shouldUseTransactionDate
+        ? (getProposalExecutedDate(swapStatus, transaction) ?? undefined)
+        : statusDateInfo.date;
     const shouldShowResolvedDate = status !== "Pending" && status !== "Expired";
+    const resolvesDateFromTransaction = shouldUseTransactionDate;
     const isResolvedDateLoading =
-        shouldShowResolvedDate &&
-        ((hasDepositAddress && isLoadingSwapStatus) ||
-            (!hasDepositAddress && isLoadingTransaction));
+        shouldShowResolvedDate && resolvesDateFromTransaction
+            ? shouldUseSwapDate
+                ? isLoadingSwapStatus
+                : isLoadingTransaction
+            : false;
 
     const isLastApprovingVote = () => {
         const currentApprovals = Object.values(proposal.votes).filter(
@@ -423,7 +420,7 @@ export function ProposalSidebar({
             </div>
 
             {/* Transaction Links */}
-            {(isExecuted || isFailed) && (
+            {isExecuted && (
                 <div className="flex flex-col gap-2">
                     {canShowReceiptButton && (
                         <Button asChild variant="secondary" className="w-full">
@@ -438,7 +435,7 @@ export function ProposalSidebar({
                         </Button>
                     )}
                     {/* For intents-routed proposals (exchange or payment), show intents explorer link */}
-                    {!isFailed && hasDepositAddress && depositAddress ? (
+                    {isExecuted && hasDepositAddress ? (
                         <Link
                             href={`https://explorer.near-intents.org/transactions/${depositAddress}`}
                             target="_blank"

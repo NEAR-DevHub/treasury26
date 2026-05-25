@@ -65,6 +65,12 @@ import { AuthButton } from "@/components/auth-button";
 import { useRouter } from "next/navigation";
 import { Tooltip } from "@/components/tooltip";
 import { useProposalsInsufficientBalance } from "../hooks/use-proposals-insufficient-balance";
+import { useProposalTransaction, useSwapStatus } from "@/hooks/use-proposals";
+import {
+    extractReceiptProposalData,
+    getProposalExecutedDate,
+} from "@/features/proposals/utils/receipt-utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -78,6 +84,72 @@ interface ProposalsTableProps {
     total?: number;
     onPageChange?: (page: number) => void;
     onSelectionChange?: (count: number) => void;
+}
+
+// Prefer resolved timestamp only for executed proposals, then fall back
+// to the standard status-based date.
+function ProposalTimelineDate({
+    proposal,
+    policy,
+    className,
+}: {
+    proposal: Proposal;
+    policy: Policy;
+    className?: string;
+}) {
+    const { treasuryId } = useTreasury();
+    const status = getProposalStatus(proposal, policy);
+    const isProposalExecuted = status === "Executed";
+    const depositAddress = extractReceiptProposalData(
+        proposal,
+        treasuryId,
+    )?.depositAddress;
+    const shouldUseSwapDate = isProposalExecuted && !!depositAddress;
+
+    const { data: transaction, isLoading: isLoadingTransaction } =
+        useProposalTransaction(
+            treasuryId,
+            proposal,
+            policy,
+            isProposalExecuted && !shouldUseSwapDate,
+        );
+    const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
+        depositAddress || null,
+        undefined,
+        shouldUseSwapDate,
+    );
+
+    if (!isProposalExecuted) {
+        return (
+            <FormattedDate
+                proposal={proposal}
+                policy={policy}
+                relative
+                className={className}
+            />
+        );
+    }
+
+    const isDateLoading = shouldUseSwapDate
+        ? isLoadingSwapStatus
+        : isLoadingTransaction;
+    if (isDateLoading) {
+        return <Skeleton className="h-3.5 w-24" />;
+    }
+
+    const executedDate = getProposalExecutedDate(swapStatus, transaction);
+    if (!executedDate) {
+        return (
+            <FormattedDate
+                proposal={proposal}
+                policy={policy}
+                relative
+                className={className}
+            />
+        );
+    }
+
+    return <FormattedDate date={executedDate} relative className={className} />;
 }
 
 export function ProposalsTable({
@@ -213,10 +285,9 @@ export function ProposalsTable({
                                         {title}
                                     </span>
                                 </div>
-                                <FormattedDate
+                                <ProposalTimelineDate
                                     proposal={proposal}
                                     policy={policy}
-                                    relative
                                     className="text-xs text-muted-foreground"
                                 />
                             </div>
