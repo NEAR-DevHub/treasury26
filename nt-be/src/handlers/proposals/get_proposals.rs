@@ -66,6 +66,20 @@ pub struct PaginatedProposals {
     pub page_size: usize,
 }
 
+#[derive(sqlx::FromRow)]
+struct ConfidentialProposalMetadataRow {
+    payload_hash: String,
+    quote_metadata: Option<serde_json::Value>,
+    status: String,
+    correlation_id: Option<String>,
+    notes: Option<String>,
+    proposal_created_at: Option<chrono::DateTime<chrono::Utc>>,
+    executed_at: Option<chrono::DateTime<chrono::Utc>>,
+    gold_amount_in_usd: Option<String>,
+    gold_amount_out_usd: Option<String>,
+    gold_usd_change: Option<String>,
+}
+
 pub async fn get_proposals(
     State(state): State<Arc<AppState>>,
     auth_user: OptionalAuthUser,
@@ -329,16 +343,29 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
     let hashes: Vec<&str> = hash_indices.iter().map(|(_, h)| h.as_str()).collect();
 
     // Batch query all matching intents
-    let rows = sqlx::query_as::<_, (
-        String,
-        Option<serde_json::Value>,
-        String,
-        Option<String>,
-        Option<String>,
-        Option<chrono::DateTime<chrono::Utc>>,
-        Option<chrono::DateTime<chrono::Utc>>,
-    )>(
-        "SELECT payload_hash, quote_metadata, status, correlation_id, notes, proposal_created_at, executed_at FROM confidential_intents WHERE dao_id = $1 AND payload_hash = ANY($2)",
+    let rows = sqlx::query_as::<_, ConfidentialProposalMetadataRow>(
+        r#"
+        SELECT
+            ci.payload_hash,
+            ci.quote_metadata,
+            ci.status,
+            ci.correlation_id,
+            ci.notes,
+            ci.proposal_created_at,
+            ci.executed_at,
+            gold.amount_in_usd::TEXT AS gold_amount_in_usd,
+            gold.amount_out_usd::TEXT AS gold_amount_out_usd,
+            gold.usd_change::TEXT AS gold_usd_change
+        FROM confidential_intents ci
+        LEFT JOIN LATERAL (
+            SELECT amount_in_usd, amount_out_usd, usd_change
+            FROM confidential_balance_changes
+            WHERE intent_id = ci.id
+            ORDER BY COALESCE(block_time, executed_at, quote_created_at) DESC, id DESC
+            LIMIT 1
+        ) gold ON TRUE
+        WHERE ci.dao_id = $1 AND ci.payload_hash = ANY($2)
+        "#,
     )
     .bind(dao_id)
     .bind(&hashes)
@@ -356,29 +383,24 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
     // Build lookup map: payload_hash → metadata
     let metadata_map: std::collections::HashMap<&str, serde_json::Value> = rows
         .iter()
-        .map(
-            |(
-                hash,
-                quote_meta,
-                status,
-                correlation_id,
-                notes,
-                proposal_created_at,
-                executed_at,
-            )| {
-                (
-                    hash.as_str(),
-                    serde_json::json!({
-                        "quote_metadata": quote_meta,
-                        "status": status,
-                        "correlation_id": correlation_id,
-                        "notes": notes,
-                        "proposal_created_at": proposal_created_at,
-                        "executed_at": executed_at,
-                    }),
-                )
-            },
-        )
+        .map(|row| {
+            (
+                row.payload_hash.as_str(),
+                serde_json::json!({
+                    "quote_metadata": row.quote_metadata,
+                    "status": row.status,
+                    "correlation_id": row.correlation_id,
+                    "notes": row.notes,
+                    "proposal_created_at": row.proposal_created_at,
+                    "executed_at": row.executed_at,
+                    "gold_metadata": {
+                        "amount_in_usd": row.gold_amount_in_usd,
+                        "amount_out_usd": row.gold_amount_out_usd,
+                        "usd_change": row.gold_usd_change,
+                    },
+                }),
+            )
+        })
         .collect();
 
     // Attach metadata to proposals

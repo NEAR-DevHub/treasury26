@@ -25,6 +25,7 @@ interface AmountProps {
     showNetwork?: boolean;
     showNetworkTooltip?: boolean;
     expandNearComLabel?: boolean;
+    usdValue?: number;
     network?: string; // Optional override for network display
     textOnly?: boolean;
     iconSize?: "sm" | "md" | "lg";
@@ -81,6 +82,7 @@ export function Amount({
     showNetwork = false,
     showNetworkTooltip = false,
     expandNearComLabel = false,
+    usdValue,
     network,
     iconSize = "lg",
 }: AmountProps) {
@@ -89,22 +91,32 @@ export function Amount({
     const tAddressBookTable = useTranslations("addressBookTable");
     const requestDisplayContext = useRequestDisplayContext();
     const effectiveShowUSDValue =
-        showUSDValue && (requestDisplayContext?.showUSDValue ?? true);
+        showUSDValue &&
+        ((requestDisplayContext?.showUSDValue ?? true) ||
+            usdValue !== undefined);
     const { data: tokenData, isLoading } = useToken(tokenId);
     const rawAmountValue = amount
         ? formatBalance(amount, tokenData?.decimals || 24)
         : amountWithDecimals || "0";
     const amountValue = formatTokenDisplayAmount(rawAmountValue);
     const estimatedUSDValue = useMemo(() => {
+        if (usdValue !== undefined) {
+            return `≈ ${formatCurrency(usdValue)}`;
+        }
+
         const isPriceAvailable = tokenData?.price;
         const parsedAmount = Number(rawAmountValue);
-        if (!isPriceAvailable || !rawAmountValue || isNaN(parsedAmount)) {
+        if (
+            !isPriceAvailable ||
+            !rawAmountValue ||
+            !Number.isFinite(parsedAmount)
+        ) {
             return tCommon("notAvailable");
         }
 
         const price = tokenData?.price;
         return `≈ ${formatCurrency(parsedAmount * price!)}`;
-    }, [tokenData, rawAmountValue, tCommon]);
+    }, [tokenData, rawAmountValue, tCommon, usdValue]);
     const networkLabel = resolveAmountNetworkLabel({
         tokenId,
         tokenNetwork: tokenData?.network,

@@ -105,6 +105,8 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
                 <Amount
                     amount={data.amount}
                     tokenId={data.tokenId}
+                    showUSDValue={data.usdValue !== null}
+                    usdValue={data.usdValue ?? undefined}
                     showNetworkTooltip
                 />
             ),

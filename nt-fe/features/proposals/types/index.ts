@@ -56,6 +56,8 @@ export interface PaymentRequestData {
     quoteSignature?: string;
     /** Network fee in token units (not raw smallest units) */
     networkFee?: string;
+    /** USD value from confidential gold projection. null means intentionally hidden/missing. */
+    usdValue?: number | null;
     /** Destination id (e.g. "near.com", "near", "nep141:...omft.near") */
     destinationAssetId?: string;
 }
@@ -207,9 +209,11 @@ export interface SwapRequestData {
     sourceNetwork: string;
     destinationNetwork?: string; // LEGACY: Destination network - only for old proposals
     amountIn: string;
+    amountInUsd?: number | null;
     tokenOut: string; // Token symbol (LEGACY for old proposals, empty for new ones)
     tokenOutAddress?: string; // NEW: Token address for new proposals
     amountOut: string;
+    amountOutUsd?: number | null;
     slippage?: string;
     quoteDeadline?: string;
 }

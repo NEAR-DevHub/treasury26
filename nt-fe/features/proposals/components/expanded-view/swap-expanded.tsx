@@ -56,6 +56,8 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
             value: (
                 <Amount
                     amount={data.amountIn}
+                    showUSDValue={data.amountInUsd !== null}
+                    usdValue={data.amountInUsd ?? undefined}
                     showNetworkTooltip
                     tokenId={finalTokenInId}
                 />
@@ -66,6 +68,8 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
             value: (
                 <Amount
                     amountWithDecimals={data.amountOut}
+                    showUSDValue={data.amountOutUsd !== null}
+                    usdValue={data.amountOutUsd ?? undefined}
                     showNetworkTooltip
                     tokenId={finalTokenOutId}
                 />
