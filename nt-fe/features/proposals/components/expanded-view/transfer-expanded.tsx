@@ -17,18 +17,17 @@ import {
 } from "@/lib/intents-network";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatTokenDisplayAmount } from "@/lib/utils";
+import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface TransferExpandedProps {
     data: PaymentRequestData;
-    isExecuted?: boolean;
 }
 
-export function TransferExpanded({
-    data,
-    isExecuted = false,
-}: TransferExpandedProps) {
+export function TransferExpanded({ data }: TransferExpandedProps) {
     const t = useTranslations("proposals.expanded");
     const tIntents = useTranslations("intentsQuote");
+    const requestDisplayContext = useRequestDisplayContext();
+    const isExecuted = requestDisplayContext?.isExecuted ?? false;
     const { data: tokenData } = useToken(data.tokenId);
     const tokenChainName = tokenData?.network || NEAR_NETWORK_ID;
     const isNearComDestination = isNearComPaymentRoute(data);

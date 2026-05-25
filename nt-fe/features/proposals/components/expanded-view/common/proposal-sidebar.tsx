@@ -39,11 +39,12 @@ import {
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
 import { StepIcon } from "@/components/step-icon";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn, nanosToMs } from "@/lib/utils";
 import {
     extractReceiptProposalData,
     getProposalExecutedDate,
-    isTerminalSwapStatus,
+    isReceiptEligibleProposalKind,
 } from "@/features/proposals/utils/receipt-utils";
 import { NotEnoughBalance } from "../../not-enough-balance";
 import { VotingDurationImpactModal } from "../../voting-duration-impact-modal";
@@ -159,10 +160,12 @@ function ExecutedSection({
     status,
     date,
     expiresAt,
+    isDateLoading = false,
 }: {
     status: UIProposalStatus;
     date?: Date;
     expiresAt: Date;
+    isDateLoading?: boolean;
 }) {
     const t = useTranslations("proposals.expanded");
     const tStatus = useTranslations("proposals.status");
@@ -205,7 +208,11 @@ function ExecutedSection({
                 <div className="flex flex-col gap-0">
                     <p className="text-sm font-semibold">{statusText}</p>
                     <p className="text-xs text-muted-foreground">
-                        {formatDate(date ?? expiresAt)}
+                        {isDateLoading ? (
+                            <Skeleton className="h-4 w-36" />
+                        ) : (
+                            formatDate(date ?? expiresAt)
+                        )}
                     </p>
                 </div>
             </div>
@@ -255,6 +262,7 @@ export function ProposalSidebar({
     const isFailed = status === "Failed";
     const isExecuted = status === "Executed";
     const isBatchPaymentProposal = proposalType === "Batch Payment Request";
+    const isReceiptEligibleKind = isReceiptEligibleProposalKind(proposalType);
 
     let newVotingDurationDays = 0;
     if (isVotingDurationChange) {
@@ -278,26 +286,33 @@ export function ProposalSidebar({
     const hasDepositAddress = !!depositAddress;
 
     // Fetch transaction data for non-intents proposals, or for failed ones
-    const { data: transaction } = useProposalTransaction(
-        treasuryId,
-        proposal,
-        policy,
-        !hasDepositAddress || isFailed,
-    );
+    const { data: transaction, isLoading: isLoadingTransaction } =
+        useProposalTransaction(
+            treasuryId,
+            proposal,
+            policy,
+            !hasDepositAddress || isFailed,
+        );
 
     // Fetch swap status for executed intents proposals (exchange or payment)
-    const { data: swapStatus } = useSwapStatus(
+    const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress || null,
         undefined,
         hasDepositAddress && isExecuted && !!depositAddress,
     );
-    const isSwapTerminalReady =
-        !hasDepositAddress || isTerminalSwapStatus(swapStatus?.status);
+    const isSwapSuccessReady =
+        !hasDepositAddress || swapStatus?.status === "SUCCESS";
+    // Receipt button visibility rules:
+    // - Proposal must be executed and of a receipt-eligible kind.
+    // - For intents-routed proposals (with depositAddress), swap status must be SUCCESS.
+    // - Batch receipts are hidden for confidential treasuries.
     const canShowReceiptButton =
         isExecuted &&
+        isReceiptEligibleKind &&
+        isSwapSuccessReady &&
         (isBatchPaymentProposal
             ? !isConfidential
-            : receiptProposalData !== null && isSwapTerminalReady);
+            : receiptProposalData !== null);
 
     const expiresAt = new Date(
         nanosToMs(
@@ -323,6 +338,11 @@ export function ProposalSidebar({
                 getProposalExecutedDate(swapStatus, transaction) ?? undefined;
             break;
     }
+    const shouldShowResolvedDate = status !== "Pending" && status !== "Expired";
+    const isResolvedDateLoading =
+        shouldShowResolvedDate &&
+        ((hasDepositAddress && isLoadingSwapStatus) ||
+            (!hasDepositAddress && isLoadingTransaction));
 
     const isLastApprovingVote = () => {
         const currentApprovals = Object.values(proposal.votes).filter(
@@ -397,6 +417,7 @@ export function ProposalSidebar({
                     status={status}
                     date={timestamp}
                     expiresAt={expiresAt}
+                    isDateLoading={isResolvedDateLoading}
                 />
                 <div className="absolute left-[11px] top-1 bottom-2 w-px bg-muted-foreground/20" />
             </div>

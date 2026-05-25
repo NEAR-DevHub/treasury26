@@ -35,7 +35,6 @@ import {
     extractReceiptProposalData,
     getProposalExecutedDate,
     isReceiptEligibleProposalKind,
-    isTerminalSwapStatus,
 } from "@/features/proposals/utils/receipt-utils";
 import { NetworkIconDisplay } from "@/components/token-display";
 import {
@@ -107,7 +106,7 @@ function ReceiptSectionTitle({ children }: ReceiptSectionTitleProps) {
 }
 
 interface ReceiptLabelValueRowProps {
-    label: string;
+    label: React.ReactNode;
     value: React.ReactNode;
     className?: string;
     labelClassName?: string;
@@ -194,7 +193,7 @@ function ReceiptPageShell({
     const tReceipt = useTranslations("receiptPage");
 
     return (
-        <div className="min-h-dvh bg-background print:bg-white print-color-exact">
+        <div className="min-h-dvh bg-background print-color-exact">
             <header className="flex min-h-14 items-center justify-between border-b border-border bg-card px-4 md:px-6 print:hidden">
                 <div className="flex items-center gap-3">
                     <Logo size="sm" />
@@ -281,6 +280,72 @@ function ReceiptLayout({ title, receiptDate, children }: ReceiptLayoutProps) {
                 </div>
             </div>
         </div>
+    );
+}
+
+function ReceiptPdfSkeletonLabelRow({
+    className = "py-3",
+    valueWidth = "w-36",
+}: {
+    className?: string;
+    valueWidth?: string;
+}) {
+    return (
+        <ReceiptLabelValueRow
+            label={<Skeleton className="h-4 w-24" />}
+            value={<Skeleton className={cn("h-4", valueWidth)} />}
+            className={className}
+        />
+    );
+}
+
+function ReceiptPdfSkeletonCard() {
+    return (
+        <PageCard className="bg-card p-8 rounded-none print:shadow-none">
+            <div className="space-y-8">
+                <div className="flex items-start justify-between border-b pb-4">
+                    <div className="space-y-2">
+                        <Skeleton className="h-7 w-64" />
+                        <Skeleton className="h-4 w-40" />
+                    </div>
+                    <Skeleton className="h-8 w-24" />
+                </div>
+
+                <Skeleton className="h-7 w-80" />
+
+                <section className="space-y-5">
+                    <div>
+                        <Skeleton className="h-6 w-20" />
+                        <ReceiptLabelValueRow
+                            label={<Skeleton className="h-4 w-16" />}
+                            value={<Skeleton className="h-4 w-64" />}
+                            className="mt-2 border-b pb-3 pt-3"
+                            valueClassName="break-all"
+                        />
+                    </div>
+                </section>
+
+                <section className="space-y-3">
+                    <Skeleton className="h-6 w-40" />
+                    <div className="divide-y text-sm">
+                        <ReceiptPdfSkeletonLabelRow valueWidth="w-20" />
+                        <ReceiptPdfSkeletonLabelRow valueWidth="w-28" />
+                        <ReceiptPdfSkeletonLabelRow valueWidth="w-32" />
+                        <ReceiptPdfSkeletonLabelRow valueWidth="w-24" />
+                        <ReceiptPdfSkeletonLabelRow valueWidth="w-48" />
+                        <ReceiptPdfSkeletonLabelRow valueWidth="w-36" />
+                    </div>
+                </section>
+
+                <div className="flex justify-between rounded-lg bg-muted p-3">
+                    <div className="space-y-2">
+                        <Skeleton className="h-5 w-44" />
+                        <Skeleton className="h-4 w-72" />
+                    </div>
+                    <Skeleton className="size-[50px]" />
+                </div>
+            </div>
+        </PageCard>
     );
 }
 
@@ -466,58 +531,65 @@ function ExchangeReceiptSections({
 interface BatchReceiptCardProps {
     batchPayment: { recipient: string; amount: string };
     paymentIndex: number;
-    paymentCount: number;
-    batchTokenData: ReturnType<typeof useToken>["data"];
-    effectiveBatchTokenId: string;
+    totalPayments: number;
+    tokenData: ReturnType<typeof useToken>["data"];
+    batchId: string;
     sourceHistoricalPriceUsd: number | null;
     transactionDate: Date | null;
     isTransactionDateLoading: boolean;
-    executedTimeValue: string | null;
 }
 
 function BatchReceiptCard({
     batchPayment,
     paymentIndex,
-    paymentCount,
-    batchTokenData,
-    effectiveBatchTokenId,
+    totalPayments,
+    tokenData,
+    batchId,
     sourceHistoricalPriceUsd,
     transactionDate,
     isTransactionDateLoading,
-    executedTimeValue,
 }: BatchReceiptCardProps) {
     const tReceipt = useTranslations("receiptPage");
-    const normalizedAmount = formatBalance(
+    const executedTimeDisplay = transactionDate
+        ? formatUserDate(transactionDate, {
+              timezone: "UTC",
+              includeTime: true,
+              includeTimezone: true,
+              timeFormat: "12",
+          })
+        : null;
+    const sourceAmountDecimal = formatBalance(
         batchPayment.amount,
-        batchTokenData?.decimals ?? 24,
+        tokenData?.decimals ?? 24,
     );
-    const formattedAmount = formatTokenDisplayAmount(normalizedAmount);
+    const sourceAmountDisplayInput =
+        formatTokenDisplayAmount(sourceAmountDecimal);
     const { sourceAmountDisplay, sourceAmountUsd, rateLabel } =
         buildReceiptAmountModel({
             isExchangeReceipt: false,
             hasDepositAddress: false,
             quote: null,
             sourceToken: {
-                normalizedAmount,
-                formattedAmount,
-                symbol: batchTokenData?.symbol ?? "",
-                tokenPrice: batchTokenData?.price ?? null,
+                amountDecimal: sourceAmountDecimal,
+                amountDisplay: sourceAmountDisplayInput,
+                symbol: tokenData?.symbol ?? "",
+                tokenPrice: tokenData?.price ?? null,
                 historicalPriceUsd: sourceHistoricalPriceUsd,
             },
             destinationToken: {
-                amountWithDecimals: normalizedAmount,
-                symbol: batchTokenData?.symbol ?? "",
-                tokenPrice: batchTokenData?.price ?? null,
+                amountDecimal: sourceAmountDecimal,
+                symbol: tokenData?.symbol ?? "",
+                tokenPrice: tokenData?.price ?? null,
                 historicalPriceUsd: sourceHistoricalPriceUsd,
             },
         });
 
     const batchTokenInfo = buildTokenReceiptInfo({
-        tokenId: effectiveBatchTokenId,
         token: {
-            ...batchTokenData,
-            network: batchTokenData?.network || "NEAR",
-            chainIcons: batchTokenData?.chainIcons,
+            ...tokenData,
+            tokenId: batchId,
+            network: tokenData?.network || "NEAR",
+            chainIcons: tokenData?.chainIcons,
         },
         amount: sourceAmountDisplay,
         usdValue: sourceAmountUsd,
@@ -527,7 +599,7 @@ function BatchReceiptCard({
         <PageCard
             className={cn(
                 "rounded-none bg-card p-8 print:shadow-none",
-                paymentIndex < paymentCount - 1 && "break-after-page",
+                paymentIndex < totalPayments - 1 && "break-after-page",
             )}
         >
             <ReceiptLayout
@@ -549,7 +621,7 @@ function BatchReceiptCard({
                         isLoading: false,
                     }}
                     executedTime={{
-                        value: executedTimeValue,
+                        value: executedTimeDisplay,
                         isLoading: isTransactionDateLoading,
                     }}
                 />
@@ -605,7 +677,6 @@ export default function RequestReceiptPage({
             ? ((extractProposalData(proposal, treasuryId)
                   .data as BatchPaymentRequestData) ?? null)
             : null;
-    const hasSingleReceiptData = receiptProposalData !== null;
     const receiptProposalVariant = receiptProposalData?.variant ?? "payment";
     const sourceTokenId = receiptProposalData?.sourceTokenId;
     const destinationTokenId = receiptProposalData?.destinationTokenId;
@@ -628,8 +699,6 @@ export default function RequestReceiptPage({
         undefined,
         isExecutableReceipt && !!depositAddress,
     );
-    const isSwapTerminalReady =
-        !depositAddress || isTerminalSwapStatus(swapStatus?.status);
     const transactionDate = getProposalExecutedDate(swapStatus, transaction);
     const isExchangeProposal = receiptProposalVariant === "exchange";
     const hasDepositAddress = !!depositAddress;
@@ -637,20 +706,22 @@ export default function RequestReceiptPage({
         destinationAssetId: destinationTokenId,
         depositAddress,
     });
-    const shouldLoadSingleReceiptData = !isBatchPaymentProposal;
     const executedAtIso =
-        shouldLoadSingleReceiptData &&
-        transactionDate &&
-        !Number.isNaN(transactionDate.getTime())
+        transactionDate && !Number.isNaN(transactionDate.getTime())
             ? transactionDate.toISOString()
             : null;
+    const shouldLoadHistoricalPrices =
+        isSingleReceiptProposal &&
+        isExecutableReceipt &&
+        !hasDepositAddress &&
+        !!executedAtIso;
     const {
         data: quoteByDepositAddress,
         isLoading: isLoadingQuoteByDepositAddress,
     } = useQuoteByDepositAddress(
         depositAddress,
         undefined,
-        shouldLoadSingleReceiptData && isExecutableReceipt && !!depositAddress,
+        isSingleReceiptProposal && isExecutableReceipt && !!depositAddress,
     );
     const {
         data: sourceHistoricalPrice,
@@ -658,11 +729,7 @@ export default function RequestReceiptPage({
     } = useTokenPriceAtTimestamp(
         sourceTokenId,
         executedAtIso,
-        shouldLoadSingleReceiptData &&
-            isExecutableReceipt &&
-            !hasDepositAddress &&
-            !!sourceTokenId &&
-            !!executedAtIso,
+        shouldLoadHistoricalPrices && !!sourceTokenId,
     );
     const {
         data: destinationHistoricalPrice,
@@ -670,19 +737,16 @@ export default function RequestReceiptPage({
     } = useTokenPriceAtTimestamp(
         destinationTokenId,
         executedAtIso,
-        shouldLoadSingleReceiptData &&
-            isExecutableReceipt &&
-            !hasDepositAddress &&
+        shouldLoadHistoricalPrices &&
             isExchangeProposal &&
-            !!destinationTokenId &&
-            !!executedAtIso,
+            !!destinationTokenId,
     );
 
     const { data: sourceToken } = useToken(
-        shouldLoadSingleReceiptData ? sourceTokenId : null,
+        isSingleReceiptProposal ? sourceTokenId : null,
     );
     const { data: destinationToken } = useToken(
-        shouldLoadSingleReceiptData ? destinationTokenId : null,
+        isSingleReceiptProposal ? destinationTokenId : null,
     );
     const { data: batchPaymentData, isLoading: isLoadingBatchPayment } =
         useBatchPayment(batchReceiptData?.batchId || null);
@@ -693,32 +757,25 @@ export default function RequestReceiptPage({
               batchPaymentData?.tokenId ??
               "near");
     const { data: batchTokenData } = useToken(effectiveBatchTokenId);
-    const tokenDecimals = sourceToken?.decimals ?? 24;
-    const normalizedAmount =
-        shouldLoadSingleReceiptData && sourceAmountRaw
-            ? formatBalance(sourceAmountRaw, tokenDecimals)
+    const { data: batchHistoricalPrice } = useTokenPriceAtTimestamp(
+        effectiveBatchTokenId,
+        executedAtIso,
+        isBatchPaymentProposal &&
+            isExecutableReceipt &&
+            !!effectiveBatchTokenId &&
+            !!executedAtIso,
+    );
+    const sourceAmountDecimal =
+        isSingleReceiptProposal && sourceAmountRaw
+            ? formatBalance(sourceAmountRaw, sourceToken?.decimals ?? 24)
             : "0";
-    const formattedAmount = formatTokenDisplayAmount(normalizedAmount);
-    const isInvalidSingleReceiptSwapTerminal =
-        isSingleReceiptProposal &&
-        !!depositAddress &&
-        !isLoadingSwapStatus &&
-        !isSwapTerminalReady;
     const isValidReceipt =
         !!proposal &&
         isReceiptEligibleProposal &&
-        (!isSingleReceiptProposal || hasSingleReceiptData) &&
+        (!isSingleReceiptProposal || receiptProposalData !== null) &&
         !!policy &&
         isExecutableReceipt &&
-        !isInvalidSingleReceiptSwapTerminal &&
         !(isBatchPaymentProposal && isConfidential);
-    const redirectPath = isValidReceipt ? null : `/${treasuryId}/requests`;
-    const shouldTrackGeneratedMetric =
-        !hasRecordedGeneratedRef.current &&
-        !!treasuryId &&
-        !isHidden &&
-        isExecutableReceipt &&
-        (!depositAddress || isSwapTerminalReady);
     const batchPayments = batchPaymentData?.payments ?? [];
     const paymentsToRender = useMemo(
         () =>
@@ -731,26 +788,18 @@ export default function RequestReceiptPage({
     );
 
     useEffect(() => {
-        if (!shouldTrackGeneratedMetric || !treasuryId) {
+        if (
+            hasRecordedGeneratedRef.current ||
+            !treasuryId ||
+            isHidden ||
+            !isExecutableReceipt
+        ) {
             return;
         }
 
         hasRecordedGeneratedRef.current = true;
         recordReceiptMetric(treasuryId, "generated");
-    }, [treasuryId, shouldTrackGeneratedMetric]);
-
-    const sourceSymbol = sourceToken?.symbol ?? "";
-    const destinationSymbol = destinationToken?.symbol ?? "";
-    const sourceHistoricalPriceUsd =
-        sourceHistoricalPrice?.source === "exact_timestamp" ||
-        sourceHistoricalPrice?.source === "daily_eod"
-            ? sourceHistoricalPrice.priceUsd
-            : null;
-    const destinationHistoricalPriceUsd =
-        destinationHistoricalPrice?.source === "exact_timestamp" ||
-        destinationHistoricalPrice?.source === "daily_eod"
-            ? destinationHistoricalPrice.priceUsd
-            : null;
+    }, [treasuryId, isHidden, isExecutableReceipt]);
     const {
         sourceAmountDisplay,
         destinationAmountDisplay,
@@ -762,45 +811,44 @@ export default function RequestReceiptPage({
             buildReceiptAmountModel({
                 isExchangeReceipt: isExchangeProposal,
                 hasDepositAddress,
-                quote: shouldLoadSingleReceiptData
-                    ? quoteByDepositAddress
-                    : null,
+                quote: isSingleReceiptProposal ? quoteByDepositAddress : null,
                 sourceToken: {
-                    normalizedAmount,
-                    formattedAmount,
-                    symbol: sourceSymbol,
+                    amountDecimal: sourceAmountDecimal,
+                    amountDisplay:
+                        formatTokenDisplayAmount(sourceAmountDecimal),
+                    symbol: sourceToken?.symbol ?? "",
                     tokenPrice: sourceToken?.price ?? null,
-                    historicalPriceUsd: sourceHistoricalPriceUsd,
+                    historicalPriceUsd: sourceHistoricalPrice?.priceUsd ?? null,
                 },
                 destinationToken: {
-                    amountWithDecimals: destinationAmountWithDecimals,
-                    symbol: destinationSymbol,
+                    amountDecimal: destinationAmountWithDecimals,
+                    symbol: destinationToken?.symbol ?? "",
                     tokenPrice: destinationToken?.price ?? null,
-                    historicalPriceUsd: destinationHistoricalPriceUsd,
+                    historicalPriceUsd:
+                        destinationHistoricalPrice?.priceUsd ?? null,
                 },
             }),
         [
             isExchangeProposal,
             quoteByDepositAddress,
-            normalizedAmount,
-            formattedAmount,
+            sourceAmountDecimal,
             destinationAmountWithDecimals,
             hasDepositAddress,
-            sourceHistoricalPriceUsd,
-            destinationHistoricalPriceUsd,
+            sourceHistoricalPrice?.priceUsd,
+            destinationHistoricalPrice?.priceUsd,
             sourceToken?.price,
             destinationToken?.price,
-            sourceSymbol,
-            destinationSymbol,
+            sourceToken?.symbol,
+            destinationToken?.symbol,
         ],
     );
     const isTransactionDateLoading =
         isExecutableReceipt &&
-        shouldLoadSingleReceiptData &&
+        isSingleReceiptProposal &&
         ((hasDepositAddress && isLoadingSwapStatus) ||
             (!hasDepositAddress && isLoadingTransaction));
     const isRateLoading = hasDepositAddress
-        ? shouldLoadSingleReceiptData && isLoadingQuoteByDepositAddress
+        ? isSingleReceiptProposal && isLoadingQuoteByDepositAddress
         : isLoadingSourceHistoricalPrice ||
           (isExchangeProposal && isLoadingDestinationHistoricalPrice);
     const executedTimeValue = transactionDate
@@ -814,8 +862,12 @@ export default function RequestReceiptPage({
     const sourceTokenInfo = useMemo(
         () =>
             buildTokenReceiptInfo({
-                tokenId: sourceTokenId ?? undefined,
-                token: sourceToken,
+                token: sourceToken
+                    ? {
+                          ...sourceToken,
+                          tokenId: sourceTokenId ?? sourceToken.tokenId,
+                      }
+                    : null,
                 amount: sourceAmountDisplay,
                 usdValue: sourceAmountUsd,
                 usdLoading: isRateLoading,
@@ -831,9 +883,9 @@ export default function RequestReceiptPage({
     const destinationTokenInfo = useMemo(
         () =>
             buildTokenReceiptInfo({
-                tokenId: destinationTokenId ?? undefined,
                 token: {
                     ...destinationToken,
+                    tokenId: destinationTokenId ?? destinationToken?.tokenId,
                     network: isNearComDestination
                         ? NEAR_COM_NETWORK_ID
                         : (destinationToken?.network ??
@@ -863,16 +915,15 @@ export default function RequestReceiptPage({
     if (isLoadingProposal || (canLoadPolicy && isLoadingPolicy)) {
         return (
             <div className="min-h-dvh bg-muted p-4">
-                <PageCard className="mx-auto w-full max-w-3xl">
-                    <Skeleton className="h-8 w-56" />
-                    <Skeleton className="h-64 w-full" />
-                </PageCard>
+                <div className="mx-auto w-full max-w-[700px]">
+                    <ReceiptPdfSkeletonCard />
+                </div>
             </div>
         );
     }
 
-    if (redirectPath) {
-        redirect(redirectPath);
+    if (!isValidReceipt) {
+        redirect(`/${treasuryId}/requests`);
     }
     const handlePrint = () => {
         if (treasuryId && !isHidden) {
@@ -890,27 +941,23 @@ export default function RequestReceiptPage({
             >
                 <div className="space-y-4">
                     {isLoadingBatchPayment ? (
-                        <PageCard className="bg-card p-8 rounded-none">
-                            <Skeleton className="h-8 w-56" />
-                            <Skeleton className="h-64 w-full" />
-                        </PageCard>
+                        <ReceiptPdfSkeletonCard />
                     ) : (
                         paymentsToRender.map((payment, index) => (
                             <BatchReceiptCard
                                 key={`${batchReceiptData?.batchId ?? "batch"}-${index}`}
                                 batchPayment={payment}
                                 paymentIndex={index}
-                                paymentCount={paymentsToRender.length}
-                                batchTokenData={batchTokenData}
-                                effectiveBatchTokenId={effectiveBatchTokenId}
+                                totalPayments={paymentsToRender.length}
+                                tokenData={batchTokenData}
+                                batchId={effectiveBatchTokenId}
                                 sourceHistoricalPriceUsd={
-                                    sourceHistoricalPriceUsd
+                                    batchHistoricalPrice?.priceUsd ?? null
                                 }
                                 transactionDate={transactionDate}
                                 isTransactionDateLoading={
                                     isTransactionDateLoading
                                 }
-                                executedTimeValue={executedTimeValue}
                             />
                         ))
                     )}

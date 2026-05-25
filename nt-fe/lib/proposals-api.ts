@@ -3,6 +3,7 @@ import { Policy, VotePolicy } from "@/types/policy";
 import axios from "axios";
 import Big from "@/lib/big";
 import { nanosToMs } from "@/lib/utils";
+import { isAxiosErrorWithStatus } from "@/lib/query-retry";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -667,7 +668,7 @@ export interface SwapQuoteResponse {
 
 export interface TokenPriceAtTimestampResponse {
     priceUsd: number | null;
-    source: "exact_timestamp" | "daily_eod" | "none" | "upstream_error";
+    source: "exact_timestamp" | "daily_eod";
 }
 
 export type ReceiptMetric = "generated" | "print";
@@ -745,7 +746,7 @@ export async function getSwapStatus(
         );
         return response.data;
     } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
+        if (isAxiosErrorWithStatus(error, 404)) {
             return null;
         }
         console.error(
@@ -776,7 +777,7 @@ export async function getQuoteByDepositAddress(
         );
         return response.data;
     } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
+        if (isAxiosErrorWithStatus(error, 404)) {
             return null;
         }
         console.error(
@@ -807,7 +808,7 @@ export async function getTokenPriceAtTimestamp(
         );
         return response.data;
     } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
+        if (isAxiosErrorWithStatus(error, 404)) {
             return null;
         }
         console.error(

@@ -37,7 +37,6 @@ interface PaymentDisplayProps {
     proposalId: number;
     showReceiptButton: boolean;
     chainName: string;
-    receiptLabel: string;
 }
 
 const paymentStatusToText = (status: PaymentStatus): "Pending" | "Paid" => {
@@ -57,15 +56,15 @@ function PaymentDisplay({
     proposalId,
     showReceiptButton,
     chainName,
-    receiptLabel,
 }: PaymentDisplayProps) {
     const t = useTranslations("proposals.expanded");
+    const tReceipt = useTranslations("receiptPage");
     const { treasuryId } = useTreasury();
     const status = paymentStatusToText(payment.status);
     const isPaid = status === "Paid";
     const { data: txData } = useBulkPaymentTransactionHash(
-        isPaid && expanded ? batchId : null,
-        isPaid && expanded ? payment.recipient : null,
+        isPaid ? batchId : null,
+        isPaid ? payment.recipient : null,
     );
     const transactionHash = txData?.transactionHash;
 
@@ -149,7 +148,7 @@ function PaymentDisplay({
                             asChild
                             variant="ghost"
                             size="icon-sm"
-                            tooltipContent={receiptLabel}
+                            tooltipContent={tReceipt("generateReceipt")}
                             className="h-7 w-7"
                         >
                             <Link
@@ -185,7 +184,6 @@ export function BatchPaymentRequestExpanded({
     proposal,
 }: BatchPaymentRequestExpandedProps) {
     const t = useTranslations("proposals.expanded");
-    const tReceipt = useTranslations("receiptPage");
     const tIntents = useTranslations("intentsQuote");
     const { isConfidential } = useTreasury();
     const [expanded, setExpanded] = useState<number[]>([]);
@@ -193,8 +191,7 @@ export function BatchPaymentRequestExpanded({
 
     // Check if we should auto-refetch
     // Only refetch if proposal is Executed
-    const proposalStatus = requestDisplayContext.proposalStatus;
-    const isExecuted = proposalStatus === "Executed";
+    const isExecuted = requestDisplayContext.isExecuted;
 
     // First fetch to check if there are pending payments
     const {
@@ -351,7 +348,6 @@ export function BatchPaymentRequestExpanded({
                             proposalId={proposal.id}
                             showReceiptButton={showReceiptButton}
                             chainName={tokenData?.network || NEAR_NETWORK_ID}
-                            receiptLabel={tReceipt("generateReceipt")}
                         />
                     ))}
                 </div>

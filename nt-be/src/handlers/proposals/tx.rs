@@ -369,7 +369,7 @@ pub async fn search_receipt(
 /// Resolve token price at execution time with fallback policy:
 /// - exact timestamp provider quote
 /// - cached daily EOD (same UTC day)
-/// - none
+/// - null (no price available or upstream failure)
 pub async fn get_token_price_at_timestamp(
     State(state): State<Arc<AppState>>,
     Query(params): Query<TokenPriceAtTimestampQuery>,
@@ -400,25 +400,19 @@ pub async fn get_token_price_at_timestamp(
                 .await
             {
                 Ok(Some((price, source))) => {
-                    Ok::<_, (StatusCode, String)>(TokenPriceAtTimestampResponse {
+                    Ok::<_, (StatusCode, String)>(Some(TokenPriceAtTimestampResponse {
                         price_usd: Some(price),
                         source: source.to_string(),
-                    })
+                    }))
                 }
-                Ok(None) => Ok::<_, (StatusCode, String)>(TokenPriceAtTimestampResponse {
-                    price_usd: None,
-                    source: "none".to_string(),
-                }),
+                Ok(None) => Ok::<_, (StatusCode, String)>(None::<TokenPriceAtTimestampResponse>),
                 Err(e) => {
                     log::warn!(
                         "Failed to resolve receipt token price for {}: {}",
                         token_id,
                         e
                     );
-                    Ok::<_, (StatusCode, String)>(TokenPriceAtTimestampResponse {
-                        price_usd: None,
-                        source: "upstream_error".to_string(),
-                    })
+                    Ok::<_, (StatusCode, String)>(None::<TokenPriceAtTimestampResponse>)
                 }
             }
         })

@@ -31,7 +31,10 @@ import { ConfidentialRequestExpanded } from "./confidential-request-expanded";
 import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
 import { useNear } from "@/stores/near-store";
 import { getProposalStatus } from "../../utils/proposal-utils";
-import { RequestDisplayProvider } from "./common/request-display-context";
+import {
+    RequestDisplayProvider,
+    useRequestDisplayContext,
+} from "./common/request-display-context";
 
 interface InternalExpandedViewProps {
     proposal: Proposal;
@@ -46,24 +49,16 @@ function ExpandedViewInternal({
 }: InternalExpandedViewProps) {
     const t = useTranslations("proposals.expanded");
     const { type, data } = extractProposalData(proposal, treasuryId);
-    const proposalStatus = getProposalStatus(proposal, policy);
-    const isExecuted = proposalStatus === "Executed";
+    const { isExecuted } = useRequestDisplayContext()!;
 
     switch (type) {
         case "Payment Request": {
             const paymentData = data as PaymentRequestData;
-            return (
-                <TransferExpanded data={paymentData} isExecuted={isExecuted} />
-            );
+            return <TransferExpanded data={paymentData} />;
         }
         case "Confidential Request": {
             const confidentialData = data as ConfidentialRequestData;
-            return (
-                <ConfidentialRequestExpanded
-                    data={confidentialData}
-                    isExecuted={isExecuted}
-                />
-            );
+            return <ConfidentialRequestExpanded data={confidentialData} />;
         }
         case "Function Call": {
             const functionCallData = data as FunctionCallData;
@@ -139,6 +134,7 @@ export function ExpandedView({
     const { accountId } = useNear();
     const proposalStatus = getProposalStatus(proposal, policy);
     const isPending = proposalStatus === "Pending";
+    const isExecuted = proposalStatus === "Executed";
     const showUsdValue = isPending;
 
     const component = (
@@ -148,6 +144,7 @@ export function ExpandedView({
                 isConfidential,
                 proposalStatus,
                 isPending,
+                isExecuted,
             }}
         >
             <ExpandedViewInternal
