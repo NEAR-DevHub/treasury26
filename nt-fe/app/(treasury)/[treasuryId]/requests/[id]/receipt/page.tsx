@@ -78,6 +78,7 @@ interface ReceiptPageShellProps {
 
 interface ReceiptLayoutProps {
     title: string;
+    proposalId: string | number;
     receiptDate: AsyncValue<Date>;
     children: React.ReactNode;
 }
@@ -193,7 +194,7 @@ function ReceiptPageShell({
     const tReceipt = useTranslations("receiptPage");
 
     return (
-        <div className="min-h-dvh bg-background print-color-exact">
+        <div className="min-h-dvh bg-background print-color-exact print:bg-white">
             <header className="flex min-h-14 items-center justify-between border-b border-border bg-card px-4 md:px-6 print:hidden">
                 <div className="flex items-center gap-3">
                     <Logo size="sm" />
@@ -219,14 +220,19 @@ function ReceiptPageShell({
                 </div>
             </header>
 
-            <main className="px-4 py-4 pb-8 print:px-0 print:py-0">
+            <main className="px-4 py-4 pb-8 print:bg-white print:px-0 print:py-0">
                 <div className="mx-auto w-full max-w-[700px]">{children}</div>
             </main>
         </div>
     );
 }
 
-function ReceiptLayout({ title, receiptDate, children }: ReceiptLayoutProps) {
+function ReceiptLayout({
+    title,
+    proposalId,
+    receiptDate,
+    children,
+}: ReceiptLayoutProps) {
     const tReceipt = useTranslations("receiptPage");
     const tCommon = useTranslations("common");
     const createTreasuryUrl =
@@ -235,10 +241,10 @@ function ReceiptLayout({ title, receiptDate, children }: ReceiptLayoutProps) {
             : "/app/new";
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             <div className="flex items-start justify-between border-b pb-4">
                 <div>
-                    <p className="text-xl font-semibold">{title}</p>
+                    <p className="text-xl font-medium">{title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
                         {tReceipt("generatedOn")}{" "}
                         {formatUserDate(new Date(), {
@@ -247,11 +253,10 @@ function ReceiptLayout({ title, receiptDate, children }: ReceiptLayoutProps) {
                         })}
                     </p>
                 </div>
-                <Logo size="md" />
+                <Logo size="md" mode="light" />
             </div>
-
-            <p className="text-xl font-semibold">
-                {tReceipt("receiptDated")}{" "}
+            <p className="text-xl font-medium">
+                {`Receipt No. ${proposalId} dated `}
                 {receiptDate.isLoading ? (
                     <span className="inline-block align-middle">
                         <ReceiptValueSkeleton width="w-32" />
@@ -266,7 +271,7 @@ function ReceiptLayout({ title, receiptDate, children }: ReceiptLayoutProps) {
                 )}
             </p>
             {children}
-            <div className="flex justify-between rounded-lg bg-muted p-3">
+            <div className="flex justify-between rounded-lg bg-secondary p-3">
                 <div>
                     <p className="text-base font-medium">
                         {tReceipt("createYourTreasury")}
@@ -301,7 +306,7 @@ function ReceiptPdfSkeletonLabelRow({
 
 function ReceiptPdfSkeletonCard() {
     return (
-        <PageCard className="bg-card p-8 rounded-none print:shadow-none">
+        <PageCard className="force-light-theme bg-white text-foreground p-8 rounded-none print:bg-white print:shadow-none">
             <div className="space-y-8">
                 <div className="flex items-start justify-between border-b pb-4">
                     <div className="space-y-2">
@@ -337,7 +342,7 @@ function ReceiptPdfSkeletonCard() {
                     </div>
                 </section>
 
-                <div className="flex justify-between rounded-lg bg-muted p-3">
+                <div className="flex justify-between rounded-lg bg-secondary p-3">
                     <div className="space-y-2">
                         <Skeleton className="h-5 w-44" />
                         <Skeleton className="h-4 w-72" />
@@ -368,9 +373,9 @@ function PaymentReceiptSections({
             <ReceiptSenderSection senderAddress={treasuryId ?? ""} />
             <section className="space-y-5">
                 <div>
-                    <ReceiptSectionTitle>
+                    <p className="text-base font-medium">
                         {tReceipt("recipient")}
-                    </ReceiptSectionTitle>
+                    </p>
                     <ReceiptLabelValueRow
                         label={tReceipt("address")}
                         value={
@@ -537,6 +542,7 @@ interface BatchReceiptCardProps {
     sourceHistoricalPriceUsd: number | null;
     transactionDate: Date | null;
     isTransactionDateLoading: boolean;
+    proposalId: string | number;
 }
 
 function BatchReceiptCard({
@@ -548,6 +554,7 @@ function BatchReceiptCard({
     sourceHistoricalPriceUsd,
     transactionDate,
     isTransactionDateLoading,
+    proposalId,
 }: BatchReceiptCardProps) {
     const tReceipt = useTranslations("receiptPage");
     const executedTimeDisplay = transactionDate
@@ -598,12 +605,13 @@ function BatchReceiptCard({
     return (
         <PageCard
             className={cn(
-                "rounded-none bg-card p-8 print:shadow-none",
+                "force-light-theme rounded-none bg-white text-foreground p-8 print:bg-white print:shadow-none",
                 paymentIndex < totalPayments - 1 && "break-after-page",
             )}
         >
             <ReceiptLayout
                 title={tReceipt("paymentConfirmation")}
+                proposalId={proposalId}
                 receiptDate={{
                     value: transactionDate,
                     isLoading: isTransactionDateLoading,
@@ -651,6 +659,15 @@ export default function RequestReceiptPage({
         treasuryId,
         id,
     );
+    const proposalId = proposal?.id ?? id;
+    useEffect(() => {
+        if (typeof document === "undefined") return;
+        const previousTitle = document.title;
+        document.title = `Receipt-${proposalId}`;
+        return () => {
+            document.title = previousTitle;
+        };
+    }, [proposalId]);
     const proposalUiKind = proposal ? getProposalUIKind(proposal) : undefined;
     const isBatchPaymentProposal = proposalUiKind === "Batch Payment Request";
     const isReceiptEligibleProposal =
@@ -914,7 +931,7 @@ export default function RequestReceiptPage({
 
     if (isLoadingProposal || (canLoadPolicy && isLoadingPolicy)) {
         return (
-            <div className="min-h-dvh bg-muted p-4">
+            <div className="min-h-dvh bg-muted p-4 print:bg-white">
                 <div className="mx-auto w-full max-w-[700px]">
                     <ReceiptPdfSkeletonCard />
                 </div>
@@ -958,6 +975,7 @@ export default function RequestReceiptPage({
                                 isTransactionDateLoading={
                                     isTransactionDateLoading
                                 }
+                                proposalId={proposalId}
                             />
                         ))
                     )}
@@ -985,13 +1003,14 @@ export default function RequestReceiptPage({
                     />
                 </PageCard>
             ) : (
-                <PageCard className="bg-card p-8 rounded-none print:shadow-none">
+                <PageCard className="force-light-theme bg-white text-foreground p-8 rounded-none print:bg-white print:shadow-none">
                     <ReceiptLayout
                         title={
                             isExchangeProposal
                                 ? tReceipt("exchangeConfirmation")
                                 : tReceipt("paymentConfirmation")
                         }
+                        proposalId={proposalId}
                         receiptDate={{
                             value: transactionDate,
                             isLoading: isTransactionDateLoading,

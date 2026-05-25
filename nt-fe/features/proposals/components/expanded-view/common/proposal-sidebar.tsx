@@ -261,6 +261,8 @@ export function ProposalSidebar({
     const isPending = status === "Pending";
     const isExecuted = status === "Executed";
     const isBatchPaymentProposal = proposalType === "Batch Payment Request";
+    const isConfidentialRequestProposal =
+        proposalType === "Confidential Request";
     const isReceiptEligibleKind = isReceiptEligibleProposalKind(proposalType);
 
     let newVotingDurationDays = 0;
@@ -303,8 +305,11 @@ export function ProposalSidebar({
         undefined,
         shouldUseSwapDate,
     );
-    const isSwapSuccessReady =
-        !hasDepositAddress || swapStatus?.status === "SUCCESS";
+    const shouldRequireSwapSuccess =
+        hasDepositAddress && !isConfidentialRequestProposal;
+    const isSwapSuccessReady = shouldRequireSwapSuccess
+        ? swapStatus?.status === "SUCCESS"
+        : true;
     // Receipt button visibility rules:
     // - Proposal must be executed and of a receipt-eligible kind.
     // - For intents-routed proposals (with depositAddress), swap status must be SUCCESS.
@@ -315,7 +320,7 @@ export function ProposalSidebar({
         isSwapSuccessReady &&
         (isBatchPaymentProposal
             ? !isConfidential
-            : receiptProposalData !== null);
+            : isConfidentialRequestProposal || receiptProposalData !== null);
 
     const expiresAt = new Date(
         nanosToMs(

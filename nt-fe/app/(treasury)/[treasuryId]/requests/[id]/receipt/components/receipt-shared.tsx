@@ -48,7 +48,7 @@ export function ReceiptSenderSection({
     const tReceipt = useTranslations("receiptPage");
 
     return (
-        <section className="space-y-5">
+        <section className="space-y-3">
             <div>
                 <p className="text-base font-semibold">{tReceipt("sender")}</p>
                 <ReceiptLabelValueRow

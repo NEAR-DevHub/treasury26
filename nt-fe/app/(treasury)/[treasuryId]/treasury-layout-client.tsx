@@ -27,13 +27,12 @@ export function TreasuryLayoutClient({
 
     if (isStandaloneReceiptView) {
         return (
-            <div className="h-dvh overflow-y-auto bg-muted print:h-auto print:overflow-visible">
+            <div className="h-dvh overflow-y-auto bg-muted print:h-auto print:overflow-visible print:bg-white">
                 <PrimaryColorProvider treasuryId={treasuryId} />
                 {children}
             </div>
         );
     }
-
     return (
         <div className="flex h-dvh lg:h-screen overflow-hidden">
             <PrimaryColorProvider treasuryId={treasuryId} />
