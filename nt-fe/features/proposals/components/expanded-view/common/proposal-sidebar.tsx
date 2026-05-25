@@ -230,7 +230,7 @@ export function ProposalSidebar({
     const tReceipt = useTranslations("receiptPage");
     const noVoteMessage = useNoVoteMessage();
     const { accountId } = useNear();
-    const { treasuryId, isConfidential } = useTreasury();
+    const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(
         proposal,
         treasuryId,
@@ -310,12 +310,15 @@ export function ProposalSidebar({
     const isSwapSuccessReady = shouldRequireSwapSuccess
         ? swapStatus?.status === "SUCCESS"
         : true;
+    const isHidden = isConfidential && isGuestTreasury;
     // Receipt button visibility rules:
     // - Proposal must be executed and of a receipt-eligible kind.
     // - For intents-routed proposals (with depositAddress), swap status must be SUCCESS.
     // - Batch receipts are hidden for confidential treasuries.
+    // - Hidden (guest) confidential treasuries cannot generate receipts.
     const canShowReceiptButton =
         isExecuted &&
+        !isHidden &&
         isReceiptEligibleKind &&
         isSwapSuccessReady &&
         (isBatchPaymentProposal
