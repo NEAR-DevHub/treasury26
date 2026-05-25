@@ -232,6 +232,7 @@
             "networksWithAssets": "Netzwerke mit Vermögenswerten",
             "yourAssets": "Ihre Vermögenswerte",
             "otherAssets": "Andere Vermögenswerte",
+            "popularAssets": "Beliebte Vermögenswerte",
             "available": "Verfügbar",
             "forMembersOnly": "Nur für Mitglieder"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "Sie können jedes Token einzahlen, das nicht in den Vermögenswerten aufgeführt ist, jedoch nur über das NEAR-Netzwerk.",
         "depositAddressHeading": "Einzahlungsadresse",
         "depositAddressSubtitle": "Überprüfen Sie Ihre Einzahlungsadresse stets sorgfältig.",
-        "depositAddressSubtitleConfidential": "Diese Einzahlungsadresse ist nur zur einmaligen Verwendung bestimmt und nur 3 Tage gültig. Eine Wiederverwendung oder Nutzung nach Ablauf führt zum dauerhaften Verlust von Geldern.",
+        "depositAddressSubtitleConfidential": "<semibold>Einzahlungsadresse zur einmaligen Verwendung.</semibold> Die Wiederverwendung dieser Adresse oder das Senden von Geldern nach Ablauf kann zu einem dauerhaften Verlust führen.",
+        "depositAddressSubtitleConfidentialExpiry": "3 Tage ab dem Zeitpunkt der Erstellung gültig. Läuft ab in: noch {expiresIn}",
         "singleUseAcknowledgement": "Ich werde diese Adresse nur einmal verwenden",
         "addressLabel": "Adresse",
         "addressCopied": "Adresse in die Zwischenablage kopiert",
@@ -259,7 +261,16 @@
         "onlyDeposit": "Zahlen Sie nur <symbolTag>{symbol}</symbolTag> aus dem <networkTag>{network}</networkTag>-Netzwerk ein.",
         "testTransactionRecommendation": "Wir empfehlen, mit einer kleinen Testtransaktion zu beginnen, um sicherzustellen, dass alles korrekt funktioniert, bevor Sie den vollen Betrag senden.",
         "minimumDeposit": "Mindesteinzahlung: <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Nach Namen suchen"
+        "searchByName": "Nach Namen suchen",
+        "faq": {
+            "title": "FAQ",
+            "publicWalletQuestion": "Wie kann ich Krypto aus einer öffentlichen Wallet einzahlen?",
+            "confidentialWalletQuestion": "Wie kann ich Krypto aus einer vertraulichen Wallet einzahlen?",
+            "fiatQuestion": "Kann ich mit Fiat einzahlen?",
+            "fiatAnswer": "Im Moment noch nicht, aber wir arbeiten daran, Fiat-Einzahlungen bald bereitzustellen. Bleib dran - es kommt bald 🚀",
+            "arrivalQuestion": "Wie lange dauert es, bis eine Einzahlung ankommt?",
+            "arrivalAnswer": "Die Bearbeitungszeit hängt vom Netzwerk ab."
+        }
     },
     "assetDetails": {
         "coinPrice": "Coin-Preis",

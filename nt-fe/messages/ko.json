@@ -232,6 +232,7 @@
             "networksWithAssets": "자산이 있는 네트워크",
             "yourAssets": "내 자산",
             "otherAssets": "기타 자산",
+            "popularAssets": "인기 자산",
             "available": "사용 가능",
             "forMembersOnly": "회원 전용"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "자산 목록에 없는 토큰도 입금할 수 있지만, NEAR 네트워크를 통해서만 가능합니다.",
         "depositAddressHeading": "입금 주소",
         "depositAddressSubtitle": "입금 주소는 항상 두 번 확인하세요.",
-        "depositAddressSubtitleConfidential": "이 입금 주소는 1회용이며 3일 동안만 유효합니다. 재사용하거나 만료 후 송금하면 영구적인 자금 손실이 발생합니다.",
+        "depositAddressSubtitleConfidential": "<semibold>1회용 입금 주소입니다.</semibold> 이 주소를 재사용하거나 만료 후 자금을 보내면 영구적인 자금 손실이 발생할 수 있습니다.",
+        "depositAddressSubtitleConfidentialExpiry": "생성 시점부터 3일 동안 유효합니다. 만료까지: {expiresIn} 남음",
         "singleUseAcknowledgement": "이 주소를 한 번만 사용하겠습니다",
         "addressLabel": "주소",
         "addressCopied": "주소가 클립보드에 복사되었습니다",
@@ -259,7 +261,16 @@
         "onlyDeposit": "<networkTag>{network}</networkTag> 네트워크에서 <symbolTag>{symbol}</symbolTag>만 입금하세요.",
         "testTransactionRecommendation": "전체 금액을 보내기 전에 모든 것이 올바르게 작동하는지 확인하기 위해 소액 테스트 트랜잭션부터 시작하는 것을 권장합니다.",
         "minimumDeposit": "최소 입금액은 <amountTag>{amount} {symbol}</amountTag>입니다",
-        "searchByName": "이름으로 검색"
+        "searchByName": "이름으로 검색",
+        "faq": {
+            "title": "FAQ",
+            "publicWalletQuestion": "공개 지갑에서 암호화폐를 어떻게 입금하나요?",
+            "confidentialWalletQuestion": "기밀 지갑에서 암호화폐를 어떻게 입금하나요?",
+            "fiatQuestion": "법정화폐로 입금할 수 있나요?",
+            "fiatAnswer": "아직은 지원하지 않지만, 곧 법정화폐 입금을 제공하기 위해 작업 중입니다. 조금만 기다려 주세요 - 곧 제공됩니다 🚀",
+            "arrivalQuestion": "입금이 도착하는 데 얼마나 걸리나요?",
+            "arrivalAnswer": "처리 시간은 네트워크에 따라 다릅니다."
+        }
     },
     "assetDetails": {
         "coinPrice": "코인 가격",

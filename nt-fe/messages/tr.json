@@ -232,6 +232,7 @@
             "networksWithAssets": "Varlıkları Olan Ağlar",
             "yourAssets": "Varlıklarınız",
             "otherAssets": "Diğer Varlıklar",
+            "popularAssets": "Popüler Varlıklar",
             "available": "Mevcut",
             "forMembersOnly": "Yalnızca Üyelere Özel"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "Varlıklar arasında listelenmeyen herhangi bir token'ı yatırabilirsiniz, ancak yalnızca NEAR ağı üzerinden.",
         "depositAddressHeading": "Para Yatırma Adresi",
         "depositAddressSubtitle": "Para yatırma adresinizi her zaman iki kez kontrol edin.",
-        "depositAddressSubtitleConfidential": "Bu para yatırma adresi tek kullanımlıktır ve yalnızca 3 gün geçerlidir. Yeniden kullanılması veya süresi dolduktan sonra gönderim yapılması kalıcı fon kaybına yol açacaktır.",
+        "depositAddressSubtitleConfidential": "<semibold>Tek kullanımlık para yatırma adresi.</semibold> Bu adresin yeniden kullanılması veya süresi dolduktan sonra fon gönderilmesi kalıcı fon kaybına yol açabilir.",
+        "depositAddressSubtitleConfidentialExpiry": "Oluşturulduğu andan itibaren 3 gün geçerlidir. Sürenin dolmasına: {expiresIn} kaldı",
         "singleUseAcknowledgement": "Bu adresi yalnızca bir kez kullanacağım",
         "addressLabel": "Adres",
         "addressCopied": "Adres panoya kopyalandı",
@@ -259,7 +261,16 @@
         "onlyDeposit": "Yalnızca <networkTag>{network}</networkTag> ağından <symbolTag>{symbol}</symbolTag> yatırın.",
         "testTransactionRecommendation": "Tüm tutarı göndermeden önce her şeyin doğru çalıştığından emin olmak için küçük bir test işlemiyle başlamanızı öneririz.",
         "minimumDeposit": "Minimum para yatırma <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "İsme göre ara"
+        "searchByName": "İsme göre ara",
+        "faq": {
+            "title": "SSS",
+            "publicWalletQuestion": "Herkese açık cüzdandan kripto nasıl yatırılır?",
+            "confidentialWalletQuestion": "Gizli cüzdandan kripto nasıl yatırılır?",
+            "fiatQuestion": "Fiat para ile yatırma yapabilir miyim?",
+            "fiatAnswer": "Şu anda değil, ancak yakında fiat para ile yatırma özelliğini getirmek için çalışıyoruz. Takipte kalın - yolda 🚀",
+            "arrivalQuestion": "Bir yatırmanın ulaşması ne kadar sürer?",
+            "arrivalAnswer": "İşlem süresi ağa bağlıdır."
+        }
     },
     "assetDetails": {
         "coinPrice": "Coin Fiyatı",

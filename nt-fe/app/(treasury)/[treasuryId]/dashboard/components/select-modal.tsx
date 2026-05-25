@@ -34,6 +34,7 @@ interface SelectModalPropsBase {
     sections?: {
         title: string;
         options: SelectOption[];
+        display?: "list" | "chips";
     }[];
 }
 
@@ -206,19 +207,99 @@ export function SelectModal({
                         <ScrollArea className="h-[400px]">
                             {sections?.length ? (
                                 filteredSections.length > 0 ? (
-                                    filteredSections.map((section) => (
-                                        <div
-                                            key={section.title}
-                                            className="mb-4 last:mb-0"
-                                        >
-                                            <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
-                                                {section.title}
+                                    filteredSections.map((section) => {
+                                        if (section.display === "chips") {
+                                            return (
+                                                <div
+                                                    key={section.title}
+                                                    className={cn(
+                                                        section.display ===
+                                                            "chips" && "mb-3",
+                                                    )}
+                                                >
+                                                    <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                                        {section.title}
+                                                    </div>
+                                                    <div className="px-1 flex flex-wrap gap-2">
+                                                        {section.options.map(
+                                                            (item) => (
+                                                                <Button
+                                                                    key={
+                                                                        item.id
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleSelect(
+                                                                            item,
+                                                                        )
+                                                                    }
+                                                                    variant="secondary"
+                                                                    disabled={
+                                                                        item.disabled
+                                                                    }
+                                                                    className={cn(
+                                                                        "h-8 rounded-lg px-2.5 py-1 text-sm font-medium gap-1.5",
+                                                                        selectedId ===
+                                                                            item.id &&
+                                                                            "bg-muted",
+                                                                        item.disabled &&
+                                                                            "opacity-60 cursor-not-allowed pointer-events-none",
+                                                                    )}
+                                                                >
+                                                                    {item.icon?.startsWith(
+                                                                        "http",
+                                                                    ) ||
+                                                                    item.icon?.startsWith(
+                                                                        "data:",
+                                                                    ) ||
+                                                                    item.icon?.startsWith(
+                                                                        "/",
+                                                                    ) ? (
+                                                                        <img
+                                                                            src={
+                                                                                item.icon
+                                                                            }
+                                                                            alt={
+                                                                                item.symbol ||
+                                                                                item.name
+                                                                            }
+                                                                            className="size-4 rounded-full object-contain"
+                                                                        />
+                                                                    ) : (
+                                                                        <div
+                                                                            className={cn(
+                                                                                "size-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center",
+                                                                                item.gradient ||
+                                                                                    "bg-linear-to-br from-blue-500 to-purple-500",
+                                                                            )}
+                                                                        >
+                                                                            {
+                                                                                item.icon
+                                                                            }
+                                                                        </div>
+                                                                    )}
+                                                                    <span>
+                                                                        {item.symbol ||
+                                                                            item.name}
+                                                                    </span>
+                                                                </Button>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div key={section.title}>
+                                                <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                                    {section.title}
+                                                </div>
+                                                {section.options.map(
+                                                    renderOptionRow,
+                                                )}
                                             </div>
-                                            {section.options.map(
-                                                renderOptionRow,
-                                            )}
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <div className="text-center py-8 text-muted-foreground">
                                         {t("noResults")}

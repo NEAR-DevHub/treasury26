@@ -335,6 +335,7 @@ function Step1({ handleNext }: StepProps) {
                 dynamicFontSize={true}
                 tokenSelect={{
                     filterTokens: filterReceiveTokens,
+                    showPopularAssets: true,
                 }}
                 usdValueOverride={
                     quoteData?.quote

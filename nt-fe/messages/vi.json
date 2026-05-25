@@ -232,6 +232,7 @@
             "networksWithAssets": "Mạng có tài sản",
             "yourAssets": "Tài sản của bạn",
             "otherAssets": "Tài sản khác",
+            "popularAssets": "Tài sản phổ biến",
             "available": "Có sẵn",
             "forMembersOnly": "Chỉ dành cho thành viên"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "Bạn có thể nạp bất kỳ token nào không có trong danh sách tài sản, nhưng chỉ qua mạng NEAR.",
         "depositAddressHeading": "Địa chỉ nạp tiền",
         "depositAddressSubtitle": "Hãy luôn kiểm tra kỹ địa chỉ nạp tiền của bạn.",
-        "depositAddressSubtitleConfidential": "Địa chỉ nạp tiền này chỉ dùng một lần và chỉ có hiệu lực trong 3 ngày. Việc sử dụng lại hoặc gửi sau khi hết hạn sẽ dẫn đến mất tiền vĩnh viễn.",
+        "depositAddressSubtitleConfidential": "<semibold>Địa chỉ nạp tiền dùng một lần.</semibold> Việc tái sử dụng địa chỉ này hoặc gửi tiền sau khi hết hạn có thể dẫn đến mất tiền vĩnh viễn.",
+        "depositAddressSubtitleConfidentialExpiry": "Có hiệu lực trong 3 ngày kể từ thời điểm tạo. Hết hạn sau: còn {expiresIn}",
         "singleUseAcknowledgement": "Tôi sẽ chỉ sử dụng địa chỉ này một lần",
         "addressLabel": "Địa chỉ",
         "addressCopied": "Đã sao chép địa chỉ vào bộ nhớ tạm",
@@ -259,7 +261,16 @@
         "onlyDeposit": "Chỉ nạp <symbolTag>{symbol}</symbolTag> từ mạng <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Chúng tôi khuyên bạn bắt đầu với một giao dịch thử nhỏ để đảm bảo mọi thứ hoạt động chính xác trước khi gửi toàn bộ số tiền.",
         "minimumDeposit": "Số tiền nạp tối thiểu là <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Tìm theo tên"
+        "searchByName": "Tìm theo tên",
+        "faq": {
+            "title": "Câu hỏi thường gặp",
+            "publicWalletQuestion": "Làm thế nào để nạp crypto từ ví công khai?",
+            "confidentialWalletQuestion": "Làm thế nào để nạp crypto từ ví bảo mật?",
+            "fiatQuestion": "Tôi có thể nạp bằng tiền pháp định không?",
+            "fiatAnswer": "Hiện tại thì chưa, nhưng chúng tôi đang làm việc để sớm hỗ trợ nạp bằng tiền pháp định. Hãy đón chờ - sắp ra mắt 🚀",
+            "arrivalQuestion": "Mất bao lâu để khoản nạp được ghi nhận?",
+            "arrivalAnswer": "Thời gian xử lý phụ thuộc vào mạng."
+        }
     },
     "assetDetails": {
         "coinPrice": "Giá Coin",

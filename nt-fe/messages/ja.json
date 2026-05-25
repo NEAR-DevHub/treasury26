@@ -232,6 +232,7 @@
             "networksWithAssets": "資産のあるネットワーク",
             "yourAssets": "あなたの資産",
             "otherAssets": "その他の資産",
+            "popularAssets": "人気の資産",
             "available": "利用可能",
             "forMembersOnly": "メンバー限定"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "資産一覧にないトークンも入金できますが、NEARネットワーク経由のみとなります。",
         "depositAddressHeading": "入金アドレス",
         "depositAddressSubtitle": "入金アドレスは必ず再確認してください。",
-        "depositAddressSubtitleConfidential": "この入金アドレスは1回限り有効で、有効期間は3日間です。再利用したり有効期限後に送金したりすると、資金の恒久的な損失につながります。",
+        "depositAddressSubtitleConfidential": "<semibold>この入金アドレスは1回限りです。</semibold> このアドレスを再利用したり、有効期限後に送金したりすると、資金を恒久的に失う可能性があります。",
+        "depositAddressSubtitleConfidentialExpiry": "生成時点から3日間有効です。失効まで: 残り{expiresIn}",
         "singleUseAcknowledgement": "このアドレスは一度だけ使用します",
         "addressLabel": "アドレス",
         "addressCopied": "アドレスをクリップボードにコピーしました",
@@ -259,7 +261,16 @@
         "onlyDeposit": "<networkTag>{network}</networkTag>ネットワークから<symbolTag>{symbol}</symbolTag>のみを入金してください。",
         "testTransactionRecommendation": "全額を送る前に、まず少額のテストトランザクションで動作を確認することをおすすめします。",
         "minimumDeposit": "最小入金額は<amountTag>{amount} {symbol}</amountTag>です",
-        "searchByName": "名前で検索"
+        "searchByName": "名前で検索",
+        "faq": {
+            "title": "よくある質問",
+            "publicWalletQuestion": "公開ウォレットから暗号資産を入金するには？",
+            "confidentialWalletQuestion": "機密ウォレットから暗号資産を入金するには？",
+            "fiatQuestion": "法定通貨で入金できますか？",
+            "fiatAnswer": "現時点では未対応ですが、法定通貨での入金をまもなく提供できるよう取り組んでいます。今しばらくお待ちください - まもなく公開予定です 🚀",
+            "arrivalQuestion": "入金が反映されるまでどのくらいかかりますか？",
+            "arrivalAnswer": "処理時間はネットワークによって異なります。"
+        }
     },
     "assetDetails": {
         "coinPrice": "コイン価格",

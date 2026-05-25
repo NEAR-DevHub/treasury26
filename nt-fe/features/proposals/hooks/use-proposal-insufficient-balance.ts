@@ -11,6 +11,7 @@ import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 export interface InsufficientBalanceInfo {
     hasInsufficientBalance: boolean;
+    tokenId?: string;
     tokenSymbol?: string;
     type?: "bond" | "balance" | "no-asset";
     tokenNetwork?: string;
@@ -49,6 +50,7 @@ export function useProposalInsufficientBalance(
             if (!token) {
                 return {
                     hasInsufficientBalance: true,
+                    tokenId: requiredFunds.tokenId,
                     type: "no-asset",
                 };
             }
@@ -59,6 +61,7 @@ export function useProposalInsufficientBalance(
             if (requiredBig.gt(availableBig)) {
                 return {
                     hasInsufficientBalance: true,
+                    tokenId: requiredFunds.tokenId,
                     tokenSymbol: token.symbol,
                     type: "balance",
                     tokenNetwork: token.network,

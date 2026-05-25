@@ -232,6 +232,7 @@
             "networksWithAssets": "Networks with Assets",
             "yourAssets": "Your Assets",
             "otherAssets": "Other Assets",
+            "popularAssets": "Popular Assets",
             "available": "Available",
             "forMembersOnly": "For Members Only"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "You can deposit any token not listed in the assets, but only via the NEAR network.",
         "depositAddressHeading": "Deposit Address",
         "depositAddressSubtitle": "Always double-check your deposit address.",
-        "depositAddressSubtitleConfidential": "Single-use address and valid for 3 days only. Reusing or sending after expiration will result in permanent loss of funds.",
+        "depositAddressSubtitleConfidential": "<semibold>Single-use deposit address.</semibold> Reusing this address or sending funds after expiration may result in a permanent loss of funds.",
+        "depositAddressSubtitleConfidentialExpiry": "Valid for 3 days from the time of generation. Expires in: {expiresIn} remaining",
         "singleUseAcknowledgement": "I will use this address only once",
         "addressLabel": "Address",
         "addressCopied": "Address copied to clipboard",
@@ -259,7 +261,16 @@
         "onlyDeposit": "Only deposit <symbolTag>{symbol}</symbolTag> from the <networkTag>{network}</networkTag> network.",
         "testTransactionRecommendation": "We recommend starting with a small test transaction to ensure everything works correctly before sending the full amount.",
         "minimumDeposit": "Minimum deposit is <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Search by name"
+        "searchByName": "Search by name",
+        "faq": {
+            "title": "FAQ",
+            "publicWalletQuestion": "How to deposit crypto from public wallet?",
+            "confidentialWalletQuestion": "How to deposit crypto from confidential wallet?",
+            "fiatQuestion": "Can I make a deposit with fiat?",
+            "fiatAnswer": "Not at the moment, but we’re working on bringing fiat deposits soon. Stay tuned - it’s on the way 🚀",
+            "arrivalQuestion": "How long does it take for a deposit to arrive?",
+            "arrivalAnswer": "The processing time depends on the network."
+        }
     },
     "assetDetails": {
         "coinPrice": "Coin Price",

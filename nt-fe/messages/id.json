@@ -232,6 +232,7 @@
             "networksWithAssets": "Jaringan dengan Aset",
             "yourAssets": "Aset Anda",
             "otherAssets": "Aset Lainnya",
+            "popularAssets": "Aset Populer",
             "available": "Tersedia",
             "forMembersOnly": "Hanya untuk anggota"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "Anda dapat mendepositkan token apa pun yang tidak tercantum dalam aset, tetapi hanya melalui jaringan NEAR.",
         "depositAddressHeading": "Alamat Deposit",
         "depositAddressSubtitle": "Selalu periksa kembali alamat deposit Anda.",
-        "depositAddressSubtitleConfidential": "Alamat deposit ini hanya untuk sekali pakai dan hanya berlaku selama 3 hari. Menggunakannya kembali atau mengirim setelah kedaluwarsa akan mengakibatkan kehilangan dana permanen.",
+        "depositAddressSubtitleConfidential": "<semibold>Alamat deposit sekali pakai.</semibold> Menggunakan kembali alamat ini atau mengirim dana setelah kedaluwarsa dapat menyebabkan kehilangan dana permanen.",
+        "depositAddressSubtitleConfidentialExpiry": "Valid selama 3 hari sejak waktu pembuatan. Kedaluwarsa dalam: tersisa {expiresIn}",
         "singleUseAcknowledgement": "Saya akan menggunakan alamat ini hanya sekali",
         "addressLabel": "Alamat",
         "addressCopied": "Alamat disalin ke papan klip",
@@ -259,7 +261,16 @@
         "onlyDeposit": "Hanya deposit <symbolTag>{symbol}</symbolTag> dari jaringan <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Kami sarankan memulai dengan transaksi uji coba kecil untuk memastikan semuanya berjalan dengan benar sebelum mengirim jumlah penuh.",
         "minimumDeposit": "Deposit minimum adalah <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Cari berdasarkan nama"
+        "searchByName": "Cari berdasarkan nama",
+        "faq": {
+            "title": "FAQ",
+            "publicWalletQuestion": "Bagaimana cara deposit kripto dari dompet publik?",
+            "confidentialWalletQuestion": "Bagaimana cara deposit kripto dari dompet rahasia?",
+            "fiatQuestion": "Apakah saya bisa melakukan deposit dengan fiat?",
+            "fiatAnswer": "Untuk saat ini belum, tetapi kami sedang mengupayakan dukungan deposit fiat segera. Nantikan - segera hadir 🚀",
+            "arrivalQuestion": "Berapa lama deposit akan masuk?",
+            "arrivalAnswer": "Waktu pemrosesan tergantung pada jaringan."
+        }
     },
     "assetDetails": {
         "coinPrice": "Harga Koin",

@@ -232,6 +232,7 @@
             "networksWithAssets": "Redes com ativos",
             "yourAssets": "Seus ativos",
             "otherAssets": "Outros ativos",
+            "popularAssets": "Ativos populares",
             "available": "Disponível",
             "forMembersOnly": "Apenas para membros"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "Você pode depositar qualquer token não listado nos ativos, mas apenas pela rede NEAR.",
         "depositAddressHeading": "Endereço de depósito",
         "depositAddressSubtitle": "Sempre confira novamente seu endereço de depósito.",
-        "depositAddressSubtitleConfidential": "Este endereço de depósito é de uso único e válido por apenas 3 dias. Reutilizá-lo ou enviar após o vencimento resultará em perda permanente de fundos.",
+        "depositAddressSubtitleConfidential": "<semibold>Endereço de depósito de uso único.</semibold> Reutilizar este endereço ou enviar fundos após o vencimento pode resultar em perda permanente de fundos.",
+        "depositAddressSubtitleConfidentialExpiry": "Válido por 3 dias a partir do momento da geração. Expira em: restam {expiresIn}",
         "singleUseAcknowledgement": "Usarei este endereço apenas uma vez",
         "addressLabel": "Endereço",
         "addressCopied": "Endereço copiado para a área de transferência",
@@ -259,7 +261,16 @@
         "onlyDeposit": "Deposite apenas <symbolTag>{symbol}</symbolTag> da rede <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Recomendamos começar com uma pequena transação de teste para garantir que tudo funcione corretamente antes de enviar o valor total.",
         "minimumDeposit": "Depósito mínimo é <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Buscar por nome"
+        "searchByName": "Buscar por nome",
+        "faq": {
+            "title": "FAQ",
+            "publicWalletQuestion": "Como depositar cripto a partir de uma carteira pública?",
+            "confidentialWalletQuestion": "Como depositar cripto a partir de uma carteira confidencial?",
+            "fiatQuestion": "Posso fazer um depósito com moeda fiduciária?",
+            "fiatAnswer": "No momento não, mas estamos trabalhando para trazer depósitos em moeda fiduciária em breve. Fique ligado - está a caminho 🚀",
+            "arrivalQuestion": "Quanto tempo leva para um depósito chegar?",
+            "arrivalAnswer": "O tempo de processamento depende da rede."
+        }
     },
     "assetDetails": {
         "coinPrice": "Preço da moeda",

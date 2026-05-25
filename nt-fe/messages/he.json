@@ -232,6 +232,7 @@
             "networksWithAssets": "רשתות עם נכסים",
             "yourAssets": "הנכסים שלך",
             "otherAssets": "נכסים אחרים",
+            "popularAssets": "נכסים פופולריים",
             "available": "זמין",
             "forMembersOnly": "לחברים בלבד"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "ניתן להפקיד כל טוקן שאינו ברשימת הנכסים, אך רק דרך רשת NEAR.",
         "depositAddressHeading": "כתובת הפקדה",
         "depositAddressSubtitle": "תמיד בדוק שוב את כתובת ההפקדה שלך.",
-        "depositAddressSubtitleConfidential": "כתובת ההפקדה הזו היא לשימוש חד-פעמי ותקפה ל-3 ימים בלבד. שימוש חוזר בה או שליחה לאחר שפג תוקפה יגרמו לאובדן קבוע של כספים.",
+        "depositAddressSubtitleConfidential": "<semibold>כתובת הפקדה לשימוש חד-פעמי.</semibold> שימוש חוזר בכתובת זו או שליחת כספים לאחר התפוגה עלולים לגרום לאובדן כספים לצמיתות.",
+        "depositAddressSubtitleConfidentialExpiry": "בתוקף למשך 3 ימים מרגע היצירה. פג תוקף בעוד: {expiresIn}",
         "singleUseAcknowledgement": "אשתמש בכתובת הזו פעם אחת בלבד",
         "addressLabel": "כתובת",
         "addressCopied": "הכתובת הועתקה ללוח",
@@ -259,7 +261,16 @@
         "onlyDeposit": "הפקד רק <symbolTag>{symbol}</symbolTag> מרשת <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "אנו ממליצים להתחיל בעסקת בדיקה קטנה כדי לוודא שהכל עובד כראוי לפני שליחת הסכום המלא.",
         "minimumDeposit": "הפקדה מינימלית היא <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "חיפוש לפי שם"
+        "searchByName": "חיפוש לפי שם",
+        "faq": {
+            "title": "שאלות נפוצות",
+            "publicWalletQuestion": "איך להפקיד קריפטו מארנק ציבורי?",
+            "confidentialWalletQuestion": "איך להפקיד קריפטו מארנק חסוי?",
+            "fiatQuestion": "האם אפשר לבצע הפקדה בפיאט?",
+            "fiatAnswer": "כרגע עדיין לא, אבל אנחנו עובדים כדי להביא תמיכה בהפקדות פיאט בקרוב. הישארו מעודכנים - זה בדרך 🚀",
+            "arrivalQuestion": "כמה זמן לוקח עד שהפקדה מגיעה?",
+            "arrivalAnswer": "זמן העיבוד תלוי ברשת."
+        }
     },
     "assetDetails": {
         "coinPrice": "מחיר מטבע",

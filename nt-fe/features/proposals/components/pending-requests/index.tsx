@@ -22,12 +22,12 @@ import { VoteModal } from "../vote-modal";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
-import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
 import { EmptyState } from "@/components/empty-state";
 import { NotEnoughBalance } from "../not-enough-balance";
 import { FormattedDate } from "@/components/formatted-date";
 import { Policy } from "@/types/policy";
 import { extractConfidentialRequestData } from "../../utils/proposal-extractors";
+import { useRouter } from "next/navigation";
 
 const MAX_DISPLAYED_REQUESTS = 4;
 
@@ -136,7 +136,8 @@ export function PendingRequestItem({
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 onDeposit(
-                                                    insufficientBalanceInfo.tokenSymbol,
+                                                    insufficientBalanceInfo.tokenId ||
+                                                        insufficientBalanceInfo.tokenSymbol,
                                                     insufficientBalanceInfo.tokenNetwork,
                                                 );
                                             }}
@@ -179,13 +180,9 @@ export function PendingRequests() {
     const t = useTranslations("requests.pending");
     const { accountId } = useNear();
     const { treasuryId } = useTreasury();
+    const router = useRouter();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
-    const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
-    const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{
-        tokenSymbol?: string;
-        tokenNetwork?: string;
-    }>({});
     const [voteInfo, setVoteInfo] = useState<{
         vote: "Approve" | "Reject" | "Remove";
         proposals: Proposal[];
@@ -254,11 +251,19 @@ export function PendingRequests() {
                                         setIsVoteModalOpen(true);
                                     }}
                                     onDeposit={(tokenSymbol, tokenNetwork) => {
-                                        setDepositTokenInfo({
-                                            tokenSymbol,
-                                            tokenNetwork,
-                                        });
-                                        setIsDepositModalOpen(true);
+                                        const params = new URLSearchParams();
+                                        if (tokenSymbol) {
+                                            params.set("token", tokenSymbol);
+                                        }
+                                        if (tokenNetwork) {
+                                            params.set("network", tokenNetwork);
+                                        }
+                                        const query = params.toString();
+                                        router.push(
+                                            `/${treasuryId}/dashboard/deposit${
+                                                query ? `?${query}` : ""
+                                            }`,
+                                        );
                                     }}
                                 />
                             ))}
@@ -276,12 +281,6 @@ export function PendingRequests() {
                 onClose={() => setIsVoteModalOpen(false)}
                 proposals={voteInfo.proposals}
                 vote={voteInfo.vote}
-            />
-            <DepositModal
-                isOpen={isDepositModalOpen}
-                onClose={() => setIsDepositModalOpen(false)}
-                prefillTokenSymbol={tokenSymbol}
-                prefillNetworkId={tokenNetwork}
             />
         </>
     );

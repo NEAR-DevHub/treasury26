@@ -232,6 +232,7 @@
             "networksWithAssets": "包含资产的网络",
             "yourAssets": "您的资产",
             "otherAssets": "其他资产",
+            "popularAssets": "热门资产",
             "available": "可用",
             "forMembersOnly": "仅限成员"
         },
@@ -249,7 +250,8 @@
         "otherNetworkInfo": "您可以存入资产列表中未列出的任何代币,但仅限通过 NEAR 网络。",
         "depositAddressHeading": "存款地址",
         "depositAddressSubtitle": "请始终仔细核对您的存款地址。",
-        "depositAddressSubtitleConfidential": "该存款地址为一次性使用，仅在 3 天内有效。重复使用或在过期后转账将导致资金永久丢失。",
+        "depositAddressSubtitleConfidential": "<semibold>一次性存款地址。</semibold> 重复使用该地址或在过期后转账，可能导致资金永久丢失。",
+        "depositAddressSubtitleConfidentialExpiry": "自生成时起 3 天内有效。距离过期还有：{expiresIn}",
         "singleUseAcknowledgement": "我只会使用该地址一次",
         "addressLabel": "地址",
         "addressCopied": "地址已复制到剪贴板",
@@ -259,7 +261,16 @@
         "onlyDeposit": "仅可从 <networkTag>{network}</networkTag> 网络存入 <symbolTag>{symbol}</symbolTag>。",
         "testTransactionRecommendation": "建议先进行小额测试交易,确认一切正常后再发送全部金额。",
         "minimumDeposit": "最低存款金额为 <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "按名称搜索"
+        "searchByName": "按名称搜索",
+        "faq": {
+            "title": "常见问题",
+            "publicWalletQuestion": "如何从公开钱包存入加密货币？",
+            "confidentialWalletQuestion": "如何从保密钱包存入加密货币？",
+            "fiatQuestion": "我可以用法币进行充值吗？",
+            "fiatAnswer": "目前还不支持，但我们正在努力尽快上线法币充值。敬请期待 - 即将推出 🚀",
+            "arrivalQuestion": "充值到账需要多长时间？",
+            "arrivalAnswer": "处理时间取决于网络。"
+        }
     },
     "assetDetails": {
         "coinPrice": "币价",
