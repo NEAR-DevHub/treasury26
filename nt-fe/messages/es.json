@@ -598,6 +598,8 @@
             "quoteSignatureTooltip": "La firma criptográfica de la API 1Click que valida esta cotización.",
             "quoteDeadline": "Plazo de cotización 1Click",
             "quoteDeadlineTooltip": "Momento en que la dirección de depósito deja de estar activa y los fondos pueden perderse.",
+            "exchangeFee": "Comisión de intercambio",
+            "exchangeFeeTooltip": "La comisión del 0,70% cubre los costes del protocolo NEAR Intents para facilitar tu operación y la comisión del widget de Trezu. Este importe se calcula automáticamente en la tasa cotizada.",
             "status": "Estado",
             "transactionLink": "Enlace de transacción",
             "viewTransaction": "Ver transacción",

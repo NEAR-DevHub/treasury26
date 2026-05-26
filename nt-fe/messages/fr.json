@@ -598,6 +598,8 @@
             "quoteSignatureTooltip": "La signature cryptographique de l'API 1Click qui valide ce devis.",
             "quoteDeadline": "Date limite du devis 1-Click",
             "quoteDeadlineTooltip": "Heure à laquelle l'adresse de dépôt devient inactive et les fonds peuvent être perdus.",
+            "exchangeFee": "Frais d'échange",
+            "exchangeFeeTooltip": "Les frais de 0,70 % couvrent ici les coûts du protocole NEAR Intents pour faciliter votre transaction et les frais du widget Trezu. Ce montant est automatiquement calculé dans votre taux coté.",
             "status": "Statut",
             "transactionLink": "Lien de transaction",
             "viewTransaction": "Voir la transaction",

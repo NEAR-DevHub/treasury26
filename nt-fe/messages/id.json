@@ -598,6 +598,8 @@
             "quoteSignatureTooltip": "Tanda tangan kriptografi dari API 1Click yang memvalidasi kuotasi ini.",
             "quoteDeadline": "Batas Waktu Kuotasi 1-Click",
             "quoteDeadlineTooltip": "Waktu ketika alamat deposit menjadi tidak aktif dan dana mungkin hilang.",
+            "exchangeFee": "Biaya Pertukaran",
+            "exchangeFeeTooltip": "Biaya 0,70% yang dikenakan di sini menutupi biaya protokol NEAR Intents untuk memfasilitasi perdagangan Anda dan biaya widget Trezu. Jumlah ini secara otomatis dihitung ke dalam nilai tukar yang dikutip Anda.",
             "status": "Status",
             "transactionLink": "Tautan Transaksi",
             "viewTransaction": "Lihat Transaksi",

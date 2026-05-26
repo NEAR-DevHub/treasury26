@@ -598,6 +598,8 @@
             "quoteSignatureTooltip": "Die kryptografische Signatur der 1Click-API, die dieses Angebot validiert.",
             "quoteDeadline": "1-Click-Angebotsfrist",
             "quoteDeadlineTooltip": "Zeitpunkt, zu dem die Einzahlungsadresse inaktiv wird und Mittel verloren gehen können.",
+            "exchangeFee": "Tauschgebühr",
+            "exchangeFeeTooltip": "Die hier anfallende Gebühr von 0,70 % deckt die Kosten des NEAR Intents-Protokolls zur Abwicklung Ihres Trades sowie die Trezu-Widget-Gebühr. Dieser Betrag wird automatisch in Ihren angebotenen Kurs einberechnet.",
             "status": "Status",
             "transactionLink": "Transaktionslink",
             "viewTransaction": "Transaktion anzeigen",

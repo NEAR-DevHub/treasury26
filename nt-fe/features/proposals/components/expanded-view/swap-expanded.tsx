@@ -3,7 +3,11 @@ import { useLocale } from "next-intl";
 import { Amount } from "../amount";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { SwapRequestData } from "../../types/index";
-import { formatDurationSeconds } from "@/lib/utils";
+import {
+    formatBalance,
+    formatDurationSeconds,
+    formatTokenDisplayAmount,
+} from "@/lib/utils";
 import { useMemo } from "react";
 import Big from "@/lib/big";
 import { Address } from "@/components/address";
@@ -11,6 +15,11 @@ import { Rate } from "@/components/rate";
 import { useToken, useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
 import { FormattedDate } from "@/components/formatted-date";
 import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
+import {
+    calculateExchangeFeeAmount,
+    EXCHANGE_FEE_PERCENTAGE,
+} from "@/lib/exchange-fee";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SwapExpandedProps {
     data: SwapRequestData;
@@ -43,12 +52,19 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
         data.tokenOutAddress ||
         legacyTokensData?.tokenOut?.defuseAssetId ||
         data.tokenOut;
+    const { data: tokenInData, isLoading: isTokenInLoading } =
+        useToken(finalTokenInId);
 
     const minimumReceived = useMemo(() => {
         return Big(data.amountOut)
             .mul(Big(100 - Number(data.slippage || 0)))
             .div(100);
     }, [data.amountOut, data.slippage]);
+    const exchangeFeeAmount = useMemo(() => {
+        return calculateExchangeFeeAmount(
+            formatBalance(data.amountIn, tokenInData?.decimals || 24),
+        );
+    }, [data.amountIn, tokenInData?.decimals]);
 
     const infoItems: InfoItem[] = [
         {
@@ -148,6 +164,18 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
             info: t("quoteDeadlineTooltip"),
         });
     }
+
+    expandableItems.push({
+        label: t("exchangeFee"),
+        value: isTokenInLoading ? (
+            <Skeleton className="h-5 w-24" />
+        ) : (
+            `${EXCHANGE_FEE_PERCENTAGE}% / ${formatTokenDisplayAmount(
+                exchangeFeeAmount,
+            )} ${tokenInData?.symbol || ""}`.trim()
+        ),
+        info: t("exchangeFeeTooltip"),
+    });
 
     return <InfoDisplay items={infoItems} expandableItems={expandableItems} />;
 }

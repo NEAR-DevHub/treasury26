@@ -598,6 +598,8 @@
             "quoteSignatureTooltip": "החתימה הקריפטוגרפית מ-1Click API שמאמתת ציטוט זה.",
             "quoteDeadline": "תוקף ציטוט 1-Click",
             "quoteDeadlineTooltip": "הזמן שבו כתובת ההפקדה הופכת ללא פעילה והכספים עלולים לאבד.",
+            "exchangeFee": "עמלת החלפה",
+            "exchangeFeeTooltip": "עמלת 0.70% הנגבית כאן מכסה את עלויות פרוטוקול NEAR Intents כדי לאפשר את המסחר שלך ואת עמלת הווידג'ט של Trezu. סכום זה מחושב אוטומטית בתוך השער המצוטט שלך.",
             "status": "סטטוס",
             "transactionLink": "קישור עסקה",
             "viewTransaction": "הצג עסקה",
