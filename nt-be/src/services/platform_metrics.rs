@@ -5,6 +5,7 @@ use sqlx::PgPool;
 const ALLOWED: &[&str] = &[
     "swap_proposals",
     "payment_proposals",
+    "address_book_payment_proposals",
     "votes_casted",
     "other_proposals_submitted",
     "batch_payments_used",

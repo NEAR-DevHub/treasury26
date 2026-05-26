@@ -124,6 +124,7 @@ interface Step1Props extends StepProps {
     ensureQuoteBeforeReview?: () => Promise<boolean>;
     onAmountInput?: () => void;
     onMaxSet?: (maxAmount: string) => void;
+    onAddressBookSelectionChange?: (isFromAddressBook: boolean) => void;
 }
 
 function Step1({
@@ -135,6 +136,7 @@ function Step1({
     ensureQuoteBeforeReview,
     onAmountInput,
     onMaxSet,
+    onAddressBookSelectionChange,
 }: Step1Props) {
     const tPay = useTranslations("payments");
     const form = useFormContext<PaymentFormValues>();
@@ -239,6 +241,7 @@ function Step1({
                 isSubmitting={isFeeLoading}
                 onAmountInput={onAmountInput}
                 onMaxSet={onMaxSet}
+                onAddressBookSelectionChange={onAddressBookSelectionChange}
             />
         </PageCard>
     );
@@ -626,6 +629,8 @@ export default function PaymentsPage() {
     // "recipient" for typed amount (exact output), "total" for MAX (exact input).
     const [intentsAmountMode, setIntentsAmountMode] =
         useState<IntentsAmountMode>("recipient");
+    const [isAddressBookRecipientSelected, setIsAddressBookRecipientSelected] =
+        useState(false);
 
     const tokenParam = searchParams.get("token");
     const preferredNetworks = useMemo(
@@ -1041,6 +1046,7 @@ export default function PaymentsPage() {
                 proposalBond,
                 additionalTransactions,
                 proposalType: "payment",
+                addressBookPayment: isAddressBookRecipientSelected,
             })
                 .then(() => {
                     trackEvent("payment-submitted", {
@@ -1050,6 +1056,7 @@ export default function PaymentsPage() {
                     });
                     form.reset();
                     quoteRef.current = null;
+                    setIsAddressBookRecipientSelected(false);
                     setStep(0);
                     triggerPendingTour();
                 })
@@ -1088,6 +1095,8 @@ export default function PaymentsPage() {
                             setIntentsAmountMode("total");
                         }
                     },
+                    onAddressBookSelectionChange:
+                        setIsAddressBookRecipientSelected,
                 },
             },
             {

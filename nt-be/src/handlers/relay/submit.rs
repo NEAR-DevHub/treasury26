@@ -44,6 +44,10 @@ pub struct RelayRequest {
     /// Absent/null → no metric recorded.
     #[serde(default)]
     pub proposal_type: Option<String>,
+    /// True when a payment proposal recipient was selected from address book.
+    /// Only set on the actual proposal call.
+    #[serde(default)]
+    pub address_book_payment: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -558,7 +562,19 @@ pub async fn relay_delegate_action(
                         Some(_) => "other_proposals_submitted",
                         None => "",
                     };
-                    if proposal_metric.is_empty() {
+                    let mut metrics = vec!["gas_covered_transactions"];
+                    if !proposal_metric.is_empty() {
+                        metrics.push(proposal_metric);
+                    }
+                    if request.address_book_payment
+                        && request.proposal_type.as_deref() == Some("payment")
+                    {
+                        metrics.push("address_book_payment_proposals");
+                    }
+                    if proposal_metric.is_empty()
+                        && !(request.address_book_payment
+                            && request.proposal_type.as_deref() == Some("payment"))
+                    {
                         crate::services::platform_metrics::record_event(
                             &state.db_pool,
                             request.treasury_id.as_str(),
@@ -569,7 +585,7 @@ pub async fn relay_delegate_action(
                         crate::services::platform_metrics::record_events(
                             &state.db_pool,
                             request.treasury_id.as_str(),
-                            &["gas_covered_transactions", proposal_metric],
+                            &metrics,
                         )
                         .await;
                     }
