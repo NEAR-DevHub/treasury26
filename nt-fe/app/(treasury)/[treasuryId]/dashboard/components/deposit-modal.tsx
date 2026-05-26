@@ -1065,6 +1065,7 @@ export function DepositModal({
                                         type="button"
                                         onClick={() => setModalType("asset")}
                                         variant="unstyled"
+                                        data-testid="deposit-asset-selector"
                                         className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
                                     >
                                         <div className="w-full flex items-center justify-between py-1">
@@ -1114,6 +1115,7 @@ export function DepositModal({
                                         type="button"
                                         onClick={() => setModalType("network")}
                                         variant="unstyled"
+                                        data-testid="deposit-network-selector"
                                         className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
                                     >
                                         <div className="w-full flex flex-col gap-0 py-1">

@@ -266,11 +266,19 @@ test("Confidential deposit — dashboard deposit page flow", async ({
         page.getByText("Select asset and network to see deposit address"),
     ).toBeVisible();
 
-    // Deposit modal starts without a selected network when multiple
-    // destinations are available. Choose Near Protocol explicitly.
-    const networkSelectButton = page.getByRole("button", {
-        name: /Select network/i,
-    });
+    const assetSelectButton = page.getByTestId("deposit-asset-selector");
+    await expect(assetSelectButton).toBeVisible({ timeout: 10_000 });
+    await assetSelectButton.click();
+    await expect(
+        page.getByRole("heading", { name: "Select Asset" }),
+    ).toBeVisible({ timeout: 10_000 });
+    await page
+        .getByRole("button", { name: /USD Coin/i })
+        .first()
+        .click();
+
+    // USDC has multiple destination networks. Select Near Protocol explicitly.
+    const networkSelectButton = page.getByTestId("deposit-network-selector");
     await expect(networkSelectButton).toBeVisible({ timeout: 10_000 });
     await networkSelectButton.click();
     await expect(
@@ -279,9 +287,7 @@ test("Confidential deposit — dashboard deposit page flow", async ({
     await page.getByRole("button", { name: "Near Protocol" }).first().click();
 
     // Near Protocol enables source tabs (public/confidential) for confidential treasuries.
-    const nearProtocolButton = page.getByRole("button", {
-        name: /Near Protocol/i,
-    });
+    const nearProtocolButton = page.getByTestId("deposit-network-selector");
     await expect(nearProtocolButton).toBeVisible({ timeout: 10_000 });
 
     await expect(
@@ -332,9 +338,9 @@ test("Confidential deposit — dashboard deposit page flow", async ({
     // ════════════════════════════════════════════════════
 
     // Open currently selected asset/network selectors and verify "Other" is absent.
-    const assetSelectButton = page.getByRole("button", { name: /USD Coin/i });
-    await expect(assetSelectButton).toBeVisible({ timeout: 10_000 });
-    await assetSelectButton.click();
+    const selectedAssetButton = page.getByTestId("deposit-asset-selector");
+    await expect(selectedAssetButton).toBeVisible({ timeout: 10_000 });
+    await selectedAssetButton.click();
     await expect(
         page.getByRole("heading", { name: "Select Asset" }),
     ).toBeVisible({ timeout: 10_000 });
