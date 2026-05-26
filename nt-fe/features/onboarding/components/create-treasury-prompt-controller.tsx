@@ -9,7 +9,20 @@ import { useNear } from "@/stores/near-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { CreateTreasuryPromptModal } from "./create-treasury-prompt-modal";
 
-const MODAL_SUPPRESSED_PATHS = new Set(["/app/new"]);
+function hasDaoLikeSegment(path: string | null | undefined): boolean {
+    if (!path) return false;
+    const normalizedPath = (() => {
+        try {
+            return decodeURIComponent(path);
+        } catch {
+            return path;
+        }
+    })();
+    return normalizedPath
+        .split("/")
+        .filter(Boolean)
+        .some((segment) => segment.includes(".near"));
+}
 
 export function CreateTreasuryPromptController() {
     const router = useRouter();
@@ -20,7 +33,8 @@ export function CreateTreasuryPromptController() {
     const prevIsAuthenticatingRef = useRef(false);
     const lastHandledLoginNonceRef = useRef(0);
     const [loginNonce, setLoginNonce] = useState(0);
-    const { accountId, isInitializing, isAuthenticating } = useNear();
+    const { accountId, isInitializing, isAuthenticating, disconnect } =
+        useNear();
     const createTreasuryPromptOpenRequestId = useOnboardingStore(
         (state) => state.createTreasuryPromptOpenRequestId,
     );
@@ -32,16 +46,16 @@ export function CreateTreasuryPromptController() {
         pathname === "/" ||
         (pathname === "/login" &&
             searchParams.get("context") === "existing_user");
-    const isSuppressedPath = pathname
-        ? MODAL_SUPPRESSED_PATHS.has(pathname)
-        : false;
+    const shouldHideDisconnect =
+        hasDaoLikeSegment(pathname) ||
+        hasDaoLikeSegment(searchParams.get("returnTo"));
     const canOpenPrompt =
         !!accountId &&
         creationAvailable &&
         !isInitializing &&
         !isLoading &&
-        treasuries.length === 0 &&
-        !isSuppressedPath;
+        treasuries.length === 0;
+    const showDisconnectWallet = canOpenPrompt && !shouldHideDisconnect;
 
     useEffect(() => {
         if (!accountId) {
@@ -108,10 +122,15 @@ export function CreateTreasuryPromptController() {
         <CreateTreasuryPromptModal
             open={open}
             source={source}
+            showDisconnectWallet={showDisconnectWallet}
             onOpenChange={handleOpenChange}
             onCreateTreasury={() => {
                 handleOpenChange(false);
                 router.push("/app/new");
+            }}
+            onDisconnectWallet={async () => {
+                await disconnect();
+                handleOpenChange(false);
             }}
         />
     );
