@@ -211,7 +211,9 @@ export default function TokenSelect({
                 ]);
                 for (const network of token.networks) {
                     tokenCandidates.add(network.id.toLowerCase());
-                    tokenCandidates.add(canonicalizeTokenIdForMatch(network.id));
+                    tokenCandidates.add(
+                        canonicalizeTokenIdForMatch(network.id),
+                    );
                     tokenCandidates.add(network.chainId.toLowerCase());
                     tokenCandidates.add(
                         canonicalizeTokenIdForMatch(network.chainId),

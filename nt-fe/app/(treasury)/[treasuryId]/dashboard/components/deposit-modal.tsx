@@ -611,7 +611,10 @@ export function DepositModal({
 
         const assetsByNormalizedId = new Map<string, SelectOption>();
         for (const asset of formattedAssets) {
-            assetsByNormalizedId.set(canonicalizeTokenIdForMatch(asset.id), asset);
+            assetsByNormalizedId.set(
+                canonicalizeTokenIdForMatch(asset.id),
+                asset,
+            );
             assetsByNormalizedId.set(asset.id.toLowerCase(), asset);
 
             const networks = newAssetNetworksMap.get(asset.id) || [];
@@ -626,7 +629,10 @@ export function DepositModal({
                         canonicalizeTokenIdForMatch(network.chainId),
                         asset,
                     );
-                    assetsByNormalizedId.set(network.chainId.toLowerCase(), asset);
+                    assetsByNormalizedId.set(
+                        network.chainId.toLowerCase(),
+                        asset,
+                    );
                 }
             }
         }
