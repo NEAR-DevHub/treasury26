@@ -598,8 +598,6 @@
             "quoteSignatureTooltip": "Bu teklifi doğrulayan 1Click API'sinden gelen kriptografik imza.",
             "quoteDeadline": "1-Click Teklif Son Tarihi",
             "quoteDeadlineTooltip": "Depozito adresinin pasif hale geldiği ve fonların kaybolabileceği zaman.",
-            "exchangeFee": "Takas Ücreti",
-            "exchangeFeeTooltip": "Burada uygulanan %0,70 ücret, işleminizi kolaylaştırmak için NEAR Intents protokol maliyetlerini ve Trezu widget ücretini karşılar. Bu miktar, teklif edilen oranınıza otomatik olarak hesaplanır.",
             "status": "Durum",
             "transactionLink": "İşlem Bağlantısı",
             "viewTransaction": "İşlemi Görüntüle",

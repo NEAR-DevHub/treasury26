@@ -598,8 +598,6 @@
             "quoteSignatureTooltip": "この見積りを検証する1Click APIからの暗号署名です。",
             "quoteDeadline": "1-Click見積り期限",
             "quoteDeadlineTooltip": "入金アドレスが無効になり、資金が失われる可能性のある時刻です。",
-            "exchangeFee": "交換手数料",
-            "exchangeFeeTooltip": "ここで発生する0.70%の手数料は、取引を仲介するNEAR IntentsプロトコルのコストとTrezuウィジェット手数料を賄います。この金額は見積りレートに自動的に含まれています。",
             "status": "ステータス",
             "transactionLink": "トランザクションリンク",
             "viewTransaction": "トランザクションを表示",

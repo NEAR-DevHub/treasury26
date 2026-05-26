@@ -598,8 +598,6 @@
             "quoteSignatureTooltip": "이 견적의 유효성을 검증하는 1Click API의 암호화 서명입니다.",
             "quoteDeadline": "1-Click 견적 마감 시간",
             "quoteDeadlineTooltip": "입금 주소가 비활성화되고 자금이 손실될 수 있는 시간입니다.",
-            "exchangeFee": "교환 수수료",
-            "exchangeFeeTooltip": "여기서 발생하는 0.70% 수수료는 거래를 가능하게 하는 NEAR Intents 프로토콜 비용과 Trezu 위젯 수수료를 포함합니다. 이 금액은 견적된 환율에 자동으로 계산됩니다.",
             "status": "상태",
             "transactionLink": "트랜잭션 링크",
             "viewTransaction": "트랜잭션 보기",

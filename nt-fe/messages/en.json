@@ -598,8 +598,6 @@
             "quoteSignatureTooltip": "The cryptographic signature from 1Click API that validates this quote.",
             "quoteDeadline": "1-Click Quote Deadline",
             "quoteDeadlineTooltip": "Time when the deposit address becomes inactive and funds may be lost.",
-            "exchangeFee": "Exchange Fee",
-            "exchangeFeeTooltip": "The 0.70% fee incurred here covers the NEAR Intents protocol costs to facilitate your trade and the Trezu widget fee. This amount is automatically calculated into your quoted rate.",
             "status": "Status",
             "transactionLink": "Transaction Link",
             "viewTransaction": "View Transaction",

@@ -598,8 +598,6 @@
             "quoteSignatureTooltip": "来自 1Click API 的加密签名,用于验证此报价的有效性。",
             "quoteDeadline": "1-Click 报价截止时间",
             "quoteDeadlineTooltip": "存款地址失效的时间,届时资金可能丢失。",
-            "exchangeFee": "兑换手续费",
-            "exchangeFeeTooltip": "此处产生的 0.70% 手续费用于支付 NEAR Intents 协议的交易处理成本及 Trezu 小部件费用。该金额已自动计入您的报价汇率中。",
             "status": "状态",
             "transactionLink": "交易链接",
             "viewTransaction": "查看交易",

@@ -27,6 +27,7 @@ interface SwapExpandedProps {
 
 function IntentsSwapExpanded({ data }: SwapExpandedProps) {
     const t = useTranslations("proposals.expanded");
+    const tExchange = useTranslations("exchange");
     const locale = useLocale();
     // For new proposals: use token addresses from description
     // For old proposals: use search hook with symbols as fallback
@@ -166,7 +167,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
     }
 
     expandableItems.push({
-        label: t("exchangeFee"),
+        label: tExchange("info.exchangeFee"),
         value: isTokenInLoading ? (
             <Skeleton className="h-5 w-24" />
         ) : (
@@ -174,7 +175,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
                 exchangeFeeAmount,
             )} ${tokenInData?.symbol || ""}`.trim()
         ),
-        info: t("exchangeFeeTooltip"),
+        info: tExchange("info.exchangeFeeTooltip"),
     });
 
     return <InfoDisplay items={infoItems} expandableItems={expandableItems} />;

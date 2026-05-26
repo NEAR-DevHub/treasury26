@@ -598,8 +598,6 @@
             "quoteSignatureTooltip": "A assinatura criptográfica da API 1Click que valida esta cotação.",
             "quoteDeadline": "Prazo da cotação 1-Click",
             "quoteDeadlineTooltip": "Horário em que o endereço de depósito se torna inativo e os fundos podem ser perdidos.",
-            "exchangeFee": "Taxa de troca",
-            "exchangeFeeTooltip": "A taxa de 0,70% incorrida aqui cobre os custos do protocolo NEAR Intents para facilitar sua negociação e a taxa do widget Trezu. Este valor é calculado automaticamente na sua taxa cotada.",
             "status": "Status",
             "transactionLink": "Link da transação",
             "viewTransaction": "Ver transação",

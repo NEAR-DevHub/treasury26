@@ -598,8 +598,6 @@
             "quoteSignatureTooltip": "Chữ ký mã hóa từ API 1Click xác thực báo giá này.",
             "quoteDeadline": "Hạn báo giá 1-Click",
             "quoteDeadlineTooltip": "Thời gian khi địa chỉ nạp tiền trở nên không hoạt động và tiền có thể bị mất.",
-            "exchangeFee": "Phí trao đổi",
-            "exchangeFeeTooltip": "Phí 0.70% phát sinh ở đây bao gồm chi phí giao thức NEAR Intents để hỗ trợ giao dịch của bạn và phí widget Trezu. Số tiền này được tự động tính vào tỷ giá đã báo của bạn.",
             "status": "Trạng thái",
             "transactionLink": "Liên kết giao dịch",
             "viewTransaction": "Xem giao dịch",
