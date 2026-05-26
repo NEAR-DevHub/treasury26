@@ -41,7 +41,9 @@ export function Toaster() {
     );
 
     useEffect(() => {
-        const isDarkMode = document.documentElement.classList.contains("dark");
+        const isDarkMode =
+            theme === "dark" ||
+            document.documentElement.classList.contains("dark");
         setResolvedTheme(isDarkMode ? "dark" : "light");
     }, [theme]);
 
@@ -53,11 +55,11 @@ export function Toaster() {
             toastOptions={{
                 unstyled: false,
                 classNames: {
-                    toast: "bg-white dark:bg-white border border-border shadow-lg",
-                    title: "text-foreground font-medium text-sm",
-                    description: " text-muted-foreground",
-                    success: "bg-white dark:bg-white",
-                    error: "bg-white dark:bg-white",
+                    toast: "bg-card text-card-foreground border border-border shadow-lg",
+                    title: "text-card-foreground font-medium text-sm",
+                    description: "text-muted-foreground",
+                    success: "bg-card text-card-foreground",
+                    error: "bg-card text-card-foreground",
                 },
             }}
             icons={{
