@@ -17,10 +17,10 @@ export function TitleSubtitleCell({
         : null;
 
     return (
-        <div className="flex flex-col gap-1 items-start">
-            <span className="font-medium">{title}</span>
+        <div className="flex w-full min-w-0 max-w-full flex-col gap-1 items-start">
+            <div className="max-w-full truncate font-medium">{title}</div>
             {(subtitle || formattedDate) && (
-                <span className="text-xs text-muted-foreground">
+                <span className="block max-w-full truncate text-xs text-muted-foreground">
                     {subtitle}
                     {subtitle && formattedDate && (
                         <span className="ml-2">• {formattedDate}</span>
