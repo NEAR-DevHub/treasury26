@@ -997,6 +997,10 @@ export default function NewTreasuryPage() {
                         source: "/app/new",
                         treasury_id: treasuryId,
                     });
+                    trackEvent("treasury-created", {
+                        source: "/app/new",
+                        treasury_id: treasuryId,
+                    });
                     queryClient.invalidateQueries({
                         queryKey: ["userTreasuries", accountId],
                     });
