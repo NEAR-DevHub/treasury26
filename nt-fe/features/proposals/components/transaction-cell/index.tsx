@@ -25,6 +25,7 @@ interface TransactionCellProps {
     proposal: Proposal;
     textOnly?: boolean;
     withDate?: boolean;
+    subtitleSuffix?: React.ReactNode;
 }
 
 /**
@@ -32,6 +33,7 @@ interface TransactionCellProps {
  */
 export function TransactionCell({
     proposal,
+    subtitleSuffix,
     withDate,
     textOnly = false,
 }: TransactionCellProps) {
@@ -46,6 +48,7 @@ export function TransactionCell({
             return (
                 <TokenCell
                     data={paymentData}
+                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -56,6 +59,7 @@ export function TransactionCell({
             return (
                 <ConfidentialRequestCell
                     data={confidentialData}
+                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -66,6 +70,7 @@ export function TransactionCell({
             return (
                 <BatchPaymentCell
                     data={batchPaymentData}
+                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -76,6 +81,7 @@ export function TransactionCell({
             return (
                 <FunctionCallCell
                     data={functionCallData}
+                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -85,6 +91,7 @@ export function TransactionCell({
             return (
                 <ChangePolicyCell
                     proposal={proposal}
+                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -94,6 +101,7 @@ export function TransactionCell({
             return (
                 <ChangeConfigCell
                     proposal={proposal}
+                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -106,6 +114,7 @@ export function TransactionCell({
                 <StakingCell
                     data={stakingData}
                     proposal={proposal}
+                    subtitleSuffix={subtitleSuffix}
                     treasuryId={treasuryId ?? undefined}
                     timestamp={timestamp}
                     textOnly={textOnly}
@@ -117,6 +126,7 @@ export function TransactionCell({
             return (
                 <TokenCell
                     data={vestingData}
+                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -127,6 +137,7 @@ export function TransactionCell({
             return (
                 <SwapCell
                     data={swapData}
+                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />

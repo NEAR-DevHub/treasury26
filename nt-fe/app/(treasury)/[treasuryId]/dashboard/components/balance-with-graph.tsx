@@ -536,7 +536,7 @@ export default function BalanceWithGraph({
     return (
         <PageCard id="balance-with-graph">
             <div className="mb-6">
-                <div className="flex justify-between gap-4">
+                <div className="flex justify-between gap-4 items-start">
                     <div className="flex-1">
                         <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                             {t("totalBalance")}

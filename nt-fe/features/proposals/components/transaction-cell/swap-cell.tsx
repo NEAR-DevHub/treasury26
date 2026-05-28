@@ -8,6 +8,7 @@ import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 interface SwapCellProps {
     data: SwapRequestData;
     timestamp?: string;
+    subtitleSuffix?: React.ReactNode;
     textOnly?: boolean;
 }
 
@@ -95,5 +96,11 @@ export function SwapCell(props: SwapCellProps) {
         default:
     }
 
-    return <TitleSubtitleCell title={title} timestamp={props.timestamp} />;
+    return (
+        <TitleSubtitleCell
+            title={title}
+            subtitleSuffix={props.subtitleSuffix}
+            timestamp={props.timestamp}
+        />
+    );
 }

@@ -6,10 +6,15 @@ import { useProfile } from "@/hooks/use-treasury-queries";
 interface FunctionCallCellProps {
     data: FunctionCallData;
     timestamp?: string;
+    subtitleSuffix?: React.ReactNode;
     textOnly?: boolean;
 }
 
-export function FunctionCallCell({ data, timestamp }: FunctionCallCellProps) {
+export function FunctionCallCell({
+    data,
+    timestamp,
+    subtitleSuffix,
+}: FunctionCallCellProps) {
     const t = useTranslations("proposals.expanded");
     const { data: profile } = useProfile(data.receiver);
     const receiver = profile?.addressBookName ?? data.receiver;
@@ -23,6 +28,7 @@ export function FunctionCallCell({ data, timestamp }: FunctionCallCellProps) {
         <TitleSubtitleCell
             title={title}
             subtitle={subtitle}
+            subtitleSuffix={subtitleSuffix}
             timestamp={timestamp}
         />
     );

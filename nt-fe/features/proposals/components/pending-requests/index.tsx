@@ -99,12 +99,17 @@ export function PendingRequestItem({
                     <span className="max-w-full truncate leading-none font-semibold">
                         {title}
                     </span>
-                    <TransactionCell proposal={proposal} textOnly />
-                    <FormattedDate
+                    <TransactionCell
                         proposal={proposal}
-                        policy={policy}
-                        relative
-                        className="text-xs text-muted-foreground"
+                        textOnly
+                        subtitleSuffix={
+                            <FormattedDate
+                                proposal={proposal}
+                                policy={policy}
+                                relative
+                                className="text-xs text-muted-foreground"
+                            />
+                        }
                     />
                     <div className="gap-3 grid grid-rows-[1fr] sm:grid-rows-[0fr] pt-4 w-full sm:group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
                         <div className="overflow-hidden w-full flex flex-col gap-2">

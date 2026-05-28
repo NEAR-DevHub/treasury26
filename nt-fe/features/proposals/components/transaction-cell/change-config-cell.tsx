@@ -10,12 +10,14 @@ import { useMemo } from "react";
 interface ChangeConfigCellProps {
     proposal: Proposal;
     timestamp?: string;
+    subtitleSuffix?: React.ReactNode;
     textOnly?: boolean;
 }
 
 export function ChangeConfigCell({
     proposal,
     timestamp,
+    subtitleSuffix,
 }: ChangeConfigCellProps) {
     const t = useTranslations("proposals.expanded");
     const { treasuryId } = useTreasury();
@@ -52,6 +54,7 @@ export function ChangeConfigCell({
             <TitleSubtitleCell
                 title={t("loadingConfig")}
                 subtitle={t("historicalData")}
+                subtitleSuffix={subtitleSuffix}
                 timestamp={timestamp}
             />
         );
@@ -62,6 +65,7 @@ export function ChangeConfigCell({
             <TitleSubtitleCell
                 title={t("generalUpdate")}
                 subtitle={t("detailsUnavailable")}
+                subtitleSuffix={subtitleSuffix}
                 timestamp={timestamp}
             />
         );
@@ -73,6 +77,7 @@ export function ChangeConfigCell({
         <TitleSubtitleCell
             title={t("generalUpdate")}
             subtitle={t("changesCount", { count: changesCount })}
+            subtitleSuffix={subtitleSuffix}
             timestamp={timestamp}
         />
     );
