@@ -1,19 +1,21 @@
+import { createContext, useContext } from "react";
 import { useFormatDate } from "@/components/formatted-date";
+
+export const SubtitleSuffixContext = createContext<React.ReactNode>(null);
 
 interface TitleSubtitleCellProps {
     title: string | React.ReactNode;
     subtitle?: string | React.ReactNode;
-    subtitleSuffix?: React.ReactNode;
     timestamp?: string;
 }
 
 export function TitleSubtitleCell({
     title,
     subtitle,
-    subtitleSuffix,
     timestamp,
 }: TitleSubtitleCellProps) {
     const formatDate = useFormatDate();
+    const subtitleSuffix = useContext(SubtitleSuffixContext);
     const formattedDate = timestamp
         ? formatDate(new Date(parseInt(timestamp) / 1000000))
         : null;
@@ -25,13 +27,7 @@ export function TitleSubtitleCell({
             {(subtitle || trailingSubtitle) && (
                 <div className="flex w-full min-w-0 items-center gap-1 text-xs text-muted-foreground">
                     {subtitle && (
-                        <span className="flex min-w-0 items-center overflow-hidden whitespace-nowrap">
-                            {typeof subtitle === "string" ? (
-                                <span className="truncate">{subtitle}</span>
-                            ) : (
-                                subtitle
-                            )}
-                        </span>
+                        <div className="min-w-0 truncate">{subtitle}</div>
                     )}
                     {subtitle && trailingSubtitle && (
                         <span className="shrink-0">•</span>

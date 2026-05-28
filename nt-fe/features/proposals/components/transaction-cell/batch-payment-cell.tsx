@@ -11,14 +11,12 @@ import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 interface BatchPaymentCellProps {
     data: BatchPaymentRequestData;
     timestamp?: string;
-    subtitleSuffix?: React.ReactNode;
     textOnly?: boolean;
 }
 
 export function BatchPaymentCell({
     data,
     timestamp,
-    subtitleSuffix,
     textOnly = false,
 }: BatchPaymentCellProps) {
     const t = useTranslations("proposals.expanded");
@@ -53,7 +51,6 @@ export function BatchPaymentCell({
         <TokenCell
             data={tokenData}
             isUser={false}
-            subtitleSuffix={subtitleSuffix}
             timestamp={timestamp}
             textOnly={textOnly}
         />

@@ -6,14 +6,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface ConfidentialTransferCellProps {
     data: ConfidentialRequestData;
     timestamp?: string;
-    subtitleSuffix?: React.ReactNode;
     textOnly?: boolean;
 }
 
 export function ConfidentialRequestCell({
     data,
     timestamp,
-    subtitleSuffix,
     textOnly = false,
 }: ConfidentialTransferCellProps) {
     const mapped = data.mapped;
@@ -26,7 +24,6 @@ export function ConfidentialRequestCell({
         return (
             <SwapCell
                 data={mapped.data}
-                subtitleSuffix={subtitleSuffix}
                 timestamp={timestamp}
                 textOnly={textOnly}
             />
@@ -36,7 +33,6 @@ export function ConfidentialRequestCell({
     return (
         <TokenCell
             data={mapped.data}
-            subtitleSuffix={subtitleSuffix}
             timestamp={timestamp}
             textOnly={textOnly}
         />

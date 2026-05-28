@@ -11,7 +11,6 @@ import { useMemo } from "react";
 interface ChangePolicyCellProps {
     proposal: Proposal;
     timestamp?: string;
-    subtitleSuffix?: React.ReactNode;
     textOnly?: boolean;
 }
 
@@ -106,7 +105,6 @@ function useSummary() {
 export function ChangePolicyCell({
     proposal,
     timestamp,
-    subtitleSuffix,
 }: ChangePolicyCellProps) {
     const t = useTranslations("proposals.expanded");
     const getSummary = useSummary();
@@ -139,7 +137,6 @@ export function ChangePolicyCell({
             <TitleSubtitleCell
                 title={t("loadingPolicy")}
                 subtitle={t("historicalData")}
-                subtitleSuffix={subtitleSuffix}
                 timestamp={timestamp}
             />
         );
@@ -150,7 +147,6 @@ export function ChangePolicyCell({
             <TitleSubtitleCell
                 title={t("policyUpdate")}
                 subtitle={t("detailsUnavailable")}
-                subtitleSuffix={subtitleSuffix}
                 timestamp={timestamp}
             />
         );
@@ -160,7 +156,6 @@ export function ChangePolicyCell({
         <TitleSubtitleCell
             title={summary.title}
             subtitle={summary.subtitle}
-            subtitleSuffix={subtitleSuffix}
             timestamp={timestamp}
         />
     );

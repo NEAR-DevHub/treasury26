@@ -20,6 +20,7 @@ import {
 import { ConfidentialRequestCell } from "./confidential-request-cell";
 import { ChangeConfigCell } from "./change-config-cell";
 import { useTreasury } from "@/hooks/use-treasury";
+import { SubtitleSuffixContext } from "./title-subtitle-cell";
 
 interface TransactionCellProps {
     proposal: Proposal;
@@ -37,6 +38,22 @@ export function TransactionCell({
     withDate,
     textOnly = false,
 }: TransactionCellProps) {
+    return (
+        <SubtitleSuffixContext.Provider value={subtitleSuffix}>
+            <TransactionCellSwitch
+                proposal={proposal}
+                withDate={withDate}
+                textOnly={textOnly}
+            />
+        </SubtitleSuffixContext.Provider>
+    );
+}
+
+function TransactionCellSwitch({
+    proposal,
+    withDate,
+    textOnly = false,
+}: Omit<TransactionCellProps, "subtitleSuffix">) {
     const t = useTranslations("proposals.expanded");
     const { treasuryId } = useTreasury();
     const { type, data } = extractProposalData(proposal, treasuryId);
@@ -48,7 +65,6 @@ export function TransactionCell({
             return (
                 <TokenCell
                     data={paymentData}
-                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -59,7 +75,6 @@ export function TransactionCell({
             return (
                 <ConfidentialRequestCell
                     data={confidentialData}
-                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -70,7 +85,6 @@ export function TransactionCell({
             return (
                 <BatchPaymentCell
                     data={batchPaymentData}
-                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -81,7 +95,6 @@ export function TransactionCell({
             return (
                 <FunctionCallCell
                     data={functionCallData}
-                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -91,7 +104,6 @@ export function TransactionCell({
             return (
                 <ChangePolicyCell
                     proposal={proposal}
-                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -101,7 +113,6 @@ export function TransactionCell({
             return (
                 <ChangeConfigCell
                     proposal={proposal}
-                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -114,7 +125,6 @@ export function TransactionCell({
                 <StakingCell
                     data={stakingData}
                     proposal={proposal}
-                    subtitleSuffix={subtitleSuffix}
                     treasuryId={treasuryId ?? undefined}
                     timestamp={timestamp}
                     textOnly={textOnly}
@@ -126,7 +136,6 @@ export function TransactionCell({
             return (
                 <TokenCell
                     data={vestingData}
-                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />
@@ -137,7 +146,6 @@ export function TransactionCell({
             return (
                 <SwapCell
                     data={swapData}
-                    subtitleSuffix={subtitleSuffix}
                     timestamp={timestamp}
                     textOnly={textOnly}
                 />

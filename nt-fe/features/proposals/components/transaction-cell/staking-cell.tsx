@@ -11,7 +11,6 @@ interface StakingCellProps {
     proposal: Proposal;
     treasuryId?: string;
     timestamp?: string;
-    subtitleSuffix?: React.ReactNode;
     textOnly?: boolean;
 }
 
@@ -20,7 +19,6 @@ export function StakingCell({
     proposal,
     treasuryId,
     timestamp,
-    subtitleSuffix,
     textOnly = false,
 }: StakingCellProps) {
     const t = useTranslations("proposals.expanded");
@@ -48,7 +46,6 @@ export function StakingCell({
                         ? t("validatorSubtitle", { address: address ?? "" })
                         : undefined
                 }
-                subtitleSuffix={subtitleSuffix}
                 timestamp={timestamp}
             />
         );
@@ -66,7 +63,6 @@ export function StakingCell({
             }}
             textOnly={textOnly}
             prefix={t("validatorPrefix")}
-            subtitleSuffix={subtitleSuffix}
             timestamp={timestamp}
         />
     );
