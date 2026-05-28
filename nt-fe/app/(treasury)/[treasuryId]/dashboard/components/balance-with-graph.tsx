@@ -29,6 +29,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useBalanceChart } from "@/hooks/use-treasury-queries";
 import type { ChartInterval, TreasuryAsset } from "@/lib/api";
 import { availableBalance, totalBalance } from "@/lib/balance";
+import { getBalanceHistoryTokenIds } from "@/lib/balance-history-token-ids";
 import Big from "@/lib/big";
 import {
     getDashboardBalanceView,
@@ -152,26 +153,7 @@ export default function BalanceWithGraph({
 
         for (const token of tokens) {
             const existing = grouped.get(token.symbol);
-
-            // Convert token ID to balance-history format
-            // Intents tokens need "intents.near:" prefix for balance-history API
-            // Staked tokens need "staking:" prefix with pool IDs
-            let tokenIdsForHistory: string[] = [];
-            if (
-                token.residency === "Intents" &&
-                !token.id.startsWith("intents.near:")
-            ) {
-                tokenIdsForHistory = [`intents.near:${token.contractId}`];
-            } else if (
-                token.residency === "Staked" &&
-                "staking" in token.balance
-            ) {
-                tokenIdsForHistory = token.balance.staking.pools.map(
-                    (p) => `staking:${p.poolId}`,
-                );
-            } else {
-                tokenIdsForHistory = [token.contractId ?? token.id];
-            }
+            const tokenIdsForHistory = getBalanceHistoryTokenIds(token);
 
             if (existing) {
                 existing.tokens.push(token);
