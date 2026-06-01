@@ -292,7 +292,12 @@ export function useIntentsQuote({
             error instanceof Error
                 ? error.message
                 : "Failed to prepare 1Click transfer route";
-        return formatErrorMessage(msg, effectiveAmountDecimals, token.symbol, t);
+        return formatErrorMessage(
+            msg,
+            effectiveAmountDecimals,
+            token.symbol,
+            t,
+        );
     }, [
         hasLowAmountQuote,
         lowAmountQuoteDetails,

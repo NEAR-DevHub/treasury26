@@ -780,7 +780,12 @@ export default function PaymentsPage() {
                 intentsAmountMode,
                 bridgeAssets,
             ),
-        [bridgeAssets, intentsAmountMode, quoteToken, watchedDestinationNetwork],
+        [
+            bridgeAssets,
+            intentsAmountMode,
+            quoteToken,
+            watchedDestinationNetwork,
+        ],
     );
 
     // ── Live quote (drives step-1 fee preview & step-2 review) ───────────────
