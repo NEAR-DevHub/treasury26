@@ -256,9 +256,7 @@ export function parseAmount(
         // length (1, 2 or 4+ digits) is a decimal separator: "10,5",
         // "10,50", "1,2345".
         const isThousandsGroup =
-            parts.length === 2 &&
-            parts[1].length === 3 &&
-            parts[0] !== "0";
+            parts.length === 2 && parts[1].length === 3 && parts[0] !== "0";
         if (parts.length === 2 && !isThousandsGroup) {
             // Decimal separator: "10,5" or "10,50"
             normalized = normalized.replace(",", ".");
