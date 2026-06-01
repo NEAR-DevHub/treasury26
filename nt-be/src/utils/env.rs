@@ -1,4 +1,5 @@
 use near_api::{AccountId, SecretKey};
+use std::collections::HashSet;
 
 #[derive(Clone, Debug)]
 pub struct EnvVars {
@@ -53,6 +54,17 @@ pub struct EnvVars {
     pub frontend_base_url: String,
     // Confidential auth token lifetime in days (default: 36500 ≈ 100 years)
     pub confidential_auth_expires_days: i64,
+    pub testing_sputnik_dao_ids: HashSet<String>,
+    pub testing_near_account_ids: HashSet<String>,
+}
+
+fn parse_csv_set(key: &str) -> HashSet<String> {
+    std::env::var(key)
+        .unwrap_or_default()
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
 }
 
 impl Default for EnvVars {
@@ -190,6 +202,8 @@ impl Default for EnvVars {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(36500), // Default: ~100 years
+            testing_sputnik_dao_ids: parse_csv_set("TESTING_SPUTNIK_DAO_IDS"),
+            testing_near_account_ids: parse_csv_set("TESTING_NEAR_ACCOUNT_IDS"),
         }
     }
 }
