@@ -55,6 +55,7 @@ interface PaymentFormSectionProps<
     isSubmitting?: boolean;
     onAmountInput?: () => void;
     onMaxSet?: (maxAmount: string) => void;
+    onAddressBookSelectionChange?: (isFromAddressBook: boolean) => void;
     /**
      * Form field path for the destination network id. When provided (and not
      * explicitly hidden), renders the recipient network selector.
@@ -85,6 +86,7 @@ export function PaymentFormSection<
     isSubmitting = false,
     onAmountInput,
     onMaxSet,
+    onAddressBookSelectionChange,
     destinationNetworkName,
     destinationNetworkNameFieldName,
     hideRecipientNetwork = false,
@@ -218,6 +220,10 @@ export function PaymentFormSection<
             );
         }
     }, [selectedContact, setRecipientValue]);
+
+    useEffect(() => {
+        onAddressBookSelectionChange?.(!!selectedContact);
+    }, [selectedContact, onAddressBookSelectionChange]);
 
     // For bulk (no network selector), drop a selected contact whose networks
     // don't match the locked token's chain. With the selector visible, the

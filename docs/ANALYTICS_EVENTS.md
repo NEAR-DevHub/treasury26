@@ -2,7 +2,7 @@
 
 Most events are fired via `trackEvent()` from `nt-fe/lib/analytics.ts`, which sends to both **PostHog** and **Google Analytics** (GA4) simultaneously.
 
-Some onboarding survey events are sent directly with `posthog.capture()` (PostHog-only).
+Some onboarding survey events are provider-specific and are sent directly with `posthog.capture()` (PostHog-only).
 
 Naming is mixed today (`snake_case` and `kebab-case`) due to legacy events. New onboarding events use `snake_case`.
 
@@ -115,7 +115,7 @@ Wallet selected in connector callbacks.
 
 ---
 
-### `onboarding_completed`
+### `onboarding_completed`, `treasury-created`
 
 Treasury creation flow successfully completes.
 
@@ -214,7 +214,6 @@ These are retained only for historical references and may still exist in old Pos
 - `treasury-creation-step-1-completed`
 - `treasury-creation-step-2-completed`
 - `treasury-creation-step-3-viewed`
-- `treasury-created`
 - `new-wallet-connected`
 
 ## Treasury Settings

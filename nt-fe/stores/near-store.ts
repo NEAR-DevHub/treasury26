@@ -82,6 +82,8 @@ export interface CreateProposalParams {
     }>;
     /** Metric hint for the backend. "swap" | "payment" | "vote" | "other". Omit for non-tracked proposals. */
     proposalType?: string;
+    /** True when payment recipient was selected from address book. */
+    addressBookPayment?: boolean;
 }
 
 interface Vote {
@@ -126,6 +128,7 @@ interface NearStore {
         params: SignDelegateActionsParams,
         storageBytes: Big,
         proposalType?: string,
+        addressBookPayment?: boolean,
     ) => Promise<boolean>;
     createProposal: (params: CreateProposalParams) => Promise<void>;
     voteProposals: (treasuryId: string, votes: Vote[]) => Promise<void>;
@@ -470,6 +473,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         params: SignDelegateActionsParams,
         storageBytes: Big,
         proposalType?: string,
+        addressBookPayment?: boolean,
     ): Promise<boolean> => {
         const state = get();
         if (!isFullyAuthenticated(state)) {
@@ -492,6 +496,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 result.signedDelegateActions[i],
                 storageBytes,
                 i === 0 ? proposalType : undefined,
+                i === 0 ? addressBookPayment : undefined,
             );
             if (!relayResult.success) {
                 throw new Error(
@@ -562,6 +567,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 { delegateActions, network: "mainnet" },
                 storageBytes,
                 params.proposalType,
+                params.addressBookPayment,
             );
         } catch (error) {
             console.error("Failed to create proposal:", error);

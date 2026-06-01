@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { Shield } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import {
     PaymentRequestData,
     VestingData,
@@ -12,6 +13,7 @@ import { useProfile } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { Tooltip } from "@/components/tooltip";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
+import { Address } from "@/components/address";
 
 interface TokenCellProps {
     data: PaymentRequestData | VestingData | StakingData;
@@ -53,8 +55,8 @@ export function TokenCell({
         isNearComPaymentRoute(data);
 
     const subtitle = data.receiver ? (
-        <>
-            {effectivePrefix}
+        <div className="flex min-w-0 max-w-full items-center overflow-hidden">
+            <span className="shrink-0">{effectivePrefix}</span>
             {showConfidentialAddressShield && (
                 <Tooltip content={tCommon("confidentialAddressTooltip")}>
                     <span className="inline-flex align-middle ml-1">
@@ -68,12 +70,19 @@ export function TokenCell({
                     useAddressBook
                     chainName={destinationAssetId}
                 >
-                    <span> {address}</span>
+                    <div className="ml-1 min-w-0 flex-1 overflow-hidden">
+                        <Address
+                            address={address}
+                            prefixLength={6}
+                            suffixLength={6}
+                            className="min-w-0 truncate"
+                        />
+                    </div>
                 </TooltipUser>
             ) : (
-                ` ${address}`
+                <span className="ml-1 min-w-0 flex-1 truncate">{address}</span>
             )}
-        </>
+        </div>
     ) : undefined;
 
     return (

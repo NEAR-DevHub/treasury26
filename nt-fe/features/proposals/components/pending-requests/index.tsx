@@ -84,7 +84,7 @@ export function PendingRequestItem({
     );
     const { accountId } = useNear();
     const isUserVoter = !!proposal.votes[accountId ?? ""];
-    let title = useMemo(() => {
+    const title = useMemo(() => {
         if (type === "Confidential Request") {
             return extractConfidentialRequestData(proposal, treasuryId).title;
         }
@@ -93,16 +93,23 @@ export function PendingRequestItem({
 
     return (
         <Link href={`/${treasuryId}/requests/${proposal.id}`}>
-            <PageCard className="flex relative flex-row gap-3.5 justify-between w-full group">
+            <PageCard className="flex relative flex-row gap-3.5 justify-between w-full overflow-hidden group">
                 <ProposalTypeIcon proposal={proposal} treasuryId={treasuryId} />
-                <div className="flex flex-col items-start w-full gap-1">
-                    <span className="leading-none font-semibold">{title}</span>
-                    <TransactionCell proposal={proposal} textOnly />
-                    <FormattedDate
+                <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+                    <span className="max-w-full truncate leading-none font-semibold">
+                        {title}
+                    </span>
+                    <TransactionCell
                         proposal={proposal}
-                        policy={policy}
-                        relative
-                        className="text-xs text-muted-foreground"
+                        textOnly
+                        subtitleSuffix={
+                            <FormattedDate
+                                proposal={proposal}
+                                policy={policy}
+                                relative
+                                className="text-xs text-muted-foreground"
+                            />
+                        }
                     />
                     <div className="gap-3 grid grid-rows-[1fr] sm:grid-rows-[0fr] pt-4 w-full sm:group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
                         <div className="overflow-hidden w-full flex flex-col gap-2">
