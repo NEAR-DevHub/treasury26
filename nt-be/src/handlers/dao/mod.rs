@@ -60,9 +60,9 @@ pub async fn record_receipt_metric(
         return Err((StatusCode::BAD_REQUEST, "daoId is required".to_string()));
     }
 
-    let column = match payload.metric.as_str() {
-        "generated" => "receipts_generated",
-        "print" => "receipts_printed",
+    let metric = match payload.metric.as_str() {
+        "generated" => crate::services::platform_metrics::PlatformMetric::ReceiptsGenerated,
+        "print" => crate::services::platform_metrics::PlatformMetric::ReceiptsPrinted,
         _ => {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -71,7 +71,7 @@ pub async fn record_receipt_metric(
         }
     };
 
-    crate::services::platform_metrics::record_event(&state.db_pool, &payload.dao_id, column).await;
+    crate::services::platform_metrics::record_event(&state.db_pool, &payload.dao_id, metric).await;
 
     Ok(StatusCode::OK)
 }
