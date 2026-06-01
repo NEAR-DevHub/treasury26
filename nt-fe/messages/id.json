@@ -261,6 +261,10 @@
         "onlyDeposit": "Hanya deposit <symbolTag>{symbol}</symbolTag> dari jaringan <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Kami sarankan memulai dengan transaksi uji coba kecil untuk memastikan semuanya berjalan dengan benar sebelum mengirim jumlah penuh.",
         "minimumDeposit": "Deposit minimum adalah <amountTag>{amount} {symbol}</amountTag>",
+        "tabs": {
+            "fromPublic": "Dari publik",
+            "fromConfidential": "Dari rahasia"
+        },
         "searchByName": "Cari berdasarkan nama",
         "faq": {
             "title": "FAQ",

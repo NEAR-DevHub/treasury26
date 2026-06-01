@@ -375,7 +375,7 @@ export function DepositModal({
     const [addressSourceTab, setAddressSourceTab] = useState<
         "public" | "confidential"
     >("public");
-    const { data: popularAssets = [] } = usePopularAssetsByActivity(8);
+    const { data: popularAssets = [] } = usePopularAssetsByActivity();
 
     const selectedAsset = form.watch("asset");
     const selectedNetwork = form.watch("network");
@@ -1247,14 +1247,16 @@ export function DepositModal({
                                             className="text-base font-semibold pb-2"
                                         >
                                             <Globe className="size-5" />
-                                            <span>From public</span>
+                                            <span>{t("tabs.fromPublic")}</span>
                                         </TabsTrigger>
                                         <TabsTrigger
                                             value="confidential"
                                             className="text-base font-semibold pb-2"
                                         >
                                             <Shield className="size-5 fill-current" />
-                                            <span>From confidential</span>
+                                            <span>
+                                                {t("tabs.fromConfidential")}
+                                            </span>
                                         </TabsTrigger>
                                     </TabsList>
                                 </Tabs>

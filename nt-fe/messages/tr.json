@@ -261,6 +261,10 @@
         "onlyDeposit": "Yalnızca <networkTag>{network}</networkTag> ağından <symbolTag>{symbol}</symbolTag> yatırın.",
         "testTransactionRecommendation": "Tüm tutarı göndermeden önce her şeyin doğru çalıştığından emin olmak için küçük bir test işlemiyle başlamanızı öneririz.",
         "minimumDeposit": "Minimum para yatırma <amountTag>{amount} {symbol}</amountTag>",
+        "tabs": {
+            "fromPublic": "Genelden",
+            "fromConfidential": "Gizliden"
+        },
         "searchByName": "İsme göre ara",
         "faq": {
             "title": "SSS",

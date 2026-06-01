@@ -261,6 +261,10 @@
         "onlyDeposit": "Only deposit <symbolTag>{symbol}</symbolTag> from the <networkTag>{network}</networkTag> network.",
         "testTransactionRecommendation": "We recommend starting with a small test transaction to ensure everything works correctly before sending the full amount.",
         "minimumDeposit": "Minimum deposit is <amountTag>{amount} {symbol}</amountTag>",
+        "tabs": {
+            "fromPublic": "From public",
+            "fromConfidential": "From confidential"
+        },
         "searchByName": "Search by name",
         "faq": {
             "title": "FAQ",

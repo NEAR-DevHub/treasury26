@@ -261,6 +261,10 @@
         "onlyDeposit": "Zahlen Sie nur <symbolTag>{symbol}</symbolTag> aus dem <networkTag>{network}</networkTag>-Netzwerk ein.",
         "testTransactionRecommendation": "Wir empfehlen, mit einer kleinen Testtransaktion zu beginnen, um sicherzustellen, dass alles korrekt funktioniert, bevor Sie den vollen Betrag senden.",
         "minimumDeposit": "Mindesteinzahlung: <amountTag>{amount} {symbol}</amountTag>",
+        "tabs": {
+            "fromPublic": "Aus öffentlichem",
+            "fromConfidential": "Aus vertraulichem"
+        },
         "searchByName": "Nach Namen suchen",
         "faq": {
             "title": "FAQ",

@@ -615,19 +615,10 @@ export async function getTokenMetadata(
     }
 }
 
-export async function getPopularAssetsByActivity(
-    limit: number = 8,
-    lookbackDays: number = 45,
-): Promise<TokenMetadata[]> {
+export async function getPopularAssetsByActivity(): Promise<TokenMetadata[]> {
     try {
         const response = await axios.get<PopularAssetsByActivityResponse>(
             `${BACKEND_API_BASE}/token/popular-assets`,
-            {
-                params: {
-                    limit,
-                    lookbackDays,
-                },
-            },
         );
 
         return response.data.data ?? [];

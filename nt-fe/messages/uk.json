@@ -261,6 +261,10 @@
         "onlyDeposit": "Поповнюйте лише <symbolTag>{symbol}</symbolTag> з мережі <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Рекомендуємо спершу зробити невеликий тестовий переказ, щоб переконатись, що все працює правильно, а потім вже надсилати повну суму.",
         "minimumDeposit": "Мінімальний депозит: <amountTag>{amount} {symbol}</amountTag>",
+        "tabs": {
+            "fromPublic": "З публічного",
+            "fromConfidential": "З конфіденційного"
+        },
         "searchByName": "Шукати за назвою",
         "faq": {
             "title": "Поширені запитання",

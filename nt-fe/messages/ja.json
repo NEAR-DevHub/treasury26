@@ -261,6 +261,10 @@
         "onlyDeposit": "<networkTag>{network}</networkTag>ネットワークから<symbolTag>{symbol}</symbolTag>のみを入金してください。",
         "testTransactionRecommendation": "全額を送る前に、まず少額のテストトランザクションで動作を確認することをおすすめします。",
         "minimumDeposit": "最小入金額は<amountTag>{amount} {symbol}</amountTag>です",
+        "tabs": {
+            "fromPublic": "公開から",
+            "fromConfidential": "機密から"
+        },
         "searchByName": "名前で検索",
         "faq": {
             "title": "よくある質問",

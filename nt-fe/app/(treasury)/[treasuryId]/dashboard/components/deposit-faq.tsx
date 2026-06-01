@@ -10,14 +10,15 @@ export function DepositFaq() {
     const t = useTranslations("depositModal");
     const [openIndex, setOpenIndex] = useState<number | null>(null);
     const faqItems = [
-        {
-            question: t("faq.publicWalletQuestion"),
-            videoUrl: "/",
-        },
-        {
-            question: t("faq.confidentialWalletQuestion"),
-            videoUrl: "/",
-        },
+        // UNCOMMENT AFTER VIDEOS ARE UPLOADED
+        // {
+        //     question: t("faq.publicWalletQuestion"),
+        //     videoUrl: "/",
+        // },
+        // {
+        //     question: t("faq.confidentialWalletQuestion"),
+        //     videoUrl: "/",
+        // },
         {
             question: t("faq.fiatQuestion"),
             answer: t("faq.fiatAnswer"),
@@ -35,24 +36,24 @@ export function DepositFaq() {
                 {faqItems.map((item, index) => {
                     const isOpen = openIndex === index;
 
-                    if (item.videoUrl) {
-                        return (
-                            <a
-                                key={item.question}
-                                href={item.videoUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full py-3 block"
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <span className="text-sm font-medium">
-                                        {item.question}
-                                    </span>
-                                    <CirclePlay className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-                                </div>
-                            </a>
-                        );
-                    }
+                    // if (item.videoUrl) {
+                    //     return (
+                    //         <a
+                    //             key={item.question}
+                    //             href={item.videoUrl}
+                    //             target="_blank"
+                    //             rel="noopener noreferrer"
+                    //             className="w-full py-3 block"
+                    //         >
+                    //             <div className="flex items-start justify-between gap-3">
+                    //                 <span className="text-sm font-medium">
+                    //                     {item.question}
+                    //                 </span>
+                    //                 <CirclePlay className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                    //             </div>
+                    //         </a>
+                    //     );
+                    // }
 
                     return (
                         <button

@@ -110,8 +110,6 @@ export default function TokenSelect({
     );
     const [step, setStep] = useState<"token" | "network">("token");
     const { data: popularAssets = [] } = usePopularAssetsByActivity(
-        8,
-        45,
         showPopularAssets && open && step === "token",
     );
 

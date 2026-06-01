@@ -261,6 +261,10 @@
         "onlyDeposit": "仅可从 <networkTag>{network}</networkTag> 网络存入 <symbolTag>{symbol}</symbolTag>。",
         "testTransactionRecommendation": "建议先进行小额测试交易,确认一切正常后再发送全部金额。",
         "minimumDeposit": "最低存款金额为 <amountTag>{amount} {symbol}</amountTag>",
+        "tabs": {
+            "fromPublic": "从公开",
+            "fromConfidential": "从保密"
+        },
         "searchByName": "按名称搜索",
         "faq": {
             "title": "常见问题",

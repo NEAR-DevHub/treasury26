@@ -261,6 +261,10 @@
         "onlyDeposit": "Déposez uniquement <symbolTag>{symbol}</symbolTag> depuis le réseau <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Nous recommandons de commencer par une petite transaction de test pour vous assurer que tout fonctionne correctement avant d'envoyer le montant complet.",
         "minimumDeposit": "Le dépôt minimum est de <amountTag>{amount} {symbol}</amountTag>",
+        "tabs": {
+            "fromPublic": "Depuis public",
+            "fromConfidential": "Depuis confidentiel"
+        },
         "searchByName": "Rechercher par nom",
         "faq": {
             "title": "FAQ",

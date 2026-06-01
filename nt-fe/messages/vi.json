@@ -261,6 +261,10 @@
         "onlyDeposit": "Chỉ nạp <symbolTag>{symbol}</symbolTag> từ mạng <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Chúng tôi khuyên bạn bắt đầu với một giao dịch thử nhỏ để đảm bảo mọi thứ hoạt động chính xác trước khi gửi toàn bộ số tiền.",
         "minimumDeposit": "Số tiền nạp tối thiểu là <amountTag>{amount} {symbol}</amountTag>",
+        "tabs": {
+            "fromPublic": "Từ công khai",
+            "fromConfidential": "Từ bảo mật"
+        },
         "searchByName": "Tìm theo tên",
         "faq": {
             "title": "Câu hỏi thường gặp",

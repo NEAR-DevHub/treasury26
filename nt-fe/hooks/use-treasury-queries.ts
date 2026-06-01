@@ -180,14 +180,10 @@ export function useToken(tokenId: string | null | undefined) {
     });
 }
 
-export function usePopularAssetsByActivity(
-    limit: number = 8,
-    lookbackDays: number = 45,
-    enabled: boolean = true,
-) {
+export function usePopularAssetsByActivity(enabled: boolean = true) {
     return useQuery({
-        queryKey: ["popularAssetsByActivity", limit, lookbackDays],
-        queryFn: () => getPopularAssetsByActivity(limit, lookbackDays),
+        queryKey: ["popularAssetsByActivity"],
+        queryFn: () => getPopularAssetsByActivity(),
         enabled,
         staleTime: 1000 * 60 * 5,
     });

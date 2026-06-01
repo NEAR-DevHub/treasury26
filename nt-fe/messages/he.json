@@ -261,6 +261,10 @@
         "onlyDeposit": "הפקד רק <symbolTag>{symbol}</symbolTag> מרשת <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "אנו ממליצים להתחיל בעסקת בדיקה קטנה כדי לוודא שהכל עובד כראוי לפני שליחת הסכום המלא.",
         "minimumDeposit": "הפקדה מינימלית היא <amountTag>{amount} {symbol}</amountTag>",
+        "tabs": {
+            "fromPublic": "מציבורי",
+            "fromConfidential": "מחסוי"
+        },
         "searchByName": "חיפוש לפי שם",
         "faq": {
             "title": "שאלות נפוצות",
