@@ -246,29 +246,34 @@ function ReceiptLayout({
                 <div>
                     <p className="text-xl font-medium">{title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        {tReceipt("generatedOn")}{" "}
-                        {formatUserDate(new Date(), {
-                            timezone: "UTC",
-                            includeTime: false,
+                        {tReceipt("generatedOn", {
+                            date: formatUserDate(new Date(), {
+                                timezone: "UTC",
+                                includeTime: false,
+                            }),
                         })}
                     </p>
                 </div>
                 <Logo size="md" mode="light" />
             </div>
             <p className="text-xl font-medium">
-                {`Receipt No. ${proposalId} dated `}
-                {receiptDate.isLoading ? (
-                    <span className="inline-block align-middle">
-                        <ReceiptValueSkeleton width="w-32" />
-                    </span>
-                ) : receiptDate.value ? (
-                    formatUserDate(receiptDate.value, {
-                        timezone: "UTC",
-                        includeTime: false,
-                    })
-                ) : (
-                    tCommon("notAvailable")
-                )}
+                {tReceipt.rich("receiptTitle", {
+                    proposalId,
+                    date: receiptDate.value
+                        ? formatUserDate(receiptDate.value, {
+                              timezone: "UTC",
+                              includeTime: false,
+                          })
+                        : tCommon("notAvailable"),
+                    datePart: (chunks) =>
+                        receiptDate.isLoading ? (
+                            <span className="inline-block align-middle">
+                                <ReceiptValueSkeleton width="w-32" />
+                            </span>
+                        ) : (
+                            chunks
+                        ),
+                })}
             </p>
             {children}
             <div className="flex justify-between rounded-lg bg-secondary p-3">

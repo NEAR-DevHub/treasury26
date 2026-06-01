@@ -184,6 +184,9 @@
     --secondary-foreground: rgb(10, 10, 10);
     --muted: rgb(245, 245, 245);
     --muted-foreground: rgb(115, 115, 115);
+    /* Skeletons use bg-accent; keep them light inside forced light cards. */
+    --accent: rgb(229, 229, 229);
+    --accent-foreground: rgb(64, 64, 64);
     --border: rgba(229, 229, 229);
     --general-border: rgba(229, 229, 229);
     --input: rgb(229, 229, 229);

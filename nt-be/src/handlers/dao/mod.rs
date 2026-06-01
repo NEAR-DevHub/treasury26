@@ -62,7 +62,7 @@ pub async fn record_receipt_metric(
 
     let column = match payload.metric.as_str() {
         "generated" => "receipts_generated",
-        "print" => "receipt_prints",
+        "print" => "receipts_printed",
         _ => {
             return Err((
                 StatusCode::BAD_REQUEST,
