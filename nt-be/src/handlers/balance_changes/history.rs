@@ -419,7 +419,7 @@ async fn handle_export(
     crate::services::platform_metrics::record_event(
         &state.db_pool,
         params.account_id.as_str(),
-        "exports_used",
+        crate::services::platform_metrics::PlatformMetric::ExportsUsed,
     )
     .await;
 

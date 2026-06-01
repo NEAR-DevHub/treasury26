@@ -1,32 +1,48 @@
 use chrono::{Datelike, Utc};
 use sqlx::PgPool;
 
-// Whitelist prevents SQL injection via the format! calls below.
-const ALLOWED: &[&str] = &[
-    "swap_proposals",
-    "payment_proposals",
-    "votes_casted",
-    "other_proposals_submitted",
-    "batch_payments_used",
-    "exports_used",
-    "gas_covered_transactions",
-];
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlatformMetric {
+    SwapProposals,
+    PaymentProposals,
+    AddressBookPaymentProposals,
+    VotesCasted,
+    OtherProposalsSubmitted,
+    BatchPaymentsUsed,
+    ExportsUsed,
+    GasCoveredTransactions,
+}
+
+impl PlatformMetric {
+    pub const fn column(self) -> &'static str {
+        match self {
+            Self::SwapProposals => "swap_proposals",
+            Self::PaymentProposals => "payment_proposals",
+            Self::AddressBookPaymentProposals => "address_book_payment_proposals",
+            Self::VotesCasted => "votes_casted",
+            Self::OtherProposalsSubmitted => "other_proposals_submitted",
+            Self::BatchPaymentsUsed => "batch_payments_used",
+            Self::ExportsUsed => "exports_used",
+            Self::GasCoveredTransactions => "gas_covered_transactions",
+        }
+    }
+}
 
 /// Increment a named event counter in `usage_tracking` for the current billing month.
 ///
 /// Upserts a row for `(dao_id, year, month)` and increments the named counter by 1.
 /// Non-critical: logs a warning on failure but does NOT propagate the error —
 /// counter updates must never fail the parent request.
-pub async fn record_event(pool: &PgPool, dao_id: &str, column: &str) {
-    record_events(pool, dao_id, &[column]).await;
+pub async fn record_event(pool: &PgPool, dao_id: &str, metric: PlatformMetric) {
+    record_events(pool, dao_id, &[metric]).await;
 }
 
 /// Increment multiple event counters in a single `usage_tracking` upsert.
 ///
 /// All columns are incremented by 1 in one round-trip.
 /// Non-critical: logs a warning on failure but does NOT propagate the error.
-pub async fn record_events(pool: &PgPool, dao_id: &str, columns: &[&str]) {
-    if columns.is_empty() {
+pub async fn record_events(pool: &PgPool, dao_id: &str, metrics: &[PlatformMetric]) {
+    if metrics.is_empty() {
         return;
     }
 
@@ -34,18 +50,12 @@ pub async fn record_events(pool: &PgPool, dao_id: &str, columns: &[&str]) {
     let year = now.year();
     let month = now.month() as i32;
 
-    for &col in columns {
-        if !ALLOWED.contains(&col) {
-            log::error!(
-                "platform_metrics::record_events: unknown metric '{}' — ignoring all",
-                col
-            );
-            return;
-        }
-    }
-
+    let columns = metrics
+        .iter()
+        .map(|metric| metric.column())
+        .collect::<Vec<_>>();
     let col_list = columns.join(", ");
-    let values = columns.iter().map(|_| "1").collect::<Vec<_>>().join(", ");
+    let values = metrics.iter().map(|_| "1").collect::<Vec<_>>().join(", ");
     let updates = columns
         .iter()
         .map(|col| format!("{col} = usage_tracking.{col} + 1"))
@@ -71,7 +81,7 @@ pub async fn record_events(pool: &PgPool, dao_id: &str, columns: &[&str]) {
     {
         log::warn!(
             "Failed to record platform metrics {:?} for {}: {}",
-            columns,
+            metrics,
             dao_id,
             e
         );

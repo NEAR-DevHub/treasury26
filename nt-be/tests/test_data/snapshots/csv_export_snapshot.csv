@@ -155,10 +155,10 @@ date,time,direction,from_address,to_address,asset_symbol,asset_contract_address,
 2025-06-30,10:27:18 UTC,in,petersalomonsen.near,webassemblymusic-treasury.sputnik-dao.near,NEAR,near,0.1000501008069668,11.300956541897098499999997,2.26,0.22611322782374496,,HMBKbt19gxrXrcxLy2cNZwHJwpVxhENusCxZqkukEdWG
 2025-06-21,19:45:33 UTC,in,petersalomonsen.near,webassemblymusic-treasury.sputnik-dao.near,NEAR,near,0.1000460385893233,11.200906441090131699999997,2.08,0.20809576026579246,,AEFMQijzJkZRMJKnLAEDHLojNio1FCviXgEzf9rT6rXQ
 2025-06-20,19:13:02 UTC,out,webassemblymusic-treasury.sputnik-dao.near,intents.near,NEAR,near,0.0999448362149807,11.100860402500808399999997,2.18,0.21787974294865795,,43HYSS3sKjVH6De42nPgnRSFEFrhEYCQAQUiAyfo9H1a
-2025-06-20,19:13:00 UTC,out,webassemblymusic-treasury.sputnik-dao.near,webassemblymusic-treasury.sputnik-dao.near,wNEAR,nep141:wrap.near,0.2,0.8000,2.18,0.43600000000000005,,7KCRHvnFyYBkazJm55AGaooVFemmfWeEsiHSk4Uk7iF6
+2025-06-20,19:13:00 UTC,out,webassemblymusic-treasury.sputnik-dao.near,webassemblymusic-treasury.sputnik-dao.near,NEAR,nep141:wrap.near,0.2,0.8000,2.18,0.43600000000000005,,7KCRHvnFyYBkazJm55AGaooVFemmfWeEsiHSk4Uk7iF6
 2025-06-20,19:13:00 UTC,in,petersalomonsen.near,webassemblymusic-treasury.sputnik-dao.near,NEAR,near,0.0000750713335008,11.200805238715789099999997,2.18,0.00016365550703174403,,AVxZqcWR2YKbBtk6XWFkDFyFgeJpTGDhrAyJkUC7QK8u
 2025-06-20,19:04:00 UTC,in,petersalomonsen.near,webassemblymusic-treasury.sputnik-dao.near,NEAR,near,0.1000467916460243,11.200730167382288299999998,2.18,0.218102005788333,,8nFVaGGzbZ85jpLgnoUmgcdJckMUF5S6QxQCXgYiZyqo
-2025-06-20,19:01:56 UTC,in,UNKNOWN,webassemblymusic-treasury.sputnik-dao.near,wNEAR,nep141:wrap.near,1,1,2.18,2.18,,
+2025-06-20,19:01:56 UTC,in,UNKNOWN,webassemblymusic-treasury.sputnik-dao.near,NEAR,nep141:wrap.near,1,1,2.18,2.18,,
 2025-06-17,17:00:43 UTC,out,webassemblymusic-treasury.sputnik-dao.near,petersalomonsen.near,NEAR,near,0.0999351924465066,11.100683375736263999999998,0.971232,0.0970602568302055,,GDJsHLbLSoYvGr7joKqxggSQsfacebx6Uxu7J4kTsApw
 2025-06-17,17:00:16 UTC,in,petersalomonsen.near,webassemblymusic-treasury.sputnik-dao.near,NEAR,near,0.1000487056947091,11.200618568182770599999998,0.971232,0.0971705045292837,,DaAaywvwec2iooBZcEMR9EjNo9YfEfiWzRDtBvk1PKm3
 2025-06-16,18:59:00 UTC,out,webassemblymusic-treasury.sputnik-dao.near,intents.near,NEAR,near,0.0999438502470234,11.100569862488061499999998,2.23,0.2228747860508622,,Ehpke68jDFbpRusYWyZbeBEVoGLqeF8jkT7SjSeuCtEE
