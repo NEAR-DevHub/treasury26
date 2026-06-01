@@ -149,6 +149,7 @@ interface UseIntentsQuoteParams {
     treasuryId: string | undefined;
     token: Token;
     amount: string;
+    destinationAmountDecimals?: number;
     address: string;
     isConfidential: boolean;
     proposalPeriod?: string;
@@ -162,6 +163,7 @@ export function useIntentsQuote({
     treasuryId,
     token,
     amount,
+    destinationAmountDecimals,
     address,
     isConfidential,
     proposalPeriod,
@@ -175,14 +177,17 @@ export function useIntentsQuote({
     const [debouncedAddress] = useDebounce(address, 300);
     const [debouncedAmount] = useDebounce(amount, 400);
     const [isEnsuring, setIsEnsuring] = useState(false);
+    const effectiveAmountDecimals = destinationAmountDecimals ?? token.decimals;
 
     const isRecipientReady =
         !!debouncedAddress && isAddressValidForToken(debouncedAddress, token);
 
     const parsedAmount = useMemo(() => {
         if (!debouncedAmount || Number(debouncedAmount) <= 0) return null;
-        return Big(debouncedAmount).mul(Big(10).pow(token.decimals)).toFixed();
-    }, [debouncedAmount, token.decimals]);
+        return Big(debouncedAmount)
+            .mul(Big(10).pow(effectiveAmountDecimals))
+            .toFixed();
+    }, [debouncedAmount, effectiveAmountDecimals]);
 
     const {
         data: quote,
@@ -287,13 +292,13 @@ export function useIntentsQuote({
             error instanceof Error
                 ? error.message
                 : "Failed to prepare 1Click transfer route";
-        return formatErrorMessage(msg, token.decimals, token.symbol, t);
+        return formatErrorMessage(msg, effectiveAmountDecimals, token.symbol, t);
     }, [
         hasLowAmountQuote,
         lowAmountQuoteDetails,
         hasQueryError,
         error,
-        token.decimals,
+        effectiveAmountDecimals,
         token.symbol,
         t,
     ]);
@@ -350,7 +355,7 @@ export function useIntentsQuote({
             setIsEnsuring(true);
             try {
                 const immediateParsed = Big(formValues.amount)
-                    .mul(Big(10).pow(formValues.token.decimals))
+                    .mul(Big(10).pow(effectiveAmountDecimals))
                     .toFixed();
 
                 const freshQuote = await getIntentsQuote(
@@ -381,7 +386,7 @@ export function useIntentsQuote({
                     err instanceof Error
                         ? formatErrorMessage(
                               err.message,
-                              formValues.token.decimals,
+                              effectiveAmountDecimals,
                               formValues.token.symbol,
                               t,
                           )
@@ -405,6 +410,7 @@ export function useIntentsQuote({
             destinationNetwork,
             hasLowAmountQuote,
             lowAmountQuoteDetails,
+            effectiveAmountDecimals,
             t,
         ],
     );
