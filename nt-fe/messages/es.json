@@ -1866,12 +1866,6 @@
         "membersWhoCanVote": "Miembros que pueden votar",
         "moreMembers": "+{count, plural, one {# miembro} other {# miembros}}"
     },
-    "accountIdInput": {
-        "minLength": "El ID de cuenta debe tener al menos 2 caracteres",
-        "maxLength": "El ID de cuenta debe tener menos de 64 caracteres",
-        "charset": "El ID de cuenta debe contener solo letras minúsculas, dígitos, puntos, guiones y guiones bajos, sin separadores al inicio o final",
-        "doesNotExist": "El ID de cuenta no existe"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Destinatario añadido} other {# destinatarios añadidos}}",
         "addedSingleToast": "Destinatario añadido",

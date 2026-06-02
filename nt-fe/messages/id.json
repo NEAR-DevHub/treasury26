@@ -1866,12 +1866,6 @@
         "membersWhoCanVote": "Anggota yang dapat memilih",
         "moreMembers": "+{count, plural, other {# anggota}}"
     },
-    "accountIdInput": {
-        "minLength": "ID Akun harus minimal 2 karakter",
-        "maxLength": "ID Akun harus kurang dari 64 karakter",
-        "charset": "ID Akun hanya boleh berisi huruf kecil, angka, titik, tanda hubung, dan garis bawah, tanpa pemisah di awal atau akhir",
-        "doesNotExist": "ID Akun tidak ada"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {# penerima ditambahkan}}",
         "addedSingleToast": "Penerima ditambahkan",

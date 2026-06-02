@@ -1866,12 +1866,6 @@
         "membersWhoCanVote": "חברים שיכולים להצביע",
         "moreMembers": "+{count, plural, one {# חבר} two {# חברים} many {# חברים} other {# חברים}}"
     },
-    "accountIdInput": {
-        "minLength": "מזהה חשבון צריך להיות לפחות 2 תווים",
-        "maxLength": "מזהה חשבון חייב להיות פחות מ-64 תווים",
-        "charset": "מזהה חשבון חייב להכיל רק אותיות קטנות, ספרות, נקודות, מקפים וקווים תחתונים, ללא מפרידים בתחילה או בסוף",
-        "doesNotExist": "מזהה החשבון לא קיים"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {נמען נוסף} two {# נמענים נוספו} many {# נמענים נוספו} other {# נמענים נוספו}}",
         "addedSingleToast": "נמען נוסף",

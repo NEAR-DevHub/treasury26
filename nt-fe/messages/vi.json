@@ -1866,12 +1866,6 @@
         "membersWhoCanVote": "Thành viên có thể bỏ phiếu",
         "moreMembers": "+{count, plural, other {# thành viên}}"
     },
-    "accountIdInput": {
-        "minLength": "ID tài khoản phải có ít nhất 2 ký tự",
-        "maxLength": "ID tài khoản phải ít hơn 64 ký tự",
-        "charset": "ID tài khoản chỉ có thể chứa chữ thường, số, dấu chấm, dấu gạch nối và gạch dưới, không có dấu phân cách ở đầu hoặc cuối",
-        "doesNotExist": "ID tài khoản không tồn tại"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Đã thêm người nhận} other {Đã thêm # người nhận}}",
         "addedSingleToast": "Đã thêm người nhận",

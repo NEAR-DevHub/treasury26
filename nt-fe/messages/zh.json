@@ -1866,12 +1866,6 @@
         "membersWhoCanVote": "可投票的成员",
         "moreMembers": "+{count, plural, other {# 名成员}}"
     },
-    "accountIdInput": {
-        "minLength": "账户 ID 至少需 2 个字符",
-        "maxLength": "账户 ID 必须少于 64 个字符",
-        "charset": "账户 ID 只能包含小写字母、数字、句点、连字符和下划线,且不能以分隔符开头或结尾",
-        "doesNotExist": "账户 ID 不存在"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {已添加 # 个收款人}}",
         "addedSingleToast": "已添加收款人",

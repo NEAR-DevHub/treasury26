@@ -1866,12 +1866,6 @@
         "membersWhoCanVote": "Oy kullanabilen üyeler",
         "moreMembers": "+{count, plural, one {# üye} other {# üye}}"
     },
-    "accountIdInput": {
-        "minLength": "Hesap kimliği en az 2 karakter olmalıdır",
-        "maxLength": "Hesap kimliği 64 karakterden az olmalıdır",
-        "charset": "Hesap kimliği yalnızca küçük harfler, rakamlar, noktalar, tireler ve alt çizgiler içermelidir, başında veya sonunda ayırıcı bulunmamalıdır",
-        "doesNotExist": "Hesap kimliği mevcut değil"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Alıcı eklendi} other {# alıcı eklendi}}",
         "addedSingleToast": "Alıcı eklendi",

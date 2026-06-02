@@ -1866,12 +1866,6 @@
         "membersWhoCanVote": "投票できるメンバー",
         "moreMembers": "+{count, plural, other {# 名のメンバー}}"
     },
-    "accountIdInput": {
-        "minLength": "アカウントIDは少なくとも2文字必要です",
-        "maxLength": "アカウントIDは64文字未満である必要があります",
-        "charset": "アカウントIDには小文字、数字、ドット、ハイフン、アンダースコアのみ使用でき、先頭または末尾に区切り文字を含めることはできません",
-        "doesNotExist": "アカウントIDが存在しません"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {# 名の受取人を追加しました}}",
         "addedSingleToast": "受取人を追加しました",

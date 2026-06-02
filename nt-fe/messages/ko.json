@@ -1866,12 +1866,6 @@
         "membersWhoCanVote": "투표할 수 있는 멤버",
         "moreMembers": "+{count, plural, other {멤버 #명}}"
     },
-    "accountIdInput": {
-        "minLength": "계정 ID는 최소 2자여야 합니다",
-        "maxLength": "계정 ID는 64자 미만이어야 합니다",
-        "charset": "계정 ID는 소문자, 숫자, 점, 하이픈, 밑줄만 포함할 수 있으며 시작이나 끝에 구분자가 없어야 합니다",
-        "doesNotExist": "계정 ID가 존재하지 않습니다"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {수신자 #명 추가됨}}",
         "addedSingleToast": "수신자가 추가되었습니다",
