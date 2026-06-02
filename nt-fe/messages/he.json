@@ -77,7 +77,8 @@
         "wallet": "ארנק",
         "termsOfService": "תנאי שימוש",
         "privacyPolicy": "מדיניות פרטיות",
-        "disconnect": "התנתקות"
+        "disconnect": "התנתקות",
+        "disconnectWallet": "התנתקות ארנק"
     },
     "auth": {
         "noWallet": "חבר את הארנק שלך",

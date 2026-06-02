@@ -77,7 +77,8 @@
         "wallet": "Dompet",
         "termsOfService": "Ketentuan Layanan",
         "privacyPolicy": "Kebijakan Privasi",
-        "disconnect": "Putuskan"
+        "disconnect": "Putuskan",
+        "disconnectWallet": "Putuskan Dompet"
     },
     "auth": {
         "noWallet": "Hubungkan dompet Anda",

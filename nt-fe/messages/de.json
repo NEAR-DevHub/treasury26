@@ -77,7 +77,8 @@
         "wallet": "Wallet",
         "termsOfService": "Nutzungsbedingungen",
         "privacyPolicy": "Datenschutzerklärung",
-        "disconnect": "Trennen"
+        "disconnect": "Trennen",
+        "disconnectWallet": "Trennen Wallet"
     },
     "auth": {
         "noWallet": "Verbinden Sie Ihre Wallet",

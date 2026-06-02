@@ -77,7 +77,8 @@
         "wallet": "Carteira",
         "termsOfService": "Termos de Serviço",
         "privacyPolicy": "Política de Privacidade",
-        "disconnect": "Desconectar"
+        "disconnect": "Desconectar",
+        "disconnectWallet": "Desconectar Carteira"
     },
     "auth": {
         "noWallet": "Conecte sua carteira",

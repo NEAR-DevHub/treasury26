@@ -79,7 +79,7 @@ export function CreateTreasuryPromptModal({
                                 await onDisconnectWallet?.();
                             }}
                         >
-                            {tSignIn("disconnect")} {tSignIn("wallet")}
+                            {tSignIn("disconnectWallet")}
                         </Button>
                     )}
                     {isOnboardingPath ? (

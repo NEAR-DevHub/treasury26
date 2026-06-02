@@ -77,7 +77,8 @@
         "wallet": "Гаманець",
         "termsOfService": "Умови використання",
         "privacyPolicy": "Політика конфіденційності",
-        "disconnect": "Відключити"
+        "disconnect": "Відключити",
+        "disconnectWallet": "Відключити Гаманець"
     },
     "auth": {
         "noWallet": "Підключіть свій гаманець",

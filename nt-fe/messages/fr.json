@@ -77,7 +77,8 @@
         "wallet": "Portefeuille",
         "termsOfService": "Conditions d'utilisation",
         "privacyPolicy": "Politique de confidentialité",
-        "disconnect": "Déconnecter"
+        "disconnect": "Déconnecter",
+        "disconnectWallet": "Déconnecter Portefeuille"
     },
     "auth": {
         "noWallet": "Connectez votre portefeuille",

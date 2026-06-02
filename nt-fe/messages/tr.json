@@ -77,7 +77,8 @@
         "wallet": "Cüzdan",
         "termsOfService": "Hizmet Şartları",
         "privacyPolicy": "Gizlilik Politikası",
-        "disconnect": "Bağlantıyı Kes"
+        "disconnect": "Bağlantıyı Kes",
+        "disconnectWallet": "Bağlantıyı Kes Cüzdan"
     },
     "auth": {
         "noWallet": "Cüzdanınızı bağlayın",

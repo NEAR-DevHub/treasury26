@@ -77,7 +77,8 @@
         "wallet": "Ví",
         "termsOfService": "Điều khoản dịch vụ",
         "privacyPolicy": "Chính sách bảo mật",
-        "disconnect": "Ngắt kết nối"
+        "disconnect": "Ngắt kết nối",
+        "disconnectWallet": "Ngắt kết nối Ví"
     },
     "auth": {
         "noWallet": "Kết nối ví của bạn",

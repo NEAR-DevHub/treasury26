@@ -77,7 +77,8 @@
         "wallet": "ウォレット",
         "termsOfService": "利用規約",
         "privacyPolicy": "プライバシーポリシー",
-        "disconnect": "切断"
+        "disconnect": "切断",
+        "disconnectWallet": "切断 ウォレット"
     },
     "auth": {
         "noWallet": "ウォレットを接続してください",

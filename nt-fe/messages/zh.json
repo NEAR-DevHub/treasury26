@@ -77,7 +77,8 @@
         "wallet": "钱包",
         "termsOfService": "服务条款",
         "privacyPolicy": "隐私政策",
-        "disconnect": "断开连接"
+        "disconnect": "断开连接",
+        "disconnectWallet": "断开连接 钱包"
     },
     "auth": {
         "noWallet": "请连接您的钱包",

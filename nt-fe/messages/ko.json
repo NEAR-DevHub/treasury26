@@ -77,7 +77,8 @@
         "wallet": "지갑",
         "termsOfService": "이용약관",
         "privacyPolicy": "개인정보 처리방침",
-        "disconnect": "연결 해제"
+        "disconnect": "연결 해제",
+        "disconnectWallet": "연결 해제 지갑"
     },
     "auth": {
         "noWallet": "지갑을 연결하세요",
