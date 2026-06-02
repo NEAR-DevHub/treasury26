@@ -11,6 +11,8 @@ pub enum PlatformMetric {
     BatchPaymentsUsed,
     ExportsUsed,
     GasCoveredTransactions,
+    ReceiptsGenerated,
+    ReceiptsPrinted,
 }
 
 impl PlatformMetric {
@@ -24,6 +26,8 @@ impl PlatformMetric {
             Self::BatchPaymentsUsed => "batch_payments_used",
             Self::ExportsUsed => "exports_used",
             Self::GasCoveredTransactions => "gas_covered_transactions",
+            Self::ReceiptsGenerated => "receipts_generated",
+            Self::ReceiptsPrinted => "receipts_printed",
         }
     }
 }

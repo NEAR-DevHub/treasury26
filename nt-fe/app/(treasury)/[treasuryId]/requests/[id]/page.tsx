@@ -1,16 +1,16 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { redirect, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { trackEvent } from "@/lib/analytics";
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExpandedView } from "@/features/proposals";
 import { VoteModal } from "@/features/proposals/components/vote-modal";
 import { useProposal } from "@/hooks/use-proposals";
+import { useCachedProposalSubmissionTime } from "@/hooks/use-cached-proposal-submission-time";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import type { Proposal } from "@/lib/proposals-api";
@@ -44,30 +44,10 @@ export default function RequestPage({ params }: RequestPageProps) {
     const { id } = use(params);
     const { treasuryId } = useTreasury();
     const router = useRouter();
-    const queryClient = useQueryClient();
-    const cachedSubmissionTime = useMemo(() => {
-        const cachedQueries = queryClient.getQueriesData({
-            queryKey: ["proposals", treasuryId],
-        });
-
-        for (const [, queryData] of cachedQueries) {
-            const proposals = (
-                queryData as
-                    | { proposals?: { id: number; submission_time?: string }[] }
-                    | undefined
-            )?.proposals;
-            if (!proposals?.length) continue;
-
-            const matchedProposal = proposals.find(
-                (cachedProposal) => String(cachedProposal.id) === id,
-            );
-            if (matchedProposal?.submission_time) {
-                return matchedProposal.submission_time;
-            }
-        }
-
-        return null;
-    }, [id, queryClient, treasuryId]);
+    const cachedSubmissionTime = useCachedProposalSubmissionTime(
+        treasuryId,
+        id,
+    );
     const { data: proposal, isLoading: isLoadingProposal } = useProposal(
         treasuryId,
         id,

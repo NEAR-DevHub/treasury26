@@ -7,6 +7,7 @@ import { PaymentRequestData } from "../../types/index";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useToken } from "@/hooks/use-treasury-queries";
+import { useQuoteByDepositAddress } from "@/hooks/use-proposals";
 import { Address } from "@/components/address";
 import { NetworkIconDisplay } from "@/components/token-display";
 import { NEAR_NETWORK_ID, NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
@@ -15,7 +16,8 @@ import {
     isNearComPaymentRoute,
 } from "@/lib/intents-network";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatTokenDisplayAmount } from "@/lib/utils";
+import { formatCurrency, formatTokenDisplayAmount } from "@/lib/utils";
+import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface TransferExpandedProps {
     data: PaymentRequestData;
@@ -24,6 +26,8 @@ interface TransferExpandedProps {
 export function TransferExpanded({ data }: TransferExpandedProps) {
     const t = useTranslations("proposals.expanded");
     const tIntents = useTranslations("intentsQuote");
+    const requestDisplayContext = useRequestDisplayContext();
+    const isExecuted = requestDisplayContext?.isExecuted ?? false;
     const { data: tokenData } = useToken(data.tokenId);
     const tokenChainName = tokenData?.network || NEAR_NETWORK_ID;
     const isNearComDestination = isNearComPaymentRoute(data);
@@ -86,6 +90,19 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
     ]);
     const shouldShowDestinationNetworkSkeleton =
         shouldFetchDestinationToken && isLoadingDestinationToken;
+    const shouldLoadQuoteUsd =
+        isExecuted && !!data.depositAddress && !data.quoteAmountInUsd;
+    const { data: quoteByDepositAddress } = useQuoteByDepositAddress(
+        data.depositAddress || null,
+        undefined,
+        shouldLoadQuoteUsd,
+    );
+    const amountUsdFromQuote =
+        data.quoteAmountInUsd ?? quoteByDepositAddress?.amountInUsd;
+    const amountUsdOverride =
+        amountUsdFromQuote && !Number.isNaN(Number(amountUsdFromQuote))
+            ? formatCurrency(Number(amountUsdFromQuote))
+            : null;
 
     const infoItems: InfoItem[] = [
         {
@@ -106,6 +123,7 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
                     amount={data.amount}
                     tokenId={data.tokenId}
                     showNetworkTooltip
+                    usdTextOverride={amountUsdOverride}
                 />
             ),
         },

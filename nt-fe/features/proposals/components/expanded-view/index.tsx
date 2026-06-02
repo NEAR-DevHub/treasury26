@@ -31,7 +31,10 @@ import { ConfidentialRequestExpanded } from "./confidential-request-expanded";
 import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
 import { useNear } from "@/stores/near-store";
 import { getProposalStatus } from "../../utils/proposal-utils";
-import { RequestDisplayProvider } from "./common/request-display-context";
+import {
+    RequestDisplayProvider,
+    useRequestDisplayContext,
+} from "./common/request-display-context";
 
 interface InternalExpandedViewProps {
     proposal: Proposal;
@@ -46,6 +49,7 @@ function ExpandedViewInternal({
 }: InternalExpandedViewProps) {
     const t = useTranslations("proposals.expanded");
     const { type, data } = extractProposalData(proposal, treasuryId);
+    const { isExecuted } = useRequestDisplayContext()!;
 
     switch (type) {
         case "Payment Request": {
@@ -94,13 +98,12 @@ function ExpandedViewInternal({
                 <BatchPaymentRequestExpanded
                     data={batchPaymentRequestData}
                     proposal={proposal}
-                    policy={policy}
                 />
             );
         }
         case "Exchange": {
             const swapData = data as SwapRequestData;
-            return <SwapExpanded data={swapData} />;
+            return <SwapExpanded data={swapData} isExecuted={isExecuted} />;
         }
         default:
             return (
@@ -131,6 +134,7 @@ export function ExpandedView({
     const { accountId } = useNear();
     const proposalStatus = getProposalStatus(proposal, policy);
     const isPending = proposalStatus === "Pending";
+    const isExecuted = proposalStatus === "Executed";
     const showUsdValue = isPending;
 
     const component = (
@@ -140,9 +144,14 @@ export function ExpandedView({
                 isConfidential,
                 proposalStatus,
                 isPending,
+                isExecuted,
             }}
         >
-            {ExpandedViewInternal({ proposal, policy, treasuryId })}
+            <ExpandedViewInternal
+                proposal={proposal}
+                policy={policy}
+                treasuryId={treasuryId}
+            />
         </RequestDisplayProvider>
     );
     const requestUrl = `${window.location.origin}/${treasuryId}/requests/${proposal.id}`;

@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/button";
-import { StepIcon } from "@/features/proposals/components/expanded-view/common/proposal-sidebar";
+import { StepIcon } from "@/components/step-icon";
 import { useAssets } from "@/hooks/use-assets";
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";

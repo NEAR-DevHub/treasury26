@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
 };
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -279,6 +279,20 @@ pub struct ReceiptSearchQuery {
     pub keyword: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenPriceAtTimestampQuery {
+    pub token_id: String,
+    pub timestamp: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenPriceAtTimestampResponse {
+    pub price_usd: Option<f64>,
+    pub source: String,
+}
+
 /// Search for a receipt by keyword (receipt ID) and return the originating transaction hash
 pub async fn search_receipt(
     State(state): State<Arc<AppState>>,
@@ -348,6 +362,59 @@ pub async fn search_receipt(
                     })
                     .collect::<Vec<ReceiptSearchResult>>(),
             )
+        })
+        .await
+}
+
+/// Resolve token price at execution time with fallback policy:
+/// - exact timestamp provider quote
+/// - cached daily EOD (same UTC day)
+/// - null (no price available or upstream failure)
+pub async fn get_token_price_at_timestamp(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<TokenPriceAtTimestampQuery>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
+    let timestamp = DateTime::parse_from_rfc3339(&params.timestamp)
+        .map(|dt| dt.with_timezone(&Utc))
+        .map_err(|_| {
+            (
+                StatusCode::BAD_REQUEST,
+                "Invalid timestamp, expected ISO-8601 timestamp".to_string(),
+            )
+        })?;
+
+    let cache_key = CacheKey::new("token-price-at-timestamp")
+        .with(&params.token_id)
+        .with(timestamp.timestamp())
+        .build();
+
+    let token_id = params.token_id.clone();
+    let state_for_lookup = state.clone();
+
+    state
+        .cache
+        .cached_json(CacheTier::LongTerm, cache_key, async move {
+            match state_for_lookup
+                .price_service
+                .get_price_at_timestamp_or_eod(&token_id, timestamp)
+                .await
+            {
+                Ok(Some((price, source))) => {
+                    Ok::<_, (StatusCode, String)>(Some(TokenPriceAtTimestampResponse {
+                        price_usd: Some(price),
+                        source: source.to_string(),
+                    }))
+                }
+                Ok(None) => Ok::<_, (StatusCode, String)>(None::<TokenPriceAtTimestampResponse>),
+                Err(e) => {
+                    log::warn!(
+                        "Failed to resolve receipt token price for {}: {}",
+                        token_id,
+                        e
+                    );
+                    Ok::<_, (StatusCode, String)>(None::<TokenPriceAtTimestampResponse>)
+                }
+            }
         })
         .await
 }
