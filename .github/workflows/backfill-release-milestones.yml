@@ -1,0 +1,221 @@
+name: Backfill release milestones
+
+# One-off / occasional: assign milestones for past release-* tags.
+# Does not close or reopen issues — milestone only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Single tag (e.g. release-1.2.3). Ignored when backfill_all is true.'
+        required: false
+        type: string
+      backfill_all:
+        description: 'Process every release-* tag, oldest to newest'
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Log actions only; do not create milestones or update issues'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Backfill milestones for release(s)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          script: |
+            const { execSync } = require("child_process");
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const dryRun = ${{ inputs.dry_run }};
+            const backfillAll = ${{ inputs.backfill_all }};
+            const singleTag = "${{ inputs.release_tag }}".trim();
+
+            if (!backfillAll && !singleTag) {
+              core.setFailed("Provide release_tag or set backfill_all to true");
+              return;
+            }
+
+            function git(cmd) {
+              return execSync(cmd, { encoding: "utf8" }).trim();
+            }
+
+            function listReleaseTags() {
+              const out = git("git tag -l 'release-*' --sort=version:refname");
+              return out ? out.split("\n").filter(Boolean) : [];
+            }
+
+            function extractIssueRefs(text) {
+              const refs = new Set();
+              for (const match of (text || "").matchAll(/(?:^|[\s(])#(\d+)\b/gm)) {
+                refs.add(Number(match[1]));
+              }
+              return refs;
+            }
+
+            async function findMilestone(title) {
+              for await (const response of github.paginate.iterator(
+                github.rest.issues.listMilestones,
+                { owner, repo, state: "all", per_page: 100 },
+              )) {
+                const found = response.data.find((m) => m.title === title);
+                if (found) return found;
+              }
+              return null;
+            }
+
+            async function ensureMilestone(title, releaseTag) {
+              let milestone = await findMilestone(title);
+              if (milestone) {
+                core.info(`Milestone "${title}" already exists (#${milestone.number})`);
+                return milestone;
+              }
+              if (dryRun) {
+                core.info(`[dry-run] Would create milestone "${title}"`);
+                return { number: 0 };
+              }
+              const { data: created } = await github.rest.issues.createMilestone({
+                owner,
+                repo,
+                title,
+                description: `Shipped in ${releaseTag}`,
+                state: "open",
+              });
+              core.info(`Created milestone "${title}" (#${created.number})`);
+              return created;
+            }
+
+            async function processRelease(releaseTag, previousTag) {
+              const version = releaseTag.replace(/^release-/, "");
+              const milestoneTitle = `v${version}`;
+              const releaseSha = git(`git rev-parse "${releaseTag}^{commit}"`);
+
+              core.info(`--- ${releaseTag} (${releaseSha}) milestone "${milestoneTitle}" ---`);
+              if (previousTag) {
+                core.info(`Range: ${previousTag}..${releaseTag}`);
+              } else {
+                core.info(`Range: (first release) .. ${releaseTag}`);
+              }
+
+              const prNumbers = new Set();
+              const logRange = previousTag
+                ? `${previousTag}..${releaseSha}`
+                : releaseSha;
+              let commitSubjects = "";
+              try {
+                commitSubjects = git(
+                  `git log ${logRange} --pretty=format:%s`,
+                );
+              } catch (error) {
+                core.warning(`git log failed for ${logRange}: ${error.message}`);
+              }
+              for (const line of commitSubjects.split("\n")) {
+                const mergeMatch = line.match(/Merge pull request #(\d+)/);
+                if (mergeMatch) { prNumbers.add(Number(mergeMatch[1])); continue; }
+                const squashMatch = line.match(/\(#(\d+)\)\s*$/);
+                if (squashMatch) prNumbers.add(Number(squashMatch[1]));
+              }
+              core.info(`Found ${prNumbers.size} PR(s)`);
+
+              const issueRefs = new Set();
+              for (const prNumber of prNumbers) {
+                let pr;
+                try {
+                  const resp = await github.rest.pulls.get({
+                    owner,
+                    repo,
+                    pull_number: prNumber,
+                  });
+                  pr = resp.data;
+                } catch (error) {
+                  if (error.status === 404) {
+                    core.info(`#${prNumber} is not a PR — skipping`);
+                    continue;
+                  }
+                  throw error;
+                }
+                const text = `${pr.title || ""}\n${pr.body || ""}`;
+                for (const num of extractIssueRefs(text)) {
+                  issueRefs.add(num);
+                }
+              }
+              core.info(
+                `Found ${issueRefs.size} linked issue(s): ${[...issueRefs].join(", ") || "none"}`,
+              );
+              if (issueRefs.size === 0) return;
+
+              const milestone = await ensureMilestone(milestoneTitle, releaseTag);
+
+              for (const issueNumber of issueRefs) {
+                try {
+                  await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+                } catch (error) {
+                  if (error.status === 404) {
+                    core.warning(`Issue #${issueNumber} not found — skipping`);
+                    continue;
+                  }
+                  throw error;
+                }
+
+                if (dryRun) {
+                  core.info(
+                    `[dry-run] Would set milestone "${milestoneTitle}" on #${issueNumber}`,
+                  );
+                  continue;
+                }
+
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  milestone: milestone.number,
+                });
+                core.info(`Set milestone "${milestoneTitle}" on issue #${issueNumber}`);
+              }
+            }
+
+            const allTags = listReleaseTags();
+            if (allTags.length === 0) {
+              core.setFailed('No release-* tags found in this repository');
+              return;
+            }
+
+            const tagsToProcess = backfillAll
+              ? allTags
+              : [singleTag];
+
+            for (const tag of tagsToProcess) {
+              if (!allTags.includes(tag)) {
+                core.setFailed(
+                  `Unknown tag "${tag}". Existing release-* tags: ${allTags.join(", ")}`,
+                );
+                return;
+              }
+            }
+
+            core.info(
+              `Processing ${tagsToProcess.length} release(s)${dryRun ? " (dry-run)" : ""}`,
+            );
+
+            for (let i = 0; i < tagsToProcess.length; i++) {
+              const releaseTag = tagsToProcess[i];
+              const idx = allTags.indexOf(releaseTag);
+              const previousTag = idx > 0 ? allTags[idx - 1] : "";
+              await processRelease(releaseTag, previousTag);
+            }
