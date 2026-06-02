@@ -94,10 +94,12 @@ interface Vote {
 
 const LOGIN_MESSAGE = "Login to Trezu";
 const LOGIN_RECIPIENT = "Trezu App";
+const LEDGER_WALLET_ID = "ledger";
 
 interface NearStore {
     // Wallet state
     connector: NearConnector | null;
+    connectorExcludeLedger: boolean | null;
     walletAccountId: string | null; // Raw wallet account ID
     isInitializing: boolean;
 
@@ -110,7 +112,9 @@ interface NearStore {
     user: AuthUserInfo | null;
 
     // Wallet actions
-    init: () => Promise<NearConnector | undefined>;
+    init: (options?: {
+        excludeLedger?: boolean;
+    }) => Promise<NearConnector | undefined>;
     connect: (walletId?: string) => Promise<void>;
     disconnect: () => Promise<void>;
 
@@ -146,6 +150,7 @@ const isFullyAuthenticated = (state: NearStore): boolean => {
 export const useNearStore = create<NearStore>((set, get) => ({
     // Wallet state
     connector: null,
+    connectorExcludeLedger: null,
     walletAccountId: null,
     isInitializing: true,
 
@@ -157,12 +162,18 @@ export const useNearStore = create<NearStore>((set, get) => ({
     authError: null,
     user: null,
 
-    init: async () => {
-        const { connector } = get();
+    init: async (options) => {
+        const { connector, connectorExcludeLedger } = get();
+        const requestedExcludeLedger = options?.excludeLedger;
 
-        if (connector) {
+        if (
+            connector &&
+            (requestedExcludeLedger === undefined ||
+                connectorExcludeLedger === requestedExcludeLedger)
+        ) {
             return connector;
         }
+        const shouldExcludeLedger = requestedExcludeLedger ?? true;
 
         let newConnector = null;
 
@@ -181,6 +192,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     signDelegateActions: true,
                     signInAndSignMessage: true,
                 },
+                excludedWallets: shouldExcludeLedger ? [LEDGER_WALLET_ID] : [],
             });
         } catch (err) {
             set({ isInitializing: false });
@@ -290,14 +302,20 @@ export const useNearStore = create<NearStore>((set, get) => ({
             },
         );
 
-        set({ connector: newConnector });
+        set({
+            connector: newConnector,
+            connectorExcludeLedger: shouldExcludeLedger,
+        });
         set({ isInitializing: false });
         return newConnector;
     },
 
     connect: async (walletId?: string) => {
-        const { connector, init } = get();
-        const newConnector = connector ?? (await init());
+        const { init } = get();
+        const shouldExcludeLedger = walletId !== LEDGER_WALLET_ID;
+        const newConnector = await init({
+            excludeLedger: shouldExcludeLedger,
+        });
         if (!newConnector) {
             throw new Error("Failed to initialize connector");
         }

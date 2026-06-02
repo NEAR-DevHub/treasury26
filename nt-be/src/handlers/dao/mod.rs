@@ -13,6 +13,14 @@ pub struct MarkDirtyRequest {
     pub dao_id: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReceiptMetricRequest {
+    pub dao_id: String,
+    /// Allowed: "generated" | "print"
+    pub metric: String,
+}
+
 /// Mark a DAO as dirty, triggering immediate re-sync of membership data
 ///
 /// POST /api/dao/mark-dirty
@@ -36,6 +44,34 @@ pub async fn mark_dirty(
                 "Failed to mark DAO as dirty".to_string(),
             )
         })?;
+
+    Ok(StatusCode::OK)
+}
+
+/// Record receipt usage metrics for a DAO.
+///
+/// POST /api/dao/receipt-metric
+/// Request body: { "daoId": "...", "metric": "generated" | "print" }
+pub async fn record_receipt_metric(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<ReceiptMetricRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    if payload.dao_id.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "daoId is required".to_string()));
+    }
+
+    let metric = match payload.metric.as_str() {
+        "generated" => crate::services::platform_metrics::PlatformMetric::ReceiptsGenerated,
+        "print" => crate::services::platform_metrics::PlatformMetric::ReceiptsPrinted,
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "metric must be 'generated' or 'print'".to_string(),
+            ));
+        }
+    };
+
+    crate::services::platform_metrics::record_event(&state.db_pool, &payload.dao_id, metric).await;
 
     Ok(StatusCode::OK)
 }

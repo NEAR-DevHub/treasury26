@@ -58,6 +58,8 @@ export interface PaymentRequestData {
     networkFee?: string;
     /** Destination id (e.g. "near.com", "near", "nep141:...omft.near") */
     destinationAssetId?: string;
+    /** Optional quote-provided USD value for display */
+    quoteAmountInUsd?: string;
 }
 
 export interface FunctionCallAction {
@@ -208,6 +210,9 @@ export interface SwapRequestData {
     tokenOut: string; // Token symbol (LEGACY for old proposals, empty for new ones)
     tokenOutAddress?: string; // NEW: Token address for new proposals
     amountOut: string;
+    /** Optional quote-provided USD values for display */
+    quoteAmountInUsd?: string;
+    quoteAmountOutUsd?: string;
     slippage?: string;
     quoteDeadline?: string;
 }

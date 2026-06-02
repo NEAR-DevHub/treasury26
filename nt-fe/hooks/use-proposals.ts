@@ -6,7 +6,11 @@ import {
     getProposalTransaction,
     Proposal,
     getSwapStatus,
+    getQuoteByDepositAddress,
+    getTokenPriceAtTimestamp,
 } from "@/lib/proposals-api";
+import { isTerminalSwapStatus } from "@/features/proposals/utils/receipt-utils";
+import { isAxiosErrorWithStatus } from "@/lib/query-retry";
 import { Policy } from "@/types/policy";
 
 /**
@@ -43,8 +47,9 @@ export function useProposals(
     filters?: ProposalFilters,
     enabled: boolean = true,
 ) {
+    const filtersKey = filters ? JSON.stringify(filters) : null;
     return useQuery({
-        queryKey: ["proposals", daoId, filters],
+        queryKey: ["proposals", daoId, filtersKey],
         queryFn: () => getProposals(daoId!, filters),
         enabled: enabled && !!daoId,
         staleTime: 1000 * 10, // 10 seconds (proposals can change frequently)
@@ -70,17 +75,21 @@ export function useProposalTransaction(
     enabled: boolean = true,
 ) {
     return useQuery({
-        queryKey: ["proposal-transaction", daoId, proposal?.id, policy],
+        queryKey: [
+            "proposal-transaction",
+            daoId,
+            proposal?.id,
+            proposal?.status,
+            proposal?.submission_time,
+            policy?.proposal_period,
+        ],
         queryFn: () => getProposalTransaction(daoId!, proposal!, policy!),
         enabled: enabled && !!daoId && !!proposal && !!policy,
         staleTime: 1000 * 60 * 5, // 5 minutes (transaction data is more stable)
         retry: (failureCount, error) => {
             // Don't retry on 404 (not found) errors
-            if (error && typeof error === "object" && "response" in error) {
-                const axiosError = error as any;
-                if (axiosError.response?.status === 404) {
-                    return false;
-                }
+            if (isAxiosErrorWithStatus(error, 404)) {
+                return false;
             }
             return failureCount < 3;
         },
@@ -109,24 +118,51 @@ export function useSwapStatus(
         refetchInterval: (query) => {
             const data = query.state.data;
             // If status is terminal (SUCCESS, REFUNDED, FAILED), stop polling
-            if (
-                data?.status === "SUCCESS" ||
-                data?.status === "REFUNDED" ||
-                data?.status === "FAILED"
-            ) {
+            if (isTerminalSwapStatus(data?.status)) {
                 return false;
             }
             return 1000 * 60; // 1 minute
         },
         retry: (failureCount, error) => {
             // Don't retry on 404 (deposit address not found)
-            if (error && typeof error === "object" && "response" in error) {
-                const axiosError = error as any;
-                if (axiosError.response?.status === 404) {
-                    return false;
-                }
+            if (isAxiosErrorWithStatus(error, 404)) {
+                return false;
             }
             return failureCount < 2;
         },
+    });
+}
+
+export function useQuoteByDepositAddress(
+    depositAddress: string | null | undefined,
+    depositMemo?: string | null,
+    enabled: boolean = true,
+) {
+    return useQuery({
+        queryKey: ["quote-by-deposit-address", depositAddress, depositMemo],
+        queryFn: () =>
+            getQuoteByDepositAddress(depositAddress!, depositMemo || undefined),
+        enabled: enabled && !!depositAddress,
+        staleTime: 1000 * 60 * 5,
+        retry: (failureCount, error) => {
+            if (isAxiosErrorWithStatus(error, 404)) {
+                return false;
+            }
+            return failureCount < 2;
+        },
+    });
+}
+
+export function useTokenPriceAtTimestamp(
+    tokenId: string | null | undefined,
+    timestamp: string | null | undefined,
+    enabled: boolean = true,
+) {
+    return useQuery({
+        queryKey: ["token-price-at-timestamp", tokenId, timestamp],
+        queryFn: () => getTokenPriceAtTimestamp(tokenId!, timestamp!),
+        enabled: enabled && !!tokenId && !!timestamp,
+        staleTime: 1000 * 60 * 5,
+        retry: 1,
     });
 }

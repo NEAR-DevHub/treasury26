@@ -40,6 +40,34 @@
         "confidentialDataTooltip": "Tu actividad financiera es privada y segura. Solo tú y tu equipo pueden acceder a esta información.",
         "confidentialAddressTooltip": "Los activos se recibirán en una dirección confidencial."
     },
+    "receiptPage": {
+        "transactionConfirmation": "Confirmación de transacción",
+        "copyLink": "Copiar enlace",
+        "printOrSavePdf": "Imprimir o guardar como PDF",
+        "generateReceipt": "Generar recibo en PDF",
+        "generatedOn": "Generado el {date}",
+        "receiptTitle": "Recibo n.º {proposalId} con fecha <datePart>{date}</datePart>",
+        "createYourTreasury": "Crea tu Tesorería",
+        "createYourTreasuryDescription": "Configura en segundos sin comisiones y ejecuta transacciones por centavos, no por dólares.",
+        "sender": "Remitente",
+        "recipient": "Destinatario",
+        "address": "Dirección",
+        "destinationNetwork": "Red de destino",
+        "transactionDetails": "Detalles de la transacción",
+        "status": "Estado",
+        "network": "Red",
+        "amountWithToken": "Monto ({token})",
+        "amountUsd": "Monto (USD)",
+        "rate": "Tasa",
+        "dateAndTime": "Fecha y hora",
+        "sentAmountWithToken": "Monto enviado ({token})",
+        "sentNetwork": "Red de envío",
+        "receiveAmountWithToken": "Monto recibido ({token})",
+        "receiveNetwork": "Red de recepción",
+        "receiveAmountUsd": "Monto recibido (USD)",
+        "paymentConfirmation": "Confirmación de pago",
+        "exchangeConfirmation": "Confirmación de cambio"
+    },
     "languageSwitcher": {
         "label": "Idioma",
         "select": "Seleccionar idioma",
@@ -77,7 +105,8 @@
         "wallet": "Cartera",
         "termsOfService": "Términos del servicio",
         "privacyPolicy": "Política de privacidad",
-        "disconnect": "Desconectar"
+        "disconnect": "Desconectar",
+        "disconnectWallet": "Desconectar Cartera"
     },
     "auth": {
         "noWallet": "Conecta tu cartera",
@@ -232,6 +261,7 @@
             "networksWithAssets": "Redes con activos",
             "yourAssets": "Tus activos",
             "otherAssets": "Otros activos",
+            "popularAssets": "Activos populares",
             "available": "Disponible",
             "forMembersOnly": "Solo para miembros"
         },
@@ -249,7 +279,8 @@
         "otherNetworkInfo": "Puedes depositar cualquier token que no aparezca en la lista, pero solo a través de la red NEAR.",
         "depositAddressHeading": "Dirección de depósito",
         "depositAddressSubtitle": "Comprueba siempre dos veces tu dirección de depósito.",
-        "depositAddressSubtitleConfidential": "Esta dirección de depósito es de un solo uso y solo es válida durante 3 días. Reutilizarla o enviar después de su vencimiento provocará la pérdida permanente de fondos.",
+        "depositAddressSubtitleConfidential": "<semibold>Dirección de depósito de un solo uso.</semibold> Reutilizar esta dirección o enviar fondos después del vencimiento puede provocar una pérdida permanente de fondos.",
+        "depositAddressSubtitleConfidentialExpiry": "Válida durante 3 días desde el momento de su generación. Expira en: {expiresIn} restantes",
         "singleUseAcknowledgement": "Usaré esta dirección solo una vez",
         "addressLabel": "Dirección",
         "addressCopied": "Dirección copiada al portapapeles",
@@ -259,7 +290,20 @@
         "onlyDeposit": "Deposita solo <symbolTag>{symbol}</symbolTag> desde la red <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Te recomendamos empezar con una pequeña transacción de prueba para asegurarte de que todo funciona correctamente antes de enviar el importe completo.",
         "minimumDeposit": "Depósito mínimo: <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Buscar por nombre"
+        "tabs": {
+            "fromPublic": "Desde pública",
+            "fromConfidential": "Desde confidencial"
+        },
+        "searchByName": "Buscar por nombre",
+        "faq": {
+            "title": "Preguntas frecuentes",
+            "publicWalletQuestion": "¿Cómo depositar cripto desde una billetera pública?",
+            "confidentialWalletQuestion": "¿Cómo depositar cripto desde una billetera confidencial?",
+            "fiatQuestion": "¿Puedo hacer un depósito con fiat?",
+            "fiatAnswer": "Por el momento no, pero estamos trabajando para habilitar depósitos con fiat pronto. Mantente atento: ¡ya viene! 🚀",
+            "arrivalQuestion": "¿Cuánto tarda en llegar un depósito?",
+            "arrivalAnswer": "El tiempo de procesamiento depende de la red."
+        }
     },
     "assetDetails": {
         "coinPrice": "Precio de la moneda",
@@ -2117,7 +2161,7 @@
             "suffixDemo": "mira la demo.",
             "suffixExploring": "sigue explorando.",
             "createCta": "Crear una tesorería",
-            "viewDemo": "Ver demo",
+            "viewDemo": "Explora la demo de Trezu",
             "keepExploring": "Seguir explorando"
         },
         "infoBox": {

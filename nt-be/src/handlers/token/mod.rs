@@ -1,4 +1,5 @@
 pub mod metadata;
+pub mod popular_assets;
 pub mod storage_deposit;
 
 pub use metadata::{

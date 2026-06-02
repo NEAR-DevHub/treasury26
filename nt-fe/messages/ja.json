@@ -40,6 +40,34 @@
         "confidentialDataTooltip": "あなたの財務活動はプライベートで安全です。この情報にアクセスできるのは、あなたとあなたのチームだけです。",
         "confidentialAddressTooltip": "資産は機密アドレスで受け取られます。"
     },
+    "receiptPage": {
+        "transactionConfirmation": "取引確認",
+        "copyLink": "リンクをコピー",
+        "printOrSavePdf": "印刷またはPDFで保存",
+        "generateReceipt": "PDF領収書を生成",
+        "generatedOn": "{date}に生成",
+        "receiptTitle": "領収書番号 {proposalId}（日付: <datePart>{date}</datePart>）",
+        "createYourTreasury": "トレジャリーを作成",
+        "createYourTreasuryDescription": "手数料ゼロで数秒でセットアップし、数ドルではなく数セントでトランザクションを実行できます。",
+        "sender": "送信者",
+        "recipient": "受取人",
+        "address": "アドレス",
+        "destinationNetwork": "送先ネットワーク",
+        "transactionDetails": "取引詳細",
+        "status": "ステータス",
+        "network": "ネットワーク",
+        "amountWithToken": "金額（{token}）",
+        "amountUsd": "金額（USD）",
+        "rate": "レート",
+        "dateAndTime": "日時",
+        "sentAmountWithToken": "送信金額（{token}）",
+        "sentNetwork": "送信ネットワーク",
+        "receiveAmountWithToken": "受取金額（{token}）",
+        "receiveNetwork": "受取ネットワーク",
+        "receiveAmountUsd": "受取金額（USD）",
+        "paymentConfirmation": "支払い確認",
+        "exchangeConfirmation": "交換確認"
+    },
     "languageSwitcher": {
         "label": "言語",
         "select": "言語を選択",
@@ -77,7 +105,8 @@
         "wallet": "ウォレット",
         "termsOfService": "利用規約",
         "privacyPolicy": "プライバシーポリシー",
-        "disconnect": "切断"
+        "disconnect": "切断",
+        "disconnectWallet": "切断 ウォレット"
     },
     "auth": {
         "noWallet": "ウォレットを接続してください",
@@ -232,6 +261,7 @@
             "networksWithAssets": "資産のあるネットワーク",
             "yourAssets": "あなたの資産",
             "otherAssets": "その他の資産",
+            "popularAssets": "人気の資産",
             "available": "利用可能",
             "forMembersOnly": "メンバー限定"
         },
@@ -249,7 +279,8 @@
         "otherNetworkInfo": "資産一覧にないトークンも入金できますが、NEARネットワーク経由のみとなります。",
         "depositAddressHeading": "入金アドレス",
         "depositAddressSubtitle": "入金アドレスは必ず再確認してください。",
-        "depositAddressSubtitleConfidential": "この入金アドレスは1回限り有効で、有効期間は3日間です。再利用したり有効期限後に送金したりすると、資金の恒久的な損失につながります。",
+        "depositAddressSubtitleConfidential": "<semibold>この入金アドレスは1回限りです。</semibold> このアドレスを再利用したり、有効期限後に送金したりすると、資金を恒久的に失う可能性があります。",
+        "depositAddressSubtitleConfidentialExpiry": "生成時点から3日間有効です。失効まで: 残り{expiresIn}",
         "singleUseAcknowledgement": "このアドレスは一度だけ使用します",
         "addressLabel": "アドレス",
         "addressCopied": "アドレスをクリップボードにコピーしました",
@@ -259,7 +290,20 @@
         "onlyDeposit": "<networkTag>{network}</networkTag>ネットワークから<symbolTag>{symbol}</symbolTag>のみを入金してください。",
         "testTransactionRecommendation": "全額を送る前に、まず少額のテストトランザクションで動作を確認することをおすすめします。",
         "minimumDeposit": "最小入金額は<amountTag>{amount} {symbol}</amountTag>です",
-        "searchByName": "名前で検索"
+        "tabs": {
+            "fromPublic": "公開から",
+            "fromConfidential": "機密から"
+        },
+        "searchByName": "名前で検索",
+        "faq": {
+            "title": "よくある質問",
+            "publicWalletQuestion": "公開ウォレットから暗号資産を入金するには？",
+            "confidentialWalletQuestion": "機密ウォレットから暗号資産を入金するには？",
+            "fiatQuestion": "法定通貨で入金できますか？",
+            "fiatAnswer": "現時点では未対応ですが、法定通貨での入金をまもなく提供できるよう取り組んでいます。今しばらくお待ちください - まもなく公開予定です 🚀",
+            "arrivalQuestion": "入金が反映されるまでどのくらいかかりますか？",
+            "arrivalAnswer": "処理時間はネットワークによって異なります。"
+        }
     },
     "assetDetails": {
         "coinPrice": "コイン価格",
@@ -2117,7 +2161,7 @@
             "suffixDemo": "デモをチェックしてください。",
             "suffixExploring": "引き続き探索してください。",
             "createCta": "トレジャリーを作成",
-            "viewDemo": "デモを見る",
+            "viewDemo": "Trezuデモを探索",
             "keepExploring": "引き続き探索"
         },
         "infoBox": {

@@ -1,0 +1,145 @@
+name: Move linked issues to QA on merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  update-linked-issues:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move referenced issues to QA In Progress
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request;
+            const targetStatusName = "QA In Progress";
+
+            // Extract issue numbers from PR title + body
+            const text = `${pr.title || ""}\n${pr.body || ""}`;
+            const issueRefs = new Set();
+            for (const match of text.matchAll(/(?:^|[\s(])#(\d+)\b/gm)) {
+              issueRefs.add(Number(match[1]));
+            }
+
+            core.info(`Found ${issueRefs.size} issue ref(s): ${[...issueRefs].join(", ") || "none"}`);
+            if (issueRefs.size === 0) return;
+
+            for (const issueNumber of issueRefs) {
+              core.info(`Processing issue #${issueNumber}`);
+
+              // Get issue and its project items
+              const issueData = await github.graphql(`
+                query($owner: String!, $repo: String!, $num: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $num) {
+                      id
+                      state
+                      projectItems(first: 20) {
+                        nodes {
+                          id
+                          project { id title }
+                        }
+                      }
+                    }
+                  }
+                }
+              `, { owner, repo, num: issueNumber });
+
+              const issue = issueData.repository?.issue;
+              if (!issue) {
+                core.warning(`Issue #${issueNumber} not found`);
+                continue;
+              }
+
+              // If issue was auto-closed by merge, reopen it
+              if (issue.state === "CLOSED") {
+                core.info(`Reopening issue #${issueNumber} (was auto-closed)`);
+                await github.graphql(`
+                  mutation($id: ID!) {
+                    reopenIssue(input: { issueId: $id }) {
+                      issue { state }
+                    }
+                  }
+                `, { id: issue.id });
+              }
+
+              const items = issue.projectItems?.nodes || [];
+              if (items.length === 0) {
+                core.warning(`Issue #${issueNumber} is not in any project`);
+                continue;
+              }
+
+              for (const item of items) {
+                // Get project fields to find Status
+                const projectInfo = await github.graphql(`
+                  query($pid: ID!) {
+                    node(id: $pid) {
+                      ... on ProjectV2 {
+                        id
+                        title
+                        fields(first: 100) {
+                          nodes {
+                            ... on ProjectV2SingleSelectField {
+                              id
+                              name
+                              options { id name }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                `, { pid: item.project.id });
+
+                const project = projectInfo.node;
+                const statusField = (project.fields?.nodes || []).find(
+                  f => f?.name === "Status"
+                );
+                if (!statusField) {
+                  core.warning(`Project "${project.title}" has no Status field`);
+                  continue;
+                }
+
+                const targetOption = (statusField.options || []).find(
+                  o => o.name === targetStatusName
+                );
+                if (!targetOption) {
+                  core.warning(`Project "${project.title}" has no "${targetStatusName}" option`);
+                  continue;
+                }
+
+                // Update issue status in project
+                await github.graphql(`
+                  mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                    updateProjectV2ItemFieldValue(
+                      input: {
+                        projectId: $projectId
+                        itemId: $itemId
+                        fieldId: $fieldId
+                        value: { singleSelectOptionId: $optionId }
+                      }
+                    ) {
+                      projectV2Item { id }
+                    }
+                  }
+                `, {
+                  projectId: project.id,
+                  itemId: item.id,
+                  fieldId: statusField.id,
+                  optionId: targetOption.id,
+                });
+
+                core.info(`Set issue #${issueNumber} to "${targetStatusName}" in "${project.title}"`);
+              }
+            }

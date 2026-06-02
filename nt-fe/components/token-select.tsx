@@ -8,9 +8,15 @@ import {
     type MergedNetwork,
     type MergedToken,
 } from "@/hooks/use-merged-tokens";
+import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
 import type { ChainIcons } from "@/lib/api";
 import Big from "@/lib/big";
-import { cn, formatBalance, formatSmartAmount } from "@/lib/utils";
+import {
+    canonicalizeTokenIdForMatch,
+    cn,
+    formatBalance,
+    formatSmartAmount,
+} from "@/lib/utils";
 import { Button } from "./button";
 import { Input } from "./input";
 import {
@@ -71,6 +77,7 @@ interface TokenSelectProps {
         network: string;
         residency?: string;
     }) => boolean;
+    showPopularAssets?: boolean;
     disableTokenMessage?: string;
     disableTokens?: (token: {
         address: string;
@@ -92,14 +99,19 @@ export default function TokenSelect({
     showOnlyOwnedAssets = false,
     iconSize = "md",
     filterTokens,
+    showPopularAssets = false,
 }: TokenSelectProps) {
     const t = useTranslations("tokenSelectDialog");
+    const tDepositSections = useTranslations("depositModal.sections");
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [selectedAsset, setSelectedAsset] = useState<MergedToken | null>(
         null,
     );
     const [step, setStep] = useState<"token" | "network">("token");
+    const { data: popularAssets = [] } = usePopularAssetsByActivity(
+        showPopularAssets && open && step === "token",
+    );
 
     const { tokens, isLoading } = useMergedTokens({
         enabled: !showOnlyOwnedAssets && open,
@@ -179,6 +191,42 @@ export default function TokenSelect({
             otherAssets: otherAssetsFiltered,
         };
     }, [filteredTokens]);
+
+    const popularTokens = useMemo(() => {
+        if (!showPopularAssets || popularAssets.length === 0) return [];
+
+        const popularIds = new Set<string>();
+        for (const asset of popularAssets) {
+            popularIds.add(asset.tokenId.toLowerCase());
+            popularIds.add(canonicalizeTokenIdForMatch(asset.tokenId));
+        }
+
+        return filteredTokens
+            .filter((token) => {
+                const tokenCandidates = new Set<string>([
+                    token.id.toLowerCase(),
+                    canonicalizeTokenIdForMatch(token.id),
+                ]);
+                for (const network of token.networks) {
+                    tokenCandidates.add(network.id.toLowerCase());
+                    tokenCandidates.add(
+                        canonicalizeTokenIdForMatch(network.id),
+                    );
+                    tokenCandidates.add(network.chainId.toLowerCase());
+                    tokenCandidates.add(
+                        canonicalizeTokenIdForMatch(network.chainId),
+                    );
+                }
+
+                for (const candidate of tokenCandidates) {
+                    if (popularIds.has(candidate)) {
+                        return true;
+                    }
+                }
+                return false;
+            })
+            .slice(0, 8);
+    }, [showPopularAssets, popularAssets, filteredTokens]);
 
     const networkItems = useMemo((): MergedNetwork[] => {
         if (!selectedAsset) return [];
@@ -385,8 +433,56 @@ export default function TokenSelect({
                             </div>
                         ) : (
                             <ScrollArea className="h-[400px]">
+                                {showPopularAssets &&
+                                    popularTokens.length > 0 && (
+                                        <div className="mb-3">
+                                            <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                                {tDepositSections(
+                                                    "popularAssets",
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 px-2">
+                                                {popularTokens.map((token) => (
+                                                    <Button
+                                                        key={`popular-${token.id}`}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handleTokenClick(
+                                                                token,
+                                                            )
+                                                        }
+                                                        variant="secondary"
+                                                        className={cn(
+                                                            "h-7 rounded-md px-2 py-0.5 text-xs font-medium gap-1",
+                                                            token.networks.some(
+                                                                (network) =>
+                                                                    network.id ===
+                                                                        selectedToken?.address &&
+                                                                    network.name ===
+                                                                        selectedToken?.network,
+                                                            ) && "bg-muted",
+                                                        )}
+                                                    >
+                                                        <SelectListIcon
+                                                            icon={token.icon}
+                                                            alt={
+                                                                token.symbol ||
+                                                                token.name
+                                                            }
+                                                            size="sm"
+                                                        />
+                                                        <span>
+                                                            {token.symbol ||
+                                                                token.name}
+                                                        </span>
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                 {yourAssets.length > 0 && (
-                                    <div className="mb-4">
+                                    <div>
                                         <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
                                             {t("yourAssets")}
                                         </div>
@@ -526,7 +622,7 @@ export default function TokenSelect({
                             return (
                                 <>
                                     {supportedWithBalance.length > 0 && (
-                                        <div className="mb-4">
+                                        <div>
                                             <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
                                                 {t("networksWithAssets")}
                                             </div>
@@ -537,7 +633,7 @@ export default function TokenSelect({
                                     )}
 
                                     {supportedWithoutBalance.length > 0 && (
-                                        <div className="mb-4">
+                                        <div>
                                             <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
                                                 {t("supportedNetworks")}
                                             </div>
@@ -548,7 +644,7 @@ export default function TokenSelect({
                                     )}
 
                                     {comingSoonNetworks.length > 0 && (
-                                        <div className="mb-4">
+                                        <div>
                                             <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2 flex items-center gap-1.5">
                                                 {t("comingSoon")}
                                                 {disableTokenMessage && (

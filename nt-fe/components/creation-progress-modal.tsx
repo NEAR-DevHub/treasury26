@@ -23,6 +23,7 @@ interface CreationProgressModalProps {
     error?: string | null;
     treasuryId?: string | null;
     onNavigate: () => void;
+    onClose: () => void;
 }
 
 function StepStatusIcon({ status }: { status: CreationStep["status"] }) {
@@ -58,13 +59,21 @@ export function CreationProgressModal({
     error,
     treasuryId,
     onNavigate,
+    onClose,
 }: CreationProgressModalProps) {
     const t = useTranslations("progressModal");
     const isDone = !!treasuryId;
     const hasError = !!error;
 
     return (
-        <Dialog open={open}>
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (!nextOpen && (hasError || isDone)) {
+                    onClose();
+                }
+            }}
+        >
             <DialogContent className="max-w-md!">
                 <DialogHeader closeButton={hasError || isDone}>
                     <DialogTitle>

@@ -9,7 +9,7 @@
 //! - Reading cached prices from the database
 
 use bigdecimal::BigDecimal;
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::PgPool;
 use std::collections::HashMap;
 
@@ -265,6 +265,48 @@ impl<P: PriceProvider> PriceLookupService<P> {
             .into_iter()
             .filter_map(|r| bigdecimal_to_f64(&r.price_usd).map(|p| (r.price_date, p)))
             .collect())
+    }
+}
+
+impl PriceLookupService<super::DeFiLlamaClient> {
+    /// Get token USD price at execution timestamp with DB EOD fallback.
+    ///
+    /// Resolution order:
+    /// 1. Exact timestamp from DeFiLlama `/prices/historical/{timestamp}`
+    /// 2. Cached daily EOD price from `historical_prices` for the same UTC day
+    /// 3. None (caller should render `N/A`)
+    pub async fn get_price_at_timestamp_or_eod(
+        &self,
+        token_id: &str,
+        executed_at: DateTime<Utc>,
+    ) -> Result<Option<(f64, &'static str)>, Box<dyn std::error::Error + Send + Sync>> {
+        let Some(provider) = self.provider.as_ref() else {
+            return Ok(None);
+        };
+
+        let Some(unified_id) = token_id_to_unified_asset_id(token_id) else {
+            return Ok(None);
+        };
+
+        let Some(provider_asset_id) = provider.translate_asset_id(&unified_id) else {
+            return Ok(None);
+        };
+
+        let timestamp_seconds = executed_at.timestamp();
+        let exact_prices = provider
+            .get_prices_at_timestamp(std::slice::from_ref(&provider_asset_id), timestamp_seconds)
+            .await?;
+
+        if let Some(price) = exact_prices.get(&provider_asset_id).copied() {
+            return Ok(Some((price, "exact_timestamp")));
+        }
+
+        let eod_date = executed_at.date_naive();
+        if let Some(price) = self.get_cached_price(&provider_asset_id, eod_date).await? {
+            return Ok(Some((price, "daily_eod")));
+        }
+
+        Ok(None)
     }
 }
 
