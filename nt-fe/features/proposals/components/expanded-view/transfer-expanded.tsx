@@ -120,7 +120,6 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
                     chainIcons={destinationNetworkMeta.chainIcons}
                     networkName={destinationNetworkMeta.name}
                     networkNameClassName="font-normal"
-                    expandNearComLabel
                 />
             ),
         },

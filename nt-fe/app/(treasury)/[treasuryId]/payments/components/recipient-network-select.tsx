@@ -88,7 +88,7 @@ function NetworkRow({
                 src={option.icon}
                 alt={`${option.name} network`}
                 className={cn(
-                    "size-8",
+                    "size-8 rounded-full object-cover",
                     option.networkName.toLowerCase() === NEAR_NETWORK_ID &&
                         "p-1",
                 )}

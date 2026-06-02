@@ -247,13 +247,21 @@ export function parseAmount(
             normalized = normalized.replace(/\./g, "").replace(",", ".");
         }
     } else if (hasComma) {
-        // Only comma: check if it's decimal or thousands separator
+        // Only comma: check if it's a decimal or a thousands separator.
         const parts = normalized.split(",");
-        if (parts.length === 2 && parts[1].length <= 8) {
-            // Likely decimal separator: "10,5" or "10,50"
+        // A single comma group of exactly 3 digits is the canonical
+        // thousands grouping ("1,000" -> 1000), so it must not be treated
+        // as a decimal, unless the integer part is "0" ("0,500" -> 0.5),
+        // which is only meaningful as a decimal. Any other single group
+        // length (1, 2 or 4+ digits) is a decimal separator: "10,5",
+        // "10,50", "1,2345".
+        const isThousandsGroup =
+            parts.length === 2 && parts[1].length === 3 && parts[0] !== "0";
+        if (parts.length === 2 && !isThousandsGroup) {
+            // Decimal separator: "10,5" or "10,50"
             normalized = normalized.replace(",", ".");
         } else {
-            // Likely thousands separator: "1,000" or "1,000,000"
+            // Thousands separator: "1,000" or "1,000,000"
             normalized = normalized.replace(/,/g, "");
         }
     }

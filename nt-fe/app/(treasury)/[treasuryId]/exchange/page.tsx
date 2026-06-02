@@ -36,6 +36,10 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import type { IntentsQuoteResponse } from "@/lib/api";
 import { generateIntent } from "@/lib/api";
+import {
+    calculateExchangeFeeAmount,
+    EXCHANGE_FEE_PERCENTAGE,
+} from "@/lib/exchange-fee";
 import { parseTokenQueryParam } from "@/lib/token-query-param";
 import {
     formatBalance,
@@ -652,19 +656,14 @@ function Step2({ handleBack }: StepProps) {
                                                       "info.exchangeFee",
                                                   ),
                                                   value: (() => {
-                                                      // Calculate fee: amountIn * 0.35% = amountIn * 0.0035
-                                                      const feePercentage = 0.7;
-                                                      const amountIn =
-                                                          Number(
+                                                      const feeAmount =
+                                                          calculateExchangeFeeAmount(
                                                               localLiveQuoteData
                                                                   .quote
                                                                   .amountInFormatted,
-                                                          ) || 0;
-                                                      const feeAmount =
-                                                          amountIn *
-                                                          (feePercentage / 100);
+                                                          );
 
-                                                      return `${feePercentage}% / ${formatTokenDisplayAmount(
+                                                      return `${EXCHANGE_FEE_PERCENTAGE}% / ${formatTokenDisplayAmount(
                                                           feeAmount,
                                                       )} ${sellToken.symbol}`;
                                                   })(),

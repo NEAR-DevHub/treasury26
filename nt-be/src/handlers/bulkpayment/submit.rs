@@ -317,7 +317,7 @@ pub async fn submit_list(
                     crate::services::platform_metrics::record_event(
                         &state.db_pool,
                         request.dao_contract_id.as_str(),
-                        "batch_payments_used",
+                        crate::services::platform_metrics::PlatformMetric::BatchPaymentsUsed,
                     )
                     .await;
 

@@ -97,7 +97,7 @@ export const NetworkIconDisplay = ({
                 <img
                     src={iconUrl}
                     alt={`${networkName} network`}
-                    className="size-6"
+                    className="size-6 rounded-full object-cover"
                 />
             ) : (
                 <div className="size-6 rounded-full bg-gradient-cyan-blue flex items-center justify-center text-white text-xs font-bold">
