@@ -150,10 +150,32 @@ jobs:
               return refs;
             }
 
+            async function releaseDueOn() {
+              try {
+                const { data: release } = await github.rest.repos.getReleaseByTag({
+                  owner,
+                  repo,
+                  tag: newTag,
+                });
+                if (release.published_at) {
+                  return new Date(release.published_at).toISOString();
+                }
+              } catch (error) {
+                core.warning(
+                  `Could not read release ${newTag} for due date: ${error.message}`,
+                );
+              }
+              const commitDate = execSync(
+                `git log -1 --format=%cI ${releaseSha}`,
+                { encoding: "utf8" },
+              ).trim();
+              return new Date(commitDate).toISOString();
+            }
+
             // Collect PRs included in this release (merge commits AND squash commits).
             const prNumbers = new Set();
             const logRange = previousTag
-              ? `${previousTag}..${releaseSha}`
+              ? `refs/tags/${previousTag}..${releaseSha}`
               : releaseSha;
             let commitSubjects = "";
             try {
@@ -199,13 +221,18 @@ jobs:
             );
             if (issueRefs.size === 0) return;
 
-            const { data: existingMilestones } = await github.rest.issues.listMilestones({
-              owner,
-              repo,
-              state: "all",
-              per_page: 100,
-            });
-            let milestone = existingMilestones.find((m) => m.title === milestoneTitle);
+            const dueOn = await releaseDueOn();
+            core.info(`Milestone due date: ${dueOn}`);
+
+            let milestone = null;
+            for await (const response of github.paginate.iterator(
+              github.rest.issues.listMilestones,
+              { owner, repo, state: "all", per_page: 100 },
+            )) {
+              milestone = response.data.find((m) => m.title === milestoneTitle);
+              if (milestone) break;
+            }
+
             if (!milestone) {
               const { data: created } = await github.rest.issues.createMilestone({
                 owner,
@@ -213,11 +240,23 @@ jobs:
                 title: milestoneTitle,
                 description: `Shipped in ${newTag}`,
                 state: "open",
+                due_on: dueOn,
               });
               milestone = created;
-              core.info(`Created milestone "${milestoneTitle}" (#${milestone.number})`);
+              core.info(
+                `Created milestone "${milestoneTitle}" (#${milestone.number}, due ${dueOn})`,
+              );
             } else {
-              core.info(`Using existing milestone "${milestoneTitle}" (#${milestone.number})`);
+              const { data: updated } = await github.rest.issues.updateMilestone({
+                owner,
+                repo,
+                milestone_number: milestone.number,
+                due_on: dueOn,
+              });
+              milestone = updated;
+              core.info(
+                `Using milestone "${milestoneTitle}" (#${milestone.number}, due ${dueOn})`,
+              );
             }
 
             for (const issueNumber of issueRefs) {
