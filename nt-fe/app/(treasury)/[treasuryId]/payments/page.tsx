@@ -486,8 +486,12 @@ function getDestinationAmountDecimalsForExactOutput(
     destinationNetwork: string | undefined,
     amountMode: IntentsAmountMode,
     bridgeAssets: BridgeAsset[],
-): number {
-    if (amountMode !== "recipient" || isNearComNetwork(destinationNetwork)) {
+): number | undefined {
+    if (
+        amountMode !== "recipient" ||
+        !destinationNetwork ||
+        isNearComNetwork(destinationNetwork)
+    ) {
         return token.decimals;
     }
 
@@ -496,7 +500,7 @@ function getDestinationAmountDecimalsForExactOutput(
         (network) => network.id === destinationNetwork,
     );
 
-    return destination?.decimals ?? token.decimals;
+    return destination?.decimals;
 }
 
 function classifyPaymentToken(
@@ -971,17 +975,18 @@ export default function PaymentsPage() {
             const directTransferAmount = Big(data.amount)
                 .mul(Big(10).pow(data.token.decimals))
                 .toFixed();
+            const quoteAmountDecimals =
+                getDestinationAmountDecimalsForExactOutput(
+                    tokenClassification.tokenForIntentsQuote,
+                    data.destinationNetwork,
+                    intentsAmountMode,
+                    bridgeAssets,
+                );
+            if (quoteAmountDecimals === undefined) {
+                throw new Error(tPay("failed1ClickQuote"));
+            }
             const quoteAmount = Big(data.amount)
-                .mul(
-                    Big(10).pow(
-                        getDestinationAmountDecimalsForExactOutput(
-                            tokenClassification.tokenForIntentsQuote,
-                            data.destinationNetwork,
-                            intentsAmountMode,
-                            bridgeAssets,
-                        ),
-                    ),
-                )
+                .mul(Big(10).pow(quoteAmountDecimals))
                 .toFixed();
 
             let description = encodeToMarkdown({ notes: data.memo || "" });
