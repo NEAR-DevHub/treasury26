@@ -577,6 +577,10 @@ export interface TokenMetadata {
     chainIcons?: ChainIcons;
 }
 
+interface PopularAssetsByActivityResponse {
+    data: TokenMetadata[];
+}
+
 /**
  * Get metadata for a single token
  * Fetches token name, symbol, decimals, and icon from the blockchain
@@ -608,6 +612,19 @@ export async function getTokenMetadata(
     } catch (error) {
         console.error(`Error getting metadata for token ${tokenId}`, error);
         return null;
+    }
+}
+
+export async function getPopularAssetsByActivity(): Promise<TokenMetadata[]> {
+    try {
+        const response = await axios.get<PopularAssetsByActivityResponse>(
+            `${BACKEND_API_BASE}/token/popular-assets`,
+        );
+
+        return response.data.data ?? [];
+    } catch (error) {
+        console.error("Error fetching popular assets by activity", error);
+        return [];
     }
 }
 

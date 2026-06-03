@@ -54,6 +54,7 @@ interface TokenInputProps<
     tokenSelect?: {
         disabled?: boolean;
         locked?: boolean;
+        showPopularAssets?: boolean;
         /**
          * When true, only shows tokens that the user owns (has balance > 0).
          * When false, shows all tokens with separation.
@@ -264,6 +265,10 @@ export function TokenInput<
                                     <TokenSelect
                                         disabled={tokenSelect?.disabled}
                                         locked={tokenSelect?.locked}
+                                        showPopularAssets={
+                                            tokenSelect?.showPopularAssets ??
+                                            false
+                                        }
                                         selectedToken={token}
                                         setSelectedToken={(
                                             selectedToken: SelectedTokenData,

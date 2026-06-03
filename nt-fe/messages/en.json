@@ -40,6 +40,34 @@
         "confidentialDataTooltip": "Your financial activity is private and secure. Only you and your team can access this information.",
         "confidentialAddressTooltip": "Assets will be received on a confidential address."
     },
+    "receiptPage": {
+        "transactionConfirmation": "Transaction confirmation",
+        "copyLink": "Copy Link",
+        "printOrSavePdf": "Print or Save as PDF",
+        "generateReceipt": "Generate PDF Receipt",
+        "generatedOn": "Generated on {date}",
+        "receiptTitle": "Receipt No. {proposalId} dated <datePart>{date}</datePart>",
+        "createYourTreasury": "Create Your Treasury",
+        "createYourTreasuryDescription": "Set up in seconds with zero fees and execute transactions for cents, not dollars.",
+        "sender": "Sender",
+        "recipient": "Recipient",
+        "address": "Address",
+        "destinationNetwork": "Destination Network",
+        "transactionDetails": "Transaction Details",
+        "status": "Status",
+        "network": "Network",
+        "amountWithToken": "Amount ({token})",
+        "amountUsd": "Amount (USD)",
+        "rate": "Rate",
+        "dateAndTime": "Date and Time",
+        "sentAmountWithToken": "Sent Amount ({token})",
+        "sentNetwork": "Sent Network",
+        "receiveAmountWithToken": "Receive Amount ({token})",
+        "receiveNetwork": "Receive Network",
+        "receiveAmountUsd": "Receive Amount (USD)",
+        "paymentConfirmation": "Payment Confirmation",
+        "exchangeConfirmation": "Exchange Confirmation"
+    },
     "languageSwitcher": {
         "label": "Language",
         "select": "Select language",
@@ -77,7 +105,8 @@
         "wallet": "Wallet",
         "termsOfService": "Terms of Service",
         "privacyPolicy": "Privacy Policy",
-        "disconnect": "Disconnect"
+        "disconnect": "Disconnect",
+        "disconnectWallet": "Disconnect Wallet"
     },
     "auth": {
         "noWallet": "Connect your wallet",
@@ -232,6 +261,7 @@
             "networksWithAssets": "Networks with Assets",
             "yourAssets": "Your Assets",
             "otherAssets": "Other Assets",
+            "popularAssets": "Popular Assets",
             "available": "Available",
             "forMembersOnly": "For Members Only"
         },
@@ -249,7 +279,8 @@
         "otherNetworkInfo": "You can deposit any token not listed in the assets, but only via the NEAR network.",
         "depositAddressHeading": "Deposit Address",
         "depositAddressSubtitle": "Always double-check your deposit address.",
-        "depositAddressSubtitleConfidential": "Single-use address and valid for 3 days only. Reusing or sending after expiration will result in permanent loss of funds.",
+        "depositAddressSubtitleConfidential": "<semibold>Single-use deposit address.</semibold> Reusing this address or sending funds after expiration may result in a permanent loss of funds.",
+        "depositAddressSubtitleConfidentialExpiry": "Valid for 3 days from the time of generation. Expires in: {expiresIn} remaining",
         "singleUseAcknowledgement": "I will use this address only once",
         "addressLabel": "Address",
         "addressCopied": "Address copied to clipboard",
@@ -259,7 +290,20 @@
         "onlyDeposit": "Only deposit <symbolTag>{symbol}</symbolTag> from the <networkTag>{network}</networkTag> network.",
         "testTransactionRecommendation": "We recommend starting with a small test transaction to ensure everything works correctly before sending the full amount.",
         "minimumDeposit": "Minimum deposit is <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Search by name"
+        "tabs": {
+            "fromPublic": "From public",
+            "fromConfidential": "From confidential"
+        },
+        "searchByName": "Search by name",
+        "faq": {
+            "title": "FAQ",
+            "publicWalletQuestion": "How to deposit crypto from public wallet?",
+            "confidentialWalletQuestion": "How to deposit crypto from confidential wallet?",
+            "fiatQuestion": "Can I make a deposit with fiat?",
+            "fiatAnswer": "Not at the moment, but we’re working on bringing fiat deposits soon. Stay tuned - it’s on the way 🚀",
+            "arrivalQuestion": "How long does it take for a deposit to arrive?",
+            "arrivalAnswer": "The processing time depends on the network."
+        }
     },
     "assetDetails": {
         "coinPrice": "Coin Price",
@@ -1822,12 +1866,6 @@
         "membersWhoCanVote": "Members who can vote",
         "moreMembers": "+{count, plural, one {# member} other {# members}}"
     },
-    "accountIdInput": {
-        "minLength": "Account ID should be at least 2 characters",
-        "maxLength": "Account ID must be less than 64 characters",
-        "charset": "Account ID must contain only lowercase letters, digits, dots, hyphens, and underscores, with no leading or trailing separators",
-        "doesNotExist": "Account ID doesn't exist"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Recipient added} other {# recipients added}}",
         "addedSingleToast": "Recipient added",
@@ -2117,7 +2155,7 @@
             "suffixDemo": "check out the demo.",
             "suffixExploring": "keep exploring.",
             "createCta": "Create a Treasury",
-            "viewDemo": "View Demo",
+            "viewDemo": "Explore the Trezu Demo.",
             "keepExploring": "Keep Exploring"
         },
         "infoBox": {

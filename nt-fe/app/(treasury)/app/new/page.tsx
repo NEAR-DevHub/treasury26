@@ -2,20 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-    Clock10,
-    Database,
-    Globe,
-    Minus,
-    Plus,
-    Shield,
-    UsersRound,
-    Vote,
-} from "lucide-react";
+import { Clock10, Database, Globe, Shield } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type ArrayPath, useForm, useFormContext } from "react-hook-form";
+import { useForm, useFormContext } from "react-hook-form";
 import z from "zod";
 import { Alert, AlertDescription } from "@/components/alert";
 import { Button } from "@/components/button";
@@ -23,13 +14,7 @@ import { PageCard } from "@/components/card";
 import { CreationDisabledModal } from "@/components/creation-disabled-modal";
 import { InputBlock } from "@/components/input-block";
 import { LargeInput } from "@/components/large-input";
-import {
-    type Member,
-    MemberInput,
-    buildMemberSchema,
-} from "@/components/member-input";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { ROLES } from "@/components/role-selector";
 import {
     InlineNextButton,
     type StepProps,
@@ -77,57 +62,35 @@ function buildTreasuryFormSchema(messages: {
     accountMax: string;
     accountChars: string;
     accountTaken: string;
-    rolesRequired: string;
-    duplicateAddress: string;
-    accountId: {
-        minLength: string;
-        maxLength: string;
-        charset: string;
-        doesNotExist: string;
-    };
 }) {
-    return z
-        .object({
-            about: ONBOARDING_ABOUT_SCHEMA,
-            details: z
-                .object({
-                    treasuryName: z
-                        .string()
-                        .min(2, messages.nameMin)
-                        .max(64, messages.nameMax),
-                    accountName: z
-                        .string()
-                        .min(2, messages.accountMin)
-                        .max(64, messages.accountMax)
-                        .regex(/^[a-z0-9-]+$/, messages.accountChars),
-                    paymentThreshold: z.number().min(1).max(100),
-                    governanceThreshold: z.number().min(1).max(100),
-                })
-                .refine(
-                    async (data) => {
-                        if (!data.accountName) return true;
-                        const fullAccountId = `${data.accountName}.sputnik-dao.near`;
-                        const result = await checkHandleUnused(fullAccountId);
-                        return result?.unused === true;
-                    },
-                    {
-                        message: messages.accountTaken,
-                        path: ["accountName"],
-                    },
-                ),
-            isConfidential: z.boolean(),
-            members: buildMemberSchema({
-                rolesRequired: messages.rolesRequired,
-                duplicateAddress: messages.duplicateAddress,
-                accountId: messages.accountId,
-            }),
-        })
-        .refine((data) => {
-            const financialMembers = data.members.filter((m) =>
-                m.roles.includes("financial"),
-            ).length;
-            return data.details.paymentThreshold <= financialMembers;
-        });
+    return z.object({
+        about: ONBOARDING_ABOUT_SCHEMA,
+        details: z
+            .object({
+                treasuryName: z
+                    .string()
+                    .min(2, messages.nameMin)
+                    .max(64, messages.nameMax),
+                accountName: z
+                    .string()
+                    .min(2, messages.accountMin)
+                    .max(64, messages.accountMax)
+                    .regex(/^[a-z0-9-]+$/, messages.accountChars),
+            })
+            .refine(
+                async (data) => {
+                    if (!data.accountName) return true;
+                    const fullAccountId = `${data.accountName}.sputnik-dao.near`;
+                    const result = await checkHandleUnused(fullAccountId);
+                    return result?.unused === true;
+                },
+                {
+                    message: messages.accountTaken,
+                    path: ["accountName"],
+                },
+            ),
+        isConfidential: z.boolean(),
+    });
 }
 
 type TreasuryFormValues = z.infer<ReturnType<typeof buildTreasuryFormSchema>>;
@@ -150,7 +113,7 @@ function createClearErrorsOnChange<T>(
     };
 }
 
-function Step1({ handleNext, handleBack }: StepProps) {
+function TreasuryDetailsStep({ handleNext, handleBack }: StepProps) {
     const tCreate = useTranslations("createTreasury");
     const form = useFormContext<TreasuryFormValues>();
     const [accountNameEdited, setAccountNameEdited] = useState(false);
@@ -265,196 +228,6 @@ function Step1({ handleNext, handleBack }: StepProps) {
     );
 }
 
-function Threshold({
-    title,
-    description,
-    value,
-    onChange,
-    max,
-}: {
-    title: string;
-    description: string;
-    value: number;
-    onChange: (v: number) => void;
-    max: number;
-}) {
-    const tCreate = useTranslations("createTreasury");
-    const canDecrement = value > 1;
-    const canIncrement = value < max;
-
-    return (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-            <div className="flex flex-col flex-1 min-w-0">
-                <h3 className="font-medium text-sm">{title}</h3>
-                <p className="text-sm text-muted-foreground">{description}</p>
-            </div>
-            <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-start sm:justify-end">
-                <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon-sm"
-                    onClick={() => onChange(value - 1)}
-                    disabled={!canDecrement}
-                    tooltipContent={
-                        canDecrement ? undefined : tCreate("minimumVoteNote")
-                    }
-                >
-                    <Minus className="size-4 text-secondary-foreground" />
-                </Button>
-                <span className="text-sm w-[21px] text-center">
-                    {value}/{max}
-                </span>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon-sm"
-                    onClick={() => onChange(value + 1)}
-                    disabled={!canIncrement}
-                    tooltipContent={
-                        canIncrement ? undefined : tCreate("votingNote")
-                    }
-                >
-                    <Plus className="size-4 text-secondary-foreground" />
-                </Button>
-            </div>
-        </div>
-    );
-}
-
-function Step2({ handleBack, handleNext }: StepProps) {
-    const tCreate = useTranslations("createTreasury");
-    const form = useFormContext<TreasuryFormValues>();
-    const { accountId } = useNear();
-
-    const handleContinue = async () => {
-        const members = form.getValues("members");
-        const memberFieldsToValidate = members.flatMap((_, index) => {
-            if (index === 0 && !accountId) return [];
-            return [
-                `members.${index}.accountId`,
-                `members.${index}.roles`,
-            ] as const;
-        });
-
-        const isValid =
-            memberFieldsToValidate.length > 0
-                ? await form.trigger(memberFieldsToValidate as any)
-                : true;
-
-        if (!accountId) {
-            form.clearErrors("members.0.accountId");
-        }
-
-        if (isValid && handleNext) {
-            trackEvent("onboarding_step_completed", {
-                step_name: "members",
-                members_count: form.getValues("members").length,
-            });
-            handleNext();
-        }
-    };
-
-    const { members } = form.watch();
-    const financialMembers = members.filter((m: Member) =>
-        m.roles.includes("financial"),
-    ).length;
-    const governanceMembers = members.filter((m: Member) =>
-        m.roles.includes("governance"),
-    ).length;
-
-    useEffect(() => {
-        const currentPayment = form.getValues("details.paymentThreshold");
-        if (currentPayment > financialMembers) {
-            form.setValue(
-                "details.paymentThreshold",
-                Math.max(1, financialMembers),
-            );
-        }
-    }, [financialMembers]);
-
-    useEffect(() => {
-        const currentGovernance = form.getValues("details.governanceThreshold");
-        if (currentGovernance > governanceMembers) {
-            form.setValue(
-                "details.governanceThreshold",
-                Math.max(1, governanceMembers),
-            );
-        }
-    }, [governanceMembers]);
-
-    useEffect(() => {
-        if (!accountId) {
-            form.clearErrors("members.0.accountId");
-        }
-    }, [accountId, form]);
-
-    return (
-        <PageCard>
-            <StepperHeader
-                title={tCreate("addMembers")}
-                handleBack={handleBack}
-            />
-
-            <InfoAlert message={tCreate("addMembersInfo")} />
-
-            <div className="flex flex-col gap-8">
-                <MemberInput
-                    control={form.control}
-                    mode="onboarding"
-                    name={`members` as ArrayPath<TreasuryFormValues>}
-                />
-                <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-1">
-                        <h3 className="font-semibold">
-                            {tCreate("votingThreshold")}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                            {tCreate("thresholdDescription")}
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                        <FormField
-                            control={form.control}
-                            name="details.paymentThreshold"
-                            render={({ field }) => (
-                                <Threshold
-                                    title={tCreate("financial")}
-                                    description={tCreate(
-                                        "financialDescription",
-                                    )}
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    max={financialMembers}
-                                />
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="details.governanceThreshold"
-                            render={({ field }) => (
-                                <Threshold
-                                    title={tCreate("governance")}
-                                    description={tCreate(
-                                        "governanceDescription",
-                                    )}
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    max={governanceMembers}
-                                />
-                            )}
-                        />
-                    </div>
-                </div>
-                <InlineNextButton
-                    text={tCreate("continue")}
-                    onClick={handleContinue}
-                />
-            </div>
-        </PageCard>
-    );
-}
-
 export function TreasuryTypePill({
     type,
 }: {
@@ -534,7 +307,7 @@ export function Feature({
     );
 }
 
-function Step3({ handleBack, handleNext }: StepProps) {
+function TreasuryTypeSelectionStep({ handleBack, handleNext }: StepProps) {
     const tCreate = useTranslations("createTreasury");
     const TREASURY_TYPES = useMemo(
         () => [
@@ -670,7 +443,7 @@ function Step3({ handleBack, handleNext }: StepProps) {
     );
 }
 
-function Step4({
+function ReviewTreasuryStep({
     handleBack,
     accountId,
     connectWallet,
@@ -681,39 +454,10 @@ function Step4({
     isConnectingWallet: boolean;
 }) {
     const tCreate = useTranslations("createTreasury");
-    const VISUAL = useMemo(
-        () => [
-            {
-                icon: <UsersRound className="size-5 text-foreground" />,
-                title: tCreate("membersLabel"),
-            },
-            {
-                icon: <Vote className="size-5 text-foreground" />,
-                title: tCreate("financialThreshold"),
-            },
-            {
-                icon: <Vote className="size-5 text-foreground" />,
-                title: tCreate("governanceThreshold"),
-            },
-        ],
-        [tCreate],
-    );
     const form = useFormContext<TreasuryFormValues>();
     const { details } = form.watch();
-    const { members } = form.watch();
     const { isConfidential } = form.watch();
     const [showWalletSelector, setShowWalletSelector] = useState(false);
-
-    const financialMembers = members.filter((m: Member) =>
-        m.roles.includes("financial"),
-    ).length;
-    const governanceMembers = members.filter((m: Member) =>
-        m.roles.includes("governance"),
-    ).length;
-    const financialThreshold = details.paymentThreshold;
-    const governanceThreshold = details.governanceThreshold;
-    const financialThresholdVisual = `${financialThreshold}/${financialMembers}`;
-    const governanceThresholdVisual = `${governanceThreshold}/${governanceMembers}`;
     if (showWalletSelector && !accountId) {
         return (
             <ConnectWalletSelector
@@ -755,27 +499,6 @@ function Step4({
                         />
                     </div>
                 </InputBlock>
-                <div className="grid md:grid-cols-3 grid-cols-1 gap-2">
-                    {[
-                        members.length,
-                        financialThresholdVisual,
-                        governanceThresholdVisual,
-                    ].map((item, index) => (
-                        <InputBlock invalid={false} key={index}>
-                            <div className="flex flex-col px-3.5 py-3 gap-1 items-center justify-center max-md:flex-row max-md:gap-2 max-md:justify-start">
-                                {VISUAL[index].icon}
-                                <div className="flex flex-col items-center gap-0.5 max-md:flex-row max-md:items-baseline max-md:gap-1.5">
-                                    <p className="font-semibold text-xl">
-                                        {item}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {VISUAL[index].title}
-                                    </p>
-                                </div>
-                            </div>
-                        </InputBlock>
-                    ))}
-                </div>
             </div>
 
             <Alert variant="info">
@@ -790,7 +513,11 @@ function Step4({
             </Alert>
 
             <InlineNextButton
-                text={tCreate("createButton")}
+                text={
+                    accountId
+                        ? tCreate("createButton")
+                        : tCreate("connectWalletCreate")
+                }
                 loading={
                     accountId ? form.formState.isSubmitting : isConnectingWallet
                 }
@@ -812,8 +539,6 @@ export default function NewTreasuryPage() {
     const tValidation = useTranslations("createTreasury.validation");
     const tSteps = useTranslations("createTreasury.steps");
     const tStepTitles = useTranslations("createTreasury.stepTitles");
-    const tMember = useTranslations("memberInput.validation");
-    const tAccountId = useTranslations("accountIdInput");
     const NON_CONFIDENTIAL_STEPS: CreationStep[] = useMemo(
         () => [
             {
@@ -863,7 +588,6 @@ export default function NewTreasuryPage() {
         () => [
             tStepTitles("aboutYou"),
             tStepTitles("details"),
-            tStepTitles("members"),
             tStepTitles("treasuryType"),
             tStepTitles("review"),
         ],
@@ -878,16 +602,8 @@ export default function NewTreasuryPage() {
                 accountMax: tValidation("accountMax"),
                 accountChars: tValidation("accountChars"),
                 accountTaken: tValidation("accountTaken"),
-                rolesRequired: tMember("rolesRequired"),
-                duplicateAddress: tMember("duplicateAddress"),
-                accountId: {
-                    minLength: tAccountId("minLength"),
-                    maxLength: tAccountId("maxLength"),
-                    charset: tAccountId("charset"),
-                    doesNotExist: tAccountId("doesNotExist"),
-                },
             }),
-        [tValidation, tMember, tAccountId],
+        [tValidation],
     );
     const { accountId, connect, isAuthenticating } = useNear();
     const { treasuries } = useTreasury();
@@ -913,25 +629,12 @@ export default function NewTreasuryPage() {
         defaultValues: {
             about: ONBOARDING_ABOUT_DEFAULT_VALUES,
             details: {
-                paymentThreshold: 1,
-                governanceThreshold: 1,
                 treasuryName: "",
                 accountName: "",
             },
             isConfidential: false,
-            members: [
-                {
-                    accountId: "",
-                    roles: ROLES.map((r) => r.id),
-                },
-            ],
         },
     });
-    useEffect(() => {
-        if (accountId) {
-            form.setValue("members.0.accountId", accountId);
-        }
-    }, [accountId]);
 
     const handleStepChange = (nextStep: number) => {
         const previousStep = previousStepRef.current;
@@ -952,25 +655,15 @@ export default function NewTreasuryPage() {
             step_name: "review",
         });
 
-        const governors = data.members
-            .filter((m) => m.roles.includes("governance"))
-            .map((m) => m.accountId);
-        const financiers = data.members
-            .filter((m) => m.roles.includes("financial"))
-            .map((m) => m.accountId);
-        const requestors = data.members
-            .filter((m) => m.roles.includes("requestor"))
-            .map((m) => m.accountId);
-
         const request: CreateTreasuryRequest = {
             name: data.details.treasuryName,
             accountId: `${data.details.accountName}.sputnik-dao.near`,
-            paymentThreshold: data.details.paymentThreshold,
-            governanceThreshold: data.details.governanceThreshold,
-            governors,
+            paymentThreshold: 1,
+            governanceThreshold: 1,
+            governors: [accountId],
             isConfidential: data.isConfidential,
-            financiers,
-            requestors,
+            financiers: [accountId],
+            requestors: [accountId],
         };
 
         const initialSteps = request.isConfidential
@@ -981,6 +674,7 @@ export default function NewTreasuryPage() {
         setProgressError(null);
         setCreatedTreasuryId(null);
         setProgressOpen(true);
+        console.log(request);
 
         try {
             await createTreasuryStream(request, (event) => {
@@ -1049,6 +743,7 @@ export default function NewTreasuryPage() {
                 steps={progressSteps}
                 error={progressError}
                 treasuryId={createdTreasuryId}
+                onClose={() => setProgressOpen(false)}
                 onNavigate={() => {
                     if (createdTreasuryId) {
                         router.push(`/${createdTreasuryId}`);
@@ -1093,11 +788,10 @@ export default function NewTreasuryPage() {
                                               },
                                           },
                                       ]),
-                                { component: Step1 },
-                                { component: Step2 },
-                                { component: Step3 },
+                                { component: TreasuryDetailsStep },
+                                { component: TreasuryTypeSelectionStep },
                                 {
-                                    component: Step4,
+                                    component: ReviewTreasuryStep,
                                     props: {
                                         accountId,
                                         connectWallet: connect,

@@ -16,17 +16,22 @@ import { trackEvent } from "@/lib/analytics";
 interface CreateTreasuryPromptModalProps {
     open: boolean;
     source: "onboarding" | "app";
+    showDisconnectWallet?: boolean;
     onOpenChange: (open: boolean) => void;
     onCreateTreasury: () => void;
+    onDisconnectWallet?: () => Promise<void> | void;
 }
 
 export function CreateTreasuryPromptModal({
     open,
     source,
+    showDisconnectWallet = false,
     onOpenChange,
     onCreateTreasury,
+    onDisconnectWallet,
 }: CreateTreasuryPromptModalProps) {
     const t = useTranslations("onboarding.createPrompt");
+    const tSignIn = useTranslations("signIn");
     const isOnboardingPath = source === "onboarding";
     const descriptionSuffix = isOnboardingPath
         ? t("suffixDemo")
@@ -65,6 +70,18 @@ export function CreateTreasuryPromptModal({
                     >
                         {t("createCta")}
                     </Button>
+                    {showDisconnectWallet && (
+                        <Button
+                            variant="secondary"
+                            className="w-full"
+                            onClick={async () => {
+                                trackClick("disconnect_wallet");
+                                await onDisconnectWallet?.();
+                            }}
+                        >
+                            {tSignIn("disconnectWallet")}
+                        </Button>
+                    )}
                     {isOnboardingPath ? (
                         <Button
                             variant="secondary"

@@ -40,6 +40,34 @@
         "confidentialDataTooltip": "Aktivitas keuangan Anda bersifat privat dan aman. Hanya Anda dan tim Anda yang dapat mengakses informasi ini.",
         "confidentialAddressTooltip": "Aset akan diterima di alamat rahasia."
     },
+    "receiptPage": {
+        "transactionConfirmation": "Konfirmasi transaksi",
+        "copyLink": "Salin Tautan",
+        "printOrSavePdf": "Cetak atau Simpan sebagai PDF",
+        "generateReceipt": "Buat Resi PDF",
+        "generatedOn": "Dibuat pada {date}",
+        "receiptTitle": "Kwitansi No. {proposalId} tanggal <datePart>{date}</datePart>",
+        "createYourTreasury": "Buat Perbendaharaan Anda",
+        "createYourTreasuryDescription": "Siapkan dalam hitungan detik tanpa biaya dan jalankan transaksi dengan biaya sangat rendah.",
+        "sender": "Pengirim",
+        "recipient": "Penerima",
+        "address": "Alamat",
+        "destinationNetwork": "Jaringan Tujuan",
+        "transactionDetails": "Detail Transaksi",
+        "status": "Status",
+        "network": "Jaringan",
+        "amountWithToken": "Jumlah ({token})",
+        "amountUsd": "Jumlah (USD)",
+        "rate": "Kurs",
+        "dateAndTime": "Tanggal dan Waktu",
+        "sentAmountWithToken": "Jumlah Terkirim ({token})",
+        "sentNetwork": "Jaringan Pengirim",
+        "receiveAmountWithToken": "Jumlah Diterima ({token})",
+        "receiveNetwork": "Jaringan Penerima",
+        "receiveAmountUsd": "Jumlah Diterima (USD)",
+        "paymentConfirmation": "Konfirmasi Pembayaran",
+        "exchangeConfirmation": "Konfirmasi Penukaran"
+    },
     "languageSwitcher": {
         "label": "Bahasa",
         "select": "Pilih bahasa",
@@ -77,7 +105,8 @@
         "wallet": "Dompet",
         "termsOfService": "Ketentuan Layanan",
         "privacyPolicy": "Kebijakan Privasi",
-        "disconnect": "Putuskan"
+        "disconnect": "Putuskan",
+        "disconnectWallet": "Putuskan Dompet"
     },
     "auth": {
         "noWallet": "Hubungkan dompet Anda",
@@ -232,6 +261,7 @@
             "networksWithAssets": "Jaringan dengan Aset",
             "yourAssets": "Aset Anda",
             "otherAssets": "Aset Lainnya",
+            "popularAssets": "Aset Populer",
             "available": "Tersedia",
             "forMembersOnly": "Hanya untuk anggota"
         },
@@ -249,7 +279,8 @@
         "otherNetworkInfo": "Anda dapat mendepositkan token apa pun yang tidak tercantum dalam aset, tetapi hanya melalui jaringan NEAR.",
         "depositAddressHeading": "Alamat Deposit",
         "depositAddressSubtitle": "Selalu periksa kembali alamat deposit Anda.",
-        "depositAddressSubtitleConfidential": "Alamat deposit ini hanya untuk sekali pakai dan hanya berlaku selama 3 hari. Menggunakannya kembali atau mengirim setelah kedaluwarsa akan mengakibatkan kehilangan dana permanen.",
+        "depositAddressSubtitleConfidential": "<semibold>Alamat deposit sekali pakai.</semibold> Menggunakan kembali alamat ini atau mengirim dana setelah kedaluwarsa dapat menyebabkan kehilangan dana permanen.",
+        "depositAddressSubtitleConfidentialExpiry": "Valid selama 3 hari sejak waktu pembuatan. Kedaluwarsa dalam: tersisa {expiresIn}",
         "singleUseAcknowledgement": "Saya akan menggunakan alamat ini hanya sekali",
         "addressLabel": "Alamat",
         "addressCopied": "Alamat disalin ke papan klip",
@@ -259,7 +290,20 @@
         "onlyDeposit": "Hanya deposit <symbolTag>{symbol}</symbolTag> dari jaringan <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Kami sarankan memulai dengan transaksi uji coba kecil untuk memastikan semuanya berjalan dengan benar sebelum mengirim jumlah penuh.",
         "minimumDeposit": "Deposit minimum adalah <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Cari berdasarkan nama"
+        "tabs": {
+            "fromPublic": "Dari publik",
+            "fromConfidential": "Dari rahasia"
+        },
+        "searchByName": "Cari berdasarkan nama",
+        "faq": {
+            "title": "FAQ",
+            "publicWalletQuestion": "Bagaimana cara deposit kripto dari dompet publik?",
+            "confidentialWalletQuestion": "Bagaimana cara deposit kripto dari dompet rahasia?",
+            "fiatQuestion": "Apakah saya bisa melakukan deposit dengan fiat?",
+            "fiatAnswer": "Untuk saat ini belum, tetapi kami sedang mengupayakan dukungan deposit fiat segera. Nantikan - segera hadir 🚀",
+            "arrivalQuestion": "Berapa lama deposit akan masuk?",
+            "arrivalAnswer": "Waktu pemrosesan tergantung pada jaringan."
+        }
     },
     "assetDetails": {
         "coinPrice": "Harga Koin",
@@ -1822,12 +1866,6 @@
         "membersWhoCanVote": "Anggota yang dapat memilih",
         "moreMembers": "+{count, plural, other {# anggota}}"
     },
-    "accountIdInput": {
-        "minLength": "ID Akun harus minimal 2 karakter",
-        "maxLength": "ID Akun harus kurang dari 64 karakter",
-        "charset": "ID Akun hanya boleh berisi huruf kecil, angka, titik, tanda hubung, dan garis bawah, tanpa pemisah di awal atau akhir",
-        "doesNotExist": "ID Akun tidak ada"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {# penerima ditambahkan}}",
         "addedSingleToast": "Penerima ditambahkan",
@@ -2117,7 +2155,7 @@
             "suffixDemo": "lihat demo.",
             "suffixExploring": "terus menjelajah.",
             "createCta": "Buat Treasury",
-            "viewDemo": "Lihat Demo",
+            "viewDemo": "Jelajahi Demo Trezu",
             "keepExploring": "Terus Menjelajah"
         },
         "infoBox": {

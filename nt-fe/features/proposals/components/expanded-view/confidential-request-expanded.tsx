@@ -3,6 +3,7 @@ import { SwapExpanded } from "./swap-expanded";
 import { TransferExpanded } from "./transfer-expanded";
 import { ConfidentialState } from "@/components/confidential-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface ConfidentialTransferExpandedProps {
     data: ConfidentialRequestData;
@@ -11,6 +12,8 @@ interface ConfidentialTransferExpandedProps {
 export function ConfidentialRequestExpanded({
     data,
 }: ConfidentialTransferExpandedProps) {
+    const requestDisplayContext = useRequestDisplayContext();
+    const isExecuted = requestDisplayContext?.isExecuted ?? false;
     const mapped = data.mapped;
 
     if (!mapped) {
@@ -28,7 +31,7 @@ export function ConfidentialRequestExpanded({
     }
 
     if (mapped.type === "swap") {
-        return <SwapExpanded data={mapped.data} />;
+        return <SwapExpanded data={mapped.data} isExecuted={isExecuted} />;
     }
 
     return <TransferExpanded data={mapped.data} />;

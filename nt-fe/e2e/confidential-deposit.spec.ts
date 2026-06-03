@@ -1,11 +1,10 @@
 /**
  * E2E test for confidential treasury deposits.
  *
- * Verifies that confidential treasuries use the same deposit UI
- * (dashboard deposit modal) as public treasuries:
+ * Verifies that confidential treasuries use the deposit page flow:
  * 1. Create a confidential DAO on sandbox
- * 2. Navigate to the dashboard (not /confidential page)
- * 3. Open the deposit modal
+ * 2. Navigate to the dashboard
+ * 3. Open the deposit page from dashboard action
  * 4. Select asset and network
  * 5. Verify deposit address is fetched via intents API
  *    (not the direct treasury account ID)
@@ -126,7 +125,7 @@ async function setupSandbox(): Promise<string> {
     return session.token;
 }
 
-test("Confidential deposit — dashboard deposit modal flow", async ({
+test("Confidential deposit — dashboard deposit page flow", async ({
     page,
     context,
 }) => {
@@ -249,100 +248,101 @@ test("Confidential deposit — dashboard deposit modal flow", async ({
     await expect(depositButton).toContainText("Deposit");
 
     // ════════════════════════════════════════════════════
-    // Phase 2: Open deposit modal and complete deposit flow
+    // Phase 2: Open deposit page and complete deposit flow
     // ════════════════════════════════════════════════════
 
     await depositButton.click();
+    await expect(page).toHaveURL(new RegExp(`/${DAO_ID}/dashboard/deposit`), {
+        timeout: 10_000,
+    });
 
-    // Deposit modal should open with the standard heading
-    await expect(
-        page.getByRole("heading", { name: "Deposit", exact: true }),
-    ).toBeVisible({ timeout: 10_000 });
+    // Deposit page should render the standard deposit heading
+    await expect(page.getByText("Deposit", { exact: true })).toBeVisible({
+        timeout: 10_000,
+    });
 
     // Should show asset/network selection prompt
     await expect(
         page.getByText("Select asset and network to see deposit address"),
     ).toBeVisible();
 
-    // Deposit modal starts without a selected network when multiple
-    // destinations are available. Choose near.com (direct) explicitly.
-    const networkSelectButton = page.getByRole("button", {
-        name: /Select network/i,
-    });
+    const assetSelectButton = page.getByTestId("deposit-asset-selector");
+    await expect(assetSelectButton).toBeVisible({ timeout: 10_000 });
+    await assetSelectButton.click();
+    await expect(
+        page.getByRole("heading", { name: "Select Asset" }),
+    ).toBeVisible({ timeout: 10_000 });
+    await page
+        .getByRole("button", { name: /USD Coin/i })
+        .first()
+        .click();
+
+    // USDC has multiple destination networks. Select Near Protocol explicitly.
+    const networkSelectButton = page.getByTestId("deposit-network-selector");
     await expect(networkSelectButton).toBeVisible({ timeout: 10_000 });
     await networkSelectButton.click();
     await expect(
         page.getByRole("heading", { name: "Select Network" }),
     ).toBeVisible({ timeout: 10_000 });
-    await page
-        .getByRole("button", { name: /near\.com/i })
-        .first()
-        .click();
+    await page.getByRole("button", { name: "Near Protocol" }).first().click();
 
-    // near.com (direct) shows treasury address and skips intents deposit-address call.
-    const nearDirectButton = page.getByRole("button", { name: /near\.com/i });
-    await expect(nearDirectButton).toBeVisible({ timeout: 10_000 });
+    // Near Protocol enables source tabs (public/confidential) for confidential treasuries.
+    const nearProtocolButton = page.getByTestId("deposit-network-selector");
+    await expect(nearProtocolButton).toBeVisible({ timeout: 10_000 });
 
     await expect(
         page.getByText("Deposit Address", { exact: true }),
     ).toBeVisible({ timeout: 15_000 });
 
-    const directAddressElement = page.locator("code").first();
-    await expect(directAddressElement).toBeVisible({ timeout: 10_000 });
-    expect(await directAddressElement.textContent()).toContain(DAO_ID);
-    expect(depositAddressRequested).toBe(false);
-
-    // Switch network: open selector, pick Near Protocol (bridge deposit).
-    await nearDirectButton.click();
-    await expect(
-        page.getByRole("heading", { name: "Select Network" }),
-    ).toBeVisible({ timeout: 10_000 });
-    await page
-        .getByRole("button", { name: /Near Protocol/i })
-        .first()
-        .click();
-
-    await expect(
-        page.getByRole("button", { name: /Near Protocol/i }),
-    ).toBeVisible({ timeout: 10_000 });
-
-    // Wait for deposit address section to appear
-    await expect(
-        page.getByText("Deposit Address", { exact: true }),
-    ).toBeVisible({
-        timeout: 15_000,
+    // Public source is shown first and the address should be blurred behind the single-use acknowledgement.
+    await expect(page.getByRole("tab", { name: /From public/i })).toBeVisible({
+        timeout: 10_000,
     });
+    await expect(
+        page.getByRole("tab", { name: /From confidential/i }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+        page.getByRole("button", {
+            name: /I will use this address only once/i,
+        }),
+    ).toBeVisible({ timeout: 10_000 });
 
-    // The address should be the mocked intents address, NOT the treasury ID
-    const addressElement = page.locator("code").first();
-    await expect(addressElement).toBeVisible({ timeout: 10_000 });
-    const addressText = await addressElement.textContent();
-    expect(addressText).toContain(MOCK_DEPOSIT_ADDRESS.slice(0, 6));
-    expect(addressText).not.toContain(DAO_ID);
-
-    // Confidential treasury must have called deposit-address API
-    // after switching away from near.com direct.
+    const publicAddressElement = page.locator("code").first();
+    await expect(publicAddressElement).toBeVisible({ timeout: 10_000 });
+    const publicAddressText = await publicAddressElement.textContent();
+    expect(publicAddressText).toContain(MOCK_DEPOSIT_ADDRESS.slice(0, 6));
+    expect(publicAddressText).not.toContain(DAO_ID);
     expect(depositAddressRequested).toBe(true);
+
+    // Verify info message about depositing from the correct network
+    await expect(page.getByText("Minimum deposit is 5")).toBeVisible();
+
+    // Switching to "From confidential" should show the direct DAO account ID.
+    await page.getByRole("tab", { name: /From confidential/i }).click();
+    await expect(
+        page.getByRole("button", {
+            name: /I will use this address only once/i,
+        }),
+    ).toHaveCount(0);
+
+    const confidentialAddressElement = page.locator("code").first();
+    await expect(confidentialAddressElement).toBeVisible({ timeout: 10_000 });
+    expect(await confidentialAddressElement.textContent()).toContain(DAO_ID);
 
     // QR code should be rendered
     await expect(page.locator("svg").first()).toBeVisible();
-
-    // TODO: verify "Minimum deposit is 5 USDC" once minAmount rendering is fixed
-    // The mock returns minAmount: "5000000" but the UI does not display it yet.
-
-    // Verify info message about depositing from the correct network
-    await expect(page.getByText(/Only deposit/)).toBeVisible();
 
     // ════════════════════════════════════════════════════
     // Phase 3: Verify "Other" asset is not available
     // (confidential treasuries restrict to bridge assets only)
     // ════════════════════════════════════════════════════
 
-    // Open the currently selected asset button
-    const assetSelectButton = page.getByRole("button", {
-        name: "Near Protocol Near Protocol",
-        exact: true,
-    });
-    await expect(assetSelectButton).toBeVisible({ timeout: 10_000 });
-    await assetSelectButton.click();
+    // Open currently selected asset/network selectors and verify "Other" is absent.
+    const selectedAssetButton = page.getByTestId("deposit-asset-selector");
+    await expect(selectedAssetButton).toBeVisible({ timeout: 10_000 });
+    await selectedAssetButton.click();
+    await expect(
+        page.getByRole("heading", { name: "Select Asset" }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /^Other$/i })).toHaveCount(0);
 });

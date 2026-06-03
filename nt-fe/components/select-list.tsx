@@ -49,11 +49,19 @@ export function SelectListIcon({
     icon,
     gradient,
     alt,
+    size = "md",
 }: {
     icon?: string;
     gradient?: string;
     alt: string;
+    size?: "sm" | "md" | "lg";
 }) {
+    const containerSizeClass =
+        size === "sm" ? "size-6" : size === "lg" ? "size-14" : "size-12";
+    const imagePaddingClass = size === "sm" ? "p-0.5" : "p-2";
+    const fallbackSizeClass =
+        size === "sm" ? "w-3.5 h-3.5 text-[9px]" : "w-8 h-8";
+
     const isImageUrl =
         icon?.startsWith("http") ||
         icon?.startsWith("data:") ||
@@ -61,12 +69,13 @@ export function SelectListIcon({
 
     if (isImageUrl) {
         return (
-            <div className="size-12">
+            <div className={containerSizeClass}>
                 <img
                     src={icon}
                     alt={alt}
                     className={cn(
-                        "w-full h-full object-contain p-2 rounded-full",
+                        "w-full h-full object-contain rounded-full",
+                        imagePaddingClass,
                     )}
                 />
             </div>
@@ -74,10 +83,16 @@ export function SelectListIcon({
     }
 
     return (
-        <div className="size-12 flex items-center justify-center">
+        <div
+            className={cn(
+                containerSizeClass,
+                "flex items-center justify-center",
+            )}
+        >
             <div
                 className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-white font-bold",
+                    "rounded-full flex items-center justify-center text-white font-bold",
+                    fallbackSizeClass,
                     gradient || "bg-linear-to-br from-blue-500 to-purple-500",
                 )}
             >

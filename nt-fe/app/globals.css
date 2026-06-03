@@ -170,6 +170,33 @@
     --shadow-2xl: 0 0px 0px 0px hsl(0 0% 0% / 0);
 }
 
+/* Scoped override: force light theme tokens for specific UI islands (e.g. printable cards). */
+.force-light-theme {
+    color-scheme: light;
+    /* Core surface/text tokens used by receipt print cards */
+    --background: rgb(245, 245, 245);
+    --foreground: rgb(10, 10, 10);
+    --card: rgb(255, 255, 255);
+    --card-foreground: rgb(25, 25, 26);
+
+    /* Semantic utility tokens used inside the receipt card */
+    --secondary: rgb(245, 245, 245);
+    --secondary-foreground: rgb(10, 10, 10);
+    --muted: rgb(245, 245, 245);
+    --muted-foreground: rgb(115, 115, 115);
+    /* Skeletons use bg-accent; keep them light inside forced light cards. */
+    --accent: rgb(229, 229, 229);
+    --accent-foreground: rgb(64, 64, 64);
+    --border: rgba(229, 229, 229);
+    --general-border: rgba(229, 229, 229);
+    --input: rgb(229, 229, 229);
+    --ring: rgb(161, 161, 161);
+
+    /* Status pill colors (Executed) */
+    --general-success-background-faded: rgb(220, 252, 231);
+    --general-success-foreground: rgb(21, 128, 61);
+}
+
 @theme inline {
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -313,3 +340,11 @@ input[type="number"] {
 }
 
 @plugin "tailwind-scrollbar";
+
+@media print {
+    .print-color-exact {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        forced-color-adjust: none;
+    }
+}
