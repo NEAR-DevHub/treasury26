@@ -736,6 +736,24 @@ struct ExportRecord {
     receipt_id: String,
 }
 
+/// USD value of a balance change, preferring the value computed at quote time.
+///
+/// Confidential rows persist `amount_usd` (the exact quote-time USD) in
+/// `usd_value`, so we use it directly — it's accurate and needs no price-table
+/// lookup. Public rows have no stored value, so fall back to a spot
+/// `price × amount` estimate.
+fn resolve_value_usd(change: &EnrichedBalanceChange, price: Option<f64>) -> Option<f64> {
+    if let Some(stored) = change.usd_value.as_ref().and_then(|v| v.to_f64()) {
+        return Some(stored.abs());
+    }
+    change
+        .amount
+        .abs()
+        .to_f64()
+        .zip(price)
+        .map(|(amount, price)| amount * price)
+}
+
 /// Convert enriched balance changes to accounting-friendly export records
 fn transform_to_export_records(
     enriched_changes: Vec<EnrichedBalanceChange>,
@@ -751,11 +769,7 @@ fn transform_to_export_records(
 
             let price = metadata.price;
             let amount_val = change.amount.abs().to_f64().unwrap_or(0.0);
-            let value_usd = change
-                .amount
-                .abs()
-                .to_f64()
-                .and_then(|a| price.map(|p| a * p));
+            let value_usd = resolve_value_usd(&change, price);
 
             // Determine direction and addresses
             let is_incoming = change.amount.to_f64().map(|a| a > 0.0).unwrap_or(false);
@@ -1855,14 +1869,9 @@ pub async fn get_recent_activity(
                 .as_ref()
                 .expect("Metadata should always be present");
 
-            // Calculate USD value if price is available
-            let value_usd = token_metadata.price.and_then(|price| {
-                change
-                    .amount
-                    .abs()
-                    .to_f64()
-                    .map(|amount_f64| amount_f64 * price)
-            });
+            // Prefer the stored quote-time USD (confidential rows); fall back to a
+            // spot price estimate for public rows that have none.
+            let value_usd = resolve_value_usd(&change, token_metadata.price);
 
             // Filter by minimum USD value if specified
             if let Some(min_usd) = params.min_usd_value {

@@ -9,8 +9,6 @@ pub struct HistoryCursor {
     pub next_poll_at: DateTime<Utc>,
     pub last_polled_at: Option<DateTime<Utc>>,
     pub last_confidential_activity_at: Option<DateTime<Utc>>,
-    pub gold_dirty_since: Option<DateTime<Utc>>,
-    pub gold_recompute_from: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Default)]

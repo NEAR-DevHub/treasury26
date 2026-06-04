@@ -1,40 +1,30 @@
-//! Gold projection for confidential 1Click history rows.
-
-mod classify;
-mod models;
-mod projector;
-mod repository;
+//! Daily gold reconciliation: mark backfilled DAOs dirty, then project.
 
 use std::time::Duration;
 
 use sqlx::PgPool;
 
-pub use projector::{project_confidential_gold_for_dao, project_confidential_gold_for_dirty_daos};
-pub use repository::{
-    mark_backfilled_confidential_daos_gold_dirty, mark_gold_dirty_for_history_event,
-    mark_gold_dirty_tx, refresh_gold_metadata_for_intent,
+use super::cursors::mark_backfilled_confidential_daos_gold_dirty;
+use super::history_events::{
+    project_confidential_gold_for_dirty_daos, CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,
 };
 
-pub const CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS: usize = 8;
-pub const CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL_SECS: u64 = 86_400;
+pub const CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(86_400);
 
 /// Background worker: runs gold reconciliation once at startup, then daily.
-/// Each pass marks backfilled cursor rows dirty, then projects all dirty DAOs.
 pub fn spawn_confidential_gold_reconciliation_worker(pool: PgPool) {
     tokio::spawn(async move {
         log::info!(
-            "Starting confidential gold reconciliation ({}s interval, {} workers)",
-            CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL_SECS,
+            "Starting confidential gold reconciliation ({:?} interval, {} workers)",
+            CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL,
             CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS
         );
 
         run_reconciliation_pass(&pool, "startup").await;
 
-        let mut timer = tokio::time::interval(Duration::from_secs(
-            CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL_SECS,
-        ));
+        let mut timer = tokio::time::interval(CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL);
         timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        timer.tick().await; // immediate tick consumed by the startup run above
+        timer.tick().await;
         loop {
             timer.tick().await;
             run_reconciliation_pass(&pool, "daily").await;

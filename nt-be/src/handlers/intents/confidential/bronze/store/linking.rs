@@ -1,6 +1,6 @@
 use sqlx::{PgPool, Postgres, Transaction};
 
-use crate::handlers::intents::confidential::balance_changes_projector::mark_gold_dirty_for_history_event;
+use crate::handlers::intents::confidential::gold::cursors::mark_gold_dirty_for_history_event;
 
 pub(super) async fn link_history_event_to_intent_tx(
     tx: &mut Transaction<'_, Postgres>,
@@ -26,8 +26,7 @@ pub(super) async fn link_history_event_to_intent_tx(
               )
               AND (
                   $4::TEXT IS NULL
-                  OR quote_metadata->'quoteRequest'->>'recipient' = $4
-                  OR quote_metadata->'quoteRequest'->>'recipient' = CONCAT('near:', $4)
+                  OR $4 = quote_metadata->'quoteRequest'->>'recipient'
               )
         ),
         single_candidate AS (
@@ -74,14 +73,13 @@ pub async fn link_intent_to_history_event(
         ),
         candidate AS (
             SELECT he.id AS history_event_id
-            FROM confidential_history_events he
+            FROM bronze_confidential_history_events he
             JOIN intent i
               ON he.account_id = i.dao_id
              AND he.deposit_address = i.deposit_address
              AND (
                  i.recipient IS NULL
                  OR he.recipient = i.recipient
-                 OR CONCAT('near:', he.recipient) = i.recipient
              )
             WHERE NOT EXISTS (
                 SELECT 1

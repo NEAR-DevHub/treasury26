@@ -6,20 +6,20 @@ use near_account_id::AccountIdRef;
 use reqwest::StatusCode;
 
 use crate::AppState;
-use crate::handlers::intents::confidential::balance_changes_projector::{
+use crate::handlers::intents::confidential::gold::history_events::{
     CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS, project_confidential_gold_for_dao,
     project_confidential_gold_for_dirty_daos,
 };
-use crate::handlers::intents::confidential::balance_snapshots::snapshot_confidential_dao_balances;
-use crate::handlers::intents::confidential::history::fetch_history;
-use crate::handlers::intents::confidential::history_store::{
+use crate::handlers::intents::confidential::gold::snapshots::snapshot_confidential_dao_balances;
+use crate::handlers::intents::confidential::bronze::api::fetch_history;
+use crate::handlers::intents::confidential::bronze::store::{
     load_due_confidential_history_accounts, load_history_cursor,
     mark_confidential_history_activity_due, mark_history_backfill_done,
     record_confidential_history_poll_result, save_backfill_progress, save_latest_page_cursor,
     upsert_history_events,
 };
 
-pub const CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS: u64 = 10;
+pub const CONFIDENTIAL_HISTORY_SCHEDULER_TICK: Duration = Duration::from_secs(10);
 pub const CONFIDENTIAL_HISTORY_TRIGGER_LIMIT: u32 = 50;
 const CONFIDENTIAL_HISTORY_DUE_ACCOUNT_LIMIT: i64 = 100;
 const DEFAULT_CONFIDENTIAL_HISTORY_ACCOUNT_WORKERS: usize = 4;
@@ -594,17 +594,24 @@ pub async fn tick_confidential_history_scheduler(
     Ok(result)
 }
 
+/// Bronze 1Click history ingest worker.
+pub struct BronzeIngestWorker;
+
+impl BronzeIngestWorker {
+    pub fn spawn(state: Arc<AppState>) {
+        spawn_confidential_history_worker(state);
+    }
+}
+
 /// Background worker: periodically ticks the confidential history scheduler.
 pub fn spawn_confidential_history_worker(state: Arc<AppState>) {
     tokio::spawn(async move {
         log::info!(
-            "Starting confidential history worker ({}s scheduler tick)",
-            CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS
+            "Starting confidential history worker ({:?} scheduler tick)",
+            CONFIDENTIAL_HISTORY_SCHEDULER_TICK
         );
 
-        let mut timer = tokio::time::interval(Duration::from_secs(
-            CONFIDENTIAL_HISTORY_SCHEDULER_TICK_SECS,
-        ));
+        let mut timer = tokio::time::interval(CONFIDENTIAL_HISTORY_SCHEDULER_TICK);
         timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         loop {
             timer.tick().await;
@@ -636,7 +643,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::handlers::intents::confidential::history_store::{
+    use crate::handlers::intents::confidential::bronze::store::{
         load_confidential_history_accounts, load_history_cursor, mark_history_backfill_done,
     };
     use crate::utils::env::EnvVars;
@@ -770,7 +777,7 @@ mod tests {
             SELECT COUNT(*)
             FROM (
                 SELECT 1
-                FROM confidential_history_events
+                FROM bronze_confidential_history_events
                 WHERE account_id = $1
                 GROUP BY created_at_external, deposit_address
                 HAVING COUNT(*) > 1
@@ -823,7 +830,7 @@ mod tests {
             SELECT COUNT(*)
             FROM (
                 SELECT 1
-                FROM confidential_history_events
+                FROM bronze_confidential_history_events
                 WHERE account_id = $1
                 GROUP BY created_at_external, deposit_address
                 HAVING COUNT(*) > 1
@@ -985,7 +992,7 @@ mod tests {
             SELECT COUNT(*)
             FROM (
                 SELECT 1
-                FROM confidential_history_events
+                FROM bronze_confidential_history_events
                 WHERE account_id = ANY($1)
                 GROUP BY account_id, created_at_external, deposit_address
                 HAVING COUNT(*) > 1

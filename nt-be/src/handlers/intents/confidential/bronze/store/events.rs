@@ -5,8 +5,9 @@ use super::linking::link_history_event_to_intent_tx;
 use super::models::{
     HistoryEventUpsertOutcome, HistoryEventUpsertState, HistoryUpsertResult, min_datetime,
 };
-use crate::handlers::intents::confidential::balance_changes_projector::mark_gold_dirty_tx;
-use crate::handlers::intents::confidential::history::HistoryEvent;
+use crate::handlers::intents::confidential::gold::cursors::mark_gold_dirty_tx;
+use crate::handlers::intents::confidential::bronze::api::HistoryEvent;
+use crate::handlers::intents::confidential::types::bare_account;
 
 pub async fn upsert_history_events(
     pool: &PgPool,
@@ -20,9 +21,14 @@ pub async fn upsert_history_events(
         let item = &event.item;
         result.rows_touched += 1;
 
+        let recipient = item
+            .recipient
+            .as_deref()
+            .map(bare_account);
+
         let changed_row = sqlx::query_as::<_, (i64, DateTime<Utc>, bool)>(
             r#"
-            INSERT INTO confidential_history_events (
+            INSERT INTO bronze_confidential_history_events (
                 account_id,
                 created_at_external,
                 deposit_address,
@@ -47,14 +53,14 @@ pub async fn upsert_history_events(
                 raw_payload = EXCLUDED.raw_payload,
                 updated_at = NOW()
             WHERE (
-                confidential_history_events.deposit_memo,
-                confidential_history_events.status,
-                confidential_history_events.deposit_type,
-                confidential_history_events.recipient_type,
-                confidential_history_events.recipient,
-                confidential_history_events.origin_asset,
-                confidential_history_events.destination_asset,
-                confidential_history_events.raw_payload
+                bronze_confidential_history_events.deposit_memo,
+                bronze_confidential_history_events.status,
+                bronze_confidential_history_events.deposit_type,
+                bronze_confidential_history_events.recipient_type,
+                bronze_confidential_history_events.recipient,
+                bronze_confidential_history_events.origin_asset,
+                bronze_confidential_history_events.destination_asset,
+                bronze_confidential_history_events.raw_payload
             ) IS DISTINCT FROM (
                 EXCLUDED.deposit_memo,
                 EXCLUDED.status,
@@ -75,7 +81,7 @@ pub async fn upsert_history_events(
         .bind(&item.status)
         .bind(&item.deposit_type)
         .bind(&item.recipient_type)
-        .bind(&item.recipient)
+        .bind(&recipient)
         .bind(&item.origin_asset)
         .bind(&item.destination_asset)
         .bind(&event.raw_payload)
@@ -116,7 +122,7 @@ pub async fn upsert_history_events(
                     sqlx::query_as::<_, (i64, DateTime<Utc>)>(
                         r#"
                         SELECT id, created_at_external
-                        FROM confidential_history_events
+                        FROM bronze_confidential_history_events
                         WHERE account_id = $1
                           AND created_at_external = $2
                           AND deposit_address = $3
@@ -153,7 +159,7 @@ pub async fn upsert_history_events(
             history_event_id,
             account_id,
             &item.deposit_address,
-            item.recipient.as_deref(),
+            recipient.as_deref(),
         )
         .await?;
 

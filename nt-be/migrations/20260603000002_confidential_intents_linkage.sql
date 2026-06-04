@@ -3,7 +3,7 @@
 
 ALTER TABLE confidential_intents
     ADD COLUMN IF NOT EXISTS deposit_address TEXT,
-    ADD COLUMN IF NOT EXISTS history_event_id BIGINT REFERENCES confidential_history_events(id),
+    ADD COLUMN IF NOT EXISTS history_event_id BIGINT REFERENCES bronze_confidential_history_events(id),
     ADD COLUMN IF NOT EXISTS proposal_id BIGINT,
     ADD COLUMN IF NOT EXISTS proposal_created_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS executed_at TIMESTAMPTZ,

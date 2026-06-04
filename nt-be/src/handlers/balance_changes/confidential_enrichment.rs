@@ -20,8 +20,9 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::counterparty::{convert_raw_to_decimal, ensure_ft_metadata};
-use crate::handlers::intents::confidential::balance_changes_projector::refresh_gold_metadata_for_intent;
-use crate::handlers::intents::confidential::history_store::link_intent_to_history_event;
+use crate::handlers::intents::confidential::gold::history_events::refresh_gold_metadata_for_intent;
+use crate::handlers::intents::confidential::bronze::store::link_intent_to_history_event;
+use crate::handlers::intents::confidential::types::{bare_account, is_near_account};
 
 /// Legacy payload form: `predecessor=AccountId("…") … payload_v2: Some(Eddsa(Bytes("<hex>")))`.
 static V1_SIGNER_HEX: Lazy<Regex> = Lazy::new(|| {
@@ -89,19 +90,12 @@ pub fn extract_sign_call_from_logs(logs: &str) -> Option<ConfidentialSignCall> {
     None
 }
 
-fn normalize_near_recipient(recipient: &str) -> String {
-    recipient
-        .strip_prefix("near:")
-        .unwrap_or(recipient)
-        .to_string()
-}
-
 fn quote_recipient(quote_metadata: Option<&Value>) -> Option<String> {
-    quote_metadata?
+    let recipient = quote_metadata?
         .get("quoteRequest")
         .and_then(|q| q.get("recipient"))
-        .and_then(|v| v.as_str())
-        .map(normalize_near_recipient)
+        .and_then(|v| v.as_str())?;
+    Some(bare_account(recipient))
 }
 
 pub async fn mark_confidential_intent_submitted(
@@ -172,7 +166,7 @@ pub async fn mark_confidential_intent_submitted(
 /// Returns `Ok(true)` if a row was written, `Ok(false)` if no matching intent
 /// record was found.
 // TODO(confidential-v2): remove this legacy public `balance_changes` writer
-// once `confidential_balance_changes` backs list/chart/export reads.
+// once `gold_confidential_history_events` backs list/chart/export reads.
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_confidential_outgoing(
     app_pool: &PgPool,
@@ -234,7 +228,8 @@ pub async fn handle_confidential_outgoing(
     let recipient = quote_metadata
         .get("quoteRequest")
         .and_then(|q| q.get("recipient"))
-        .and_then(|v| v.as_str());
+        .and_then(|v| v.as_str())
+        .map(bare_account);
     let (Some(origin_raw), Some(amount_in_raw)) = (origin_raw, amount_in_raw) else {
         log::warn!(
             "[goldsky-enrichment] quote_metadata for dao={} payload_hash={} missing originAsset or amountIn",
@@ -250,9 +245,9 @@ pub async fn handle_confidential_outgoing(
     //   - `recipient == dao_id` → self-swap. Counterparty = "intents.near", which
     //     mirrors the public intents pipeline so the UI renders public and
     //     confidential swaps identically.
-    let counterparty: &str = match recipient {
-        Some(r) if r != dao_id => r,
-        _ => "intents.near",
+    let counterparty: String = match recipient.as_deref() {
+        Some(r) if !is_near_account(r, dao_id) => r.to_string(),
+        _ => "intents.near".to_string(),
     };
 
     let storage_token_id = format!("intents.near:{}", origin_raw);

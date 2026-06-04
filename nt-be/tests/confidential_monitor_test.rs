@@ -17,6 +17,7 @@ use bigdecimal::BigDecimal;
 use nt_be::handlers::balance_changes::confidential_enrichment::{
     ConfidentialSignCall, extract_sign_call_from_logs, handle_confidential_outgoing,
 };
+use nt_be::handlers::intents::confidential::types::normalize_quote_metadata_accounts;
 use serde_json::json;
 use sqlx::PgPool;
 use std::str::FromStr;
@@ -72,7 +73,7 @@ async fn seed_confidential_intent(
         .expect("seed counterparties");
     }
 
-    let quote_metadata = json!({
+    let quote_metadata = normalize_quote_metadata_accounts(json!({
         "quote": {
             "amountIn": amount_in_raw,
             "amountOut": amount_out_raw,
@@ -85,7 +86,7 @@ async fn seed_confidential_intent(
             "recipient": recipient,
             "swapType": "EXACT_INPUT",
         },
-    });
+    }));
 
     sqlx::query(
         r#"

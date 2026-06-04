@@ -26,7 +26,7 @@ pub async fn load_latest_balances_per_asset(
     let rows: Vec<(String, BigDecimal)> = sqlx::query_as(
         r#"
         SELECT DISTINCT ON (asset) asset, balance
-        FROM confidential_balance_snapshots
+        FROM gold_confidential_balance_snapshots
         WHERE dao_id = $1
         ORDER BY asset, snapshot_at DESC
         "#,
@@ -47,7 +47,7 @@ pub async fn latest_snapshot_at(
     sqlx::query_scalar(
         r#"
         SELECT MAX(snapshot_at)
-        FROM confidential_balance_snapshots
+        FROM gold_confidential_balance_snapshots
         WHERE dao_id = $1
         "#,
     )
@@ -73,7 +73,7 @@ pub async fn insert_snapshot_rows(
 
     let result = sqlx::query(
         r#"
-        INSERT INTO confidential_balance_snapshots
+        INSERT INTO gold_confidential_balance_snapshots
             (dao_id, asset, snapshot_at, raw_balance, balance)
         SELECT $1, asset, $2, raw_balance, balance
         FROM UNNEST($3::text[], $4::numeric[], $5::numeric[])
@@ -104,7 +104,7 @@ pub async fn load_snapshots_for_chart(
         r#"
         (
             SELECT DISTINCT ON (asset) asset, snapshot_at, balance
-            FROM confidential_balance_snapshots
+            FROM gold_confidential_balance_snapshots
             WHERE dao_id = $1
               AND snapshot_at < $2
             ORDER BY asset ASC, snapshot_at DESC
@@ -112,7 +112,7 @@ pub async fn load_snapshots_for_chart(
         UNION ALL
         (
             SELECT asset, snapshot_at, balance
-            FROM confidential_balance_snapshots
+            FROM gold_confidential_balance_snapshots
             WHERE dao_id = $1
               AND snapshot_at >= $2
               AND snapshot_at <= $3

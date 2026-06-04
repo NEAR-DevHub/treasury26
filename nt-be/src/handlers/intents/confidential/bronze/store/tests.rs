@@ -1,5 +1,5 @@
 use super::*;
-use crate::handlers::intents::confidential::history::{HistoryEvent, HistoryItem};
+use crate::handlers::intents::confidential::bronze::api::{HistoryEvent, HistoryItem};
 use crate::utils::env::EnvVars;
 use chrono::{Duration, Utc};
 
@@ -56,7 +56,7 @@ async fn test_upsert_history_events_is_idempotent() {
     let row_count: i64 = sqlx::query_scalar(
         r#"
             SELECT COUNT(*)
-            FROM confidential_history_events
+            FROM bronze_confidential_history_events
             WHERE account_id = $1
               AND created_at_external = $2
               AND deposit_address = $3
@@ -163,7 +163,7 @@ async fn test_record_confidential_history_poll_result_schedules_from_activity() 
 
     sqlx::query(
         r#"
-        UPDATE confidential_history_cursors
+        UPDATE bronze_confidential_history_cursors
         SET last_confidential_activity_at = NOW() - INTERVAL '3 hours'
         WHERE account_id = $1
         "#,
@@ -221,7 +221,7 @@ async fn test_load_due_confidential_history_accounts_filters_by_next_poll_at() {
 
     sqlx::query(
         r#"
-        INSERT INTO confidential_history_cursors (account_id, next_poll_at)
+        INSERT INTO bronze_confidential_history_cursors (account_id, next_poll_at)
         VALUES
             ($1, NOW() - INTERVAL '1 second'),
             ($2, NOW() + INTERVAL '1 hour')
@@ -357,4 +357,147 @@ async fn test_link_intent_to_history_event_requires_submitted_proposal() {
         .await
         .expect("link attempt should succeed");
     assert!(linked.is_some(), "eligible submitted proposal should link");
+}
+
+#[tokio::test]
+async fn link_intent_matches_after_quote_metadata_canonicalized() {
+    let pool = test_pool().await;
+    let account_id = format!("test-bare-recipient-{}.near", uuid::Uuid::new_v4());
+    let payload_hash = uuid::Uuid::new_v4().simple().to_string();
+    let mut event = sample_history_event();
+    event.item.deposit_address = format!("deposit-{}", uuid::Uuid::new_v4());
+    event.item.recipient = Some(account_id.clone());
+    if let serde_json::Value::Object(ref mut raw) = event.raw_payload {
+        raw.insert(
+            "recipient".to_string(),
+            serde_json::Value::String(account_id.clone()),
+        );
+    }
+
+    upsert_history_events(&pool, &account_id, &[event.clone()])
+        .await
+        .expect("bronze upsert should succeed");
+
+    let quote_metadata = crate::handlers::intents::confidential::types::normalize_quote_metadata_accounts(
+        serde_json::json!({
+            "quote": { "depositAddress": event.item.deposit_address },
+            "quoteRequest": {
+                "recipient": account_id,
+                "recipientType": "CONFIDENTIAL_INTENTS",
+                "destinationAsset": event.item.destination_asset
+            }
+        }),
+    );
+
+    sqlx::query(
+        r#"
+        INSERT INTO confidential_intents (
+            dao_id, payload_hash, intent_payload, quote_metadata,
+            deposit_address, status, proposal_id
+        )
+        VALUES ($1, $2, $3, $4, $5, 'submitted', 1)
+        "#,
+    )
+    .bind(&account_id)
+    .bind(&payload_hash)
+    .bind(serde_json::json!({ "message": "test" }))
+    .bind(&quote_metadata)
+    .bind(&event.item.deposit_address)
+    .execute(&pool)
+    .await
+    .expect("intent insert should succeed");
+
+    let linked = link_intent_to_history_event(&pool, &account_id, &payload_hash)
+        .await
+        .expect("link should not error");
+    assert!(
+        linked.is_some(),
+        "bare quote recipient should match bronze recipient exactly"
+    );
+}
+
+#[tokio::test]
+async fn link_intent_matches_cross_chain_destination_recipient() {
+    let pool = test_pool().await;
+    let account_id = format!("test-cross-chain-{}.near", uuid::Uuid::new_v4());
+    let payload_hash = uuid::Uuid::new_v4().simple().to_string();
+    let evm_recipient = "0xabc1234567890abcdef";
+    let destination_asset =
+        "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near";
+
+    let mut event = sample_history_event();
+    event.item.deposit_address = format!("deposit-{}", uuid::Uuid::new_v4());
+    event.item.recipient = Some(evm_recipient.to_string());
+    event.item.recipient_type = Some("DESTINATION_CHAIN".to_string());
+    event.item.destination_asset = destination_asset.to_string();
+    if let serde_json::Value::Object(ref mut raw) = event.raw_payload {
+        raw.insert(
+            "recipient".to_string(),
+            serde_json::Value::String(evm_recipient.to_string()),
+        );
+        raw.insert(
+            "recipientType".to_string(),
+            serde_json::Value::String("DESTINATION_CHAIN".to_string()),
+        );
+        raw.insert(
+            "destinationAsset".to_string(),
+            serde_json::Value::String(destination_asset.to_string()),
+        );
+    }
+
+    upsert_history_events(&pool, &account_id, &[event.clone()])
+        .await
+        .expect("bronze upsert should succeed");
+
+    let quote_metadata = crate::handlers::intents::confidential::types::normalize_quote_metadata_accounts(
+        serde_json::json!({
+            "quote": { "depositAddress": event.item.deposit_address },
+            "quoteRequest": {
+                "recipient": evm_recipient,
+                "recipientType": "DESTINATION_CHAIN",
+                "originAsset": "nep141:wrap.near",
+                "destinationAsset": destination_asset
+            }
+        }),
+    );
+
+    sqlx::query(
+        r#"
+        INSERT INTO confidential_intents (
+            dao_id, payload_hash, intent_payload, quote_metadata,
+            deposit_address, status, proposal_id
+        )
+        VALUES ($1, $2, $3, $4, $5, 'submitted', 1)
+        "#,
+    )
+    .bind(&account_id)
+    .bind(&payload_hash)
+    .bind(serde_json::json!({ "message": "test" }))
+    .bind(&quote_metadata)
+    .bind(&event.item.deposit_address)
+    .execute(&pool)
+    .await
+    .expect("intent insert should succeed");
+
+    let linked = link_intent_to_history_event(&pool, &account_id, &payload_hash)
+        .await
+        .expect("link should not error");
+    assert!(
+        linked.is_some(),
+        "bare evm quote recipient should match bronze recipient exactly"
+    );
+
+    let bronze_recipient: Option<String> = sqlx::query_scalar(
+        r#"
+        SELECT recipient
+        FROM bronze_confidential_history_events
+        WHERE account_id = $1 AND deposit_address = $2
+        "#,
+    )
+    .bind(&account_id)
+    .bind(&event.item.deposit_address)
+    .fetch_one(&pool)
+    .await
+    .expect("bronze row should exist");
+    assert_eq!(bronze_recipient.as_deref(), Some(evm_recipient));
 }

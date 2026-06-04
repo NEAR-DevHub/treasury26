@@ -5,14 +5,25 @@ use serde::{Deserialize, Serialize};
 
 use crate::AppState;
 
-pub mod balance_changes_projector;
-pub mod balance_snapshots;
 pub mod balances;
+pub mod bronze;
 pub mod generate_intent;
-pub mod history;
-pub mod history_store;
-pub mod history_worker;
+pub mod gold;
 pub mod prepare_auth;
+pub mod types;
+
+pub use bronze::{
+    fetch_history, fetch_history_with_token, spawn_confidential_history_worker,
+    trigger_confidential_history_refresh, HistoryEvent, HistoryPage,
+};
+pub use gold::{
+    get_confidential_balance_chart, mark_gold_dirty_for_history_event, mark_gold_dirty_tx,
+    project_confidential_gold_for_dao, refresh_gold_metadata_for_intent,
+    snapshot_confidential_dao_balances, spawn_confidential_gold_reconciliation_worker,
+    spawn_confidential_snapshot_worker,
+};
+pub use types::{bare_account, accounts_equal, is_near_account, ConfidentialTxType, HistoryStatus};
+pub use bronze::store::link_intent_to_history_event;
 
 /// Request body for authenticating a DAO with the 1Click confidential intents API.
 /// The signed data is a NEP-413 signature over an empty-intents auth payload,

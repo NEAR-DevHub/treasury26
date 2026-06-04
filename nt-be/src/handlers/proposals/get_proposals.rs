@@ -359,7 +359,7 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
         FROM confidential_intents ci
         LEFT JOIN LATERAL (
             SELECT amount_in_usd, amount_out_usd, usd_change
-            FROM confidential_balance_changes
+            FROM gold_confidential_history_events
             WHERE intent_id = ci.id
             ORDER BY COALESCE(block_time, executed_at, quote_created_at) DESC, id DESC
             LIMIT 1

@@ -9,9 +9,10 @@ use crate::{
     AppState,
     constants::V1_SIGNER_CONTRACT_ID,
     handlers::intents::confidential::{
-        balance_changes_projector::refresh_gold_metadata_for_intent,
-        history_store::link_intent_to_history_event,
-        history_worker::trigger_confidential_history_refresh,
+        bronze::ingest_worker::trigger_confidential_history_refresh,
+        gold::history_events::refresh_gold_metadata_for_intent,
+        link_intent_to_history_event,
+        types::normalize_quote_metadata_accounts,
     },
     utils::cache::CacheKey,
 };
@@ -95,6 +96,10 @@ pub async fn store_pending_intent(
     pool: &PgPool,
     input: PendingIntentInput<'_>,
 ) -> Result<(), String> {
+    let quote_metadata = input
+        .quote_metadata
+        .map(|v| normalize_quote_metadata_accounts(v.clone()));
+
     sqlx::query(
         r#"
         INSERT INTO confidential_intents (
@@ -123,7 +128,7 @@ pub async fn store_pending_intent(
     .bind(input.payload_hash)
     .bind(input.intent_payload)
     .bind(input.correlation_id)
-    .bind(input.quote_metadata)
+    .bind(quote_metadata)
     .bind(input.deposit_address)
     .bind(input.notes)
     .execute(pool)

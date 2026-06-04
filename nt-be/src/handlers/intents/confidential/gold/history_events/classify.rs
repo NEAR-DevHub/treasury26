@@ -4,10 +4,13 @@ use std::str::FromStr;
 use bigdecimal::{BigDecimal, Zero};
 use serde_json::Value;
 
-use super::models::{BronzeProjectionRow, ProjectedRow, ProjectionKind};
+use super::models::{BronzeProjectionRow, GoldHistoryEvent};
+use crate::handlers::intents::confidential::types::{
+    bare_account, is_near_account, ConfidentialTxType, DepositType, HistoryApiItem,
+};
 
 enum Classification {
-    Project(ProjectionKind),
+    Project(ConfidentialTxType),
     Skip,
 }
 
@@ -26,8 +29,22 @@ fn payload_str(payload: &Value, key: &str) -> Option<String> {
     normalized_str(payload.get(key).and_then(|value| value.as_str()))
 }
 
+fn history_api_item(payload: &Value) -> Option<HistoryApiItem> {
+    serde_json::from_value(payload.clone()).ok()
+}
+
 fn coalesce_str(primary: Option<&String>, payload: &Value, key: &str) -> Option<String> {
     normalized_str(primary.map(String::as_str)).or_else(|| payload_str(payload, key))
+}
+
+fn resolve_account(
+    stored: Option<&String>,
+    payload: &Value,
+    field: &str,
+) -> Result<String, String> {
+    let raw = coalesce_str(stored, payload, field)
+        .ok_or_else(|| format!("missing {field}"))?;
+    Ok(bare_account(&raw))
 }
 
 fn parse_decimal(value: Option<String>, field: &str) -> Result<BigDecimal, String> {
@@ -55,55 +72,53 @@ fn classify(
     origin_asset: Option<&str>,
     destination_asset: &str,
 ) -> Classification {
-    // 1Click reports NEAR recipients as either `bob.near` or `near:bob.near`.
-    // Strip the prefix so `near:dao_id` is recognised as a self-deposit/exchange.
-    let recipient_account = recipient.strip_prefix("near:").unwrap_or(recipient);
+    // `recipient` is bare; self-deposit/exchange when it matches this DAO's NEAR account.
+    let is_self = is_near_account(recipient, dao_id);
 
-    if recipient_account != dao_id && origin_asset.is_none() {
+    if !is_self && origin_asset.is_none() {
         return Classification::Skip;
     }
 
-    if recipient_account != dao_id {
-        return Classification::Project(ProjectionKind::Sent);
+    if !is_self {
+        return Classification::Project(ConfidentialTxType::Sent);
     }
 
     if let Some(origin_asset) = origin_asset
         && origin_asset != destination_asset
     {
-        return Classification::Project(ProjectionKind::Exchange);
+        return Classification::Project(ConfidentialTxType::Exchange);
     }
 
-    Classification::Project(ProjectionKind::Deposit)
+    Classification::Project(ConfidentialTxType::Deposit)
 }
 
 fn is_intents_to_confidential_deposit(row: &BronzeProjectionRow) -> bool {
-    let deposit_type = normalized_str(Some(&row.deposit_type))
-        .or_else(|| payload_str(&row.raw_payload, "depositType"));
-    let recipient_type = normalized_str(row.recipient_type.as_deref())
-        .or_else(|| payload_str(&row.raw_payload, "recipientType"));
-
-    deposit_type
+    let deposit_type = DepositType::parse(&row.deposit_type);
+    let recipient_type = row
+        .recipient_type
         .as_deref()
-        .is_some_and(|value| value.eq_ignore_ascii_case("INTENTS"))
-        && recipient_type
-            .as_deref()
-            .is_some_and(|value| value.eq_ignore_ascii_case("CONFIDENTIAL_INTENTS"))
+        .map(DepositType::parse)
+        .unwrap_or(DepositType::Other);
+
+    deposit_type == DepositType::Intents && recipient_type == DepositType::ConfidentialIntents
 }
 
 pub(crate) fn project_row(
     row: &BronzeProjectionRow,
     ledger: &mut HashMap<String, BigDecimal>,
-) -> Result<Option<ProjectedRow>, String> {
+) -> Result<Option<GoldHistoryEvent>, String> {
     let dao_id = row.account_id.clone();
-    let recipient = coalesce_str(row.recipient.as_ref(), &row.raw_payload, "recipient")
-        .ok_or_else(|| "missing recipient".to_string())?;
-    let destination_asset = coalesce_str(
+    let origin_asset_opt =
+        coalesce_str(row.origin_asset.as_ref(), &row.raw_payload, "originAsset");
+    let destination_asset_opt = coalesce_str(
         Some(&row.destination_asset),
         &row.raw_payload,
         "destinationAsset",
-    )
-    .ok_or_else(|| "missing destinationAsset".to_string())?;
-    let origin_asset = coalesce_str(row.origin_asset.as_ref(), &row.raw_payload, "originAsset");
+    );
+    let recipient = resolve_account(row.recipient.as_ref(), &row.raw_payload, "recipient")?;
+    let destination_asset = destination_asset_opt
+        .ok_or_else(|| "missing destinationAsset".to_string())?;
+    let origin_asset = origin_asset_opt;
     let deposit_address = coalesce_str(
         Some(&row.deposit_address),
         &row.raw_payload,
@@ -120,34 +135,43 @@ pub(crate) fn project_row(
         return Ok(None);
     };
 
+    let api = history_api_item(&row.raw_payload);
     let amount_out = parse_decimal(
-        payload_str(&row.raw_payload, "amountOutFormatted"),
+        api.as_ref()
+            .and_then(|i| i.amount_out_formatted.clone())
+            .or_else(|| payload_str(&row.raw_payload, "amountOutFormatted")),
         "amountOutFormatted",
     )?;
     let amount_out_usd = parse_optional_decimal(
-        payload_str(&row.raw_payload, "amountOutUsd"),
+        api.as_ref()
+            .and_then(|i| i.amount_out_usd.clone())
+            .or_else(|| payload_str(&row.raw_payload, "amountOutUsd")),
         "amountOutUsd",
     )?;
-    let amount_in_usd =
-        parse_optional_decimal(payload_str(&row.raw_payload, "amountInUsd"), "amountInUsd")?;
+    let amount_in_usd = parse_optional_decimal(
+        api.as_ref()
+            .and_then(|i| i.amount_in_usd.clone())
+            .or_else(|| payload_str(&row.raw_payload, "amountInUsd")),
+        "amountInUsd",
+    )?;
 
     let amount_in = match kind {
-        ProjectionKind::Sent | ProjectionKind::Exchange => Some(parse_decimal(
+        ConfidentialTxType::Sent | ConfidentialTxType::Exchange => Some(parse_decimal(
             payload_str(&row.raw_payload, "amountInFormatted"),
             "amountInFormatted",
         )?),
-        ProjectionKind::Deposit if origin_asset.is_some() => Some(parse_decimal(
+        ConfidentialTxType::Deposit if origin_asset.is_some() => Some(parse_decimal(
             payload_str(&row.raw_payload, "amountInFormatted"),
             "amountInFormatted",
         )?),
-        ProjectionKind::Deposit => None,
+        ConfidentialTxType::Deposit => None,
     };
 
     let zero = BigDecimal::zero();
     let amount_in_usd_for_delta = amount_in_usd.clone().unwrap_or_else(BigDecimal::zero);
     let amount_out_usd_for_delta = amount_out_usd.clone().unwrap_or_else(BigDecimal::zero);
     let intents_to_confidential_deposit =
-        kind == ProjectionKind::Deposit && is_intents_to_confidential_deposit(row);
+        kind == ConfidentialTxType::Deposit && is_intents_to_confidential_deposit(row);
 
     let (
         origin_balance_before,
@@ -156,7 +180,7 @@ pub(crate) fn project_row(
         destination_balance_after,
         usd_change,
     ) = match kind {
-        ProjectionKind::Sent => {
+        ConfidentialTxType::Sent => {
             let origin_asset = origin_asset
                 .as_ref()
                 .ok_or_else(|| "missing originAsset for sent".to_string())?;
@@ -180,7 +204,7 @@ pub(crate) fn project_row(
                 -amount_in_usd_for_delta,
             )
         }
-        ProjectionKind::Exchange => {
+        ConfidentialTxType::Exchange => {
             let origin_asset = origin_asset
                 .as_ref()
                 .ok_or_else(|| "missing originAsset for exchange".to_string())?;
@@ -211,7 +235,7 @@ pub(crate) fn project_row(
                 amount_out_usd_for_delta - amount_in_usd_for_delta,
             )
         }
-        ProjectionKind::Deposit => {
+        ConfidentialTxType::Deposit => {
             let destination_before = ledger
                 .get(&destination_asset)
                 .cloned()
@@ -245,13 +269,24 @@ pub(crate) fn project_row(
         }
     };
 
-    let refund_to = payload_str(&row.raw_payload, "refundTo").unwrap_or_else(|| dao_id.clone());
+    let refund_to_raw = api
+        .as_ref()
+        .and_then(|i| i.refund_to.clone())
+        .or_else(|| payload_str(&row.raw_payload, "refundTo"));
+    let refund_to = match refund_to_raw {
+        Some(raw) => bare_account(&raw),
+        None => bare_account(row.account_id.as_str()),
+    };
     let counterparty = match kind {
-        ProjectionKind::Sent => recipient.clone(),
-        ProjectionKind::Exchange | ProjectionKind::Deposit => "intents.near".to_string(),
+        ConfidentialTxType::Sent => recipient.clone(),
+        ConfidentialTxType::Exchange | ConfidentialTxType::Deposit => bare_account("intents.near"),
     };
 
-    Ok(Some(ProjectedRow {
+    let dao_id = dao_id
+        .parse::<near_api::AccountId>()
+        .map_err(|e| format!("invalid dao_id: {e}"))?;
+
+    Ok(Some(GoldHistoryEvent {
         history_event_id: row.id,
         intent_id: row.intent_id,
         dao_id,
@@ -325,33 +360,37 @@ mod tests {
         }
     }
 
+    fn recipient(value: &str) -> String {
+        bare_account(value)
+    }
+
     #[test]
     fn test_classification_rules() {
         assert!(matches!(
-            classify("dao.near", "external.near", None, "nep141:wrap.near"),
+            classify("dao.near", recipient("external.near").as_str(), None, "nep141:wrap.near"),
             Classification::Skip
         ));
         assert!(matches!(
             classify(
                 "dao.near",
-                "external.near",
+                recipient("external.near").as_str(),
                 Some("nep141:wrap.near"),
                 "nep141:wrap.near"
             ),
-            Classification::Project(ProjectionKind::Sent)
+            Classification::Project(ConfidentialTxType::Sent)
         ));
         assert!(matches!(
             classify(
                 "dao.near",
-                "dao.near",
+                recipient("dao.near").as_str(),
                 Some("nep141:usdt.near"),
                 "nep141:wrap.near"
             ),
-            Classification::Project(ProjectionKind::Exchange)
+            Classification::Project(ConfidentialTxType::Exchange)
         ));
         assert!(matches!(
-            classify("dao.near", "dao.near", None, "nep141:wrap.near"),
-            Classification::Project(ProjectionKind::Deposit)
+            classify("dao.near", recipient("dao.near").as_str(), None, "nep141:wrap.near"),
+            Classification::Project(ConfidentialTxType::Deposit)
         ));
     }
 
@@ -360,29 +399,29 @@ mod tests {
         assert!(matches!(
             classify(
                 "tobi.sputnik-dao.near",
-                "near:tobi.sputnik-dao.near",
+                recipient("near:tobi.sputnik-dao.near").as_str(),
                 None,
                 "nep141:wrap.near"
             ),
-            Classification::Project(ProjectionKind::Deposit)
+            Classification::Project(ConfidentialTxType::Deposit)
         ));
         assert!(matches!(
             classify(
                 "tobi.sputnik-dao.near",
-                "near:tobi.sputnik-dao.near",
+                recipient("near:tobi.sputnik-dao.near").as_str(),
                 Some("nep141:usdt.near"),
                 "nep141:wrap.near"
             ),
-            Classification::Project(ProjectionKind::Exchange)
+            Classification::Project(ConfidentialTxType::Exchange)
         ));
         assert!(matches!(
             classify(
                 "tobi.sputnik-dao.near",
-                "near:external.near",
+                recipient("near:external.near").as_str(),
                 Some("nep141:wrap.near"),
                 "nep141:wrap.near"
             ),
-            Classification::Project(ProjectionKind::Sent)
+            Classification::Project(ConfidentialTxType::Sent)
         ));
     }
 
@@ -408,7 +447,7 @@ mod tests {
             .expect("sent row should project")
             .expect("sent row should not skip");
 
-        assert_eq!(projected.transaction_type, ProjectionKind::Sent);
+        assert_eq!(projected.transaction_type, ConfidentialTxType::Sent);
         assert_eq!(projected.origin_balance_before, Some(BigDecimal::from(10)));
         assert_eq!(
             projected.origin_balance_after,
@@ -450,7 +489,7 @@ mod tests {
             .expect("deposit should project")
             .expect("deposit should not skip");
 
-        assert_eq!(projected.transaction_type, ProjectionKind::Deposit);
+        assert_eq!(projected.transaction_type, ConfidentialTxType::Deposit);
         assert_eq!(
             projected.destination_balance_before,
             Some(BigDecimal::zero())

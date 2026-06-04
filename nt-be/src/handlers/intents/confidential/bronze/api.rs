@@ -1,17 +1,19 @@
-//! 1Click confidential account history fetcher and Bronze writer.
+//! 1Click confidential account history fetcher.
 //!
-//! Mirrors `@defuse-protocol/one-click-sdk-typescript::AccountService.getHistory`:
+//! Mirrors `@defuse-protocol/one-click-sdk-typescript::AccountService.getHistory`.
 //! NOTE: the host for `q8v3n6.defuse.org` is *different* from the
 //! confidential balances host. We let it be overridden via
 //! `CONFIDENTIAL_HISTORY_BASE_URL` env var.
 
 use near_account_id::AccountIdRef;
 use reqwest::StatusCode;
-use serde::Deserialize;
 use serde_json::Value;
 
 use crate::AppState;
 use crate::handlers::intents::confidential::refresh_dao_jwt;
+use crate::handlers::intents::confidential::types::{
+    HistoryApiEvent, HistoryApiItem,
+};
 
 const DEFAULT_HISTORY_BASE_URL: &str = "https://q8v3n6.defuse.org";
 
@@ -20,25 +22,11 @@ fn history_base_url() -> String {
         .unwrap_or_else(|_| DEFAULT_HISTORY_BASE_URL.to_string())
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HistoryItem {
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub deposit_address: String,
-    pub deposit_memo: Option<String>,
-    pub status: String,
-    pub deposit_type: String,
-    pub recipient_type: Option<String>,
-    pub recipient: Option<String>,
-    pub origin_asset: Option<String>,
-    pub destination_asset: String,
-}
+/// Bronze ingest event: typed API item + original JSON for storage.
+pub type HistoryEvent = HistoryApiEvent;
 
-#[derive(Debug, Clone)]
-pub struct HistoryEvent {
-    pub item: HistoryItem,
-    pub raw_payload: Value,
-}
+/// Alias for callers that still refer to `HistoryItem`.
+pub type HistoryItem = HistoryApiItem;
 
 #[derive(Debug, Clone)]
 pub struct HistoryPage {
@@ -58,7 +46,7 @@ fn parse_history_page(body_text: &str) -> Result<HistoryPage, String> {
         .iter()
         .enumerate()
         .map(|(idx, raw_item)| {
-            let item: HistoryItem = serde_json::from_value(raw_item.clone())
+            let item: HistoryApiItem = serde_json::from_value(raw_item.clone())
                 .map_err(|e| format!("history item {} parse failed: {}", idx, e))?;
 
             Ok(HistoryEvent {

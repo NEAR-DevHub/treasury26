@@ -6,73 +6,7 @@ use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
 use super::models::{BronzeProjectionRow, DirtyDao, GoldBalanceSeedRow, ProjectedRow};
-
-const MARK_GOLD_DIRTY_SQL: &str = r#"
-    INSERT INTO confidential_history_cursors (
-        account_id,
-        gold_dirty_since,
-        gold_recompute_from,
-        updated_at
-    )
-    VALUES ($1, NOW(), $2, NOW())
-    ON CONFLICT (account_id) DO UPDATE SET
-        gold_dirty_since = NOW(),
-        gold_recompute_from = CASE
-            WHEN EXCLUDED.gold_recompute_from IS NULL THEN confidential_history_cursors.gold_recompute_from
-            WHEN confidential_history_cursors.gold_recompute_from IS NULL THEN EXCLUDED.gold_recompute_from
-            ELSE LEAST(confidential_history_cursors.gold_recompute_from, EXCLUDED.gold_recompute_from)
-        END,
-        updated_at = NOW()
-"#;
-
-async fn mark_gold_dirty(
-    pool: &PgPool,
-    dao_id: &str,
-    recompute_from: Option<DateTime<Utc>>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(MARK_GOLD_DIRTY_SQL)
-        .bind(dao_id)
-        .bind(recompute_from)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-/// Transaction-scoped so the Bronze upsert and dirty flag commit atomically.
-pub async fn mark_gold_dirty_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    dao_id: &str,
-    recompute_from: Option<DateTime<Utc>>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(MARK_GOLD_DIRTY_SQL)
-        .bind(dao_id)
-        .bind(recompute_from)
-        .execute(&mut **tx)
-        .await?;
-    Ok(())
-}
-
-pub async fn mark_gold_dirty_for_history_event(
-    pool: &PgPool,
-    history_event_id: i64,
-) -> Result<(), sqlx::Error> {
-    let row = sqlx::query_as::<_, (String, DateTime<Utc>)>(
-        r#"
-        SELECT account_id, created_at_external
-        FROM confidential_history_events
-        WHERE id = $1
-        "#,
-    )
-    .bind(history_event_id)
-    .fetch_optional(pool)
-    .await?;
-
-    if let Some((dao_id, recompute_from)) = row {
-        mark_gold_dirty(pool, &dao_id, Some(recompute_from)).await?;
-    }
-
-    Ok(())
-}
+use crate::handlers::intents::confidential::gold::cursors::mark_gold_dirty;
 
 pub async fn refresh_gold_metadata_for_intent(
     pool: &PgPool,
@@ -81,7 +15,7 @@ pub async fn refresh_gold_metadata_for_intent(
 ) -> Result<u64, sqlx::Error> {
     let result = sqlx::query(
         r#"
-        UPDATE confidential_balance_changes cbc
+        UPDATE gold_confidential_history_events cbc
         SET intent_id = ci.id,
             proposal_created_at = ci.proposal_created_at,
             executed_at = ci.executed_at,
@@ -105,7 +39,7 @@ pub async fn refresh_gold_metadata_for_intent(
             r#"
             SELECT he.created_at_external
             FROM confidential_intents ci
-            JOIN confidential_history_events he ON he.id = ci.history_event_id
+            JOIN bronze_confidential_history_events he ON he.id = ci.history_event_id
             WHERE ci.dao_id = $1
               AND ci.payload_hash = $2
             "#,
@@ -126,13 +60,13 @@ pub async fn refresh_gold_metadata_for_intent(
 pub(crate) async fn load_dirty_daos(pool: &PgPool) -> Result<Vec<DirtyDao>, sqlx::Error> {
     sqlx::query_as::<_, DirtyDao>(
         r#"
-        SELECT chc.account_id, chc.gold_dirty_since, chc.gold_recompute_from
-        FROM confidential_history_cursors chc
-        JOIN monitored_accounts ma ON ma.account_id = chc.account_id
-        WHERE chc.gold_dirty_since IS NOT NULL
+        SELECT gchc.account_id, gchc.gold_dirty_since, gchc.gold_recompute_from
+        FROM gold_confidential_history_cursors gchc
+        JOIN monitored_accounts ma ON ma.account_id = gchc.account_id
+        WHERE gchc.gold_dirty_since IS NOT NULL
           AND ma.enabled = true
           AND ma.is_confidential_account = true
-        ORDER BY chc.gold_dirty_since ASC, chc.account_id ASC
+        ORDER BY gchc.gold_dirty_since ASC, gchc.account_id ASC
         "#,
     )
     .fetch_all(pool)
@@ -146,7 +80,7 @@ pub(crate) async fn earliest_success_for_dao(
     sqlx::query_scalar(
         r#"
         SELECT MIN(created_at_external)
-        FROM confidential_history_events
+        FROM bronze_confidential_history_events
         WHERE account_id = $1
           AND status = 'SUCCESS'
         "#,
@@ -170,7 +104,7 @@ pub(crate) async fn seed_ledger_before(
                 origin_balance_after AS balance,
                 quote_created_at,
                 history_event_id
-            FROM confidential_balance_changes
+            FROM gold_confidential_history_events
             WHERE dao_id = $1
               AND quote_created_at < $2
               AND origin_asset IS NOT NULL
@@ -183,7 +117,7 @@ pub(crate) async fn seed_ledger_before(
                 destination_balance_after AS balance,
                 quote_created_at,
                 history_event_id
-            FROM confidential_balance_changes
+            FROM gold_confidential_history_events
             WHERE dao_id = $1
               AND quote_created_at < $2
               AND destination_balance_after IS NOT NULL
@@ -213,7 +147,7 @@ pub(crate) async fn has_gold_before(
         r#"
         SELECT EXISTS (
             SELECT 1
-            FROM confidential_balance_changes
+            FROM gold_confidential_history_events
             WHERE dao_id = $1
               AND quote_created_at < $2
         )
@@ -249,7 +183,7 @@ pub(crate) async fn load_bronze_suffix(
             ci.executed_at,
             ci.execution_block_height,
             ci.execution_transaction_hash
-        FROM confidential_history_events he
+        FROM bronze_confidential_history_events he
         LEFT JOIN confidential_intents ci ON ci.history_event_id = he.id
         WHERE he.account_id = $1
           AND he.status = 'SUCCESS'
@@ -269,7 +203,7 @@ pub(crate) async fn upsert_projection(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        INSERT INTO confidential_balance_changes (
+        INSERT INTO gold_confidential_history_events (
             history_event_id,
             intent_id,
             dao_id,
@@ -333,7 +267,7 @@ pub(crate) async fn upsert_projection(
     )
     .bind(row.history_event_id)
     .bind(row.intent_id)
-    .bind(&row.dao_id)
+    .bind(row.dao_id.as_str())
     .bind(row.transaction_type.as_str())
     .bind(&row.origin_asset)
     .bind(&row.destination_asset)
@@ -371,7 +305,7 @@ pub(crate) async fn clear_projection_error(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        DELETE FROM confidential_balance_change_projection_errors
+        DELETE FROM gold_confidential_history_projection_errors
         WHERE history_event_id = $1
         "#,
     )
@@ -391,7 +325,7 @@ pub(crate) async fn upsert_projection_error(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        INSERT INTO confidential_balance_change_projection_errors (
+        INSERT INTO gold_confidential_history_projection_errors (
             history_event_id,
             dao_id,
             reason,
@@ -423,7 +357,7 @@ pub(crate) async fn delete_stale_gold_rows(
 ) -> Result<u64, sqlx::Error> {
     let result = sqlx::query(
         r#"
-        DELETE FROM confidential_balance_changes
+        DELETE FROM gold_confidential_history_events
         WHERE dao_id = $1
           AND quote_created_at >= $2
           AND NOT (history_event_id = ANY($3))
@@ -433,71 +367,6 @@ pub(crate) async fn delete_stale_gold_rows(
     .bind(recompute_from)
     .bind(preserve_ids)
     .execute(&mut **tx)
-    .await?;
-
-    Ok(result.rows_affected())
-}
-
-pub(crate) async fn clear_gold_dirty_if_not_advanced(
-    tx: &mut Transaction<'_, Postgres>,
-    dao_id: &str,
-    dirty_since: DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        r#"
-        UPDATE confidential_history_cursors
-        SET gold_dirty_since = NULL,
-            gold_recompute_from = NULL,
-            updated_at = NOW()
-        WHERE account_id = $1
-          AND gold_dirty_since <= $2
-        "#,
-    )
-    .bind(dao_id)
-    .bind(dirty_since)
-    .execute(&mut **tx)
-    .await?;
-
-    Ok(())
-}
-
-pub async fn mark_backfilled_confidential_daos_gold_dirty(
-    pool: &PgPool,
-) -> Result<u64, sqlx::Error> {
-    let result = sqlx::query(
-        r#"
-        WITH earliest_success AS (
-            SELECT account_id, MIN(created_at_external) AS recompute_from
-            FROM confidential_history_events
-            WHERE status = 'SUCCESS'
-            GROUP BY account_id
-        ),
-        gold_counts AS (
-            SELECT dao_id, COUNT(*) AS projected_count
-            FROM confidential_balance_changes
-            GROUP BY dao_id
-        )
-        UPDATE confidential_history_cursors chc
-        SET gold_dirty_since = NOW(),
-            gold_recompute_from = CASE
-                WHEN chc.gold_recompute_from IS NULL THEN es.recompute_from
-                ELSE LEAST(chc.gold_recompute_from, es.recompute_from)
-            END,
-            updated_at = NOW()
-        FROM monitored_accounts ma
-        JOIN earliest_success es ON es.account_id = ma.account_id
-        LEFT JOIN gold_counts gc ON gc.dao_id = ma.account_id
-        WHERE ma.account_id = chc.account_id
-          AND ma.enabled = true
-          AND ma.is_confidential_account = true
-          AND chc.backfill_done = true
-          AND (
-              chc.gold_dirty_since IS NOT NULL
-              OR COALESCE(gc.projected_count, 0) = 0
-          )
-        "#,
-    )
-    .execute(pool)
     .await?;
 
     Ok(result.rows_affected())

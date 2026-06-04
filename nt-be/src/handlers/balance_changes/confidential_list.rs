@@ -1,6 +1,6 @@
 //! Read-side adapter that lets `/api/balance-changes`, `/api/recent-activity`,
 //! and `/api/balance-history/export` serve confidential DAOs from
-//! `confidential_balance_changes` while keeping the response shape
+//! `gold_confidential_history_events` while keeping the response shape
 //! (`EnrichedBalanceChange`) identical to the public list.
 //!
 //! Exchange Gold rows surface as a single Exchange Fulfillment row (the
@@ -14,10 +14,14 @@ use chrono::{DateTime, Utc};
 use sqlx::{PgPool, QueryBuilder};
 
 use crate::AppState;
+use crate::handlers::intents::confidential::types::bare_account;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, SwapInfo};
 
-const SENT_LEG_TO_ACCOUNT_EXPR: &str = "regexp_replace(recipient, '^near:', '')";
+/// Normalize client account filters to bare form for exact SQL match against gold.
+fn normalize_account_filter_values(accounts: &[String]) -> Vec<String> {
+    accounts.iter().map(|account| bare_account(account)).collect()
+}
 
 #[derive(Debug, sqlx::FromRow)]
 struct ConfidentialBalanceChangeRow {
@@ -92,11 +96,32 @@ pub async fn fetch_balance_change_legs(
     let min_amount = params.min_amount.and_then(BigDecimal::from_f64);
     let max_amount = params.max_amount.and_then(BigDecimal::from_f64);
 
+    let from_allow = params
+        .from_accounts
+        .as_ref()
+        .filter(|t| !t.is_empty())
+        .map(|t| normalize_account_filter_values(t));
+    let from_deny = params
+        .from_accounts_not
+        .as_ref()
+        .filter(|t| !t.is_empty())
+        .map(|t| normalize_account_filter_values(t));
+    let to_allow = params
+        .to_accounts
+        .as_ref()
+        .filter(|t| !t.is_empty())
+        .map(|t| normalize_account_filter_values(t));
+    let to_deny = params
+        .to_accounts_not
+        .as_ref()
+        .filter(|t| !t.is_empty())
+        .map(|t| normalize_account_filter_values(t));
+
     // Apply token / account / amount / date filters in SQL *before* pagination
     // so a small limit can't drop legs that would otherwise match the filter
     // (the old in-Rust filter ran post-limit). Date sort/filter uses
     // event_time (block_time → executed_at → quote_created_at) rather than
-    // confidential_balance_changes.created_at, which is the projection insert
+    // gold_confidential_history_events.created_at, which is the projection insert
     // time and would surface old transactions as today's activity. Amount
     // bounds compare against the formatted decimal amount directly — gold
     // already stores amountOutFormatted, not raw token units.
@@ -115,7 +140,7 @@ pub async fn fetch_balance_change_legs(
                 (
                     SELECT ci.proposal_id
                     FROM confidential_intents ci
-                    WHERE ci.id = confidential_balance_changes.intent_id
+                    WHERE ci.id = gold_confidential_history_events.intent_id
                 ) AS proposal_id,
                 COALESCE(block_time, executed_at, quote_created_at) AS event_time,
                 CASE
@@ -126,6 +151,9 @@ pub async fn fetch_balance_change_legs(
                 CASE
                     WHEN transaction_type = 'sent'
                         THEN -COALESCE(amount_in, 0)
+                    WHEN transaction_type = 'deposit'
+                        THEN COALESCE(destination_balance_after, 0)
+                           - COALESCE(destination_balance_before, 0)
                     ELSE amount_out
                 END AS leg_amount,
                 CASE
@@ -133,14 +161,10 @@ pub async fn fetch_balance_change_legs(
                     ELSE counterparty
                 END AS leg_from_account,
                 CASE
-                    WHEN transaction_type = 'sent' THEN "#,
-    );
-    builder.push(SENT_LEG_TO_ACCOUNT_EXPR);
-    builder.push(
-        r#"
+                    WHEN transaction_type = 'sent' THEN recipient
                     ELSE dao_id
                 END AS leg_to_account
-            FROM confidential_balance_changes
+            FROM gold_confidential_history_events
             WHERE dao_id = "#,
     );
     builder.push_bind(&dao_id);
@@ -196,24 +220,24 @@ pub async fn fetch_balance_change_legs(
         builder.push("))");
     }
 
-    if let Some(from_allow) = params.from_accounts.as_ref().filter(|t| !t.is_empty()) {
+    if let Some(from_allow) = from_allow.as_ref() {
         builder.push(" AND leg_from_account = ANY(");
-        builder.push_bind(from_allow.clone());
+        builder.push_bind(from_allow);
         builder.push(")");
     }
-    if let Some(from_deny) = params.from_accounts_not.as_ref().filter(|t| !t.is_empty()) {
+    if let Some(from_deny) = from_deny.as_ref() {
         builder.push(" AND NOT (leg_from_account = ANY(");
-        builder.push_bind(from_deny.clone());
+        builder.push_bind(from_deny);
         builder.push("))");
     }
-    if let Some(to_allow) = params.to_accounts.as_ref().filter(|t| !t.is_empty()) {
+    if let Some(to_allow) = to_allow.as_ref() {
         builder.push(" AND leg_to_account = ANY(");
-        builder.push_bind(to_allow.clone());
+        builder.push_bind(to_allow);
         builder.push(")");
     }
-    if let Some(to_deny) = params.to_accounts_not.as_ref().filter(|t| !t.is_empty()) {
+    if let Some(to_deny) = to_deny.as_ref() {
         builder.push(" AND NOT (leg_to_account = ANY(");
-        builder.push_bind(to_deny.clone());
+        builder.push_bind(to_deny);
         builder.push("))");
     }
 
@@ -244,11 +268,9 @@ pub async fn fetch_balance_change_legs(
 
     let leg_rows: Vec<LegRow> = rows.into_iter().filter_map(LegRow::from_gold).collect();
 
-    let mut enriched: Vec<EnrichedBalanceChange> = leg_rows
-        .iter()
-        .map(|leg| leg.to_enriched(&dao_id))
-        .collect();
-
+    // Fetch token metadata before enriching so `to_enriched` can attach swap info
+    // in the same pass. The token-id set is derived from the legs only, so this
+    // depends on `leg_rows`, not on the enriched rows.
     let metadata_map =
         if params.include_metadata.unwrap_or(false) || params.include_prices.unwrap_or(false) {
             let mut token_ids: HashSet<String> = HashSet::new();
@@ -265,21 +287,20 @@ pub async fn fetch_balance_change_legs(
             HashMap::new()
         };
 
+    let mut enriched: Vec<EnrichedBalanceChange> = leg_rows
+        .iter()
+        .map(|leg| leg.to_enriched(&dao_id, &metadata_map))
+        .collect();
+
     if params.include_metadata.unwrap_or(false) {
         for change in &mut enriched {
             change.token_metadata = metadata_map.get(&change.token_id).cloned();
         }
     }
 
-    for (change, leg) in enriched.iter_mut().zip(leg_rows.iter()) {
-        if let Some(swap) = leg.build_swap_info(&metadata_map) {
-            change.swap = Some(swap);
-        }
-    }
-
-    if params.include_prices.unwrap_or(false) {
-        attach_prices(state, &mut enriched).await;
-    }
+    // Confidential rows carry the exact quote-time USD in `usd_value`, so the read
+    // paths (recent-activity, export, min_usd_value) use that directly. No historical
+    // price-table lookup is needed here.
 
     Ok(enriched)
 }
@@ -404,29 +425,38 @@ impl LegRow {
                     swap_solver_tx: None,
                 })
             }
-            "deposit" => Some(LegRow {
-                id,
-                token_id: destination_asset,
-                amount: amount_out,
-                balance_before: destination_balance_before.unwrap_or_else(BigDecimal::zero),
-                balance_after: destination_balance_after.unwrap_or_else(BigDecimal::zero),
-                counterparty: Some(counterparty.clone()),
-                signer_id: Some(counterparty),
-                receiver_id: Some(dao_id),
-                block_height,
-                block_time: resolved_block_time,
-                transaction_hash,
-                created_at,
-                proposal_id,
-                usd_value: amount_out_usd,
-                action_kind: "ConfidentialDeposit".to_string(),
-                swap_sent_token: None,
-                swap_sent_amount: None,
-                swap_other_token: None,
-                swap_received_token: None,
-                swap_received_amount: None,
-                swap_solver_tx: None,
-            }),
+            "deposit" => {
+                let balance_before =
+                    destination_balance_before.unwrap_or_else(BigDecimal::zero);
+                let balance_after =
+                    destination_balance_after.unwrap_or_else(BigDecimal::zero);
+                // Match gold ledger delta (amount_out - amount_in for same-asset fees), not
+                // gross amount_out — keeps amount = balance_after - balance_before.
+                let amount = &balance_after - &balance_before;
+                Some(LegRow {
+                    id,
+                    token_id: destination_asset,
+                    amount,
+                    balance_before,
+                    balance_after,
+                    counterparty: Some(counterparty.clone()),
+                    signer_id: Some(counterparty),
+                    receiver_id: Some(dao_id),
+                    block_height,
+                    block_time: resolved_block_time,
+                    transaction_hash,
+                    created_at,
+                    proposal_id,
+                    usd_value: amount_out_usd,
+                    action_kind: "ConfidentialDeposit".to_string(),
+                    swap_sent_token: None,
+                    swap_sent_amount: None,
+                    swap_other_token: None,
+                    swap_received_token: None,
+                    swap_received_amount: None,
+                    swap_solver_tx: None,
+                })
+            }
             "exchange" => {
                 let solver_tx = transaction_hash
                     .clone()
@@ -459,7 +489,11 @@ impl LegRow {
         }
     }
 
-    fn to_enriched(&self, dao_id: &str) -> EnrichedBalanceChange {
+    fn to_enriched(
+        &self,
+        dao_id: &str,
+        metadata_map: &HashMap<String, TokenMetadata>,
+    ) -> EnrichedBalanceChange {
         EnrichedBalanceChange {
             id: self.id,
             account_id: dao_id.to_string(),
@@ -480,7 +514,7 @@ impl LegRow {
             balance_after: self.balance_after.clone(),
             created_at: self.created_at,
             token_metadata: None,
-            swap: None,
+            swap: self.build_swap_info(metadata_map),
             action_kind: Some(self.action_kind.clone()),
             method_name: None,
             actions: None,
@@ -536,48 +570,6 @@ fn resolve_swap_metadata(
     }
 }
 
-async fn attach_prices(state: &Arc<AppState>, enriched: &mut [EnrichedBalanceChange]) {
-    let mut token_dates: HashMap<String, HashSet<chrono::NaiveDate>> = HashMap::new();
-    for change in enriched.iter() {
-        token_dates
-            .entry(change.token_id.clone())
-            .or_default()
-            .insert(change.block_time.date_naive());
-    }
-
-    let mut all_prices: HashMap<String, HashMap<chrono::NaiveDate, f64>> = HashMap::new();
-    for (token_id, dates) in token_dates {
-        let dates_vec: Vec<chrono::NaiveDate> = dates.into_iter().collect();
-        match state
-            .price_service
-            .get_prices_batch(&token_id, &dates_vec)
-            .await
-        {
-            Ok(prices) => {
-                all_prices.insert(token_id, prices);
-            }
-            Err(e) => {
-                log::warn!(
-                    "[confidential-balance-list] price lookup failed for {}: {}",
-                    token_id,
-                    e
-                );
-            }
-        }
-    }
-
-    for change in enriched.iter_mut() {
-        let Some(ref mut metadata) = change.token_metadata else {
-            continue;
-        };
-        let date = change.block_time.date_naive();
-        if let Some(prices) = all_prices.get(&change.token_id)
-            && let Some(&price) = prices.get(&date)
-        {
-            metadata.price = Some(price);
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -636,7 +628,7 @@ mod tests {
         let deposit_address = format!("deposit-{}", Uuid::new_v4());
         let event_id: i64 = sqlx::query_scalar(
             r#"
-            INSERT INTO confidential_history_events (
+            INSERT INTO bronze_confidential_history_events (
                 account_id, created_at_external, deposit_address, status,
                 deposit_type, recipient_type, recipient, destination_asset, raw_payload
             )
@@ -655,7 +647,7 @@ mod tests {
 
         sqlx::query(
             r#"
-            INSERT INTO confidential_balance_changes (
+            INSERT INTO gold_confidential_history_events (
                 history_event_id, dao_id, transaction_type,
                 origin_asset, destination_asset, amount_in, amount_out,
                 origin_balance_before, origin_balance_after,
@@ -682,43 +674,87 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn confidential_sent_to_account_filter_sql_strips_near_prefix() {
-        assert_eq!(
-            SENT_LEG_TO_ACCOUNT_EXPR,
-            "regexp_replace(recipient, '^near:', '')"
-        );
-    }
+    /// Same-asset deposit with fees: gold ledger uses net (out - in), not gross out.
+    async fn seed_same_asset_fee_deposit(
+        pool: &PgPool,
+        dao_id: &str,
+    ) -> Result<(), sqlx::Error> {
+        use std::str::FromStr;
 
-    #[sqlx::test]
-    async fn confidential_to_accounts_filter_matches_prefixed_sent_recipient(
-        pool: PgPool,
-    ) -> sqlx::Result<()> {
-        let dao_id = format!("conf-list-{}.sputnik-dao.near", Uuid::new_v4());
-        let state = test_state(pool.clone()).await;
-        seed_sent_confidential_change(&pool, &dao_id, "near:bob.near").await?;
-
-        let included = fetch_balance_change_legs(
-            &state,
-            &test_params(&dao_id, Some(vec!["bob.near".to_string()]), None),
+        let now = chrono::Utc::now();
+        let deposit_address = format!("deposit-{}", Uuid::new_v4());
+        let event_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO bronze_confidential_history_events (
+                account_id, created_at_external, deposit_address, status,
+                deposit_type, recipient_type, recipient, origin_asset,
+                destination_asset, raw_payload
+            )
+            VALUES ($1, $2, $3, 'SUCCESS',
+                'CONFIDENTIAL_INTENTS', 'CONFIDENTIAL_INTENTS', $1,
+                'nep141:usdc.near', 'nep141:usdc.near', '{}'::jsonb
+            )
+            RETURNING id
+            "#,
         )
-        .await
-        .expect("prefixed recipient should be queryable by plain account");
-        assert_eq!(included.len(), 1);
+        .bind(dao_id)
+        .bind(now)
+        .bind(&deposit_address)
+        .fetch_one(pool)
+        .await?;
 
-        let excluded = fetch_balance_change_legs(
-            &state,
-            &test_params(&dao_id, None, Some(vec!["bob.near".to_string()])),
+        let balance_before = BigDecimal::from(10);
+        let balance_after = BigDecimal::from_str("9.6").expect("valid decimal");
+        sqlx::query(
+            r#"
+            INSERT INTO gold_confidential_history_events (
+                history_event_id, dao_id, transaction_type,
+                origin_asset, destination_asset, amount_in, amount_out,
+                destination_balance_before, destination_balance_after,
+                recipient, refund_to, counterparty, deposit_address,
+                quote_created_at, executed_at, block_time
+            )
+            VALUES (
+                $1, $2, 'deposit',
+                'nep141:usdc.near', 'nep141:usdc.near', 1, 0.6,
+                $3, $4,
+                $2, $2, 'intents.near', $5,
+                $6, $6, $6
+            )
+            "#,
         )
-        .await
-        .expect("prefixed recipient should be excludable by plain account");
-        assert!(excluded.is_empty());
+        .bind(event_id)
+        .bind(dao_id)
+        .bind(&balance_before)
+        .bind(&balance_after)
+        .bind(&deposit_address)
+        .bind(now)
+        .execute(pool)
+        .await?;
 
         Ok(())
     }
 
+    #[test]
+    fn normalize_account_filter_values_strips_near_prefix() {
+        let values = normalize_account_filter_values(&["near:bob.near".to_string()]);
+        assert_eq!(values, vec!["bob.near".to_string()]);
+    }
+
+    #[test]
+    fn normalize_account_filter_values_keeps_bare_near() {
+        let values = normalize_account_filter_values(&["bob.near".to_string()]);
+        assert_eq!(values, vec!["bob.near".to_string()]);
+    }
+
+    #[test]
+    fn normalize_account_filter_values_strips_cross_chain_prefix() {
+        let values = normalize_account_filter_values(&["arb:0xabc".to_string()]);
+        assert_eq!(values, vec!["0xabc".to_string()]);
+    }
+
     #[sqlx::test]
-    async fn confidential_to_accounts_filter_keeps_unprefixed_sent_recipient(
+    async fn confidential_to_accounts_filter_matches_bare_sent_recipient(
         pool: PgPool,
     ) -> sqlx::Result<()> {
         let dao_id = format!("conf-list-{}.sputnik-dao.near", Uuid::new_v4());
@@ -730,16 +766,55 @@ mod tests {
             &test_params(&dao_id, Some(vec!["bob.near".to_string()]), None),
         )
         .await
-        .expect("unprefixed recipient should still match plain account");
+        .expect("bare filter should match bare gold recipient");
         assert_eq!(included.len(), 1);
+
+        let included_prefixed = fetch_balance_change_legs(
+            &state,
+            &test_params(&dao_id, Some(vec!["near:bob.near".to_string()]), None),
+        )
+        .await
+        .expect("prefixed filter should normalize to bare gold recipient");
+        assert_eq!(included_prefixed.len(), 1);
 
         let excluded = fetch_balance_change_legs(
             &state,
             &test_params(&dao_id, None, Some(vec!["bob.near".to_string()])),
         )
         .await
-        .expect("unprefixed recipient should still be excluded by plain account");
+        .expect("bare filter should exclude bare gold recipient");
         assert!(excluded.is_empty());
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn confidential_deposit_amount_matches_balance_delta_not_gross_out(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        use std::str::FromStr;
+
+        let dao_id = format!("conf-list-{}.sputnik-dao.near", Uuid::new_v4());
+        let state = test_state(pool.clone()).await;
+        seed_same_asset_fee_deposit(&pool, &dao_id).await?;
+
+        let legs = fetch_balance_change_legs(&state, &test_params(&dao_id, None, None))
+            .await
+            .expect("deposit leg should load");
+        assert_eq!(legs.len(), 1);
+
+        let leg = &legs[0];
+        let expected = BigDecimal::from_str("-0.4").expect("valid decimal");
+        assert_eq!(leg.amount, expected);
+        assert_eq!(
+            leg.amount,
+            &leg.balance_after - &leg.balance_before,
+            "amount must equal balance_after - balance_before"
+        );
+        assert!(
+            leg.amount < BigDecimal::from_str("0.6").expect("valid decimal"),
+            "gross amount_out must not be surfaced when net balance decreased"
+        );
 
         Ok(())
     }

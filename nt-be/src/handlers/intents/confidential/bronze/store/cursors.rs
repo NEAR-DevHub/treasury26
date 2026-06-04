@@ -3,30 +3,30 @@ use sqlx::PgPool;
 
 use super::models::HistoryCursor;
 
-const HOT_POLL_DELAY_SECS: i64 = 30;
-const RECENT_POLL_DELAY_SECS: i64 = 120;
-const WARM_POLL_DELAY_SECS: i64 = 600;
-const INACTIVE_POLL_DELAY_SECS: i64 = 3600;
+const HOT_POLL_DELAY: Duration = Duration::seconds(30);
+const RECENT_POLL_DELAY: Duration = Duration::seconds(120);
+const WARM_POLL_DELAY: Duration = Duration::seconds(600);
+const INACTIVE_POLL_DELAY: Duration = Duration::seconds(3600);
 
-pub(crate) fn confidential_history_next_poll_delay_secs(
+pub(crate) fn confidential_history_next_poll_delay(
     had_history_changes: bool,
     last_confidential_activity_at: Option<DateTime<Utc>>,
     now: DateTime<Utc>,
-) -> i64 {
+) -> Duration {
     if had_history_changes {
-        return HOT_POLL_DELAY_SECS;
+        return HOT_POLL_DELAY;
     }
 
     let Some(last_activity_at) = last_confidential_activity_at else {
-        return INACTIVE_POLL_DELAY_SECS;
+        return INACTIVE_POLL_DELAY;
     };
 
     if last_activity_at > now - Duration::hours(2) {
-        RECENT_POLL_DELAY_SECS
+        RECENT_POLL_DELAY
     } else if last_activity_at > now - Duration::hours(48) {
-        WARM_POLL_DELAY_SECS
+        WARM_POLL_DELAY
     } else {
-        INACTIVE_POLL_DELAY_SECS
+        INACTIVE_POLL_DELAY
     }
 }
 
@@ -43,10 +43,8 @@ pub async fn load_history_cursor(
             backfill_done,
             next_poll_at,
             last_polled_at,
-            last_confidential_activity_at,
-            gold_dirty_since,
-            gold_recompute_from
-        FROM confidential_history_cursors
+            last_confidential_activity_at
+        FROM bronze_confidential_history_cursors
         WHERE account_id = $1
         "#,
     )
@@ -65,7 +63,7 @@ pub async fn save_latest_page_cursor(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        INSERT INTO confidential_history_cursors (
+        INSERT INTO bronze_confidential_history_cursors (
             account_id,
             forward_cursor,
             last_polled_at,
@@ -75,7 +73,7 @@ pub async fn save_latest_page_cursor(
         ON CONFLICT (account_id) DO UPDATE SET
             forward_cursor = COALESCE(
                 EXCLUDED.forward_cursor,
-                confidential_history_cursors.forward_cursor
+                bronze_confidential_history_cursors.forward_cursor
             ),
             last_polled_at = NOW(),
             updated_at = NOW()
@@ -99,7 +97,7 @@ pub async fn save_backfill_progress(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        INSERT INTO confidential_history_cursors (
+        INSERT INTO bronze_confidential_history_cursors (
             account_id,
             forward_cursor,
             backward_cursor,
@@ -110,11 +108,11 @@ pub async fn save_backfill_progress(
         ON CONFLICT (account_id) DO UPDATE SET
             forward_cursor = COALESCE(
                 EXCLUDED.forward_cursor,
-                confidential_history_cursors.forward_cursor
+                bronze_confidential_history_cursors.forward_cursor
             ),
             backward_cursor = COALESCE(
                 EXCLUDED.backward_cursor,
-                confidential_history_cursors.backward_cursor
+                bronze_confidential_history_cursors.backward_cursor
             ),
             last_polled_at = NOW(),
             updated_at = NOW()
@@ -135,7 +133,7 @@ pub async fn mark_history_backfill_done(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        INSERT INTO confidential_history_cursors (
+        INSERT INTO bronze_confidential_history_cursors (
             account_id,
             backfill_done,
             updated_at
@@ -162,7 +160,7 @@ pub async fn record_confidential_history_poll_result(
     let current_last_activity_at = sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
         r#"
         SELECT last_confidential_activity_at
-        FROM confidential_history_cursors
+        FROM bronze_confidential_history_cursors
         WHERE account_id = $1
         "#,
     )
@@ -176,16 +174,16 @@ pub async fn record_confidential_history_poll_result(
     } else {
         current_last_activity_at
     };
-    let delay_secs = confidential_history_next_poll_delay_secs(
+    let delay = confidential_history_next_poll_delay(
         had_history_changes,
         last_confidential_activity_at,
         now,
     );
-    let next_poll_at = now + Duration::seconds(delay_secs);
+    let next_poll_at = now + delay;
 
     sqlx::query(
         r#"
-        INSERT INTO confidential_history_cursors (
+        INSERT INTO bronze_confidential_history_cursors (
             account_id,
             last_confidential_activity_at,
             next_poll_at,
@@ -215,7 +213,7 @@ pub async fn mark_confidential_history_activity_due(
 
     sqlx::query(
         r#"
-        INSERT INTO confidential_history_cursors (
+        INSERT INTO bronze_confidential_history_cursors (
             account_id,
             last_confidential_activity_at,
             next_poll_at,
@@ -258,7 +256,7 @@ pub async fn load_due_confidential_history_accounts(
         r#"
         SELECT ma.account_id
         FROM monitored_accounts ma
-        LEFT JOIN confidential_history_cursors chc
+        LEFT JOIN bronze_confidential_history_cursors chc
           ON chc.account_id = ma.account_id
         WHERE ma.enabled = true
           AND ma.is_confidential_account = true
@@ -287,28 +285,24 @@ mod tests {
             .with_timezone(&Utc);
 
         assert_eq!(
-            confidential_history_next_poll_delay_secs(true, None, now),
-            HOT_POLL_DELAY_SECS
+            confidential_history_next_poll_delay(true, None, now),
+            HOT_POLL_DELAY
         );
         assert_eq!(
-            confidential_history_next_poll_delay_secs(
-                false,
-                Some(now - Duration::minutes(30)),
-                now
-            ),
-            RECENT_POLL_DELAY_SECS
+            confidential_history_next_poll_delay(false, Some(now - Duration::minutes(30)), now),
+            RECENT_POLL_DELAY
         );
         assert_eq!(
-            confidential_history_next_poll_delay_secs(false, Some(now - Duration::hours(12)), now),
-            WARM_POLL_DELAY_SECS
+            confidential_history_next_poll_delay(false, Some(now - Duration::hours(12)), now),
+            WARM_POLL_DELAY
         );
         assert_eq!(
-            confidential_history_next_poll_delay_secs(false, Some(now - Duration::hours(72)), now),
-            INACTIVE_POLL_DELAY_SECS
+            confidential_history_next_poll_delay(false, Some(now - Duration::hours(72)), now),
+            INACTIVE_POLL_DELAY
         );
         assert_eq!(
-            confidential_history_next_poll_delay_secs(false, None, now),
-            INACTIVE_POLL_DELAY_SECS
+            confidential_history_next_poll_delay(false, None, now),
+            INACTIVE_POLL_DELAY
         );
     }
 }

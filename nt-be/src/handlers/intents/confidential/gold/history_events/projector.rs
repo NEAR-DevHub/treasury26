@@ -3,13 +3,14 @@ use std::collections::HashSet;
 use futures::StreamExt;
 use sqlx::PgPool;
 
-use super::classify::project_row;
+use super::convert::bronze_to_gold;
 use super::models::{DaoProjectionStats, ProjectionCycleStats};
 use super::repository::{
-    clear_gold_dirty_if_not_advanced, clear_projection_error, delete_stale_gold_rows,
-    earliest_success_for_dao, has_gold_before, load_bronze_suffix, load_dirty_daos,
-    seed_ledger_before, upsert_projection, upsert_projection_error,
+    clear_projection_error, delete_stale_gold_rows, earliest_success_for_dao, has_gold_before,
+    load_bronze_suffix, load_dirty_daos, seed_ledger_before, upsert_projection,
+    upsert_projection_error,
 };
+use crate::handlers::intents::confidential::gold::cursors::clear_gold_dirty_if_not_advanced;
 
 pub async fn project_confidential_gold_for_dao(
     pool: &PgPool,
@@ -38,7 +39,7 @@ pub async fn project_confidential_gold_for_dao(
     >(
         r#"
         SELECT gold_dirty_since, gold_recompute_from
-        FROM confidential_history_cursors
+        FROM gold_confidential_history_cursors
         WHERE account_id = $1
           AND gold_dirty_since IS NOT NULL
         FOR UPDATE
@@ -80,7 +81,7 @@ pub async fn project_confidential_gold_for_dao(
     let mut preserve_ids: HashSet<i64> = HashSet::new();
 
     for row in rows {
-        match project_row(&row, &mut ledger) {
+        match bronze_to_gold(&row, &mut ledger) {
             Ok(Some(projected)) => {
                 preserve_ids.insert(projected.history_event_id);
                 upsert_projection(&mut tx, &projected).await?;

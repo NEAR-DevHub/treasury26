@@ -4,6 +4,9 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::sync::Arc;
 
+use crate::handlers::intents::confidential::types::{
+    as_near_account, ConfidentialQuoteMetadata,
+};
 use crate::{AppState, auth::AuthUser};
 
 /// Request body for generating an intent to sign.
@@ -39,10 +42,15 @@ pub async fn generate_intent(
     auth_user: AuthUser,
     Json(request): Json<GenerateIntentRequest>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let dao_id: AccountId = request
-        .signer_id
-        .strip_prefix("near:")
-        .unwrap_or(&request.signer_id)
+    // signerId is the intents identifier `near:dao.sputnik-dao.near`; resolve it to
+    // the bare NEAR account used for auth, JWT and on-chain calls.
+    let dao_id: AccountId = as_near_account(&request.signer_id)
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                format!("signer_id '{}' is not a NEAR account", request.signer_id),
+            )
+        })?
         .parse()
         .map_err(|e: near_account_id::ParseAccountError| {
             (
@@ -52,19 +60,22 @@ pub async fn generate_intent(
         })?;
     auth_user.verify_can_add_proposal(&state, &dao_id).await?;
 
-    // Extract deposit_address from quote_metadata.quote.depositAddress
-    let deposit_address = request
-        .quote_metadata
-        .get("quote")
-        .and_then(|q| q.get("depositAddress"))
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-        .ok_or_else(|| {
+    let quote_meta = ConfidentialQuoteMetadata::from_value(&request.quote_metadata).ok_or_else(
+        || {
+            (
+                StatusCode::BAD_REQUEST,
+                "quote_metadata must be valid JSON with quote.depositAddress".to_string(),
+            )
+        },
+    )?;
+    let deposit_address = quote_meta.deposit_address().map(|s| s.to_string()).ok_or_else(
+        || {
             (
                 StatusCode::BAD_REQUEST,
                 "quote_metadata.quote.depositAddress is required".to_string(),
             )
-        })?;
+        },
+    )?;
 
     log::info!(
         "generate_intent called: type={}, signerId={}",
@@ -121,11 +132,7 @@ pub async fn generate_intent(
     }
 
     // Store the intent payload for auto-submission after DAO proposal approval.
-    // The signer_id format is "near:dao.sputnik-dao.near" or just "dao.sputnik-dao.near".
-    let dao_id = request
-        .signer_id
-        .strip_prefix("near:")
-        .unwrap_or(&request.signer_id);
+    let dao_id = dao_id.as_str();
     if let Some(payload) = response_body.get("intent").and_then(|i| i.get("payload")) {
         let correlation_id = response_body.get("correlationId").and_then(|v| v.as_str());
 

@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration as StdDuration;
 
 use bigdecimal::{BigDecimal, Zero};
 use chrono::{Duration, Utc};
@@ -11,11 +12,11 @@ use super::repository::{
 use crate::AppState;
 use crate::constants::intents_tokens::get_defuse_tokens_map;
 use crate::handlers::intents::confidential::balances::fetch_confidential_balances;
-use crate::handlers::intents::confidential::history_store::load_confidential_history_accounts;
+use crate::handlers::intents::confidential::bronze::store::load_confidential_history_accounts;
 
-pub const HOURLY_SNAPSHOT_CRON_TICK_SECS: u64 = 3600;
+pub const HOURLY_SNAPSHOT_CRON_TICK: StdDuration = StdDuration::from_secs(3600);
 
-const SNAPSHOT_DEDUP_WINDOW_SECS: i64 = 3300;
+const SNAPSHOT_DEDUP_WINDOW: Duration = Duration::seconds(3300);
 
 /// Write a snapshot row per non-zero asset plus zero tombstones for any asset
 /// that was present in the prior snapshot but absent now. Transport errors are
@@ -151,7 +152,7 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &AppState) {
         }
     };
 
-    let dedup_cutoff = Utc::now() - Duration::seconds(SNAPSHOT_DEDUP_WINDOW_SECS);
+    let dedup_cutoff = Utc::now() - SNAPSHOT_DEDUP_WINDOW;
 
     for dao_id in dao_ids {
         match latest_snapshot_at(&state.db_pool, &dao_id).await {
@@ -182,13 +183,11 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &AppState) {
 pub fn spawn_confidential_snapshot_worker(state: Arc<AppState>) {
     tokio::spawn(async move {
         log::info!(
-            "Starting confidential balance snapshot cron ({}s tick)",
-            HOURLY_SNAPSHOT_CRON_TICK_SECS
+            "Starting confidential balance snapshot cron ({:?} tick)",
+            HOURLY_SNAPSHOT_CRON_TICK
         );
 
-        let mut timer = tokio::time::interval(std::time::Duration::from_secs(
-            HOURLY_SNAPSHOT_CRON_TICK_SECS,
-        ));
+        let mut timer = tokio::time::interval(HOURLY_SNAPSHOT_CRON_TICK);
         timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         loop {
             timer.tick().await;
@@ -230,7 +229,7 @@ mod tests {
         let dao_id = std::env::var("CONFIDENTIAL_HISTORY_TEST_DAO")
             .unwrap_or_else(|_| "tobi.sputnik-dao.near".to_string());
 
-        sqlx::query("DELETE FROM confidential_balance_snapshots WHERE dao_id = $1")
+        sqlx::query("DELETE FROM gold_confidential_balance_snapshots WHERE dao_id = $1")
             .bind(&dao_id)
             .execute(&state.db_pool)
             .await
@@ -239,7 +238,7 @@ mod tests {
         let baseline_at = chrono::Utc::now() - chrono::Duration::hours(2);
         sqlx::query(
             r#"
-            INSERT INTO confidential_balance_snapshots
+            INSERT INTO gold_confidential_balance_snapshots
                 (dao_id, asset, snapshot_at, raw_balance, balance)
             VALUES
                 ($1, $2, $3, $4, $5),
@@ -261,7 +260,7 @@ mod tests {
         let new_rows: Vec<(String, BigDecimal)> = sqlx::query_as(
             r#"
             SELECT asset, balance
-            FROM confidential_balance_snapshots
+            FROM gold_confidential_balance_snapshots
             WHERE dao_id = $1 AND snapshot_at > $2
             ORDER BY asset
             "#,
