@@ -20,7 +20,10 @@ use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, SwapInfo};
 
 /// Normalize client account filters to bare form for exact SQL match against gold.
 fn normalize_account_filter_values(accounts: &[String]) -> Vec<String> {
-    accounts.iter().map(|account| bare_account(account)).collect()
+    accounts
+        .iter()
+        .map(|account| bare_account(account))
+        .collect()
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -426,10 +429,8 @@ impl LegRow {
                 })
             }
             "deposit" => {
-                let balance_before =
-                    destination_balance_before.unwrap_or_else(BigDecimal::zero);
-                let balance_after =
-                    destination_balance_after.unwrap_or_else(BigDecimal::zero);
+                let balance_before = destination_balance_before.unwrap_or_else(BigDecimal::zero);
+                let balance_after = destination_balance_after.unwrap_or_else(BigDecimal::zero);
                 // Match gold ledger delta (amount_out - amount_in for same-asset fees), not
                 // gross amount_out — keeps amount = balance_after - balance_before.
                 let amount = &balance_after - &balance_before;
@@ -570,7 +571,6 @@ fn resolve_swap_metadata(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -675,10 +675,7 @@ mod tests {
     }
 
     /// Same-asset deposit with fees: gold ledger uses net (out - in), not gross out.
-    async fn seed_same_asset_fee_deposit(
-        pool: &PgPool,
-        dao_id: &str,
-    ) -> Result<(), sqlx::Error> {
+    async fn seed_same_asset_fee_deposit(pool: &PgPool, dao_id: &str) -> Result<(), sqlx::Error> {
         use std::str::FromStr;
 
         let now = chrono::Utc::now();

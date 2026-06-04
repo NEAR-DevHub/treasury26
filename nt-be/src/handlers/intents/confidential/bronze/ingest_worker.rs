@@ -6,11 +6,6 @@ use near_account_id::AccountIdRef;
 use reqwest::StatusCode;
 
 use crate::AppState;
-use crate::handlers::intents::confidential::gold::history_events::{
-    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS, project_confidential_gold_for_dao,
-    project_confidential_gold_for_dirty_daos,
-};
-use crate::handlers::intents::confidential::gold::snapshots::snapshot_confidential_dao_balances;
 use crate::handlers::intents::confidential::bronze::api::fetch_history;
 use crate::handlers::intents::confidential::bronze::store::{
     load_due_confidential_history_accounts, load_history_cursor,
@@ -18,6 +13,11 @@ use crate::handlers::intents::confidential::bronze::store::{
     record_confidential_history_poll_result, save_backfill_progress, save_latest_page_cursor,
     upsert_history_events,
 };
+use crate::handlers::intents::confidential::gold::history_events::{
+    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS, project_confidential_gold_for_dao,
+    project_confidential_gold_for_dirty_daos,
+};
+use crate::handlers::intents::confidential::gold::snapshots::snapshot_confidential_dao_balances;
 
 pub const CONFIDENTIAL_HISTORY_SCHEDULER_TICK: Duration = Duration::from_secs(10);
 pub const CONFIDENTIAL_HISTORY_TRIGGER_LIMIT: u32 = 50;

@@ -6,7 +6,7 @@ use sqlx::PgPool;
 
 use super::cursors::mark_backfilled_confidential_daos_gold_dirty;
 use super::history_events::{
-    project_confidential_gold_for_dirty_daos, CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,
+    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS, project_confidential_gold_for_dirty_daos,
 };
 
 pub const CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(86_400);

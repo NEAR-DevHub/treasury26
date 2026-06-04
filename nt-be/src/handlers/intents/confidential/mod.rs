@@ -12,9 +12,10 @@ pub mod gold;
 pub mod prepare_auth;
 pub mod types;
 
+pub use bronze::store::link_intent_to_history_event;
 pub use bronze::{
-    fetch_history, fetch_history_with_token, spawn_confidential_history_worker,
-    trigger_confidential_history_refresh, HistoryEvent, HistoryPage,
+    HistoryEvent, HistoryPage, fetch_history, fetch_history_with_token,
+    spawn_confidential_history_worker, trigger_confidential_history_refresh,
 };
 pub use gold::{
     get_confidential_balance_chart, mark_gold_dirty_for_history_event, mark_gold_dirty_tx,
@@ -22,8 +23,7 @@ pub use gold::{
     snapshot_confidential_dao_balances, spawn_confidential_gold_reconciliation_worker,
     spawn_confidential_snapshot_worker,
 };
-pub use types::{bare_account, accounts_equal, is_near_account, ConfidentialTxType, HistoryStatus};
-pub use bronze::store::link_intent_to_history_event;
+pub use types::{ConfidentialTxType, HistoryStatus, accounts_equal, bare_account, is_near_account};
 
 /// Request body for authenticating a DAO with the 1Click confidential intents API.
 /// The signed data is a NEP-413 signature over an empty-intents auth payload,

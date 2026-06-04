@@ -378,16 +378,17 @@ async fn link_intent_matches_after_quote_metadata_canonicalized() {
         .await
         .expect("bronze upsert should succeed");
 
-    let quote_metadata = crate::handlers::intents::confidential::types::normalize_quote_metadata_accounts(
-        serde_json::json!({
-            "quote": { "depositAddress": event.item.deposit_address },
-            "quoteRequest": {
-                "recipient": account_id,
-                "recipientType": "CONFIDENTIAL_INTENTS",
-                "destinationAsset": event.item.destination_asset
-            }
-        }),
-    );
+    let quote_metadata =
+        crate::handlers::intents::confidential::types::normalize_quote_metadata_accounts(
+            serde_json::json!({
+                "quote": { "depositAddress": event.item.deposit_address },
+                "quoteRequest": {
+                    "recipient": account_id,
+                    "recipientType": "CONFIDENTIAL_INTENTS",
+                    "destinationAsset": event.item.destination_asset
+                }
+            }),
+        );
 
     sqlx::query(
         r#"
@@ -422,8 +423,7 @@ async fn link_intent_matches_cross_chain_destination_recipient() {
     let account_id = format!("test-cross-chain-{}.near", uuid::Uuid::new_v4());
     let payload_hash = uuid::Uuid::new_v4().simple().to_string();
     let evm_recipient = "0xabc1234567890abcdef";
-    let destination_asset =
-        "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near";
+    let destination_asset = "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near";
 
     let mut event = sample_history_event();
     event.item.deposit_address = format!("deposit-{}", uuid::Uuid::new_v4());
@@ -449,17 +449,18 @@ async fn link_intent_matches_cross_chain_destination_recipient() {
         .await
         .expect("bronze upsert should succeed");
 
-    let quote_metadata = crate::handlers::intents::confidential::types::normalize_quote_metadata_accounts(
-        serde_json::json!({
-            "quote": { "depositAddress": event.item.deposit_address },
-            "quoteRequest": {
-                "recipient": evm_recipient,
-                "recipientType": "DESTINATION_CHAIN",
-                "originAsset": "nep141:wrap.near",
-                "destinationAsset": destination_asset
-            }
-        }),
-    );
+    let quote_metadata =
+        crate::handlers::intents::confidential::types::normalize_quote_metadata_accounts(
+            serde_json::json!({
+                "quote": { "depositAddress": event.item.deposit_address },
+                "quoteRequest": {
+                    "recipient": evm_recipient,
+                    "recipientType": "DESTINATION_CHAIN",
+                    "originAsset": "nep141:wrap.near",
+                    "destinationAsset": destination_asset
+                }
+            }),
+        );
 
     sqlx::query(
         r#"

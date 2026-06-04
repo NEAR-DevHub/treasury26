@@ -101,7 +101,10 @@ pub(crate) struct BronzeProjectionRow {
 pub struct GoldProjector;
 
 impl GoldProjector {
-    pub async fn project_dao(pool: &PgPool, dao_id: &str) -> Result<DaoProjectionStats, sqlx::Error> {
+    pub async fn project_dao(
+        pool: &PgPool,
+        dao_id: &str,
+    ) -> Result<DaoProjectionStats, sqlx::Error> {
         super::projector::project_confidential_gold_for_dao(pool, dao_id).await
     }
 

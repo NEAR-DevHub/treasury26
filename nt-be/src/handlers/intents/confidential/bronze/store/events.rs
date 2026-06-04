@@ -5,8 +5,8 @@ use super::linking::link_history_event_to_intent_tx;
 use super::models::{
     HistoryEventUpsertOutcome, HistoryEventUpsertState, HistoryUpsertResult, min_datetime,
 };
-use crate::handlers::intents::confidential::gold::cursors::mark_gold_dirty_tx;
 use crate::handlers::intents::confidential::bronze::api::HistoryEvent;
+use crate::handlers::intents::confidential::gold::cursors::mark_gold_dirty_tx;
 use crate::handlers::intents::confidential::types::bare_account;
 
 pub async fn upsert_history_events(
@@ -21,10 +21,7 @@ pub async fn upsert_history_events(
         let item = &event.item;
         result.rows_touched += 1;
 
-        let recipient = item
-            .recipient
-            .as_deref()
-            .map(bare_account);
+        let recipient = item.recipient.as_deref().map(bare_account);
 
         let changed_row = sqlx::query_as::<_, (i64, DateTime<Utc>, bool)>(
             r#"

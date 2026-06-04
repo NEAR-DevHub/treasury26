@@ -6,17 +6,13 @@
 use std::fmt;
 
 fn looks_like_near_account(value: &str) -> bool {
-    value.ends_with(".near")
-        || value.ends_with(".testnet")
-        || value.ends_with(".tg")
+    value.ends_with(".near") || value.ends_with(".testnet") || value.ends_with(".tg")
 }
 
 /// Strip a leading `chain:` prefix if present; otherwise return the input unchanged.
 pub fn bare_account(value: &str) -> String {
     match value.split_once(':') {
-        Some((chain, account)) if !chain.is_empty() && !account.is_empty() => {
-            account.to_string()
-        }
+        Some((chain, account)) if !chain.is_empty() && !account.is_empty() => account.to_string(),
         _ => value.to_string(),
     }
 }
@@ -87,7 +83,10 @@ mod tests {
     #[test]
     fn as_near_account_accepts_bare_and_prefixed() {
         assert_eq!(as_near_account("bob.near").as_deref(), Some("bob.near"));
-        assert_eq!(as_near_account("near:bob.near").as_deref(), Some("bob.near"));
+        assert_eq!(
+            as_near_account("near:bob.near").as_deref(),
+            Some("bob.near")
+        );
         assert_eq!(as_near_account("eth:0xabc"), None);
     }
 

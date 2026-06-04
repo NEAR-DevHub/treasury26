@@ -10,8 +10,7 @@ use crate::{
     constants::V1_SIGNER_CONTRACT_ID,
     handlers::intents::confidential::{
         bronze::ingest_worker::trigger_confidential_history_refresh,
-        gold::history_events::refresh_gold_metadata_for_intent,
-        link_intent_to_history_event,
+        gold::history_events::refresh_gold_metadata_for_intent, link_intent_to_history_event,
         types::normalize_quote_metadata_accounts,
     },
     utils::cache::CacheKey,

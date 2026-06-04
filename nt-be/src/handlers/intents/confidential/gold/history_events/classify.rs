@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use super::models::{BronzeProjectionRow, GoldHistoryEvent};
 use crate::handlers::intents::confidential::types::{
-    bare_account, is_near_account, ConfidentialTxType, DepositType, HistoryApiItem,
+    ConfidentialTxType, DepositType, HistoryApiItem, bare_account, is_near_account,
 };
 
 enum Classification {
@@ -42,8 +42,7 @@ fn resolve_account(
     payload: &Value,
     field: &str,
 ) -> Result<String, String> {
-    let raw = coalesce_str(stored, payload, field)
-        .ok_or_else(|| format!("missing {field}"))?;
+    let raw = coalesce_str(stored, payload, field).ok_or_else(|| format!("missing {field}"))?;
     Ok(bare_account(&raw))
 }
 
@@ -108,16 +107,15 @@ pub(crate) fn project_row(
     ledger: &mut HashMap<String, BigDecimal>,
 ) -> Result<Option<GoldHistoryEvent>, String> {
     let dao_id = row.account_id.clone();
-    let origin_asset_opt =
-        coalesce_str(row.origin_asset.as_ref(), &row.raw_payload, "originAsset");
+    let origin_asset_opt = coalesce_str(row.origin_asset.as_ref(), &row.raw_payload, "originAsset");
     let destination_asset_opt = coalesce_str(
         Some(&row.destination_asset),
         &row.raw_payload,
         "destinationAsset",
     );
     let recipient = resolve_account(row.recipient.as_ref(), &row.raw_payload, "recipient")?;
-    let destination_asset = destination_asset_opt
-        .ok_or_else(|| "missing destinationAsset".to_string())?;
+    let destination_asset =
+        destination_asset_opt.ok_or_else(|| "missing destinationAsset".to_string())?;
     let origin_asset = origin_asset_opt;
     let deposit_address = coalesce_str(
         Some(&row.deposit_address),
@@ -367,7 +365,12 @@ mod tests {
     #[test]
     fn test_classification_rules() {
         assert!(matches!(
-            classify("dao.near", recipient("external.near").as_str(), None, "nep141:wrap.near"),
+            classify(
+                "dao.near",
+                recipient("external.near").as_str(),
+                None,
+                "nep141:wrap.near"
+            ),
             Classification::Skip
         ));
         assert!(matches!(
@@ -389,7 +392,12 @@ mod tests {
             Classification::Project(ConfidentialTxType::Exchange)
         ));
         assert!(matches!(
-            classify("dao.near", recipient("dao.near").as_str(), None, "nep141:wrap.near"),
+            classify(
+                "dao.near",
+                recipient("dao.near").as_str(),
+                None,
+                "nep141:wrap.near"
+            ),
             Classification::Project(ConfidentialTxType::Deposit)
         ));
     }

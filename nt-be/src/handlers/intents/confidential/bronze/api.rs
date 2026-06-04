@@ -11,9 +11,7 @@ use serde_json::Value;
 
 use crate::AppState;
 use crate::handlers::intents::confidential::refresh_dao_jwt;
-use crate::handlers::intents::confidential::types::{
-    HistoryApiEvent, HistoryApiItem,
-};
+use crate::handlers::intents::confidential::types::{HistoryApiEvent, HistoryApiItem};
 
 const DEFAULT_HISTORY_BASE_URL: &str = "https://q8v3n6.defuse.org";
 

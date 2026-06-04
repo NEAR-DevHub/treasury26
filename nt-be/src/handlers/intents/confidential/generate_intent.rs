@@ -4,9 +4,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::sync::Arc;
 
-use crate::handlers::intents::confidential::types::{
-    as_near_account, ConfidentialQuoteMetadata,
-};
+use crate::handlers::intents::confidential::types::{ConfidentialQuoteMetadata, as_near_account};
 use crate::{AppState, auth::AuthUser};
 
 /// Request body for generating an intent to sign.
@@ -60,22 +58,22 @@ pub async fn generate_intent(
         })?;
     auth_user.verify_can_add_proposal(&state, &dao_id).await?;
 
-    let quote_meta = ConfidentialQuoteMetadata::from_value(&request.quote_metadata).ok_or_else(
-        || {
+    let quote_meta =
+        ConfidentialQuoteMetadata::from_value(&request.quote_metadata).ok_or_else(|| {
             (
                 StatusCode::BAD_REQUEST,
                 "quote_metadata must be valid JSON with quote.depositAddress".to_string(),
             )
-        },
-    )?;
-    let deposit_address = quote_meta.deposit_address().map(|s| s.to_string()).ok_or_else(
-        || {
+        })?;
+    let deposit_address = quote_meta
+        .deposit_address()
+        .map(|s| s.to_string())
+        .ok_or_else(|| {
             (
                 StatusCode::BAD_REQUEST,
                 "quote_metadata.quote.depositAddress is required".to_string(),
             )
-        },
-    )?;
+        })?;
 
     log::info!(
         "generate_intent called: type={}, signerId={}",

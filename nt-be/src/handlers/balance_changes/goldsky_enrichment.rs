@@ -18,10 +18,10 @@ use super::swap_detector::{
 use super::transfer_hints::tx_resolver::{TxActionInfo, resolve_receipt_block_height};
 use super::utils::block_timestamp_to_datetime;
 use crate::AppState;
-use crate::handlers::intents::confidential::gold::history_events::refresh_gold_metadata_for_intent;
 use crate::handlers::intents::confidential::bronze::store::{
     link_intent_to_history_event, mark_confidential_history_activity_due,
 };
+use crate::handlers::intents::confidential::gold::history_events::refresh_gold_metadata_for_intent;
 use crate::handlers::proposals::scraper::{extract_payload_hash_from_kind, fetch_proposal};
 use base64::Engine;
 use bigdecimal::Zero;
