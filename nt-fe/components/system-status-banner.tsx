@@ -20,15 +20,12 @@ export function SystemStatusBanner({
     if (!posts?.length) return null;
 
     return (
-        <div className={cn("flex flex-col gap-2", className)}>
-            {posts.map((post) => (
-                <WarningAlert
-                    className={cn(isSidebar && "flex-col gap-2")}
-                    key={post.id}
-                    title={t("underMaintenance")}
-                    message={t("maintenanceMessage")}
-                />
-            ))}
+        <div className={cn(className)}>
+            <WarningAlert
+                className={cn(isSidebar && "flex-col gap-2", className)}
+                title={t("underMaintenance")}
+                message={t("maintenanceMessage")}
+            />
         </div>
     );
 }
