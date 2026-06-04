@@ -124,6 +124,7 @@ interface Step1Props extends StepProps {
     ensureQuoteBeforeReview?: () => Promise<boolean>;
     onAmountInput?: () => void;
     onMaxSet?: (maxAmount: string) => void;
+    onAddressBookSelectionChange?: (isFromAddressBook: boolean) => void;
 }
 
 function Step1({
@@ -135,6 +136,7 @@ function Step1({
     ensureQuoteBeforeReview,
     onAmountInput,
     onMaxSet,
+    onAddressBookSelectionChange,
 }: Step1Props) {
     const tPay = useTranslations("payments");
     const form = useFormContext<PaymentFormValues>();
@@ -239,6 +241,7 @@ function Step1({
                 isSubmitting={isFeeLoading}
                 onAmountInput={onAmountInput}
                 onMaxSet={onMaxSet}
+                onAddressBookSelectionChange={onAddressBookSelectionChange}
             />
         </PageCard>
     );
@@ -474,6 +477,32 @@ type PaymentTokenClassification = {
     tokenForIntentsQuote: Token;
 };
 
+// 1Click expects `amount` in destination-asset base units for EXACT_OUTPUT.
+// Some routes have mixed token decimals across networks (e.g. 18 vs 24), so
+// we resolve decimals from the selected destination network to avoid
+// under/over-scaling the quote request amount.
+function getDestinationAmountDecimalsForExactOutput(
+    token: Token,
+    destinationNetwork: string | undefined,
+    amountMode: IntentsAmountMode,
+    bridgeAssets: BridgeAsset[],
+): number | undefined {
+    if (
+        amountMode !== "recipient" ||
+        !destinationNetwork ||
+        isNearComNetwork(destinationNetwork)
+    ) {
+        return token.decimals;
+    }
+
+    const bridgeAsset = findBridgeAssetForToken(bridgeAssets, token);
+    const destination = bridgeAsset?.networks.find(
+        (network) => network.id === destinationNetwork,
+    );
+
+    return destination?.decimals;
+}
+
 function classifyPaymentToken(
     token: Token,
     destinationNetwork?: string,
@@ -626,6 +655,8 @@ export default function PaymentsPage() {
     // "recipient" for typed amount (exact output), "total" for MAX (exact input).
     const [intentsAmountMode, setIntentsAmountMode] =
         useState<IntentsAmountMode>("recipient");
+    const [isAddressBookRecipientSelected, setIsAddressBookRecipientSelected] =
+        useState(false);
 
     const tokenParam = searchParams.get("token");
     const preferredNetworks = useMemo(
@@ -745,6 +776,21 @@ export default function PaymentsPage() {
     const isViaIntents = isIntentsToken(quoteToken);
 
     const isCrossChainIntentsToken = isIntentsCrossChainToken(watchedToken);
+    const destinationAmountDecimals = useMemo(
+        () =>
+            getDestinationAmountDecimalsForExactOutput(
+                quoteToken,
+                watchedDestinationNetwork,
+                intentsAmountMode,
+                bridgeAssets,
+            ),
+        [
+            bridgeAssets,
+            intentsAmountMode,
+            quoteToken,
+            watchedDestinationNetwork,
+        ],
+    );
 
     // ── Live quote (drives step-1 fee preview & step-2 review) ───────────────
 
@@ -762,6 +808,7 @@ export default function PaymentsPage() {
         treasuryId,
         token: quoteToken,
         amount: watchedAmount,
+        destinationAmountDecimals,
         address: watchedAddress,
         isConfidential,
         proposalPeriod: policy?.proposal_period,
@@ -925,8 +972,21 @@ export default function PaymentsPage() {
                 ? isIntentsToken(data.token)
                 : !shouldUseDirectTransfer;
 
-            const parsedAmount = Big(data.amount)
+            const directTransferAmount = Big(data.amount)
                 .mul(Big(10).pow(data.token.decimals))
+                .toFixed();
+            const quoteAmountDecimals =
+                getDestinationAmountDecimalsForExactOutput(
+                    tokenClassification.tokenForIntentsQuote,
+                    data.destinationNetwork,
+                    intentsAmountMode,
+                    bridgeAssets,
+                );
+            if (quoteAmountDecimals === undefined) {
+                throw new Error(tPay("failed1ClickQuote"));
+            }
+            const quoteAmount = Big(data.amount)
+                .mul(Big(10).pow(quoteAmountDecimals))
                 .toFixed();
 
             let description = encodeToMarkdown({ notes: data.memo || "" });
@@ -947,7 +1007,7 @@ export default function PaymentsPage() {
                             treasuryId!,
                             tokenForQuote,
                             trimmedAddress,
-                            parsedAmount,
+                            quoteAmount,
                             isConfidential,
                             policy?.proposal_period,
                             intentsAmountMode,
@@ -1017,7 +1077,7 @@ export default function PaymentsPage() {
                 proposalKind = buildDirectTransferKind(
                     trimmedAddress,
                     data.token,
-                    parsedAmount,
+                    directTransferAmount,
                     isConfidential,
                 );
 
@@ -1041,6 +1101,7 @@ export default function PaymentsPage() {
                 proposalBond,
                 additionalTransactions,
                 proposalType: "payment",
+                addressBookPayment: isAddressBookRecipientSelected,
             })
                 .then(() => {
                     trackEvent("payment-submitted", {
@@ -1050,6 +1111,7 @@ export default function PaymentsPage() {
                     });
                     form.reset();
                     quoteRef.current = null;
+                    setIsAddressBookRecipientSelected(false);
                     setStep(0);
                     triggerPendingTour();
                 })
@@ -1088,6 +1150,8 @@ export default function PaymentsPage() {
                             setIntentsAmountMode("total");
                         }
                     },
+                    onAddressBookSelectionChange:
+                        setIsAddressBookRecipientSelected,
                 },
             },
             {

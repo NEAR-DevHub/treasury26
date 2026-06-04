@@ -300,10 +300,12 @@ fn aggregate_balance_rows(rows: &[BalanceRow]) -> Vec<AggregatedToken> {
 async fn list_all_dao_ids(pool: &PgPool) -> Result<Vec<String>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (String,)>(
         r#"
-        SELECT dao_id
-        FROM daos
-        WHERE sync_failed = false
-        ORDER BY dao_id
+        SELECT d.dao_id
+        FROM daos d
+        LEFT JOIN monitored_accounts ma ON ma.account_id = d.dao_id
+        WHERE d.sync_failed = false
+          AND COALESCE(ma.is_testing, false) = false
+        ORDER BY d.dao_id
         "#,
     )
     .fetch_all(pool)

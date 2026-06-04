@@ -3,21 +3,38 @@ import { useLocale } from "next-intl";
 import { Amount } from "../amount";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { SwapRequestData } from "../../types/index";
-import { formatDurationSeconds } from "@/lib/utils";
+import {
+    formatCurrency,
+    formatBalance,
+    formatDurationSeconds,
+    formatTokenDisplayAmount,
+} from "@/lib/utils";
 import { useMemo } from "react";
 import Big from "@/lib/big";
 import { Address } from "@/components/address";
 import { Rate } from "@/components/rate";
 import { useToken, useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
+import { useQuoteByDepositAddress } from "@/hooks/use-proposals";
 import { FormattedDate } from "@/components/formatted-date";
 import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
+import {
+    calculateExchangeFeeAmount,
+    EXCHANGE_FEE_PERCENTAGE,
+} from "@/lib/exchange-fee";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SwapExpandedProps {
     data: SwapRequestData;
+    isExecuted?: boolean;
 }
 
-function IntentsSwapExpanded({ data }: SwapExpandedProps) {
+interface NearWrapSwapExpandedProps {
+    data: SwapRequestData;
+}
+
+function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
     const t = useTranslations("proposals.expanded");
+    const tExchange = useTranslations("exchange");
     const locale = useLocale();
     // For new proposals: use token addresses from description
     // For old proposals: use search hook with symbols as fallback
@@ -43,12 +60,41 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
         data.tokenOutAddress ||
         legacyTokensData?.tokenOut?.defuseAssetId ||
         data.tokenOut;
+    const shouldLoadQuoteUsd =
+        isExecuted &&
+        !!data.depositAddress &&
+        !(data.quoteAmountInUsd && data.quoteAmountOutUsd);
+    const { data: quoteByDepositAddress } = useQuoteByDepositAddress(
+        data.depositAddress || null,
+        undefined,
+        shouldLoadQuoteUsd,
+    );
+    const sourceAmountUsdRaw =
+        data.quoteAmountInUsd ?? quoteByDepositAddress?.amountInUsd;
+    const destinationAmountUsdRaw =
+        data.quoteAmountOutUsd ?? quoteByDepositAddress?.amountOutUsd;
+    const sourceAmountUsdOverride =
+        sourceAmountUsdRaw && !Number.isNaN(Number(sourceAmountUsdRaw))
+            ? formatCurrency(Number(sourceAmountUsdRaw))
+            : null;
+    const destinationAmountUsdOverride =
+        destinationAmountUsdRaw &&
+        !Number.isNaN(Number(destinationAmountUsdRaw))
+            ? formatCurrency(Number(destinationAmountUsdRaw))
+            : null;
+    const { data: tokenInData, isLoading: isTokenInLoading } =
+        useToken(finalTokenInId);
 
     const minimumReceived = useMemo(() => {
         return Big(data.amountOut)
             .mul(Big(100 - Number(data.slippage || 0)))
             .div(100);
     }, [data.amountOut, data.slippage]);
+    const exchangeFeeAmount = useMemo(() => {
+        return calculateExchangeFeeAmount(
+            formatBalance(data.amountIn, tokenInData?.decimals || 24),
+        );
+    }, [data.amountIn, tokenInData?.decimals]);
 
     const infoItems: InfoItem[] = [
         {
@@ -58,6 +104,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
                     amount={data.amountIn}
                     showNetworkTooltip
                     tokenId={finalTokenInId}
+                    usdTextOverride={sourceAmountUsdOverride}
                 />
             ),
         },
@@ -68,6 +115,7 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
                     amountWithDecimals={data.amountOut}
                     showNetworkTooltip
                     tokenId={finalTokenOutId}
+                    usdTextOverride={destinationAmountUsdOverride}
                 />
             ),
         },
@@ -149,10 +197,22 @@ function IntentsSwapExpanded({ data }: SwapExpandedProps) {
         });
     }
 
+    expandableItems.push({
+        label: tExchange("info.exchangeFee"),
+        value: isTokenInLoading ? (
+            <Skeleton className="h-5 w-24" />
+        ) : (
+            `${EXCHANGE_FEE_PERCENTAGE}% / ${formatTokenDisplayAmount(
+                exchangeFeeAmount,
+            )} ${tokenInData?.symbol || ""}`.trim()
+        ),
+        info: tExchange("info.exchangeFeeTooltip"),
+    });
+
     return <InfoDisplay items={infoItems} expandableItems={expandableItems} />;
 }
 
-function NearWrapSwapExpanded({ data }: SwapExpandedProps) {
+function NearWrapSwapExpanded({ data }: NearWrapSwapExpandedProps) {
     const t = useTranslations("proposals.expanded");
     const locale = useLocale();
     const infoItems: InfoItem[] = [
@@ -256,10 +316,10 @@ function NearWrapSwapExpanded({ data }: SwapExpandedProps) {
     return <InfoDisplay items={infoItems} expandableItems={expandableItems} />;
 }
 
-export function SwapExpanded({ data }: SwapExpandedProps) {
+export function SwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
     switch (data.source) {
         case "exchange":
-            return <IntentsSwapExpanded data={data} />;
+            return <IntentsSwapExpanded data={data} isExecuted={isExecuted} />;
         case WRAP_NEAR_TOKEN_ID:
             return <NearWrapSwapExpanded data={data} />;
         default:

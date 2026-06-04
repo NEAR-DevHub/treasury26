@@ -40,6 +40,34 @@
         "confidentialDataTooltip": "Ваша фінансова активність є приватною та безпечною. Лише ви та ваша команда можуть отримати доступ до цієї інформації.",
         "confidentialAddressTooltip": "Активи будуть отримані на конфіденційну адресу."
     },
+    "receiptPage": {
+        "transactionConfirmation": "Підтвердження транзакції",
+        "copyLink": "Копіювати посилання",
+        "printOrSavePdf": "Друкувати або зберегти як PDF",
+        "generateReceipt": "Згенерувати PDF-квитанцію",
+        "generatedOn": "Створено {date}",
+        "receiptTitle": "Квитанція № {proposalId} від <datePart>{date}</datePart>",
+        "createYourTreasury": "Створіть свою скарбницю",
+        "createYourTreasuryDescription": "Налаштуйте за лічені секунди без комісій та виконуйте транзакції за мінімальною вартістю.",
+        "sender": "Відправник",
+        "recipient": "Одержувач",
+        "address": "Адреса",
+        "destinationNetwork": "Мережа призначення",
+        "transactionDetails": "Деталі транзакції",
+        "status": "Статус",
+        "network": "Мережа",
+        "amountWithToken": "Сума ({token})",
+        "amountUsd": "Сума (USD)",
+        "rate": "Курс",
+        "dateAndTime": "Дата та час",
+        "sentAmountWithToken": "Надіслана сума ({token})",
+        "sentNetwork": "Мережа відправлення",
+        "receiveAmountWithToken": "Отримана сума ({token})",
+        "receiveNetwork": "Мережа отримання",
+        "receiveAmountUsd": "Отримана сума (USD)",
+        "paymentConfirmation": "Підтвердження платежу",
+        "exchangeConfirmation": "Підтвердження обміну"
+    },
     "languageSwitcher": {
         "label": "Мова",
         "select": "Обрати мову",
@@ -77,7 +105,8 @@
         "wallet": "Гаманець",
         "termsOfService": "Умови використання",
         "privacyPolicy": "Політика конфіденційності",
-        "disconnect": "Відключити"
+        "disconnect": "Відключити",
+        "disconnectWallet": "Відключити Гаманець"
     },
     "auth": {
         "noWallet": "Підключіть свій гаманець",
@@ -232,6 +261,7 @@
             "networksWithAssets": "Мережі з активами",
             "yourAssets": "Ваші активи",
             "otherAssets": "Інші активи",
+            "popularAssets": "Популярні активи",
             "available": "Доступно",
             "forMembersOnly": "Лише для учасників"
         },
@@ -249,7 +279,8 @@
         "otherNetworkInfo": "Ви можете поповнити будь-яким токеном, якого немає в списку, але лише через мережу NEAR.",
         "depositAddressHeading": "Адреса депозиту",
         "depositAddressSubtitle": "Завжди двічі перевіряйте адресу депозиту.",
-        "depositAddressSubtitleConfidential": "Ця адреса депозиту одноразова і дійсна лише 3 дні. Повторне використання або надсилання після завершення терміну дії призведе до постійної втрати коштів.",
+        "depositAddressSubtitleConfidential": "<semibold>Одноразова адреса депозиту.</semibold> Повторне використання цієї адреси або надсилання коштів після завершення терміну дії може призвести до постійної втрати коштів.",
+        "depositAddressSubtitleConfidentialExpiry": "Дійсна протягом 3 днів з моменту створення. Закінчується через: залишилось {expiresIn}",
         "singleUseAcknowledgement": "Я використаю цю адресу лише один раз",
         "addressLabel": "Адреса",
         "addressCopied": "Адресу скопійовано в буфер обміну",
@@ -259,7 +290,20 @@
         "onlyDeposit": "Поповнюйте лише <symbolTag>{symbol}</symbolTag> з мережі <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Рекомендуємо спершу зробити невеликий тестовий переказ, щоб переконатись, що все працює правильно, а потім вже надсилати повну суму.",
         "minimumDeposit": "Мінімальний депозит: <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Шукати за назвою"
+        "tabs": {
+            "fromPublic": "З публічного",
+            "fromConfidential": "З конфіденційного"
+        },
+        "searchByName": "Шукати за назвою",
+        "faq": {
+            "title": "Поширені запитання",
+            "publicWalletQuestion": "Як поповнити криптовалюту з публічного гаманця?",
+            "confidentialWalletQuestion": "Як поповнити криптовалюту з конфіденційного гаманця?",
+            "fiatQuestion": "Чи можу я зробити депозит у фіаті?",
+            "fiatAnswer": "Поки що ні, але ми працюємо над тим, щоб незабаром додати фіатні депозити. Слідкуйте за оновленнями - це вже в дорозі 🚀",
+            "arrivalQuestion": "Скільки часу займає зарахування депозиту?",
+            "arrivalAnswer": "Час обробки залежить від мережі."
+        }
     },
     "assetDetails": {
         "coinPrice": "Ціна токена",
@@ -1822,12 +1866,6 @@
         "membersWhoCanVote": "Учасники, які можуть голосувати",
         "moreMembers": "+{count, plural, one {# учасник} few {# учасники} many {# учасників} other {# учасників}}"
     },
-    "accountIdInput": {
-        "minLength": "ID акаунта має містити щонайменше 2 символи",
-        "maxLength": "ID акаунта має містити менше 64 символів",
-        "charset": "ID акаунта має містити лише малі літери, цифри, крапки, дефіси та підкреслення, без роздільників на початку чи в кінці",
-        "doesNotExist": "Такого ID акаунта не існує"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Одержувача додано} few {# одержувачів додано} many {# одержувачів додано} other {# одержувачів додано}}",
         "addedSingleToast": "Одержувача додано",
@@ -2117,7 +2155,7 @@
             "suffixDemo": "погляньте на демо.",
             "suffixExploring": "продовжуйте досліджувати.",
             "createCta": "Створити скарбницю",
-            "viewDemo": "Переглянути демо",
+            "viewDemo": "Спробувати демо Trezu",
             "keepExploring": "Продовжити досліджувати"
         },
         "infoBox": {

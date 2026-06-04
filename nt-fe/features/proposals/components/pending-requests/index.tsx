@@ -22,12 +22,12 @@ import { VoteModal } from "../vote-modal";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
-import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
 import { EmptyState } from "@/components/empty-state";
 import { NotEnoughBalance } from "../not-enough-balance";
 import { FormattedDate } from "@/components/formatted-date";
 import { Policy } from "@/types/policy";
 import { extractConfidentialRequestData } from "../../utils/proposal-extractors";
+import { useRouter } from "next/navigation";
 
 const MAX_DISPLAYED_REQUESTS = 4;
 
@@ -84,7 +84,7 @@ export function PendingRequestItem({
     );
     const { accountId } = useNear();
     const isUserVoter = !!proposal.votes[accountId ?? ""];
-    let title = useMemo(() => {
+    const title = useMemo(() => {
         if (type === "Confidential Request") {
             return extractConfidentialRequestData(proposal, treasuryId).title;
         }
@@ -93,16 +93,23 @@ export function PendingRequestItem({
 
     return (
         <Link href={`/${treasuryId}/requests/${proposal.id}`}>
-            <PageCard className="flex relative flex-row gap-3.5 justify-between w-full group">
+            <PageCard className="flex relative flex-row gap-3.5 justify-between w-full overflow-hidden group">
                 <ProposalTypeIcon proposal={proposal} treasuryId={treasuryId} />
-                <div className="flex flex-col items-start w-full gap-1">
-                    <span className="leading-none font-semibold">{title}</span>
-                    <TransactionCell proposal={proposal} textOnly />
-                    <FormattedDate
+                <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+                    <span className="max-w-full truncate leading-none font-semibold">
+                        {title}
+                    </span>
+                    <TransactionCell
                         proposal={proposal}
-                        policy={policy}
-                        relative
-                        className="text-xs text-muted-foreground"
+                        textOnly
+                        subtitleSuffix={
+                            <FormattedDate
+                                proposal={proposal}
+                                policy={policy}
+                                relative
+                                className="text-xs text-muted-foreground"
+                            />
+                        }
                     />
                     <div className="gap-3 grid grid-rows-[1fr] sm:grid-rows-[0fr] pt-4 w-full sm:group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-in-out">
                         <div className="overflow-hidden w-full flex flex-col gap-2">
@@ -136,7 +143,8 @@ export function PendingRequestItem({
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 onDeposit(
-                                                    insufficientBalanceInfo.tokenSymbol,
+                                                    insufficientBalanceInfo.tokenId ||
+                                                        insufficientBalanceInfo.tokenSymbol,
                                                     insufficientBalanceInfo.tokenNetwork,
                                                 );
                                             }}
@@ -179,13 +187,9 @@ export function PendingRequests() {
     const t = useTranslations("requests.pending");
     const { accountId } = useNear();
     const { treasuryId } = useTreasury();
+    const router = useRouter();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
-    const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
-    const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{
-        tokenSymbol?: string;
-        tokenNetwork?: string;
-    }>({});
     const [voteInfo, setVoteInfo] = useState<{
         vote: "Approve" | "Reject" | "Remove";
         proposals: Proposal[];
@@ -254,11 +258,19 @@ export function PendingRequests() {
                                         setIsVoteModalOpen(true);
                                     }}
                                     onDeposit={(tokenSymbol, tokenNetwork) => {
-                                        setDepositTokenInfo({
-                                            tokenSymbol,
-                                            tokenNetwork,
-                                        });
-                                        setIsDepositModalOpen(true);
+                                        const params = new URLSearchParams();
+                                        if (tokenSymbol) {
+                                            params.set("token", tokenSymbol);
+                                        }
+                                        if (tokenNetwork) {
+                                            params.set("network", tokenNetwork);
+                                        }
+                                        const query = params.toString();
+                                        router.push(
+                                            `/${treasuryId}/dashboard/deposit${
+                                                query ? `?${query}` : ""
+                                            }`,
+                                        );
                                     }}
                                 />
                             ))}
@@ -276,12 +288,6 @@ export function PendingRequests() {
                 onClose={() => setIsVoteModalOpen(false)}
                 proposals={voteInfo.proposals}
                 vote={voteInfo.vote}
-            />
-            <DepositModal
-                isOpen={isDepositModalOpen}
-                onClose={() => setIsDepositModalOpen(false)}
-                prefillTokenSymbol={tokenSymbol}
-                prefillNetworkId={tokenNetwork}
             />
         </>
     );

@@ -40,6 +40,34 @@
         "confidentialDataTooltip": "Finansal faaliyetleriniz gizli ve güvenlidir. Bu bilgilere yalnızca siz ve ekibiniz erişebilir.",
         "confidentialAddressTooltip": "Varlıklar gizli bir adreste alınacaktır."
     },
+    "receiptPage": {
+        "transactionConfirmation": "İşlem onayı",
+        "copyLink": "Bağlantıyı Kopyala",
+        "printOrSavePdf": "Yazdır veya PDF olarak kaydet",
+        "generateReceipt": "PDF makbuzu oluştur",
+        "generatedOn": "Oluşturulma tarihi: {date}",
+        "receiptTitle": "Makbuz No. {proposalId}, tarih <datePart>{date}</datePart>",
+        "createYourTreasury": "Haznenizi Oluşturun",
+        "createYourTreasuryDescription": "Sıfır ücretle saniyeler içinde kurun ve işlemleri dolar değil, sent bazında gerçekleştirin.",
+        "sender": "Gönderen",
+        "recipient": "Alıcı",
+        "address": "Adres",
+        "destinationNetwork": "Hedef Ağ",
+        "transactionDetails": "İşlem Detayları",
+        "status": "Durum",
+        "network": "Ağ",
+        "amountWithToken": "Miktar ({token})",
+        "amountUsd": "Miktar (USD)",
+        "rate": "Kur",
+        "dateAndTime": "Tarih ve Saat",
+        "sentAmountWithToken": "Gönderilen Miktar ({token})",
+        "sentNetwork": "Gönderim Ağı",
+        "receiveAmountWithToken": "Alınan Miktar ({token})",
+        "receiveNetwork": "Alım Ağı",
+        "receiveAmountUsd": "Alınan Miktar (USD)",
+        "paymentConfirmation": "Ödeme Onayı",
+        "exchangeConfirmation": "Döviz Onayı"
+    },
     "languageSwitcher": {
         "label": "Dil",
         "select": "Dil seçin",
@@ -77,7 +105,8 @@
         "wallet": "Cüzdan",
         "termsOfService": "Hizmet Şartları",
         "privacyPolicy": "Gizlilik Politikası",
-        "disconnect": "Bağlantıyı Kes"
+        "disconnect": "Bağlantıyı Kes",
+        "disconnectWallet": "Bağlantıyı Kes Cüzdan"
     },
     "auth": {
         "noWallet": "Cüzdanınızı bağlayın",
@@ -232,6 +261,7 @@
             "networksWithAssets": "Varlıkları Olan Ağlar",
             "yourAssets": "Varlıklarınız",
             "otherAssets": "Diğer Varlıklar",
+            "popularAssets": "Popüler Varlıklar",
             "available": "Mevcut",
             "forMembersOnly": "Yalnızca Üyelere Özel"
         },
@@ -249,7 +279,8 @@
         "otherNetworkInfo": "Varlıklar arasında listelenmeyen herhangi bir token'ı yatırabilirsiniz, ancak yalnızca NEAR ağı üzerinden.",
         "depositAddressHeading": "Para Yatırma Adresi",
         "depositAddressSubtitle": "Para yatırma adresinizi her zaman iki kez kontrol edin.",
-        "depositAddressSubtitleConfidential": "Bu para yatırma adresi tek kullanımlıktır ve yalnızca 3 gün geçerlidir. Yeniden kullanılması veya süresi dolduktan sonra gönderim yapılması kalıcı fon kaybına yol açacaktır.",
+        "depositAddressSubtitleConfidential": "<semibold>Tek kullanımlık para yatırma adresi.</semibold> Bu adresin yeniden kullanılması veya süresi dolduktan sonra fon gönderilmesi kalıcı fon kaybına yol açabilir.",
+        "depositAddressSubtitleConfidentialExpiry": "Oluşturulduğu andan itibaren 3 gün geçerlidir. Sürenin dolmasına: {expiresIn} kaldı",
         "singleUseAcknowledgement": "Bu adresi yalnızca bir kez kullanacağım",
         "addressLabel": "Adres",
         "addressCopied": "Adres panoya kopyalandı",
@@ -259,7 +290,20 @@
         "onlyDeposit": "Yalnızca <networkTag>{network}</networkTag> ağından <symbolTag>{symbol}</symbolTag> yatırın.",
         "testTransactionRecommendation": "Tüm tutarı göndermeden önce her şeyin doğru çalıştığından emin olmak için küçük bir test işlemiyle başlamanızı öneririz.",
         "minimumDeposit": "Minimum para yatırma <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "İsme göre ara"
+        "tabs": {
+            "fromPublic": "Genelden",
+            "fromConfidential": "Gizliden"
+        },
+        "searchByName": "İsme göre ara",
+        "faq": {
+            "title": "SSS",
+            "publicWalletQuestion": "Herkese açık cüzdandan kripto nasıl yatırılır?",
+            "confidentialWalletQuestion": "Gizli cüzdandan kripto nasıl yatırılır?",
+            "fiatQuestion": "Fiat para ile yatırma yapabilir miyim?",
+            "fiatAnswer": "Şu anda değil, ancak yakında fiat para ile yatırma özelliğini getirmek için çalışıyoruz. Takipte kalın - yolda 🚀",
+            "arrivalQuestion": "Bir yatırmanın ulaşması ne kadar sürer?",
+            "arrivalAnswer": "İşlem süresi ağa bağlıdır."
+        }
     },
     "assetDetails": {
         "coinPrice": "Coin Fiyatı",
@@ -1822,12 +1866,6 @@
         "membersWhoCanVote": "Oy kullanabilen üyeler",
         "moreMembers": "+{count, plural, one {# üye} other {# üye}}"
     },
-    "accountIdInput": {
-        "minLength": "Hesap kimliği en az 2 karakter olmalıdır",
-        "maxLength": "Hesap kimliği 64 karakterden az olmalıdır",
-        "charset": "Hesap kimliği yalnızca küçük harfler, rakamlar, noktalar, tireler ve alt çizgiler içermelidir, başında veya sonunda ayırıcı bulunmamalıdır",
-        "doesNotExist": "Hesap kimliği mevcut değil"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Alıcı eklendi} other {# alıcı eklendi}}",
         "addedSingleToast": "Alıcı eklendi",
@@ -2117,7 +2155,7 @@
             "suffixDemo": "demoyu inceleyin.",
             "suffixExploring": "keşfetmeye devam edin.",
             "createCta": "Hazine Oluştur",
-            "viewDemo": "Demoyu Görüntüle",
+            "viewDemo": "Trezu Demosunu Keşfet",
             "keepExploring": "Keşfetmeye Devam Et"
         },
         "infoBox": {

@@ -69,7 +69,7 @@ impl TokenMetadata {
             price,
             price_updated_at,
             network: Some("near".to_string()),
-            chain_name: Some("Near Protocol".to_string()),
+            chain_name: Some("NEAR".to_string()),
             chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
         }
     }
@@ -92,8 +92,18 @@ impl TokenMetadata {
             price,
             price_updated_at,
             network: Some("near".to_string()),
-            chain_name: Some("Near Protocol".to_string()),
+            chain_name: Some("NEAR".to_string()),
             chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
+        }
+    }
+
+    /// Forces canonical branding for NEAR and wrap.near, regardless of source metadata.
+    pub fn apply_near_symbol_name_override(&mut self) {
+        if is_near_or_wrap_token_id(&self.token_id) {
+            self.name = "NEAR".to_string();
+            self.symbol = "NEAR".to_string();
+            self.icon = Some(NEAR_ICON.to_string());
+            self.chain_name = Some("NEAR".to_string());
         }
     }
 }
@@ -398,6 +408,13 @@ fn push_unique(values: &mut Vec<String>, value: String) {
     if !value.is_empty() && !values.iter().any(|v| v == &value) {
         values.push(value);
     }
+}
+
+fn is_near_or_wrap_token_id(token_id: &str) -> bool {
+    let raw = token_id.trim();
+    let stripped = raw.strip_prefix("intents.near:").unwrap_or(raw);
+    let normalized = stripped.strip_prefix("nep141:").unwrap_or(stripped);
+    normalized.eq_ignore_ascii_case("near") || normalized.eq_ignore_ascii_case("wrap.near")
 }
 
 #[derive(Clone, Default)]
@@ -756,7 +773,8 @@ pub async fn fetch_tokens_with_fallback(
             }
         }
 
-        if let Some(meta) = metadata {
+        if let Some(mut meta) = metadata {
+            meta.apply_near_symbol_name_override();
             result.insert(token_id, meta);
         } else {
             unresolved_tokens.push(token_id);

@@ -65,6 +65,7 @@ import { Download, Loader2 } from "lucide-react";
 import { User } from "@/components/user";
 import { FormattedDate } from "@/components/formatted-date";
 import { CreditsQuotaDisplay } from "@/components/credits-quota-display";
+import { getBalanceHistoryTokenIds } from "@/lib/balance-history-token-ids";
 import {
     useReactTable,
     getCoreRowModel,
@@ -481,17 +482,23 @@ export default function ExportActivityPage() {
             // Add tokenIds if specific assets are selected (excluding "all")
             const specificAssets = selectedAssets.filter((a) => a !== "all");
             if (specificAssets.length > 0) {
-                const tokenIds: string[] = [];
+                const tokenIds = new Set<string>();
                 specificAssets.forEach((assetId) => {
                     const token = aggregatedTokens.find(
-                        (t: any) => t.id === assetId,
+                        (t) => t.id === assetId,
                     );
                     if (token) {
-                        token.networks.forEach((n: any) => tokenIds.push(n.id));
+                        token.networks.forEach((network) => {
+                            for (const tokenId of getBalanceHistoryTokenIds(
+                                network,
+                            )) {
+                                tokenIds.add(tokenId);
+                            }
+                        });
                     }
                 });
-                if (tokenIds.length > 0) {
-                    params.append("tokenIds", tokenIds.join(","));
+                if (tokenIds.size > 0) {
+                    params.append("tokenIds", Array.from(tokenIds).join(","));
                 }
             }
 
@@ -607,9 +614,7 @@ export default function ExportActivityPage() {
         const selectedLabels = selectedAssets
             .filter((assetId) => assetId !== "all")
             .map((assetId) => {
-                const token = aggregatedTokens.find(
-                    (t: any) => t.id === assetId,
-                );
+                const token = aggregatedTokens.find((t) => t.id === assetId);
                 return token?.name || token?.id || assetId;
             });
         if (selectedLabels.length === 1) return selectedLabels[0];

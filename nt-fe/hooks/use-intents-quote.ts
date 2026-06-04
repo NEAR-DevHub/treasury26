@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
+import * as Sentry from "@sentry/nextjs";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { getAddressPattern } from "@/lib/address-validation";
 import Big from "@/lib/big";
@@ -149,6 +150,7 @@ interface UseIntentsQuoteParams {
     treasuryId: string | undefined;
     token: Token;
     amount: string;
+    destinationAmountDecimals?: number;
     address: string;
     isConfidential: boolean;
     proposalPeriod?: string;
@@ -162,6 +164,7 @@ export function useIntentsQuote({
     treasuryId,
     token,
     amount,
+    destinationAmountDecimals,
     address,
     isConfidential,
     proposalPeriod,
@@ -175,14 +178,36 @@ export function useIntentsQuote({
     const [debouncedAddress] = useDebounce(address, 300);
     const [debouncedAmount] = useDebounce(amount, 400);
     const [isEnsuring, setIsEnsuring] = useState(false);
+    const requiresDestinationAmountDecimals =
+        amountMode === "recipient" &&
+        !!destinationNetwork &&
+        !isNearComNetwork(destinationNetwork);
+    const requestAmountDecimals = requiresDestinationAmountDecimals
+        ? destinationAmountDecimals
+        : token.decimals;
 
     const isRecipientReady =
         !!debouncedAddress && isAddressValidForToken(debouncedAddress, token);
-
-    const parsedAmount = useMemo(() => {
-        if (!debouncedAmount || Number(debouncedAmount) <= 0) return null;
-        return Big(debouncedAmount).mul(Big(10).pow(token.decimals)).toFixed();
-    }, [debouncedAmount, token.decimals]);
+    const isQuoteReady =
+        isIntents &&
+        !!treasuryId &&
+        isRecipientReady &&
+        !!debouncedAmount &&
+        Number(debouncedAmount) > 0 &&
+        !!proposalPeriod &&
+        !feeErrorMessage;
+    const missingRequiredDecimalsForQuote =
+        isQuoteReady && requestAmountDecimals === undefined;
+    const captureMissingDestinationDecimals = useCallback(
+        (tokenAddress: string) => {
+            Sentry.captureException(
+                new Error(
+                    `Blocked EXACT_OUTPUT quote: missing destination decimals (token=${tokenAddress}, destination=${destinationNetwork ?? "unknown"})`,
+                ),
+            );
+        },
+        [destinationNetwork],
+    );
 
     const {
         data: quote,
@@ -202,7 +227,14 @@ export function useIntentsQuote({
             isPayment,
         ],
         queryFn: async (): Promise<IntentsQuoteResponse | null> => {
-            if (!treasuryId || !parsedAmount) return null;
+            if (!isQuoteReady) return null;
+            if (requestAmountDecimals === undefined) {
+                captureMissingDestinationDecimals(token.address);
+                throw new Error(t("fetchFailed"));
+            }
+            const parsedAmount = Big(debouncedAmount)
+                .mul(Big(10).pow(requestAmountDecimals))
+                .toFixed();
             return getIntentsQuote(
                 buildIntentsQuoteRequest(
                     treasuryId,
@@ -218,13 +250,7 @@ export function useIntentsQuote({
                 false,
             );
         },
-        enabled:
-            isIntents &&
-            !!treasuryId &&
-            isRecipientReady &&
-            !!parsedAmount &&
-            !!proposalPeriod &&
-            !feeErrorMessage,
+        enabled: isQuoteReady,
         refetchOnWindowFocus: false,
         retry: false,
     });
@@ -240,8 +266,12 @@ export function useIntentsQuote({
         if (!amountInRaw || !amountOutRaw) return null;
 
         try {
-            const amountIn = Big(amountInRaw);
-            const amountOut = Big(amountOutRaw);
+            if (requestAmountDecimals === undefined) return null;
+
+            const amountIn = Big(amountInRaw).div(Big(10).pow(token.decimals));
+            const amountOut = Big(amountOutRaw).div(
+                Big(10).pow(requestAmountDecimals),
+            );
 
             if (amountOut.lte(0)) return null;
 
@@ -253,11 +283,9 @@ export function useIntentsQuote({
                 return null;
             }
 
-            const feeAmount = formatBalance(
-                amountIn.minus(amountOut).toFixed(0),
-                token.decimals,
-                token.decimals,
-            );
+            const feeAmount = fee
+                .toFixed(requestAmountDecimals)
+                .replace(/\.?0+$/, "");
 
             return {
                 feeAmount,
@@ -265,11 +293,12 @@ export function useIntentsQuote({
         } catch {
             return null;
         }
-    }, [amountMode, quote, token.decimals]);
+    }, [amountMode, quote, token.decimals, requestAmountDecimals]);
 
     const hasLowAmountQuote = !!lowAmountQuoteDetails;
 
-    const hasError = hasQueryError || hasLowAmountQuote;
+    const hasError =
+        hasQueryError || hasLowAmountQuote || missingRequiredDecimalsForQuote;
 
     const errorMessage = useMemo(() => {
         if (hasLowAmountQuote) {
@@ -282,18 +311,28 @@ export function useIntentsQuote({
             return t("amountTooLow");
         }
 
+        if (missingRequiredDecimalsForQuote) {
+            return t("fetchFailed");
+        }
+
         if (!hasQueryError || !error) return null;
         const msg =
             error instanceof Error
                 ? error.message
                 : "Failed to prepare 1Click transfer route";
-        return formatErrorMessage(msg, token.decimals, token.symbol, t);
+        return formatErrorMessage(
+            msg,
+            requestAmountDecimals as number,
+            token.symbol,
+            t,
+        );
     }, [
         hasLowAmountQuote,
         lowAmountQuoteDetails,
+        missingRequiredDecimalsForQuote,
         hasQueryError,
         error,
-        token.decimals,
+        requestAmountDecimals,
         token.symbol,
         t,
     ]);
@@ -331,6 +370,14 @@ export function useIntentsQuote({
 
             if (feeErrorMessage) return { ok: false };
 
+            if (requestAmountDecimals === undefined) {
+                captureMissingDestinationDecimals(formValues.token.address);
+                return {
+                    ok: false,
+                    error: t("fetchFailed"),
+                };
+            }
+
             if (quote && !isLoading && !isFetching && !isSyncPending) {
                 if (hasLowAmountQuote) {
                     if (lowAmountQuoteDetails) {
@@ -350,7 +397,7 @@ export function useIntentsQuote({
             setIsEnsuring(true);
             try {
                 const immediateParsed = Big(formValues.amount)
-                    .mul(Big(10).pow(formValues.token.decimals))
+                    .mul(Big(10).pow(requestAmountDecimals))
                     .toFixed();
 
                 const freshQuote = await getIntentsQuote(
@@ -381,7 +428,7 @@ export function useIntentsQuote({
                     err instanceof Error
                         ? formatErrorMessage(
                               err.message,
-                              formValues.token.decimals,
+                              requestAmountDecimals,
                               formValues.token.symbol,
                               t,
                           )
@@ -405,6 +452,8 @@ export function useIntentsQuote({
             destinationNetwork,
             hasLowAmountQuote,
             lowAmountQuoteDetails,
+            requestAmountDecimals,
+            captureMissingDestinationDecimals,
             t,
         ],
     );

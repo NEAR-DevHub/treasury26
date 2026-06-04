@@ -20,11 +20,13 @@ import {
 import { ConfidentialRequestCell } from "./confidential-request-cell";
 import { ChangeConfigCell } from "./change-config-cell";
 import { useTreasury } from "@/hooks/use-treasury";
+import { SubtitleSuffixContext } from "./title-subtitle-cell";
 
 interface TransactionCellProps {
     proposal: Proposal;
     textOnly?: boolean;
     withDate?: boolean;
+    subtitleSuffix?: React.ReactNode;
 }
 
 /**
@@ -32,9 +34,26 @@ interface TransactionCellProps {
  */
 export function TransactionCell({
     proposal,
+    subtitleSuffix,
     withDate,
     textOnly = false,
 }: TransactionCellProps) {
+    return (
+        <SubtitleSuffixContext.Provider value={subtitleSuffix}>
+            <TransactionCellSwitch
+                proposal={proposal}
+                withDate={withDate}
+                textOnly={textOnly}
+            />
+        </SubtitleSuffixContext.Provider>
+    );
+}
+
+function TransactionCellSwitch({
+    proposal,
+    withDate,
+    textOnly = false,
+}: Omit<TransactionCellProps, "subtitleSuffix">) {
     const t = useTranslations("proposals.expanded");
     const { treasuryId } = useTreasury();
     const { type, data } = extractProposalData(proposal, treasuryId);

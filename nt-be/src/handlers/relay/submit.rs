@@ -44,6 +44,10 @@ pub struct RelayRequest {
     /// Absent/null → no metric recorded.
     #[serde(default)]
     pub proposal_type: Option<String>,
+    /// True when a payment proposal recipient was selected from address book.
+    /// Only set on the actual proposal call.
+    #[serde(default)]
+    pub address_book_payment: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -552,27 +556,39 @@ pub async fn relay_delegate_action(
                     // gas_covered_transactions fires for every relayed action.
                     // The proposal metric only fires when proposalType is explicitly provided.
                     let proposal_metric = match request.proposal_type.as_deref() {
-                        Some("swap") => "swap_proposals",
-                        Some("payment") => "payment_proposals",
-                        Some("vote") => "votes_casted",
-                        Some(_) => "other_proposals_submitted",
-                        None => "",
+                        Some("swap") => {
+                            Some(crate::services::platform_metrics::PlatformMetric::SwapProposals)
+                        }
+                        Some("payment") => {
+                            Some(crate::services::platform_metrics::PlatformMetric::PaymentProposals)
+                        }
+                        Some("vote") => {
+                            Some(crate::services::platform_metrics::PlatformMetric::VotesCasted)
+                        }
+                        Some(_) => Some(
+                            crate::services::platform_metrics::PlatformMetric::OtherProposalsSubmitted,
+                        ),
+                        None => None,
                     };
-                    if proposal_metric.is_empty() {
-                        crate::services::platform_metrics::record_event(
-                            &state.db_pool,
-                            request.treasury_id.as_str(),
-                            "gas_covered_transactions",
-                        )
-                        .await;
-                    } else {
-                        crate::services::platform_metrics::record_events(
-                            &state.db_pool,
-                            request.treasury_id.as_str(),
-                            &["gas_covered_transactions", proposal_metric],
-                        )
-                        .await;
+                    let mut metrics = vec![
+                        crate::services::platform_metrics::PlatformMetric::GasCoveredTransactions,
+                    ];
+                    if let Some(proposal_metric) = proposal_metric {
+                        metrics.push(proposal_metric);
                     }
+                    if request.address_book_payment
+                        && request.proposal_type.as_deref() == Some("payment")
+                    {
+                        metrics.push(
+                            crate::services::platform_metrics::PlatformMetric::AddressBookPaymentProposals,
+                        );
+                    }
+                    crate::services::platform_metrics::record_events(
+                        &state.db_pool,
+                        request.treasury_id.as_str(),
+                        &metrics,
+                    )
+                    .await;
 
                     // If this is a vote on a confidential_transfer proposal (v1.signer),
                     // try to extract the MPC signature and auto-submit the signed intent.

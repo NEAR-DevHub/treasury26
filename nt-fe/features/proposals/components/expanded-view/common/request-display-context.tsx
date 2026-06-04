@@ -8,6 +8,7 @@ interface RequestDisplayContextValue {
     isConfidential: boolean;
     proposalStatus: UIProposalStatus;
     isPending: boolean;
+    isExecuted: boolean;
 }
 
 const RequestDisplayContext = createContext<RequestDisplayContextValue | null>(

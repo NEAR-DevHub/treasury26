@@ -684,14 +684,12 @@ mod tests {
 
             dotenvy::dotenv().ok();
             let api_key = std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set");
+            let archival_rpc_url = std::env::var("NEAR_ARCHIVAL_RPC_URL")
+                .unwrap_or_else(|_| "https://archival-rpc.mainnet.fastnear.com/".to_string());
             let network = near_api::NetworkConfig {
                 rpc_endpoints: vec![
-                    near_api::RPCEndpoint::new(
-                        "https://archival-rpc.mainnet.fastnear.com/"
-                            .parse()
-                            .unwrap(),
-                    )
-                    .with_api_key(api_key),
+                    near_api::RPCEndpoint::new(archival_rpc_url.parse().unwrap())
+                        .with_api_key(api_key),
                 ],
                 ..near_api::NetworkConfig::mainnet()
             };
