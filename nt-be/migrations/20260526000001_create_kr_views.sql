@@ -2,16 +2,19 @@
 
 CREATE OR REPLACE VIEW kr__active_treasury_months AS
 SELECT DISTINCT
-    billing_year,
-    billing_month,
-    make_date(billing_year, billing_month, 1) AS month_start,
-    monitored_account_id
-FROM usage_tracking
+    ut.billing_year,
+    ut.billing_month,
+    make_date(ut.billing_year, ut.billing_month, 1) AS month_start,
+    ut.monitored_account_id
+FROM usage_tracking ut
+JOIN monitored_accounts ma
+  ON ma.account_id = ut.monitored_account_id
+ AND ma.is_testing IS NOT TRUE
 WHERE (
-    coalesce(swap_proposals, 0)
-  + coalesce(payment_proposals, 0)
-  + coalesce(votes_casted, 0)
-  + coalesce(other_proposals_submitted, 0)
+    coalesce(ut.swap_proposals, 0)
+  + coalesce(ut.payment_proposals, 0)
+  + coalesce(ut.votes_casted, 0)
+  + coalesce(ut.other_proposals_submitted, 0)
 ) > 0;
 
 CREATE OR REPLACE VIEW kr__swap_receive_legs AS
@@ -22,6 +25,9 @@ SELECT
 FROM detected_swaps ds
 JOIN balance_changes bc
   ON bc.id = ds.fulfillment_balance_change_id
+JOIN monitored_accounts ma
+  ON ma.account_id = ds.account_id
+ AND ma.is_testing IS NOT TRUE
 WHERE bc.usd_value IS NOT NULL;
 
 CREATE OR REPLACE VIEW kr__payment_outflows AS
@@ -30,6 +36,9 @@ SELECT
     bc.block_time,
     abs(bc.usd_value) AS usd_value
 FROM balance_changes bc
+JOIN monitored_accounts ma
+  ON ma.account_id = bc.account_id
+ AND ma.is_testing IS NOT TRUE
 WHERE bc.amount < 0
   AND bc.usd_value IS NOT NULL
   AND NOT EXISTS (
@@ -39,8 +48,9 @@ WHERE bc.amount < 0
   )
   AND NOT EXISTS (
       SELECT 1
-      FROM onboarded_daos od
-      WHERE od.dao_id = bc.counterparty
+      FROM monitored_accounts counterparty_ma
+      WHERE counterparty_ma.account_id = bc.counterparty
+        AND counterparty_ma.is_testing IS NOT TRUE
   );
 
 --------------------------------------------------------------------------------
@@ -49,8 +59,11 @@ WHERE bc.amount < 0
 
 CREATE OR REPLACE VIEW kr_treasuries_created AS
 SELECT count(*)::bigint AS total
-FROM daos
-WHERE sync_failed = false;
+FROM daos d
+JOIN monitored_accounts ma
+  ON ma.account_id = d.dao_id
+ AND ma.is_testing IS NOT TRUE
+WHERE d.sync_failed = false;
 
 CREATE OR REPLACE VIEW kr_unique_wallets AS
 SELECT count(*)::bigint AS total
@@ -71,21 +84,30 @@ WHERE atm.month_start = date_trunc('month', current_date)::date;
 
 CREATE OR REPLACE VIEW kr_aum_usd AS
 WITH latest_snapshot AS (
-    SELECT max(snapshot_date) AS snapshot_date
-    FROM public_dashboard_daily_balances
-    WHERE is_trezu = true
+    SELECT max(pddb.snapshot_date) AS snapshot_date
+    FROM public_dashboard_daily_balances pddb
+    JOIN monitored_accounts ma
+      ON ma.account_id = pddb.dao_id
+     AND ma.is_testing IS NOT TRUE
+    WHERE pddb.is_trezu = true
 )
 SELECT coalesce(sum(pddb.total_usd), 0) AS aum_usd
 FROM public_dashboard_daily_balances pddb
 JOIN latest_snapshot ls
   ON ls.snapshot_date = pddb.snapshot_date
+JOIN monitored_accounts ma
+  ON ma.account_id = pddb.dao_id
+ AND ma.is_testing IS NOT TRUE
 WHERE pddb.is_trezu = true;
 
 CREATE OR REPLACE VIEW kr_inflow_usd AS
-SELECT coalesce(sum(usd_value), 0) AS inflow_usd
-FROM balance_changes
-WHERE amount > 0
-  AND usd_value IS NOT NULL;
+SELECT coalesce(sum(bc.usd_value), 0) AS inflow_usd
+FROM balance_changes bc
+JOIN monitored_accounts ma
+  ON ma.account_id = bc.account_id
+ AND ma.is_testing IS NOT TRUE
+WHERE bc.amount > 0
+  AND bc.usd_value IS NOT NULL;
 
 CREATE OR REPLACE VIEW kr_outflow_usd AS
 SELECT coalesce(sum(usd_value), 0) AS outflow_usd
@@ -122,21 +144,27 @@ FROM ytd_volume;
 
 CREATE OR REPLACE VIEW kr_aum_daily AS
 SELECT
-    snapshot_date,
-    sum(total_usd) AS aum_usd
-FROM public_dashboard_daily_balances
-WHERE is_trezu = true
-GROUP BY snapshot_date;
+    pddb.snapshot_date,
+    sum(pddb.total_usd) AS aum_usd
+FROM public_dashboard_daily_balances pddb
+JOIN monitored_accounts ma
+  ON ma.account_id = pddb.dao_id
+ AND ma.is_testing IS NOT TRUE
+WHERE pddb.is_trezu = true
+GROUP BY pddb.snapshot_date;
 
 CREATE OR REPLACE VIEW kr_treasuries_created_daily AS
 SELECT
-    date_trunc('day', created_at)::date AS day,
+    date_trunc('day', d.created_at)::date AS day,
     count(*)::bigint AS new_treasuries,
     sum(count(*)) OVER (
-        ORDER BY date_trunc('day', created_at)::date
+        ORDER BY date_trunc('day', d.created_at)::date
     )::bigint AS cumulative
-FROM daos
-WHERE sync_failed = false
+FROM daos d
+JOIN monitored_accounts ma
+  ON ma.account_id = d.dao_id
+ AND ma.is_testing IS NOT TRUE
+WHERE d.sync_failed = false
 GROUP BY 1;
 
 CREATE OR REPLACE VIEW kr_unique_wallets_daily AS
@@ -200,6 +228,7 @@ SELECT
     coalesce(plan_type::text, 'unknown') AS plan_type,
     count(*)::bigint AS accounts
 FROM monitored_accounts
+WHERE is_testing IS NOT TRUE
 GROUP BY 1;
 
 -- Strategic dashboard grid
@@ -213,15 +242,21 @@ SELECT
     (SELECT total::text FROM kr_treasuries_created) AS current_value,
     (
         SELECT count(*)::text
-        FROM daos
-        WHERE sync_failed = false
-          AND created_at < date '2026-04-01'
+        FROM daos d
+        JOIN monitored_accounts ma
+          ON ma.account_id = d.dao_id
+         AND ma.is_testing IS NOT TRUE
+        WHERE d.sync_failed = false
+          AND d.created_at < date '2026-04-01'
     ) AS q1_act,
     (
         SELECT count(*)::text
-        FROM daos
-        WHERE sync_failed = false
-          AND created_at < date '2026-07-01'
+        FROM daos d
+        JOIN monitored_accounts ma
+          ON ma.account_id = d.dao_id
+         AND ma.is_testing IS NOT TRUE
+        WHERE d.sync_failed = false
+          AND d.created_at < date '2026-07-01'
     ) AS q2_act
 
 UNION ALL
@@ -250,7 +285,16 @@ SELECT
     'User Acquisition',
     'Teams Onboarded',
     'Cumulative count of unique organizations with at least one Trezu.',
-    (SELECT count(*)::text FROM onboarded_daos),
+    (
+        SELECT count(DISTINCT dm.dao_id)::text
+        FROM users u
+        JOIN dao_members dm
+          ON dm.account_id = u.account_id
+        JOIN monitored_accounts ma
+          ON ma.account_id = dm.dao_id
+         AND ma.is_testing IS NOT TRUE
+        WHERE u.v2_terms_accepted_at IS NOT NULL
+    ),
     NULL,
     NULL
 
