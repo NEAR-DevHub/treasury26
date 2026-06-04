@@ -40,6 +40,34 @@
         "confidentialDataTooltip": "הפעילות הפיננסית שלך פרטית ומאובטחת. רק את/ה והצוות שלך יכולים לגשת למידע הזה.",
         "confidentialAddressTooltip": "הנכסים יתקבלו בכתובת חסויה."
     },
+    "receiptPage": {
+        "transactionConfirmation": "אישור עסקה",
+        "copyLink": "העתק קישור",
+        "printOrSavePdf": "הדפס או שמור כ-PDF",
+        "generateReceipt": "צור קבלה ב-PDF",
+        "generatedOn": "נוצר בתאריך {date}",
+        "receiptTitle": "קבלה מס׳ {proposalId} מתאריך <datePart>{date}</datePart>",
+        "createYourTreasury": "צור את האוצר שלך",
+        "createYourTreasuryDescription": "הגדר תוך שניות ללא עמלות ובצע עסקאות בעלות זעומה.",
+        "sender": "שולח",
+        "recipient": "מקבל",
+        "address": "כתובת",
+        "destinationNetwork": "רשת יעד",
+        "transactionDetails": "פרטי עסקה",
+        "status": "סטטוס",
+        "network": "רשת",
+        "amountWithToken": "סכום ({token})",
+        "amountUsd": "סכום (USD)",
+        "rate": "שער",
+        "dateAndTime": "תאריך ושעה",
+        "sentAmountWithToken": "סכום שנשלח ({token})",
+        "sentNetwork": "רשת שליחה",
+        "receiveAmountWithToken": "סכום שהתקבל ({token})",
+        "receiveNetwork": "רשת קבלה",
+        "receiveAmountUsd": "סכום שהתקבל (USD)",
+        "paymentConfirmation": "אישור תשלום",
+        "exchangeConfirmation": "אישור המרה"
+    },
     "languageSwitcher": {
         "label": "שפה",
         "select": "בחר שפה",
@@ -77,7 +105,8 @@
         "wallet": "ארנק",
         "termsOfService": "תנאי שימוש",
         "privacyPolicy": "מדיניות פרטיות",
-        "disconnect": "התנתקות"
+        "disconnect": "התנתקות",
+        "disconnectWallet": "התנתקות ארנק"
     },
     "auth": {
         "noWallet": "חבר את הארנק שלך",
@@ -232,6 +261,7 @@
             "networksWithAssets": "רשתות עם נכסים",
             "yourAssets": "הנכסים שלך",
             "otherAssets": "נכסים אחרים",
+            "popularAssets": "נכסים פופולריים",
             "available": "זמין",
             "forMembersOnly": "לחברים בלבד"
         },
@@ -249,7 +279,8 @@
         "otherNetworkInfo": "ניתן להפקיד כל טוקן שאינו ברשימת הנכסים, אך רק דרך רשת NEAR.",
         "depositAddressHeading": "כתובת הפקדה",
         "depositAddressSubtitle": "תמיד בדוק שוב את כתובת ההפקדה שלך.",
-        "depositAddressSubtitleConfidential": "כתובת ההפקדה הזו היא לשימוש חד-פעמי ותקפה ל-3 ימים בלבד. שימוש חוזר בה או שליחה לאחר שפג תוקפה יגרמו לאובדן קבוע של כספים.",
+        "depositAddressSubtitleConfidential": "<semibold>כתובת הפקדה לשימוש חד-פעמי.</semibold> שימוש חוזר בכתובת זו או שליחת כספים לאחר התפוגה עלולים לגרום לאובדן כספים לצמיתות.",
+        "depositAddressSubtitleConfidentialExpiry": "בתוקף למשך 3 ימים מרגע היצירה. פג תוקף בעוד: {expiresIn}",
         "singleUseAcknowledgement": "אשתמש בכתובת הזו פעם אחת בלבד",
         "addressLabel": "כתובת",
         "addressCopied": "הכתובת הועתקה ללוח",
@@ -259,7 +290,20 @@
         "onlyDeposit": "הפקד רק <symbolTag>{symbol}</symbolTag> מרשת <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "אנו ממליצים להתחיל בעסקת בדיקה קטנה כדי לוודא שהכל עובד כראוי לפני שליחת הסכום המלא.",
         "minimumDeposit": "הפקדה מינימלית היא <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "חיפוש לפי שם"
+        "tabs": {
+            "fromPublic": "מציבורי",
+            "fromConfidential": "מחסוי"
+        },
+        "searchByName": "חיפוש לפי שם",
+        "faq": {
+            "title": "שאלות נפוצות",
+            "publicWalletQuestion": "איך להפקיד קריפטו מארנק ציבורי?",
+            "confidentialWalletQuestion": "איך להפקיד קריפטו מארנק חסוי?",
+            "fiatQuestion": "האם אפשר לבצע הפקדה בפיאט?",
+            "fiatAnswer": "כרגע עדיין לא, אבל אנחנו עובדים כדי להביא תמיכה בהפקדות פיאט בקרוב. הישארו מעודכנים - זה בדרך 🚀",
+            "arrivalQuestion": "כמה זמן לוקח עד שהפקדה מגיעה?",
+            "arrivalAnswer": "זמן העיבוד תלוי ברשת."
+        }
     },
     "assetDetails": {
         "coinPrice": "מחיר מטבע",
@@ -1823,12 +1867,6 @@
         "membersWhoCanVote": "חברים שיכולים להצביע",
         "moreMembers": "+{count, plural, one {# חבר} two {# חברים} many {# חברים} other {# חברים}}"
     },
-    "accountIdInput": {
-        "minLength": "מזהה חשבון צריך להיות לפחות 2 תווים",
-        "maxLength": "מזהה חשבון חייב להיות פחות מ-64 תווים",
-        "charset": "מזהה חשבון חייב להכיל רק אותיות קטנות, ספרות, נקודות, מקפים וקווים תחתונים, ללא מפרידים בתחילה או בסוף",
-        "doesNotExist": "מזהה החשבון לא קיים"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {נמען נוסף} two {# נמענים נוספו} many {# נמענים נוספו} other {# נמענים נוספו}}",
         "addedSingleToast": "נמען נוסף",
@@ -2118,7 +2156,7 @@
             "suffixDemo": "בדוק את הדמו.",
             "suffixExploring": "המשך לחקור.",
             "createCta": "צור אוצר",
-            "viewDemo": "הצג דמו",
+            "viewDemo": "גלה את דמו Trezu",
             "keepExploring": "המשך לחקור"
         },
         "infoBox": {

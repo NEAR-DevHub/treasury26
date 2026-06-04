@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { useAssets } from "@/hooks/use-assets";
 
@@ -10,7 +10,6 @@ import BalanceWithGraph from "./components/balance-with-graph";
 import { PendingRequests } from "@/features/proposals/components/pending-requests";
 import { RecentActivity } from "@/features/activity";
 import { OnboardingProgress } from "@/features/onboarding";
-import { DepositModal } from "./components/deposit-modal";
 import { InfoBox } from "@/features/onboarding/components/info-box";
 import {
     WelcomeTooltip,
@@ -22,6 +21,7 @@ import { CreateBanner } from "@/features/onboarding/components/create-banner";
 
 export default function AppPage() {
     const t = useTranslations("pages.dashboard");
+    const router = useRouter();
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
     const isHidden = isConfidential && isGuestTreasury;
     const { data, isLoading, isPending } = useAssets(treasuryId, {
@@ -32,7 +32,9 @@ export default function AppPage() {
         tokens: [],
         totalBalanceUSD: 0,
     };
-    const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+    const handleDepositOpen = () => {
+        router.push(`/${treasuryId!}/dashboard/deposit`);
+    };
 
     return (
         <PageComponentLayout title={t("title")} description={t("description")}>
@@ -41,13 +43,11 @@ export default function AppPage() {
                     <div className="lg:hidden empty:hidden">
                         <CreateBanner />
                     </div>
-                    <OnboardingProgress
-                        onDepositClick={() => setIsDepositModalOpen(true)}
-                    />
+                    <OnboardingProgress onDepositClick={handleDepositOpen} />
                     <BalanceWithGraph
                         tokens={tokens}
                         isHidden={isHidden}
-                        onDepositClick={() => setIsDepositModalOpen(true)}
+                        onDepositClick={handleDepositOpen}
                         isLoading={isAssetsLoading}
                     />
                     <Assets
@@ -67,11 +67,6 @@ export default function AppPage() {
                     <PendingRequests />
                 </div>
             </div>
-
-            <DepositModal
-                isOpen={isDepositModalOpen}
-                onClose={() => setIsDepositModalOpen(false)}
-            />
             <WelcomeTooltip />
             <CongratsTooltip />
             {/* NOTE: comment when notifications feature is released */}

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use axum::response::sse::{Event, KeepAlive, Sse};
@@ -12,7 +13,10 @@ use tokio::sync::mpsc;
 use crate::{
     AppState,
     constants::TREASURY_FACTORY_CONTRACT_ID,
-    services::{register_new_dao_and_wait, register_or_refresh_monitored_account},
+    services::{
+        mark_testing_if_needed, register_new_dao_and_wait, register_or_refresh_monitored_account,
+        should_mark_testing,
+    },
 };
 
 use super::confidential_setup;
@@ -152,6 +156,34 @@ pub fn build_policy(
       "bounty_bond": NearToken::from_millinear(0),
       "bounty_forgiveness_period": "604800000000000",
     })
+}
+
+fn collect_payload_members(payload: &CreateTreasuryRequest) -> HashSet<String> {
+    payload
+        .requestors
+        .iter()
+        .chain(payload.governors.iter())
+        .chain(payload.financiers.iter())
+        .map(|account_id| account_id.as_str().to_string())
+        .collect()
+}
+
+fn build_treasury_created_message(
+    treasury: &AccountId,
+    is_confidential: bool,
+    is_testing: bool,
+    balance_after: &str,
+) -> String {
+    let conf_label = if is_confidential {
+        " (confidential)"
+    } else {
+        ""
+    };
+    let testing_label = if is_testing { " [TESTING]" } else { "" };
+    format!(
+        "Treasury created{conf_label}{testing_label}: {treasury}\nBalance after: {}",
+        balance_after
+    )
 }
 
 fn prepare_args(
@@ -352,6 +384,26 @@ async fn run_creation(
             })?;
     }
 
+    let payload_members = collect_payload_members(&payload);
+    let should_mark = should_mark_testing(
+        treasury.as_str(),
+        &payload_members,
+        &state.env_vars.testing_sputnik_dao_ids,
+        &state.env_vars.testing_near_account_ids,
+    );
+    let is_testing =
+        match mark_testing_if_needed(&state.db_pool, treasury.as_str(), should_mark).await {
+            Ok(value) => value,
+            Err(e) => {
+                log::warn!(
+                    "Failed to update testing flag for treasury {}: {}",
+                    treasury.as_str(),
+                    e
+                );
+                should_mark
+            }
+        };
+
     // ── Finalize ───────────────────────────────────────────────────────
     send_progress(&tx, "finalizing", "in_progress").await;
 
@@ -381,14 +433,11 @@ async fn run_creation(
             }
         })?;
 
-    let conf_label = if is_confidential {
-        " (confidential)"
-    } else {
-        ""
-    };
-    let message = format!(
-        "Treasury created{conf_label}: {treasury}\nBalance after: {}",
-        balance_after.total
+    let message = build_treasury_created_message(
+        &treasury,
+        is_confidential,
+        is_testing,
+        &balance_after.total.to_string(),
     );
     if let Err(e) = state.telegram_client.send_message(&message).await {
         log::warn!("Failed to send Telegram notification: {}", e);
@@ -407,4 +456,62 @@ async fn run_creation(
         .await;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn collect_payload_members_deduplicates_roles() {
+        let payload = CreateTreasuryRequest {
+            name: "Treasury".to_string(),
+            account_id: "team.sputnik-dao.near".parse().expect("valid account"),
+            payment_threshold: 1,
+            governance_threshold: 1,
+            governors: vec![
+                "alice.near".parse().expect("valid account"),
+                "bob.near".parse().expect("valid account"),
+            ],
+            financiers: vec!["alice.near".parse().expect("valid account")],
+            requestors: vec!["carol.near".parse().expect("valid account")],
+            is_confidential: true,
+        };
+
+        let members = collect_payload_members(&payload);
+        assert_eq!(members.len(), 3, "duplicate member should be deduplicated");
+        assert!(members.contains("alice.near"));
+        assert!(members.contains("bob.near"));
+        assert!(members.contains("carol.near"));
+    }
+
+    #[test]
+    fn build_treasury_created_message_includes_testing_flag() {
+        let treasury: AccountId = "team.sputnik-dao.near".parse().expect("valid account");
+        let message = build_treasury_created_message(&treasury, true, true, "10 NEAR");
+
+        assert!(
+            message.contains("Treasury created (confidential) [TESTING]: team.sputnik-dao.near"),
+            "confidential and testing labels should be present"
+        );
+        assert!(
+            message.contains("Balance after: 10 NEAR"),
+            "balance should remain part of the notification"
+        );
+    }
+
+    #[test]
+    fn build_treasury_created_message_hides_testing_label_for_normal_treasury() {
+        let treasury: AccountId = "team.sputnik-dao.near".parse().expect("valid account");
+        let message = build_treasury_created_message(&treasury, false, false, "10 NEAR");
+
+        assert!(
+            message.contains("Treasury created: team.sputnik-dao.near"),
+            "base message should be unchanged for non-testing treasuries"
+        );
+        assert!(
+            !message.contains("[TESTING]"),
+            "non-testing message should not include testing label"
+        );
+    }
 }

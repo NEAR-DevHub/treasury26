@@ -626,7 +626,7 @@ export function extractBatchPaymentRequestData(
 
     // Handle NEAR payments (approve_list)
     if (action.method_name === "approve_list") {
-        tokenId = "NEAR";
+        tokenId = NEAR_NETWORK_ID;
         totalAmount = action.deposit;
         batchId = args.list_id || "";
     }
@@ -872,6 +872,7 @@ export function extractConfidentialRequestData(
                 data: {
                     tokenId: quoteRequest.originAsset,
                     amount: quote.amountIn,
+                    quoteAmountInUsd: quote.amountInUsd,
                     receiver: recipient,
                     notes: meta?.notes ?? undefined,
                     depositAddress: quote.depositAddress,

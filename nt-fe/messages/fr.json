@@ -40,6 +40,34 @@
         "confidentialDataTooltip": "Votre activité financière est privée et sécurisée. Seuls vous et votre équipe pouvez accéder à ces informations.",
         "confidentialAddressTooltip": "Les actifs seront reçus sur une adresse confidentielle."
     },
+    "receiptPage": {
+        "transactionConfirmation": "Confirmation de transaction",
+        "copyLink": "Copier le lien",
+        "printOrSavePdf": "Imprimer ou enregistrer en PDF",
+        "generateReceipt": "Générer un reçu PDF",
+        "generatedOn": "Généré le {date}",
+        "receiptTitle": "Reçu n° {proposalId} daté du <datePart>{date}</datePart>",
+        "createYourTreasury": "Créez votre Trésorerie",
+        "createYourTreasuryDescription": "Configurez en quelques secondes sans frais et exécutez des transactions pour quelques centimes.",
+        "sender": "Expéditeur",
+        "recipient": "Destinataire",
+        "address": "Adresse",
+        "destinationNetwork": "Réseau de destination",
+        "transactionDetails": "Détails de la transaction",
+        "status": "Statut",
+        "network": "Réseau",
+        "amountWithToken": "Montant ({token})",
+        "amountUsd": "Montant (USD)",
+        "rate": "Taux",
+        "dateAndTime": "Date et heure",
+        "sentAmountWithToken": "Montant envoyé ({token})",
+        "sentNetwork": "Réseau d'envoi",
+        "receiveAmountWithToken": "Montant reçu ({token})",
+        "receiveNetwork": "Réseau de réception",
+        "receiveAmountUsd": "Montant reçu (USD)",
+        "paymentConfirmation": "Confirmation de paiement",
+        "exchangeConfirmation": "Confirmation d'échange"
+    },
     "languageSwitcher": {
         "label": "Langue",
         "select": "Sélectionner la langue",
@@ -77,7 +105,8 @@
         "wallet": "Portefeuille",
         "termsOfService": "Conditions d'utilisation",
         "privacyPolicy": "Politique de confidentialité",
-        "disconnect": "Déconnecter"
+        "disconnect": "Déconnecter",
+        "disconnectWallet": "Déconnecter Portefeuille"
     },
     "auth": {
         "noWallet": "Connectez votre portefeuille",
@@ -232,6 +261,7 @@
             "networksWithAssets": "Réseaux avec actifs",
             "yourAssets": "Vos actifs",
             "otherAssets": "Autres actifs",
+            "popularAssets": "Actifs populaires",
             "available": "Disponible",
             "forMembersOnly": "Réservé aux membres"
         },
@@ -249,7 +279,8 @@
         "otherNetworkInfo": "Vous pouvez déposer tout token non listé dans les actifs, mais uniquement via le réseau NEAR.",
         "depositAddressHeading": "Adresse de dépôt",
         "depositAddressSubtitle": "Vérifiez toujours votre adresse de dépôt.",
-        "depositAddressSubtitleConfidential": "Cette adresse de dépôt est à usage unique et n'est valable que pendant 3 jours. La réutiliser ou envoyer après expiration entraînera une perte permanente des fonds.",
+        "depositAddressSubtitleConfidential": "<semibold>Adresse de dépôt à usage unique.</semibold> Réutiliser cette adresse ou envoyer des fonds après expiration peut entraîner une perte permanente des fonds.",
+        "depositAddressSubtitleConfidentialExpiry": "Valide pendant 3 jours à compter de sa génération. Expire dans : il reste {expiresIn}",
         "singleUseAcknowledgement": "J'utiliserai cette adresse une seule fois",
         "addressLabel": "Adresse",
         "addressCopied": "Adresse copiée dans le presse-papiers",
@@ -259,7 +290,20 @@
         "onlyDeposit": "Déposez uniquement <symbolTag>{symbol}</symbolTag> depuis le réseau <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Nous recommandons de commencer par une petite transaction de test pour vous assurer que tout fonctionne correctement avant d'envoyer le montant complet.",
         "minimumDeposit": "Le dépôt minimum est de <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Rechercher par nom"
+        "tabs": {
+            "fromPublic": "Depuis public",
+            "fromConfidential": "Depuis confidentiel"
+        },
+        "searchByName": "Rechercher par nom",
+        "faq": {
+            "title": "FAQ",
+            "publicWalletQuestion": "Comment déposer des crypto depuis un wallet public ?",
+            "confidentialWalletQuestion": "Comment déposer des crypto depuis un wallet confidentiel ?",
+            "fiatQuestion": "Puis-je effectuer un dépôt en monnaie fiduciaire ?",
+            "fiatAnswer": "Pas pour le moment, mais nous travaillons pour proposer bientôt les dépôts fiat. Restez à l’écoute - c’est en route 🚀",
+            "arrivalQuestion": "Combien de temps faut-il pour qu’un dépôt arrive ?",
+            "arrivalAnswer": "Le délai de traitement dépend du réseau."
+        }
     },
     "assetDetails": {
         "coinPrice": "Prix de la pièce",
@@ -1823,12 +1867,6 @@
         "membersWhoCanVote": "Membres qui peuvent voter",
         "moreMembers": "+{count, plural, one {# membre} other {# membres}}"
     },
-    "accountIdInput": {
-        "minLength": "L'ID du compte doit comporter au moins 2 caractères",
-        "maxLength": "L'ID du compte doit comporter moins de 64 caractères",
-        "charset": "L'ID du compte doit contenir uniquement des lettres minuscules, des chiffres, des points, des tirets et des traits de soulignement, sans séparateurs en début ou en fin",
-        "doesNotExist": "L'ID du compte n'existe pas"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Destinataire ajouté} other {# destinataires ajoutés}}",
         "addedSingleToast": "Destinataire ajouté",
@@ -2118,7 +2156,7 @@
             "suffixDemo": "consultez la démo.",
             "suffixExploring": "continuez à explorer.",
             "createCta": "Créer une trésorerie",
-            "viewDemo": "Voir la démo",
+            "viewDemo": "Explorer la démo Trezu",
             "keepExploring": "Continuer à explorer"
         },
         "infoBox": {

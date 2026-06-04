@@ -40,6 +40,34 @@
         "confidentialDataTooltip": "Hoạt động tài chính của bạn là riêng tư và an toàn. Chỉ bạn và đội ngũ của bạn mới có thể truy cập thông tin này.",
         "confidentialAddressTooltip": "Tài sản sẽ được nhận tại một địa chỉ bảo mật."
     },
+    "receiptPage": {
+        "transactionConfirmation": "Xác nhận giao dịch",
+        "copyLink": "Sao chép liên kết",
+        "printOrSavePdf": "In hoặc lưu dưới dạng PDF",
+        "generateReceipt": "Tạo biên lai PDF",
+        "generatedOn": "Được tạo vào {date}",
+        "receiptTitle": "Biên lai số {proposalId} ngày <datePart>{date}</datePart>",
+        "createYourTreasury": "Tạo Kho bạc của bạn",
+        "createYourTreasuryDescription": "Thiết lập trong vài giây với phí bằng không và thực hiện giao dịch với chi phí rất thấp.",
+        "sender": "Người gửi",
+        "recipient": "Người nhận",
+        "address": "Địa chỉ",
+        "destinationNetwork": "Mạng đích",
+        "transactionDetails": "Chi tiết giao dịch",
+        "status": "Trạng thái",
+        "network": "Mạng",
+        "amountWithToken": "Số tiền ({token})",
+        "amountUsd": "Số tiền (USD)",
+        "rate": "Tỷ giá",
+        "dateAndTime": "Ngày và giờ",
+        "sentAmountWithToken": "Số tiền đã gửi ({token})",
+        "sentNetwork": "Mạng gửi",
+        "receiveAmountWithToken": "Số tiền nhận ({token})",
+        "receiveNetwork": "Mạng nhận",
+        "receiveAmountUsd": "Số tiền nhận (USD)",
+        "paymentConfirmation": "Xác nhận thanh toán",
+        "exchangeConfirmation": "Xác nhận đổi tiền"
+    },
     "languageSwitcher": {
         "label": "Ngôn ngữ",
         "select": "Chọn ngôn ngữ",
@@ -77,7 +105,8 @@
         "wallet": "Ví",
         "termsOfService": "Điều khoản dịch vụ",
         "privacyPolicy": "Chính sách bảo mật",
-        "disconnect": "Ngắt kết nối"
+        "disconnect": "Ngắt kết nối",
+        "disconnectWallet": "Ngắt kết nối Ví"
     },
     "auth": {
         "noWallet": "Kết nối ví của bạn",
@@ -232,6 +261,7 @@
             "networksWithAssets": "Mạng có tài sản",
             "yourAssets": "Tài sản của bạn",
             "otherAssets": "Tài sản khác",
+            "popularAssets": "Tài sản phổ biến",
             "available": "Có sẵn",
             "forMembersOnly": "Chỉ dành cho thành viên"
         },
@@ -249,7 +279,8 @@
         "otherNetworkInfo": "Bạn có thể nạp bất kỳ token nào không có trong danh sách tài sản, nhưng chỉ qua mạng NEAR.",
         "depositAddressHeading": "Địa chỉ nạp tiền",
         "depositAddressSubtitle": "Hãy luôn kiểm tra kỹ địa chỉ nạp tiền của bạn.",
-        "depositAddressSubtitleConfidential": "Địa chỉ nạp tiền này chỉ dùng một lần và chỉ có hiệu lực trong 3 ngày. Việc sử dụng lại hoặc gửi sau khi hết hạn sẽ dẫn đến mất tiền vĩnh viễn.",
+        "depositAddressSubtitleConfidential": "<semibold>Địa chỉ nạp tiền dùng một lần.</semibold> Việc tái sử dụng địa chỉ này hoặc gửi tiền sau khi hết hạn có thể dẫn đến mất tiền vĩnh viễn.",
+        "depositAddressSubtitleConfidentialExpiry": "Có hiệu lực trong 3 ngày kể từ thời điểm tạo. Hết hạn sau: còn {expiresIn}",
         "singleUseAcknowledgement": "Tôi sẽ chỉ sử dụng địa chỉ này một lần",
         "addressLabel": "Địa chỉ",
         "addressCopied": "Đã sao chép địa chỉ vào bộ nhớ tạm",
@@ -259,7 +290,20 @@
         "onlyDeposit": "Chỉ nạp <symbolTag>{symbol}</symbolTag> từ mạng <networkTag>{network}</networkTag>.",
         "testTransactionRecommendation": "Chúng tôi khuyên bạn bắt đầu với một giao dịch thử nhỏ để đảm bảo mọi thứ hoạt động chính xác trước khi gửi toàn bộ số tiền.",
         "minimumDeposit": "Số tiền nạp tối thiểu là <amountTag>{amount} {symbol}</amountTag>",
-        "searchByName": "Tìm theo tên"
+        "tabs": {
+            "fromPublic": "Từ công khai",
+            "fromConfidential": "Từ bảo mật"
+        },
+        "searchByName": "Tìm theo tên",
+        "faq": {
+            "title": "Câu hỏi thường gặp",
+            "publicWalletQuestion": "Làm thế nào để nạp crypto từ ví công khai?",
+            "confidentialWalletQuestion": "Làm thế nào để nạp crypto từ ví bảo mật?",
+            "fiatQuestion": "Tôi có thể nạp bằng tiền pháp định không?",
+            "fiatAnswer": "Hiện tại thì chưa, nhưng chúng tôi đang làm việc để sớm hỗ trợ nạp bằng tiền pháp định. Hãy đón chờ - sắp ra mắt 🚀",
+            "arrivalQuestion": "Mất bao lâu để khoản nạp được ghi nhận?",
+            "arrivalAnswer": "Thời gian xử lý phụ thuộc vào mạng."
+        }
     },
     "assetDetails": {
         "coinPrice": "Giá Coin",
@@ -1823,12 +1867,6 @@
         "membersWhoCanVote": "Thành viên có thể bỏ phiếu",
         "moreMembers": "+{count, plural, other {# thành viên}}"
     },
-    "accountIdInput": {
-        "minLength": "ID tài khoản phải có ít nhất 2 ký tự",
-        "maxLength": "ID tài khoản phải ít hơn 64 ký tự",
-        "charset": "ID tài khoản chỉ có thể chứa chữ thường, số, dấu chấm, dấu gạch nối và gạch dưới, không có dấu phân cách ở đầu hoặc cuối",
-        "doesNotExist": "ID tài khoản không tồn tại"
-    },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Đã thêm người nhận} other {Đã thêm # người nhận}}",
         "addedSingleToast": "Đã thêm người nhận",
@@ -2118,7 +2156,7 @@
             "suffixDemo": "xem demo.",
             "suffixExploring": "tiếp tục khám phá.",
             "createCta": "Tạo một Ngân quỹ",
-            "viewDemo": "Xem Demo",
+            "viewDemo": "Khám phá Trezu Demo",
             "keepExploring": "Tiếp tục khám phá"
         },
         "infoBox": {

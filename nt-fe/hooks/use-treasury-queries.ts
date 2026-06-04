@@ -8,6 +8,7 @@ import {
     getStorageDepositIsRegistered,
     getBatchStorageDepositIsRegistered,
     getTokenMetadata,
+    getPopularAssetsByActivity,
     getLockupPool,
     getProfile,
     StorageDepositRequest,
@@ -176,6 +177,15 @@ export function useToken(tokenId: string | null | undefined) {
         queryFn: () => getTokenMetadata(tokenId!),
         enabled: !!tokenId,
         staleTime: 1000 * 60 * 5, // 5 minutes (token metadata and price)
+    });
+}
+
+export function usePopularAssetsByActivity(enabled: boolean = true) {
+    return useQuery({
+        queryKey: ["popularAssetsByActivity"],
+        queryFn: () => getPopularAssetsByActivity(),
+        enabled,
+        staleTime: 1000 * 60 * 5,
     });
 }
 

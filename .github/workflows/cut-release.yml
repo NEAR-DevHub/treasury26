@@ -22,6 +22,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
 
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +30,10 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.commit_sha || 'main' }}
           token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+
+      - name: Capture release commit SHA
+        id: release_commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Configure git
         run: |
@@ -121,3 +126,155 @@ jobs:
             --title "v${VERSION}" \
             --target "$BRANCH" \
             --notes '${{ steps.version.outputs.changelog }}'
+
+      - name: Assign linked issues to release milestone
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          script: |
+            const { execSync } = require("child_process");
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const version = "${{ steps.version.outputs.new_version }}";
+            const newTag = "${{ steps.version.outputs.new_tag }}";
+            const previousTag = "${{ steps.version.outputs.previous_tag }}";
+            const releaseSha = "${{ steps.release_commit.outputs.sha }}";
+            const milestoneTitle = `v${version}`;
+
+            function extractIssueRefs(text) {
+              const refs = new Set();
+              for (const match of (text || "").matchAll(/(?:^|[\s(])#(\d+)\b/gm)) {
+                refs.add(Number(match[1]));
+              }
+              return refs;
+            }
+
+            async function releaseDueOn() {
+              try {
+                const { data: release } = await github.rest.repos.getReleaseByTag({
+                  owner,
+                  repo,
+                  tag: newTag,
+                });
+                if (release.published_at) {
+                  return new Date(release.published_at).toISOString();
+                }
+              } catch (error) {
+                core.warning(
+                  `Could not read release ${newTag} for due date: ${error.message}`,
+                );
+              }
+              const commitDate = execSync(
+                `git log -1 --format=%cI ${releaseSha}`,
+                { encoding: "utf8" },
+              ).trim();
+              return new Date(commitDate).toISOString();
+            }
+
+            // Collect PRs included in this release (merge commits AND squash commits).
+            const prNumbers = new Set();
+            const logRange = previousTag
+              ? `refs/tags/${previousTag}..${releaseSha}`
+              : releaseSha;
+            let commitSubjects = "";
+            try {
+              commitSubjects = execSync(
+                `git log ${logRange} --pretty=format:%s`,
+                { encoding: "utf8" },
+              );
+            } catch (error) {
+              core.warning(`git log failed for range ${logRange}: ${error.message}`);
+            }
+            for (const line of commitSubjects.split("\n")) {
+              const mergeMatch = line.match(/Merge pull request #(\d+)/);
+              if (mergeMatch) { prNumbers.add(Number(mergeMatch[1])); continue; }
+              const squashMatch = line.match(/\(#(\d+)\)\s*$/);
+              if (squashMatch) prNumbers.add(Number(squashMatch[1]));
+            }
+            core.info(`Found ${prNumbers.size} PR(s) in release range`);
+
+            const issueRefs = new Set();
+            for (const prNumber of prNumbers) {
+              let pr;
+              try {
+                const resp = await github.rest.pulls.get({
+                  owner,
+                  repo,
+                  pull_number: prNumber,
+                });
+                pr = resp.data;
+              } catch (error) {
+                if (error.status === 404) {
+                  core.info(`#${prNumber} is not a PR — skipping`);
+                  continue;
+                }
+                throw error;
+              }
+              const text = `${pr.title || ""}\n${pr.body || ""}`;
+              for (const num of extractIssueRefs(text)) {
+                issueRefs.add(num);
+              }
+            }
+            core.info(
+              `Found ${issueRefs.size} linked issue(s): ${[...issueRefs].join(", ") || "none"}`,
+            );
+            if (issueRefs.size === 0) return;
+
+            const dueOn = await releaseDueOn();
+            core.info(`Milestone due date: ${dueOn}`);
+
+            let milestone = null;
+            for await (const response of github.paginate.iterator(
+              github.rest.issues.listMilestones,
+              { owner, repo, state: "all", per_page: 100 },
+            )) {
+              milestone = response.data.find((m) => m.title === milestoneTitle);
+              if (milestone) break;
+            }
+
+            if (!milestone) {
+              const { data: created } = await github.rest.issues.createMilestone({
+                owner,
+                repo,
+                title: milestoneTitle,
+                description: `Shipped in ${newTag}`,
+                state: "open",
+                due_on: dueOn,
+              });
+              milestone = created;
+              core.info(
+                `Created milestone "${milestoneTitle}" (#${milestone.number}, due ${dueOn})`,
+              );
+            } else {
+              const { data: updated } = await github.rest.issues.updateMilestone({
+                owner,
+                repo,
+                milestone_number: milestone.number,
+                due_on: dueOn,
+              });
+              milestone = updated;
+              core.info(
+                `Using milestone "${milestoneTitle}" (#${milestone.number}, due ${dueOn})`,
+              );
+            }
+
+            for (const issueNumber of issueRefs) {
+              try {
+                await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+              } catch (error) {
+                if (error.status === 404) {
+                  core.warning(`Issue #${issueNumber} not found — skipping`);
+                  continue;
+                }
+                throw error;
+              }
+
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                milestone: milestone.number,
+              });
+              core.info(`Set milestone "${milestoneTitle}" on issue #${issueNumber}`);
+            }

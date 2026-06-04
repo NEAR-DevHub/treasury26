@@ -29,6 +29,7 @@ interface AmountProps {
     network?: string; // Optional override for network display
     textOnly?: boolean;
     iconSize?: "sm" | "md" | "lg";
+    usdTextOverride?: string | null;
 }
 
 function resolveAmountNetworkLabel({
@@ -85,6 +86,7 @@ export function Amount({
     usdValue,
     network,
     iconSize = "lg",
+    usdTextOverride = null,
 }: AmountProps) {
     const tCommon = useTranslations("common");
     const tAmount = useTranslations("amount");

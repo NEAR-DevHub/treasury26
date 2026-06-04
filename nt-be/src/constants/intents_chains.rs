@@ -60,10 +60,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "eth".to_string(),
         ChainMetadata::new("Ethereum", "ethereum.svg"),
     );
-    metadata.insert(
-        "near".to_string(),
-        ChainMetadata::new("Near Protocol", "near.svg"),
-    );
+    metadata.insert("near".to_string(), ChainMetadata::new("NEAR", "near.svg"));
     metadata.insert("base".to_string(), ChainMetadata::new("Base", "base.svg"));
     metadata.insert(
         "arbitrum".to_string(),

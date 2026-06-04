@@ -60,6 +60,8 @@ export interface PaymentRequestData {
     usdValue?: number | null;
     /** Destination id (e.g. "near.com", "near", "nep141:...omft.near") */
     destinationAssetId?: string;
+    /** Optional quote-provided USD value for display */
+    quoteAmountInUsd?: string;
 }
 
 export interface FunctionCallAction {

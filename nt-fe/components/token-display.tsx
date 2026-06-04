@@ -77,7 +77,15 @@ export const NetworkIconDisplay = ({
     residency,
     networkNameClassName,
     expandNearComLabel = false,
-}: NetworkIconDisplayProps) => {
+    className,
+}: {
+    chainIcons: ChainIcons | null;
+    networkName: string;
+    residency?: string;
+    networkNameClassName?: string;
+    expandNearComLabel?: boolean;
+    className?: string;
+}) => {
     const getResidencyLabel = useResidencyLabel();
     const tAddressBookTable = useTranslations("addressBookTable");
 
@@ -92,7 +100,7 @@ export const NetworkIconDisplay = ({
     });
 
     return (
-        <div className="flex items-center gap-3">
+        <div className={cn("flex items-center gap-3", className)}>
             {iconUrl ? (
                 <img
                     src={iconUrl}

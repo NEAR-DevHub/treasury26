@@ -601,6 +601,21 @@ export function normalizeNearAssetId(value?: string | null): string {
 }
 
 /**
+ * Canonicalize token IDs across intents / NEAR prefixes for matching.
+ *
+ * Examples:
+ * - intents.near:nep245:v2_1.omni.hot.tg:56_... -> v2_1.omni.hot.tg:56_...
+ * - nep245:v2_1.omni.hot.tg:56_... -> v2_1.omni.hot.tg:56_...
+ * - nep141:wrap.near -> wrap.near
+ */
+export function canonicalizeTokenIdForMatch(value?: string | null): string {
+    return normalizeNearAssetId(value)
+        .replace(/^intents\.near:/i, "")
+        .replace(/^nep245:/i, "")
+        .toLowerCase();
+}
+
+/**
  * Returns a human-readable NEAR token type label based on the tokenId.
  * - "" or "near" → "NEAR (Native Token)"
  * - starts with "nep141:" or "nep245:" → "NEAR (near.com)" or "near.com"

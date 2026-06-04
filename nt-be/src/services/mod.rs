@@ -10,6 +10,7 @@ pub mod price_lookup;
 pub mod price_provider;
 pub mod price_sync;
 pub mod public_dashboard;
+pub mod testing_accounts;
 pub mod usd_value_backfill;
 
 pub use coingecko::CoinGeckoClient;
@@ -33,4 +34,5 @@ pub use public_dashboard::{
     PublicDashboardSnapshot, load_latest_public_dashboard_snapshot,
     run_public_dashboard_refresh_service,
 };
+pub use testing_accounts::{mark_testing_if_needed, should_mark_testing};
 pub use usd_value_backfill::{backfill_batch, run_usd_value_backfill_service};

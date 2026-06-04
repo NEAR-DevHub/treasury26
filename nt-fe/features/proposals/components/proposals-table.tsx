@@ -59,12 +59,17 @@ import {
 } from "@tanstack/react-table";
 import { VoteModal } from "./vote-modal";
 import { Address } from "@/components/address";
-import { DepositModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit-modal";
 import { EmptyState } from "@/components/empty-state";
 import { AuthButton } from "@/components/auth-button";
 import { useRouter } from "next/navigation";
 import { Tooltip } from "@/components/tooltip";
 import { useProposalsInsufficientBalance } from "../hooks/use-proposals-insufficient-balance";
+import { useProposalTransaction, useSwapStatus } from "@/hooks/use-proposals";
+import {
+    extractReceiptProposalData,
+    getProposalExecutedDate,
+} from "@/features/proposals/utils/receipt-utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -78,6 +83,72 @@ interface ProposalsTableProps {
     total?: number;
     onPageChange?: (page: number) => void;
     onSelectionChange?: (count: number) => void;
+}
+
+// Prefer resolved timestamp only for executed proposals, then fall back
+// to the standard status-based date.
+function ProposalTimelineDate({
+    proposal,
+    policy,
+    className,
+}: {
+    proposal: Proposal;
+    policy: Policy;
+    className?: string;
+}) {
+    const { treasuryId } = useTreasury();
+    const status = getProposalStatus(proposal, policy);
+    const isProposalExecuted = status === "Executed";
+    const depositAddress = extractReceiptProposalData(
+        proposal,
+        treasuryId,
+    )?.depositAddress;
+    const shouldUseSwapDate = isProposalExecuted && !!depositAddress;
+
+    const { data: transaction, isLoading: isLoadingTransaction } =
+        useProposalTransaction(
+            treasuryId,
+            proposal,
+            policy,
+            isProposalExecuted && !shouldUseSwapDate,
+        );
+    const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
+        depositAddress || null,
+        undefined,
+        shouldUseSwapDate,
+    );
+
+    if (!isProposalExecuted) {
+        return (
+            <FormattedDate
+                proposal={proposal}
+                policy={policy}
+                relative
+                className={className}
+            />
+        );
+    }
+
+    const isDateLoading = shouldUseSwapDate
+        ? isLoadingSwapStatus
+        : isLoadingTransaction;
+    if (isDateLoading) {
+        return <Skeleton className="h-3.5 w-24" />;
+    }
+
+    const executedDate = getProposalExecutedDate(swapStatus, transaction);
+    if (!executedDate) {
+        return (
+            <FormattedDate
+                proposal={proposal}
+                policy={policy}
+                relative
+                className={className}
+            />
+        );
+    }
+
+    return <FormattedDate date={executedDate} relative className={className} />;
 }
 
 export function ProposalsTable({
@@ -213,10 +284,9 @@ export function ProposalsTable({
                                         {title}
                                     </span>
                                 </div>
-                                <FormattedDate
+                                <ProposalTimelineDate
                                     proposal={proposal}
                                     policy={policy}
-                                    relative
                                     className="text-xs text-muted-foreground"
                                 />
                             </div>
@@ -355,11 +425,6 @@ export function ProposalsTable({
     });
 
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
-    const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
-    const [{ tokenSymbol, tokenNetwork }, setDepositTokenInfo] = useState<{
-        tokenSymbol?: string;
-        tokenNetwork?: string;
-    }>({});
     const [voteInfo, setVoteInfo] = useState<{
         vote: "Approve" | "Reject" | "Remove";
         proposals: Proposal[];
@@ -561,12 +626,28 @@ export function ProposalsTable({
                                                         tokenSymbol,
                                                         tokenNetwork,
                                                     ) => {
-                                                        setDepositTokenInfo({
-                                                            tokenSymbol,
-                                                            tokenNetwork,
-                                                        });
-                                                        setIsDepositModalOpen(
-                                                            true,
+                                                        const params =
+                                                            new URLSearchParams();
+                                                        if (tokenSymbol) {
+                                                            params.set(
+                                                                "token",
+                                                                tokenSymbol,
+                                                            );
+                                                        }
+                                                        if (tokenNetwork) {
+                                                            params.set(
+                                                                "network",
+                                                                tokenNetwork,
+                                                            );
+                                                        }
+                                                        const query =
+                                                            params.toString();
+                                                        router.push(
+                                                            `/${treasuryId}/dashboard/deposit${
+                                                                query
+                                                                    ? `?${query}`
+                                                                    : ""
+                                                            }`,
                                                         );
                                                     }}
                                                 />
@@ -600,12 +681,6 @@ export function ProposalsTable({
                 proposals={voteInfo.proposals}
                 vote={voteInfo.vote}
                 insufficientBalanceProposalIds={voteInfo.insufficientBalanceIds}
-            />
-            <DepositModal
-                isOpen={isDepositModalOpen}
-                onClose={() => setIsDepositModalOpen(false)}
-                prefillTokenSymbol={tokenSymbol}
-                prefillNetworkId={tokenNetwork}
             />
         </>
     );

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { PrimaryColorProvider } from "@/components/primary-color-provider";
@@ -15,11 +16,23 @@ export function TreasuryLayoutClient({
 }) {
     const { isSidebarOpen, setSidebarOpen } = useResponsiveSidebar();
     const { isLoading } = useTreasury();
+    const pathname = usePathname();
+    const isStandaloneReceiptView = /\/requests\/[^/]+\/receipt$/.test(
+        pathname ?? "",
+    );
 
     if (isLoading) {
         return <LoadingScreen />;
     }
 
+    if (isStandaloneReceiptView) {
+        return (
+            <div className="h-dvh overflow-y-auto bg-muted print:h-auto print:overflow-visible print:bg-white">
+                <PrimaryColorProvider treasuryId={treasuryId} />
+                {children}
+            </div>
+        );
+    }
     return (
         <div className="flex h-dvh lg:h-screen overflow-hidden">
             <PrimaryColorProvider treasuryId={treasuryId} />

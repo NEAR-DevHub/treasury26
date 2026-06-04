@@ -69,7 +69,7 @@ impl TokenMetadata {
             price,
             price_updated_at,
             network: Some("near".to_string()),
-            chain_name: Some("Near Protocol".to_string()),
+            chain_name: Some("NEAR".to_string()),
             chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
         }
     }
@@ -92,7 +92,7 @@ impl TokenMetadata {
             price,
             price_updated_at,
             network: Some("near".to_string()),
-            chain_name: Some("Near Protocol".to_string()),
+            chain_name: Some("NEAR".to_string()),
             chain_icons: get_chain_metadata_by_name("near").map(|m| m.icon),
         }
     }
@@ -102,6 +102,8 @@ impl TokenMetadata {
         if is_near_or_wrap_token_id(&self.token_id) {
             self.name = "NEAR".to_string();
             self.symbol = "NEAR".to_string();
+            self.icon = Some(NEAR_ICON.to_string());
+            self.chain_name = Some("NEAR".to_string());
         }
     }
 }

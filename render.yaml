@@ -29,6 +29,10 @@ services:
         fromDatabase:
           name: database
           property: connectionString
+      - key: TESTING_SPUTNIK_DAO_IDS
+        sync: false
+      - key: TESTING_NEAR_ACCOUNT_IDS
+        sync: false
     healthCheckPath: /api/health
 
   # Frontend Service (Next.js)
@@ -106,6 +110,10 @@ services:
         fromDatabase:
           name: database-staging
           property: connectionString
+      - key: TESTING_SPUTNIK_DAO_IDS
+        sync: false
+      - key: TESTING_NEAR_ACCOUNT_IDS
+        sync: false
     healthCheckPath: /api/health
 
   # Staging Frontend Service (Next.js)
