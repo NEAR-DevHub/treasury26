@@ -3,7 +3,7 @@
 //! When a confidential DAO approves a swap proposal, the DAO's `act_proposal`
 //! spawns a cross-contract call to `v1.signer`. That `v1.signer` execution
 //! outcome emits a single `sign: predecessor=AccountId("…"), request=…
-//! payload_v2: Some(Eddsa(Bytes("…")))` log, and Goldsky captures it because
+//! `sign:` log (legacy `payload_v2: Some(Eddsa(…))` or `payload: Eddsa(…)`), and Goldsky captures it because
 //! the log mentions a sputnik-dao account.
 //!
 //! The log itself tells us both *that* the proposal executed (v1.signer only
@@ -32,12 +32,20 @@ static V1_SIGNER_HEX: Lazy<Regex> = Lazy::new(|| {
     .expect("v1.signer hex sign-log regex is valid")
 });
 
-/// Current payload form: `predecessor=AccountId("…") … payload_v2: Some(Eddsa(BoundedVec { inner: [u8, …] }))`.
+/// `payload_v2: Some(Eddsa(BoundedVec { inner: [u8, …] }))` form (2026-05).
 static V1_SIGNER_BYTES: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
         r#"predecessor=AccountId\("(?P<dao>[^"]+)"\).*payload_v2:\s*Some\(Eddsa\(BoundedVec\s*\{\s*inner:\s*\[(?P<bytes>[0-9,\s]+)\]"#,
     )
     .expect("v1.signer bytes sign-log regex is valid")
+});
+
+/// `payload: Eddsa(BoundedVec { inner: [u8, …], witness: … })` form (2026-06+).
+static V1_SIGNER_PAYLOAD_BOUNDED: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"predecessor=AccountId\("(?P<dao>[^"]+)"\).*payload:\s*Eddsa\(BoundedVec\s*\{\s*inner:\s*\[(?P<bytes>[0-9,\s]+)\]"#,
+    )
+    .expect("v1.signer payload bounded sign-log regex is valid")
 });
 
 /// Extracted signal that a confidential sign call ran.
@@ -66,8 +74,8 @@ fn decode_bounded_vec_bytes(captured: &str) -> Option<String> {
 }
 
 /// Scan a `v1.signer` outcome's logs for a `sign: predecessor=…` line and
-/// extract the DAO + payload hash if present. Supports both the legacy
-/// `Bytes("<hex>")` form and the current `BoundedVec { inner: [u8, …] }` form.
+/// extract the DAO + payload hash if present. Supports `Bytes("<hex>")`,
+/// `payload_v2: Some(Eddsa(BoundedVec …))`, and `payload: Eddsa(BoundedVec …)`.
 pub fn extract_sign_call_from_logs(logs: &str) -> Option<ConfidentialSignCall> {
     for raw_line in logs.split('\n').flat_map(|l| l.split("\\n")) {
         let line = raw_line.trim();
@@ -81,6 +89,12 @@ pub fn extract_sign_call_from_logs(logs: &str) -> Option<ConfidentialSignCall> {
             });
         }
         if let Some(cap) = V1_SIGNER_BYTES.captures(line) {
+            return Some(ConfidentialSignCall {
+                dao_id: cap.name("dao")?.as_str().to_string(),
+                payload_hash: decode_bounded_vec_bytes(cap.name("bytes")?.as_str())?,
+            });
+        }
+        if let Some(cap) = V1_SIGNER_PAYLOAD_BOUNDED.captures(line) {
             return Some(ConfidentialSignCall {
                 dao_id: cap.name("dao")?.as_str().to_string(),
                 payload_hash: decode_bounded_vec_bytes(cap.name("bytes")?.as_str())?,
@@ -435,6 +449,18 @@ mod tests {
         assert_eq!(
             got.payload_hash,
             "7ba2325847ed8a6c0dd512f9b1f0a987ca3d9c5055ce4d723e8c4858bfd72aab"
+        );
+    }
+
+    #[test]
+    fn parses_v1_signer_payload_bounded_vec_with_witness() {
+        // Real on-chain log captured 2026-06-04, block 201255187 (dedupingggg.sputnik-dao.near).
+        let log = r#"sign: predecessor=AccountId("dedupingggg.sputnik-dao.near"), request=SignRequestArgs { path: "dedupingggg.sputnik-dao.near", payload: Eddsa(BoundedVec { inner: [87, 249, 7, 178, 173, 216, 20, 193, 248, 189, 160, 114, 81, 65, 8, 58, 29, 224, 170, 146, 94, 100, 237, 122, 74, 216, 231, 25, 0, 252, 238, 243], witness: NonEmpty(()) }), domain_id: DomainId(1) }"#;
+        let got = extract_sign_call_from_logs(log).expect("should parse payload: form");
+        assert_eq!(got.dao_id, "dedupingggg.sputnik-dao.near");
+        assert_eq!(
+            got.payload_hash,
+            "57f907b2add814c1f8bda0725141083a1de0aa925e64ed7a4ad8e71900fceef3"
         );
     }
 }
