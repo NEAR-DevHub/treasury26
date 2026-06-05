@@ -47,7 +47,7 @@
         "generateReceipt": "Gerar recibo em PDF",
         "generatedOn": "Gerado em {date}",
         "receiptTitle": "Recibo nº {proposalId} datado de <datePart>{date}</datePart>",
-        "createYourTreasury": "Crie seu Tesouro",
+        "createYourTreasury": "Crie sua Tesouraria",
         "createYourTreasuryDescription": "Configure em segundos com zero taxas e execute transações por centavos, não dólares.",
         "sender": "Remetente",
         "recipient": "Destinatário",
@@ -193,7 +193,7 @@
         "payments": {
             "title": "Pagamentos",
             "confidentialTitle": "Pagamentos confidenciais",
-            "description": "Envie fundos com seguranca e protecao."
+            "description": "Envie fundos com segurança e proteção."
         },
         "exchange": {
             "title": "Troca",
@@ -962,7 +962,7 @@
         "useDifferentAddress": "Usar um endereço diferente",
         "failed1ClickQuote": "Falha ao criar cotação de transferência 1Click",
         "paymentSubmitted": "Solicitação de envio de pagamento enviada",
-        "confidentialTooltip": "Os dados do destinatario e o valor solicitado sao totalmente confidenciais."
+        "confidentialTooltip": "Os dados do destinatário e o valor solicitado são totalmente confidenciais."
     },
     "bulkPayment": {
         "comingSoonToast": "Pagamentos em massa estão chegando em breve!",
@@ -1077,7 +1077,7 @@
         "approveWithin24h": "Por favor, aprove esta solicitação em até 24 horas, caso contrário ela expirará. Recomendamos confirmar o quanto antes.",
         "confirmSubmit": "Confirmar e enviar solicitação",
         "refreshingIn": "A taxa de câmbio será atualizada em {seconds}s",
-        "confidentialTooltip": "Os valores que voce envia e recebe sao totalmente confidenciais."
+        "confidentialTooltip": "Os valores que você envia e recebe são totalmente confidenciais."
     },
     "vesting": {
         "validation": {
