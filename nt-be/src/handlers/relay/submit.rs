@@ -489,8 +489,7 @@ pub async fn relay_delegate_action(
     // executes it as a regular transaction on the authenticated user's account,
     // so it bypasses the DAO proposal/sender checks below.
     if is_w_execute_signed_action(&signed_delegate_action) {
-        return relay_w_execute_signed(&state, &auth_user, &request, &signed_delegate_action)
-            .await;
+        return relay_w_execute_signed(&state, &auth_user, &request, &signed_delegate_action).await;
     }
 
     verify_relay_access(&state, &auth_user, &request, &signed_delegate_action).await?;
