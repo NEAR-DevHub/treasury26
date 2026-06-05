@@ -16,7 +16,7 @@ use serde_json::Value;
 use serde_json::json;
 use std::collections::HashMap;
 
-use crate::handlers::intents::confidential::types::{bare_account, is_near_account};
+use crate::handlers::intents::confidential::types::{accounts_equal, bare_account};
 use crate::utils::cache::{Cache, CacheKey, CacheTier};
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, Debug)]
@@ -555,7 +555,7 @@ impl ConfidentialRequestInfo {
             .get("recipient")
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        let is_swap = is_near_account(recipient, treasury_id);
+        let is_swap = accounts_equal(recipient, treasury_id);
 
         if is_swap {
             let token_in_address = quote_request

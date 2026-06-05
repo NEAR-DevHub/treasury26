@@ -11,10 +11,11 @@ use std::sync::Arc;
 
 use bigdecimal::{BigDecimal, FromPrimitive, Zero};
 use chrono::{DateTime, Utc};
-use sqlx::{PgPool, QueryBuilder};
+use near_api::AccountId;
+use sqlx::{PgPool, QueryBuilder, Row};
 
 use crate::AppState;
-use crate::handlers::intents::confidential::types::bare_account;
+use crate::handlers::intents::confidential::types::{ConfidentialTxType, bare_account};
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, SwapInfo};
 
@@ -26,12 +27,12 @@ fn normalize_account_filter_values(accounts: &[String]) -> Vec<String> {
         .collect()
 }
 
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug)]
 struct ConfidentialBalanceChangeRow {
     id: i64,
     history_event_id: i64,
-    dao_id: String,
-    transaction_type: String,
+    dao_id: AccountId,
+    transaction_type: ConfidentialTxType,
     origin_asset: Option<String>,
     destination_asset: String,
     amount_in: Option<BigDecimal>,
@@ -51,6 +52,41 @@ struct ConfidentialBalanceChangeRow {
     executed_at: Option<DateTime<Utc>>,
     created_at: DateTime<Utc>,
     proposal_id: Option<i64>,
+}
+
+impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for ConfidentialBalanceChangeRow {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        let dao_id: String = row.try_get("dao_id")?;
+        let dao_id = dao_id
+            .parse::<AccountId>()
+            .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+
+        Ok(Self {
+            id: row.try_get("id")?,
+            history_event_id: row.try_get("history_event_id")?,
+            dao_id,
+            transaction_type: row.try_get("transaction_type")?,
+            origin_asset: row.try_get("origin_asset")?,
+            destination_asset: row.try_get("destination_asset")?,
+            amount_in: row.try_get("amount_in")?,
+            amount_out: row.try_get("amount_out")?,
+            amount_in_usd: row.try_get("amount_in_usd")?,
+            amount_out_usd: row.try_get("amount_out_usd")?,
+            origin_balance_before: row.try_get("origin_balance_before")?,
+            origin_balance_after: row.try_get("origin_balance_after")?,
+            destination_balance_before: row.try_get("destination_balance_before")?,
+            destination_balance_after: row.try_get("destination_balance_after")?,
+            recipient: row.try_get("recipient")?,
+            counterparty: row.try_get("counterparty")?,
+            block_height: row.try_get("block_height")?,
+            block_time: row.try_get("block_time")?,
+            transaction_hash: row.try_get("transaction_hash")?,
+            quote_created_at: row.try_get("quote_created_at")?,
+            executed_at: row.try_get("executed_at")?,
+            created_at: row.try_get("created_at")?,
+            proposal_id: row.try_get("proposal_id")?,
+        })
+    }
 }
 
 /// `true` if `dao_id` is flagged as a confidential treasury in `monitored_accounts`.
@@ -202,7 +238,7 @@ pub async fn fetch_balance_change_legs(
         builder.push(" AND transaction_type IN (");
         let mut sep = builder.separated(", ");
         for t in types {
-            sep.push_bind(*t);
+            sep.push_bind(t.as_str());
         }
         builder.push(")");
     }
@@ -271,24 +307,17 @@ pub async fn fetch_balance_change_legs(
 
     let leg_rows: Vec<LegRow> = rows.into_iter().filter_map(LegRow::from_gold).collect();
 
-    // Fetch token metadata before enriching so `to_enriched` can attach swap info
-    // in the same pass. The token-id set is derived from the legs only, so this
-    // depends on `leg_rows`, not on the enriched rows.
-    let metadata_map =
-        if params.include_metadata.unwrap_or(false) || params.include_prices.unwrap_or(false) {
-            let mut token_ids: HashSet<String> = HashSet::new();
-            for leg in &leg_rows {
-                token_ids.insert(leg.token_id.clone());
-                if let Some(other) = leg.swap_other_token.as_ref() {
-                    token_ids.insert(other.clone());
-                }
-            }
-            let ids: Vec<String> = token_ids.into_iter().collect();
+    // Resolve defuse-format gold asset ids through the shared token metadata pipeline
+    // (counterparties → tokens.json → chaindefuser) before enriching swap legs.
+    let metadata_map = {
+        let ids = collect_leg_token_ids(&leg_rows);
+        if ids.is_empty() {
+            HashMap::new()
+        } else {
             fetch_tokens_with_fallback(state, &ids, params.include_chain_metadata.unwrap_or(false))
                 .await
-        } else {
-            HashMap::new()
-        };
+        }
+    };
 
     let mut enriched: Vec<EnrichedBalanceChange> = leg_rows
         .iter()
@@ -311,7 +340,7 @@ pub async fn fetch_balance_change_legs(
 #[derive(Debug)]
 enum DirectionFilter {
     Empty,
-    Types(Vec<&'static str>),
+    Types(Vec<ConfidentialTxType>),
 }
 
 fn classify_direction_filter(types: &[String]) -> DirectionFilter {
@@ -319,19 +348,19 @@ fn classify_direction_filter(types: &[String]) -> DirectionFilter {
     for t in types {
         match t.as_str() {
             "incoming" => {
-                allowed.insert("deposit");
+                allowed.insert(ConfidentialTxType::Deposit);
             }
             "outgoing" => {
-                allowed.insert("sent");
+                allowed.insert(ConfidentialTxType::Sent);
             }
             "exchange" => {
-                allowed.insert("exchange");
+                allowed.insert(ConfidentialTxType::Exchange);
             }
             "staking_rewards" => {} // no-op: confidential has no staking
             "all" => {
-                allowed.insert("deposit");
-                allowed.insert("exchange");
-                allowed.insert("sent");
+                allowed.insert(ConfidentialTxType::Deposit);
+                allowed.insert(ConfidentialTxType::Exchange);
+                allowed.insert(ConfidentialTxType::Sent);
             }
             _ => {}
         }
@@ -341,6 +370,23 @@ fn classify_direction_filter(types: &[String]) -> DirectionFilter {
     } else {
         DirectionFilter::Types(allowed.into_iter().collect())
     }
+}
+
+fn collect_leg_token_ids(leg_rows: &[LegRow]) -> Vec<String> {
+    let mut token_ids = HashSet::new();
+    for leg in leg_rows {
+        token_ids.insert(leg.token_id.clone());
+        if let Some(sent) = leg.swap_sent_token.as_ref() {
+            token_ids.insert(sent.clone());
+        }
+        if let Some(other) = leg.swap_other_token.as_ref() {
+            token_ids.insert(other.clone());
+        }
+        if let Some(received) = leg.swap_received_token.as_ref() {
+            token_ids.insert(received.clone());
+        }
+    }
+    token_ids.into_iter().collect()
 }
 
 struct LegRow {
@@ -398,8 +444,9 @@ impl LegRow {
         let resolved_block_time = block_time.or(executed_at).unwrap_or(quote_created_at);
         let block_height = block_height.unwrap_or(0);
 
-        match transaction_type.as_str() {
-            "sent" => {
+        let dao_id_str = dao_id.as_str().to_string();
+        match transaction_type {
+            ConfidentialTxType::Sent => {
                 let token_id = origin_asset
                     .clone()
                     .unwrap_or_else(|| destination_asset.clone());
@@ -411,7 +458,7 @@ impl LegRow {
                     balance_before: origin_balance_before.unwrap_or_else(BigDecimal::zero),
                     balance_after: origin_balance_after.unwrap_or_else(BigDecimal::zero),
                     counterparty: Some(recipient.clone()),
-                    signer_id: Some(dao_id),
+                    signer_id: Some(dao_id_str),
                     receiver_id: Some(recipient),
                     block_height,
                     block_time: resolved_block_time,
@@ -428,7 +475,7 @@ impl LegRow {
                     swap_solver_tx: None,
                 })
             }
-            "deposit" => {
+            ConfidentialTxType::Deposit => {
                 let balance_before = destination_balance_before.unwrap_or_else(BigDecimal::zero);
                 let balance_after = destination_balance_after.unwrap_or_else(BigDecimal::zero);
                 // Match gold ledger delta (amount_out - amount_in for same-asset fees), not
@@ -442,7 +489,7 @@ impl LegRow {
                     balance_after,
                     counterparty: Some(counterparty.clone()),
                     signer_id: Some(counterparty),
-                    receiver_id: Some(dao_id),
+                    receiver_id: Some(dao_id_str),
                     block_height,
                     block_time: resolved_block_time,
                     transaction_hash,
@@ -458,7 +505,7 @@ impl LegRow {
                     swap_solver_tx: None,
                 })
             }
-            "exchange" => {
+            ConfidentialTxType::Exchange => {
                 let solver_tx = transaction_hash
                     .clone()
                     .unwrap_or_else(|| format!("confidential:{}", history_event_id));
@@ -470,7 +517,7 @@ impl LegRow {
                     balance_after: destination_balance_after.unwrap_or_else(BigDecimal::zero),
                     counterparty: Some(counterparty.clone()),
                     signer_id: Some(counterparty),
-                    receiver_id: Some(dao_id),
+                    receiver_id: Some(dao_id_str),
                     block_height,
                     block_time: resolved_block_time,
                     transaction_hash,
@@ -486,7 +533,6 @@ impl LegRow {
                     swap_solver_tx: Some(solver_tx),
                 })
             }
-            _ => None,
         }
     }
 
@@ -527,11 +573,11 @@ impl LegRow {
     fn build_swap_info(&self, metadata_map: &HashMap<String, TokenMetadata>) -> Option<SwapInfo> {
         let received_token_id = self.swap_received_token.clone()?;
         let solver = self.swap_solver_tx.clone()?;
+        let received_token_metadata = metadata_map.get(&received_token_id).cloned()?;
         let sent_token_metadata = self
             .swap_sent_token
             .as_ref()
-            .map(|id| resolve_swap_metadata(id, metadata_map));
-        let received_token_metadata = resolve_swap_metadata(&received_token_id, metadata_map);
+            .and_then(|id| metadata_map.get(id).cloned());
 
         Some(SwapInfo {
             sent_token_id: self.swap_sent_token.clone(),
@@ -542,32 +588,6 @@ impl LegRow {
             received_token_metadata,
             solver_transaction_hash: solver,
         })
-    }
-}
-
-fn resolve_swap_metadata(
-    token_id: &str,
-    metadata_map: &HashMap<String, TokenMetadata>,
-) -> TokenMetadata {
-    if let Some(meta) = metadata_map.get(token_id) {
-        return meta.clone();
-    }
-    let symbol = token_id
-        .split('.')
-        .next()
-        .unwrap_or("UNKNOWN")
-        .to_uppercase();
-    TokenMetadata {
-        token_id: token_id.to_string(),
-        name: symbol.clone(),
-        symbol,
-        decimals: 18,
-        icon: None,
-        price: None,
-        price_updated_at: None,
-        network: None,
-        chain_name: None,
-        chain_icons: None,
     }
 }
 

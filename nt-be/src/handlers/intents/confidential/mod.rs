@@ -23,7 +23,7 @@ pub use gold::{
     snapshot_confidential_dao_balances, spawn_confidential_gold_reconciliation_worker,
     spawn_confidential_snapshot_worker,
 };
-pub use types::{ConfidentialTxType, HistoryStatus, accounts_equal, bare_account, is_near_account};
+pub use types::{ConfidentialTxType, HistoryStatus, accounts_equal, bare_account};
 
 /// Request body for authenticating a DAO with the 1Click confidential intents API.
 /// The signed data is a NEP-413 signature over an empty-intents auth payload,

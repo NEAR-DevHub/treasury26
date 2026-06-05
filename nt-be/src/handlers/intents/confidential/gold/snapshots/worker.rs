@@ -4,6 +4,7 @@ use std::time::Duration as StdDuration;
 
 use bigdecimal::{BigDecimal, Zero};
 use chrono::{Duration, Utc};
+use futures::{StreamExt, stream};
 use near_account_id::AccountIdRef;
 
 use super::repository::{
@@ -17,6 +18,7 @@ use crate::handlers::intents::confidential::bronze::store::load_confidential_his
 pub const HOURLY_SNAPSHOT_CRON_TICK: StdDuration = StdDuration::from_secs(3600);
 
 const SNAPSHOT_DEDUP_WINDOW: Duration = Duration::seconds(3300);
+const CONFIDENTIAL_BALANCE_SNAPSHOT_WORKERS: usize = 5;
 
 /// Write a snapshot row per non-zero asset plus zero tombstones for any asset
 /// that was present in the prior snapshot but absent now. Transport errors are
@@ -140,7 +142,7 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
 
 /// Dedup window covers activity-triggered snapshots that may have fired
 /// within the same hour as this cron tick.
-pub async fn tick_confidential_balance_snapshot_cron(state: &AppState) {
+pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
     let dao_ids = match load_confidential_history_accounts(&state.db_pool).await {
         Ok(ids) => ids,
         Err(e) => {
@@ -152,31 +154,46 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &AppState) {
         }
     };
 
-    let dedup_cutoff = Utc::now() - SNAPSHOT_DEDUP_WINDOW;
-
-    for dao_id in dao_ids {
-        match latest_snapshot_at(&state.db_pool, &dao_id).await {
-            Ok(Some(latest)) if latest > dedup_cutoff => {
-                log::debug!(
-                    "[confidential-balance-snapshot-cron] {} skipped, recent snapshot at {}",
-                    dao_id,
-                    latest
-                );
-                continue;
-            }
-            Ok(_) => {}
-            Err(e) => {
-                log::warn!(
-                    "[confidential-balance-snapshot-cron] latest_snapshot_at failed for {}: {}",
-                    dao_id,
-                    e
-                );
-                continue;
-            }
-        }
-
-        snapshot_confidential_dao_balances(state, &dao_id).await;
+    let accounts_seen = dao_ids.len();
+    if accounts_seen > 0 {
+        log::info!(
+            "[confidential-balance-snapshot-cron] processing {} accounts with {} workers",
+            accounts_seen,
+            CONFIDENTIAL_BALANCE_SNAPSHOT_WORKERS
+        );
     }
+
+    let dedup_cutoff = Utc::now() - SNAPSHOT_DEDUP_WINDOW;
+    let state = Arc::clone(state);
+
+    stream::iter(dao_ids)
+        .for_each_concurrent(CONFIDENTIAL_BALANCE_SNAPSHOT_WORKERS, |dao_id| {
+            let state = Arc::clone(&state);
+            async move {
+                match latest_snapshot_at(&state.db_pool, &dao_id).await {
+                    Ok(Some(latest)) if latest > dedup_cutoff => {
+                        log::debug!(
+                            "[confidential-balance-snapshot-cron] {} skipped, recent snapshot at {}",
+                            dao_id,
+                            latest
+                        );
+                        return;
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::warn!(
+                            "[confidential-balance-snapshot-cron] latest_snapshot_at failed for {}: {}",
+                            dao_id,
+                            e
+                        );
+                        return;
+                    }
+                }
+
+                snapshot_confidential_dao_balances(state.as_ref(), &dao_id).await;
+            }
+        })
+        .await;
 }
 
 /// Background worker: periodically ticks the confidential balance snapshot cron.

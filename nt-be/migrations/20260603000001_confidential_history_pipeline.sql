@@ -92,6 +92,12 @@ CREATE INDEX IF NOT EXISTS idx_gche_intent_id
     ON gold_confidential_history_events (intent_id);
 CREATE INDEX IF NOT EXISTS idx_gche_dao_quote_created
     ON gold_confidential_history_events (dao_id, quote_created_at, history_event_id);
+CREATE INDEX IF NOT EXISTS idx_gche_dao_event_time
+    ON gold_confidential_history_events (
+        dao_id,
+        (COALESCE(block_time, executed_at, quote_created_at)) DESC,
+        id DESC
+    );
 
 COMMENT ON TABLE gold_confidential_history_events IS
     'Gold projection of successful bronze_confidential_history_events. Balances are ledger-derived from bronze rows, not RPC verified.';

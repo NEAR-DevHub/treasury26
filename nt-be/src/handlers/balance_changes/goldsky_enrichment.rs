@@ -535,29 +535,36 @@ async fn get_monitored_accounts(
 }
 
 pub(crate) fn decode_success_value_u64(status: &str) -> Option<u64> {
-    let encoded = if let Ok(value) = serde_json::from_str::<serde_json::Value>(status) {
-        value
-            .get("SuccessValue")
-            .and_then(|v| v.as_str())
-            .map(ToString::to_string)
-    } else {
-        let marker_idx = status.find("SuccessValue")?;
-        let rest = &status[marker_idx..];
-        let first_quote = rest.find('"')?;
-        let after_first_quote = &rest[first_quote + 1..];
-        let second_quote = after_first_quote.find('"')?;
-        Some(after_first_quote[..second_quote].to_string())
-    }?;
+    fn extract_encoded(status: &str) -> Option<String> {
+        let status = status.trim();
+        if status.is_empty() {
+            return None;
+        }
 
-    if encoded.is_empty() {
-        return None;
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(status) {
+            return value
+                .get("SuccessValue")
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(ToString::to_string);
+        }
+
+        let inner = status
+            .strip_prefix("SuccessValue(")?
+            .strip_suffix(')')?
+            .trim();
+        let encoded = inner.strip_prefix('"')?.strip_suffix('"')?.trim();
+        (!encoded.is_empty()).then(|| encoded.to_string())
     }
+
+    let encoded = extract_encoded(status)?;
 
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(encoded)
         .ok()?;
     let decoded = String::from_utf8(decoded).ok()?;
-    decoded.parse::<u64>().ok()
+    decoded.trim().parse::<u64>().ok()
 }
 
 fn confidential_dao_for_outcome(
@@ -1254,7 +1261,24 @@ mod tests {
             decode_success_value_u64(r#"{"SuccessValue":"MTM2"}"#),
             Some(136)
         );
+        assert_eq!(
+            decode_success_value_u64(r#"  {"SuccessValue":"IDEyMyA="}  "#),
+            Some(123)
+        );
         assert_eq!(decode_success_value_u64(r#"SuccessValue("")"#), None);
+        assert_eq!(
+            decode_success_value_u64(r#"{"SuccessReceiptId":"abc"}"#),
+            None
+        );
+        assert_eq!(decode_success_value_u64(r#"garbage "MTE=""#), None);
+        assert_eq!(
+            decode_success_value_u64(r#"SuccessValue("not-base64")"#),
+            None
+        );
+        assert_eq!(
+            decode_success_value_u64(r#"{"SuccessValue":"bm90LWEtbnVtYmVy"}"#),
+            None
+        );
     }
 
     #[test]

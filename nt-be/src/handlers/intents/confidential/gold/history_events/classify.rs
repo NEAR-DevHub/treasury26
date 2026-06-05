@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use super::models::{BronzeProjectionRow, GoldHistoryEvent};
 use crate::handlers::intents::confidential::types::{
-    ConfidentialTxType, DepositType, HistoryApiItem, bare_account, is_near_account,
+    ConfidentialTxType, DepositType, HistoryApiItem, accounts_equal, bare_account,
 };
 
 enum Classification {
@@ -71,8 +71,8 @@ fn classify(
     origin_asset: Option<&str>,
     destination_asset: &str,
 ) -> Classification {
-    // `recipient` is bare; self-deposit/exchange when it matches this DAO's NEAR account.
-    let is_self = is_near_account(recipient, dao_id);
+    // Self-deposit/exchange when recipient matches this DAO (bare or prefixed).
+    let is_self = accounts_equal(recipient, dao_id);
 
     if !is_self && origin_asset.is_none() {
         return Classification::Skip;
@@ -107,6 +107,13 @@ pub(crate) fn project_row(
     ledger: &mut HashMap<String, BigDecimal>,
 ) -> Result<Option<GoldHistoryEvent>, String> {
     let dao_id = row.account_id.clone();
+    // Parse the DAO account id up front: it is the only fallible step that would
+    // otherwise run *after* the ledger has been mutated below. Failing here keeps
+    // the invariant that project_row never mutates `ledger` before returning Err,
+    // so the caller can safely reuse the ledger across rows that error.
+    let dao_account_id = dao_id
+        .parse::<near_api::AccountId>()
+        .map_err(|e| format!("invalid dao_id: {e}"))?;
     let origin_asset_opt = coalesce_str(row.origin_asset.as_ref(), &row.raw_payload, "originAsset");
     let destination_asset_opt = coalesce_str(
         Some(&row.destination_asset),
@@ -280,14 +287,10 @@ pub(crate) fn project_row(
         ConfidentialTxType::Exchange | ConfidentialTxType::Deposit => bare_account("intents.near"),
     };
 
-    let dao_id = dao_id
-        .parse::<near_api::AccountId>()
-        .map_err(|e| format!("invalid dao_id: {e}"))?;
-
     Ok(Some(GoldHistoryEvent {
         history_event_id: row.id,
         intent_id: row.intent_id,
-        dao_id,
+        dao_id: dao_account_id,
         transaction_type: kind,
         origin_asset,
         destination_asset,

@@ -22,7 +22,7 @@ use sqlx::PgPool;
 use super::counterparty::{convert_raw_to_decimal, ensure_ft_metadata};
 use crate::handlers::intents::confidential::bronze::store::link_intent_to_history_event;
 use crate::handlers::intents::confidential::gold::history_events::refresh_gold_metadata_for_intent;
-use crate::handlers::intents::confidential::types::{bare_account, is_near_account};
+use crate::handlers::intents::confidential::types::{accounts_equal, bare_account};
 
 /// Legacy payload form: `predecessor=AccountId("…") … payload_v2: Some(Eddsa(Bytes("<hex>")))`.
 static V1_SIGNER_HEX: Lazy<Regex> = Lazy::new(|| {
@@ -260,7 +260,7 @@ pub async fn handle_confidential_outgoing(
     //     mirrors the public intents pipeline so the UI renders public and
     //     confidential swaps identically.
     let counterparty: String = match recipient.as_deref() {
-        Some(r) if !is_near_account(r, dao_id) => r.to_string(),
+        Some(r) if !accounts_equal(r, dao_id) => r.to_string(),
         _ => "intents.near".to_string(),
     };
 
