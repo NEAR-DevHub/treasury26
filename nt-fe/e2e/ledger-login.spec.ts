@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 // Mock WebHID API and Ledger device responses - this gets prepended to ledger-executor.js
 const mockWebHID = `
@@ -344,7 +344,9 @@ test("Ledger login flow", async ({ page, context }) => {
         await route.fulfill({
             status: 200,
             contentType: "application/json",
-            body: JSON.stringify({ nonce: "dGVzdC1ub25jZS0xMjM0NTY3ODkw" }), // Base64 encoded test nonce
+            // NEP-641 payload the wallet authorizes (login is mocked to succeed
+            // regardless of the resolved authorization).
+            body: JSON.stringify({ payload: "Login to Trezu — test payload" }),
         });
     });
 

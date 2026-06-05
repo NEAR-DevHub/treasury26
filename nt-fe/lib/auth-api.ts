@@ -7,17 +7,14 @@ const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 // ============================================================================
 
 export interface AuthChallengeResponse {
-    nonce: string; // Base64 encoded
+    /** Unique message the wallet authorizes via NEP-641 `resolveAuth`. */
+    payload: string;
 }
 
 export interface LoginRequest {
     accountId: string;
-    publicKey: string;
-    signature: string;
-    message: string;
-    nonce: string; // Base64 encoded
-    recipient: string;
-    callbackUrl?: string;
+    /** JSON-stringified NEP-641 authorization blob from `wallet.resolveAuth`. */
+    authorization: string;
 }
 
 export interface LoginResponse {

@@ -101,6 +101,7 @@
         "saveGuestTreasury": "Diese Gast-Treasury in Ihrer Treasury-Liste speichern."
     },
     "signIn": {
+        "copyAddress": "Adresse kopieren",
         "connect": "Verbinden",
         "wallet": "Wallet",
         "termsOfService": "Nutzungsbedingungen",

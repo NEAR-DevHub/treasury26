@@ -101,6 +101,7 @@
         "saveGuestTreasury": "Bu misafir hazinesini hazinelerinize kaydedin."
     },
     "signIn": {
+        "copyAddress": "Adresi kopyala",
         "connect": "Bağlan",
         "wallet": "Cüzdan",
         "termsOfService": "Hizmet Şartları",

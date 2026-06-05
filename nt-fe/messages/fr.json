@@ -101,6 +101,7 @@
         "saveGuestTreasury": "Enregistrez cette trésorerie invitée dans votre liste de trésoreries."
     },
     "signIn": {
+        "copyAddress": "Copier l'adresse",
         "connect": "Connecter",
         "wallet": "Portefeuille",
         "termsOfService": "Conditions d'utilisation",

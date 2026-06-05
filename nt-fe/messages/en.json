@@ -101,6 +101,7 @@
         "saveGuestTreasury": "Save this guest treasury to your treasuries list."
     },
     "signIn": {
+        "copyAddress": "Copy address",
         "connect": "Connect",
         "wallet": "Wallet",
         "termsOfService": "Terms of Service",

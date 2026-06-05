@@ -101,6 +101,7 @@
         "saveGuestTreasury": "Simpan treasury tamu ini ke daftar treasury Anda."
     },
     "signIn": {
+        "copyAddress": "Salin alamat",
         "connect": "Hubungkan",
         "wallet": "Dompet",
         "termsOfService": "Ketentuan Layanan",

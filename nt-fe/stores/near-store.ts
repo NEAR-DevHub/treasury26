@@ -1,41 +1,39 @@
 "use client";
 
-import { create } from "zustand";
 import {
+    type ConnectorAction,
     NearConnector,
-    SignedMessage,
-    ConnectorAction,
+    type SignedMessage,
 } from "@hot-labs/near-connect";
-import { Proposal, Vote as ProposalVote } from "@/lib/proposals-api";
-import {
-    ProposalPermissionKind,
-    getKindFromProposal,
-} from "@/lib/config-utils";
-import { toast } from "sonner";
-import Big from "@/lib/big";
+import type { SignDelegateActionsParams } from "@hot-labs/near-connect/build/types";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-    getAuthChallenge,
-    authLogin,
-    acceptTerms as apiAcceptTerms,
-    getAuthMe,
-    authLogout,
-    AuthUserInfo,
-} from "@/lib/auth-api";
-import { markDaoDirty, relayDelegateAction } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import SignClient from "@walletconnect/sign-client";
+import posthog from "posthog-js";
+import { toast } from "sonner";
+import { create } from "zustand";
+import { APP_WALLET_SETUP_URL } from "@/constants/config";
 import { getNearStoreMessages } from "@/i18n/store-messages";
+import { trackEvent } from "@/lib/analytics";
+import { markDaoDirty, relayDelegateAction } from "@/lib/api";
 import {
-    EventMap,
-    SignDelegateActionsParams,
-} from "@hot-labs/near-connect/build/types";
+    type AuthUserInfo,
+    acceptTerms as apiAcceptTerms,
+    authLogin,
+    authLogout,
+    getAuthChallenge,
+    getAuthMe,
+} from "@/lib/auth-api";
+import Big from "@/lib/big";
+import {
+    getKindFromProposal,
+    type ProposalPermissionKind,
+} from "@/lib/config-utils";
+import type { Proposal, Vote as ProposalVote } from "@/lib/proposals-api";
 import {
     estimateProposalStorage,
     estimateVoteStorage,
 } from "@/lib/sputnik-storage";
-import { APP_WALLET_SETUP_URL } from "@/constants/config";
-import { trackEvent } from "@/lib/analytics";
-import posthog from "posthog-js";
+import { cn } from "@/lib/utils";
 
 /**
  * Ensures sandboxed iframes get bluetooth permission for Ledger Nano X BLE.
@@ -92,19 +90,61 @@ interface Vote {
     proposal: Proposal;
 }
 
-const LOGIN_MESSAGE = "Login to Trezu";
+// NEP-641 authorization purpose + bare recipient. Must match the backend's
+// AUTH_PURPOSE / AUTH_RECIPIENT (nt-be/src/auth/handlers.rs).
+const LOGIN_PURPOSE = "PROVE_OWNERSHIP" as const;
 const LOGIN_RECIPIENT = "Trezu App";
 const LEDGER_WALLET_ID = "ledger";
+const WALLETCONTRACT_EIP712_WALLET_ID = "walletcontract-eip712";
+// Wallets that get their own dedicated button and are triggered directly by id
+// through NearConnect, so they are excluded from the generic "near" wallet
+// selector popup. When connecting one of these, only the others are excluded.
+const DIRECT_TRIGGER_WALLET_IDS = [
+    LEDGER_WALLET_ID,
+    WALLETCONTRACT_EIP712_WALLET_ID,
+];
+// localStorage key @hot-labs/near-connect uses to remember the chosen wallet
+// (so `connector.wallet()` resolves it on later calls and after reload).
+const SELECTED_WALLET_STORAGE_KEY = "selected-wallet";
+// Our own copy of the forced direct-trigger wallet id (Ledger / EIP-712).
+// SELECTED_WALLET_STORAGE_KEY alone isn't enough: on reload the connector must
+// be rebuilt INCLUDING that wallet (not excluded), otherwise `connector.wallet()`
+// can't resolve it and the user is signed out. We persist the forced target
+// here and restore it on bare init().
+const TARGET_WALLET_STORAGE_KEY = "trezu:target-wallet";
+
+// WalletConnect Core must be initialized exactly once per page. The connector
+// is rebuilt whenever the excluded-wallet set changes (e.g. switching to the
+// EIP-712 walletcontract button), so we memoize a single SignClient and reuse
+// it across rebuilds. Re-initializing would trigger "WalletConnect Core is
+// already initialized" and strand the in-flight session, dropping the
+// signMessage result before it reaches the eip712 executor.
+let walletConnectClient: ReturnType<typeof SignClient.init> | null = null;
+function getWalletConnectClient(): ReturnType<typeof SignClient.init> {
+    if (!walletConnectClient) {
+        walletConnectClient = SignClient.init({
+            projectId: "127abc3c78912e30217f188a8c6f22c0",
+            metadata: {
+                name: "Trezu App",
+                description: "Confidential Multisig",
+                url: location.origin,
+                icons: ["/favicon_light.svg", "/favicon_dark.svg"],
+            },
+        });
+    }
+    return walletConnectClient;
+}
 
 interface NearStore {
     // Wallet state
     connector: NearConnector | null;
-    connectorExcludeLedger: boolean | null;
+    // Comma-joined list of excluded wallet ids the current connector was built
+    // with; used to decide whether it can be reused or must be rebuilt.
+    connectorExcludeKey: string | null;
     walletAccountId: string | null; // Raw wallet account ID
     isInitializing: boolean;
 
     // Auth state
-    nonce: string | null;
     isAuthenticated: boolean;
     hasAcceptedTerms: boolean;
     isAuthenticating: boolean;
@@ -113,7 +153,7 @@ interface NearStore {
 
     // Wallet actions
     init: (options?: {
-        excludeLedger?: boolean;
+        targetWalletId?: string;
     }) => Promise<NearConnector | undefined>;
     connect: (walletId?: string) => Promise<void>;
     disconnect: () => Promise<void>;
@@ -150,12 +190,11 @@ const isFullyAuthenticated = (state: NearStore): boolean => {
 export const useNearStore = create<NearStore>((set, get) => ({
     // Wallet state
     connector: null,
-    connectorExcludeLedger: null,
+    connectorExcludeKey: null,
     walletAccountId: null,
     isInitializing: true,
 
     // Auth state
-    nonce: null,
     isAuthenticated: false,
     hasAcceptedTerms: false,
     isAuthenticating: false,
@@ -163,17 +202,41 @@ export const useNearStore = create<NearStore>((set, get) => ({
     user: null,
 
     init: async (options) => {
-        const { connector, connectorExcludeLedger } = get();
-        const requestedExcludeLedger = options?.excludeLedger;
+        const { connector, connectorExcludeKey } = get();
 
+        // On a bare init() (app bootstrap / auth check, e.g. after a page
+        // reload) restore the previously forced direct-trigger wallet from our
+        // dedicated key, so the rebuilt connector still includes it and
+        // `connector.wallet()` can resolve the session. Explicit connect() calls
+        // pass an options object and control the target themselves.
+        const persistedTarget =
+            typeof window !== "undefined"
+                ? window.localStorage.getItem(TARGET_WALLET_STORAGE_KEY)
+                : null;
+        const restoredTarget =
+            persistedTarget &&
+            DIRECT_TRIGGER_WALLET_IDS.includes(persistedTarget)
+                ? persistedTarget
+                : undefined;
+        const targetWalletId =
+            options === undefined ? restoredTarget : options.targetWalletId;
+
+        // Only the generic "NEAR" path (no forced wallet) excludes the
+        // direct-trigger wallets from the selector popup. Forcing a specific
+        // wallet (Ledger / EIP-712) excludes nothing.
+        const excludedWallets = targetWalletId
+            ? []
+            : [...DIRECT_TRIGGER_WALLET_IDS];
+        const excludeKey = excludedWallets.join(",");
+
+        // Reuse the existing connector when its exclusion set already matches
+        // what we need, or when no specific wallet is targeted.
         if (
             connector &&
-            (requestedExcludeLedger === undefined ||
-                connectorExcludeLedger === requestedExcludeLedger)
+            (targetWalletId === undefined || connectorExcludeKey === excludeKey)
         ) {
             return connector;
         }
-        const shouldExcludeLedger = requestedExcludeLedger ?? true;
 
         let newConnector = null;
 
@@ -190,9 +253,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 },
                 features: {
                     signDelegateActions: true,
-                    signInAndSignMessage: true,
+                    resolveAuth: true,
                 },
-                excludedWallets: shouldExcludeLedger ? [LEDGER_WALLET_ID] : [],
+                excludedWallets,
+                walletConnect: getWalletConnectClient(),
             });
         } catch (err) {
             set({ isInitializing: false });
@@ -210,101 +274,12 @@ export const useNearStore = create<NearStore>((set, get) => ({
             });
         });
 
-        newConnector.on(
-            "wallet:signIn",
-            async ({ accounts, wallet, source }: EventMap["wallet:signIn"]) => {
-                trackEvent("wallet-selected", {
-                    wallet_id: wallet.manifest.id,
-                    wallet_name: wallet.manifest.name,
-                });
-                const { nonce } = get();
-                if (source !== "signIn" || nonce === null) {
-                    return;
-                }
-                const nonceBytes = Uint8Array.from(atob(nonce ?? ""), (c) =>
-                    c.charCodeAt(0),
-                );
-                const signatureData = await wallet.signMessage({
-                    message: LOGIN_MESSAGE,
-                    recipient: LOGIN_RECIPIENT,
-                    nonce: nonceBytes,
-                });
-                const loginResponse = await authLogin({
-                    accountId: accounts[0]?.accountId ?? "",
-                    publicKey: accounts[0]?.publicKey ?? "",
-                    signature: signatureData.signature,
-                    message: LOGIN_MESSAGE,
-                    nonce: nonce ?? "",
-                    recipient: LOGIN_RECIPIENT,
-                });
-                set({
-                    walletAccountId: accounts[0]?.accountId ?? null,
-                    isAuthenticated: true,
-                    hasAcceptedTerms: loginResponse.termsAccepted,
-                    user: {
-                        accountId: loginResponse.accountId,
-                        termsAccepted: loginResponse.termsAccepted,
-                        hasAcceptedV1Terms:
-                            loginResponse.hasAcceptedV1Terms ?? false,
-                    },
-                    nonce: null,
-                    isAuthenticating: false,
-                });
-                posthog.identify(loginResponse.accountId, {
-                    account_id: loginResponse.accountId,
-                });
-                trackEvent("wallet_connection_completed", {
-                    source: "wallet-sign-in",
-                    account_id: loginResponse.accountId,
-                });
-            },
-        );
-
-        newConnector.on(
-            "wallet:signInAndSignMessage",
-            async ({
-                accounts,
-                wallet,
-            }: EventMap["wallet:signInAndSignMessage"]) => {
-                trackEvent("wallet-selected", {
-                    wallet_id: wallet.manifest.id,
-                    wallet_name: wallet.manifest.name,
-                });
-                const result = accounts[0];
-                const loginResponse = await authLogin({
-                    accountId: result.signedMessage.accountId,
-                    publicKey: result.signedMessage.publicKey ?? "",
-                    signature: result.signedMessage.signature,
-                    message: LOGIN_MESSAGE,
-                    nonce: get().nonce ?? "",
-                    recipient: LOGIN_RECIPIENT,
-                });
-                set({
-                    walletAccountId: result.accountId,
-                    isAuthenticated: true,
-                    hasAcceptedTerms: loginResponse.termsAccepted,
-                    user: {
-                        accountId: loginResponse.accountId,
-                        termsAccepted: loginResponse.termsAccepted,
-                        hasAcceptedV1Terms:
-                            loginResponse.hasAcceptedV1Terms ?? false,
-                    },
-                    isAuthenticating: false,
-                    nonce: null,
-                });
-                posthog.identify(loginResponse.accountId, {
-                    account_id: loginResponse.accountId,
-                });
-                trackEvent("wallet_connection_completed", {
-                    source: "wallet-sign-in-and-message",
-                    account_id: loginResponse.accountId,
-                });
-            },
-        );
+        // Login is driven explicitly in `connect()` via NEP-641 `resolveAuth`,
+        // so no sign-in event handlers are needed here.
 
         set({
             connector: newConnector,
-            connectorExcludeLedger: shouldExcludeLedger,
+            connectorExcludeKey: excludeKey,
         });
         set({ isInitializing: false });
         return newConnector;
@@ -312,10 +287,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
     connect: async (walletId?: string) => {
         const { init } = get();
-        const shouldExcludeLedger = walletId !== LEDGER_WALLET_ID;
-        const newConnector = await init({
-            excludeLedger: shouldExcludeLedger,
-        });
+        const newConnector = await init({ targetWalletId: walletId });
         if (!newConnector) {
             throw new Error("Failed to initialize connector");
         }
@@ -323,23 +295,70 @@ export const useNearStore = create<NearStore>((set, get) => ({
         set({ isAuthenticating: true, authError: null });
 
         try {
-            // Get challenge from backend
-            const { nonce } = await getAuthChallenge();
+            // 1. Backend issues a unique payload to authorize.
+            const { payload } = await getAuthChallenge();
 
-            set({ nonce });
-            // Decode base64 nonce to Uint8Array
-            const nonceBytes = Uint8Array.from(atob(nonce), (c) =>
-                c.charCodeAt(0),
-            );
+            // 2. Let the user pick a wallet (filtered to NEP-641-capable ones)
+            //    and remember it so later `connector.wallet()` calls resolve it.
+            const selectedWalletId =
+                walletId ??
+                (await newConnector.selectWallet({
+                    features: { resolveAuth: true },
+                }));
+            if (typeof window !== "undefined") {
+                window.localStorage.setItem(
+                    SELECTED_WALLET_STORAGE_KEY,
+                    selectedWalletId,
+                );
+                // Persist direct-trigger wallets under our own key so the
+                // connector is rebuilt including them after a reload. Clear it
+                // for generic NEAR wallets, which need no special inclusion.
+                if (DIRECT_TRIGGER_WALLET_IDS.includes(selectedWalletId)) {
+                    window.localStorage.setItem(
+                        TARGET_WALLET_STORAGE_KEY,
+                        selectedWalletId,
+                    );
+                } else {
+                    window.localStorage.removeItem(TARGET_WALLET_STORAGE_KEY);
+                }
+            }
+            const wallet = await newConnector.wallet(selectedWalletId);
 
-            // Sign the message with wallet
-            await newConnector.connect({
-                walletId,
-                signMessageParams: {
-                    message: LOGIN_MESSAGE,
-                    recipient: LOGIN_RECIPIENT,
-                    nonce: nonceBytes,
+            trackEvent("wallet-selected", {
+                wallet_id: wallet.manifest.id,
+                wallet_name: wallet.manifest.name,
+            });
+
+            // 3. NEP-641 PROVE_OWNERSHIP: sign in and authorize in one gesture.
+            //    Produces an authorization blob the backend resolves on-chain.
+            const { accountId, authorization } = await wallet.resolveAuth!({
+                network: "mainnet",
+                purpose: LOGIN_PURPOSE,
+                recipient: LOGIN_RECIPIENT,
+                payload,
+            });
+
+            // 4. Backend verifies the authorization and opens a session.
+            const loginResponse = await authLogin({ accountId, authorization });
+
+            set({
+                walletAccountId: accountId,
+                isAuthenticated: true,
+                hasAcceptedTerms: loginResponse.termsAccepted,
+                user: {
+                    accountId: loginResponse.accountId,
+                    termsAccepted: loginResponse.termsAccepted,
+                    hasAcceptedV1Terms:
+                        loginResponse.hasAcceptedV1Terms ?? false,
                 },
+                isAuthenticating: false,
+            });
+            posthog.identify(loginResponse.accountId, {
+                account_id: loginResponse.accountId,
+            });
+            trackEvent("wallet_connection_completed", {
+                source: "resolve-auth",
+                account_id: loginResponse.accountId,
             });
         } catch (error) {
             console.error("Authentication failed:", error);
@@ -371,6 +390,12 @@ export const useNearStore = create<NearStore>((set, get) => ({
             authError: null,
         });
         posthog.reset();
+
+        // Forget the persisted direct-trigger wallet so the next reload doesn't
+        // restore a stale target.
+        if (typeof window !== "undefined") {
+            window.localStorage.removeItem(TARGET_WALLET_STORAGE_KEY);
+        }
 
         // Disconnect wallet
         if (connector) {
