@@ -271,7 +271,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
             // 3. NEP-641 PROVE_OWNERSHIP: sign in and authorize in one gesture.
             //    Produces an authorization blob the backend resolves on-chain.
-            const { accountId, authorization } = await wallet.resolveAuth({
+            const { accountId, authorization } = await wallet.resolveAuth!({
                 network: "mainnet",
                 purpose: LOGIN_PURPOSE,
                 recipient: LOGIN_RECIPIENT,
