@@ -245,8 +245,7 @@ function WalletPageContent() {
             metadata: {
                 name: "Trezu App",
                 description: "Confidential Multisig",
-                url: "https://trezu.app",
-                icons: ["/favicon.ico"],
+                icons: ["/favicon_light.svg", "/favicon_dark.svg"],
             },
         });
 

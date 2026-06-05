@@ -67,7 +67,7 @@ pub async fn create_challenge(
     rand::rng().fill_bytes(&mut random);
     let request_id = base64::engine::general_purpose::STANDARD.encode(random);
     let issued_at = chrono::Utc::now().to_rfc3339();
-    let payload = format!("Login to Trezu\n\nIssued At: {issued_at}\nRequest ID: {request_id}");
+    let payload = format!("Login to Trezu initiated at {issued_at} with request ID: {request_id}");
 
     // Store the challenge payload (its bytes) so login can match and consume it.
     sqlx::query!(

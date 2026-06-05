@@ -17,6 +17,14 @@ const isHex64 = (str: string): boolean => /^[0-9a-fA-F]{64}$/.test(str);
 export const isEthImplicitNearAddress = (str: string): boolean =>
     /^0x[0-9a-fA-F]{40}$/.test(str);
 
+/**
+ * Deterministic-account format (`0s` + 20-byte keccak hash as 40 hex chars),
+ * e.g. used by EIP-712 wallet contracts. Like implicit accounts, these are
+ * valid recipients whether or not they already exist on-chain.
+ */
+export const is0sDeterministicNearAddress = (str: string): boolean =>
+    /^0s[0-9a-fA-F]{40}$/.test(str);
+
 function validateNearAddressFormat(
     address: string,
 ): NearValidationErrorCode | null {
@@ -32,6 +40,7 @@ function validateNearAddressFormat(
 
     if (isHex64(trimmed)) return null;
     if (isEthImplicitNearAddress(trimmed)) return null;
+    if (is0sDeterministicNearAddress(trimmed)) return null;
 
     if (!trimmed.includes(".")) {
         return "missingTld";
@@ -62,7 +71,11 @@ export async function validateNearAddress(
 
     const trimmed = address.trim();
 
-    if (isHex64(trimmed) || isEthImplicitNearAddress(trimmed)) {
+    if (
+        isHex64(trimmed) ||
+        isEthImplicitNearAddress(trimmed) ||
+        is0sDeterministicNearAddress(trimmed)
+    ) {
         return null;
     }
 

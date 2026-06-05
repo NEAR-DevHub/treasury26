@@ -14,11 +14,13 @@ import {
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
 import { useNear } from "@/stores/near-store";
 import { Address } from "./address";
+import { CopyButton } from "./copy-button";
 import { User } from "./user";
 
 export function SignIn() {
     const t = useTranslations("signIn");
     const tCommon = useTranslations("common");
+    const tAddress = useTranslations("address");
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -134,6 +136,14 @@ export function SignIn() {
                 <div className="px-3 py-2">
                     <Address address={signedAccountId} />
                 </div>
+                <CopyButton
+                    text={signedAccountId}
+                    toastMessage={tAddress("copied")}
+                    variant="ghost"
+                    className="flex h-auto w-full items-center justify-start rounded-6 gap-2 px-3 py-2 text-sm font-normal hover:bg-muted transition-colors"
+                >
+                    {t("copyAddress")}
+                </CopyButton>
                 <Link
                     href={TERMS_OF_SERVICE_URL}
                     target="_blank"

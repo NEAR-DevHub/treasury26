@@ -101,6 +101,7 @@
         "saveGuestTreasury": "שמור את האוצר האורח הזה לרשימת האוצרות שלך."
     },
     "signIn": {
+        "copyAddress": "העתק כתובת",
         "connect": "התחברות",
         "wallet": "ארנק",
         "termsOfService": "תנאי שימוש",

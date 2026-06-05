@@ -271,7 +271,7 @@
 
     "@hookform/resolvers": ["@hookform/resolvers@5.2.2", "", { "dependencies": { "@standard-schema/utils": "^0.3.0" }, "peerDependencies": { "react-hook-form": "^7.55.0" } }, "sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA=="],
 
-    "@hot-labs/near-connect": ["@hot-labs/near-connect@github:NEAR-DevHub/near-connect#459ddee", { "dependencies": { "@noble/curves": "^1.7.0", "@noble/hashes": "^1.7.0", "@scure/base": "^1.2.0" } }, "NEAR-DevHub-near-connect-459ddee", "sha512-GTbKkGqL5CMzXv3zHnAtO5hqkeKl7Pe4XRzC+YNpR0R0aDEDkIS9eDBzHWE64nr7Ik5eX9caI8RmG96+02aPIQ=="],
+    "@hot-labs/near-connect": ["@hot-labs/near-connect@github:NEAR-DevHub/near-connect#18bb85b", { "dependencies": { "@noble/curves": "^1.7.0", "@noble/hashes": "^1.7.0", "@scure/base": "^1.2.0" } }, "NEAR-DevHub-near-connect-18bb85b", "sha512-iNXXVdfITu3wBc/rJYisGWMnnDc0AJWNizitE5wQcJbtHagZ0OZ9bKuSFua6sF3v9JjXhIb17PpzagnTfn9gZg=="],
 
     "@hot-labs/omni-sdk": ["@hot-labs/omni-sdk@2.24.8", "", { "dependencies": { "@near-js/crypto": "2.2.5", "@near-js/providers": "2.2.5", "@near-js/transactions": "2.2.5", "@near-js/types": "2.2.5", "@near-js/utils": "2.2.5", "@scure/base": "2.0.0", "@stellar/stellar-sdk": "14.1.1", "@ton-api/client": "0.4.0", "@ton-api/ton-adapter": "0.4.1", "@ton/core": "0.60.1", "@ton/crypto": "3.3.0", "@ton/ton": "15.2.1", "ethers": "6.15.0", "rlp": "3.0.0" }, "optionalDependencies": { "@coral-xyz/anchor": "0.29.0", "@cosmjs/cosmwasm-stargate": "0.37.0", "@cosmjs/stargate": "0.37.0", "@solana/spl-token": "0.4.13", "@solana/web3.js": "1.68.0", "cosmjs-types": "0.11.0" } }, "sha512-Pagvft6tiaEF2vuUXA0wwMOXpXThvT7z/JAV+rXEFZGMTrrCEQ5CSyQs5OtDcWLrl6m8dcFT/V0dpdO2kznRAw=="],
 

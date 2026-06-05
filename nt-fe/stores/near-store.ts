@@ -7,10 +7,10 @@ import {
 } from "@hot-labs/near-connect";
 import type { SignDelegateActionsParams } from "@hot-labs/near-connect/build/types";
 import { useQueryClient } from "@tanstack/react-query";
+import SignClient from "@walletconnect/sign-client";
 import posthog from "posthog-js";
 import { toast } from "sonner";
 import { create } from "zustand";
-import SignClient from "@walletconnect/sign-client";
 import { APP_WALLET_SETUP_URL } from "@/constants/config";
 import { getNearStoreMessages } from "@/i18n/store-messages";
 import { trackEvent } from "@/lib/analytics";
@@ -95,6 +95,14 @@ interface Vote {
 const LOGIN_PURPOSE = "PROVE_OWNERSHIP" as const;
 const LOGIN_RECIPIENT = "Trezu App";
 const LEDGER_WALLET_ID = "ledger";
+const WALLETCONTRACT_EIP712_WALLET_ID = "walletcontract-eip712";
+// Wallets that get their own dedicated button and are triggered directly by id
+// through NearConnect, so they are excluded from the generic "near" wallet
+// selector popup. When connecting one of these, only the others are excluded.
+const DIRECT_TRIGGER_WALLET_IDS = [
+    LEDGER_WALLET_ID,
+    WALLETCONTRACT_EIP712_WALLET_ID,
+];
 // localStorage key @hot-labs/near-connect uses to remember the chosen wallet
 // (so `connector.wallet()` resolves it on later calls and after reload).
 const SELECTED_WALLET_STORAGE_KEY = "selected-wallet";
@@ -102,7 +110,9 @@ const SELECTED_WALLET_STORAGE_KEY = "selected-wallet";
 interface NearStore {
     // Wallet state
     connector: NearConnector | null;
-    connectorExcludeLedger: boolean | null;
+    // Comma-joined list of excluded wallet ids the current connector was built
+    // with; used to decide whether it can be reused or must be rebuilt.
+    connectorExcludeKey: string | null;
     walletAccountId: string | null; // Raw wallet account ID
     isInitializing: boolean;
 
@@ -115,7 +125,7 @@ interface NearStore {
 
     // Wallet actions
     init: (options?: {
-        excludeLedger?: boolean;
+        targetWalletId?: string;
     }) => Promise<NearConnector | undefined>;
     connect: (walletId?: string) => Promise<void>;
     disconnect: () => Promise<void>;
@@ -152,7 +162,7 @@ const isFullyAuthenticated = (state: NearStore): boolean => {
 export const useNearStore = create<NearStore>((set, get) => ({
     // Wallet state
     connector: null,
-    connectorExcludeLedger: null,
+    connectorExcludeKey: null,
     walletAccountId: null,
     isInitializing: true,
 
@@ -164,17 +174,24 @@ export const useNearStore = create<NearStore>((set, get) => ({
     user: null,
 
     init: async (options) => {
-        const { connector, connectorExcludeLedger } = get();
-        const requestedExcludeLedger = options?.excludeLedger;
+        const { connector, connectorExcludeKey } = get();
+        const targetWalletId = options?.targetWalletId;
 
+        // Exclude every direct-trigger wallet except the one being connected.
+        const excludedWallets = DIRECT_TRIGGER_WALLET_IDS.filter(
+            (id) => id !== targetWalletId,
+        );
+        const excludeKey = excludedWallets.join(",");
+
+        // Reuse the existing connector when no specific wallet is targeted
+        // (callers that just need a connector to read accounts), or when its
+        // exclusion set already matches what we need.
         if (
             connector &&
-            (requestedExcludeLedger === undefined ||
-                connectorExcludeLedger === requestedExcludeLedger)
+            (targetWalletId === undefined || connectorExcludeKey === excludeKey)
         ) {
             return connector;
         }
-        const shouldExcludeLedger = requestedExcludeLedger ?? true;
 
         let newConnector = null;
 
@@ -185,8 +202,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
             metadata: {
                 name: "Trezu App",
                 description: "Confidential Multisig",
-                url: "https://trezu.app",
-                icons: ["/favicon.ico"],
+                icons: ["/favicon_light.svg", "/favicon_dark.svg"],
             },
         });
 
@@ -203,7 +219,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     signDelegateActions: true,
                     resolveAuth: true,
                 },
-                excludedWallets: shouldExcludeLedger ? [LEDGER_WALLET_ID] : [],
+                excludedWallets,
                 walletConnect,
             });
         } catch (err) {
@@ -227,7 +243,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
         set({
             connector: newConnector,
-            connectorExcludeLedger: shouldExcludeLedger,
+            connectorExcludeKey: excludeKey,
         });
         set({ isInitializing: false });
         return newConnector;
@@ -235,10 +251,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
     connect: async (walletId?: string) => {
         const { init } = get();
-        const shouldExcludeLedger = walletId !== LEDGER_WALLET_ID;
-        const newConnector = await init({
-            excludeLedger: shouldExcludeLedger,
-        });
+        const newConnector = await init({ targetWalletId: walletId });
         if (!newConnector) {
             throw new Error("Failed to initialize connector");
         }

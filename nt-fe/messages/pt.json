@@ -101,6 +101,7 @@
         "saveGuestTreasury": "Salve esta tesouraria de convidado na sua lista de tesourarias."
     },
     "signIn": {
+        "copyAddress": "Copiar endereço",
         "connect": "Conectar",
         "wallet": "Carteira",
         "termsOfService": "Termos de Serviço",
