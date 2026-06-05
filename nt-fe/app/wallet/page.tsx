@@ -12,6 +12,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { NearConnector } from "@hot-labs/near-connect";
 import type { Network, EventMap } from "@hot-labs/near-connect/build/types";
+import SignClient from "@walletconnect/sign-client";
 import axios from "axios";
 import Logo from "@/components/icons/logo";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -239,7 +240,20 @@ function WalletPageContent() {
         if (initRef.current) return;
         initRef.current = true;
 
-        const nc = new NearConnector({ network });
+        const walletConnect = SignClient.init({
+            projectId: "127abc3c78912e30217f188a8c6f22c0",
+            metadata: {
+                name: "Trezu App",
+                description: "Confidential Multisig",
+                url: "https://trezu.app",
+                icons: ["/favicon.ico"],
+            },
+        });
+
+        const nc = new NearConnector({
+            walletConnect,
+            network,
+        });
 
         nc.on("wallet:signIn", async (t: EventMap["wallet:signIn"]) => {
             const acct = t.accounts[0]?.accountId;

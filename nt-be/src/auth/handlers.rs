@@ -1,35 +1,39 @@
 use crate::AppState;
+use crate::auth::resolve_auth::verify_resolve_auth;
 use crate::auth::{AuthError, AuthUser, create_jwt, jwt::hash_token, middleware::AUTH_COOKIE_NAME};
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use axum_extra::extract::CookieJar;
 use axum_extra::extract::cookie::{Cookie, SameSite};
-use near_api::signer::NEP413Payload;
-use near_api::types::Signature;
-use near_api::types::json::Base64VecU8;
-use near_api::{AccountId, PublicKey};
+use base64::Engine;
+use near_api::AccountId;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use std::sync::Arc;
 
-/// Response body for challenge creation
+/// NEP-641 authorization purpose used for dApp authentication.
+const AUTH_PURPOSE: &str = "PROVE_OWNERSHIP";
+/// Bare recipient bound into the authorization. Must match the value the
+/// frontend passes to `wallet.resolveAuth(...)`.
+const AUTH_RECIPIENT: &str = "Trezu App";
+
+/// Response body for challenge creation.
+///
+/// The `payload` is the unique message the wallet authorizes (via NEP-641
+/// `resolveAuth`). It is echoed back unchanged inside the resolved
+/// authorization, which the backend matches against the issued challenge.
 #[derive(Debug, Serialize)]
 pub struct ChallengeResponse {
-    pub nonce: String, // Base64 encoded
+    pub payload: String,
 }
 
-/// Request body for login
+/// Request body for login.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginRequest {
     pub account_id: AccountId,
-    pub public_key: PublicKey,
-    pub signature: Base64VecU8,
-    pub message: String,
-    pub nonce: Base64VecU8,
-    pub recipient: String,
-    #[serde(default)]
-    pub callback_url: Option<String>,
+    /// JSON-stringified NEP-641 authorization blob produced by `resolveAuth`.
+    pub authorization: String,
 }
 
 /// Response body for /me endpoint
@@ -49,21 +53,29 @@ struct UserTermsRow {
     v2_terms_accepted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-/// Create a new authentication challenge (nonce) for the account
+/// Create a new authentication challenge for the account.
+///
+/// Issues a unique, human-readable `payload` that the wallet authorizes via
+/// NEP-641 `resolveAuth`. The payload is stored (in the `nonce` column) so the
+/// resolved authorization can be matched against it on login and consumed once.
 pub async fn create_challenge(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<ChallengeResponse>, AuthError> {
-    // Generate a 32-byte random nonce
-    let mut nonce = [0u8; 32];
-    rand::rng().fill_bytes(&mut nonce);
+    // A fresh random component guarantees uniqueness per session and prevents
+    // replay; the timestamp makes the prompt meaningful in the wallet UI.
+    let mut random = [0u8; 16];
+    rand::rng().fill_bytes(&mut random);
+    let request_id = base64::engine::general_purpose::STANDARD.encode(random);
+    let issued_at = chrono::Utc::now().to_rfc3339();
+    let payload = format!("Login to Trezu\n\nIssued At: {issued_at}\nRequest ID: {request_id}");
 
-    // Store the challenge in the database
+    // Store the challenge payload (its bytes) so login can match and consume it.
     sqlx::query!(
         r#"
         INSERT INTO auth_challenges (account_id, nonce, expires_at)
         VALUES ('', $1, NOW() + INTERVAL '15 minutes')
         "#,
-        &nonce[..]
+        payload.as_bytes()
     )
     .execute(&state.db_pool)
     .await
@@ -75,71 +87,48 @@ pub async fn create_challenge(
         .await
         .ok(); // Ignore errors for cleanup
 
-    let nonce_b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, nonce);
-
-    Ok(Json(ChallengeResponse { nonce: nonce_b64 }))
+    Ok(Json(ChallengeResponse { payload }))
 }
 
-/// Login with a signed message
+/// Login with a NEP-641 authorization.
+///
+/// Resolves the authorization on-chain (recursively, via `w_resolve_auth`, with
+/// NEP-413 fallback for regular accounts), then confirms the resolved payload
+/// matches a challenge this backend issued and consumes it.
 pub async fn login(
     State(state): State<Arc<AppState>>,
     jar: CookieJar,
     Json(request): Json<LoginRequest>,
 ) -> Result<(CookieJar, Json<MeResponse>), AuthError> {
-    let nonce_32: [u8; 32] = request
-        .nonce
-        .0
-        .as_slice()
-        .try_into()
-        .map_err(|_| AuthError::InvalidNonce("Nonce must be 32 bytes".to_string()))?;
+    // NEP-641: resolve the authorization to its unwrapped payload. The account
+    // contract (or NEP-413 fallback) is the authority for whether the holder is
+    // willing to authenticate.
+    let payload = verify_resolve_auth(
+        &state.network,
+        request.account_id.as_str(),
+        AUTH_PURPOSE,
+        AUTH_RECIPIENT,
+        &request.authorization,
+    )
+    .await
+    .map_err(AuthError::InvalidSignature)?;
 
-    // Verify the challenge exists and hasn't expired
-    let challenge = sqlx::query!(
+    // Confirm the resolved payload is a challenge we issued (not expired) and
+    // consume it atomically so it can't be replayed.
+    let consumed = sqlx::query!(
         r#"
-        SELECT id FROM auth_challenges
+        DELETE FROM auth_challenges
         WHERE nonce = $1 AND expires_at > NOW()
+        RETURNING id
         "#,
-        request.nonce.0.as_slice()
+        payload.as_bytes()
     )
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-    if challenge.is_none() {
+    if consumed.is_none() {
         return Err(AuthError::ChallengeNotFound);
-    }
-
-    // Delete the used challenge
-    sqlx::query!(
-        "DELETE FROM auth_challenges WHERE nonce = $1",
-        request.nonce.0.as_slice()
-    )
-    .execute(&state.db_pool)
-    .await
-    .ok();
-
-    let signature_type = request.public_key.key_type();
-    let signature = Signature::from_parts(signature_type, &request.signature.0)
-        .map_err(|e| AuthError::InvalidSignature(format!("Invalid signature: {}", e)))?;
-    let verified = NEP413Payload {
-        message: request.message,
-        nonce: nonce_32,
-        recipient: request.recipient,
-        callback_url: request.callback_url,
-    }
-    .verify(
-        &request.account_id,
-        request.public_key,
-        &signature,
-        &state.network,
-    )
-    .await
-    .map_err(|e| AuthError::InvalidSignature(e.to_string()))?;
-
-    if !verified {
-        return Err(AuthError::InvalidSignature(
-            "Signature verification failed".to_string(),
-        ));
     }
 
     let user = sqlx::query_as::<_, UserTermsRow>(
