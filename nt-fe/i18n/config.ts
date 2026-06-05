@@ -18,7 +18,7 @@ export const locales = [
 export type Locale = (typeof locales)[number];
 
 /** Locales always exposed to end users in production. */
-const corePublicLocales: readonly Locale[] = ["en", "es", "uk"];
+const corePublicLocales: readonly Locale[] = ["en", "es", "pt", "uk"];
 
 /**
  * Locales that are visible to end users at runtime.
