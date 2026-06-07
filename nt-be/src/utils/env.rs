@@ -37,6 +37,9 @@ pub struct EnvVars {
     pub oneclick_app_fee_recipient: Option<String>,
     pub oneclick_referral: Option<String>,
     pub oneclick_api_key: Option<String>,
+    // Public status feeds used by user-facing banners and Oh Dear checks
+    pub near_status_page_json_url: String,
+    pub near_intents_status_api_url: String,
     // JWT authentication configuration
     pub jwt_secret: String,
     pub jwt_expiry_hours: u64,
@@ -167,6 +170,12 @@ impl Default for EnvVars {
             oneclick_api_key: std::env::var("ONECLICK_API_KEY")
                 .ok()
                 .filter(|s| !s.is_empty()),
+            near_status_page_json_url: std::env::var("NEAR_STATUS_PAGE_JSON_URL")
+                .unwrap_or_else(|_| "https://status.near.org/json".to_string()),
+            near_intents_status_api_url: std::env::var("NEAR_INTENTS_STATUS_API_URL")
+                .unwrap_or_else(|_| {
+                    "https://status.near-intents.org/api/posts?is_featured=true".to_string()
+                }),
             // JWT configuration
             jwt_secret: std::env::var("JWT_SECRET").expect("JWT_SECRET is not set"),
             jwt_expiry_hours: std::env::var("JWT_EXPIRY_HOURS")
