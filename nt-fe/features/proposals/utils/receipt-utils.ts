@@ -4,9 +4,6 @@ import type {
     SwapStatusResponse,
 } from "@/lib/proposals-api";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
-import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
-import { NEAR_TOKEN_DECIMALS } from "@/constants/token";
-import { formatBalance } from "@/lib/utils";
 import type {
     BatchPaymentRequestData,
     ConfidentialRequestData,
@@ -68,8 +65,6 @@ function toExchangeReceiptData(
     data: SwapRequestData,
     treasuryId?: string,
 ): ReceiptProposalData {
-    const isNearWrapSwap = data.source === WRAP_NEAR_TOKEN_ID;
-
     return {
         variant: "exchange",
         sourceTokenId: data.tokenInAddress || data.tokenIn,
@@ -77,9 +72,7 @@ function toExchangeReceiptData(
         depositAddress: data.depositAddress,
         receiverAddress: treasuryId,
         sourceAmountRaw: data.amountIn,
-        destinationAmountWithDecimals: isNearWrapSwap
-            ? formatBalance(data.amountOut, NEAR_TOKEN_DECIMALS)
-            : data.amountOut,
+        destinationAmountWithDecimals: data.amountOut,
     };
 }
 
