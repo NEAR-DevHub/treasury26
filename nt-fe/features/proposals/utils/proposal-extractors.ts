@@ -1,5 +1,9 @@
 import { FunctionCallKind, Proposal } from "@/lib/proposals-api";
-import { decodeArgs, decodeProposalDescription, formatBalance } from "@/lib/utils";
+import {
+    decodeArgs,
+    decodeProposalDescription,
+    formatBalance,
+} from "@/lib/utils";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
 import {
     PaymentRequestData,
