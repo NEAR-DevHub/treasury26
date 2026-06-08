@@ -101,6 +101,7 @@
         "saveGuestTreasury": "이 게스트 트레저리를 트레저리 목록에 저장합니다."
     },
     "signIn": {
+        "copyAddress": "주소 복사",
         "connect": "연결",
         "wallet": "지갑",
         "termsOfService": "이용약관",

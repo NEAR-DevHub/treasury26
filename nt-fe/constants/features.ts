@@ -16,9 +16,12 @@ export const features = isStaging
     ? {
           integrations: true,
           extraLocales: true,
+          pdfReceipt: true,
       }
     : {
           integrations: false,
           // In production only en/es/uk are exposed in the language switcher.
           extraLocales: false,
+          // PDF receipt generation is staging-only for now.
+          pdfReceipt: false,
       };

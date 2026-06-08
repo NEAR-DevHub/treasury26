@@ -5,13 +5,13 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
-import { StepperHeader } from "@/components/step-wizard";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from "@/components/modal";
+import { StepperHeader } from "@/components/step-wizard";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +19,11 @@ export type WalletOption = {
     id:
         | "near"
         | "ledger"
+        | "walletcontract-eip712"
         | "passkey"
         | "solana"
         | "binance-web3"
         | "phantom"
-        | "walletconnect"
         | "stellar";
     label: string;
     imgSrc: string;
@@ -65,10 +65,10 @@ const WALLET_OPTIONS: WalletOption[] = [
         supported: false,
     },
     {
-        id: "walletconnect",
+        id: "walletcontract-eip712",
         label: "WalletConnect",
         imgSrc: "/icons/walletconnect.svg",
-        supported: false,
+        supported: true,
     },
     {
         id: "stellar",
@@ -107,7 +107,12 @@ interface ConnectWalletSelectorProps {
     onConnectSupported: (walletId?: string) => Promise<void> | void;
 }
 
-const LEDGER_WALLET_ID = "ledger";
+// Wallets triggered directly by id through NearConnect (each has its own
+// button); every other supported wallet opens the generic NEAR selector popup.
+const DIRECT_TRIGGER_WALLET_IDS: WalletOption["id"][] = [
+    "ledger",
+    "walletcontract-eip712",
+];
 
 export function ConnectWalletSelector({
     title,
@@ -135,7 +140,9 @@ export function ConnectWalletSelector({
 
         if (wallet.supported) {
             onConnectSupported(
-                wallet.id === LEDGER_WALLET_ID ? LEDGER_WALLET_ID : undefined,
+                DIRECT_TRIGGER_WALLET_IDS.includes(wallet.id)
+                    ? wallet.id
+                    : undefined,
             );
             return;
         }

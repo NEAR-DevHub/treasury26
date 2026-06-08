@@ -101,6 +101,7 @@
         "saveGuestTreasury": "このゲストトレジャリーをトレジャリー一覧に保存します。"
     },
     "signIn": {
+        "copyAddress": "アドレスをコピー",
         "connect": "接続",
         "wallet": "ウォレット",
         "termsOfService": "利用規約",

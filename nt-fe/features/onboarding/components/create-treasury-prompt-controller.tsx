@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryCreationStatus } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
@@ -31,6 +31,8 @@ export function CreateTreasuryPromptController() {
     const [open, setOpen] = useState(false);
     const lastHandledOpenRequestIdRef = useRef(0);
     const prevIsAuthenticatingRef = useRef(false);
+    const justAuthenticatedRef = useRef(false);
+    const prevAccountIdRef = useRef(false);
     const lastHandledLoginNonceRef = useRef(0);
     const [loginNonce, setLoginNonce] = useState(0);
     const { accountId, isInitializing, isAuthenticating, disconnect } =
@@ -67,14 +69,27 @@ export function CreateTreasuryPromptController() {
     }, [accountId]);
 
     useEffect(() => {
-        const justCompletedLogin =
-            prevIsAuthenticatingRef.current && !isAuthenticating && !!accountId;
+        // Remember when the sign-in flow finishes. On first login `accountId`
+        // isn't available yet (it's gated on accepting terms), so we keep this
+        // flag until `accountId` materializes after the terms modal.
+        if (prevIsAuthenticatingRef.current && !isAuthenticating) {
+            justAuthenticatedRef.current = true;
+        }
+        prevIsAuthenticatingRef.current = isAuthenticating;
 
-        if (justCompletedLogin) {
+        const accountIdAvailable = !!accountId;
+        const justGotAccountId =
+            !prevAccountIdRef.current && accountIdAvailable;
+        prevAccountIdRef.current = accountIdAvailable;
+
+        // Open the prompt once a freshly-authenticated user has an accountId —
+        // i.e. right after the wallet connects, or after accepting terms on
+        // first login. A plain page reload never sets `justAuthenticatedRef`, so
+        // the prompt won't auto-open on refresh.
+        if (justAuthenticatedRef.current && justGotAccountId) {
+            justAuthenticatedRef.current = false;
             setLoginNonce((prev) => prev + 1);
         }
-
-        prevIsAuthenticatingRef.current = isAuthenticating;
     }, [isAuthenticating, accountId]);
 
     useEffect(() => {

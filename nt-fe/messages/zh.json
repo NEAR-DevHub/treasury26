@@ -101,6 +101,7 @@
         "saveGuestTreasury": "将此访客金库保存到您的金库列表。"
     },
     "signIn": {
+        "copyAddress": "复制地址",
         "connect": "连接",
         "wallet": "钱包",
         "termsOfService": "服务条款",

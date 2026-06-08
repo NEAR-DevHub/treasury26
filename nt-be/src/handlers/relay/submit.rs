@@ -330,6 +330,140 @@ async fn fetch_treasury_deposit_bond(
     Ok(NearToken::from_yoctonear(deposit_bond_yocto))
 }
 
+/// True when the delegate action contains a `w_execute_signed` function call.
+fn is_w_execute_signed_action(signed_delegate_action: &SignedDelegateAction) -> bool {
+    signed_delegate_action
+        .delegate_action
+        .actions
+        .iter()
+        .map(Deref::deref)
+        .any(|action| {
+            matches!(
+                action,
+                Action::FunctionCall(fc) if fc.method_name == "w_execute_signed"
+            )
+        })
+}
+
+/// Execute a `w_execute_signed` delegate action as a regular transaction
+/// signed and sent by the sponsor account, rather than relaying it as a
+/// NEP-366 meta-transaction.
+///
+/// The delegate action's `sender_id` is a helper account, not the user <E2><80><94> the
+/// user's authorization is the signature inside `w_execute_signed`, which the
+/// wallet contract verifies on-chain. So instead we bind to the authenticated
+/// identity: the receiver (the wallet-contract account being called) must equal
+/// the logged-in user. The sponsor becomes the predecessor; inner actions are
+/// replayed verbatim.
+async fn relay_w_execute_signed(
+    state: &Arc<AppState>,
+    auth_user: &AuthUser,
+    request: &RelayRequest,
+    signed_delegate_action: &SignedDelegateAction,
+) -> Result<Json<RelayResponse>, (StatusCode, Json<RelayResponse>)> {
+    let receiver_id = signed_delegate_action.delegate_action.receiver_id.clone();
+
+    // The sponsor only ever invokes `w_execute_signed` on the authenticated
+    // user's own wallet-contract account.
+    if receiver_id != auth_user.account_id {
+        return Err(error_response(
+            StatusCode::FORBIDDEN,
+            format!(
+                "w_execute_signed receiver '{}' does not match authenticated user '{}'",
+                receiver_id, auth_user.account_id
+            ),
+        ));
+    }
+
+    // Bound the sponsored deposit just like the meta-transaction path.
+    let deposits = signed_delegate_action
+        .delegate_action
+        .actions
+        .iter()
+        .map(Deref::deref)
+        .fold(NearToken::from_millinear(0), |acc, action| {
+            if let Action::FunctionCall(fc) = action {
+                acc.saturating_add(fc.deposit)
+            } else {
+                acc
+            }
+        });
+    if deposits > MAX_SPONSORING {
+        return Err(error_response(
+            StatusCode::BAD_REQUEST,
+            format!(
+                "Total deposit exceeds sponsorship limit of {} millinear",
+                MAX_SPONSORING.as_millinear()
+            ),
+        ));
+    }
+
+    // Build a regular transaction signed and sent by the sponsor account,
+    // replaying the delegate action's inner actions directly to the receiver.
+    let mut transaction = Transaction::construct(state.signer_id.clone(), receiver_id);
+    for action in &signed_delegate_action.delegate_action.actions {
+        transaction = transaction.add_action(action.deref().clone());
+    }
+
+    transaction
+        .with_signer(state.signer.clone())
+        .send_to(&state.network)
+        .await
+        .map_err(|e| {
+            log::error!("Failed to submit w_execute_signed transaction: {:?}", e);
+            error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to relay: {}", e),
+            )
+        })?
+        .into_result()
+        .map_err(|e| {
+            log::error!("w_execute_signed execution failed: {:?}", e);
+            error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Execution failed: {}", e),
+            )
+        })?;
+
+    // Consume a gas-covered credit and accumulate paid_near, mirroring the
+    // meta-transaction relay path.
+    let near_spent_yocto: BigDecimal = deposits.as_yoctonear().into();
+    let db_result = sqlx::query_as::<_, (i32,)>(
+        r#"
+        UPDATE monitored_accounts
+        SET gas_covered_transactions = GREATEST(gas_covered_transactions - 1, 0),
+            paid_near = paid_near + $2,
+            updated_at = NOW()
+        WHERE account_id = $1
+        RETURNING gas_covered_transactions
+        "#,
+    )
+    .bind(request.treasury_id.as_str())
+    .bind(near_spent_yocto)
+    .fetch_optional(&state.db_pool)
+    .await;
+    if let Err(e) = db_result {
+        log::error!(
+            "Failed to decrement gas credits for {}: {}",
+            request.treasury_id.as_str(),
+            e
+        );
+        // Don't fail - the transaction already succeeded.
+    }
+
+    crate::services::platform_metrics::record_events(
+        &state.db_pool,
+        request.treasury_id.as_str(),
+        &[crate::services::platform_metrics::PlatformMetric::GasCoveredTransactions],
+    )
+    .await;
+
+    Ok(Json(RelayResponse {
+        success: true,
+        error: None,
+    }))
+}
+
 /// Relay a signed delegate action (NEP-366 meta-transaction) to the NEAR network.
 ///
 /// The backend wraps the user's signed delegate action in a regular transaction,
@@ -348,6 +482,15 @@ pub async fn relay_delegate_action(
                 format!("Invalid delegate action: {}", e),
             )
         })?;
+
+    // `w_execute_signed` is not a DAO meta-transaction: the delegate action is
+    // assembled by a helper account (its `sender_id`) and carries the user's
+    // own signature, verified on-chain by the wallet contract. The sponsor
+    // executes it as a regular transaction on the authenticated user's account,
+    // so it bypasses the DAO proposal/sender checks below.
+    if is_w_execute_signed_action(&signed_delegate_action) {
+        return relay_w_execute_signed(&state, &auth_user, &request, &signed_delegate_action).await;
+    }
 
     verify_relay_access(&state, &auth_user, &request, &signed_delegate_action).await?;
 

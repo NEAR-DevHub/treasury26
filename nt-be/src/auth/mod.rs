@@ -2,6 +2,7 @@ pub mod error;
 pub mod handlers;
 pub mod jwt;
 pub mod middleware;
+pub mod resolve_auth;
 
 pub use error::AuthError;
 pub use jwt::{Claims, JwtCreateResult, create_jwt, verify_jwt};

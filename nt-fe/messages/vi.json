@@ -101,6 +101,7 @@
         "saveGuestTreasury": "Lưu ngân quỹ khách này vào danh sách ngân quỹ của bạn."
     },
     "signIn": {
+        "copyAddress": "Sao chép địa chỉ",
         "connect": "Kết nối",
         "wallet": "Ví",
         "termsOfService": "Điều khoản dịch vụ",

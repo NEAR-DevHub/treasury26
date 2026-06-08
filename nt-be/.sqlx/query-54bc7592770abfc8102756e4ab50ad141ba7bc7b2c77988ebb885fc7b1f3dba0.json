@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id FROM auth_challenges\n        WHERE nonce = $1 AND expires_at > NOW()\n        ",
+  "query": "\n        DELETE FROM auth_challenges\n        WHERE nonce = $1 AND expires_at > NOW()\n        RETURNING id\n        ",
   "describe": {
     "columns": [
       {
@@ -18,5 +18,5 @@
       false
     ]
   },
-  "hash": "55686a434998f1595a361da8e9cd9bf8ae1097638d549162334b9b6bdcb2754e"
+  "hash": "54bc7592770abfc8102756e4ab50ad141ba7bc7b2c77988ebb885fc7b1f3dba0"
 }

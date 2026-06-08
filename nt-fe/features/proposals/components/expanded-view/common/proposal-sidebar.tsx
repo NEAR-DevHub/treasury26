@@ -1,54 +1,55 @@
-import { useTranslations } from "next-intl";
-import { Proposal } from "@/lib/proposals-api";
-import { Button } from "@/components/button";
 import {
-    SquareArrowOutUpRight,
     Check,
-    X,
     Download,
-    Loader2,
     FileText,
+    Loader2,
+    SquareArrowOutUpRight,
+    X,
 } from "lucide-react";
-import { PageCard } from "@/components/card";
-import { Policy } from "@/types/policy";
-import { getApproversAndThreshold } from "@/lib/config-utils";
-import { useNear } from "@/stores/near-store";
-import { useTreasury } from "@/hooks/use-treasury";
-import {
-    EXCHANGE_EXPIRY_MS,
-    getProposalStatus,
-    getProposalUIKind,
-    UIProposalStatus,
-    getProposalStatusDateInfo,
-    isShortExpiryExchangeProposal,
-} from "@/features/proposals/utils/proposal-utils";
-import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
-import { UserVote } from "../../user-vote";
-import {
-    useProposalTransaction,
-    useSwapStatus,
-    useProposals,
-} from "@/hooks/use-proposals";
 import Link from "next/link";
-import Big from "@/lib/big";
-import { User } from "@/components/user";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import {
     AuthButtonWithProposal,
     useNoVoteMessage,
 } from "@/components/auth-button";
+import { Button } from "@/components/button";
+import { PageCard } from "@/components/card";
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
 import { StepIcon } from "@/components/step-icon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, nanosToMs } from "@/lib/utils";
+import { User } from "@/components/user";
+import { features } from "@/constants/features";
+import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
+import {
+    EXCHANGE_EXPIRY_MS,
+    getProposalStatus,
+    getProposalStatusDateInfo,
+    getProposalUIKind,
+    isShortExpiryExchangeProposal,
+    type UIProposalStatus,
+} from "@/features/proposals/utils/proposal-utils";
 import {
     extractReceiptProposalData,
     getProposalExecutedDate,
     isReceiptEligibleProposalKind,
 } from "@/features/proposals/utils/receipt-utils";
+import {
+    useProposals,
+    useProposalTransaction,
+    useSwapStatus,
+} from "@/hooks/use-proposals";
+import { useTreasury } from "@/hooks/use-treasury";
+import Big from "@/lib/big";
+import { getApproversAndThreshold } from "@/lib/config-utils";
+import type { Proposal } from "@/lib/proposals-api";
+import { cn, nanosToMs } from "@/lib/utils";
+import { useNear } from "@/stores/near-store";
+import type { Policy } from "@/types/policy";
 import { NotEnoughBalance } from "../../not-enough-balance";
+import { UserVote } from "../../user-vote";
 import { VotingDurationImpactModal } from "../../voting-duration-impact-modal";
-import { useState, useEffect } from "react";
 
 interface ProposalSidebarProps {
     proposal: Proposal;
@@ -317,6 +318,7 @@ export function ProposalSidebar({
     // - Batch receipts are hidden for confidential treasuries.
     // - Hidden (guest) confidential treasuries cannot generate receipts.
     const canShowReceiptButton =
+        features.pdfReceipt &&
         isExecuted &&
         !isHidden &&
         isReceiptEligibleKind &&
