@@ -106,8 +106,7 @@
         "wallet": "Carteira",
         "termsOfService": "Termos de Serviço",
         "privacyPolicy": "Política de Privacidade",
-        "disconnect": "Desconectar",
-        "disconnectWallet": "Desconectar Carteira"
+        "disconnect": "Desconectar"
     },
     "auth": {
         "noWallet": "Conecte sua carteira",
@@ -2055,96 +2054,6 @@
         "lockupStakingPool": "Pool de staking de lockup",
         "lockupAssetsNote": "Todos os ativos nesta posição são do seu lockup. Após você parar de render, alguns tokens ainda podem ficar bloqueados e indisponíveis — verifique seu cronograma de lockup para ver quando eles são desbloqueados."
     },
-    "onboardingQuestions": {
-        "stepTitle": "Algumas perguntas rápidas para começar.",
-        "other": "Outro",
-        "placeholders": {
-            "describeRole": "Descreva sua função (opcional)",
-            "describeUseCase": "Descreva seu caso de uso (opcional)",
-            "networkName": "Insira o nome da rede (opcional)",
-            "currentChallenge": "Insira seu desafio atual (opcional)",
-            "describeOther": "Descreva outro (opcional)"
-        },
-        "questions": {
-            "role": "O que melhor descreve sua função?",
-            "useCases": "Para que você planeja usar a Trezu?",
-            "teamSize": "Quantas pessoas vão gerenciar a tesouraria?",
-            "networks": "Quais redes você usa com mais frequência?",
-            "multisigExperience": "Qual é sua experiência com multisig?",
-            "currentTools": "Quais ferramentas você usa atualmente para gerenciar finanças?",
-            "monthlyVolume": "Volume mensal aproximado de transações?",
-            "biggestChallenges": "Qual é seu maior desafio no momento?"
-        },
-        "options": {
-            "role": {
-                "founder": "Fundador",
-                "co-founder": "Cofundador",
-                "cfo-finance-lead": "CFO / Líder financeiro",
-                "operations-manager": "Gerente de operações",
-                "treasury-manager": "Gerente de tesouraria",
-                "other": "Outro"
-            },
-            "useCases": {
-                "team-payroll-grants": "Folha de pagamento e concessões da equipe",
-                "company-assets-management": "Gestão de ativos da empresa",
-                "dao-treasury-management": "Gestão de tesouraria de DAO",
-                "investment-portfolio": "Portfólio de investimentos",
-                "operational-spending": "Gastos operacionais",
-                "other": "Outro"
-            },
-            "teamSize": {
-                "just-me": "Apenas eu",
-                "2-5-people": "2-5 pessoas",
-                "6-15-people": "6-15 pessoas",
-                "15-plus-people": "15+"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "Outro"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "Nunca ouvi falar",
-                "heard-about-it": "Já ouvi falar",
-                "never-used-it": "Nunca usei",
-                "used-gnosis-safe-or-similar": "Usei Gnosis Safe ou similar",
-                "experienced": "Experiente",
-                "looking-for-a-better-option": "Procurando uma opção melhor"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "Outro"
-            },
-            "monthlyVolume": {
-                "under-10k": "Menos de US$ 10 mil",
-                "10k-100k": "US$ 10 mil - US$ 100 mil",
-                "100k-1m": "US$ 100 mil - US$ 1 milhão",
-                "1m-plus": "US$ 1 milhão+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "Aprovações e assinaturas lentas",
-                "lack-of-transparency-in-the-team": "Falta de transparência na equipe",
-                "hard-to-track-spending-and-balances": "Difícil acompanhar gastos e saldos",
-                "security-and-access-control": "Segurança e controle de acesso",
-                "no-good-web3-tool-yet": "Ainda não há uma boa ferramenta Web3",
-                "looking-for-crypto-earnings": "Estou em busca de rendimentos em cripto",
-                "other": "Outro"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "Adicione ativos à sua tesouraria fazendo um depósito.",
@@ -2199,19 +2108,6 @@
             "title": "Explore a Trezu",
             "description": "Crie uma conta para desbloquear permissões a todos os recursos e benefícios da Trezu.",
             "cta": "Criar tesouraria"
-        },
-        "questionnaire": {
-            "continue": "Continuar",
-            "skip": "Pular"
-        },
-        "createPrompt": {
-            "title": "Você está quase pronto",
-            "description": "Sua carteira está conectada, mas você ainda não criou uma tesouraria. Crie uma conta para começar a usar a Trezu, ou {suffix}",
-            "suffixDemo": "veja a demonstração.",
-            "suffixExploring": "continue explorando.",
-            "createCta": "Criar uma tesouraria",
-            "viewDemo": "Explore a demonstração da Trezu",
-            "keepExploring": "Continuar explorando"
         },
         "infoBox": {
             "title": "Aproveite mais a Trezu",

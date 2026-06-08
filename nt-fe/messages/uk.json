@@ -106,8 +106,7 @@
         "wallet": "Гаманець",
         "termsOfService": "Умови використання",
         "privacyPolicy": "Політика конфіденційності",
-        "disconnect": "Відключити",
-        "disconnectWallet": "Відключити Гаманець"
+        "disconnect": "Відключити"
     },
     "auth": {
         "noWallet": "Підключіть свій гаманець",
@@ -2055,96 +2054,6 @@
         "lockupStakingPool": "Пул стейкінгу лок-апу",
         "lockupAssetsNote": "Усі активи в цій позиції — з вашого лок-апу. Після припинення заробляння деякі токени можуть лишатись заблокованими і недоступними; перевірте графік лок-апу, щоб дізнатись, коли вони розблокуються."
     },
-    "onboardingQuestions": {
-        "stepTitle": "Кілька швидких запитань на початок.",
-        "other": "Інше",
-        "placeholders": {
-            "describeRole": "Опишіть свою роль (необов'язково)",
-            "describeUseCase": "Опишіть свій кейс (необов'язково)",
-            "networkName": "Введіть назву мережі (необов'язково)",
-            "currentChallenge": "Опишіть поточний виклик (необов'язково)",
-            "describeOther": "Опишіть інше (необов'язково)"
-        },
-        "questions": {
-            "role": "Що найкраще описує вашу роль?",
-            "useCases": "Для чого плануєте використовувати Trezu?",
-            "teamSize": "Скільки людей керуватимуть скарбницею?",
-            "networks": "Які мережі використовуєте найчастіше?",
-            "multisigExperience": "Який у вас досвід із мультисигом?",
-            "currentTools": "Якими інструментами зараз керуєте фінансами?",
-            "monthlyVolume": "Орієнтовний місячний обсяг транзакцій?",
-            "biggestChallenges": "Який ваш найбільший виклик зараз?"
-        },
-        "options": {
-            "role": {
-                "founder": "Засновник",
-                "co-founder": "Співзасновник",
-                "cfo-finance-lead": "CFO / керівник фінансів",
-                "operations-manager": "Операційний менеджер",
-                "treasury-manager": "Менеджер скарбниці",
-                "other": "Інше"
-            },
-            "useCases": {
-                "team-payroll-grants": "Зарплати команди та гранти",
-                "company-assets-management": "Управління активами компанії",
-                "dao-treasury-management": "Управління скарбницею DAO",
-                "investment-portfolio": "Інвестиційний портфель",
-                "operational-spending": "Операційні витрати",
-                "other": "Інше"
-            },
-            "teamSize": {
-                "just-me": "Лише я",
-                "2-5-people": "2-5 осіб",
-                "6-15-people": "6-15 осіб",
-                "15-plus-people": "15+"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "Інше"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "Ніколи не чув про це",
-                "heard-about-it": "Чув про це",
-                "never-used-it": "Ніколи не користувався",
-                "used-gnosis-safe-or-similar": "Користувався Gnosis Safe або схожим",
-                "experienced": "Досвідчений",
-                "looking-for-a-better-option": "Шукаю кращий варіант"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "Інше"
-            },
-            "monthlyVolume": {
-                "under-10k": "Менше $10K",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "Повільні узгодження й підписання",
-                "lack-of-transparency-in-the-team": "Брак прозорості в команді",
-                "hard-to-track-spending-and-balances": "Важко стежити за витратами та балансами",
-                "security-and-access-control": "Безпека й контроль доступу",
-                "no-good-web3-tool-yet": "Ще немає гідного Web3-інструмента",
-                "looking-for-crypto-earnings": "Шукаю заробіток у крипті",
-                "other": "Інше"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "Додайте активи до скарбниці, зробивши депозит.",
@@ -2199,19 +2108,6 @@
             "title": "Відкрийте Trezu",
             "description": "Створіть обліковий запис, щоб розблокувати всі функції та переваги Trezu.",
             "cta": "Створити скарбницю"
-        },
-        "questionnaire": {
-            "continue": "Продовжити",
-            "skip": "Пропустити"
-        },
-        "createPrompt": {
-            "title": "Майже готово",
-            "description": "Ваш гаманець підключено, але ви ще не створили скарбницю. Створіть обліковий запис, щоб почати користуватись Trezu, або {suffix}",
-            "suffixDemo": "погляньте на демо.",
-            "suffixExploring": "продовжуйте досліджувати.",
-            "createCta": "Створити скарбницю",
-            "viewDemo": "Спробувати демо Trezu",
-            "keepExploring": "Продовжити досліджувати"
         },
         "infoBox": {
             "title": "Більше від Trezu",

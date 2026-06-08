@@ -106,8 +106,7 @@
         "wallet": "지갑",
         "termsOfService": "이용약관",
         "privacyPolicy": "개인정보 처리방침",
-        "disconnect": "연결 해제",
-        "disconnectWallet": "연결 해제 지갑"
+        "disconnect": "연결 해제"
     },
     "auth": {
         "noWallet": "지갑을 연결하세요",
@@ -2055,96 +2054,6 @@
         "lockupStakingPool": "락업 스테이킹 풀",
         "lockupAssetsNote": "이 포지션의 모든 자산은 락업에서 가져온 것입니다. 수익을 중지한 후에도 일부 토큰은 잠겨 있어 사용 불가능할 수 있습니다 - 잠금 해제 시점을 보려면 락업 일정을 확인하세요."
     },
-    "onboardingQuestions": {
-        "stepTitle": "시작하기 위한 몇 가지 간단한 질문입니다.",
-        "other": "기타",
-        "placeholders": {
-            "describeRole": "역할을 설명하세요 (선택사항)",
-            "describeUseCase": "사용 사례를 설명하세요 (선택사항)",
-            "networkName": "네트워크 이름을 입력하세요 (선택사항)",
-            "currentChallenge": "현재 어려움을 입력하세요 (선택사항)",
-            "describeOther": "기타를 설명하세요 (선택사항)"
-        },
-        "questions": {
-            "role": "사용자의 역할을 가장 잘 설명하는 것은 무엇입니까?",
-            "useCases": "Trezu를 어떤 용도로 사용할 계획이십니까?",
-            "teamSize": "트레저리를 관리하는 인원은 몇 명입니까?",
-            "networks": "가장 자주 사용하는 네트워크는 무엇입니까?",
-            "multisigExperience": "멀티시그에 대한 경험은 어떻습니까?",
-            "currentTools": "현재 재무 관리에 어떤 도구를 사용하십니까?",
-            "monthlyVolume": "월간 트랜잭션 대략적인 거래량은?",
-            "biggestChallenges": "현재 가장 큰 과제는 무엇입니까?"
-        },
-        "options": {
-            "role": {
-                "founder": "창립자",
-                "co-founder": "공동 창립자",
-                "cfo-finance-lead": "CFO / 재무 책임자",
-                "operations-manager": "운영 매니저",
-                "treasury-manager": "트레저리 매니저",
-                "other": "기타"
-            },
-            "useCases": {
-                "team-payroll-grants": "팀 급여 및 그랜트",
-                "company-assets-management": "회사 자산 관리",
-                "dao-treasury-management": "DAO 트레저리 관리",
-                "investment-portfolio": "투자 포트폴리오",
-                "operational-spending": "운영 지출",
-                "other": "기타"
-            },
-            "teamSize": {
-                "just-me": "나 혼자",
-                "2-5-people": "2-5명",
-                "6-15-people": "6-15명",
-                "15-plus-people": "15명 이상"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "기타"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "들어본 적 없음",
-                "heard-about-it": "들어본 적 있음",
-                "never-used-it": "사용한 적 없음",
-                "used-gnosis-safe-or-similar": "Gnosis Safe 또는 유사 서비스 사용",
-                "experienced": "경험 있음",
-                "looking-for-a-better-option": "더 나은 옵션 찾는 중"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "기타"
-            },
-            "monthlyVolume": {
-                "under-10k": "$10K 미만",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "느린 승인 및 서명",
-                "lack-of-transparency-in-the-team": "팀 내 투명성 부족",
-                "hard-to-track-spending-and-balances": "지출과 잔액 추적의 어려움",
-                "security-and-access-control": "보안 및 액세스 제어",
-                "no-good-web3-tool-yet": "아직 좋은 Web3 도구가 없음",
-                "looking-for-crypto-earnings": "암호화폐 수익을 찾고 있음",
-                "other": "기타"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "입금하여 트레저리에 자산을 추가하세요.",
@@ -2199,19 +2108,6 @@
             "title": "Trezu 살펴보기",
             "description": "Trezu의 모든 기능과 혜택에 대한 권한을 잠금 해제하려면 계정을 생성하세요.",
             "cta": "트레저리 생성"
-        },
-        "questionnaire": {
-            "continue": "계속",
-            "skip": "건너뛰기"
-        },
-        "createPrompt": {
-            "title": "거의 다 되었습니다",
-            "description": "지갑이 연결되었지만 아직 트레저리를 생성하지 않았습니다. Trezu 사용을 시작하려면 계정을 생성하거나 {suffix}",
-            "suffixDemo": "데모를 확인하세요.",
-            "suffixExploring": "계속 살펴보세요.",
-            "createCta": "트레저리 생성",
-            "viewDemo": "Trezu 데모 살펴보기",
-            "keepExploring": "계속 살펴보기"
         },
         "infoBox": {
             "title": "Trezu에서 더 많은 것을 얻으세요",

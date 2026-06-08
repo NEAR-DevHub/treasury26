@@ -106,8 +106,7 @@
         "wallet": "Dompet",
         "termsOfService": "Ketentuan Layanan",
         "privacyPolicy": "Kebijakan Privasi",
-        "disconnect": "Putuskan",
-        "disconnectWallet": "Putuskan Dompet"
+        "disconnect": "Putuskan"
     },
     "auth": {
         "noWallet": "Hubungkan dompet Anda",
@@ -2055,96 +2054,6 @@
         "lockupStakingPool": "Pool staking lockup",
         "lockupAssetsNote": "Semua aset dalam posisi ini berasal dari lockup Anda. Setelah Anda berhenti menghasilkan, beberapa token mungkin masih terkunci dan tidak tersedia - periksa jadwal lockup Anda untuk melihat kapan terbuka."
     },
-    "onboardingQuestions": {
-        "stepTitle": "Beberapa pertanyaan singkat untuk memulai.",
-        "other": "Lainnya",
-        "placeholders": {
-            "describeRole": "Jelaskan peran Anda (opsional)",
-            "describeUseCase": "Jelaskan kasus penggunaan Anda (opsional)",
-            "networkName": "Masukkan nama jaringan (opsional)",
-            "currentChallenge": "Masukkan tantangan Anda saat ini (opsional)",
-            "describeOther": "Jelaskan lainnya (opsional)"
-        },
-        "questions": {
-            "role": "Mana yang paling menggambarkan peran Anda?",
-            "useCases": "Untuk apa Anda berencana menggunakan Trezu?",
-            "teamSize": "Berapa banyak orang yang akan mengelola treasury?",
-            "networks": "Jaringan mana yang paling sering Anda gunakan?",
-            "multisigExperience": "Apa pengalaman Anda dengan multisig?",
-            "currentTools": "Alat apa yang saat ini Anda gunakan untuk mengelola keuangan?",
-            "monthlyVolume": "Perkiraan volume transaksi bulanan?",
-            "biggestChallenges": "Apa tantangan terbesar Anda saat ini?"
-        },
-        "options": {
-            "role": {
-                "founder": "Pendiri",
-                "co-founder": "Pendiri Bersama",
-                "cfo-finance-lead": "CFO / Pemimpin Keuangan",
-                "operations-manager": "Manajer Operasi",
-                "treasury-manager": "Manajer Treasury",
-                "other": "Lainnya"
-            },
-            "useCases": {
-                "team-payroll-grants": "Penggajian tim & hibah",
-                "company-assets-management": "Pengelolaan aset perusahaan",
-                "dao-treasury-management": "Pengelolaan treasury DAO",
-                "investment-portfolio": "Portofolio investasi",
-                "operational-spending": "Pengeluaran operasional",
-                "other": "Lainnya"
-            },
-            "teamSize": {
-                "just-me": "Hanya saya",
-                "2-5-people": "2-5 orang",
-                "6-15-people": "6-15 orang",
-                "15-plus-people": "15+"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "Lainnya"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "Belum pernah mendengarnya",
-                "heard-about-it": "Pernah mendengar tentangnya",
-                "never-used-it": "Belum pernah menggunakannya",
-                "used-gnosis-safe-or-similar": "Pernah menggunakan Gnosis Safe atau sejenisnya",
-                "experienced": "Berpengalaman",
-                "looking-for-a-better-option": "Mencari opsi yang lebih baik"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "Lainnya"
-            },
-            "monthlyVolume": {
-                "under-10k": "Di bawah $10K",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "Persetujuan dan penandatanganan yang lambat",
-                "lack-of-transparency-in-the-team": "Kurangnya transparansi dalam tim",
-                "hard-to-track-spending-and-balances": "Sulit melacak pengeluaran dan saldo",
-                "security-and-access-control": "Keamanan dan kontrol akses",
-                "no-good-web3-tool-yet": "Belum ada alat Web3 yang baik",
-                "looking-for-crypto-earnings": "Saya mencari pendapatan kripto",
-                "other": "Lainnya"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "Tambah aset ke Treasury Anda dengan melakukan deposit.",
@@ -2199,19 +2108,6 @@
             "title": "Jelajahi Trezu",
             "description": "Buat akun untuk membuka izin ke semua fitur dan manfaat Trezu.",
             "cta": "Buat Treasury"
-        },
-        "questionnaire": {
-            "continue": "Lanjutkan",
-            "skip": "Lewati"
-        },
-        "createPrompt": {
-            "title": "Anda hampir siap",
-            "description": "Dompet Anda terhubung, tetapi Anda belum membuat treasury. Buat akun untuk mulai menggunakan Trezu, atau {suffix}",
-            "suffixDemo": "lihat demo.",
-            "suffixExploring": "terus menjelajah.",
-            "createCta": "Buat Treasury",
-            "viewDemo": "Jelajahi Demo Trezu",
-            "keepExploring": "Terus Menjelajah"
         },
         "infoBox": {
             "title": "Dapatkan lebih banyak dari Trezu",

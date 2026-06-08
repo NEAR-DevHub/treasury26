@@ -106,8 +106,7 @@
         "wallet": "ארנק",
         "termsOfService": "תנאי שימוש",
         "privacyPolicy": "מדיניות פרטיות",
-        "disconnect": "התנתקות",
-        "disconnectWallet": "התנתקות ארנק"
+        "disconnect": "התנתקות"
     },
     "auth": {
         "noWallet": "חבר את הארנק שלך",
@@ -2055,96 +2054,6 @@
         "lockupStakingPool": "מאגר סטייקינג של נעילה",
         "lockupAssetsNote": "כל הנכסים בעמדה זו הם מהנעילה שלך. לאחר שתפסיק להרוויח, חלק מהטוקנים עשויים עדיין להיות נעולים ולא זמינים - בדוק את לוח הזמנים של הנעילה שלך כדי לראות מתי הם משתחררים."
     },
-    "onboardingQuestions": {
-        "stepTitle": "כמה שאלות מהירות כדי להתחיל.",
-        "other": "אחר",
-        "placeholders": {
-            "describeRole": "תאר את התפקיד שלך (אופציונלי)",
-            "describeUseCase": "תאר את מקרה השימוש שלך (אופציונלי)",
-            "networkName": "הזן שם רשת (אופציונלי)",
-            "currentChallenge": "הזן את האתגר הנוכחי שלך (אופציונלי)",
-            "describeOther": "תאר אחר (אופציונלי)"
-        },
-        "questions": {
-            "role": "מה מתאר הכי טוב את התפקיד שלך?",
-            "useCases": "למה אתה מתכנן להשתמש ב-Trezu?",
-            "teamSize": "כמה אנשים ינהלו את האוצר?",
-            "networks": "באילו רשתות אתה משתמש הכי הרבה?",
-            "multisigExperience": "מה הניסיון שלך עם מולטיסיג?",
-            "currentTools": "באילו כלים אתה משתמש כיום לניהול כספים?",
-            "monthlyVolume": "נפח עסקאות חודשי משוער?",
-            "biggestChallenges": "מה האתגר הכי גדול שלך כרגע?"
-        },
-        "options": {
-            "role": {
-                "founder": "מייסד",
-                "co-founder": "מייסד-שותף",
-                "cfo-finance-lead": "CFO / ראש פיננסים",
-                "operations-manager": "מנהל תפעול",
-                "treasury-manager": "מנהל אוצר",
-                "other": "אחר"
-            },
-            "useCases": {
-                "team-payroll-grants": "משכורות ומענקים לצוות",
-                "company-assets-management": "ניהול נכסי חברה",
-                "dao-treasury-management": "ניהול אוצר DAO",
-                "investment-portfolio": "תיק השקעות",
-                "operational-spending": "הוצאות תפעוליות",
-                "other": "אחר"
-            },
-            "teamSize": {
-                "just-me": "רק אני",
-                "2-5-people": "2-5 אנשים",
-                "6-15-people": "6-15 אנשים",
-                "15-plus-people": "15+"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "אחר"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "לא שמעתי על זה",
-                "heard-about-it": "שמעתי על זה",
-                "never-used-it": "מעולם לא השתמשתי",
-                "used-gnosis-safe-or-similar": "השתמשתי ב-Gnosis Safe או דומה",
-                "experienced": "מנוסה",
-                "looking-for-a-better-option": "מחפש אפשרות טובה יותר"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "אחר"
-            },
-            "monthlyVolume": {
-                "under-10k": "מתחת ל-$10K",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "אישורים וחתימות איטיים",
-                "lack-of-transparency-in-the-team": "חוסר שקיפות בצוות",
-                "hard-to-track-spending-and-balances": "קשה לעקוב אחר הוצאות ויתרות",
-                "security-and-access-control": "אבטחה ובקרת גישה",
-                "no-good-web3-tool-yet": "אין עדיין כלי Web3 טוב",
-                "looking-for-crypto-earnings": "אני מחפש רווחים מקריפטו",
-                "other": "אחר"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "הוסף נכסים לאוצר שלך על ידי ביצוע הפקדה.",
@@ -2199,19 +2108,6 @@
             "title": "גלה את Trezu",
             "description": "צור חשבון כדי לפתוח הרשאות לכל התכונות והיתרונות של Trezu.",
             "cta": "יצירת אוצר"
-        },
-        "questionnaire": {
-            "continue": "המשך",
-            "skip": "דלג"
-        },
-        "createPrompt": {
-            "title": "אתה כמעט מוכן",
-            "description": "הארנק שלך מחובר, אך עדיין לא יצרת אוצר. צור חשבון כדי להתחיל להשתמש ב-Trezu, או {suffix}",
-            "suffixDemo": "בדוק את הדמו.",
-            "suffixExploring": "המשך לחקור.",
-            "createCta": "צור אוצר",
-            "viewDemo": "גלה את דמו Trezu",
-            "keepExploring": "המשך לחקור"
         },
         "infoBox": {
             "title": "קבל יותר מ-Trezu",

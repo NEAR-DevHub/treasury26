@@ -384,16 +384,16 @@ test("Ledger login flow", async ({ page, context }) => {
         }
     });
 
-    // Navigate to the app
+    // Navigate to onboarding entry page
     await page.goto("/");
     await page.waitForTimeout(1500); // Pause to show the initial page
 
-    // Click existing-user onboarding option (this now routes to /login page)
-    await page.getByRole("button", { name: /i already use trezu/i }).click();
+    // Click Sign In from onboarding card footer (routes to /login?context=onboarding)
+    await page.getByRole("link", { name: /sign in/i }).click();
     await page.waitForTimeout(1000); // Pause to show the button
 
     // Verify we are on the dedicated wallet connection page.
-    await expect(page).toHaveURL(/\/login\?context=existing_user$/);
+    await expect(page).toHaveURL(/\/login\?context=onboarding$/);
     await page.waitForTimeout(1500); // Pause to show wallet connection page
 
     // Verify Ledger option is visible in available options and click it
