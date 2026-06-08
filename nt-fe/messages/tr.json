@@ -1798,10 +1798,10 @@
         "networkFeeTooltip": "Bu ücret, seçili zincirde işlemi gerçekleştirmek için kullanılır."
     },
     "pageTours": {
-        "paymentsBulk": "Toplu oluşturma burada! Birkaç adımda birden çok talep oluşturun.",
-        "paymentsPending": "Onay bekleyen talepleri burada görüntüleyin.",
-        "exchangeSettings": "Burada kabul etmeye hazır olduğunuz fiyat değişikliğini ayarlayabilirsiniz.",
-        "membersPending": "Onay bekleyen aktif talepleri görmek için tıklayın.",
+        "paymentsBulk": "Tek bir akışta birden fazla ödeme oluşturun",
+        "paymentsPending": "Onay bekleyen ödemeleri kontrol edin",
+        "exchangeSettings": "Bir takasta kabul edeceğiniz maksimum fiyat değişimini (slippage) ayarlayın.",
+        "membersPending": "Onay bekleyen üye ile ilgili talepleri görün",
         "guestSaveIntro": "Bu hazinenin misafirisiniz. Yalnızca verileri görüntüleyebilirsiniz.",
         "guestSaveAction": "Bu misafir hazineyi hazinelerinize kaydedebilirsiniz.",
         "newFeatureRich": "Yeni! 🎉 Daha hızlı, hatasız ödemeler için sık kullanılan adresleri kaydedin. Kişileriniz gizli kalır ve yalnızca ekibinize görünür.",
@@ -2094,12 +2094,13 @@
     },
     "onboarding": {
         "tour": {
-            "addAssets": "Para yatırarak Hazinenize varlıklar ekleyin.",
-            "makeRequests": "Varlık göndermeniz gerektiğinde ödeme talepleri oluşturun.",
-            "exchangeAssets": "Burada varlıklarınızı takas edebilirsiniz.",
-            "addMembers": "Hazinenize üyeler ekleyin ve onlara roller atayın.",
-            "newTreasury": "Yeni bir Hazine kurmak ister misiniz? Birkaç tıklamayla burada yapabilirsiniz.",
-            "helpSupport": "İhtiyacınız olduğunda yardım ve destek alın."
+            "addAssets": "Desteklenen herhangi bir ağda desteklenen herhangi bir varlığı yatırarak Hazinenize varlık ekleyin.",
+            "makeRequests": "Varlıkları herkese göndermek için ödeme talepleri oluşturun.",
+            "exchangeAssets": "Ağlar arasında bir varlığı başka bir varlıkla takas edin.",
+            "addMembers": "Ekip üyeleri ekleyin ve izinlerini ayarlayın.",
+            "newTreasury": "Başka bir hazineye mi ihtiyacınız var? Buradan yeni bir tane başlatabilirsiniz.",
+            "helpSupport": "İhtiyacınız olduğunda dokümantasyon, kılavuzlar ve destek bulun.",
+            "helpSupportConfidential": "Gizli mod hakkındaki bilgileri her zaman burada bulabilirsiniz."
         },
         "tourCard": {
             "close": "Kapat",
@@ -2120,14 +2121,18 @@
             "send": "Gönder"
         },
         "welcome": {
-            "heading": "🎉 Hoş Geldiniz!",
-            "subheading": "Hazinenin kısa bir turuna katılın",
-            "body": "Merhaba! Trezu'nuz hazır - desteklenen ağlardan varlıklar ekleyerek portföyünüzü oluşturmaya başlayın.",
+            "heading": "🎉 Hazineniz hazır",
+            "subheading": "Hızlı bir tur ister misiniz?",
+            "body": "Para yatırın, ödeme gönderin, varlık takas edin ve ekibinizi yönetin — hepsi bu panodan.",
             "progress": "{total} adımdan {current}",
-            "next": "İleri",
-            "body2": "Nasıl para yatıracağınızı, talep oluşturacağınızı ve yeni bir hesap kuracağınızı görün.",
+            "next": "Anladım",
+            "body2": "Para yatırma, ödeme gönderme, varlık takası ve ekip yönetimini — yaklaşık 60 saniyede anlatacağız.",
             "noThanks": "Hayır, teşekkürler",
-            "letsGo": "Hadi başlayalım"
+            "letsGo": "Hadi başlayalım",
+            "confidential": {
+                "heading": "🎉 Gizli hazineniz hazır",
+                "body": "Bakiyeleriniz, işlemleriniz ve üye aktiviteniz gizlidir — yalnızca ekibiniz tarafından görülebilir, asla halka açık blockchain'de görünmez."
+            }
         },
         "congrats": {
             "heading": "🎉 Tebrikler!",

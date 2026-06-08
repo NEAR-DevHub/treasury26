@@ -1798,10 +1798,10 @@
         "networkFeeTooltip": "Esta comisión se usa para procesar la transacción en la cadena seleccionada."
     },
     "pageTours": {
-        "paymentsBulk": "¡Llegó la creación masiva! Crea varias solicitudes en pocos pasos.",
-        "paymentsPending": "Mira aquí las solicitudes pendientes de aprobación.",
-        "exchangeSettings": "Aquí puedes definir cuánto cambio de precio estás dispuesto a aceptar.",
-        "membersPending": "Haz clic para ver las solicitudes activas que esperan aprobación.",
+        "paymentsBulk": "Crea varios pagos en un solo flujo",
+        "paymentsPending": "Consulta los pagos en espera de aprobación",
+        "exchangeSettings": "Establece el cambio de precio máximo (slippage) que aceptarás en un intercambio.",
+        "membersPending": "Consulta las solicitudes relacionadas con miembros en espera de aprobación",
         "guestSaveIntro": "Eres invitado de esta tesorería. Solo puedes ver los datos.",
         "guestSaveAction": "Puedes guardar esta tesorería de invitado en tu lista de tesorerías.",
         "newFeatureRich": "¡Nuevo! 🎉 Guarda direcciones usadas con frecuencia para pagos más rápidos y sin errores. Tus contactos quedan privados y visibles solo para tu equipo.",
@@ -2094,12 +2094,13 @@
     },
     "onboarding": {
         "tour": {
-            "addAssets": "Añade activos a tu tesorería haciendo un depósito.",
-            "makeRequests": "Crea solicitudes de pago cuando necesites enviar activos.",
-            "exchangeAssets": "Aquí puedes intercambiar tus activos.",
-            "addMembers": "Añade miembros a tu tesorería y asígnales roles.",
-            "newTreasury": "¿Quieres configurar una nueva tesorería? Puedes hacerlo aquí en unos pocos clics.",
-            "helpSupport": "Obtén ayuda y soporte cuando lo necesites."
+            "addAssets": "Añade activos a tu tesorería depositando cualquier activo compatible en cualquier red compatible.",
+            "makeRequests": "Crea solicitudes de pago para enviar activos a cualquier persona.",
+            "exchangeAssets": "Intercambia un activo por otro, entre redes.",
+            "addMembers": "Añade miembros del equipo y configura sus permisos.",
+            "newTreasury": "¿Necesitas otra tesorería? Puedes crear una nueva desde aquí.",
+            "helpSupport": "Encuentra documentación, guías y soporte cuando los necesites.",
+            "helpSupportConfidential": "Siempre encontrarás aquí información sobre el modo confidencial."
         },
         "tourCard": {
             "close": "Cerrar",
@@ -2120,14 +2121,18 @@
             "send": "Enviar"
         },
         "welcome": {
-            "heading": "🎉 ¡Bienvenido!",
-            "subheading": "Haz un recorrido rápido por la tesorería",
-            "body": "¡Hola! Tu Trezu está lista: empieza a construir tu cartera añadiendo activos desde las redes compatibles.",
+            "heading": "🎉 Tu tesorería está lista",
+            "subheading": "¿Hacer un recorrido rápido?",
+            "body": "Deposita fondos, envía pagos, intercambia activos y gestiona tu equipo — todo desde este panel.",
             "progress": "{current} de {total}",
-            "next": "Siguiente",
-            "body2": "Descubre cómo hacer un depósito, crear una solicitud y configurar una nueva cuenta.",
+            "next": "Entendido",
+            "body2": "Te guiaremos para depositar fondos, enviar pagos, intercambiar activos y gestionar tu equipo — unos 60 segundos.",
             "noThanks": "No, gracias",
-            "letsGo": "¡Vamos!"
+            "letsGo": "¡Vamos!",
+            "confidential": {
+                "heading": "🎉 Tu tesorería confidencial está lista",
+                "body": "Tus saldos, transacciones y actividad de miembros son privados — visibles solo para tu equipo, nunca en la blockchain pública."
+            }
         },
         "congrats": {
             "heading": "🎉 ¡Felicidades!",

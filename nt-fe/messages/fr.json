@@ -1798,10 +1798,10 @@
         "networkFeeTooltip": "Ces frais sont utilisés pour traiter la transaction sur la chaîne sélectionnée."
     },
     "pageTours": {
-        "paymentsBulk": "La création groupée est arrivée ! Créez plusieurs demandes en quelques étapes.",
-        "paymentsPending": "Consultez ici les demandes en attente d'approbation.",
-        "exchangeSettings": "Vous pouvez définir ici la variation de prix que vous êtes prêt à accepter.",
-        "membersPending": "Cliquez pour voir les demandes actives en attente d'approbation.",
+        "paymentsBulk": "Créez plusieurs paiements en un seul flux",
+        "paymentsPending": "Consultez les paiements en attente d'approbation",
+        "exchangeSettings": "Définissez la variation de prix maximale (slippage) que vous acceptez lors d'un échange.",
+        "membersPending": "Consultez les demandes liées aux membres en attente d'approbation",
         "guestSaveIntro": "Vous êtes un invité de cette trésorerie. Vous ne pouvez consulter que les données.",
         "guestSaveAction": "Vous pouvez enregistrer cette trésorerie invitée dans votre liste de trésoreries.",
         "newFeatureRich": "Nouveau ! 🎉 Enregistrez les adresses fréquemment utilisées pour des paiements plus rapides et sans erreur. Vos contacts restent privés et visibles uniquement par votre équipe.",
@@ -2094,12 +2094,13 @@
     },
     "onboarding": {
         "tour": {
-            "addAssets": "Ajoutez des actifs à votre trésorerie en effectuant un dépôt.",
-            "makeRequests": "Effectuez des demandes de paiement chaque fois que vous devez envoyer des actifs.",
-            "exchangeAssets": "Vous pouvez ici échanger vos actifs.",
-            "addMembers": "Ajoutez des membres à votre trésorerie et attribuez-leur des rôles.",
-            "newTreasury": "Vous voulez configurer une nouvelle trésorerie ? Vous pouvez le faire ici en quelques clics.",
-            "helpSupport": "Obtenez de l'aide et du support chaque fois que vous en avez besoin."
+            "addAssets": "Ajoutez des actifs à votre trésorerie en déposant tout actif pris en charge sur tout réseau pris en charge.",
+            "makeRequests": "Créez des demandes de paiement pour envoyer des actifs à n'importe qui.",
+            "exchangeAssets": "Échangez un actif contre un autre, entre les réseaux.",
+            "addMembers": "Ajoutez des membres à l'équipe et définissez leurs permissions.",
+            "newTreasury": "Besoin d'une autre trésorerie ? Vous pouvez en créer une nouvelle ici.",
+            "helpSupport": "Trouvez de la documentation, des guides et de l'aide quand vous en avez besoin.",
+            "helpSupportConfidential": "Vous trouverez toujours ici des informations sur le mode confidentiel."
         },
         "tourCard": {
             "close": "Fermer",
@@ -2120,14 +2121,18 @@
             "send": "Envoyer"
         },
         "welcome": {
-            "heading": "🎉 Bienvenue !",
-            "subheading": "Faites une visite rapide de la trésorerie",
-            "body": "Bonjour ! Votre Trezu est prêt - commencez à constituer votre portefeuille en ajoutant des actifs depuis les réseaux pris en charge.",
+            "heading": "🎉 Votre trésorerie est prête",
+            "subheading": "Faire une visite rapide ?",
+            "body": "Déposez des fonds, envoyez des paiements, échangez des actifs et gérez votre équipe — le tout depuis ce tableau de bord.",
             "progress": "{current} sur {total}",
-            "next": "Suivant",
-            "body2": "Découvrez comment effectuer un dépôt, créer une demande et configurer un nouveau compte.",
+            "next": "Compris",
+            "body2": "Nous vous guiderons pour déposer des fonds, envoyer des paiements, échanger des actifs et gérer votre équipe — environ 60 secondes.",
             "noThanks": "Non, merci",
-            "letsGo": "C'est parti"
+            "letsGo": "C'est parti",
+            "confidential": {
+                "heading": "🎉 Votre trésorerie confidentielle est prête",
+                "body": "Vos soldes, transactions et activités des membres sont privés — visibles uniquement par votre équipe, jamais sur la blockchain publique."
+            }
         },
         "congrats": {
             "heading": "🎉 Félicitations !",

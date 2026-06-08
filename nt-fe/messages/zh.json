@@ -1798,10 +1798,10 @@
         "networkFeeTooltip": "此手续费用于在所选链上处理交易。"
     },
     "pageTours": {
-        "paymentsBulk": "批量创建功能已上线!只需几步即可创建多个请求。",
-        "paymentsPending": "在此查看等待批准的请求。",
-        "exchangeSettings": "在此设置您愿意接受的价格变动幅度。",
-        "membersPending": "点击查看等待批准的活动请求。",
+        "paymentsBulk": "在一个流程中创建多笔付款",
+        "paymentsPending": "查看等待批准的付款",
+        "exchangeSettings": "设置您在交换时可接受的最大价格变动（滑点）。",
+        "membersPending": "查看等待批准的成员相关请求",
         "guestSaveIntro": "您是此金库的访客。您只能查看数据。",
         "guestSaveAction": "您可以将此访客金库保存到您的金库列表。",
         "newFeatureRich": "新功能!🎉 保存常用地址,实现更快、零错误的付款。 您的联系人保持私密,仅对您的团队可见。",
@@ -2094,12 +2094,13 @@
     },
     "onboarding": {
         "tour": {
-            "addAssets": "通过存款向您的金库添加资产。",
-            "makeRequests": "在需要发送资产时随时创建付款请求。",
-            "exchangeAssets": "在此兑换您的资产。",
-            "addMembers": "向您的金库添加成员并分配角色。",
-            "newTreasury": "想创建新金库?在此只需几次点击即可完成。",
-            "helpSupport": "随时获取帮助与支持。"
+            "addAssets": "通过在任何受支持的网络上存入任何受支持的资产，向您的金库添加资产。",
+            "makeRequests": "创建付款请求，向任何人发送资产。",
+            "exchangeAssets": "跨网络将一种资产交换为另一种。",
+            "addMembers": "添加团队成员并设置其权限。",
+            "newTreasury": "需要另一个金库？您可以从这里开始创建一个新的。",
+            "helpSupport": "随时查找文档、指南和支持。",
+            "helpSupportConfidential": "您随时都可以在这里找到有关保密模式的信息。"
         },
         "tourCard": {
             "close": "关闭",
@@ -2120,14 +2121,18 @@
             "send": "发送"
         },
         "welcome": {
-            "heading": "🎉 欢迎!",
-            "subheading": "快速浏览金库",
-            "body": "您好!您的 Trezu 已就绪 — 通过从受支持的网络添加资产开始构建您的投资组合。",
+            "heading": "🎉 您的金库已就绪",
+            "subheading": "要快速了解一下吗？",
+            "body": "存款、发送付款、交换资产、管理团队 — 全部在此仪表板中完成。",
             "progress": "{current} / {total}",
-            "next": "下一步",
-            "body2": "了解如何存款、创建请求以及设置新账户。",
+            "next": "知道了",
+            "body2": "我们将引导您完成存款、发送付款、交换资产和管理团队 — 大约需要 60 秒。",
             "noThanks": "不,谢谢",
-            "letsGo": "开始吧"
+            "letsGo": "开始吧",
+            "confidential": {
+                "heading": "🎉 您的保密金库已就绪",
+                "body": "您的余额、交易和成员活动都是私密的 — 仅您的团队可见，绝不会出现在公共区块链上。"
+            }
         },
         "congrats": {
             "heading": "🎉 恭喜!",

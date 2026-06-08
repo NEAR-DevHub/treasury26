@@ -1798,10 +1798,10 @@
         "networkFeeTooltip": "Biaya ini digunakan untuk memproses transaksi pada rantai yang dipilih."
     },
     "pageTours": {
-        "paymentsBulk": "Pembuatan massal sudah hadir! Buat beberapa permintaan hanya dalam beberapa langkah.",
-        "paymentsPending": "Lihat permintaan yang menunggu persetujuan di sini.",
-        "exchangeSettings": "Di sini Anda dapat mengatur seberapa banyak perubahan harga yang bersedia Anda terima.",
-        "membersPending": "Klik untuk melihat permintaan aktif yang menunggu persetujuan.",
+        "paymentsBulk": "Buat beberapa pembayaran dalam satu alur",
+        "paymentsPending": "Periksa pembayaran yang menunggu persetujuan",
+        "exchangeSettings": "Atur perubahan harga maksimum (slippage) yang Anda terima pada swap.",
+        "membersPending": "Lihat permintaan terkait anggota yang menunggu persetujuan",
         "guestSaveIntro": "Anda adalah tamu treasury ini. Anda hanya dapat melihat data.",
         "guestSaveAction": "Anda dapat menyimpan treasury tamu ini ke daftar treasury Anda.",
         "newFeatureRich": "Baru! 🎉 Simpan alamat yang sering digunakan untuk pembayaran lebih cepat dan bebas kesalahan. Kontak Anda tetap pribadi dan hanya terlihat oleh tim Anda.",
@@ -2094,12 +2094,13 @@
     },
     "onboarding": {
         "tour": {
-            "addAssets": "Tambah aset ke Treasury Anda dengan melakukan deposit.",
-            "makeRequests": "Buat permintaan pembayaran kapan pun Anda perlu mengirim aset.",
-            "exchangeAssets": "Di sini Anda dapat menukar aset Anda.",
-            "addMembers": "Tambah anggota ke Treasury Anda dan tetapkan peran mereka.",
-            "newTreasury": "Ingin menyiapkan Treasury baru? Anda dapat melakukannya di sini hanya dalam beberapa klik.",
-            "helpSupport": "Dapatkan bantuan dan dukungan kapan pun Anda butuhkan."
+            "addAssets": "Tambahkan aset ke Treasury Anda dengan deposit aset apa pun yang didukung di jaringan apa pun yang didukung.",
+            "makeRequests": "Buat permintaan pembayaran untuk mengirim aset kepada siapa saja.",
+            "exchangeAssets": "Tukar satu aset dengan aset lain, lintas jaringan.",
+            "addMembers": "Tambahkan anggota tim dan atur izin mereka.",
+            "newTreasury": "Butuh treasury lain? Anda dapat memulai yang baru dari sini.",
+            "helpSupport": "Temukan dokumentasi, panduan, dan dukungan kapan pun Anda membutuhkannya.",
+            "helpSupportConfidential": "Informasi tentang mode rahasia selalu dapat Anda temukan di sini."
         },
         "tourCard": {
             "close": "Tutup",
@@ -2120,14 +2121,18 @@
             "send": "Kirim"
         },
         "welcome": {
-            "heading": "🎉 Selamat datang!",
-            "subheading": "Tur singkat Treasury",
-            "body": "Hai! Trezu Anda siap - mulai bangun portofolio Anda dengan menambahkan aset dari jaringan yang didukung.",
+            "heading": "🎉 Perbendaharaan Anda siap",
+            "subheading": "Ikuti tur singkat?",
+            "body": "Deposit dana, kirim pembayaran, tukar aset, dan kelola tim Anda — semua dari dasbor ini.",
             "progress": "{current} dari {total}",
-            "next": "Berikutnya",
-            "body2": "Lihat cara melakukan deposit, membuat permintaan, dan menyiapkan akun baru.",
+            "next": "Mengerti",
+            "body2": "Kami akan memandu Anda melalui deposit, pembayaran, pertukaran aset, dan pengelolaan tim — sekitar 60 detik.",
             "noThanks": "Tidak, terima kasih",
-            "letsGo": "Ayo mulai"
+            "letsGo": "Ayo mulai",
+            "confidential": {
+                "heading": "🎉 Perbendaharaan Rahasia Anda siap",
+                "body": "Saldo, transaksi, dan aktivitas anggota Anda bersifat pribadi — hanya terlihat oleh tim Anda, tidak pernah di blockchain publik."
+            }
         },
         "congrats": {
             "heading": "🎉 Selamat!",

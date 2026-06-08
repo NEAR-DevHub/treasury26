@@ -348,3 +348,19 @@ input[type="number"] {
         forced-color-adjust: none;
     }
 }
+
+/* Help & Support tour: anchor tooltip at 30% of the sidebar item height */
+body[data-onboarding-tour="info-box-dismissed"] [data-name="nextstep-card"] {
+    top: 30% !important;
+    transform: translate(0, -50%) !important;
+}
+
+@media (max-width: 1023px) {
+    /* On small screens, keep Help & Support tooltip inside viewport */
+    body[data-onboarding-tour="info-box-dismissed"]
+    [data-name="nextstep-card"] {
+        top: auto !important;
+        left: 60% !important;
+        transform: translate(-50%, 0) !important;
+    }
+}
