@@ -220,22 +220,18 @@ export default function MembersPage() {
     );
 
     useEffect(() => {
-        if (typeof window === "undefined" || !treasuryId) return;
+        if (typeof window === "undefined") return;
         const value = window.localStorage.getItem(
-            `${MEMBERS_INFO_DISMISSED_STORAGE_KEY}:${treasuryId}`,
+            MEMBERS_INFO_DISMISSED_STORAGE_KEY,
         );
         setIsInfoSectionDismissed(value === "true");
-    }, [treasuryId]);
+    }, []);
 
     const dismissMembersInfoSection = useCallback(() => {
-        if (!treasuryId) return;
         setIsInfoSectionDismissed(true);
         if (typeof window === "undefined") return;
-        window.localStorage.setItem(
-            `${MEMBERS_INFO_DISMISSED_STORAGE_KEY}:${treasuryId}`,
-            "true",
-        );
-    }, [treasuryId]);
+        window.localStorage.setItem(MEMBERS_INFO_DISMISSED_STORAGE_KEY, "true");
+    }, []);
 
     const getAccountValidationMessage = useCallback(
         (errorCode: Parameters<typeof translateNearValidationError>[1]) =>

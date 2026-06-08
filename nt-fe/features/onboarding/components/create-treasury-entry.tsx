@@ -29,6 +29,7 @@ import {
     checkHandleUnused,
     createTreasuryStream,
 } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
@@ -238,6 +239,14 @@ export function CreateTreasuryEntry() {
                         })),
                     );
                     setCreatedTreasuryId(treasuryId);
+                    trackEvent("treasury-created", {
+                        source: "/",
+                        treasury_id: treasuryId,
+                    });
+                    trackEvent("onboarding-completed", {
+                        source: "/",
+                        treasury_id: treasuryId,
+                    });
                     queryClient.invalidateQueries({
                         queryKey: ["userTreasuries", accountId],
                     });
