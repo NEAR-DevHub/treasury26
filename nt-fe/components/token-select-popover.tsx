@@ -65,7 +65,7 @@ export function TokenSelectPopover({
                             icon: hasValidIcon
                                 ? asset.icon
                                 : asset.symbol?.charAt(0) || "?",
-                            gradient: "bg-gradient-cyan-blue",
+                            gradient: "bg-brand-blue",
                         });
                     }
                 });
@@ -119,7 +119,7 @@ export function TokenSelectPopover({
                                     className="w-5 h-5 rounded-full object-contain"
                                 />
                             ) : (
-                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold bg-gradient-cyan-blue">
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-normal bg-brand-blue">
                                     <span>{selectedToken.icon}</span>
                                 </div>
                             )}
@@ -183,7 +183,7 @@ export function TokenSelectPopover({
                                                 className="w-5 h-5 rounded-full object-contain shrink-0"
                                             />
                                         ) : (
-                                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold bg-gradient-cyan-blue shrink-0">
+                                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-normal bg-brand-blue shrink-0">
                                                 <span>{token.icon}</span>
                                             </div>
                                         )}

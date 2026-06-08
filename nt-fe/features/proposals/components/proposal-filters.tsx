@@ -387,7 +387,7 @@ function FilterPill({
                             className="w-4 h-4 rounded-full object-contain"
                         />
                     ) : (
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold bg-gradient-cyan-blue">
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-normal bg-brand-blue">
                             <span>{token.icon}</span>
                         </div>
                     )}

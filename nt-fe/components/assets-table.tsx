@@ -917,7 +917,7 @@ function LockedView({
                                             className="size-6 rounded-full"
                                         />
                                     ) : (
-                                        <div className="size-6 rounded-full bg-gradient-cyan-blue flex items-center justify-center text-white text-xs font-semibold">
+                                        <div className="size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
                                             {network.symbol
                                                 .charAt(0)
                                                 .toUpperCase()}

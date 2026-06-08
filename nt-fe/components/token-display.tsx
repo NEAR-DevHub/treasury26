@@ -108,7 +108,7 @@ export const NetworkIconDisplay = ({
                     className="size-6 rounded-full object-cover"
                 />
             ) : (
-                <div className="size-6 rounded-full bg-gradient-cyan-blue flex items-center justify-center text-white text-xs font-bold">
+                <div className="size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
                     {networkName.charAt(0)}
                 </div>
             )}
