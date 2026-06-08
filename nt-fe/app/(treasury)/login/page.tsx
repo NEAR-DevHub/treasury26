@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
+import Logo from "@/components/icons/logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { useTreasury } from "@/hooks/use-treasury";
 import { trackEvent } from "@/lib/analytics";
@@ -41,7 +41,6 @@ function appendUtmParamsToReturnTo(
 }
 
 export default function LoginPage() {
-    const tWallet = useTranslations("wallet");
     const router = useRouter();
     const searchParams = useSearchParams();
     const { accountId, connect, isAuthenticating } = useNear();
@@ -56,7 +55,7 @@ export default function LoginPage() {
     const context = searchParams.get("context");
     const connectFlow: "onboarding" | "within_treasury" =
         context === "onboarding" ? "onboarding" : "within_treasury";
-    const connectTitle = tWallet("connectWallet");
+    const loginHeaderLogo = <Logo size="sm" />;
     const preferredTreasuryId =
         (lastTreasuryId &&
             treasuries.some((treasury) => treasury.daoId === lastTreasuryId) &&
@@ -94,8 +93,14 @@ export default function LoginPage() {
     ]);
 
     return (
-        <PageComponentLayout title={connectTitle} hideLogin hideCollapseButton>
-            <div className="mx-auto max-w-[668px]">
+        <PageComponentLayout
+            title="Trezu"
+            hideLogin
+            hideCollapseButton
+            transparentHeader
+            logo={loginHeaderLogo}
+        >
+            <div className="mx-auto mt-6 max-w-[668px] md:mt-8">
                 <ConnectWalletSelector
                     source="/login"
                     connectFlow={connectFlow}

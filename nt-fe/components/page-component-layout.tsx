@@ -20,6 +20,7 @@ interface PageComponentLayoutProps {
     backButton?: boolean | string;
     hideLogin?: boolean;
     hideCollapseButton?: boolean;
+    transparentHeader?: boolean;
     logo?: ReactNode;
     children: ReactNode;
 }
@@ -30,6 +31,7 @@ export function PageComponentLayout({
     backButton,
     hideCollapseButton,
     hideLogin,
+    transparentHeader = false,
     logo,
     children,
 }: PageComponentLayoutProps) {
@@ -47,7 +49,11 @@ export function PageComponentLayout({
 
     return (
         <div className="flex flex-col h-full">
-            <header className="flex items-center min-h-14 justify-between bg-card px-2 md:px-6 border-b border-border">
+            <header
+                className={`flex items-center min-h-14 justify-between px-2 md:px-6 border-b border-border ${
+                    transparentHeader ? "bg-transparent" : "bg-card"
+                }`}
+            >
                 <div className="flex items-center gap-2 md:gap-4">
                     {!hideCollapseButton && (
                         <Button

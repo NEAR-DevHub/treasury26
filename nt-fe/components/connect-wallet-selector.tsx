@@ -392,7 +392,7 @@ export function ConnectWalletSelector({
                 handleBack={onBack}
             />
             {isOnboardingLogin && (
-                <div className="space-y-3">
+                <div className="space-y-3 mb-4">
                     <div className="flex items-start gap-2">
                         <div className="bg-general-success-background-faded rounded-full size-6 flex items-center justify-center">
                             <Check className="size-4 shrink-0 text-general-success-foreground " />
@@ -403,7 +403,7 @@ export function ConnectWalletSelector({
                     </div>
                 </div>
             )}
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {WALLET_OPTIONS.map((wallet) => (
                     <Button
                         key={wallet.id}

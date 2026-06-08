@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
+import { APP_ACTIVE_TREASURY } from "@/constants/config";
 import { Alert, AlertDescription } from "@/components/alert";
 import { Button } from "@/components/button";
 import {
@@ -24,10 +25,12 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import Logo from "@/components/icons/logo";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useTreasuryCreationStatus } from "@/hooks/use-treasury-queries";
 import {
     type CreateTreasuryRequest,
     checkHandleUnused,
     createTreasuryStream,
+    submitWhitelistRequest,
 } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
@@ -49,6 +52,8 @@ export function CreateTreasuryEntry() {
     const tValidation = useTranslations("createTreasury.validation");
     const tSteps = useTranslations("createTreasury.steps");
     const tPages = useTranslations("pages.createTreasury");
+    const tLanding = useTranslations("landing");
+    const tCommon = useTranslations("common");
     const {
         accountId,
         connect,
@@ -58,6 +63,7 @@ export function CreateTreasuryEntry() {
         clearError,
     } = useNear();
     const { treasuries, isLoading, lastTreasuryId } = useTreasury();
+    const { data: creationStatus } = useTreasuryCreationStatus();
 
     const [accountNameEdited, setAccountNameEdited] = useState(false);
     const [isCheckingHandle, setIsCheckingHandle] = useState(false);
@@ -67,6 +73,9 @@ export function CreateTreasuryEntry() {
     const [createdTreasuryId, setCreatedTreasuryId] = useState<string | null>(
         null,
     );
+    const [waitlistContact, setWaitlistContact] = useState("");
+    const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
+    const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
 
     const preferredTreasuryId =
         (lastTreasuryId &&
@@ -75,6 +84,9 @@ export function CreateTreasuryEntry() {
         treasuries[0]?.daoId;
     const shouldStayOnCreatePage =
         searchParams.get("context") === CREATE_TREASURY_CONTEXT;
+    const creationAvailable = creationStatus?.creationAvailable ?? true;
+    const showWaitlist =
+        !!accountId && !isLoading && !preferredTreasuryId && !creationAvailable;
 
     useEffect(() => {
         if (shouldStayOnCreatePage) return;
@@ -303,7 +315,7 @@ export function CreateTreasuryEntry() {
 
     const createFormBody = (
         <>
-            <div className="mx-auto w-full max-w-[668px] space-y-3">
+            <div className="mx-auto mt-6 w-full max-w-[668px] space-y-3 md:mt-10">
                 <PageCard className="">
                     <Form {...form}>
                         <form
@@ -406,6 +418,7 @@ export function CreateTreasuryEntry() {
                                     >
                                         <LargeInput
                                             borderless
+                                            className="text-lg!"
                                             placeholder={t(
                                                 "treasuryNamePlaceholder",
                                             )}
@@ -457,6 +470,7 @@ export function CreateTreasuryEntry() {
                                     >
                                         <LargeInput
                                             borderless
+                                            textSizeClassName="text-lg!"
                                             placeholder={t(
                                                 "accountPlaceholderUnderscore",
                                             )}
@@ -519,6 +533,96 @@ export function CreateTreasuryEntry() {
         </>
     );
 
+    const waitlistBody = (
+        <div className="mx-auto mt-6 w-full max-w-[668px] space-y-3 md:mt-10">
+            <PageCard className="py-20">
+                <div className="mx-auto w-full max-w-[580px] space-y-6">
+                    <div className="space-y-2">
+                        <h1 className="text-center text-2xl font-semibold tracking-tight">
+                            {isWaitlistSubmitted
+                                ? tLanding("waitlistSubmittedTitle")
+                                : tLanding("waitlistTitle")}
+                        </h1>
+                        <p className="mx-auto max-w-[560px] text-center text-sm text-muted-foreground">
+                            {isWaitlistSubmitted
+                                ? tLanding("waitlistSubmittedDescription")
+                                : tLanding("waitlistDescription")}
+                        </p>
+                    </div>
+
+                    {!isWaitlistSubmitted && (
+                        <div className="space-y-5">
+                            <div className="space-y-1">
+                                <LargeInput
+                                    value={waitlistContact}
+                                    onChange={(e) =>
+                                        setWaitlistContact(e.target.value)
+                                    }
+                                    placeholder={tLanding(
+                                        "waitlistInputPlaceholder",
+                                    )}
+                                    borderless
+                                    className="px-3 bg-muted border-none focus-visible:ring-0 text-sm!"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {tLanding("waitlistPrivacyNote")}
+                                </p>
+                            </div>
+                            <Button
+                                className="w-full"
+                                onClick={async () => {
+                                    if (!waitlistContact.trim()) return;
+                                    setIsSubmittingWaitlist(true);
+                                    try {
+                                        await submitWhitelistRequest({
+                                            contact: waitlistContact.trim(),
+                                            accountId: accountId ?? undefined,
+                                        });
+                                        setIsWaitlistSubmitted(true);
+                                    } catch {
+                                        toast.error(
+                                            tLanding("waitlistSubmitFailed"),
+                                        );
+                                    } finally {
+                                        setIsSubmittingWaitlist(false);
+                                    }
+                                }}
+                                disabled={
+                                    isSubmittingWaitlist ||
+                                    !waitlistContact.trim()
+                                }
+                            >
+                                {isSubmittingWaitlist && (
+                                    <Loader2 className="size-4 animate-spin" />
+                                )}
+                                {tLanding("waitlistSubmit")}
+                            </Button>
+                        </div>
+                    )}
+
+                    <Button
+                        variant={isWaitlistSubmitted ? "secondary" : "ghost"}
+                        className="w-full"
+                        onClick={() => router.push(APP_ACTIVE_TREASURY)}
+                    >
+                        {tCommon("seeDemo")}
+                    </Button>
+                </div>
+            </PageCard>
+            {!accountId && (
+                <p className="text-center text-sm">
+                    {t("alreadyHaveTreasuryLabel")}{" "}
+                    <Link
+                        href="/login?context=onboarding"
+                        className="underline"
+                    >
+                        {t("signInLabel")}
+                    </Link>
+                </p>
+            )}
+        </div>
+    );
+
     if (accountId) {
         return (
             <>
@@ -538,8 +642,9 @@ export function CreateTreasuryEntry() {
                     title={tPages("title")}
                     description={t("headerDescription")}
                     hideCollapseButton
+                    transparentHeader
                 >
-                    {createFormBody}
+                    {showWaitlist ? waitlistBody : createFormBody}
                 </PageComponentLayout>
             </>
         );
@@ -550,6 +655,7 @@ export function CreateTreasuryEntry() {
             title={tPages("title")}
             hideCollapseButton
             hideLogin
+            transparentHeader
             logo={unauthHeaderLogo}
         >
             <CreationProgressModal
@@ -564,7 +670,7 @@ export function CreateTreasuryEntry() {
                     }
                 }}
             />
-            {createFormBody}
+            {showWaitlist ? waitlistBody : createFormBody}
         </PageComponentLayout>
     );
 }
