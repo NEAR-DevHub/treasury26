@@ -778,6 +778,18 @@
             "removeMember": "Perbarui Kebijakan - Hapus Anggota",
             "removeMembers": "Perbarui Kebijakan - Hapus Anggota",
             "removeMemberSuccess": "Permintaan penghapusan anggota berhasil dibuat"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1186,47 @@
         "walletNotSupportedDescription": "{wallet} belum didukung, tetapi kami sedang mengerjakannya. Anda dapat melanjutkan dengan dompet NEAR yang didukung atau Ledger.",
         "connectNear": "Hubungkan NEAR",
         "connectLedger": "Hubungkan Ledger",
+        "headerDescription": "Siapkan treasury multisig untuk tim Anda atau untuk Anda sendiri",
+        "selectTreasuryTypeLabel": "Pilih tipe treasury",
+        "selectTreasuryTypeError": "Silakan pilih tipe treasury",
+        "publicCardDescription": "Paling cocok untuk DAO, barang publik, dan organisasi terbuka.",
+        "confidentialCardDescription": "Paling cocok untuk perusahaan privat dan tim yang membutuhkan privasi finansial.",
+        "accountPlaceholderUnderscore": "treasury_saya",
+        "setupOnUsTitle": "Setup kami yang tanggung",
+        "setupOnUsDescription": "Trezu menanggung biaya jaringan untuk meluncurkan treasury Anda.",
+        "continueToWallet": "Lanjut ke dompet",
+        "alreadyHaveTreasuryLabel": "Sudah punya treasury?",
+        "signInLabel": "Masuk",
+        "walletSelector": {
+            "title": "Pilih cara masuk",
+            "subtitle": "Login Anda menjadi anggota pertama treasury Anda.",
+            "helpCta": "Belum yakin harus pilih yang mana?",
+            "popularBadge": "Populer",
+            "recentBadge": "Terbaru",
+            "noFundsNote": "Tidak perlu dana untuk memulai — kami menanggung biaya transaksi agar Anda bisa mencobanya",
+            "chooseNearWallet": "Pilih wallet NEAR Anda",
+            "chooseEvmWallet": "Pilih wallet EVM Anda",
+            "signInWithNear": "Masuk dengan wallet NEAR",
+            "signInWithLedger": "Masuk dengan Ledger",
+            "signInWithWalletConnect": "Masuk dengan WalletConnect",
+            "guide": {
+                "title": "Sebaiknya saya pakai metode masuk yang mana?",
+                "connectWalletTitle": "Hubungkan wallet",
+                "connectWalletDescription": "Gunakan wallet seperti NEAR, MetaMask, atau Ledger.",
+                "pickThisIfYou": "Pilih ini jika Anda:",
+                "connectWalletBullet1": "sudah menggunakan wallet kripto",
+                "connectWalletBullet2": "ingin menggunakan wallet hardware",
+                "connectWalletBullet3": "tidak memiliki biometrik di perangkat",
+                "comingSoon": "Segera hadir",
+                "passkeyTitle": "Passkey untuk Touch ID dan Face ID",
+                "passkeyDescription": "Masuk dengan Face ID, Touch ID, atau kode perangkat Anda.",
+                "passkeyBullet1": "baru menggunakan wallet kripto",
+                "passkeyBullet2": "ingin setup yang paling sederhana",
+                "passkeyBullet3": "akan menggunakan Trezu di ponsel atau laptop dengan biometrik",
+                "recoveryLabel": "Pemulihan:",
+                "recoveryText": "Apa pun yang Anda pilih, kami sarankan menambahkan anggota kedua (wallet) setelah setup agar perangkat yang hilang tidak membuat Anda terkunci."
+            }
+        },
         "unexpectedError": "Terjadi kesalahan tak terduga",
         "creationFailed": "Gagal membuat treasury. Silakan coba lagi.",
         "stepTitles": {
@@ -2110,14 +2163,15 @@
         },
         "progress": {
             "title": "Ikuti Langkah Cepat untuk Menjelajahi Treasury",
-            "createTreasuryTitle": "Buat akun Treasury",
-            "createTreasuryDescription": "Anda telah berhasil menyiapkan akun Anda. Awal yang bagus!",
             "addAssetsTitle": "Tambah Aset Anda",
             "addAssetsDescription": "Mulailah dengan menambahkan aset untuk melihatnya beraksi.",
             "deposit": "Deposit",
             "createPaymentTitle": "Buat Permintaan Pembayaran",
             "createPaymentDescription": "Buat permintaan pembayaran untuk menyelesaikan pengaturan Anda.",
-            "send": "Kirim"
+            "send": "Kirim",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Anda telah berhasil menyiapkan akun Anda. Awal yang bagus!",
+            "addTeamMemberTitle": "Buat akun Treasury"
         },
         "welcome": {
             "heading": "🎉 Selamat datang!",

@@ -236,9 +236,7 @@ function ReceiptLayout({
     const tReceipt = useTranslations("receiptPage");
     const tCommon = useTranslations("common");
     const createTreasuryUrl =
-        typeof window !== "undefined"
-            ? `${window.location.origin}/app/new`
-            : "/app/new";
+        typeof window !== "undefined" ? `${window.location.origin}/` : "/";
 
     return (
         <div className="space-y-6">

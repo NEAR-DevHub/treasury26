@@ -778,6 +778,18 @@
             "removeMember": "Cập nhật chính sách - Xóa thành viên",
             "removeMembers": "Cập nhật chính sách - Xóa các thành viên",
             "removeMemberSuccess": "Đã tạo thành công yêu cầu xóa thành viên"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1186,47 @@
         "walletNotSupportedDescription": "{wallet} hiện chưa được hỗ trợ, nhưng chúng tôi đang phát triển. Bạn có thể tiếp tục bằng ví NEAR được hỗ trợ hoặc Ledger.",
         "connectNear": "Kết nối NEAR",
         "connectLedger": "Kết nối Ledger",
+        "headerDescription": "Thiết lập kho bạc đa chữ ký cho nhóm của bạn hoặc cho chính bạn",
+        "selectTreasuryTypeLabel": "Chọn loại kho bạc",
+        "selectTreasuryTypeError": "Vui lòng chọn loại kho bạc",
+        "publicCardDescription": "Phù hợp nhất cho DAO, dự án công ích và tổ chức mở.",
+        "confidentialCardDescription": "Phù hợp nhất cho doanh nghiệp tư nhân và đội ngũ cần quyền riêng tư tài chính.",
+        "accountPlaceholderUnderscore": "kho_bac_cua_toi",
+        "setupOnUsTitle": "Phần thiết lập để chúng tôi lo",
+        "setupOnUsDescription": "Trezu chi trả phí mạng để khởi chạy kho bạc của bạn.",
+        "continueToWallet": "Tiếp tục đến ví",
+        "alreadyHaveTreasuryLabel": "Bạn đã có kho bạc?",
+        "signInLabel": "Đăng nhập",
+        "walletSelector": {
+            "title": "Chọn cách đăng nhập",
+            "subtitle": "Lần đăng nhập của bạn sẽ trở thành thành viên đầu tiên của kho bạc.",
+            "helpCta": "Bạn chưa chắc nên chọn gì?",
+            "popularBadge": "Phổ biến",
+            "recentBadge": "Gần đây",
+            "noFundsNote": "Không cần vốn để bắt đầu — chúng tôi chi trả phí giao dịch để bạn có thể thử",
+            "chooseNearWallet": "Chọn ví NEAR của bạn",
+            "chooseEvmWallet": "Chọn ví EVM của bạn",
+            "signInWithNear": "Đăng nhập bằng ví NEAR",
+            "signInWithLedger": "Đăng nhập bằng Ledger",
+            "signInWithWalletConnect": "Đăng nhập bằng WalletConnect",
+            "guide": {
+                "title": "Tôi nên dùng cách đăng nhập nào?",
+                "connectWalletTitle": "Kết nối ví",
+                "connectWalletDescription": "Dùng ví như NEAR, MetaMask hoặc Ledger.",
+                "pickThisIfYou": "Chọn cách này nếu bạn:",
+                "connectWalletBullet1": "đã dùng ví tiền mã hóa",
+                "connectWalletBullet2": "muốn dùng ví phần cứng",
+                "connectWalletBullet3": "không có sinh trắc học trên thiết bị",
+                "comingSoon": "Sắp ra mắt",
+                "passkeyTitle": "Passkey cho Touch ID và Face ID",
+                "passkeyDescription": "Đăng nhập bằng Face ID, Touch ID hoặc mã thiết bị của bạn.",
+                "passkeyBullet1": "mới dùng ví tiền mã hóa",
+                "passkeyBullet2": "muốn thiết lập đơn giản nhất",
+                "passkeyBullet3": "sẽ dùng Trezu trên điện thoại hoặc laptop có sinh trắc học",
+                "recoveryLabel": "Khôi phục:",
+                "recoveryText": "Dù bạn chọn cách nào, chúng tôi khuyên bạn thêm thành viên thứ hai (ví) sau khi thiết lập để việc mất thiết bị không khiến bạn bị khóa truy cập."
+            }
+        },
         "unexpectedError": "Đã xảy ra lỗi không mong muốn",
         "creationFailed": "Không thể tạo ngân quỹ. Vui lòng thử lại.",
         "stepTitles": {
@@ -2110,14 +2163,15 @@
         },
         "progress": {
             "title": "Làm theo các bước nhanh để khám phá Ngân quỹ",
-            "createTreasuryTitle": "Tạo tài khoản Ngân quỹ",
-            "createTreasuryDescription": "Bạn đã thiết lập tài khoản thành công. Khởi đầu tuyệt vời!",
             "addAssetsTitle": "Thêm tài sản của bạn",
             "addAssetsDescription": "Bắt đầu bằng cách thêm tài sản để xem chúng hoạt động.",
             "deposit": "Nạp tiền",
             "createPaymentTitle": "Tạo yêu cầu thanh toán",
             "createPaymentDescription": "Tạo một yêu cầu thanh toán để hoàn tất thiết lập của bạn.",
-            "send": "Gửi"
+            "send": "Gửi",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Bạn đã thiết lập tài khoản thành công. Khởi đầu tuyệt vời!",
+            "addTeamMemberTitle": "Tạo tài khoản Ngân quỹ"
         },
         "welcome": {
             "heading": "🎉 Chào mừng!",

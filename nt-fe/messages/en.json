@@ -778,6 +778,18 @@
             "removeMember": "Update Policy - Remove Member",
             "removeMembers": "Update Policy - Remove Members",
             "removeMemberSuccess": "Member removal request created successfully"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1186,47 @@
         "walletNotSupportedDescription": "{wallet} is not supported yet, but we are working on it. You can continue using a supported NEAR wallet or Ledger.",
         "connectNear": "Connect NEAR",
         "connectLedger": "Connect Ledger",
+        "headerDescription": "Set up a multisig treasury for your team or yourself",
+        "selectTreasuryTypeLabel": "Select treasury type",
+        "selectTreasuryTypeError": "Please select a treasury type",
+        "publicCardDescription": "Best for DAOs, public goods, and open organizations.",
+        "confidentialCardDescription": "Best for private companies and teams that need financial privacy.",
+        "accountPlaceholderUnderscore": "my_treasury",
+        "setupOnUsTitle": "Setup is on us",
+        "setupOnUsDescription": "Trezu covers the network fees to launch your treasury.",
+        "continueToWallet": "Continue to wallet",
+        "alreadyHaveTreasuryLabel": "Already have a treasury?",
+        "signInLabel": "Sign In",
+        "walletSelector": {
+            "title": "Choose how to sign in",
+            "subtitle": "Your sign in becomes the first member of your treasury.",
+            "helpCta": "Not sure which to pick?",
+            "popularBadge": "Popular",
+            "recentBadge": "Recent",
+            "noFundsNote": "No funds needed to start - we cover transaction fees so you can try it out",
+            "chooseNearWallet": "Choose your NEAR wallets",
+            "chooseEvmWallet": "Choose your EVM wallets",
+            "signInWithNear": "Sign in with NEAR Wallets",
+            "signInWithLedger": "Sign in with Ledger",
+            "signInWithWalletConnect": "Sign in with Wallet Connect",
+            "guide": {
+                "title": "Which sign in should I use?",
+                "connectWalletTitle": "Connect a wallet",
+                "connectWalletDescription": "Use a wallet like Near, MetaMask, or Ledger.",
+                "pickThisIfYou": "Pick this if you:",
+                "connectWalletBullet1": "Already use a crypto wallet",
+                "connectWalletBullet2": "Want to use a hardware wallet",
+                "connectWalletBullet3": "Don't have biometrics on your device",
+                "comingSoon": "Coming Soon",
+                "passkeyTitle": "Passkey for Touch ID and Face ID",
+                "passkeyDescription": "Sign in with Face ID, Touch ID, or your device passcode.",
+                "passkeyBullet1": "Are new to crypto wallets",
+                "passkeyBullet2": "Want the simplest setup",
+                "passkeyBullet3": "Will use Trezu on a phone or laptop with biometrics",
+                "recoveryLabel": "Recovery:",
+                "recoveryText": "Whichever you choose, we recommend add a second member(wallet) after setup so a lost device doesn't lock you out."
+            }
+        },
         "unexpectedError": "An unexpected error occurred",
         "creationFailed": "Failed to create treasury. Please try again.",
         "stepTitles": {
@@ -2109,15 +2162,16 @@
             "next": "Next"
         },
         "progress": {
-            "title": "Follow Quick Steps to Explore the Treasury",
-            "createTreasuryTitle": "Create Treasury account",
-            "createTreasuryDescription": "You've successfully set up your account. Great start!",
-            "addAssetsTitle": "Add Your Assets",
-            "addAssetsDescription": "Begin by adding assets to see them in action.",
+            "title": "Set up your treasury",
+            "addAssetsTitle": "Add your first assets",
+            "addAssetsDescription": "Fund your treasury to start making payments and swaps.",
             "deposit": "Deposit",
-            "createPaymentTitle": "Create a Payment Request",
-            "createPaymentDescription": "Create a payment request to complete your setup.",
-            "send": "Send"
+            "createPaymentTitle": "Create a first payment request",
+            "createPaymentDescription": "Create your first request to complete setup.",
+            "send": "Send",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Protect your funds if your wallet is lost or compromised - add a teammate or your own second wallet so transactions need more than one approval.",
+            "addTeamMemberTitle": "Add a team member"
         },
         "welcome": {
             "heading": "🎉 Welcome!",
@@ -2163,12 +2217,12 @@
             "title": "Get more from Trezu",
             "close": "Close",
             "description": "Discover how others use Treasury, try the demo, and check the docs to learn the features.",
-            "demoTitle": "Explore the Trezu Demo",
-            "demoDescription": "See a live demo account in action.",
-            "docsTitle": "Documentation",
-            "docsDescription": "Learn about all features in the docs.",
-            "videoTitle": "Watch the Demo",
-            "videoDescription": "Watch a short video showing how Trezu works."
+            "demoTitle": "Try a demo treasury",
+            "demoDescription": "Explore a working treasury with real data.",
+            "docsTitle": "Read the docs",
+            "docsDescription": "Find detailed guides for every feature.",
+            "videoTitle": "Watch the walkthrough",
+            "videoDescription": "See how Trezu works in a short video."
         }
     }
 }

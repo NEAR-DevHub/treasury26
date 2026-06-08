@@ -778,6 +778,18 @@
             "removeMember": "Richtlinie aktualisieren - Mitglied entfernen",
             "removeMembers": "Richtlinie aktualisieren - Mitglieder entfernen",
             "removeMemberSuccess": "Anfrage zur Mitgliederentfernung erfolgreich erstellt"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1186,47 @@
         "walletNotSupportedDescription": "{wallet} wird noch nicht unterstützt, aber wir arbeiten daran. Du kannst mit einer unterstützten NEAR-Wallet oder Ledger fortfahren.",
         "connectNear": "NEAR verbinden",
         "connectLedger": "Ledger verbinden",
+        "headerDescription": "Richte eine Multisig-Treasury für dein Team oder für dich selbst ein",
+        "selectTreasuryTypeLabel": "Treasury-Typ auswählen",
+        "selectTreasuryTypeError": "Bitte wähle einen Treasury-Typ aus",
+        "publicCardDescription": "Am besten für DAOs, öffentliche Güter und offene Organisationen.",
+        "confidentialCardDescription": "Am besten für private Unternehmen und Teams mit Bedarf an finanzieller Privatsphäre.",
+        "accountPlaceholderUnderscore": "meine_treasury",
+        "setupOnUsTitle": "Setup geht auf uns",
+        "setupOnUsDescription": "Trezu übernimmt die Netzwerkgebühren zum Start deiner Treasury.",
+        "continueToWallet": "Weiter zur Wallet",
+        "alreadyHaveTreasuryLabel": "Hast du bereits eine Treasury?",
+        "signInLabel": "Anmelden",
+        "walletSelector": {
+            "title": "Wähle, wie du dich anmelden möchtest",
+            "subtitle": "Deine Anmeldung wird zum ersten Mitglied deiner Treasury.",
+            "helpCta": "Nicht sicher, was du wählen sollst?",
+            "popularBadge": "Beliebt",
+            "recentBadge": "Zuletzt verwendet",
+            "noFundsNote": "Keine Startmittel nötig – wir übernehmen die Transaktionsgebühren, damit du es ausprobieren kannst",
+            "chooseNearWallet": "Wähle deine NEAR-Wallets",
+            "chooseEvmWallet": "Wähle deine EVM-Wallets",
+            "signInWithNear": "Mit NEAR-Wallets anmelden",
+            "signInWithLedger": "Mit Ledger anmelden",
+            "signInWithWalletConnect": "Mit WalletConnect anmelden",
+            "guide": {
+                "title": "Welche Anmeldung soll ich verwenden?",
+                "connectWalletTitle": "Wallet verbinden",
+                "connectWalletDescription": "Verwende eine Wallet wie NEAR, MetaMask oder Ledger.",
+                "pickThisIfYou": "Wähle das, wenn du:",
+                "connectWalletBullet1": "bereits eine Krypto-Wallet nutzt",
+                "connectWalletBullet2": "eine Hardware-Wallet verwenden möchtest",
+                "connectWalletBullet3": "keine Biometrie auf deinem Gerät hast",
+                "comingSoon": "Demnächst",
+                "passkeyTitle": "Passkey für Touch ID und Face ID",
+                "passkeyDescription": "Melde dich mit Face ID, Touch ID oder dem Gerätecode an.",
+                "passkeyBullet1": "neu bei Krypto-Wallets bist",
+                "passkeyBullet2": "das einfachste Setup möchtest",
+                "passkeyBullet3": "Trezu auf einem Telefon oder Laptop mit Biometrie nutzt",
+                "recoveryLabel": "Wiederherstellung:",
+                "recoveryText": "Egal, wofür du dich entscheidest: Wir empfehlen, nach dem Setup ein zweites Mitglied (Wallet) hinzuzufügen, damit dich ein verlorenes Gerät nicht aussperrt."
+            }
+        },
         "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten",
         "creationFailed": "Erstellung der Treasury fehlgeschlagen. Bitte erneut versuchen.",
         "stepTitles": {
@@ -2110,14 +2163,15 @@
         },
         "progress": {
             "title": "Folgen Sie schnellen Schritten zur Erkundung der Treasury",
-            "createTreasuryTitle": "Treasury-Konto erstellen",
-            "createTreasuryDescription": "Sie haben Ihr Konto erfolgreich eingerichtet. Großartiger Start!",
             "addAssetsTitle": "Fügen Sie Ihre Vermögenswerte hinzu",
             "addAssetsDescription": "Beginnen Sie, indem Sie Vermögenswerte hinzufügen, um sie in Aktion zu sehen.",
             "deposit": "Einzahlen",
             "createPaymentTitle": "Zahlungsanfrage erstellen",
             "createPaymentDescription": "Erstellen Sie eine Zahlungsanfrage, um Ihre Einrichtung abzuschließen.",
-            "send": "Senden"
+            "send": "Senden",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Sie haben Ihr Konto erfolgreich eingerichtet. Großartiger Start!",
+            "addTeamMemberTitle": "Treasury-Konto erstellen"
         },
         "welcome": {
             "heading": "🎉 Willkommen!",

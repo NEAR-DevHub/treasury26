@@ -778,6 +778,18 @@
             "removeMember": "ポリシー更新 - メンバーを削除",
             "removeMembers": "ポリシー更新 - メンバーを削除",
             "removeMemberSuccess": "メンバー削除リクエストが正常に作成されました"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1186,47 @@
         "walletNotSupportedDescription": "{wallet} はまだサポートされていませんが、現在対応を進めています。対応済みのNEARウォレットまたはLedgerで続行できます。",
         "connectNear": "NEARを接続",
         "connectLedger": "Ledgerを接続",
+        "headerDescription": "チームまたはご自身のためにマルチシグトレジャリーを設定します",
+        "selectTreasuryTypeLabel": "トレジャリーの種類を選択",
+        "selectTreasuryTypeError": "トレジャリーの種類を選択してください",
+        "publicCardDescription": "DAO、公共財プロジェクト、オープンな組織に最適です。",
+        "confidentialCardDescription": "財務プライバシーが必要な民間企業やチームに最適です。",
+        "accountPlaceholderUnderscore": "my_treasury",
+        "setupOnUsTitle": "セットアップ費用は当社負担",
+        "setupOnUsDescription": "Trezuがトレジャリー立ち上げ時のネットワーク手数料を負担します。",
+        "continueToWallet": "ウォレットへ進む",
+        "alreadyHaveTreasuryLabel": "すでにトレジャリーをお持ちですか？",
+        "signInLabel": "サインイン",
+        "walletSelector": {
+            "title": "サインイン方法を選択",
+            "subtitle": "あなたのサインインがトレジャリーの最初のメンバーになります。",
+            "helpCta": "どれを選べばよいか分かりませんか？",
+            "popularBadge": "人気",
+            "recentBadge": "最近使用",
+            "noFundsNote": "開始に資金は不要です — お試しいただけるよう取引手数料は当社が負担します",
+            "chooseNearWallet": "NEARウォレットを選択",
+            "chooseEvmWallet": "EVMウォレットを選択",
+            "signInWithNear": "NEARウォレットでサインイン",
+            "signInWithLedger": "Ledgerでサインイン",
+            "signInWithWalletConnect": "WalletConnectでサインイン",
+            "guide": {
+                "title": "どのサインイン方法を使うべきですか？",
+                "connectWalletTitle": "ウォレットを接続",
+                "connectWalletDescription": "NEAR、MetaMask、Ledger などのウォレットを使用します。",
+                "pickThisIfYou": "次の場合はこちらを選択：",
+                "connectWalletBullet1": "すでに暗号資産ウォレットを使っている",
+                "connectWalletBullet2": "ハードウェアウォレットを使いたい",
+                "connectWalletBullet3": "デバイスに生体認証がない",
+                "comingSoon": "近日公開",
+                "passkeyTitle": "Touch ID / Face ID 用パスキー",
+                "passkeyDescription": "Face ID、Touch ID、またはデバイスのパスコードでサインインします。",
+                "passkeyBullet1": "暗号資産ウォレットを初めて使う",
+                "passkeyBullet2": "最も簡単なセットアップをしたい",
+                "passkeyBullet3": "生体認証対応のスマホやPCでTrezuを使う",
+                "recoveryLabel": "復旧：",
+                "recoveryText": "どちらを選んでも、デバイス紛失時にアクセス不能にならないよう、セットアップ後に2人目のメンバー（ウォレット）を追加することをおすすめします。"
+            }
+        },
         "unexpectedError": "予期しないエラーが発生しました",
         "creationFailed": "トレジャリーの作成に失敗しました。もう一度お試しください。",
         "stepTitles": {
@@ -2110,14 +2163,15 @@
         },
         "progress": {
             "title": "クイックステップに従ってトレジャリーを探索",
-            "createTreasuryTitle": "トレジャリーアカウントを作成",
-            "createTreasuryDescription": "アカウントが正常にセットアップされました。素晴らしいスタートです!",
             "addAssetsTitle": "資産を追加",
             "addAssetsDescription": "資産を追加して動きを確認しましょう。",
             "deposit": "入金",
             "createPaymentTitle": "支払いリクエストを作成",
             "createPaymentDescription": "支払いリクエストを作成してセットアップを完了しましょう。",
-            "send": "送金"
+            "send": "送金",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "アカウントが正常にセットアップされました。素晴らしいスタートです!",
+            "addTeamMemberTitle": "トレジャリーアカウントを作成"
         },
         "welcome": {
             "heading": "🎉 ようこそ!",

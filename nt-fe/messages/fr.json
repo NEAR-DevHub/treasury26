@@ -778,6 +778,18 @@
             "removeMember": "Mettre à jour la politique - Supprimer un membre",
             "removeMembers": "Mettre à jour la politique - Supprimer des membres",
             "removeMemberSuccess": "Demande de suppression de membre créée avec succès"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1186,47 @@
         "walletNotSupportedDescription": "{wallet} n'est pas encore prise en charge, mais nous y travaillons. Vous pouvez continuer avec un wallet NEAR pris en charge ou Ledger.",
         "connectNear": "Connecter NEAR",
         "connectLedger": "Connecter Ledger",
+        "headerDescription": "Configurez une trésorerie multisig pour votre équipe ou pour vous-même",
+        "selectTreasuryTypeLabel": "Sélectionnez le type de trésorerie",
+        "selectTreasuryTypeError": "Veuillez sélectionner un type de trésorerie",
+        "publicCardDescription": "Idéal pour les DAO, les biens publics et les organisations ouvertes.",
+        "confidentialCardDescription": "Idéal pour les entreprises privées et les équipes ayant besoin de confidentialité financière.",
+        "accountPlaceholderUnderscore": "ma_tresorerie",
+        "setupOnUsTitle": "La configuration est offerte",
+        "setupOnUsDescription": "Trezu couvre les frais réseau pour lancer votre trésorerie.",
+        "continueToWallet": "Continuer vers le portefeuille",
+        "alreadyHaveTreasuryLabel": "Vous avez déjà une trésorerie ?",
+        "signInLabel": "Se connecter",
+        "walletSelector": {
+            "title": "Choisissez comment vous connecter",
+            "subtitle": "Votre connexion devient le premier membre de votre trésorerie.",
+            "helpCta": "Vous ne savez pas quoi choisir ?",
+            "popularBadge": "Populaire",
+            "recentBadge": "Récent",
+            "noFundsNote": "Aucun fonds nécessaire pour commencer : nous couvrons les frais de transaction afin que vous puissiez essayer",
+            "chooseNearWallet": "Choisissez vos wallets NEAR",
+            "chooseEvmWallet": "Choisissez vos wallets EVM",
+            "signInWithNear": "Se connecter avec des wallets NEAR",
+            "signInWithLedger": "Se connecter avec Ledger",
+            "signInWithWalletConnect": "Se connecter avec WalletConnect",
+            "guide": {
+                "title": "Quelle méthode de connexion dois-je utiliser ?",
+                "connectWalletTitle": "Connecter un wallet",
+                "connectWalletDescription": "Utilisez un wallet comme NEAR, MetaMask ou Ledger.",
+                "pickThisIfYou": "Choisissez ceci si vous :",
+                "connectWalletBullet1": "utilisez déjà un wallet crypto",
+                "connectWalletBullet2": "souhaitez utiliser un wallet matériel",
+                "connectWalletBullet3": "n'avez pas de biométrie sur votre appareil",
+                "comingSoon": "Bientôt disponible",
+                "passkeyTitle": "Passkey pour Touch ID et Face ID",
+                "passkeyDescription": "Connectez-vous avec Face ID, Touch ID ou le code de votre appareil.",
+                "passkeyBullet1": "êtes nouveau dans les wallets crypto",
+                "passkeyBullet2": "souhaitez la configuration la plus simple",
+                "passkeyBullet3": "utiliserez Trezu sur un téléphone ou un ordinateur avec biométrie",
+                "recoveryLabel": "Récupération :",
+                "recoveryText": "Quel que soit votre choix, nous vous recommandons d'ajouter un deuxième membre (wallet) après la configuration afin qu'un appareil perdu ne vous bloque pas."
+            }
+        },
         "unexpectedError": "Une erreur inattendue s'est produite",
         "creationFailed": "Échec de la création de la trésorerie. Veuillez réessayer.",
         "stepTitles": {
@@ -2110,14 +2163,15 @@
         },
         "progress": {
             "title": "Suivez les étapes rapides pour explorer la trésorerie",
-            "createTreasuryTitle": "Créer un compte de trésorerie",
-            "createTreasuryDescription": "Vous avez configuré votre compte avec succès. Excellent début !",
             "addAssetsTitle": "Ajoutez vos actifs",
             "addAssetsDescription": "Commencez par ajouter des actifs pour les voir en action.",
             "deposit": "Dépôt",
             "createPaymentTitle": "Créer une demande de paiement",
             "createPaymentDescription": "Créez une demande de paiement pour terminer votre configuration.",
-            "send": "Envoyer"
+            "send": "Envoyer",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Vous avez configuré votre compte avec succès. Excellent début !",
+            "addTeamMemberTitle": "Créer un compte de trésorerie"
         },
         "welcome": {
             "heading": "🎉 Bienvenue !",

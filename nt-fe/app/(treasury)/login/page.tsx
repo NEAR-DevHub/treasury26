@@ -16,9 +16,9 @@ const UTM_KEYS = [
     "utm_content",
 ] as const;
 
-function sanitizeReturnTo(raw: string | null): string {
-    if (!raw) return "/";
-    if (!raw.startsWith("/")) return "/";
+function sanitizeReturnTo(raw: string | null): string | null {
+    if (!raw) return null;
+    if (!raw.startsWith("/")) return null;
     return raw;
 }
 
@@ -41,8 +41,7 @@ function appendUtmParamsToReturnTo(
 }
 
 export default function LoginPage() {
-    const tSignIn = useTranslations("signIn");
-    const tCreate = useTranslations("createTreasury");
+    const tWallet = useTranslations("wallet");
     const router = useRouter();
     const searchParams = useSearchParams();
     const { accountId, connect, isAuthenticating } = useNear();
@@ -50,44 +49,44 @@ export default function LoginPage() {
 
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
     const returnToWithUtms = useMemo(
-        () => appendUtmParamsToReturnTo(returnTo, searchParams),
+        () =>
+            returnTo ? appendUtmParamsToReturnTo(returnTo, searchParams) : null,
         [returnTo, searchParams],
     );
     const context = searchParams.get("context");
-    const connectFlow: "new_user" | "existing_user" | "within_treasury" =
-        context === "existing_user" ? "existing_user" : "within_treasury";
+    const connectFlow: "onboarding" | "within_treasury" =
+        context === "onboarding" ? "onboarding" : "within_treasury";
+    const connectTitle = tWallet("connectWallet");
     const preferredTreasuryId =
         (lastTreasuryId &&
             treasuries.some((treasury) => treasury.daoId === lastTreasuryId) &&
             lastTreasuryId) ||
         treasuries[0]?.daoId;
 
-    const connectTitle = useMemo(() => {
-        if (context === "create_treasury")
-            return tCreate("connectWalletCreate");
-        return `${tSignIn("connect")} ${tSignIn("wallet")}`;
-    }, [context, tCreate, tSignIn]);
-
     useEffect(() => {
         if (!accountId) return;
 
-        if (context !== "existing_user") {
+        if (returnToWithUtms) {
             router.replace(returnToWithUtms);
             return;
         }
 
-        if (isLoading) return;
+        if (connectFlow === "onboarding") {
+            if (isLoading) return;
+            if (preferredTreasuryId) {
+                trackEvent("existing_user_treasury_opened", {
+                    source: "/login",
+                    treasury_id: preferredTreasuryId,
+                });
+                router.replace(`/${preferredTreasuryId}`);
+                return;
+            }
 
-        if (preferredTreasuryId) {
-            trackEvent("existing_user_treasury_opened", {
-                source: "/login",
-                treasury_id: preferredTreasuryId,
-            });
-            router.replace(`/${preferredTreasuryId}`);
+            router.replace("/");
         }
     }, [
         accountId,
-        context,
+        connectFlow,
         isLoading,
         preferredTreasuryId,
         returnToWithUtms,
@@ -98,11 +97,16 @@ export default function LoginPage() {
         <PageComponentLayout title={connectTitle} hideLogin hideCollapseButton>
             <div className="mx-auto max-w-[668px]">
                 <ConnectWalletSelector
-                    title={connectTitle}
                     source="/login"
                     connectFlow={connectFlow}
                     isConnectingWallet={isAuthenticating}
-                    onBack={() => router.back()}
+                    onBack={() => {
+                        if (returnToWithUtms) {
+                            router.push(returnToWithUtms);
+                            return;
+                        }
+                        router.back();
+                    }}
                     onConnectSupported={connect}
                 />
             </div>

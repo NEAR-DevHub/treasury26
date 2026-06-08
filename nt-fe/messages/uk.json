@@ -778,6 +778,18 @@
             "removeMember": "Оновити політику - Видалити учасника",
             "removeMembers": "Оновити політику - Видалити учасників",
             "removeMemberSuccess": "Запит на видалення учасника створено"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1186,47 @@
         "walletNotSupportedDescription": "{wallet} ще не підтримується, але ми над цим працюємо. Ви можете продовжити з підтримуваним гаманцем NEAR або Ledger.",
         "connectNear": "Підключити NEAR",
         "connectLedger": "Підключити Ledger",
+        "headerDescription": "Налаштуйте мультипідписну скарбницю для вашої команди або для себе",
+        "selectTreasuryTypeLabel": "Оберіть тип скарбниці",
+        "selectTreasuryTypeError": "Будь ласка, оберіть тип скарбниці",
+        "publicCardDescription": "Найкраще підходить для DAO, суспільних ініціатив і відкритих організацій.",
+        "confidentialCardDescription": "Найкраще підходить для приватних компаній і команд, яким потрібна фінансова конфіденційність.",
+        "accountPlaceholderUnderscore": "moya_skarbnytsia",
+        "setupOnUsTitle": "Налаштування за наш рахунок",
+        "setupOnUsDescription": "Trezu покриває мережеві комісії для запуску вашої скарбниці.",
+        "continueToWallet": "Продовжити до гаманця",
+        "alreadyHaveTreasuryLabel": "Уже маєте скарбницю?",
+        "signInLabel": "Увійти",
+        "walletSelector": {
+            "title": "Оберіть спосіб входу",
+            "subtitle": "Ваш вхід стане першим учасником вашої скарбниці.",
+            "helpCta": "Не знаєте, що обрати?",
+            "popularBadge": "Популярне",
+            "recentBadge": "Нещодавнє",
+            "noFundsNote": "Для старту не потрібні кошти — ми покриваємо комісії, щоб ви могли спробувати",
+            "chooseNearWallet": "Оберіть ваші NEAR-гаманці",
+            "chooseEvmWallet": "Оберіть ваші EVM-гаманці",
+            "signInWithNear": "Увійти через NEAR-гаманці",
+            "signInWithLedger": "Увійти через Ledger",
+            "signInWithWalletConnect": "Увійти через WalletConnect",
+            "guide": {
+                "title": "Який спосіб входу обрати?",
+                "connectWalletTitle": "Підключити гаманець",
+                "connectWalletDescription": "Використовуйте гаманець, наприклад NEAR, MetaMask або Ledger.",
+                "pickThisIfYou": "Оберіть це, якщо ви:",
+                "connectWalletBullet1": "вже користуєтесь криптогаманцем",
+                "connectWalletBullet2": "хочете використовувати апаратний гаманець",
+                "connectWalletBullet3": "не маєте біометрії на пристрої",
+                "comingSoon": "Скоро",
+                "passkeyTitle": "Passkey для Touch ID і Face ID",
+                "passkeyDescription": "Увійдіть за допомогою Face ID, Touch ID або коду пристрою.",
+                "passkeyBullet1": "новачок у криптогаманцях",
+                "passkeyBullet2": "хочете найпростіше налаштування",
+                "passkeyBullet3": "використовуватимете Trezu на телефоні чи ноутбуці з біометрією",
+                "recoveryLabel": "Відновлення:",
+                "recoveryText": "Що б ви не обрали, радимо додати другого учасника (гаманець) після налаштування, щоб втрата пристрою не заблокувала доступ."
+            }
+        },
         "unexpectedError": "Сталася неочікувана помилка",
         "creationFailed": "Не вдалось створити скарбницю. Спробуйте ще раз.",
         "stepTitles": {
@@ -2110,14 +2163,15 @@
         },
         "progress": {
             "title": "Швидкі кроки, щоб ознайомитись зі скарбницею",
-            "createTreasuryTitle": "Створити обліковий запис скарбниці",
-            "createTreasuryDescription": "Ви успішно налаштували обліковий запис. Гарний початок!",
             "addAssetsTitle": "Додайте активи",
             "addAssetsDescription": "Почніть з додавання активів, щоб побачити їх у дії.",
             "deposit": "Поповнити",
             "createPaymentTitle": "Створити запит на платіж",
             "createPaymentDescription": "Створіть запит на платіж, щоб завершити налаштування.",
-            "send": "Надіслати"
+            "send": "Надіслати",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Ви успішно налаштували обліковий запис. Гарний початок!",
+            "addTeamMemberTitle": "Створити обліковий запис скарбниці"
         },
         "welcome": {
             "heading": "🎉 Ласкаво просимо!",

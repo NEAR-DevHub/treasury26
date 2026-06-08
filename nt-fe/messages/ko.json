@@ -778,6 +778,18 @@
             "removeMember": "정책 업데이트 - 멤버 제거",
             "removeMembers": "정책 업데이트 - 멤버 제거",
             "removeMemberSuccess": "멤버 제거 요청이 성공적으로 생성되었습니다"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1186,47 @@
         "walletNotSupportedDescription": "{wallet}은(는) 아직 지원되지 않지만, 현재 지원을 준비 중입니다. 지원되는 NEAR 지갑 또는 Ledger로 계속할 수 있습니다.",
         "connectNear": "NEAR 연결",
         "connectLedger": "Ledger 연결",
+        "headerDescription": "팀 또는 본인을 위한 멀티시그 트레저리를 설정하세요",
+        "selectTreasuryTypeLabel": "트레저리 유형 선택",
+        "selectTreasuryTypeError": "트레저리 유형을 선택해 주세요",
+        "publicCardDescription": "DAO, 공공재 프로젝트, 개방형 조직에 가장 적합합니다.",
+        "confidentialCardDescription": "재무 프라이버시가 필요한 비공개 기업 및 팀에 가장 적합합니다.",
+        "accountPlaceholderUnderscore": "my_treasury",
+        "setupOnUsTitle": "설정 비용은 저희가 부담합니다",
+        "setupOnUsDescription": "Trezu가 트레저리 시작을 위한 네트워크 수수료를 부담합니다.",
+        "continueToWallet": "지갑으로 계속",
+        "alreadyHaveTreasuryLabel": "이미 트레저리가 있나요?",
+        "signInLabel": "로그인",
+        "walletSelector": {
+            "title": "로그인 방법 선택",
+            "subtitle": "로그인한 사용자가 트레저리의 첫 번째 멤버가 됩니다.",
+            "helpCta": "무엇을 선택해야 할지 모르겠나요?",
+            "popularBadge": "인기",
+            "recentBadge": "최근 사용",
+            "noFundsNote": "시작 자금이 없어도 됩니다 — 바로 사용해 볼 수 있도록 거래 수수료를 저희가 부담합니다",
+            "chooseNearWallet": "NEAR 지갑 선택",
+            "chooseEvmWallet": "EVM 지갑 선택",
+            "signInWithNear": "NEAR 지갑으로 로그인",
+            "signInWithLedger": "Ledger로 로그인",
+            "signInWithWalletConnect": "WalletConnect로 로그인",
+            "guide": {
+                "title": "어떤 로그인 방식을 사용해야 하나요?",
+                "connectWalletTitle": "지갑 연결",
+                "connectWalletDescription": "NEAR, MetaMask, Ledger 같은 지갑을 사용하세요.",
+                "pickThisIfYou": "다음에 해당하면 이 옵션을 선택하세요:",
+                "connectWalletBullet1": "이미 암호화폐 지갑을 사용 중인 경우",
+                "connectWalletBullet2": "하드웨어 지갑을 사용하고 싶은 경우",
+                "connectWalletBullet3": "기기에 생체인증이 없는 경우",
+                "comingSoon": "곧 출시",
+                "passkeyTitle": "Touch ID / Face ID용 패스키",
+                "passkeyDescription": "Face ID, Touch ID 또는 기기 비밀번호로 로그인하세요.",
+                "passkeyBullet1": "암호화폐 지갑이 처음인 경우",
+                "passkeyBullet2": "가장 간단한 설정을 원하는 경우",
+                "passkeyBullet3": "생체인증이 가능한 휴대폰 또는 노트북에서 Trezu를 사용할 경우",
+                "recoveryLabel": "복구:",
+                "recoveryText": "어떤 방식을 선택하든, 기기를 잃어버려도 잠기지 않도록 설정 후 두 번째 멤버(지갑)를 추가하는 것을 권장합니다."
+            }
+        },
         "unexpectedError": "예기치 않은 오류가 발생했습니다",
         "creationFailed": "트레저리 생성에 실패했습니다. 다시 시도해 주세요.",
         "stepTitles": {
@@ -2110,14 +2163,15 @@
         },
         "progress": {
             "title": "빠른 단계를 따라 트레저리 살펴보기",
-            "createTreasuryTitle": "트레저리 계정 생성",
-            "createTreasuryDescription": "계정 설정을 성공적으로 완료했습니다. 좋은 시작입니다!",
             "addAssetsTitle": "자산 추가",
             "addAssetsDescription": "자산을 추가하여 작동하는 모습을 확인하세요.",
             "deposit": "입금",
             "createPaymentTitle": "결제 요청 생성",
             "createPaymentDescription": "설정을 완료하기 위해 결제 요청을 생성하세요.",
-            "send": "보내기"
+            "send": "보내기",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "계정 설정을 성공적으로 완료했습니다. 좋은 시작입니다!",
+            "addTeamMemberTitle": "트레저리 계정 생성"
         },
         "welcome": {
             "heading": "🎉 환영합니다!",

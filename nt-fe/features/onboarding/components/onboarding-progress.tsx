@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, Plus } from "lucide-react";
 import { Button } from "@/components/button";
 import { StepIcon } from "@/components/step-icon";
 import { useAssets } from "@/hooks/use-assets";
 import { useProposals } from "@/hooks/use-proposals";
+import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 import { useTreasury } from "@/hooks/use-treasury";
 import { availableBalance } from "@/lib/balance";
 
@@ -21,6 +22,10 @@ export type OnboardingStep = {
     action?: {
         label: string;
         icon: "deposit" | "send";
+        onClick: () => void;
+    };
+    secondaryAction?: {
+        label: string;
         onClick: () => void;
     };
 };
@@ -112,9 +117,13 @@ function SemiCircleProgress({
     );
 }
 
-function StepCard({ step, index }: { step: OnboardingStep; index: number }) {
+function StepCard({ step }: { step: OnboardingStep }) {
     const isCompleted = step.completed;
     const isActive = step.active;
+    const primaryAction = step.action;
+    const secondaryAction = step.secondaryAction;
+    const hasInlineDualActions =
+        !isCompleted && !!primaryAction && !!secondaryAction;
     return (
         <div
             className={cn(
@@ -140,16 +149,36 @@ function StepCard({ step, index }: { step: OnboardingStep; index: number }) {
                             : "text-foreground",
                     )}
                 >
-                    <p className="text-sm font-semibold">
-                        {index + 1}. {step.title}
-                    </p>
-                    <span>{step.description}</span>
+                    <p className="text-sm font-semibold">{step.title}</p>
+                    {isActive && (
+                        <span className="text-muted-foreground">
+                            {step.description}
+                        </span>
+                    )}
+                    {hasInlineDualActions && (
+                        <div className="mt-2 flex items-center gap-1.5">
+                            <Button
+                                variant="default"
+                                onClick={primaryAction!.onClick}
+                            >
+                                <Plus className="size-4" />
+                                {primaryAction!.label}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={secondaryAction!.onClick}
+                                className="px-2 h-auto"
+                            >
+                                {secondaryAction!.label}
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {step.action && !isCompleted && (
+            {!isCompleted && step.action && !step.secondaryAction ? (
                 <Button
-                    variant={isActive ? "default" : "ghost"}
+                    variant="ghost"
                     onClick={step.action.onClick}
                     className="ml-6 xl:mx-0 w-[90%] xl:w-auto"
                 >
@@ -160,7 +189,7 @@ function StepCard({ step, index }: { step: OnboardingStep; index: number }) {
                     )}
                     {step.action.label}
                 </Button>
-            )}
+            ) : null}
         </div>
     );
 }
@@ -185,6 +214,7 @@ export function OnboardingProgress({
     onDepositClick,
 }: OnboardingProgressProps) {
     const t = useTranslations("onboarding.progress");
+    const tCreateTreasury = useTranslations("createTreasury");
     const router = useRouter();
     const {
         isGuestTreasury,
@@ -192,6 +222,8 @@ export function OnboardingProgress({
         treasuryId,
     } = useTreasury();
     const { data, isLoading: isLoadingAssets } = useAssets(treasuryId);
+    const { members, isLoading: isLoadingMembers } =
+        useTreasuryMembers(treasuryId);
     const { tokens } = data || { tokens: [] };
     const { data: proposals, isLoading: isLoadingProposals } = useProposals(
         treasuryId,
@@ -199,31 +231,62 @@ export function OnboardingProgress({
             types: ["Payments"],
         },
     );
+    const [soloSelected, setSoloSelected] = useState(false);
+
+    useEffect(() => {
+        if (!treasuryId || typeof window === "undefined") return;
+        const value = window.localStorage.getItem(
+            `onboarding:solo-selected:${treasuryId}`,
+        );
+        setSoloSelected(value === "true");
+    }, [treasuryId]);
 
     const isLoading =
-        isLoadingAssets || isLoadingProposals || isLoadingGuestTreasury;
+        isLoadingAssets ||
+        isLoadingProposals ||
+        isLoadingGuestTreasury ||
+        isLoadingMembers;
 
     const hasAssets =
         tokens.filter((token) => availableBalance(token.balance).gt(0)).length >
         0;
+    const hasAddedTeamMember = members.length > 1 || soloSelected;
 
     const steps: OnboardingStep[] = useMemo(() => {
-        let activeStep = 1;
-
+        const step1Completed = hasAddedTeamMember;
         const step2Completed = hasAssets;
         const step3Completed =
             !!proposals?.proposals?.length && proposals.proposals.length > 0;
+        const activeStep = !step1Completed ? 1 : !step2Completed ? 2 : 3;
 
-        if (!step3Completed) activeStep = 3;
-        if (!hasAssets) activeStep = 2;
+        const handleUseSolo = () => {
+            if (!treasuryId || typeof window === "undefined") return;
+            window.localStorage.setItem(
+                `onboarding:solo-selected:${treasuryId}`,
+                "true",
+            );
+            setSoloSelected(true);
+        };
 
         return [
             {
-                id: "create-treasury",
-                title: t("createTreasuryTitle"),
-                description: t("createTreasuryDescription"),
-                completed: true,
-                active: false,
+                id: "add-team-member",
+                title: t("addTeamMemberTitle"),
+                description: t("addTeamMemberDescription"),
+                completed: step1Completed,
+                active: activeStep === 1,
+                action: {
+                    label: tCreateTreasury("addMembers"),
+                    icon: "send",
+                    onClick: () =>
+                        router.push(
+                            treasuryId ? `/${treasuryId}/members` : "/members",
+                        ),
+                },
+                secondaryAction: {
+                    label: t("useSolo"),
+                    onClick: handleUseSolo,
+                },
             },
             {
                 id: "add-assets",
@@ -255,7 +318,16 @@ export function OnboardingProgress({
                 },
             },
         ];
-    }, [hasAssets, proposals, treasuryId, router, onDepositClick, t]);
+    }, [
+        hasAddedTeamMember,
+        hasAssets,
+        proposals,
+        treasuryId,
+        router,
+        onDepositClick,
+        t,
+        tCreateTreasury,
+    ]);
 
     const completedSteps = steps.filter((s) => s.completed).length;
 
@@ -289,8 +361,8 @@ export function OnboardingProgress({
 
             {/* Right section - Step cards */}
             <div className="relative z-10 flex flex-col gap-2 flex-1 min-w-0">
-                {steps.map((step, index) => (
-                    <StepCard key={step.id} step={step} index={index} />
+                {steps.map((step) => (
+                    <StepCard key={step.id} step={step} />
                 ))}
             </div>
         </div>

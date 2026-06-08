@@ -778,6 +778,18 @@
             "removeMember": "עדכון מדיניות - הסרת חבר",
             "removeMembers": "עדכון מדיניות - הסרת חברים",
             "removeMemberSuccess": "בקשת הסרת חבר נוצרה בהצלחה"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1186,47 @@
         "walletNotSupportedDescription": "{wallet} עדיין לא נתמך, אבל אנחנו עובדים על זה. אפשר להמשיך עם ארנק NEAR נתמך או Ledger.",
         "connectNear": "חיבור ל-NEAR",
         "connectLedger": "חיבור ל-Ledger",
+        "headerDescription": "הגדר כספת מרובת חתימות לצוות שלך או לעצמך",
+        "selectTreasuryTypeLabel": "בחר סוג כספת",
+        "selectTreasuryTypeError": "אנא בחר סוג כספת",
+        "publicCardDescription": "מתאים במיוחד ל-DAO, פרויקטים ציבוריים וארגונים פתוחים.",
+        "confidentialCardDescription": "מתאים במיוחד לחברות פרטיות וצוותים שזקוקים לפרטיות פיננסית.",
+        "accountPlaceholderUnderscore": "הכספת_שלי",
+        "setupOnUsTitle": "ההגדרה עלינו",
+        "setupOnUsDescription": "Trezu מכסה את עמלות הרשת להשקת הכספת שלך.",
+        "continueToWallet": "המשך לארנק",
+        "alreadyHaveTreasuryLabel": "כבר יש לך כספת?",
+        "signInLabel": "התחברות",
+        "walletSelector": {
+            "title": "בחר איך להתחבר",
+            "subtitle": "ההתחברות שלך תהפוך לחבר הראשון בכספת.",
+            "helpCta": "לא בטוח מה לבחור?",
+            "popularBadge": "פופולרי",
+            "recentBadge": "אחרון",
+            "noFundsNote": "לא צריך כספים כדי להתחיל — אנחנו מכסים את עמלות העסקה כדי שתוכל לנסות",
+            "chooseNearWallet": "בחר את ארנקי ה-NEAR שלך",
+            "chooseEvmWallet": "בחר את ארנקי ה-EVM שלך",
+            "signInWithNear": "התחבר עם ארנקי NEAR",
+            "signInWithLedger": "התחבר עם Ledger",
+            "signInWithWalletConnect": "התחבר עם WalletConnect",
+            "guide": {
+                "title": "באיזו שיטת התחברות כדאי להשתמש?",
+                "connectWalletTitle": "חיבור ארנק",
+                "connectWalletDescription": "השתמש בארנק כמו NEAR, MetaMask או Ledger.",
+                "pickThisIfYou": "בחר בזה אם אתה:",
+                "connectWalletBullet1": "כבר משתמש בארנק קריפטו",
+                "connectWalletBullet2": "רוצה להשתמש בארנק חומרה",
+                "connectWalletBullet3": "אין לך ביומטריה במכשיר",
+                "comingSoon": "בקרוב",
+                "passkeyTitle": "Passkey עבור Touch ID ו-Face ID",
+                "passkeyDescription": "התחבר עם Face ID, Touch ID או קוד המכשיר שלך.",
+                "passkeyBullet1": "חדש בארנקי קריפטו",
+                "passkeyBullet2": "רוצה את ההגדרה הפשוטה ביותר",
+                "passkeyBullet3": "תשתמש ב-Trezu בטלפון או מחשב עם ביומטריה",
+                "recoveryLabel": "שחזור:",
+                "recoveryText": "לא משנה במה תבחר, אנו ממליצים להוסיף חבר שני (ארנק) לאחר ההגדרה כדי שאובדן מכשיר לא ינעל אותך בחוץ."
+            }
+        },
         "unexpectedError": "אירעה שגיאה בלתי צפויה",
         "creationFailed": "יצירת האוצר נכשלה. אנא נסה שוב.",
         "stepTitles": {
@@ -2110,14 +2163,15 @@
         },
         "progress": {
             "title": "עקוב אחר שלבים מהירים כדי לחקור את האוצר",
-            "createTreasuryTitle": "צור חשבון אוצר",
-            "createTreasuryDescription": "הגדרת את החשבון שלך בהצלחה. התחלה מצוינת!",
             "addAssetsTitle": "הוסף את הנכסים שלך",
             "addAssetsDescription": "התחל בהוספת נכסים כדי לראות אותם בפעולה.",
             "deposit": "הפקדה",
             "createPaymentTitle": "צור בקשת תשלום",
             "createPaymentDescription": "צור בקשת תשלום להשלמת ההגדרה שלך.",
-            "send": "שליחה"
+            "send": "שליחה",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "הגדרת את החשבון שלך בהצלחה. התחלה מצוינת!",
+            "addTeamMemberTitle": "צור חשבון אוצר"
         },
         "welcome": {
             "heading": "🎉 ברוכים הבאים!",
