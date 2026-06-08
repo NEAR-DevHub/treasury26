@@ -54,12 +54,20 @@ type TourContentKey =
     | "makeRequests"
     | "exchangeAssets"
     | "addMembers"
-    | "newTreasury"
-    | "helpSupport";
+    | "newTreasury";
 
 function TourContent({ k }: { k: TourContentKey }) {
     const t = useTranslations("onboarding.tour");
     return <>{t(k)}</>;
+}
+
+function HelpSupportTourContent() {
+    const t = useTranslations("onboarding.tour");
+    const { isConfidential } = useTreasury();
+
+    return (
+        <>{isConfidential ? t("helpSupportConfidential") : t("helpSupport")}</>
+    );
 }
 
 export const DASHBOARD_TOUR: Tour = {
@@ -139,9 +147,9 @@ export const INFO_BOX_TOUR: Tour = {
         {
             icon: null,
             title: "",
-            content: <TourContent k="helpSupport" />,
+            content: <HelpSupportTourContent />,
             selector: SELECTOR_IDS.HELP_SUPPORT_LINK,
-            side: "top-left",
+            side: "right",
             disableInteraction: true,
             showControls: false,
             showSkip: false,
@@ -151,12 +159,34 @@ export const INFO_BOX_TOUR: Tour = {
     ],
 };
 
+const HELP_SUPPORT_TOUR_SIDEBAR_DELAY_MS = 350;
+
+export function scheduleHelpSupportTour(
+    startNextStep: (tourName: string) => void,
+    setSidebarOpen: (open: boolean) => void,
+) {
+    if (typeof window === "undefined") {
+        return;
+    }
+
+    const isMobile = window.innerWidth < 1024;
+    const start = () => startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
+
+    if (isMobile) {
+        setSidebarOpen(true);
+        setTimeout(start, HELP_SUPPORT_TOUR_SIDEBAR_DELAY_MS + 100);
+    } else {
+        setTimeout(start, 300);
+    }
+}
+
 export function WelcomeTooltip() {
     const tW = useTranslations("onboarding.welcome");
+    const tWC = useTranslations("onboarding.welcome.confidential");
     const [isWelcomeDismissed, setIsWelcomeDismissed] = useState(true);
     const [currentStep, setCurrentStep] = useState(1);
     const { startNextStep } = useNextStep();
-    const { isGuestTreasury, isLoading } = useTreasury();
+    const { isGuestTreasury, isLoading, isConfidential } = useTreasury();
     const { accountId } = useNear();
     const isMobile = useMediaQuery("(max-width: 768px)");
     const isSidebarOpen = useSidebarStore((state) => state.isSidebarOpen);
@@ -221,7 +251,11 @@ export function WelcomeTooltip() {
         <div className="fixed max-w-72 flex flex-col gap-0 bottom-8 right-8 z-50 p-3 bg-popover-foreground text-popover rounded-[8px]">
             <div className="flex items-center justify-between pt-0.5 pb-2.5">
                 <h1 className="text-sm font-semibold">
-                    {currentStep === 1 ? tW("heading") : tW("subheading")}
+                    {currentStep === 1
+                        ? isConfidential
+                            ? tWC("heading")
+                            : tW("heading")
+                        : tW("subheading")}
                 </h1>
                 <XIcon
                     className="size-4 cursor-pointer"
@@ -230,7 +264,9 @@ export function WelcomeTooltip() {
             </div>
             {currentStep === 1 ? (
                 <>
-                    <p className="py-2 text-xs">{tW("body")}</p>
+                    <p className="py-2 text-xs">
+                        {isConfidential ? tWC("body") : tW("body")}
+                    </p>
                     <div className="pt-2 flex justify-between items-center">
                         <span className="text-xs text-popover/70">
                             {tW("progress", {
@@ -347,17 +383,16 @@ export function CongratsTooltip() {
 
         if (allStepsCompleted && congratsShown !== "true") {
             setIsVisible(true);
-            // Mark as shown so it doesn't appear again
-            localStorage.setItem(
-                LOCAL_STORAGE_KEYS.DASHBOARD_TOUR_COMPLETED,
-                "true",
-            );
-            refreshFeatureAnnouncements(2000);
         }
     }, [isGuestTreasury, isLoading, tokens, proposals]);
 
     const handleDismiss = () => {
         setIsVisible(false);
+        localStorage.setItem(
+            LOCAL_STORAGE_KEYS.DASHBOARD_TOUR_COMPLETED,
+            "true",
+        );
+        refreshFeatureAnnouncements(2000);
     };
 
     if (

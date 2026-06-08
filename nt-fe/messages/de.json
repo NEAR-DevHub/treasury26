@@ -1798,10 +1798,10 @@
         "networkFeeTooltip": "Diese Gebühr wird verwendet, um die Transaktion auf der ausgewählten Chain zu verarbeiten."
     },
     "pageTours": {
-        "paymentsBulk": "Sammelerstellung ist da! Erstellen Sie mehrere Anfragen in nur wenigen Schritten.",
-        "paymentsPending": "Sehen Sie sich hier Anfragen an, die auf Genehmigung warten.",
-        "exchangeSettings": "Hier können Sie festlegen, wie viel Preisänderung Sie akzeptieren möchten.",
-        "membersPending": "Klicken Sie, um aktive Anfragen zu sehen, die auf Genehmigung warten.",
+        "paymentsBulk": "Erstellen Sie mehrere Zahlungen in einem Ablauf",
+        "paymentsPending": "Überprüfen Sie Zahlungen, die auf Genehmigung warten",
+        "exchangeSettings": "Legen Sie die maximale Preisänderung (Slippage) fest, die Sie bei einem Tausch akzeptieren.",
+        "membersPending": "Sehen Sie mitgliederbezogene Anfragen, die auf Genehmigung warten",
         "guestSaveIntro": "Sie sind Gast dieser Treasury. Sie können nur die Daten einsehen.",
         "guestSaveAction": "Sie können diese Gast-Treasury in Ihrer Treasury-Liste speichern.",
         "newFeatureRich": "Neu! 🎉 Staken Sie Ihre Assets mit Earn und verdienen Sie Belohnungen. Lassen Sie Ihr Kapital muehelos fuer sich arbeiten.",
@@ -2094,12 +2094,13 @@
     },
     "onboarding": {
         "tour": {
-            "addAssets": "Fügen Sie durch eine Einzahlung Vermögenswerte zu Ihrer Treasury hinzu.",
-            "makeRequests": "Erstellen Sie Zahlungsanfragen, wann immer Sie Vermögenswerte senden müssen.",
-            "exchangeAssets": "Hier können Sie Ihre Vermögenswerte tauschen.",
-            "addMembers": "Fügen Sie Ihrer Treasury Mitglieder hinzu und weisen Sie ihnen Rollen zu.",
-            "newTreasury": "Möchten Sie eine neue Treasury einrichten? Sie können dies hier in nur wenigen Klicks erledigen.",
-            "helpSupport": "Erhalten Sie Hilfe und Support, wann immer Sie ihn benötigen."
+            "addAssets": "Fügen Sie Vermögenswerte zu Ihrer Treasury hinzu, indem Sie einen unterstützten Vermögenswert in einem unterstützten Netzwerk einzahlen.",
+            "makeRequests": "Erstellen Sie Zahlungsanfragen, um Vermögenswerte an jeden zu senden.",
+            "exchangeAssets": "Tauschen Sie einen Vermögenswert gegen einen anderen, über Netzwerke hinweg.",
+            "addMembers": "Fügen Sie Teammitglieder hinzu und legen Sie deren Berechtigungen fest.",
+            "newTreasury": "Brauchen Sie eine weitere Treasury? Sie können hier eine neue starten.",
+            "helpSupport": "Finden Sie Dokumentation, Anleitungen und Support, wann immer Sie sie benötigen.",
+            "helpSupportConfidential": "Informationen zum vertraulichen Modus finden Sie hier immer."
         },
         "tourCard": {
             "close": "Schließen",
@@ -2120,14 +2121,18 @@
             "send": "Senden"
         },
         "welcome": {
-            "heading": "🎉 Willkommen!",
-            "subheading": "Machen Sie eine kurze Tour durch die Treasury",
-            "body": "Hallo! Ihre Trezu ist bereit - beginnen Sie mit dem Aufbau Ihres Portfolios, indem Sie Vermögenswerte aus unterstützten Netzwerken hinzufügen.",
+            "heading": "🎉 Ihre Treasury ist bereit",
+            "subheading": "Möchten Sie eine kurze Tour?",
+            "body": "Zahlen Sie ein, senden Sie Zahlungen, tauschen Sie Vermögenswerte und verwalten Sie Ihr Team — alles von diesem Dashboard aus.",
             "progress": "{current} von {total}",
-            "next": "Weiter",
-            "body2": "Erfahren Sie, wie Sie eine Einzahlung tätigen, eine Anfrage erstellen und ein neues Konto einrichten.",
+            "next": "Verstanden",
+            "body2": "Wir führen Sie durch Einzahlungen, Zahlungen, den Tausch von Vermögenswerten und die Teamverwaltung — in etwa 60 Sekunden.",
             "noThanks": "Nein, danke",
-            "letsGo": "Los geht's"
+            "letsGo": "Los geht's",
+            "confidential": {
+                "heading": "🎉 Ihre vertrauliche Treasury ist bereit",
+                "body": "Ihre Guthaben, Transaktionen und Mitgliederaktivitäten sind privat — nur für Ihr Team sichtbar, niemals auf der öffentlichen Blockchain."
+            }
         },
         "congrats": {
             "heading": "🎉 Glückwunsch!",

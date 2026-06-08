@@ -70,6 +70,24 @@ export const EARN_ANNOUNCEMENT = {
     content: <PageTourContentRich k="newFeature" />,
 } as const;
 
+export const PAYMENTS_BULK_ANNOUNCEMENT = {
+    tourName: PAGE_TOUR_NAMES.PAYMENTS_BULK,
+    ctaLabelKey: "newFeatureCta" as const,
+    href: (treasuryId?: string | null) =>
+        treasuryId
+            ? `/${treasuryId}/payments/bulk-payment`
+            : "/payments/bulk-payment",
+} as const;
+
+export const PAYMENTS_PENDING_ANNOUNCEMENT = {
+    tourName: PAGE_TOUR_NAMES.PAYMENTS_PENDING,
+    ctaLabelKey: "newFeatureCta" as const,
+    href: (treasuryId?: string | null) =>
+        treasuryId
+            ? `/${treasuryId}/requests?tab=InProgress`
+            : "/requests?tab=InProgress",
+} as const;
+
 const defaultStepProps = {
     icon: null,
     title: "",
@@ -123,7 +141,7 @@ export const MEMBERS_PENDING_TOUR: Tour = {
             ...defaultStepProps,
             content: <PageTourContent k="membersPending" />,
             selector: PAGE_TOUR_SELECTORS.MEMBERS_PENDING_BTN,
-            side: "bottom-left",
+            side: "bottom-right",
         },
     ],
 };

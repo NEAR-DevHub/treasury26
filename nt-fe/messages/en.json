@@ -1798,10 +1798,10 @@
         "networkFeeTooltip": "This fee is used to process the transaction on the selected chain."
     },
     "pageTours": {
-        "paymentsBulk": "Bulk creation is here! Create several requests in just a few steps.",
-        "paymentsPending": "View requests that are pending approval here.",
-        "exchangeSettings": "Here you can set how much price change you're willing to accept.",
-        "membersPending": "Click to see active requests waiting for approval.",
+        "paymentsBulk": "Create multiple payments in one flow",
+        "paymentsPending": "Check payments waiting for approval",
+        "exchangeSettings": "Set the maximum price change (slippage) you'll accept on a swap.",
+        "membersPending": "See member-related requests waiting for approval",
         "guestSaveIntro": "You are a guest of this treasury. You can only view the data.",
         "guestSaveAction": "You can save this guest treasury to your treasuries list.",
         "newFeatureRich": "New! 🎉 Stake your assets with Earn and start earning rewards. Put your funds to work effortlessly.",
@@ -2094,12 +2094,13 @@
     },
     "onboarding": {
         "tour": {
-            "addAssets": "Add assets to your Treasury by making a deposit.",
-            "makeRequests": "Make payment requests whenever you need to send assets.",
-            "exchangeAssets": "Here you can exchange your assets.",
-            "addMembers": "Add members to your Treasury and assign them roles.",
-            "newTreasury": "Want to set up a new Treasury? You can do it here in just a few clicks.",
-            "helpSupport": "Get help and support whenever you need it."
+            "addAssets": "Add assets to your Treasury by depositing any supported asset on any supported network.",
+            "makeRequests": "Make payment requests to send assets to anyone.",
+            "exchangeAssets": "Swap one asset for another, across networks.",
+            "addMembers": "Add team members and set their permissions.",
+            "newTreasury": "Need another treasury? You can start a new one from here.",
+            "helpSupport": "Find docs, guides, and support whenever you need them.",
+            "helpSupportConfidential": "Information about confidential mode you always find here."
         },
         "tourCard": {
             "close": "Close",
@@ -2120,14 +2121,18 @@
             "send": "Send"
         },
         "welcome": {
-            "heading": "🎉 Welcome!",
-            "subheading": "Take a quick tour of Treasury",
-            "body": "Hey there! Your Trezu is ready - start building your portfolio by adding assets from supported networks.",
+            "heading": "🎉 Your treasury is ready",
+            "subheading": "Take a quick tour?",
+            "body": "Deposit funds, send payments, exchange assets, and manage your team — all from this dashboard.",
             "progress": "{current} of {total}",
-            "next": "Next",
-            "body2": "See how to make a deposit, create a request, and set up a new account.",
+            "next": "Got it",
+            "body2": "We'll walk you through depositing funds, sending payments, swapping assets, and managing your team – about 60 seconds.",
             "noThanks": "No, thanks",
-            "letsGo": "Let's go"
+            "letsGo": "Let's go",
+            "confidential": {
+                "heading": "🎉 Your Confidential treasury is ready",
+                "body": "Your balances, transactions, and member activity are private – visible only to your team, never on the public blockchain."
+            }
         },
         "congrats": {
             "heading": "🎉 Congrats!",

@@ -1798,10 +1798,10 @@
         "networkFeeTooltip": "Phí này được dùng để xử lý giao dịch trên chuỗi đã chọn."
     },
     "pageTours": {
-        "paymentsBulk": "Tạo hàng loạt đã có mặt! Tạo nhiều yêu cầu chỉ trong vài bước.",
-        "paymentsPending": "Xem các yêu cầu đang chờ phê duyệt tại đây.",
-        "exchangeSettings": "Tại đây bạn có thể đặt mức thay đổi giá mà bạn sẵn sàng chấp nhận.",
-        "membersPending": "Nhấp để xem các yêu cầu đang chờ phê duyệt.",
+        "paymentsBulk": "Tạo nhiều khoản thanh toán trong một luồng",
+        "paymentsPending": "Kiểm tra các khoản thanh toán đang chờ phê duyệt",
+        "exchangeSettings": "Đặt mức thay đổi giá tối đa (slippage) bạn chấp nhận khi hoán đổi.",
+        "membersPending": "Xem các yêu cầu liên quan đến thành viên đang chờ phê duyệt",
         "guestSaveIntro": "Bạn là khách của ngân quỹ này. Bạn chỉ có thể xem dữ liệu.",
         "guestSaveAction": "Bạn có thể lưu ngân quỹ khách này vào danh sách ngân quỹ của bạn.",
         "newFeatureRich": "Mới! 🎉 Lưu các địa chỉ thường dùng để chi trả nhanh hơn và không có lỗi. Liên hệ của bạn được giữ riêng tư và chỉ đội của bạn nhìn thấy.",
@@ -2094,12 +2094,13 @@
     },
     "onboarding": {
         "tour": {
-            "addAssets": "Thêm tài sản vào Ngân quỹ của bạn bằng cách nạp tiền.",
-            "makeRequests": "Tạo yêu cầu thanh toán bất cứ khi nào bạn cần gửi tài sản.",
-            "exchangeAssets": "Tại đây bạn có thể trao đổi tài sản của mình.",
-            "addMembers": "Thêm thành viên vào Ngân quỹ của bạn và gán vai trò cho họ.",
-            "newTreasury": "Muốn thiết lập một Ngân quỹ mới? Bạn có thể làm điều đó tại đây chỉ trong vài cú nhấp chuột.",
-            "helpSupport": "Nhận trợ giúp và hỗ trợ bất cứ khi nào bạn cần."
+            "addAssets": "Thêm tài sản vào Ngân quỹ bằng cách nạp bất kỳ tài sản được hỗ trợ nào trên bất kỳ mạng được hỗ trợ nào.",
+            "makeRequests": "Tạo yêu cầu thanh toán để gửi tài sản cho bất kỳ ai.",
+            "exchangeAssets": "Hoán đổi một tài sản lấy tài sản khác, xuyên mạng.",
+            "addMembers": "Thêm thành viên nhóm và thiết lập quyền của họ.",
+            "newTreasury": "Cần thêm một ngân quỹ? Bạn có thể bắt đầu một ngân quỹ mới từ đây.",
+            "helpSupport": "Tìm tài liệu, hướng dẫn và hỗ trợ bất cứ khi nào bạn cần.",
+            "helpSupportConfidential": "Thông tin về chế độ bảo mật bạn luôn tìm thấy tại đây."
         },
         "tourCard": {
             "close": "Đóng",
@@ -2120,14 +2121,18 @@
             "send": "Gửi"
         },
         "welcome": {
-            "heading": "🎉 Chào mừng!",
-            "subheading": "Tham quan nhanh Ngân quỹ",
-            "body": "Xin chào! Trezu của bạn đã sẵn sàng - hãy bắt đầu xây dựng danh mục bằng cách thêm tài sản từ các mạng được hỗ trợ.",
+            "heading": "🎉 Ngân quỹ của bạn đã sẵn sàng",
+            "subheading": "Tham quan nhanh?",
+            "body": "Nạp tiền, gửi thanh toán, hoán đổi tài sản và quản lý nhóm — tất cả từ bảng điều khiển này.",
             "progress": "{current} trên {total}",
-            "next": "Tiếp",
-            "body2": "Xem cách thực hiện nạp tiền, tạo yêu cầu và thiết lập tài khoản mới.",
+            "next": "Đã hiểu",
+            "body2": "Chúng tôi sẽ hướng dẫn bạn nạp tiền, gửi thanh toán, hoán đổi tài sản và quản lý nhóm — khoảng 60 giây.",
             "noThanks": "Không, cảm ơn",
-            "letsGo": "Bắt đầu thôi"
+            "letsGo": "Bắt đầu thôi",
+            "confidential": {
+                "heading": "🎉 Ngân quỹ bảo mật của bạn đã sẵn sàng",
+                "body": "Số dư, giao dịch và hoạt động thành viên của bạn là riêng tư — chỉ nhóm của bạn có thể xem, không bao giờ trên blockchain công khai."
+            }
         },
         "congrats": {
             "heading": "🎉 Chúc mừng!",

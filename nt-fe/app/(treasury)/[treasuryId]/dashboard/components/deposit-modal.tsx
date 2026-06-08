@@ -1198,7 +1198,7 @@ export function DepositModal({
                                 <div className="flex gap-4">
                                     {/* QR Code Skeleton */}
                                     <div className="shrink-0">
-                                        <div className="w-32 h-32 bg-background rounded-lg" />
+                                        <div className="size-[88px] bg-background rounded-lg" />
                                     </div>
 
                                     {/* Address Skeleton */}
@@ -1304,17 +1304,12 @@ export function DepositModal({
                                     >
                                         {/* QR Code */}
                                         <div className="shrink-0">
-                                            <div className="w-24 h-24 sm:w-40 sm:h-40 rounded-lg flex items-center justify-center p-2">
+                                            <div className="size-[88px] rounded-lg flex items-center justify-center">
                                                 <QRCode
                                                     value={
                                                         displayDepositInfo.address
                                                     }
-                                                    size={112}
-                                                    style={{
-                                                        height: "auto",
-                                                        maxWidth: "100%",
-                                                        width: "100%",
-                                                    }}
+                                                    size={88}
                                                 />
                                             </div>
                                         </div>

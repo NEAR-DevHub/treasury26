@@ -170,6 +170,7 @@ function ExecutedSection({
 }) {
     const t = useTranslations("proposals.expanded");
     const tStatus = useTranslations("proposals.status");
+    const tCommon = useTranslations("common");
     const formatDate = useFormatDate();
 
     let statusIcon = <StepIcon status="Pending" />;
@@ -201,6 +202,13 @@ function ExecutedSection({
         default:
             statusText = status as string;
     }
+    const displayDateText = (() => {
+        if (date) return formatDate(date);
+        if (status === "Pending" || status === "Expired") {
+            return formatDate(expiresAt);
+        }
+        return tCommon("notAvailable");
+    })();
 
     return (
         <div className="space-y-3 relative z-10">
@@ -212,7 +220,7 @@ function ExecutedSection({
                         {isDateLoading ? (
                             <Skeleton className="h-4 w-36" />
                         ) : (
-                            formatDate(date ?? expiresAt)
+                            displayDateText
                         )}
                     </p>
                 </div>
@@ -287,7 +295,8 @@ export function ProposalSidebar({
     // Whether this proposal used the Intents protocol (has a deposit address)
     const hasDepositAddress = !!depositAddress;
     const shouldUseTransactionDate = isExecuted;
-    const shouldUseSwapDate = isExecuted && hasDepositAddress;
+    const shouldUseSwapDate =
+        isExecuted && hasDepositAddress && !isConfidentialRequestProposal;
 
     // Fetch transaction data for non-intents proposals, or for statuses
     // whose resolved date/link should come from the chain transaction.
@@ -444,8 +453,10 @@ export function ProposalSidebar({
                             </Link>
                         </Button>
                     )}
-                    {/* For intents-routed proposals (exchange or payment), show intents explorer link */}
-                    {isExecuted && hasDepositAddress ? (
+                    {/* For intents-routed non-confidential proposals, show intents explorer link */}
+                    {isExecuted &&
+                    hasDepositAddress &&
+                    !isConfidentialRequestProposal ? (
                         <Link
                             href={`https://explorer.near-intents.org/transactions/${depositAddress}`}
                             target="_blank"

@@ -331,10 +331,12 @@ async function gotoDashboardFresh(page: Page) {
  * Walk through the welcome tooltip (steps 1 → 2) and click "Let's go" to start the dashboard tour.
  */
 async function startTourViaWelcome(page: Page) {
-    await expect(page.getByText("Welcome!", { exact: false })).toBeVisible({
+    await expect(
+        page.getByText("Your treasury is ready", { exact: false }),
+    ).toBeVisible({
         timeout: 15000,
     });
-    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await page.getByRole("button", { name: "Got it", exact: true }).click();
     await expect(
         page.getByText("Take a quick tour", { exact: false }),
     ).toBeVisible({ timeout: 5000 });
@@ -357,7 +359,9 @@ test.describe("Onboarding – Welcome Tooltip", () => {
         await setupDashboardMocks(page);
         await gotoDashboardFresh(page);
 
-        const welcome = page.getByText("Welcome!", { exact: false });
+        const welcome = page.getByText("Your treasury is ready", {
+            exact: false,
+        });
         await expect(welcome).toBeVisible({ timeout: 15000 });
 
         await page.screenshot({
@@ -373,14 +377,14 @@ test.describe("Onboarding – Welcome Tooltip", () => {
         await gotoDashboardFresh(page);
 
         // Step 1 should be visible
-        const step1Text = page.getByText("Your Trezu is ready", {
+        const step1Text = page.getByText("Deposit funds, send payments", {
             exact: false,
         });
         await expect(step1Text).toBeVisible({ timeout: 15000 });
         expect(await page.getByText("1 of 2").isVisible()).toBe(true);
 
-        // Click "Next" to go to step 2
-        await page.getByRole("button", { name: "Next", exact: true }).click();
+        // Click "Got it" to go to step 2
+        await page.getByRole("button", { name: "Got it", exact: true }).click();
 
         const step2Text = page.getByText("Take a quick tour", {
             exact: false,
@@ -412,7 +416,9 @@ test.describe("Onboarding – Welcome Tooltip", () => {
         // Give enough time for any tooltip to appear
         await page.waitForTimeout(2000);
 
-        const welcome = page.getByText("Welcome!", { exact: false });
+        const welcome = page.getByText("Your treasury is ready", {
+            exact: false,
+        });
         await expect(welcome).not.toBeVisible();
     });
 });
@@ -467,7 +473,7 @@ test.describe("Onboarding – Dashboard Tour highlights and arrows", () => {
         // Advance to step 3
         await page.getByRole("button", { name: "Next", exact: true }).click();
         await expect(
-            page.getByText("exchange your assets", { exact: false }),
+            page.getByText("Swap one asset", { exact: false }),
         ).toBeVisible({ timeout: 10000 });
 
         // Step 3 targets #dashboard-step3 (Exchange in BalanceWithGraph)
@@ -544,14 +550,14 @@ test.describe("Onboarding – Dashboard Tour highlights and arrows", () => {
 
         // Step 3: Exchange
         await expect(
-            page.getByText("exchange your assets", { exact: false }),
+            page.getByText("Swap one asset", { exact: false }),
         ).toBeVisible({ timeout: 10000 });
         expect(await page.getByText("3 of 5").isVisible()).toBe(true);
         await page.getByRole("button", { name: "Next", exact: true }).click();
 
         // Step 4: Members (in sidebar)
         await expect(
-            page.getByText("Add members to your Treasury", { exact: false }),
+            page.getByText("Add team members", { exact: false }),
         ).toBeVisible({ timeout: 10000 });
         expect(await page.getByText("4 of 5").isVisible()).toBe(true);
         await page.getByRole("button", { name: "Next", exact: true }).click();
@@ -559,7 +565,7 @@ test.describe("Onboarding – Dashboard Tour highlights and arrows", () => {
         // Step 5: Create Treasury (inside sidebar selector dropdown —
         // the tour card logic opens the dropdown automatically, allow extra time)
         await expect(
-            page.getByText("set up a new Treasury", { exact: false }),
+            page.getByText("Need another treasury", { exact: false }),
         ).toBeVisible({ timeout: 15000 });
         expect(await page.getByText("5 of 5").isVisible()).toBe(true);
 
@@ -580,7 +586,7 @@ test.describe("Onboarding – Dashboard Tour highlights and arrows", () => {
 
         // Tour should close
         await expect(
-            page.getByText("set up a new Treasury", { exact: false }),
+            page.getByText("Need another treasury", { exact: false }),
         ).not.toBeVisible({ timeout: 5000 });
     });
 
@@ -792,7 +798,7 @@ test.describe("Onboarding – Tour card arrow points toward target", () => {
             },
             {
                 selector: "#dashboard-step3",
-                text: "exchange your assets",
+                text: "Swap one asset",
             },
         ];
 
@@ -997,10 +1003,12 @@ test.describe("Onboarding – Full flow with scroll prerequisite", () => {
         ).toBeGreaterThan(0);
 
         // ── Welcome tooltip step 1 ──
-        await expect(page.getByText("Welcome!", { exact: false })).toBeVisible({
+        await expect(
+            page.getByText("Your treasury is ready", { exact: false }),
+        ).toBeVisible({
             timeout: 15000,
         });
-        await page.getByRole("button", { name: "Next", exact: true }).click();
+        await page.getByRole("button", { name: "Got it", exact: true }).click();
 
         // ── Welcome tooltip step 2 → start the tour ──
         await expect(
@@ -1035,21 +1043,21 @@ test.describe("Onboarding – Full flow with scroll prerequisite", () => {
 
         // ── Tour step 3: Exchange ──
         await expect(
-            page.getByText("exchange your assets", { exact: false }),
+            page.getByText("Swap one asset", { exact: false }),
         ).toBeVisible({ timeout: 10000 });
         expect(await page.getByText("3 of 5").isVisible()).toBe(true);
         await page.getByRole("button", { name: "Next", exact: true }).click();
 
         // ── Tour step 4: Members ──
         await expect(
-            page.getByText("Add members to your Treasury", { exact: false }),
+            page.getByText("Add team members", { exact: false }),
         ).toBeVisible({ timeout: 10000 });
         expect(await page.getByText("4 of 5").isVisible()).toBe(true);
         await page.getByRole("button", { name: "Next", exact: true }).click();
 
         // ── Tour step 5: Create Treasury ──
         await expect(
-            page.getByText("set up a new Treasury", { exact: false }),
+            page.getByText("Need another treasury", { exact: false }),
         ).toBeVisible({ timeout: 15000 });
         expect(await page.getByText("5 of 5").isVisible()).toBe(true);
 
@@ -1064,10 +1072,10 @@ test.describe("Onboarding – Full flow with scroll prerequisite", () => {
 
         // Tour should close
         await expect(
-            page.getByText("set up a new Treasury", { exact: false }),
+            page.getByText("Need another treasury", { exact: false }),
         ).not.toBeVisible({ timeout: 5000 });
 
-        // ── Congrats tooltip should appear ──
+        // ── Congrats tooltip should appear first ──
         const congrats = page.getByText("Congrats!", { exact: false });
         await expect(congrats).toBeVisible({ timeout: 15000 });
         await expect(

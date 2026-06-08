@@ -9,11 +9,13 @@ import Link from "next/link";
 import { CirclePlay, Eye, File, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useEffect } from "react";
-import { PageCard } from "@/components/card";
 import { useNextStep } from "nextstepjs";
-import { LOCAL_STORAGE_KEYS, TOUR_NAMES } from "../steps/dashboard";
+import { PageCard } from "@/components/card";
 import { useSidebarStore } from "@/stores/sidebar-store";
-import { SIDEBAR_ANIMATION_DELAY } from "./tour-card";
+import {
+    LOCAL_STORAGE_KEYS,
+    scheduleHelpSupportTour,
+} from "../steps/dashboard";
 
 const INFO_BOX_CLOSED_KEY = LOCAL_STORAGE_KEYS.INFO_BOX_TOUR_DISMISSED;
 
@@ -43,6 +45,8 @@ function InfoItem({ icon, title, description, href }: InfoItemProps) {
 export function InfoBox() {
     const t = useTranslations("onboarding.infoBox");
     const [isClosed, setIsClosed] = useState(true);
+    const { startNextStep } = useNextStep();
+    const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen);
     const infoItems = useMemo<InfoItemProps[]>(
         () => [
             {
@@ -66,9 +70,6 @@ export function InfoBox() {
         ],
         [t],
     );
-    const { startNextStep } = useNextStep();
-    const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen);
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
 
     useEffect(() => {
         setIsClosed(localStorage.getItem(INFO_BOX_CLOSED_KEY) === "true");
@@ -77,15 +78,7 @@ export function InfoBox() {
     const handleInfoBoxClick = () => {
         localStorage.setItem(INFO_BOX_CLOSED_KEY, "true");
         setIsClosed(true);
-        // Open sidebar before starting tour since first step needs it
-        if (isMobile) {
-            setSidebarOpen(true);
-            setTimeout(() => {
-                startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
-            }, SIDEBAR_ANIMATION_DELAY + 100);
-        } else {
-            startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
-        }
+        scheduleHelpSupportTour(startNextStep, setSidebarOpen);
     };
 
     if (isClosed) {

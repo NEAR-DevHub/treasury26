@@ -1,5 +1,9 @@
 import { FunctionCallKind, Proposal } from "@/lib/proposals-api";
-import { decodeArgs, decodeProposalDescription } from "@/lib/utils";
+import {
+    decodeArgs,
+    decodeProposalDescription,
+    formatBalance,
+} from "@/lib/utils";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
 import {
     PaymentRequestData,
@@ -33,6 +37,7 @@ import {
     NEAR_NETWORK_ID,
     WRAP_NEAR_TOKEN_ID,
 } from "@/constants/network-ids";
+import { NEAR_TOKEN_DECIMALS } from "@/constants/token";
 import { computeQuoteNetworkFee } from "@/lib/intents-fee";
 
 function normalizeTimeEstimateSeconds(value?: string): string | undefined {
@@ -571,14 +576,15 @@ export function extractNearWrapSwapRequestData(
         throw new Error("Proposal is not a Exchange proposal");
     }
     const isWrap = action.method_name === "near_deposit";
-    const amount = isWrap ? action.deposit || "0" : args.amount || "0";
+    const amountRaw = isWrap ? action.deposit || "0" : args.amount || "0";
+    const amountFormatted = formatBalance(amountRaw, NEAR_TOKEN_DECIMALS);
 
     return {
         source: WRAP_NEAR_TOKEN_ID,
         tokenIn: isWrap ? NEAR_NETWORK_ID : WRAP_NEAR_TOKEN_ID,
-        amountIn: amount,
+        amountIn: amountFormatted,
         tokenOut: isWrap ? WRAP_NEAR_TOKEN_ID : NEAR_NETWORK_ID,
-        amountOut: amount,
+        amountOut: amountFormatted,
         destinationNetwork: NEAR_NETWORK_ID,
         sourceNetwork: NEAR_NETWORK_ID,
     };
