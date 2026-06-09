@@ -32,6 +32,8 @@ interface TreasurySelectorProps {
     onOpenChange?: (open: boolean) => void;
 }
 
+const CREATE_TREASURY_CONTEXT_QUERY = "/?context=create_treasury";
+
 export function TreasurySelector({
     reducedMode = false,
     isOpen,
@@ -269,11 +271,7 @@ export function TreasurySelector({
                             if (!creationAvailable) {
                                 setShowLowBalanceModal(true);
                             } else {
-                                router.push(
-                                    treasuries?.length > 0
-                                        ? "/app/new?skipSurvey=1"
-                                        : "/app/new",
-                                );
+                                router.push(CREATE_TREASURY_CONTEXT_QUERY);
                             }
                         }}
                     >

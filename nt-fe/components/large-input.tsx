@@ -9,6 +9,7 @@ interface LargeInputProps extends React.ComponentProps<typeof Input> {
     search?: boolean;
     borderless?: boolean;
     suffix?: string;
+    textSizeClassName?: string;
     /**
      * When true, font size will dynamically adjust based on input length to prevent overflow.
      * Default: false
@@ -21,6 +22,7 @@ export function LargeInput({
     search,
     borderless,
     suffix,
+    textSizeClassName,
     value,
     dynamicFontSize = false,
     ...props
@@ -113,8 +115,9 @@ export function LargeInput({
                     search && "pl-10",
                     borderless &&
                         "border-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                    fontSize,
+                    textSizeClassName,
                     className,
-                    fontSize, // Apply dynamic font size last so it takes precedence
                 )}
             />
             {suffix && (
@@ -124,6 +127,7 @@ export function LargeInput({
                         className={cn(
                             "text-muted-foreground transition-[font-size] duration-200 ease-in-out",
                             fontSize,
+                            textSizeClassName,
                         )}
                     >
                         {suffix}

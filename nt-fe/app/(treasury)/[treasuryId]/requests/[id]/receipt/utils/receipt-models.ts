@@ -1,6 +1,9 @@
 import type { TokenMetadata } from "@/lib/api";
 import type { SwapQuoteResponse } from "@/lib/proposals-api";
-import { formatCurrency, formatTokenDisplayAmount } from "@/lib/utils";
+import {
+    formatCurrencyWithSubCent,
+    formatTokenDisplayAmount,
+} from "@/lib/utils";
 
 export interface AsyncValue<T> {
     value: T | null;
@@ -75,13 +78,13 @@ export function buildReceiptAmountModel({
               : sourceToken.historicalPriceUsd;
 
     const sourceAmountUsd = quote?.amountInUsd
-        ? formatCurrency(Number(quote.amountInUsd))
+        ? formatCurrencyWithSubCent(Number(quote.amountInUsd))
         : !hasDepositAddress && sourceUnitPriceUsd != null
-          ? formatCurrency(
+          ? formatCurrencyWithSubCent(
                 Number(sourceToken.amountDecimal) * sourceUnitPriceUsd,
             )
           : hasDepositAddress && sourceToken.tokenPrice != null
-            ? formatCurrency(
+            ? formatCurrencyWithSubCent(
                   Number(sourceToken.amountDecimal) * sourceToken.tokenPrice,
               )
             : null;
@@ -90,16 +93,16 @@ export function buildReceiptAmountModel({
         ? destinationToken.tokenPrice
         : destinationToken.historicalPriceUsd;
     const destinationAmountUsd = quote?.amountOutUsd
-        ? formatCurrency(Number(quote.amountOutUsd))
+        ? formatCurrencyWithSubCent(Number(quote.amountOutUsd))
         : !hasDepositAddress && destinationUnitPriceUsd != null
-          ? formatCurrency(
+          ? formatCurrencyWithSubCent(
                 Number(destinationToken.amountDecimal ?? "0") *
                     destinationUnitPriceUsd,
             )
           : hasDepositAddress &&
               destinationToken.tokenPrice != null &&
               quote?.amountOutFormatted
-            ? formatCurrency(
+            ? formatCurrencyWithSubCent(
                   Number(quote.amountOutFormatted) *
                       destinationToken.tokenPrice,
               )
@@ -116,9 +119,9 @@ export function buildReceiptAmountModel({
         sourceToken.symbol &&
         destinationToken.symbol
     ) {
-        rateLabel = `1 ${sourceToken.symbol} (${formatCurrency(sourceUnitPriceUsd)}) ≈ ${formatTokenDisplayAmount(destinationPerSourceRate)} ${destinationToken.symbol}`;
+        rateLabel = `1 ${sourceToken.symbol} (${formatCurrencyWithSubCent(sourceUnitPriceUsd)}) ≈ ${formatTokenDisplayAmount(destinationPerSourceRate)} ${destinationToken.symbol}`;
     } else if (sourceUnitPriceUsd && sourceToken.symbol) {
-        rateLabel = `1 ${sourceToken.symbol} = ${formatCurrency(sourceUnitPriceUsd)}`;
+        rateLabel = `1 ${sourceToken.symbol} = ${formatCurrencyWithSubCent(sourceUnitPriceUsd)}`;
     }
 
     return {

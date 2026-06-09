@@ -46,7 +46,7 @@ export const TokenDisplay = ({
             ) : (
                 <div
                     className={cn(
-                        "rounded-full bg-gradient-cyan-blue flex items-center justify-center text-xs text-white font-semibold shrink-0",
+                        "rounded-full bg-brand-blue flex items-center justify-center text-xs text-white font-normal shrink-0",
                         iconSizeClasses[iconSize],
                     )}
                 >

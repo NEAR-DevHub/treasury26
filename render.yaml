@@ -6,7 +6,7 @@ services:
     plan: standard
     rootDir: nt-be
     branch: release-1.14.1
-    buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be
+    buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be && cargo build --release --example mark_testing_daos
     startCommand: ./target/release/nt-be
     domains:
       - api.trezu.app
@@ -89,7 +89,7 @@ services:
     plan: starter
     rootDir: nt-be
     branch: main
-    buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be
+    buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be && cargo build --release --example mark_testing_daos
     startCommand: ./target/release/nt-be
     envVars:
       - key: FASTNEAR_API_KEY

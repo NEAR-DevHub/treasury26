@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 import { ChainIcons, TreasuryAsset } from "@/lib/api";
-import { cn, formatCurrency, formatSmartAmount } from "@/lib/utils";
+import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
 import Big from "@/lib/big";
 import {
     getNetworkDisplayCaseClass,
@@ -108,7 +108,7 @@ export const NetworkIconDisplay = ({
                     className="size-6 rounded-full object-cover"
                 />
             ) : (
-                <div className="size-6 rounded-full bg-gradient-cyan-blue flex items-center justify-center text-white text-xs font-bold">
+                <div className="size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
                     {networkName.charAt(0)}
                 </div>
             )}
@@ -198,7 +198,7 @@ export const BalanceCell = ({
     return (
         <div className="text-right">
             <div className="font-medium text-sm">
-                {formatCurrency(balanceUSD)}
+                {formatCurrencyWithSubCent(balanceUSD)}
             </div>
             <div className="text-xxs text-muted-foreground">
                 {formatSmartAmount(balance)} {symbol}

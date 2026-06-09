@@ -1,12 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
+import Logo from "@/components/icons/logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { useTreasury } from "@/hooks/use-treasury";
-import { trackEvent } from "@/lib/analytics";
 import { useNear } from "@/stores/near-store";
 
 const UTM_KEYS = [
@@ -16,9 +14,9 @@ const UTM_KEYS = [
     "utm_content",
 ] as const;
 
-function sanitizeReturnTo(raw: string | null): string {
-    if (!raw) return "/";
-    if (!raw.startsWith("/")) return "/";
+function sanitizeReturnTo(raw: string | null): string | null {
+    if (!raw) return null;
+    if (!raw.startsWith("/")) return null;
     return raw;
 }
 
@@ -41,68 +39,46 @@ function appendUtmParamsToReturnTo(
 }
 
 export default function LoginPage() {
-    const tSignIn = useTranslations("signIn");
-    const tCreate = useTranslations("createTreasury");
     const router = useRouter();
     const searchParams = useSearchParams();
     const { accountId, connect, isAuthenticating } = useNear();
-    const { treasuries, lastTreasuryId, isLoading } = useTreasury();
 
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
     const returnToWithUtms = useMemo(
-        () => appendUtmParamsToReturnTo(returnTo, searchParams),
+        () =>
+            returnTo ? appendUtmParamsToReturnTo(returnTo, searchParams) : null,
         [returnTo, searchParams],
     );
-    const context = searchParams.get("context");
-    const connectFlow: "new_user" | "existing_user" | "within_treasury" =
-        context === "existing_user" ? "existing_user" : "within_treasury";
-    const preferredTreasuryId =
-        (lastTreasuryId &&
-            treasuries.some((treasury) => treasury.daoId === lastTreasuryId) &&
-            lastTreasuryId) ||
-        treasuries[0]?.daoId;
-
-    const connectTitle = useMemo(() => {
-        if (context === "create_treasury")
-            return tCreate("connectWalletCreate");
-        return `${tSignIn("connect")} ${tSignIn("wallet")}`;
-    }, [context, tCreate, tSignIn]);
+    const loginHeaderLogo = <Logo size="sm" />;
 
     useEffect(() => {
         if (!accountId) return;
 
-        if (context !== "existing_user") {
+        if (returnToWithUtms) {
             router.replace(returnToWithUtms);
-            return;
         }
-
-        if (isLoading) return;
-
-        if (preferredTreasuryId) {
-            trackEvent("existing_user_treasury_opened", {
-                source: "/login",
-                treasury_id: preferredTreasuryId,
-            });
-            router.replace(`/${preferredTreasuryId}`);
-        }
-    }, [
-        accountId,
-        context,
-        isLoading,
-        preferredTreasuryId,
-        returnToWithUtms,
-        router,
-    ]);
+    }, [accountId, returnToWithUtms, router]);
 
     return (
-        <PageComponentLayout title={connectTitle} hideLogin hideCollapseButton>
-            <div className="mx-auto max-w-[668px]">
+        <PageComponentLayout
+            title="Trezu"
+            hideLogin
+            hideCollapseButton
+            transparentHeader
+            logo={loginHeaderLogo}
+        >
+            <div className="mx-auto mt-6 max-w-[668px] md:mt-8">
                 <ConnectWalletSelector
-                    title={connectTitle}
                     source="/login"
-                    connectFlow={connectFlow}
+                    connectFlow="within_treasury"
                     isConnectingWallet={isAuthenticating}
-                    onBack={() => router.back()}
+                    onBack={() => {
+                        if (returnToWithUtms) {
+                            router.push(returnToWithUtms);
+                            return;
+                        }
+                        router.back();
+                    }}
                     onConnectSupported={connect}
                 />
             </div>

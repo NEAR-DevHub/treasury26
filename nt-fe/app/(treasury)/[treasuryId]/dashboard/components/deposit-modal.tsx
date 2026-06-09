@@ -49,6 +49,7 @@ import {
     canonicalizeTokenIdForMatch,
     cn,
     formatBalance,
+    formatCurrencyWithSubCent,
     formatSmartAmount,
     normalizeNearAssetId,
 } from "@/lib/utils";
@@ -252,8 +253,8 @@ function renderBalance(amount: number | string, amountUSD: number) {
         return null;
     }
     const normalizedUsd = Number.isFinite(amountUSD)
-        ? amountUSD.toFixed(2)
-        : "0.00";
+        ? formatCurrencyWithSubCent(amountUSD)
+        : formatCurrencyWithSubCent(0);
 
     return (
         <div className="flex flex-col items-end">
@@ -261,7 +262,7 @@ function renderBalance(amount: number | string, amountUSD: number) {
                 {formatSmartAmount(normalizedAmount)}
             </span>
             <span className="text-sm text-muted-foreground">
-                ≈${normalizedUsd}
+                ≈{normalizedUsd}
             </span>
         </div>
     );
@@ -296,8 +297,8 @@ function OptionIcon({
     return (
         <div
             className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0",
-                gradient ?? "bg-gradient-cyan-blue",
+                "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-normal shrink-0",
+                gradient ?? "bg-brand-blue",
             )}
         >
             {icon}
@@ -523,7 +524,7 @@ export function DepositModal({
             id: "other",
             name: t("otherAssetName"),
             icon: "O",
-            gradient: "bg-gradient-cyan-blue",
+            gradient: "bg-brand-blue",
             networks: [
                 {
                     id: "other:near",
@@ -575,7 +576,7 @@ export function DepositModal({
                 name: asset.name,
                 symbol: asset.networks[0]?.symbol,
                 icon: asset.icon,
-                gradient: "bg-gradient-cyan-blue",
+                gradient: "bg-brand-blue",
                 networks: asset.networks,
             };
 
@@ -1198,7 +1199,7 @@ export function DepositModal({
                                 <div className="flex gap-4">
                                     {/* QR Code Skeleton */}
                                     <div className="shrink-0">
-                                        <div className="w-32 h-32 bg-background rounded-lg" />
+                                        <div className="size-[88px] bg-background rounded-lg" />
                                     </div>
 
                                     {/* Address Skeleton */}
@@ -1304,17 +1305,12 @@ export function DepositModal({
                                     >
                                         {/* QR Code */}
                                         <div className="shrink-0">
-                                            <div className="w-24 h-24 sm:w-40 sm:h-40 rounded-lg flex items-center justify-center p-2">
+                                            <div className="size-[88px] rounded-lg flex items-center justify-center">
                                                 <QRCode
                                                     value={
                                                         displayDepositInfo.address
                                                     }
-                                                    size={112}
-                                                    style={{
-                                                        height: "auto",
-                                                        maxWidth: "100%",
-                                                        width: "100%",
-                                                    }}
+                                                    size={88}
                                                 />
                                             </div>
                                         </div>

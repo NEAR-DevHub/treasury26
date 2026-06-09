@@ -42,28 +42,23 @@ pub struct SystemStatusResponse {
     pub posts: Vec<SystemStatusPost>,
 }
 
-const INSTATUS_API_URL: &str = "https://status.near-intents.org/api/posts?is_featured=true";
-
 pub async fn get_system_status(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<SystemStatusResponse>, (StatusCode, String)> {
     let cache_key = CacheKey::new("intents-system-status").build();
     let http_client = state.http_client.clone();
+    let status_url = state.env_vars.near_intents_status_api_url.clone();
 
     let posts = state
         .cache
         .cached(CacheTier::ShortTerm, cache_key, async move {
-            let response = http_client
-                .get(INSTATUS_API_URL)
-                .send()
-                .await
-                .map_err(|e| {
-                    log::error!("Error fetching system status: {}", e);
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to fetch system status: {}", e),
-                    )
-                })?;
+            let response = http_client.get(status_url).send().await.map_err(|e| {
+                log::error!("Error fetching system status: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to fetch system status: {}", e),
+                )
+            })?;
 
             if !response.status().is_success() {
                 let error_text = response.text().await.unwrap_or_default();

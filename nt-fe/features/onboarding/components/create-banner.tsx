@@ -10,6 +10,7 @@ import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/hooks/use-treasury";
 
 const CREATE_BANNER_DISMISSED_KEY = "create-banner-dismissed";
+const CREATE_TREASURY_CONTEXT_QUERY = "/?context=create_treasury";
 
 export function CreateBanner({ disabled = false }: { disabled?: boolean }) {
     const t = useTranslations("onboarding.createBanner");
@@ -59,13 +60,7 @@ export function CreateBanner({ disabled = false }: { disabled?: boolean }) {
             <Button
                 variant="secondary"
                 className="w-full bg-card text-card-foreground hover:bg-card/80"
-                onClick={() =>
-                    router.push(
-                        treasuries?.length > 0
-                            ? "/app/new?skipSurvey=1"
-                            : "/app/new",
-                    )
-                }
+                onClick={() => router.push(CREATE_TREASURY_CONTEXT_QUERY)}
             >
                 {t("cta")}
             </Button>

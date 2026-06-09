@@ -147,7 +147,7 @@ export function StepWizard({
 
 interface HandleBackWithTitleProps {
     title: ReactNode;
-    description?: string;
+    description?: ReactNode;
     handleBack?: () => void;
 }
 

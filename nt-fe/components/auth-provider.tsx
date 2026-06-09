@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useNearStore } from "@/stores/near-store";
 import { AcceptTermsModal } from "./accept-terms-modal";
-import { CreateTreasuryPromptController } from "@/features/onboarding/components/create-treasury-prompt-controller";
 import { LoadingScreen } from "./loading-screen";
 import { useConnectorPopupVisible } from "./modal";
 
@@ -45,7 +44,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 open={showTermsModal}
                 variant={user?.hasAcceptedV1Terms ? "returning" : "firstTime"}
             />
-            <CreateTreasuryPromptController />
         </>
     );
 }

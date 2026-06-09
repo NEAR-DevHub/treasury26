@@ -349,7 +349,7 @@ test.describe("Requests page – new treasury with onboarding", () => {
         const main = page.locator("main");
 
         // Onboarding progress should be visible (step 3 is active since we have assets but no proposals)
-        const onboardingHeading = main.getByText(/follow quick steps to/i);
+        const onboardingHeading = main.getByText(/set up your treasury/i);
         await expect(onboardingHeading).toBeVisible({ timeout: 15000 });
 
         // Screenshot: dashboard with onboarding

@@ -10,7 +10,7 @@ import { useToken } from "@/hooks/use-treasury-queries";
 import { getLocalizedNetworkDisplayName } from "@/lib/intents-network";
 import {
     formatBalance,
-    formatCurrency,
+    formatCurrencyWithSubCent,
     formatTokenDisplayAmount,
     getNearTokenTypeLabel,
 } from "@/lib/utils";
@@ -103,7 +103,7 @@ export function Amount({
     const amountValue = formatTokenDisplayAmount(rawAmountValue);
     const estimatedUSDValue = useMemo(() => {
         if (usdValue !== undefined) {
-            return `≈ ${formatCurrency(usdValue)}`;
+            return `≈ ${formatCurrencyWithSubCent(usdValue)}`;
         }
 
         const isPriceAvailable = tokenData?.price;
@@ -117,8 +117,8 @@ export function Amount({
         }
 
         const price = tokenData?.price;
-        return `≈ ${formatCurrency(parsedAmount * price!)}`;
-    }, [tokenData, rawAmountValue, tCommon, usdValue]);
+        return `≈ ${formatCurrencyWithSubCent(parsedAmount * price!)}`;
+    }, [usdTextOverride, tokenData, rawAmountValue, tCommon, usdValue]);
     const networkLabel = resolveAmountNetworkLabel({
         tokenId,
         tokenNetwork: tokenData?.network,

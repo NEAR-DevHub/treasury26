@@ -228,7 +228,7 @@ function NearWrapSwapExpanded({ data }: NearWrapSwapExpandedProps) {
             label: t("send"),
             value: (
                 <Amount
-                    amount={data.amountIn}
+                    amountWithDecimals={data.amountIn}
                     showNetworkTooltip
                     tokenId={data.tokenIn}
                 />
@@ -238,7 +238,7 @@ function NearWrapSwapExpanded({ data }: NearWrapSwapExpandedProps) {
             label: t("receive"),
             value: (
                 <Amount
-                    amount={data.amountOut}
+                    amountWithDecimals={data.amountOut}
                     showNetworkTooltip
                     tokenId={data.tokenOut}
                 />
@@ -250,8 +250,8 @@ function NearWrapSwapExpanded({ data }: NearWrapSwapExpandedProps) {
                 <Rate
                     tokenIn={data.tokenIn}
                     tokenOut={data.tokenOut}
-                    amountIn={Big(data.amountIn)}
-                    amountOut={Big(data.amountOut)}
+                    amountInWithDecimals={data.amountIn}
+                    amountOutWithDecimals={data.amountOut}
                 />
             ),
         },
@@ -284,7 +284,7 @@ function NearWrapSwapExpanded({ data }: NearWrapSwapExpandedProps) {
         label: t("minimumReceived"),
         value: (
             <Amount
-                amount={data.amountOut}
+                amountWithDecimals={data.amountOut}
                 showNetworkTooltip
                 tokenId={data.tokenOut}
             />

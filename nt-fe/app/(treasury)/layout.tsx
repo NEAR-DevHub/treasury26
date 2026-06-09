@@ -9,6 +9,7 @@ import { GleapWidget } from "@/components/gleap-widget";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/toaster";
 import { TourProvider } from "@/features/onboarding/components/tour-provider";
 
@@ -77,37 +78,22 @@ export default async function RootLayout({
                     type="image/svg+xml"
                     media="(prefers-color-scheme: dark)"
                 />
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
-              (function() {
-                try {
-                  const theme = localStorage.getItem('theme-storage');
-                  if (theme) {
-                    const parsedTheme = JSON.parse(theme);
-                    if (parsedTheme.state?.theme === 'dark') {
-                      document.documentElement.classList.add('dark');
-                    }
-                  }
-                } catch (e) {}
-              })();
-            `,
-                    }}
-                />
             </head>
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
                 <NextIntlClientProvider locale={locale} messages={messages}>
-                    <QueryProvider>
-                        <NearInitializer />
-                        <AuthProvider>
-                            <TourProvider>{children}</TourProvider>
-                        </AuthProvider>
-                        <Toaster />
-                        <GoogleAnalytics />
-                    </QueryProvider>
-                    <GleapWidget />
+                    <ThemeProvider>
+                        <QueryProvider>
+                            <NearInitializer />
+                            <AuthProvider>
+                                <TourProvider>{children}</TourProvider>
+                            </AuthProvider>
+                            <Toaster />
+                            <GoogleAnalytics />
+                        </QueryProvider>
+                        <GleapWidget />
+                    </ThemeProvider>
                 </NextIntlClientProvider>
             </body>
         </html>
