@@ -246,6 +246,9 @@ async fn async_main() {
         state.env_vars.frontend_base_url.clone(),
     );
 
+    // Spawn sponsor balance monitor (low-balance ops alerts)
+    nt_be::services::run_sponsor_balance_monitor_loop(state.clone(), state.telegram_client.clone());
+
     // Spawn DAO list sync service (fetches DAOs from sputnik-dao.near every 5 minutes)
     {
         let pool = state.db_pool.clone();

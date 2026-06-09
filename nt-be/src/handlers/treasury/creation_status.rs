@@ -5,9 +5,7 @@ use near_api::{NearToken, Tokens};
 use reqwest::StatusCode;
 use serde::Serialize;
 
-pub const LOW_BALANCE_THRESHOLD: NearToken = NearToken::from_near(5);
-
-use crate::AppState;
+use crate::{AppState, constants::LOW_BALANCE_THRESHOLD};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
