@@ -12,7 +12,6 @@ import {
 import { Input } from "@/components/input";
 import { cn } from "@/lib/utils";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
-import { useThemeStore } from "@/stores/theme-store";
 import { ScrollArea } from "./ui/scroll-area";
 
 interface TokenOption {
@@ -34,7 +33,6 @@ export function TokenSelectPopover({
     className,
 }: TokenSelectPopoverProps) {
     const t = useTranslations("tokenSelect");
-    const { theme } = useThemeStore();
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [tokens, setTokens] = useState<TokenOption[]>([]);
@@ -65,7 +63,7 @@ export function TokenSelectPopover({
                             icon: hasValidIcon
                                 ? asset.icon
                                 : asset.symbol?.charAt(0) || "?",
-                            gradient: "bg-gradient-cyan-blue",
+                            gradient: "bg-brand-blue",
                         });
                     }
                 });
@@ -79,7 +77,7 @@ export function TokenSelectPopover({
         };
 
         loadTokens();
-    }, [theme]);
+    }, []);
 
     const filteredTokens = useMemo(() => {
         if (!search) return tokens;
@@ -119,7 +117,7 @@ export function TokenSelectPopover({
                                     className="w-5 h-5 rounded-full object-contain"
                                 />
                             ) : (
-                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold bg-gradient-cyan-blue">
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-normal bg-brand-blue">
                                     <span>{selectedToken.icon}</span>
                                 </div>
                             )}
@@ -183,7 +181,7 @@ export function TokenSelectPopover({
                                                 className="w-5 h-5 rounded-full object-contain shrink-0"
                                             />
                                         ) : (
-                                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold bg-gradient-cyan-blue shrink-0">
+                                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-normal bg-brand-blue shrink-0">
                                                 <span>{token.icon}</span>
                                             </div>
                                         )}

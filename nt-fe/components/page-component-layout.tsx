@@ -1,9 +1,10 @@
 "use client";
 
 import { ArrowLeft, Moon, PanelLeft, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Pill } from "@/components/pill";
@@ -12,7 +13,6 @@ import { SystemStatusBanner } from "@/components/system-status-banner";
 import { isStaging } from "@/constants/features";
 import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
 import { useSidebarStore } from "@/stores/sidebar-store";
-import { useThemeStore } from "@/stores/theme-store";
 
 interface PageComponentLayoutProps {
     title: string;
@@ -20,6 +20,7 @@ interface PageComponentLayoutProps {
     backButton?: boolean | string;
     hideLogin?: boolean;
     hideCollapseButton?: boolean;
+    transparentHeader?: boolean;
     logo?: ReactNode;
     children: ReactNode;
 }
@@ -30,24 +31,30 @@ export function PageComponentLayout({
     backButton,
     hideCollapseButton,
     hideLogin,
+    transparentHeader = false,
     logo,
     children,
 }: PageComponentLayoutProps) {
     const { toggleSidebar } = useSidebarStore();
-    const { theme, toggleTheme } = useThemeStore();
+    const { resolvedTheme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
     const tHeader = useTranslations("header");
 
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            document.documentElement.classList.toggle("dark", theme === "dark");
-        }
-    }, [theme]);
+        setMounted(true);
+    }, []);
+
+    const isDarkTheme = mounted ? resolvedTheme === "dark" : true;
 
     const router = useRouter();
 
     return (
         <div className="flex flex-col h-full">
-            <header className="flex items-center min-h-14 justify-between bg-card px-2 md:px-6 border-b border-border">
+            <header
+                className={`flex items-center min-h-14 justify-between px-2 md:px-6 border-b border-border ${
+                    transparentHeader ? "bg-transparent" : "bg-card"
+                }`}
+            >
                 <div className="flex items-center gap-2 md:gap-4">
                     {!hideCollapseButton && (
                         <Button
@@ -115,11 +122,11 @@ export function PageComponentLayout({
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={toggleTheme}
+                        onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
                         aria-label={tHeader("toggleTheme")}
                         className="h-9 w-9 hover:bg-muted text-muted-foreground hover:text-foreground"
                     >
-                        {theme === "dark" ? (
+                        {isDarkTheme ? (
                             <Sun className="h-5 w-5" />
                         ) : (
                             <Moon className="h-5 w-5" />

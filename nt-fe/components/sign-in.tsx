@@ -43,7 +43,6 @@ export function SignIn() {
                 ? `${pathname}?${currentQuery}`
                 : pathname;
             params.set("returnTo", returnTo);
-            params.set("context", "within_treasury");
             router.push(`/login?${params.toString()}`);
         } finally {
             setIsConnecting(false);

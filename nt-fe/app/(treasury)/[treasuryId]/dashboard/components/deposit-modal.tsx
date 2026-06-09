@@ -49,6 +49,7 @@ import {
     canonicalizeTokenIdForMatch,
     cn,
     formatBalance,
+    formatCurrencyWithSubCent,
     formatSmartAmount,
     normalizeNearAssetId,
 } from "@/lib/utils";
@@ -252,8 +253,8 @@ function renderBalance(amount: number | string, amountUSD: number) {
         return null;
     }
     const normalizedUsd = Number.isFinite(amountUSD)
-        ? amountUSD.toFixed(2)
-        : "0.00";
+        ? formatCurrencyWithSubCent(amountUSD)
+        : formatCurrencyWithSubCent(0);
 
     return (
         <div className="flex flex-col items-end">
@@ -261,7 +262,7 @@ function renderBalance(amount: number | string, amountUSD: number) {
                 {formatSmartAmount(normalizedAmount)}
             </span>
             <span className="text-sm text-muted-foreground">
-                ≈${normalizedUsd}
+                ≈{normalizedUsd}
             </span>
         </div>
     );
@@ -296,8 +297,8 @@ function OptionIcon({
     return (
         <div
             className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0",
-                gradient ?? "bg-gradient-cyan-blue",
+                "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-normal shrink-0",
+                gradient ?? "bg-brand-blue",
             )}
         >
             {icon}
@@ -523,7 +524,7 @@ export function DepositModal({
             id: "other",
             name: t("otherAssetName"),
             icon: "O",
-            gradient: "bg-gradient-cyan-blue",
+            gradient: "bg-brand-blue",
             networks: [
                 {
                     id: "other:near",
@@ -575,7 +576,7 @@ export function DepositModal({
                 name: asset.name,
                 symbol: asset.networks[0]?.symbol,
                 icon: asset.icon,
-                gradient: "bg-gradient-cyan-blue",
+                gradient: "bg-brand-blue",
                 networks: asset.networks,
             };
 

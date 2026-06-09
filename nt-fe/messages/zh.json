@@ -106,8 +106,7 @@
         "wallet": "钱包",
         "termsOfService": "服务条款",
         "privacyPolicy": "隐私政策",
-        "disconnect": "断开连接",
-        "disconnectWallet": "断开连接 钱包"
+        "disconnect": "断开连接"
     },
     "auth": {
         "noWallet": "请连接您的钱包",
@@ -778,6 +777,18 @@
             "removeMember": "更新策略 - 移除成员",
             "removeMembers": "更新策略 - 移除成员",
             "removeMemberSuccess": "成员移除请求已成功创建"
+        },
+        "infoSection": {
+            "title": "为什么要添加更多成员？",
+            "description": "添加更多成员可以让您的资金更安全，并确保丢失钱包时不会被锁定在账户之外。",
+            "readGuide": "阅读完整指南",
+            "dismiss": "关闭",
+            "strongerProtectionTitle": "更强保护",
+            "strongerProtectionDescription": "资金转移前，请求需要多个成员批准。",
+            "rolesForEveryoneTitle": "人人都有角色",
+            "rolesForEveryoneDescription": "每位成员都有角色 - 发起付款请求、批准请求或管理设置。",
+            "neverLoseAccessTitle": "永不失去访问权限",
+            "neverLoseAccessDescription": "如果您丢失钱包，也可以通过已添加的备份恢复访问权限。"
         }
     },
     "settings": {
@@ -1174,6 +1185,47 @@
         "walletNotSupportedDescription": "{wallet} 暂不支持，但我们正在适配中。你可以使用受支持的 NEAR 钱包或 Ledger 继续。",
         "connectNear": "连接 NEAR",
         "connectLedger": "连接 Ledger",
+        "headerDescription": "为你的团队或你自己设置一个多签金库",
+        "selectTreasuryTypeLabel": "选择金库类型",
+        "selectTreasuryTypeError": "请选择金库类型",
+        "publicCardDescription": "最适合 DAO、公共产品和开放型组织。",
+        "confidentialCardDescription": "最适合需要财务隐私的私营公司和团队。",
+        "accountPlaceholderUnderscore": "wo_de_jinku",
+        "setupOnUsTitle": "配置费用由我们承担",
+        "setupOnUsDescription": "Trezu 将承担启动金库所需的网络费用。",
+        "continueToWallet": "继续到钱包",
+        "alreadyHaveTreasuryLabel": "已经有金库了？",
+        "signInLabel": "登录",
+        "walletSelector": {
+            "title": "选择登录方式",
+            "subtitle": "你的登录身份将成为金库的第一位成员。",
+            "helpCta": "不确定该选哪个？",
+            "popularBadge": "热门",
+            "recentBadge": "最近使用",
+            "noFundsNote": "开始无需资金——我们承担交易费用，方便你直接体验",
+            "chooseNearWallet": "选择你的 NEAR 钱包",
+            "chooseEvmWallet": "选择你的 EVM 钱包",
+            "signInWithNear": "使用 NEAR 钱包登录",
+            "signInWithLedger": "使用 Ledger 登录",
+            "signInWithWalletConnect": "使用 WalletConnect 登录",
+            "guide": {
+                "title": "我应该使用哪种登录方式？",
+                "connectWalletTitle": "连接钱包",
+                "connectWalletDescription": "使用 NEAR、MetaMask 或 Ledger 等钱包。",
+                "pickThisIfYou": "以下情况请选择此项：",
+                "connectWalletBullet1": "你已经在使用加密钱包",
+                "connectWalletBullet2": "你希望使用硬件钱包",
+                "connectWalletBullet3": "你的设备没有生物识别功能",
+                "comingSoon": "即将推出",
+                "passkeyTitle": "用于 Touch ID 和 Face ID 的 Passkey",
+                "passkeyDescription": "使用 Face ID、Touch ID 或设备密码登录。",
+                "passkeyBullet1": "你是加密钱包新手",
+                "passkeyBullet2": "你想要最简单的设置方式",
+                "passkeyBullet3": "你会在支持生物识别的手机或电脑上使用 Trezu",
+                "recoveryLabel": "恢复：",
+                "recoveryText": "无论你选择哪种方式，我们建议你在设置完成后添加第二位成员（钱包），以防设备丢失导致无法访问。"
+            }
+        },
         "unexpectedError": "发生意外错误",
         "creationFailed": "创建金库失败。请再试一次。",
         "stepTitles": {
@@ -2002,96 +2054,6 @@
         "lockupStakingPool": "锁仓质押池",
         "lockupAssetsNote": "此持仓中的所有资产均来自您的锁仓。停止产生收益后,某些代币可能仍处于锁定状态而无法使用 — 请查看您的锁仓计划以了解解锁时间。"
     },
-    "onboardingQuestions": {
-        "stepTitle": "几个简单的问题以开始。",
-        "other": "其他",
-        "placeholders": {
-            "describeRole": "描述您的角色(可选)",
-            "describeUseCase": "描述您的使用场景(可选)",
-            "networkName": "输入网络名称(可选)",
-            "currentChallenge": "输入您当前面临的挑战(可选)",
-            "describeOther": "描述其他(可选)"
-        },
-        "questions": {
-            "role": "以下哪项最能描述您的角色?",
-            "useCases": "您打算将 Trezu 用于什么?",
-            "teamSize": "将由多少人来管理金库?",
-            "networks": "您最常使用哪些网络?",
-            "multisigExperience": "您对多签的使用经验如何?",
-            "currentTools": "您目前使用哪些工具来管理财务?",
-            "monthlyVolume": "大致的月交易量是多少?",
-            "biggestChallenges": "您目前面临的最大挑战是什么?"
-        },
-        "options": {
-            "role": {
-                "founder": "创始人",
-                "co-founder": "联合创始人",
-                "cfo-finance-lead": "CFO / 财务负责人",
-                "operations-manager": "运营经理",
-                "treasury-manager": "金库经理",
-                "other": "其他"
-            },
-            "useCases": {
-                "team-payroll-grants": "团队薪酬与赠款",
-                "company-assets-management": "公司资产管理",
-                "dao-treasury-management": "DAO 金库管理",
-                "investment-portfolio": "投资组合",
-                "operational-spending": "运营支出",
-                "other": "其他"
-            },
-            "teamSize": {
-                "just-me": "只有我",
-                "2-5-people": "2-5 人",
-                "6-15-people": "6-15 人",
-                "15-plus-people": "15 人以上"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "其他"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "从未听说过",
-                "heard-about-it": "听说过",
-                "never-used-it": "从未使用过",
-                "used-gnosis-safe-or-similar": "使用过 Gnosis Safe 或类似工具",
-                "experienced": "经验丰富",
-                "looking-for-a-better-option": "正在寻找更好的选择"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "其他"
-            },
-            "monthlyVolume": {
-                "under-10k": "低于 $10K",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M 以上"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "审批与签名速度慢",
-                "lack-of-transparency-in-the-team": "团队中缺乏透明度",
-                "hard-to-track-spending-and-balances": "难以跟踪支出与余额",
-                "security-and-access-control": "安全与访问控制",
-                "no-good-web3-tool-yet": "尚无好用的 Web3 工具",
-                "looking-for-crypto-earnings": "我正在寻找加密货币收益",
-                "other": "其他"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "通过在任何受支持的网络上存入任何受支持的资产，向您的金库添加资产。",
@@ -2111,14 +2073,15 @@
         },
         "progress": {
             "title": "按照以下快捷步骤探索金库",
-            "createTreasuryTitle": "创建金库账户",
-            "createTreasuryDescription": "您已成功设置账户。开端不错!",
             "addAssetsTitle": "添加您的资产",
             "addAssetsDescription": "首先添加资产以查看其运行情况。",
             "deposit": "存款",
             "createPaymentTitle": "创建付款请求",
             "createPaymentDescription": "创建付款请求以完成您的设置。",
-            "send": "发送"
+            "send": "发送",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "您已成功设置账户。开端不错!",
+            "addTeamMemberTitle": "创建金库账户"
         },
         "welcome": {
             "heading": "🎉 您的金库已就绪",
@@ -2150,19 +2113,6 @@
             "title": "探索 Trezu",
             "description": "创建账户以解锁 Trezu 所有功能与权益的访问权限。",
             "cta": "创建金库"
-        },
-        "questionnaire": {
-            "continue": "继续",
-            "skip": "跳过"
-        },
-        "createPrompt": {
-            "title": "您即将就绪",
-            "description": "您的钱包已连接,但您尚未创建金库。请创建账户以开始使用 Trezu,或{suffix}",
-            "suffixDemo": "查看演示。",
-            "suffixExploring": "继续探索。",
-            "createCta": "创建金库",
-            "viewDemo": "探索 Trezu 演示",
-            "keepExploring": "继续探索"
         },
         "infoBox": {
             "title": "更好地利用 Trezu",

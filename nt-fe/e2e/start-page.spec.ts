@@ -79,7 +79,7 @@ async function gotoStartPageAndWaitForBootstrapRequests(page: Page) {
     await Promise.all([authMeResponse, userTreasuriesResponse]);
 }
 
-test("Start page shows onboarding choices when signed out", async ({
+test("Start page shows create treasury form when signed out", async ({
     page,
 }) => {
     await setupStartPageMocks(page, { creationAvailable: true });
@@ -87,14 +87,14 @@ test("Start page shows onboarding choices when signed out", async ({
     await page.goto("/");
 
     await expect(
-        page.getByRole("button", { name: /I.?m new to Trezu/i }),
+        page.getByRole("heading", { name: /create treasury/i }),
     ).toBeVisible();
     await expect(
-        page.getByRole("button", { name: /I already use Trezu/i }),
+        page.getByRole("button", { name: /continue to wallet/i }),
     ).toBeVisible();
 });
 
-test("Signed in + no treasuries + new user selection => redirects to /app/new?entry=new_user", async ({
+test("Signed in + no treasuries => stays on create treasury form", async ({
     page,
 }) => {
     await setupStartPageMocks(page, {
@@ -105,16 +105,10 @@ test("Signed in + no treasuries + new user selection => redirects to /app/new?en
 
     await gotoStartPageAndWaitForBootstrapRequests(page);
 
-    // New flow: /app/new redirect happens after explicitly choosing new user.
-    await page
-        .getByRole("button", {
-            name: /I.?m new to Trezu/i,
-        })
-        .click();
-
-    await expect(page).toHaveURL(/\/app\/new\?entry=new_user$/, {
-        timeout: 15000,
-    });
+    await expect(page).toHaveURL(/\/$/, { timeout: 15000 });
+    await expect(
+        page.getByRole("button", { name: /create treasury/i }),
+    ).toBeVisible();
 });
 
 test("Signed in + has treasury => redirects to /{daoId}", async ({ page }) => {

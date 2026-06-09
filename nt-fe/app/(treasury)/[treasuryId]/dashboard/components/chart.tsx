@@ -8,7 +8,7 @@ import {
     ChartTooltipContent,
     type ChartConfig,
 } from "@/components/ui/chart";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrencyWithSubCent } from "@/lib/utils";
 import { ChartSpline } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 
@@ -189,7 +189,7 @@ export default function BalanceChart({
                                         : "var(--muted-foreground)";
                                 const formatted =
                                     name === "usdValue"
-                                        ? formatCurrency(num)
+                                        ? formatCurrencyWithSubCent(num)
                                         : `${num.toLocaleString(undefined, {
                                               minimumFractionDigits: 2,
                                               maximumFractionDigits: 6,

@@ -106,8 +106,7 @@
         "wallet": "Wallet",
         "termsOfService": "Terms of Service",
         "privacyPolicy": "Privacy Policy",
-        "disconnect": "Disconnect",
-        "disconnectWallet": "Disconnect Wallet"
+        "disconnect": "Disconnect"
     },
     "auth": {
         "noWallet": "Connect your wallet",
@@ -778,6 +777,18 @@
             "removeMember": "Update Policy - Remove Member",
             "removeMembers": "Update Policy - Remove Members",
             "removeMemberSuccess": "Member removal request created successfully"
+        },
+        "infoSection": {
+            "title": "Why add more members?",
+            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
+            "readGuide": "Read the full guide",
+            "dismiss": "Dismiss",
+            "strongerProtectionTitle": "Stronger protection",
+            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
+            "rolesForEveryoneTitle": "Roles for everyone",
+            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
+            "neverLoseAccessTitle": "Never lose access",
+            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
         }
     },
     "settings": {
@@ -1174,6 +1185,47 @@
         "walletNotSupportedDescription": "{wallet} is not supported yet, but we are working on it. You can continue using a supported NEAR wallet or Ledger.",
         "connectNear": "Connect NEAR",
         "connectLedger": "Connect Ledger",
+        "headerDescription": "Set up a multisig treasury for your team or yourself",
+        "selectTreasuryTypeLabel": "Select treasury type",
+        "selectTreasuryTypeError": "Please select a treasury type",
+        "publicCardDescription": "Best for DAOs, public goods, and open organizations.",
+        "confidentialCardDescription": "Best for private companies and teams that need financial privacy.",
+        "accountPlaceholderUnderscore": "my_treasury",
+        "setupOnUsTitle": "Setup is on us",
+        "setupOnUsDescription": "Trezu covers the network fees to launch your treasury.",
+        "continueToWallet": "Continue to wallet",
+        "alreadyHaveTreasuryLabel": "Already have a treasury?",
+        "signInLabel": "Sign In",
+        "walletSelector": {
+            "title": "Choose how to sign in",
+            "subtitle": "Your sign in becomes the first member of your treasury.",
+            "helpCta": "Not sure which to pick?",
+            "popularBadge": "Popular",
+            "recentBadge": "Recent",
+            "noFundsNote": "No funds needed to start - we cover transaction fees so you can try it out",
+            "chooseNearWallet": "Choose your NEAR wallets",
+            "chooseEvmWallet": "Choose your EVM wallets",
+            "signInWithNear": "Sign in with NEAR Wallets",
+            "signInWithLedger": "Sign in with Ledger",
+            "signInWithWalletConnect": "Sign in with Wallet Connect",
+            "guide": {
+                "title": "Which sign in should I use?",
+                "connectWalletTitle": "Connect a wallet",
+                "connectWalletDescription": "Use a wallet like Near, MetaMask, or Ledger.",
+                "pickThisIfYou": "Pick this if you:",
+                "connectWalletBullet1": "Already use a crypto wallet",
+                "connectWalletBullet2": "Want to use a hardware wallet",
+                "connectWalletBullet3": "Don't have biometrics on your device",
+                "comingSoon": "Coming Soon",
+                "passkeyTitle": "Passkey for Touch ID and Face ID",
+                "passkeyDescription": "Sign in with Face ID, Touch ID, or your device passcode.",
+                "passkeyBullet1": "Are new to crypto wallets",
+                "passkeyBullet2": "Want the simplest setup",
+                "passkeyBullet3": "Will use Trezu on a phone or laptop with biometrics",
+                "recoveryLabel": "Recovery:",
+                "recoveryText": "Whichever you choose, we recommend add a second member(wallet) after setup so a lost device doesn't lock you out."
+            }
+        },
         "unexpectedError": "An unexpected error occurred",
         "creationFailed": "Failed to create treasury. Please try again.",
         "stepTitles": {
@@ -2002,96 +2054,6 @@
         "lockupStakingPool": "Lockup staking pool",
         "lockupAssetsNote": "All assets in this position are from your lockup. After you stop earning, some tokens may still be locked and unavailable - check your lockup schedule to see when they unlock."
     },
-    "onboardingQuestions": {
-        "stepTitle": "A few quick questions to begin.",
-        "other": "Other",
-        "placeholders": {
-            "describeRole": "Describe your role (optional)",
-            "describeUseCase": "Describe your use case (optional)",
-            "networkName": "Enter network name (optional)",
-            "currentChallenge": "Enter your current challenge (optional)",
-            "describeOther": "Describe other (optional)"
-        },
-        "questions": {
-            "role": "What best describes your role?",
-            "useCases": "What do you plan to use Trezu for?",
-            "teamSize": "How many people will manage the treasury?",
-            "networks": "Which networks do you use most often?",
-            "multisigExperience": "What's your experience with multisig?",
-            "currentTools": "What tools do you currently use to manage finances?",
-            "monthlyVolume": "Approximate monthly transaction volume?",
-            "biggestChallenges": "What's your biggest challenge right now?"
-        },
-        "options": {
-            "role": {
-                "founder": "Founder",
-                "co-founder": "Co-founder",
-                "cfo-finance-lead": "CFO / Finance Lead",
-                "operations-manager": "Operations Manager",
-                "treasury-manager": "Treasury Manager",
-                "other": "Other"
-            },
-            "useCases": {
-                "team-payroll-grants": "Team payroll & grants",
-                "company-assets-management": "Company assets management",
-                "dao-treasury-management": "DAO treasury management",
-                "investment-portfolio": "Investment portfolio",
-                "operational-spending": "Operational spending",
-                "other": "Other"
-            },
-            "teamSize": {
-                "just-me": "Just me",
-                "2-5-people": "2-5 people",
-                "6-15-people": "6-15 people",
-                "15-plus-people": "15+"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "Other"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "Never heard of it",
-                "heard-about-it": "Heard about it",
-                "never-used-it": "Never used it",
-                "used-gnosis-safe-or-similar": "Used Gnosis Safe or similar",
-                "experienced": "Experienced",
-                "looking-for-a-better-option": "Looking for a better option"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "Other"
-            },
-            "monthlyVolume": {
-                "under-10k": "Under $10K",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "Slow approvals and signing",
-                "lack-of-transparency-in-the-team": "Lack of transparency in the team",
-                "hard-to-track-spending-and-balances": "Hard to track spending and balances",
-                "security-and-access-control": "Security and access control",
-                "no-good-web3-tool-yet": "No good Web3 tool yet",
-                "looking-for-crypto-earnings": "I am looking for crypto earnings",
-                "other": "Other"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "Add assets to your Treasury by depositing any supported asset on any supported network.",
@@ -2110,15 +2072,16 @@
             "next": "Next"
         },
         "progress": {
-            "title": "Follow Quick Steps to Explore the Treasury",
-            "createTreasuryTitle": "Create Treasury account",
-            "createTreasuryDescription": "You've successfully set up your account. Great start!",
-            "addAssetsTitle": "Add Your Assets",
-            "addAssetsDescription": "Begin by adding assets to see them in action.",
+            "title": "Set up your treasury",
+            "addAssetsTitle": "Add your first assets",
+            "addAssetsDescription": "Fund your treasury to start making payments and swaps.",
             "deposit": "Deposit",
-            "createPaymentTitle": "Create a Payment Request",
-            "createPaymentDescription": "Create a payment request to complete your setup.",
-            "send": "Send"
+            "createPaymentTitle": "Create a first payment request",
+            "createPaymentDescription": "Create your first request to complete setup.",
+            "send": "Send",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Protect your funds if your wallet is lost or compromised - add a teammate or your own second wallet so transactions need more than one approval.",
+            "addTeamMemberTitle": "Add a team member"
         },
         "welcome": {
             "heading": "🎉 Your treasury is ready",
@@ -2151,29 +2114,16 @@
             "description": "Create an account to unlock permissions to all features and benefits of Trezu.",
             "cta": "Create Treasury"
         },
-        "questionnaire": {
-            "continue": "Continue",
-            "skip": "Skip"
-        },
-        "createPrompt": {
-            "title": "You're almost set",
-            "description": "Your wallet is connected, but you haven't created a treasury yet. Create an account to start using Trezu, or {suffix}",
-            "suffixDemo": "check out the demo.",
-            "suffixExploring": "keep exploring.",
-            "createCta": "Create a Treasury",
-            "viewDemo": "Explore the Trezu Demo.",
-            "keepExploring": "Keep Exploring"
-        },
         "infoBox": {
             "title": "Get more from Trezu",
             "close": "Close",
             "description": "Discover how others use Treasury, try the demo, and check the docs to learn the features.",
-            "demoTitle": "Explore the Trezu Demo",
-            "demoDescription": "See a live demo account in action.",
-            "docsTitle": "Documentation",
-            "docsDescription": "Learn about all features in the docs.",
-            "videoTitle": "Watch the Demo",
-            "videoDescription": "Watch a short video showing how Trezu works."
+            "demoTitle": "Try a demo treasury",
+            "demoDescription": "Explore a working treasury with real data.",
+            "docsTitle": "Read the docs",
+            "docsDescription": "Find detailed guides for every feature.",
+            "videoTitle": "Watch the walkthrough",
+            "videoDescription": "See how Trezu works in a short video."
         }
     }
 }

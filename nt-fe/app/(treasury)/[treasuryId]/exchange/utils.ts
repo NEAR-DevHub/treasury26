@@ -151,7 +151,7 @@ export function calculateMarketPriceDifference(
 
         return {
             percentDifference: percentDifference.toFixed(4),
-            usdDifference: usdDifference.toFixed(2),
+            usdDifference: usdDifference.toString(),
             isFavorable: percentDifference.gte(0),
             hasMarketData: true,
         };

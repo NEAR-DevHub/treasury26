@@ -237,7 +237,7 @@
         "decimals": 6,
         "price": "0.999698",
         "name": "Tether USD",
-        "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/825.png",
+        "icon": "https://near.com/static/icons/network/usdt.png",
         "chainIcons": {
             "icon": "https://near.com/static/icons/network/near.svg"
         }
@@ -279,7 +279,7 @@
         "decimals": 6,
         "price": "0.999698",
         "name": "Tether USD",
-        "icon": "https://s2.coinmarketcap.com/static/img/coins/128x128/825.png",
+        "icon": "https://near.com/static/icons/network/usdt.png",
         "chainIcons": {
             "icon": "https://near.com/static/icons/network/near.svg"
         }

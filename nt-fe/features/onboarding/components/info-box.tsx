@@ -30,12 +30,14 @@ function InfoItem({ icon, title, description, href }: InfoItemProps) {
     return (
         <Link href={href} target="_blank">
             <PageCard className="w-full hover:bg-muted-foreground/10 border border-border gap-1.5 p-3">
-                {icon}
-                <div className="flex flex-col">
-                    <h1 className="font-semibold">{title}</h1>
-                    <p className="text-sm text-muted-foreground">
-                        {description}
-                    </p>
+                <div className="flex gap-4 items-center">
+                    {icon}
+                    <div className="flex flex-col">
+                        <h1 className="font-semibold">{title}</h1>
+                        <p className="text-sm text-muted-foreground">
+                            {description}
+                        </p>
+                    </div>
                 </div>
             </PageCard>
         </Link>
@@ -50,22 +52,22 @@ export function InfoBox() {
     const infoItems = useMemo<InfoItemProps[]>(
         () => [
             {
-                icon: <Eye className="size-4" />,
+                icon: <CirclePlay className="size-5" />,
+                title: t("videoTitle"),
+                description: t("videoDescription"),
+                href: APP_DEMO_URL,
+            },
+            {
+                icon: <Eye className="size-5" />,
                 title: t("demoTitle"),
                 description: t("demoDescription"),
                 href: APP_ACTIVE_TREASURY,
             },
             {
-                icon: <File className="size-4" />,
+                icon: <File className="size-5" />,
                 title: t("docsTitle"),
                 description: t("docsDescription"),
                 href: APP_DOCS_URL,
-            },
-            {
-                icon: <CirclePlay className="size-4" />,
-                title: t("videoTitle"),
-                description: t("videoDescription"),
-                href: APP_DEMO_URL,
             },
         ],
         [t],
@@ -89,7 +91,7 @@ export function InfoBox() {
         <div className="bg-general-tertiary rounded-lg p-5 flex flex-col w-full h-fit gap-5 cursor-pointer">
             <div className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
-                    <h1 className="font-semibold">{t("title")}</h1>
+                    <h1 className="font-semibold text-lg">{t("title")}</h1>
                     <button
                         type="button"
                         onClick={handleInfoBoxClick}
@@ -99,9 +101,6 @@ export function InfoBox() {
                         <X className="size-4" />
                     </button>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                    {t("description")}
-                </p>
             </div>
             <div className="flex flex-col gap-3">
                 {infoItems.map((item, index) => (

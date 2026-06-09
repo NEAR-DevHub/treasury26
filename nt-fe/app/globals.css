@@ -46,6 +46,7 @@
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgb(245, 245, 245);
     --onboarding-primary: rgba(9, 83, 255, 1);
+    --brand-blue: rgba(9, 83, 255, 1);
     --general-unofficial-outline: rgba(255, 255, 255, 0.1);
     --chart-1: rgb(164, 246, 204);
     --chart-2: rgb(106, 235, 178);
@@ -143,6 +144,7 @@
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgba(38, 38, 38);
     --onboarding-primary: rgba(9, 83, 255, 1);
+    --brand-blue: rgba(9, 83, 255, 1);
     --general-unofficial-outline: rgba(255, 255, 255, 0.05);
     --font-sans:
         ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -246,6 +248,7 @@
     --color-general-unofficial-border-5: var(--general-unofficial-border-5);
     --color-general-secondary: var(--general-secondary);
     --color-onboarding-primary: var(--onboarding-primary);
+    --color-brand-blue: var(--brand-blue);
     --color-general-unofficial-outline: var(--general-unofficial-outline);
     --color-general-orange-background-faded: var(
         --general-orange-background-faded

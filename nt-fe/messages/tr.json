@@ -106,8 +106,7 @@
         "wallet": "Cüzdan",
         "termsOfService": "Hizmet Şartları",
         "privacyPolicy": "Gizlilik Politikası",
-        "disconnect": "Bağlantıyı Kes",
-        "disconnectWallet": "Bağlantıyı Kes Cüzdan"
+        "disconnect": "Bağlantıyı Kes"
     },
     "auth": {
         "noWallet": "Cüzdanınızı bağlayın",
@@ -778,6 +777,18 @@
             "removeMember": "Politikayı Güncelle - Üye Kaldır",
             "removeMembers": "Politikayı Güncelle - Üyeleri Kaldır",
             "removeMemberSuccess": "Üye kaldırma talebi başarıyla oluşturuldu"
+        },
+        "infoSection": {
+            "title": "Neden daha fazla üye eklemelisiniz?",
+            "description": "Daha fazla üye eklemek fonlarınızı güvende tutar ve kaybolan bir cüzdanın erişiminizi kilitlemesini önler.",
+            "readGuide": "Tam rehberi oku",
+            "dismiss": "Kapat",
+            "strongerProtectionTitle": "Daha güçlü koruma",
+            "strongerProtectionDescription": "Fonlar hareket etmeden önce isteklerin birden fazla onay alması gerekir.",
+            "rolesForEveryoneTitle": "Herkes için roller",
+            "rolesForEveryoneDescription": "Her üyeye bir rol verilir - ödeme talep etme, onaylama veya ayarları yönetme.",
+            "neverLoseAccessTitle": "Erişimi asla kaybetmeyin",
+            "neverLoseAccessDescription": "Bir cüzdanı kaybederseniz, daha önce eklediğiniz yedekten erişimi geri alabilirsiniz."
         }
     },
     "settings": {
@@ -1174,6 +1185,47 @@
         "walletNotSupportedDescription": "{wallet} henüz desteklenmiyor, ancak bunun üzerinde çalışıyoruz. Desteklenen bir NEAR cüzdanı veya Ledger ile devam edebilirsiniz.",
         "connectNear": "NEAR'a Bağlan",
         "connectLedger": "Ledger'a Bağlan",
+        "headerDescription": "Ekibiniz veya kendiniz için bir multisig hazine kurun",
+        "selectTreasuryTypeLabel": "Hazine türünü seçin",
+        "selectTreasuryTypeError": "Lütfen bir hazine türü seçin",
+        "publicCardDescription": "DAO'lar, kamu yararı projeleri ve açık organizasyonlar için en uygun seçenek.",
+        "confidentialCardDescription": "Finansal gizliliğe ihtiyaç duyan özel şirketler ve ekipler için en uygun seçenek.",
+        "accountPlaceholderUnderscore": "hazinem",
+        "setupOnUsTitle": "Kurulum bizden",
+        "setupOnUsDescription": "Trezu, hazinenizi başlatmak için ağ ücretlerini karşılar.",
+        "continueToWallet": "Cüzdana devam et",
+        "alreadyHaveTreasuryLabel": "Zaten bir hazineniz var mı?",
+        "signInLabel": "Giriş yap",
+        "walletSelector": {
+            "title": "Nasıl giriş yapacağınızı seçin",
+            "subtitle": "Girişiniz hazinenizin ilk üyesi olur.",
+            "helpCta": "Hangisini seçeceğinizden emin değil misiniz?",
+            "popularBadge": "Popüler",
+            "recentBadge": "Son kullanılan",
+            "noFundsNote": "Başlamak için fon gerekmez — denemeniz için işlem ücretlerini biz karşılıyoruz",
+            "chooseNearWallet": "NEAR cüzdanınızı seçin",
+            "chooseEvmWallet": "EVM cüzdanınızı seçin",
+            "signInWithNear": "NEAR cüzdanlarıyla giriş yap",
+            "signInWithLedger": "Ledger ile giriş yap",
+            "signInWithWalletConnect": "WalletConnect ile giriş yap",
+            "guide": {
+                "title": "Hangi giriş yöntemini kullanmalıyım?",
+                "connectWalletTitle": "Bir cüzdan bağla",
+                "connectWalletDescription": "NEAR, MetaMask veya Ledger gibi bir cüzdan kullanın.",
+                "pickThisIfYou": "Şu durumlarda bunu seçin:",
+                "connectWalletBullet1": "zaten bir kripto cüzdan kullanıyorsanız",
+                "connectWalletBullet2": "donanım cüzdanı kullanmak istiyorsanız",
+                "connectWalletBullet3": "cihazınızda biyometrik yoksa",
+                "comingSoon": "Yakında",
+                "passkeyTitle": "Touch ID ve Face ID için Passkey",
+                "passkeyDescription": "Face ID, Touch ID veya cihaz parolanızla giriş yapın.",
+                "passkeyBullet1": "kripto cüzdanlara yeniyseniz",
+                "passkeyBullet2": "en basit kurulumu istiyorsanız",
+                "passkeyBullet3": "Trezu'yu biyometrik özellikli telefon veya dizüstünde kullanacaksanız",
+                "recoveryLabel": "Kurtarma:",
+                "recoveryText": "Hangi seçeneği seçerseniz seçin, bir cihaz kaybının sizi kilitlememesi için kurulumdan sonra ikinci bir üye (cüzdan) eklemenizi öneririz."
+            }
+        },
         "unexpectedError": "Beklenmedik bir hata oluştu",
         "creationFailed": "Hazine oluşturulamadı. Lütfen tekrar deneyin.",
         "stepTitles": {
@@ -2002,96 +2054,6 @@
         "lockupStakingPool": "Lockup staking havuzu",
         "lockupAssetsNote": "Bu pozisyondaki tüm varlıklar lockup'ınızdan gelir. Kazanmayı durdurduktan sonra, bazı tokenler hâlâ kilitli ve kullanılamaz olabilir - ne zaman kilidi açılacağını görmek için lockup planınızı kontrol edin."
     },
-    "onboardingQuestions": {
-        "stepTitle": "Başlamak için birkaç hızlı soru.",
-        "other": "Diğer",
-        "placeholders": {
-            "describeRole": "Rolünüzü tanımlayın (isteğe bağlı)",
-            "describeUseCase": "Kullanım durumunuzu tanımlayın (isteğe bağlı)",
-            "networkName": "Ağ adını girin (isteğe bağlı)",
-            "currentChallenge": "Mevcut zorluğunuzu girin (isteğe bağlı)",
-            "describeOther": "Diğer'i tanımlayın (isteğe bağlı)"
-        },
-        "questions": {
-            "role": "Rolünüzü en iyi ne tanımlar?",
-            "useCases": "Trezu'yu ne için kullanmayı planlıyorsunuz?",
-            "teamSize": "Hazineyi kaç kişi yönetecek?",
-            "networks": "En sık hangi ağları kullanıyorsunuz?",
-            "multisigExperience": "Multisig konusundaki deneyiminiz nedir?",
-            "currentTools": "Şu anda finansları yönetmek için hangi araçları kullanıyorsunuz?",
-            "monthlyVolume": "Yaklaşık aylık işlem hacmi?",
-            "biggestChallenges": "Şu anda en büyük zorluğunuz nedir?"
-        },
-        "options": {
-            "role": {
-                "founder": "Kurucu",
-                "co-founder": "Eş Kurucu",
-                "cfo-finance-lead": "CFO / Finans Lideri",
-                "operations-manager": "Operasyon Yöneticisi",
-                "treasury-manager": "Hazine Yöneticisi",
-                "other": "Diğer"
-            },
-            "useCases": {
-                "team-payroll-grants": "Ekip bordro ve hibeleri",
-                "company-assets-management": "Şirket varlık yönetimi",
-                "dao-treasury-management": "DAO hazine yönetimi",
-                "investment-portfolio": "Yatırım portföyü",
-                "operational-spending": "Operasyonel harcama",
-                "other": "Diğer"
-            },
-            "teamSize": {
-                "just-me": "Sadece ben",
-                "2-5-people": "2-5 kişi",
-                "6-15-people": "6-15 kişi",
-                "15-plus-people": "15+"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "Diğer"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "Hiç duymadım",
-                "heard-about-it": "Duydum",
-                "never-used-it": "Hiç kullanmadım",
-                "used-gnosis-safe-or-similar": "Gnosis Safe veya benzerini kullandım",
-                "experienced": "Deneyimli",
-                "looking-for-a-better-option": "Daha iyi bir seçenek arıyorum"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "Diğer"
-            },
-            "monthlyVolume": {
-                "under-10k": "10.000 $ altı",
-                "10k-100k": "10.000 $ - 100.000 $",
-                "100k-1m": "100.000 $ - 1 M $",
-                "1m-plus": "1 M $+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "Yavaş onaylar ve imzalama",
-                "lack-of-transparency-in-the-team": "Ekipte şeffaflık eksikliği",
-                "hard-to-track-spending-and-balances": "Harcamaları ve bakiyeleri takip etmek zor",
-                "security-and-access-control": "Güvenlik ve erişim kontrolü",
-                "no-good-web3-tool-yet": "Henüz iyi bir Web3 aracı yok",
-                "looking-for-crypto-earnings": "Kripto kazançları arıyorum",
-                "other": "Diğer"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "Desteklenen herhangi bir ağda desteklenen herhangi bir varlığı yatırarak Hazinenize varlık ekleyin.",
@@ -2111,14 +2073,15 @@
         },
         "progress": {
             "title": "Hazineyi Keşfetmek İçin Hızlı Adımları İzleyin",
-            "createTreasuryTitle": "Hazine hesabı oluştur",
-            "createTreasuryDescription": "Hesabınızı başarıyla kurdunuz. Harika bir başlangıç!",
             "addAssetsTitle": "Varlıklarınızı Ekleyin",
             "addAssetsDescription": "Onları iş başında görmek için varlıklar ekleyerek başlayın.",
             "deposit": "Para Yatır",
             "createPaymentTitle": "Ödeme Talebi Oluşturun",
             "createPaymentDescription": "Kurulumunuzu tamamlamak için bir ödeme talebi oluşturun.",
-            "send": "Gönder"
+            "send": "Gönder",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Hesabınızı başarıyla kurdunuz. Harika bir başlangıç!",
+            "addTeamMemberTitle": "Hazine hesabı oluştur"
         },
         "welcome": {
             "heading": "🎉 Hazineniz hazır",
@@ -2150,19 +2113,6 @@
             "title": "Trezu'yu Keşfet",
             "description": "Trezu'nun tüm özelliklerine ve avantajlarına izin almak için bir hesap oluşturun.",
             "cta": "Hazine Oluştur"
-        },
-        "questionnaire": {
-            "continue": "Devam Et",
-            "skip": "Atla"
-        },
-        "createPrompt": {
-            "title": "Neredeyse hazırsınız",
-            "description": "Cüzdanınız bağlı, ancak henüz bir hazine oluşturmadınız. Trezu'yu kullanmaya başlamak için bir hesap oluşturun veya {suffix}",
-            "suffixDemo": "demoyu inceleyin.",
-            "suffixExploring": "keşfetmeye devam edin.",
-            "createCta": "Hazine Oluştur",
-            "viewDemo": "Trezu Demosunu Keşfet",
-            "keepExploring": "Keşfetmeye Devam Et"
         },
         "infoBox": {
             "title": "Trezu'dan daha fazlasını alın",

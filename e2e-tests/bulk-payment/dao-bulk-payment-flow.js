@@ -27,7 +27,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import * as nearAPI from 'near-api-js';
 import { NearRpcClient, tx as rpcTx } from '@near-js/jsonrpc-client';
 import { serialize } from 'borsh';
@@ -145,12 +145,11 @@ const NEP413PayloadSchema = {
 /**
  * Create NEP-413 signature for authentication
  * @param {KeyPair} keyPair - The signing key pair
- * @param {string} accountId - The account ID
- * @param {Uint8Array} nonce - 32-byte nonce from challenge
+ * @param {Uint8Array} nonce - Random 32-byte nonce
  * @param {string} recipient - The recipient (app identifier)
  * @param {string} message - The message to sign
  */
-function signNep413(keyPair, accountId, nonce, recipient, message) {
+function signNep413(keyPair, nonce, recipient, message) {
   // Create NEP-413 payload
   const payload = {
     message,
@@ -176,12 +175,12 @@ function signNep413(keyPair, accountId, nonce, recipient, message) {
   const signature = keyPair.sign(hash);
 
   return {
-    accountId,
     publicKey: keyPair.getPublicKey().toString(),
     signature: Buffer.from(signature.signature).toString('base64'),
     message,
     nonce: Buffer.from(nonce).toString('base64'),
     recipient,
+    callbackUrl: null,
   };
 }
 
@@ -196,34 +195,40 @@ let authCookie = null;
 async function authenticate(keyPair, accountId) {
   console.log(`\n🔐 Authenticating as ${accountId}...`);
 
-  // Step 1: Get challenge nonce
+  // Step 1: Get challenge payload
   const challengeResponse = await fetch(`${CONFIG.API_URL}/api/auth/challenge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ accountId }),
   });
 
   if (!challengeResponse.ok) {
     throw new Error(`Challenge failed: ${await challengeResponse.text()}`);
   }
 
-  const { nonce: nonceB64 } = await challengeResponse.json();
-  const nonce = Buffer.from(nonceB64, 'base64');
+  const challengeData = await challengeResponse.json();
+  const challengePayload = challengeData?.payload;
+  if (typeof challengePayload !== 'string' || challengePayload.length === 0) {
+    throw new Error(`Challenge response missing payload: ${JSON.stringify(challengeData)}`);
+  }
 
-  // Step 2: Sign the nonce with NEP-413
-  const signedPayload = signNep413(
+  // Step 2: Sign challenge payload with NEP-413 fallback authorization format
+  // The backend binds purpose and recipient as: "<PURPOSE>@<recipient>".
+  const nonce = randomBytes(32);
+  const authorization = signNep413(
     keyPair,
-    accountId,
     nonce,
-    'treasury-sandbox', // recipient identifier
-    nonceB64, // use the nonce as the message
+    'PROVE_OWNERSHIP@Trezu App',
+    challengePayload,
   );
 
-  // Step 3: Login with signature
+  // Step 3: Login with authorization
   const loginResponse = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(signedPayload),
+    body: JSON.stringify({
+      accountId,
+      authorization: JSON.stringify(authorization),
+    }),
   });
 
   if (!loginResponse.ok) {

@@ -106,8 +106,7 @@
         "wallet": "Cartera",
         "termsOfService": "Términos del servicio",
         "privacyPolicy": "Política de privacidad",
-        "disconnect": "Desconectar",
-        "disconnectWallet": "Desconectar Cartera"
+        "disconnect": "Desconectar"
     },
     "auth": {
         "noWallet": "Conecta tu cartera",
@@ -778,6 +777,18 @@
             "removeMember": "Actualizar política - Eliminar miembro",
             "removeMembers": "Actualizar política - Eliminar miembros",
             "removeMemberSuccess": "Solicitud de eliminación de miembro creada correctamente"
+        },
+        "infoSection": {
+            "title": "¿Por qué agregar más miembros?",
+            "description": "Agregar más miembros mantiene tus fondos seguros y evita que una cartera perdida te deje sin acceso.",
+            "readGuide": "Leer la guía completa",
+            "dismiss": "Cerrar",
+            "strongerProtectionTitle": "Protección más sólida",
+            "strongerProtectionDescription": "Las solicitudes necesitan más de una aprobación antes de mover fondos.",
+            "rolesForEveryoneTitle": "Roles para todos",
+            "rolesForEveryoneDescription": "Cada miembro recibe un rol: solicitar pagos, aprobarlos o gestionar ajustes.",
+            "neverLoseAccessTitle": "Nunca pierdas el acceso",
+            "neverLoseAccessDescription": "Si pierdes una cartera, puedes recuperar el acceso desde una copia de respaldo que ya agregaste."
         }
     },
     "settings": {
@@ -1174,6 +1185,47 @@
         "walletNotSupportedDescription": "{wallet} aún no es compatible, pero estamos trabajando en ello. Puedes continuar con una wallet NEAR compatible o Ledger.",
         "connectNear": "Conectar NEAR",
         "connectLedger": "Conectar Ledger",
+        "headerDescription": "Configura una tesorería multifirma para tu equipo o para ti",
+        "selectTreasuryTypeLabel": "Selecciona el tipo de tesorería",
+        "selectTreasuryTypeError": "Selecciona un tipo de tesorería",
+        "publicCardDescription": "Ideal para DAOs, bienes públicos y organizaciones abiertas.",
+        "confidentialCardDescription": "Ideal para empresas privadas y equipos que necesitan privacidad financiera.",
+        "accountPlaceholderUnderscore": "mi_tesoreria",
+        "setupOnUsTitle": "La configuración corre por nuestra cuenta",
+        "setupOnUsDescription": "Trezu cubre las comisiones de red para lanzar tu tesorería.",
+        "continueToWallet": "Continuar al monedero",
+        "alreadyHaveTreasuryLabel": "¿Ya tienes una tesorería?",
+        "signInLabel": "Iniciar sesión",
+        "walletSelector": {
+            "title": "Elige cómo iniciar sesión",
+            "subtitle": "Tu inicio de sesión se convierte en el primer miembro de tu tesorería.",
+            "helpCta": "¿No sabes cuál elegir?",
+            "popularBadge": "Popular",
+            "recentBadge": "Reciente",
+            "noFundsNote": "No necesitas fondos para empezar: cubrimos las comisiones para que puedas probarlo",
+            "chooseNearWallet": "Elige tu wallet de NEAR",
+            "chooseEvmWallet": "Elige tu wallet de EVM",
+            "signInWithNear": "Iniciar sesión con wallets de NEAR",
+            "signInWithLedger": "Iniciar sesión con Ledger",
+            "signInWithWalletConnect": "Iniciar sesión con WalletConnect",
+            "guide": {
+                "title": "¿Qué inicio de sesión debo usar?",
+                "connectWalletTitle": "Conectar una wallet",
+                "connectWalletDescription": "Usa una wallet como NEAR, MetaMask o Ledger.",
+                "pickThisIfYou": "Elige esto si:",
+                "connectWalletBullet1": "Ya usas una wallet cripto",
+                "connectWalletBullet2": "Quieres usar una wallet de hardware",
+                "connectWalletBullet3": "No tienes biometría en tu dispositivo",
+                "comingSoon": "Próximamente",
+                "passkeyTitle": "Passkey para Touch ID y Face ID",
+                "passkeyDescription": "Inicia sesión con Face ID, Touch ID o el código de tu dispositivo.",
+                "passkeyBullet1": "Eres nuevo en wallets cripto",
+                "passkeyBullet2": "Quieres la configuración más simple",
+                "passkeyBullet3": "Usarás Trezu en un teléfono o portátil con biometría",
+                "recoveryLabel": "Recuperación:",
+                "recoveryText": "Elijas lo que elijas, te recomendamos añadir un segundo miembro (wallet) después de la configuración para que la pérdida de un dispositivo no te deje fuera."
+            }
+        },
         "unexpectedError": "Se produjo un error inesperado",
         "creationFailed": "Error al crear la tesorería. Inténtalo de nuevo.",
         "stepTitles": {
@@ -2002,96 +2054,6 @@
         "lockupStakingPool": "Pool de staking del lockup",
         "lockupAssetsNote": "Todos los activos en esta posición proceden de tu lockup. Tras dejar de ganar, algunos tokens pueden seguir bloqueados y no disponibles; consulta tu calendario de lockup para ver cuándo se desbloquean."
     },
-    "onboardingQuestions": {
-        "stepTitle": "Unas preguntas rápidas para comenzar.",
-        "other": "Otro",
-        "placeholders": {
-            "describeRole": "Describe tu rol (opcional)",
-            "describeUseCase": "Describe tu caso de uso (opcional)",
-            "networkName": "Introduce el nombre de la red (opcional)",
-            "currentChallenge": "Introduce tu reto actual (opcional)",
-            "describeOther": "Describe otro (opcional)"
-        },
-        "questions": {
-            "role": "¿Qué describe mejor tu rol?",
-            "useCases": "¿Para qué planeas usar Trezu?",
-            "teamSize": "¿Cuántas personas gestionarán la tesorería?",
-            "networks": "¿Qué redes usas con más frecuencia?",
-            "multisigExperience": "¿Cuál es tu experiencia con multisig?",
-            "currentTools": "¿Qué herramientas usas actualmente para gestionar finanzas?",
-            "monthlyVolume": "¿Volumen mensual aproximado de transacciones?",
-            "biggestChallenges": "¿Cuál es tu mayor desafío ahora mismo?"
-        },
-        "options": {
-            "role": {
-                "founder": "Fundador",
-                "co-founder": "Cofundador",
-                "cfo-finance-lead": "CFO / Responsable de Finanzas",
-                "operations-manager": "Gerente de Operaciones",
-                "treasury-manager": "Gerente de Tesorería",
-                "other": "Otro"
-            },
-            "useCases": {
-                "team-payroll-grants": "Nómina del equipo y subvenciones",
-                "company-assets-management": "Gestión de activos corporativos",
-                "dao-treasury-management": "Gestión de tesorería DAO",
-                "investment-portfolio": "Cartera de inversión",
-                "operational-spending": "Gasto operativo",
-                "other": "Otro"
-            },
-            "teamSize": {
-                "just-me": "Solo yo",
-                "2-5-people": "2-5 personas",
-                "6-15-people": "6-15 personas",
-                "15-plus-people": "15+"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "Otro"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "Nunca he oído hablar",
-                "heard-about-it": "He oído hablar",
-                "never-used-it": "Nunca lo he usado",
-                "used-gnosis-safe-or-similar": "He usado Gnosis Safe o similar",
-                "experienced": "Experimentado",
-                "looking-for-a-better-option": "Busco una opción mejor"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "Otro"
-            },
-            "monthlyVolume": {
-                "under-10k": "Menos de $10K",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "Aprobaciones y firmas lentas",
-                "lack-of-transparency-in-the-team": "Falta de transparencia en el equipo",
-                "hard-to-track-spending-and-balances": "Dificultad para seguir gastos y saldos",
-                "security-and-access-control": "Seguridad y control de acceso",
-                "no-good-web3-tool-yet": "Aún no hay una buena herramienta Web3",
-                "looking-for-crypto-earnings": "Busco ingresos en cripto",
-                "other": "Otro"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "Añade activos a tu tesorería depositando cualquier activo compatible en cualquier red compatible.",
@@ -2111,14 +2073,15 @@
         },
         "progress": {
             "title": "Sigue los pasos rápidos para explorar la tesorería",
-            "createTreasuryTitle": "Crear cuenta de tesorería",
-            "createTreasuryDescription": "Has configurado tu cuenta con éxito. ¡Buen comienzo!",
             "addAssetsTitle": "Añade tus activos",
             "addAssetsDescription": "Empieza añadiendo activos para verlos en acción.",
             "deposit": "Depositar",
             "createPaymentTitle": "Crear una solicitud de pago",
             "createPaymentDescription": "Crea una solicitud de pago para completar la configuración.",
-            "send": "Enviar"
+            "send": "Enviar",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Has configurado tu cuenta con éxito. ¡Buen comienzo!",
+            "addTeamMemberTitle": "Crear cuenta de tesorería"
         },
         "welcome": {
             "heading": "🎉 Tu tesorería está lista",
@@ -2150,19 +2113,6 @@
             "title": "Explora Trezu",
             "description": "Crea una cuenta para desbloquear permisos a todas las funciones y ventajas de Trezu.",
             "cta": "Crear tesorería"
-        },
-        "questionnaire": {
-            "continue": "Continuar",
-            "skip": "Omitir"
-        },
-        "createPrompt": {
-            "title": "Casi lo tienes",
-            "description": "Tu cartera está conectada, pero aún no has creado una tesorería. Crea una cuenta para empezar a usar Trezu, o {suffix}",
-            "suffixDemo": "mira la demo.",
-            "suffixExploring": "sigue explorando.",
-            "createCta": "Crear una tesorería",
-            "viewDemo": "Explora la demo de Trezu",
-            "keepExploring": "Seguir explorando"
         },
         "infoBox": {
             "title": "Saca más partido a Trezu",

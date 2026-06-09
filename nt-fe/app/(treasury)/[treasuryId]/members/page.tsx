@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { PageComponentLayout } from "@/components/page-component-layout";
+import Link from "next/link";
+import { APP_DOCS_URL } from "@/constants/config";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
@@ -23,8 +25,19 @@ import { PreviewModal } from "./components/modals/preview-modal";
 import { DeleteConfirmationModal } from "./components/modals/delete-confirmation-modal";
 import { User } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, Trash2, Info, Plus } from "lucide-react";
+import {
+    Pencil,
+    Trash2,
+    Info,
+    Plus,
+    Lock,
+    KeyRound,
+    X,
+    type LucideIcon,
+    ShieldUser,
+} from "lucide-react";
 import { PageCard } from "@/components/card";
+import { Button } from "@/components/button";
 import { RoleBadge } from "@/components/role-badge";
 import { Tooltip } from "@/components/tooltip";
 import { PendingButton } from "@/components/pending-button";
@@ -66,6 +79,14 @@ interface AddMemberFormData {
         roles: string[];
     }>;
 }
+
+const MEMBERS_INFO_DISMISSED_STORAGE_KEY = "members-info-dismissed";
+
+type MembersInfoItem = {
+    icon: LucideIcon;
+    title: string;
+    description: string;
+};
 
 function PermissionsHeader({ policyRoles }: { policyRoles: RolePermission[] }) {
     const tMembers = useTranslations("members");
@@ -134,6 +155,7 @@ export default function MembersPage() {
     const [isEditPreviewModalOpen, setIsEditPreviewModalOpen] = useState(false);
     const [isValidatingAddresses, setIsValidatingAddresses] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isInfoSectionDismissed, setIsInfoSectionDismissed] = useState(false);
     const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
@@ -171,6 +193,45 @@ export default function MembersPage() {
     const [originalMembersData, setOriginalMembersData] = useState<
         Array<{ accountId: string; roles: string[] }>
     >([]);
+
+    const membersInfoItems = useMemo<MembersInfoItem[]>(
+        () => [
+            {
+                icon: Lock,
+                title: tMembers("infoSection.strongerProtectionTitle"),
+                description: tMembers(
+                    "infoSection.strongerProtectionDescription",
+                ),
+            },
+            {
+                icon: ShieldUser,
+                title: tMembers("infoSection.rolesForEveryoneTitle"),
+                description: tMembers(
+                    "infoSection.rolesForEveryoneDescription",
+                ),
+            },
+            {
+                icon: KeyRound,
+                title: tMembers("infoSection.neverLoseAccessTitle"),
+                description: tMembers("infoSection.neverLoseAccessDescription"),
+            },
+        ],
+        [tMembers],
+    );
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const value = window.localStorage.getItem(
+            MEMBERS_INFO_DISMISSED_STORAGE_KEY,
+        );
+        setIsInfoSectionDismissed(value === "true");
+    }, []);
+
+    const dismissMembersInfoSection = useCallback(() => {
+        setIsInfoSectionDismissed(true);
+        if (typeof window === "undefined") return;
+        window.localStorage.setItem(MEMBERS_INFO_DISMISSED_STORAGE_KEY, "true");
+    }, []);
 
     const getAccountValidationMessage = useCallback(
         (errorCode: Parameters<typeof translateNearValidationError>[1]) =>
@@ -1148,6 +1209,66 @@ export default function MembersPage() {
 
     return (
         <PageComponentLayout title={t("title")} description={t("description")}>
+            {!isInfoSectionDismissed && (
+                <PageCard className="p-4 gap-3 bg-general-tertiary mb-4">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                            <h2 className="text-base font-semibold">
+                                {tMembers("infoSection.title")}
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                {tMembers("infoSection.description")}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Link
+                                href={`${APP_DOCS_URL}/governance/members-and-roles`}
+                                target="_blank"
+                                className="text-sm font-medium underline-offset-2"
+                            >
+                                {tMembers("infoSection.readGuide")}
+                            </Link>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground hover:text-foreground"
+                                aria-label={tMembers("infoSection.dismiss")}
+                                onClick={dismissMembersInfoSection}
+                            >
+                                <X className="size-4" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3 bg-card">
+                        {membersInfoItems.map((item) => {
+                            const { icon: Icon, title, description } = item;
+                            return (
+                                <div
+                                    key={title}
+                                    className="rounded-lg border border-general-border p-3 bg-card"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
+                                            <Icon className="size-4 text-muted-foreground" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-medium">
+                                                {title}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {description}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </PageCard>
+            )}
+
             <PageCard className="gap-0 p-0">
                 {/* Hide header when members are selected */}
                 {!(selectedMembers.length > 0) && (

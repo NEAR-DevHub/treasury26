@@ -91,9 +91,9 @@ export function SelectListIcon({
         >
             <div
                 className={cn(
-                    "rounded-full flex items-center justify-center text-white font-bold",
+                    "rounded-full flex items-center justify-center text-white font-normal",
                     fallbackSizeClass,
-                    gradient || "bg-linear-to-br from-blue-500 to-purple-500",
+                    gradient || "bg-brand-blue",
                 )}
             >
                 <span>{icon}</span>

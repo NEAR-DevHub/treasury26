@@ -106,8 +106,7 @@
         "wallet": "Dompet",
         "termsOfService": "Ketentuan Layanan",
         "privacyPolicy": "Kebijakan Privasi",
-        "disconnect": "Putuskan",
-        "disconnectWallet": "Putuskan Dompet"
+        "disconnect": "Putuskan"
     },
     "auth": {
         "noWallet": "Hubungkan dompet Anda",
@@ -778,6 +777,18 @@
             "removeMember": "Perbarui Kebijakan - Hapus Anggota",
             "removeMembers": "Perbarui Kebijakan - Hapus Anggota",
             "removeMemberSuccess": "Permintaan penghapusan anggota berhasil dibuat"
+        },
+        "infoSection": {
+            "title": "Mengapa menambahkan lebih banyak anggota?",
+            "description": "Menambahkan lebih banyak anggota menjaga dana Anda tetap aman dan memastikan dompet yang hilang tidak mengunci akses Anda.",
+            "readGuide": "Baca panduan lengkap",
+            "dismiss": "Tutup",
+            "strongerProtectionTitle": "Perlindungan lebih kuat",
+            "strongerProtectionDescription": "Permintaan membutuhkan lebih dari satu persetujuan sebelum dana dapat dipindahkan.",
+            "rolesForEveryoneTitle": "Peran untuk semua orang",
+            "rolesForEveryoneDescription": "Setiap anggota mendapat peran - meminta pembayaran, menyetujui, atau mengelola pengaturan.",
+            "neverLoseAccessTitle": "Jangan pernah kehilangan akses",
+            "neverLoseAccessDescription": "Jika Anda kehilangan dompet, Anda dapat memulihkan akses dari cadangan yang sudah ditambahkan."
         }
     },
     "settings": {
@@ -1174,6 +1185,47 @@
         "walletNotSupportedDescription": "{wallet} belum didukung, tetapi kami sedang mengerjakannya. Anda dapat melanjutkan dengan dompet NEAR yang didukung atau Ledger.",
         "connectNear": "Hubungkan NEAR",
         "connectLedger": "Hubungkan Ledger",
+        "headerDescription": "Siapkan treasury multisig untuk tim Anda atau untuk Anda sendiri",
+        "selectTreasuryTypeLabel": "Pilih tipe treasury",
+        "selectTreasuryTypeError": "Silakan pilih tipe treasury",
+        "publicCardDescription": "Paling cocok untuk DAO, barang publik, dan organisasi terbuka.",
+        "confidentialCardDescription": "Paling cocok untuk perusahaan privat dan tim yang membutuhkan privasi finansial.",
+        "accountPlaceholderUnderscore": "treasury_saya",
+        "setupOnUsTitle": "Setup kami yang tanggung",
+        "setupOnUsDescription": "Trezu menanggung biaya jaringan untuk meluncurkan treasury Anda.",
+        "continueToWallet": "Lanjut ke dompet",
+        "alreadyHaveTreasuryLabel": "Sudah punya treasury?",
+        "signInLabel": "Masuk",
+        "walletSelector": {
+            "title": "Pilih cara masuk",
+            "subtitle": "Login Anda menjadi anggota pertama treasury Anda.",
+            "helpCta": "Belum yakin harus pilih yang mana?",
+            "popularBadge": "Populer",
+            "recentBadge": "Terbaru",
+            "noFundsNote": "Tidak perlu dana untuk memulai — kami menanggung biaya transaksi agar Anda bisa mencobanya",
+            "chooseNearWallet": "Pilih wallet NEAR Anda",
+            "chooseEvmWallet": "Pilih wallet EVM Anda",
+            "signInWithNear": "Masuk dengan wallet NEAR",
+            "signInWithLedger": "Masuk dengan Ledger",
+            "signInWithWalletConnect": "Masuk dengan WalletConnect",
+            "guide": {
+                "title": "Sebaiknya saya pakai metode masuk yang mana?",
+                "connectWalletTitle": "Hubungkan wallet",
+                "connectWalletDescription": "Gunakan wallet seperti NEAR, MetaMask, atau Ledger.",
+                "pickThisIfYou": "Pilih ini jika Anda:",
+                "connectWalletBullet1": "sudah menggunakan wallet kripto",
+                "connectWalletBullet2": "ingin menggunakan wallet hardware",
+                "connectWalletBullet3": "tidak memiliki biometrik di perangkat",
+                "comingSoon": "Segera hadir",
+                "passkeyTitle": "Passkey untuk Touch ID dan Face ID",
+                "passkeyDescription": "Masuk dengan Face ID, Touch ID, atau kode perangkat Anda.",
+                "passkeyBullet1": "baru menggunakan wallet kripto",
+                "passkeyBullet2": "ingin setup yang paling sederhana",
+                "passkeyBullet3": "akan menggunakan Trezu di ponsel atau laptop dengan biometrik",
+                "recoveryLabel": "Pemulihan:",
+                "recoveryText": "Apa pun yang Anda pilih, kami sarankan menambahkan anggota kedua (wallet) setelah setup agar perangkat yang hilang tidak membuat Anda terkunci."
+            }
+        },
         "unexpectedError": "Terjadi kesalahan tak terduga",
         "creationFailed": "Gagal membuat treasury. Silakan coba lagi.",
         "stepTitles": {
@@ -2002,96 +2054,6 @@
         "lockupStakingPool": "Pool staking lockup",
         "lockupAssetsNote": "Semua aset dalam posisi ini berasal dari lockup Anda. Setelah Anda berhenti menghasilkan, beberapa token mungkin masih terkunci dan tidak tersedia - periksa jadwal lockup Anda untuk melihat kapan terbuka."
     },
-    "onboardingQuestions": {
-        "stepTitle": "Beberapa pertanyaan singkat untuk memulai.",
-        "other": "Lainnya",
-        "placeholders": {
-            "describeRole": "Jelaskan peran Anda (opsional)",
-            "describeUseCase": "Jelaskan kasus penggunaan Anda (opsional)",
-            "networkName": "Masukkan nama jaringan (opsional)",
-            "currentChallenge": "Masukkan tantangan Anda saat ini (opsional)",
-            "describeOther": "Jelaskan lainnya (opsional)"
-        },
-        "questions": {
-            "role": "Mana yang paling menggambarkan peran Anda?",
-            "useCases": "Untuk apa Anda berencana menggunakan Trezu?",
-            "teamSize": "Berapa banyak orang yang akan mengelola treasury?",
-            "networks": "Jaringan mana yang paling sering Anda gunakan?",
-            "multisigExperience": "Apa pengalaman Anda dengan multisig?",
-            "currentTools": "Alat apa yang saat ini Anda gunakan untuk mengelola keuangan?",
-            "monthlyVolume": "Perkiraan volume transaksi bulanan?",
-            "biggestChallenges": "Apa tantangan terbesar Anda saat ini?"
-        },
-        "options": {
-            "role": {
-                "founder": "Pendiri",
-                "co-founder": "Pendiri Bersama",
-                "cfo-finance-lead": "CFO / Pemimpin Keuangan",
-                "operations-manager": "Manajer Operasi",
-                "treasury-manager": "Manajer Treasury",
-                "other": "Lainnya"
-            },
-            "useCases": {
-                "team-payroll-grants": "Penggajian tim & hibah",
-                "company-assets-management": "Pengelolaan aset perusahaan",
-                "dao-treasury-management": "Pengelolaan treasury DAO",
-                "investment-portfolio": "Portofolio investasi",
-                "operational-spending": "Pengeluaran operasional",
-                "other": "Lainnya"
-            },
-            "teamSize": {
-                "just-me": "Hanya saya",
-                "2-5-people": "2-5 orang",
-                "6-15-people": "6-15 orang",
-                "15-plus-people": "15+"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "Lainnya"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "Belum pernah mendengarnya",
-                "heard-about-it": "Pernah mendengar tentangnya",
-                "never-used-it": "Belum pernah menggunakannya",
-                "used-gnosis-safe-or-similar": "Pernah menggunakan Gnosis Safe atau sejenisnya",
-                "experienced": "Berpengalaman",
-                "looking-for-a-better-option": "Mencari opsi yang lebih baik"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "Lainnya"
-            },
-            "monthlyVolume": {
-                "under-10k": "Di bawah $10K",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "Persetujuan dan penandatanganan yang lambat",
-                "lack-of-transparency-in-the-team": "Kurangnya transparansi dalam tim",
-                "hard-to-track-spending-and-balances": "Sulit melacak pengeluaran dan saldo",
-                "security-and-access-control": "Keamanan dan kontrol akses",
-                "no-good-web3-tool-yet": "Belum ada alat Web3 yang baik",
-                "looking-for-crypto-earnings": "Saya mencari pendapatan kripto",
-                "other": "Lainnya"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "Tambahkan aset ke Treasury Anda dengan deposit aset apa pun yang didukung di jaringan apa pun yang didukung.",
@@ -2111,14 +2073,15 @@
         },
         "progress": {
             "title": "Ikuti Langkah Cepat untuk Menjelajahi Treasury",
-            "createTreasuryTitle": "Buat akun Treasury",
-            "createTreasuryDescription": "Anda telah berhasil menyiapkan akun Anda. Awal yang bagus!",
             "addAssetsTitle": "Tambah Aset Anda",
             "addAssetsDescription": "Mulailah dengan menambahkan aset untuk melihatnya beraksi.",
             "deposit": "Deposit",
             "createPaymentTitle": "Buat Permintaan Pembayaran",
             "createPaymentDescription": "Buat permintaan pembayaran untuk menyelesaikan pengaturan Anda.",
-            "send": "Kirim"
+            "send": "Kirim",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Anda telah berhasil menyiapkan akun Anda. Awal yang bagus!",
+            "addTeamMemberTitle": "Buat akun Treasury"
         },
         "welcome": {
             "heading": "🎉 Perbendaharaan Anda siap",
@@ -2150,19 +2113,6 @@
             "title": "Jelajahi Trezu",
             "description": "Buat akun untuk membuka izin ke semua fitur dan manfaat Trezu.",
             "cta": "Buat Treasury"
-        },
-        "questionnaire": {
-            "continue": "Lanjutkan",
-            "skip": "Lewati"
-        },
-        "createPrompt": {
-            "title": "Anda hampir siap",
-            "description": "Dompet Anda terhubung, tetapi Anda belum membuat treasury. Buat akun untuk mulai menggunakan Trezu, atau {suffix}",
-            "suffixDemo": "lihat demo.",
-            "suffixExploring": "terus menjelajah.",
-            "createCta": "Buat Treasury",
-            "viewDemo": "Jelajahi Demo Trezu",
-            "keepExploring": "Terus Menjelajah"
         },
         "infoBox": {
             "title": "Dapatkan lebih banyak dari Trezu",

@@ -150,8 +150,8 @@ async fn test_goldsky_webassemblymusic(pool: PgPool) {
     );
 
     sqlx::query(
-        "INSERT INTO monitored_accounts (account_id, enabled, dirty_at)
-         VALUES ($1, true, NOW())",
+        "INSERT INTO monitored_accounts (account_id, enabled, dirty_at, plan_type)
+         VALUES ($1, true, NOW(), 'enterprise')",
     )
     .bind(account_id)
     .execute(&pool)
@@ -583,8 +583,8 @@ async fn test_goldsky_maintenance_webassemblymusic(pool: PgPool) {
     let up_to_block: i64 = 188_102_410; // Just after last expected record
 
     sqlx::query(
-        "INSERT INTO monitored_accounts (account_id, enabled, dirty_at, maintenance_block_floor)
-         VALUES ($1, true, NOW(), $2)",
+        "INSERT INTO monitored_accounts (account_id, enabled, dirty_at, maintenance_block_floor, plan_type)
+         VALUES ($1, true, NOW(), $2, 'enterprise')",
     )
     .bind(account_id)
     .bind(maintenance_floor)

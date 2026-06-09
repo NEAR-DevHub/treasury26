@@ -29,12 +29,46 @@ export function base64ToJson(base64: string): any {
     return JSON.parse(decoded);
 }
 
-export function formatCurrency(value: number | Big) {
+interface FormatCurrencyOptions {
+    showSubCentAsLessThan?: boolean;
+    minimumFractionDigits?: number;
+}
+
+export function formatCurrency(
+    value: number | Big,
+    options: FormatCurrencyOptions = {},
+) {
+    if (typeof value === "number" && !Number.isFinite(value)) {
+        return "$0.00";
+    }
+
+    const bigValue = typeof value === "number" ? Big(value) : value;
+    const numericValue = Number(bigValue.toString());
+    if (!Number.isFinite(numericValue)) {
+        return "$0.00";
+    }
+
+    const absoluteValue = bigValue.abs();
+    const { showSubCentAsLessThan = false, minimumFractionDigits = 2 } =
+        options;
+
+    if (
+        showSubCentAsLessThan &&
+        absoluteValue.gt(0) &&
+        absoluteValue.lt(0.01)
+    ) {
+        return bigValue.lt(0) ? "-<$0.01" : "<$0.01";
+    }
+
     return new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: "USD",
-        minimumFractionDigits: 2,
-    }).format(typeof value === "number" ? value : Number(value.toString()));
+        minimumFractionDigits,
+    }).format(numericValue);
+}
+
+export function formatCurrencyWithSubCent(value: number | Big) {
+    return formatCurrency(value, { showSubCentAsLessThan: true });
 }
 
 /**

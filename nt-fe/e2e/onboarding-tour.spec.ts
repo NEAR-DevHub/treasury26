@@ -482,7 +482,7 @@ test.describe("Onboarding – Dashboard Tour highlights and arrows", () => {
 
         // None of these IDs should exist inside the onboarding progress widget
         const progressWidget = page
-            .getByText(/follow quick steps to/i)
+            .getByText(/set up your treasury/i)
             .locator("..");
         expect(await progressWidget.locator("#dashboard-step1").count()).toBe(
             0,
@@ -863,15 +863,15 @@ test.describe("Onboarding – Progress widget", () => {
         });
 
         const main = page.locator("main");
-        await expect(main.getByText(/follow quick steps to/i)).toBeVisible({
+        await expect(main.getByText(/set up your treasury/i)).toBeVisible({
             timeout: 15000,
         });
 
         // Verify all three steps are displayed
-        await expect(main.getByText("Create Treasury account")).toBeVisible();
-        await expect(main.getByText("Add Your Assets")).toBeVisible();
+        await expect(main.getByText("Add a team member")).toBeVisible();
+        await expect(main.getByText("Add your first assets")).toBeVisible();
         await expect(
-            main.getByText("3. Create a Payment Request"),
+            main.getByText("Create a first payment request"),
         ).toBeVisible();
 
         await page.screenshot({
@@ -889,12 +889,13 @@ test.describe("Onboarding – Progress widget", () => {
         });
         await gotoDashboardWithStorage(page, {
             "welcome-dismissed": "true",
+            [`onboarding:solo-selected:${TREASURY_ID}`]: "true",
         });
 
         // Give time for the widget to evaluate
         await page.waitForTimeout(3000);
 
-        const progressHeading = page.getByText(/follow quick steps to/i);
+        const progressHeading = page.getByText(/set up your treasury/i);
         await expect(progressHeading).not.toBeVisible();
     });
 
@@ -907,14 +908,14 @@ test.describe("Onboarding – Progress widget", () => {
         });
 
         const main = page.locator("main");
-        await expect(main.getByText(/follow quick steps to/i)).toBeVisible({
+        await expect(main.getByText(/set up your treasury/i)).toBeVisible({
             timeout: 15000,
         });
 
-        // Step 2 (Add Your Assets) should have a "Deposit" action button visible
+        // Step 2 (Add your first assets) should have a "Deposit" action button visible
         // Scope to the progress widget to avoid matching the BalanceWithGraph Deposit button
         const progressWidget = main
-            .getByText(/follow quick steps to/i)
+            .getByText(/set up your treasury/i)
             .locator("../..");
         const depositButton = progressWidget.getByRole("button", {
             name: /deposit/i,
@@ -939,14 +940,14 @@ test.describe("Onboarding – Progress widget", () => {
         });
 
         const main = page.locator("main");
-        await expect(main.getByText(/follow quick steps to/i)).toBeVisible({
+        await expect(main.getByText(/set up your treasury/i)).toBeVisible({
             timeout: 15000,
         });
 
         // Step 3 should have a "Send" action button visible
         // Scope to the progress widget to avoid matching the BalanceWithGraph Send button
         const progressWidget = main
-            .getByText(/follow quick steps to/i)
+            .getByText(/set up your treasury/i)
             .locator("../..");
         const sendButton = progressWidget.getByRole("button", {
             name: /^send$/i,

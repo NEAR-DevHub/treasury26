@@ -106,8 +106,7 @@
         "wallet": "지갑",
         "termsOfService": "이용약관",
         "privacyPolicy": "개인정보 처리방침",
-        "disconnect": "연결 해제",
-        "disconnectWallet": "연결 해제 지갑"
+        "disconnect": "연결 해제"
     },
     "auth": {
         "noWallet": "지갑을 연결하세요",
@@ -778,6 +777,18 @@
             "removeMember": "정책 업데이트 - 멤버 제거",
             "removeMembers": "정책 업데이트 - 멤버 제거",
             "removeMemberSuccess": "멤버 제거 요청이 성공적으로 생성되었습니다"
+        },
+        "infoSection": {
+            "title": "왜 멤버를 더 추가해야 하나요?",
+            "description": "멤버를 더 추가하면 자금을 안전하게 보호하고 지갑을 잃어도 접근이 막히지 않습니다.",
+            "readGuide": "전체 가이드 읽기",
+            "dismiss": "닫기",
+            "strongerProtectionTitle": "더 강력한 보호",
+            "strongerProtectionDescription": "자금 이동 전 요청에는 두 명 이상 승인이 필요합니다.",
+            "rolesForEveryoneTitle": "모두를 위한 역할",
+            "rolesForEveryoneDescription": "각 멤버는 역할을 가집니다 - 결제 요청, 승인 또는 설정 관리.",
+            "neverLoseAccessTitle": "접근 권한을 잃지 마세요",
+            "neverLoseAccessDescription": "지갑을 잃어도 미리 추가한 백업으로 접근 권한을 복구할 수 있습니다."
         }
     },
     "settings": {
@@ -1174,6 +1185,47 @@
         "walletNotSupportedDescription": "{wallet}은(는) 아직 지원되지 않지만, 현재 지원을 준비 중입니다. 지원되는 NEAR 지갑 또는 Ledger로 계속할 수 있습니다.",
         "connectNear": "NEAR 연결",
         "connectLedger": "Ledger 연결",
+        "headerDescription": "팀 또는 본인을 위한 멀티시그 트레저리를 설정하세요",
+        "selectTreasuryTypeLabel": "트레저리 유형 선택",
+        "selectTreasuryTypeError": "트레저리 유형을 선택해 주세요",
+        "publicCardDescription": "DAO, 공공재 프로젝트, 개방형 조직에 가장 적합합니다.",
+        "confidentialCardDescription": "재무 프라이버시가 필요한 비공개 기업 및 팀에 가장 적합합니다.",
+        "accountPlaceholderUnderscore": "my_treasury",
+        "setupOnUsTitle": "설정 비용은 저희가 부담합니다",
+        "setupOnUsDescription": "Trezu가 트레저리 시작을 위한 네트워크 수수료를 부담합니다.",
+        "continueToWallet": "지갑으로 계속",
+        "alreadyHaveTreasuryLabel": "이미 트레저리가 있나요?",
+        "signInLabel": "로그인",
+        "walletSelector": {
+            "title": "로그인 방법 선택",
+            "subtitle": "로그인한 사용자가 트레저리의 첫 번째 멤버가 됩니다.",
+            "helpCta": "무엇을 선택해야 할지 모르겠나요?",
+            "popularBadge": "인기",
+            "recentBadge": "최근 사용",
+            "noFundsNote": "시작 자금이 없어도 됩니다 — 바로 사용해 볼 수 있도록 거래 수수료를 저희가 부담합니다",
+            "chooseNearWallet": "NEAR 지갑 선택",
+            "chooseEvmWallet": "EVM 지갑 선택",
+            "signInWithNear": "NEAR 지갑으로 로그인",
+            "signInWithLedger": "Ledger로 로그인",
+            "signInWithWalletConnect": "WalletConnect로 로그인",
+            "guide": {
+                "title": "어떤 로그인 방식을 사용해야 하나요?",
+                "connectWalletTitle": "지갑 연결",
+                "connectWalletDescription": "NEAR, MetaMask, Ledger 같은 지갑을 사용하세요.",
+                "pickThisIfYou": "다음에 해당하면 이 옵션을 선택하세요:",
+                "connectWalletBullet1": "이미 암호화폐 지갑을 사용 중인 경우",
+                "connectWalletBullet2": "하드웨어 지갑을 사용하고 싶은 경우",
+                "connectWalletBullet3": "기기에 생체인증이 없는 경우",
+                "comingSoon": "곧 출시",
+                "passkeyTitle": "Touch ID / Face ID용 패스키",
+                "passkeyDescription": "Face ID, Touch ID 또는 기기 비밀번호로 로그인하세요.",
+                "passkeyBullet1": "암호화폐 지갑이 처음인 경우",
+                "passkeyBullet2": "가장 간단한 설정을 원하는 경우",
+                "passkeyBullet3": "생체인증이 가능한 휴대폰 또는 노트북에서 Trezu를 사용할 경우",
+                "recoveryLabel": "복구:",
+                "recoveryText": "어떤 방식을 선택하든, 기기를 잃어버려도 잠기지 않도록 설정 후 두 번째 멤버(지갑)를 추가하는 것을 권장합니다."
+            }
+        },
         "unexpectedError": "예기치 않은 오류가 발생했습니다",
         "creationFailed": "트레저리 생성에 실패했습니다. 다시 시도해 주세요.",
         "stepTitles": {
@@ -2002,96 +2054,6 @@
         "lockupStakingPool": "락업 스테이킹 풀",
         "lockupAssetsNote": "이 포지션의 모든 자산은 락업에서 가져온 것입니다. 수익을 중지한 후에도 일부 토큰은 잠겨 있어 사용 불가능할 수 있습니다 - 잠금 해제 시점을 보려면 락업 일정을 확인하세요."
     },
-    "onboardingQuestions": {
-        "stepTitle": "시작하기 위한 몇 가지 간단한 질문입니다.",
-        "other": "기타",
-        "placeholders": {
-            "describeRole": "역할을 설명하세요 (선택사항)",
-            "describeUseCase": "사용 사례를 설명하세요 (선택사항)",
-            "networkName": "네트워크 이름을 입력하세요 (선택사항)",
-            "currentChallenge": "현재 어려움을 입력하세요 (선택사항)",
-            "describeOther": "기타를 설명하세요 (선택사항)"
-        },
-        "questions": {
-            "role": "사용자의 역할을 가장 잘 설명하는 것은 무엇입니까?",
-            "useCases": "Trezu를 어떤 용도로 사용할 계획이십니까?",
-            "teamSize": "트레저리를 관리하는 인원은 몇 명입니까?",
-            "networks": "가장 자주 사용하는 네트워크는 무엇입니까?",
-            "multisigExperience": "멀티시그에 대한 경험은 어떻습니까?",
-            "currentTools": "현재 재무 관리에 어떤 도구를 사용하십니까?",
-            "monthlyVolume": "월간 트랜잭션 대략적인 거래량은?",
-            "biggestChallenges": "현재 가장 큰 과제는 무엇입니까?"
-        },
-        "options": {
-            "role": {
-                "founder": "창립자",
-                "co-founder": "공동 창립자",
-                "cfo-finance-lead": "CFO / 재무 책임자",
-                "operations-manager": "운영 매니저",
-                "treasury-manager": "트레저리 매니저",
-                "other": "기타"
-            },
-            "useCases": {
-                "team-payroll-grants": "팀 급여 및 그랜트",
-                "company-assets-management": "회사 자산 관리",
-                "dao-treasury-management": "DAO 트레저리 관리",
-                "investment-portfolio": "투자 포트폴리오",
-                "operational-spending": "운영 지출",
-                "other": "기타"
-            },
-            "teamSize": {
-                "just-me": "나 혼자",
-                "2-5-people": "2-5명",
-                "6-15-people": "6-15명",
-                "15-plus-people": "15명 이상"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "기타"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "들어본 적 없음",
-                "heard-about-it": "들어본 적 있음",
-                "never-used-it": "사용한 적 없음",
-                "used-gnosis-safe-or-similar": "Gnosis Safe 또는 유사 서비스 사용",
-                "experienced": "경험 있음",
-                "looking-for-a-better-option": "더 나은 옵션 찾는 중"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "기타"
-            },
-            "monthlyVolume": {
-                "under-10k": "$10K 미만",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "느린 승인 및 서명",
-                "lack-of-transparency-in-the-team": "팀 내 투명성 부족",
-                "hard-to-track-spending-and-balances": "지출과 잔액 추적의 어려움",
-                "security-and-access-control": "보안 및 액세스 제어",
-                "no-good-web3-tool-yet": "아직 좋은 Web3 도구가 없음",
-                "looking-for-crypto-earnings": "암호화폐 수익을 찾고 있음",
-                "other": "기타"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "지원되는 네트워크에서 지원되는 자산을 입금하여 트레저리에 자산을 추가하세요.",
@@ -2111,14 +2073,15 @@
         },
         "progress": {
             "title": "빠른 단계를 따라 트레저리 살펴보기",
-            "createTreasuryTitle": "트레저리 계정 생성",
-            "createTreasuryDescription": "계정 설정을 성공적으로 완료했습니다. 좋은 시작입니다!",
             "addAssetsTitle": "자산 추가",
             "addAssetsDescription": "자산을 추가하여 작동하는 모습을 확인하세요.",
             "deposit": "입금",
             "createPaymentTitle": "결제 요청 생성",
             "createPaymentDescription": "설정을 완료하기 위해 결제 요청을 생성하세요.",
-            "send": "보내기"
+            "send": "보내기",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "계정 설정을 성공적으로 완료했습니다. 좋은 시작입니다!",
+            "addTeamMemberTitle": "트레저리 계정 생성"
         },
         "welcome": {
             "heading": "🎉 트레저리가 준비되었습니다",
@@ -2150,19 +2113,6 @@
             "title": "Trezu 살펴보기",
             "description": "Trezu의 모든 기능과 혜택에 대한 권한을 잠금 해제하려면 계정을 생성하세요.",
             "cta": "트레저리 생성"
-        },
-        "questionnaire": {
-            "continue": "계속",
-            "skip": "건너뛰기"
-        },
-        "createPrompt": {
-            "title": "거의 다 되었습니다",
-            "description": "지갑이 연결되었지만 아직 트레저리를 생성하지 않았습니다. Trezu 사용을 시작하려면 계정을 생성하거나 {suffix}",
-            "suffixDemo": "데모를 확인하세요.",
-            "suffixExploring": "계속 살펴보세요.",
-            "createCta": "트레저리 생성",
-            "viewDemo": "Trezu 데모 살펴보기",
-            "keepExploring": "계속 살펴보기"
         },
         "infoBox": {
             "title": "Trezu에서 더 많은 것을 얻으세요",

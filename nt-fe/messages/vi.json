@@ -106,8 +106,7 @@
         "wallet": "Ví",
         "termsOfService": "Điều khoản dịch vụ",
         "privacyPolicy": "Chính sách bảo mật",
-        "disconnect": "Ngắt kết nối",
-        "disconnectWallet": "Ngắt kết nối Ví"
+        "disconnect": "Ngắt kết nối"
     },
     "auth": {
         "noWallet": "Kết nối ví của bạn",
@@ -778,6 +777,18 @@
             "removeMember": "Cập nhật chính sách - Xóa thành viên",
             "removeMembers": "Cập nhật chính sách - Xóa các thành viên",
             "removeMemberSuccess": "Đã tạo thành công yêu cầu xóa thành viên"
+        },
+        "infoSection": {
+            "title": "Vì sao nên thêm thành viên?",
+            "description": "Thêm thành viên giúp tiền của bạn an toàn và đảm bảo mất ví sẽ không khiến bạn bị khóa quyền truy cập.",
+            "readGuide": "Đọc hướng dẫn đầy đủ",
+            "dismiss": "Đóng",
+            "strongerProtectionTitle": "Bảo vệ mạnh hơn",
+            "strongerProtectionDescription": "Yêu cầu cần nhiều hơn một phê duyệt trước khi tiền có thể được chuyển.",
+            "rolesForEveryoneTitle": "Vai trò cho mọi người",
+            "rolesForEveryoneDescription": "Mỗi thành viên có một vai trò: tạo yêu cầu thanh toán, phê duyệt hoặc quản lý cài đặt.",
+            "neverLoseAccessTitle": "Không bao giờ mất quyền truy cập",
+            "neverLoseAccessDescription": "Nếu bạn mất ví, bạn có thể khôi phục quyền truy cập từ bản sao lưu đã thêm trước đó."
         }
     },
     "settings": {
@@ -1174,6 +1185,47 @@
         "walletNotSupportedDescription": "{wallet} hiện chưa được hỗ trợ, nhưng chúng tôi đang phát triển. Bạn có thể tiếp tục bằng ví NEAR được hỗ trợ hoặc Ledger.",
         "connectNear": "Kết nối NEAR",
         "connectLedger": "Kết nối Ledger",
+        "headerDescription": "Thiết lập kho bạc đa chữ ký cho nhóm của bạn hoặc cho chính bạn",
+        "selectTreasuryTypeLabel": "Chọn loại kho bạc",
+        "selectTreasuryTypeError": "Vui lòng chọn loại kho bạc",
+        "publicCardDescription": "Phù hợp nhất cho DAO, dự án công ích và tổ chức mở.",
+        "confidentialCardDescription": "Phù hợp nhất cho doanh nghiệp tư nhân và đội ngũ cần quyền riêng tư tài chính.",
+        "accountPlaceholderUnderscore": "kho_bac_cua_toi",
+        "setupOnUsTitle": "Phần thiết lập để chúng tôi lo",
+        "setupOnUsDescription": "Trezu chi trả phí mạng để khởi chạy kho bạc của bạn.",
+        "continueToWallet": "Tiếp tục đến ví",
+        "alreadyHaveTreasuryLabel": "Bạn đã có kho bạc?",
+        "signInLabel": "Đăng nhập",
+        "walletSelector": {
+            "title": "Chọn cách đăng nhập",
+            "subtitle": "Lần đăng nhập của bạn sẽ trở thành thành viên đầu tiên của kho bạc.",
+            "helpCta": "Bạn chưa chắc nên chọn gì?",
+            "popularBadge": "Phổ biến",
+            "recentBadge": "Gần đây",
+            "noFundsNote": "Không cần vốn để bắt đầu — chúng tôi chi trả phí giao dịch để bạn có thể thử",
+            "chooseNearWallet": "Chọn ví NEAR của bạn",
+            "chooseEvmWallet": "Chọn ví EVM của bạn",
+            "signInWithNear": "Đăng nhập bằng ví NEAR",
+            "signInWithLedger": "Đăng nhập bằng Ledger",
+            "signInWithWalletConnect": "Đăng nhập bằng WalletConnect",
+            "guide": {
+                "title": "Tôi nên dùng cách đăng nhập nào?",
+                "connectWalletTitle": "Kết nối ví",
+                "connectWalletDescription": "Dùng ví như NEAR, MetaMask hoặc Ledger.",
+                "pickThisIfYou": "Chọn cách này nếu bạn:",
+                "connectWalletBullet1": "đã dùng ví tiền mã hóa",
+                "connectWalletBullet2": "muốn dùng ví phần cứng",
+                "connectWalletBullet3": "không có sinh trắc học trên thiết bị",
+                "comingSoon": "Sắp ra mắt",
+                "passkeyTitle": "Passkey cho Touch ID và Face ID",
+                "passkeyDescription": "Đăng nhập bằng Face ID, Touch ID hoặc mã thiết bị của bạn.",
+                "passkeyBullet1": "mới dùng ví tiền mã hóa",
+                "passkeyBullet2": "muốn thiết lập đơn giản nhất",
+                "passkeyBullet3": "sẽ dùng Trezu trên điện thoại hoặc laptop có sinh trắc học",
+                "recoveryLabel": "Khôi phục:",
+                "recoveryText": "Dù bạn chọn cách nào, chúng tôi khuyên bạn thêm thành viên thứ hai (ví) sau khi thiết lập để việc mất thiết bị không khiến bạn bị khóa truy cập."
+            }
+        },
         "unexpectedError": "Đã xảy ra lỗi không mong muốn",
         "creationFailed": "Không thể tạo ngân quỹ. Vui lòng thử lại.",
         "stepTitles": {
@@ -2002,96 +2054,6 @@
         "lockupStakingPool": "Pool staking lockup",
         "lockupAssetsNote": "Tất cả tài sản trong vị thế này đều từ lockup của bạn. Sau khi bạn dừng kiếm thu nhập, một số token vẫn có thể bị khóa và không khả dụng - hãy kiểm tra lịch lockup để biết khi nào chúng được mở khóa."
     },
-    "onboardingQuestions": {
-        "stepTitle": "Một vài câu hỏi nhanh để bắt đầu.",
-        "other": "Khác",
-        "placeholders": {
-            "describeRole": "Mô tả vai trò của bạn (tùy chọn)",
-            "describeUseCase": "Mô tả trường hợp sử dụng của bạn (tùy chọn)",
-            "networkName": "Nhập tên mạng (tùy chọn)",
-            "currentChallenge": "Nhập thách thức hiện tại của bạn (tùy chọn)",
-            "describeOther": "Mô tả khác (tùy chọn)"
-        },
-        "questions": {
-            "role": "Vai trò nào mô tả bạn tốt nhất?",
-            "useCases": "Bạn dự định dùng Trezu cho mục đích gì?",
-            "teamSize": "Có bao nhiêu người sẽ quản lý ngân quỹ?",
-            "networks": "Bạn sử dụng mạng nào thường xuyên nhất?",
-            "multisigExperience": "Kinh nghiệm của bạn với multisig là gì?",
-            "currentTools": "Bạn hiện đang dùng công cụ gì để quản lý tài chính?",
-            "monthlyVolume": "Khối lượng giao dịch hàng tháng xấp xỉ?",
-            "biggestChallenges": "Thách thức lớn nhất của bạn hiện tại là gì?"
-        },
-        "options": {
-            "role": {
-                "founder": "Người sáng lập",
-                "co-founder": "Đồng sáng lập",
-                "cfo-finance-lead": "CFO / Trưởng phòng Tài chính",
-                "operations-manager": "Quản lý vận hành",
-                "treasury-manager": "Quản lý ngân quỹ",
-                "other": "Khác"
-            },
-            "useCases": {
-                "team-payroll-grants": "Lương đội & tài trợ",
-                "company-assets-management": "Quản lý tài sản công ty",
-                "dao-treasury-management": "Quản lý ngân quỹ DAO",
-                "investment-portfolio": "Danh mục đầu tư",
-                "operational-spending": "Chi tiêu vận hành",
-                "other": "Khác"
-            },
-            "teamSize": {
-                "just-me": "Chỉ tôi",
-                "2-5-people": "2-5 người",
-                "6-15-people": "6-15 người",
-                "15-plus-people": "15+"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "Khác"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "Chưa từng nghe về nó",
-                "heard-about-it": "Đã nghe về nó",
-                "never-used-it": "Chưa từng sử dụng",
-                "used-gnosis-safe-or-similar": "Đã dùng Gnosis Safe hoặc tương tự",
-                "experienced": "Có kinh nghiệm",
-                "looking-for-a-better-option": "Đang tìm một lựa chọn tốt hơn"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "Khác"
-            },
-            "monthlyVolume": {
-                "under-10k": "Dưới $10K",
-                "10k-100k": "$10K - $100K",
-                "100k-1m": "$100K - $1M",
-                "1m-plus": "$1M+"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "Phê duyệt và ký chậm",
-                "lack-of-transparency-in-the-team": "Thiếu minh bạch trong đội",
-                "hard-to-track-spending-and-balances": "Khó theo dõi chi tiêu và số dư",
-                "security-and-access-control": "Bảo mật và kiểm soát truy cập",
-                "no-good-web3-tool-yet": "Chưa có công cụ Web3 tốt",
-                "looking-for-crypto-earnings": "Tôi đang tìm thu nhập từ crypto",
-                "other": "Khác"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "Thêm tài sản vào Ngân quỹ bằng cách nạp bất kỳ tài sản được hỗ trợ nào trên bất kỳ mạng được hỗ trợ nào.",
@@ -2111,14 +2073,15 @@
         },
         "progress": {
             "title": "Làm theo các bước nhanh để khám phá Ngân quỹ",
-            "createTreasuryTitle": "Tạo tài khoản Ngân quỹ",
-            "createTreasuryDescription": "Bạn đã thiết lập tài khoản thành công. Khởi đầu tuyệt vời!",
             "addAssetsTitle": "Thêm tài sản của bạn",
             "addAssetsDescription": "Bắt đầu bằng cách thêm tài sản để xem chúng hoạt động.",
             "deposit": "Nạp tiền",
             "createPaymentTitle": "Tạo yêu cầu thanh toán",
             "createPaymentDescription": "Tạo một yêu cầu thanh toán để hoàn tất thiết lập của bạn.",
-            "send": "Gửi"
+            "send": "Gửi",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "Bạn đã thiết lập tài khoản thành công. Khởi đầu tuyệt vời!",
+            "addTeamMemberTitle": "Tạo tài khoản Ngân quỹ"
         },
         "welcome": {
             "heading": "🎉 Ngân quỹ của bạn đã sẵn sàng",
@@ -2150,19 +2113,6 @@
             "title": "Khám phá Trezu",
             "description": "Tạo một tài khoản để mở khóa quyền truy cập tất cả các tính năng và lợi ích của Trezu.",
             "cta": "Tạo Ngân quỹ"
-        },
-        "questionnaire": {
-            "continue": "Tiếp tục",
-            "skip": "Bỏ qua"
-        },
-        "createPrompt": {
-            "title": "Bạn gần xong rồi",
-            "description": "Ví của bạn đã được kết nối, nhưng bạn chưa tạo ngân quỹ. Hãy tạo tài khoản để bắt đầu sử dụng Trezu, hoặc {suffix}",
-            "suffixDemo": "xem demo.",
-            "suffixExploring": "tiếp tục khám phá.",
-            "createCta": "Tạo một Ngân quỹ",
-            "viewDemo": "Khám phá Trezu Demo",
-            "keepExploring": "Tiếp tục khám phá"
         },
         "infoBox": {
             "title": "Tận dụng Trezu nhiều hơn",

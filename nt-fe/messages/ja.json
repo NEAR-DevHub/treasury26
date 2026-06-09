@@ -106,8 +106,7 @@
         "wallet": "ウォレット",
         "termsOfService": "利用規約",
         "privacyPolicy": "プライバシーポリシー",
-        "disconnect": "切断",
-        "disconnectWallet": "切断 ウォレット"
+        "disconnect": "切断"
     },
     "auth": {
         "noWallet": "ウォレットを接続してください",
@@ -778,6 +777,18 @@
             "removeMember": "ポリシー更新 - メンバーを削除",
             "removeMembers": "ポリシー更新 - メンバーを削除",
             "removeMemberSuccess": "メンバー削除リクエストが正常に作成されました"
+        },
+        "infoSection": {
+            "title": "なぜメンバーを増やすのですか？",
+            "description": "メンバーを増やすことで資金の安全性が高まり、ウォレットを失ってもアクセス不能になることを防げます。",
+            "readGuide": "完全ガイドを読む",
+            "dismiss": "閉じる",
+            "strongerProtectionTitle": "より強い保護",
+            "strongerProtectionDescription": "資金を動かす前に、リクエストには複数の承認が必要です。",
+            "rolesForEveryoneTitle": "全員に役割",
+            "rolesForEveryoneDescription": "各メンバーに役割が割り当てられます - 支払いの申請、承認、設定管理。",
+            "neverLoseAccessTitle": "アクセスを失わない",
+            "neverLoseAccessDescription": "ウォレットを失っても、事前に追加したバックアップからアクセスを復元できます。"
         }
     },
     "settings": {
@@ -1174,6 +1185,47 @@
         "walletNotSupportedDescription": "{wallet} はまだサポートされていませんが、現在対応を進めています。対応済みのNEARウォレットまたはLedgerで続行できます。",
         "connectNear": "NEARを接続",
         "connectLedger": "Ledgerを接続",
+        "headerDescription": "チームまたはご自身のためにマルチシグトレジャリーを設定します",
+        "selectTreasuryTypeLabel": "トレジャリーの種類を選択",
+        "selectTreasuryTypeError": "トレジャリーの種類を選択してください",
+        "publicCardDescription": "DAO、公共財プロジェクト、オープンな組織に最適です。",
+        "confidentialCardDescription": "財務プライバシーが必要な民間企業やチームに最適です。",
+        "accountPlaceholderUnderscore": "my_treasury",
+        "setupOnUsTitle": "セットアップ費用は当社負担",
+        "setupOnUsDescription": "Trezuがトレジャリー立ち上げ時のネットワーク手数料を負担します。",
+        "continueToWallet": "ウォレットへ進む",
+        "alreadyHaveTreasuryLabel": "すでにトレジャリーをお持ちですか？",
+        "signInLabel": "サインイン",
+        "walletSelector": {
+            "title": "サインイン方法を選択",
+            "subtitle": "あなたのサインインがトレジャリーの最初のメンバーになります。",
+            "helpCta": "どれを選べばよいか分かりませんか？",
+            "popularBadge": "人気",
+            "recentBadge": "最近使用",
+            "noFundsNote": "開始に資金は不要です — お試しいただけるよう取引手数料は当社が負担します",
+            "chooseNearWallet": "NEARウォレットを選択",
+            "chooseEvmWallet": "EVMウォレットを選択",
+            "signInWithNear": "NEARウォレットでサインイン",
+            "signInWithLedger": "Ledgerでサインイン",
+            "signInWithWalletConnect": "WalletConnectでサインイン",
+            "guide": {
+                "title": "どのサインイン方法を使うべきですか？",
+                "connectWalletTitle": "ウォレットを接続",
+                "connectWalletDescription": "NEAR、MetaMask、Ledger などのウォレットを使用します。",
+                "pickThisIfYou": "次の場合はこちらを選択：",
+                "connectWalletBullet1": "すでに暗号資産ウォレットを使っている",
+                "connectWalletBullet2": "ハードウェアウォレットを使いたい",
+                "connectWalletBullet3": "デバイスに生体認証がない",
+                "comingSoon": "近日公開",
+                "passkeyTitle": "Touch ID / Face ID 用パスキー",
+                "passkeyDescription": "Face ID、Touch ID、またはデバイスのパスコードでサインインします。",
+                "passkeyBullet1": "暗号資産ウォレットを初めて使う",
+                "passkeyBullet2": "最も簡単なセットアップをしたい",
+                "passkeyBullet3": "生体認証対応のスマホやPCでTrezuを使う",
+                "recoveryLabel": "復旧：",
+                "recoveryText": "どちらを選んでも、デバイス紛失時にアクセス不能にならないよう、セットアップ後に2人目のメンバー（ウォレット）を追加することをおすすめします。"
+            }
+        },
         "unexpectedError": "予期しないエラーが発生しました",
         "creationFailed": "トレジャリーの作成に失敗しました。もう一度お試しください。",
         "stepTitles": {
@@ -2002,96 +2054,6 @@
         "lockupStakingPool": "ロックアップステーキングプール",
         "lockupAssetsNote": "このポジションのすべての資産はロックアップから来ています。収益を停止した後も、一部のトークンはまだロックされていて利用できない可能性があります。アンロックされる時期はロックアップスケジュールを確認してください。"
     },
-    "onboardingQuestions": {
-        "stepTitle": "始めるためのいくつかの簡単な質問。",
-        "other": "その他",
-        "placeholders": {
-            "describeRole": "あなたの役割を説明してください(任意)",
-            "describeUseCase": "ユースケースを説明してください(任意)",
-            "networkName": "ネットワーク名を入力(任意)",
-            "currentChallenge": "現在の課題を入力(任意)",
-            "describeOther": "その他を説明(任意)"
-        },
-        "questions": {
-            "role": "あなたの役割を最もよく表すものは?",
-            "useCases": "Trezuを何に使う予定ですか?",
-            "teamSize": "トレジャリーを管理するのは何人ですか?",
-            "networks": "最もよく使うネットワークは?",
-            "multisigExperience": "マルチシグの経験は?",
-            "currentTools": "現在財務管理に使っているツールは?",
-            "monthlyVolume": "おおよその月間トランザクション量は?",
-            "biggestChallenges": "現在の最大の課題は?"
-        },
-        "options": {
-            "role": {
-                "founder": "創業者",
-                "co-founder": "共同創業者",
-                "cfo-finance-lead": "CFO / 財務責任者",
-                "operations-manager": "オペレーションマネージャー",
-                "treasury-manager": "トレジャリーマネージャー",
-                "other": "その他"
-            },
-            "useCases": {
-                "team-payroll-grants": "チームの給与とグラント",
-                "company-assets-management": "企業資産管理",
-                "dao-treasury-management": "DAOトレジャリー管理",
-                "investment-portfolio": "投資ポートフォリオ",
-                "operational-spending": "運営費の支出",
-                "other": "その他"
-            },
-            "teamSize": {
-                "just-me": "自分だけ",
-                "2-5-people": "2〜5人",
-                "6-15-people": "6〜15人",
-                "15-plus-people": "15人以上"
-            },
-            "networks": {
-                "near": "NEAR",
-                "bitcoin": "Bitcoin",
-                "ethereum": "Ethereum",
-                "solana": "Solana",
-                "arbitrum": "Arbitrum",
-                "base": "Base",
-                "optimism": "Optimism",
-                "polygon": "Polygon",
-                "gnosis": "Gnosis",
-                "avalanche": "Avalanche",
-                "bnb-chain": "BNB Chain",
-                "other": "その他"
-            },
-            "multisigExperience": {
-                "never-heard-of-it": "聞いたことがない",
-                "heard-about-it": "聞いたことはある",
-                "never-used-it": "使ったことがない",
-                "used-gnosis-safe-or-similar": "Gnosis Safeなどを使用したことがある",
-                "experienced": "経験豊富",
-                "looking-for-a-better-option": "より良い選択肢を探している"
-            },
-            "currentTools": {
-                "gnosis-safe": "Gnosis Safe",
-                "fireblocks": "Fireblocks",
-                "tholos": "Tholos",
-                "squads-multisig": "Squads Multisig",
-                "mpc-vault": "MPC Vault",
-                "other": "その他"
-            },
-            "monthlyVolume": {
-                "under-10k": "$10K未満",
-                "10k-100k": "$10K〜$100K",
-                "100k-1m": "$100K〜$1M",
-                "1m-plus": "$1M以上"
-            },
-            "biggestChallenges": {
-                "slow-approvals-and-signing": "承認と署名が遅い",
-                "lack-of-transparency-in-the-team": "チーム内の透明性の欠如",
-                "hard-to-track-spending-and-balances": "支出と残高の追跡が困難",
-                "security-and-access-control": "セキュリティとアクセス制御",
-                "no-good-web3-tool-yet": "まだ良いWeb3ツールがない",
-                "looking-for-crypto-earnings": "暗号資産の収益を求めている",
-                "other": "その他"
-            }
-        }
-    },
     "onboarding": {
         "tour": {
             "addAssets": "入金して、サポートされているネットワーク上のサポートされている資産をお金庫に追加します。",
@@ -2111,14 +2073,15 @@
         },
         "progress": {
             "title": "クイックステップに従ってトレジャリーを探索",
-            "createTreasuryTitle": "トレジャリーアカウントを作成",
-            "createTreasuryDescription": "アカウントが正常にセットアップされました。素晴らしいスタートです!",
             "addAssetsTitle": "資産を追加",
             "addAssetsDescription": "資産を追加して動きを確認しましょう。",
             "deposit": "入金",
             "createPaymentTitle": "支払いリクエストを作成",
             "createPaymentDescription": "支払いリクエストを作成してセットアップを完了しましょう。",
-            "send": "送金"
+            "send": "送金",
+            "useSolo": "Use Solo",
+            "addTeamMemberDescription": "アカウントが正常にセットアップされました。素晴らしいスタートです!",
+            "addTeamMemberTitle": "トレジャリーアカウントを作成"
         },
         "welcome": {
             "heading": "🎉 お金庫の準備ができました",
@@ -2150,19 +2113,6 @@
             "title": "Trezuを探索",
             "description": "アカウントを作成して、Trezuのすべての機能と特典の権限をアンロックしましょう。",
             "cta": "トレジャリーを作成"
-        },
-        "questionnaire": {
-            "continue": "続ける",
-            "skip": "スキップ"
-        },
-        "createPrompt": {
-            "title": "あと少しで完了です",
-            "description": "ウォレットは接続されていますが、まだトレジャリーを作成していません。Trezuを使い始めるためにアカウントを作成するか、{suffix}",
-            "suffixDemo": "デモをチェックしてください。",
-            "suffixExploring": "引き続き探索してください。",
-            "createCta": "トレジャリーを作成",
-            "viewDemo": "Trezuデモを探索",
-            "keepExploring": "引き続き探索"
         },
         "infoBox": {
             "title": "Trezuをもっと活用",
