@@ -676,6 +676,7 @@ export function CreateTreasuryEntry() {
                     title={tPages("title")}
                     description={t("headerDescription")}
                     hideCollapseButton
+                    hideSystemStatusBanner
                     transparentHeader
                 >
                     {showWaitlist
@@ -693,6 +694,7 @@ export function CreateTreasuryEntry() {
             title={tPages("title")}
             hideCollapseButton
             hideLogin
+            hideSystemStatusBanner
             transparentHeader
             logo={unauthHeaderLogo}
         >

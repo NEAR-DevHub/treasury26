@@ -1209,7 +1209,7 @@ export default function MembersPage() {
 
     return (
         <PageComponentLayout title={t("title")} description={t("description")}>
-            {!isInfoSectionDismissed && (
+            {!isInfoSectionDismissed && canAddMember && (
                 <PageCard className="p-4 gap-3 bg-general-tertiary mb-4">
                     <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">

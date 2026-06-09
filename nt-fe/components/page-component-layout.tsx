@@ -20,6 +20,7 @@ interface PageComponentLayoutProps {
     backButton?: boolean | string;
     hideLogin?: boolean;
     hideCollapseButton?: boolean;
+    hideSystemStatusBanner?: boolean;
     transparentHeader?: boolean;
     logo?: ReactNode;
     children: ReactNode;
@@ -31,6 +32,7 @@ export function PageComponentLayout({
     backButton,
     hideCollapseButton,
     hideLogin,
+    hideSystemStatusBanner,
     transparentHeader = false,
     logo,
     children,
@@ -138,7 +140,9 @@ export function PageComponentLayout({
             </header>
 
             <main className="flex-1 overflow-y-auto bg-page-bg p-4">
-                <SystemStatusBanner className="lg:hidden mb-3" />
+                {!hideSystemStatusBanner && (
+                    <SystemStatusBanner className="lg:hidden mb-3" />
+                )}
                 {children}
             </main>
         </div>
