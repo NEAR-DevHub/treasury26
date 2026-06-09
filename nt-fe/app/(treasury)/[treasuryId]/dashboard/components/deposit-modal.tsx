@@ -49,6 +49,7 @@ import {
     canonicalizeTokenIdForMatch,
     cn,
     formatBalance,
+    formatCurrencyWithSubCent,
     formatSmartAmount,
     normalizeNearAssetId,
 } from "@/lib/utils";
@@ -252,8 +253,8 @@ function renderBalance(amount: number | string, amountUSD: number) {
         return null;
     }
     const normalizedUsd = Number.isFinite(amountUSD)
-        ? amountUSD.toFixed(2)
-        : "0.00";
+        ? formatCurrencyWithSubCent(amountUSD)
+        : formatCurrencyWithSubCent(0);
 
     return (
         <div className="flex flex-col items-end">
@@ -261,7 +262,7 @@ function renderBalance(amount: number | string, amountUSD: number) {
                 {formatSmartAmount(normalizedAmount)}
             </span>
             <span className="text-sm text-muted-foreground">
-                ≈${normalizedUsd}
+                ≈{normalizedUsd}
             </span>
         </div>
     );

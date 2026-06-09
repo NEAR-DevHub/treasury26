@@ -36,7 +36,7 @@ import {
     getDashboardBucketVisibility,
     getDashboardBreakdownItems,
 } from "@/lib/dashboard-balance-view";
-import { formatBalance, formatCurrency } from "@/lib/utils";
+import { formatBalance, formatCurrencyWithSubCent } from "@/lib/utils";
 import BalanceChart from "./chart";
 
 interface Props {
@@ -558,7 +558,9 @@ export default function BalanceWithGraph({
                         </h3>
                         <p className="text-3xl font-bold mt-2">
                             {!isHidden
-                                ? formatCurrency(balanceView.totalUsd)
+                                ? formatCurrencyWithSubCent(
+                                      balanceView.totalUsd,
+                                  )
                                 : "••••••"}
                         </p>
                         {showBreakdown && (
@@ -583,7 +585,9 @@ export default function BalanceWithGraph({
                                                         | "bucketEarning",
                                                 )}{" "}
                                                 <span className="font-semibold text-foreground">
-                                                    {formatCurrency(item.value)}
+                                                    {formatCurrencyWithSubCent(
+                                                        item.value,
+                                                    )}
                                                 </span>
                                             </span>
                                         </div>
@@ -604,7 +608,9 @@ export default function BalanceWithGraph({
                                                 )}
                                             </span>
                                             <span className="font-semibold text-foreground">
-                                                {formatCurrency(item.value)}
+                                                {formatCurrencyWithSubCent(
+                                                    item.value,
+                                                )}
                                             </span>
                                         </div>
                                     ))}

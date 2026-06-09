@@ -15,6 +15,7 @@ import {
     canonicalizeTokenIdForMatch,
     cn,
     formatBalance,
+    formatCurrencyWithSubCent,
     formatSmartAmount,
 } from "@/lib/utils";
 import { Button } from "./button";
@@ -342,7 +343,10 @@ export default function TokenSelect({
                             {formatSmartAmount(token.totalBalance)}
                         </span>
                         <span className="text-sm text-muted-foreground">
-                            ≈${token.totalBalanceUSD?.toFixed(2) || "0.00"}
+                            ≈
+                            {formatCurrencyWithSubCent(
+                                token.totalBalanceUSD || 0,
+                            )}
                         </span>
                     </div>
                 )}
@@ -608,10 +612,10 @@ export default function TokenSelect({
                                                     )}
                                                 </span>
                                                 <span className="text-sm text-muted-foreground">
-                                                    ≈$
-                                                    {item.balanceUSD?.toFixed(
-                                                        2,
-                                                    ) || "0.00"}
+                                                    ≈
+                                                    {formatCurrencyWithSubCent(
+                                                        item.balanceUSD || 0,
+                                                    )}
                                                 </span>
                                             </div>
                                         )}

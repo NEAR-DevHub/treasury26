@@ -16,7 +16,10 @@ import {
     isNearComPaymentRoute,
 } from "@/lib/intents-network";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, formatTokenDisplayAmount } from "@/lib/utils";
+import {
+    formatCurrencyWithSubCent,
+    formatTokenDisplayAmount,
+} from "@/lib/utils";
 import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface TransferExpandedProps {
@@ -101,7 +104,7 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
         data.quoteAmountInUsd ?? quoteByDepositAddress?.amountInUsd;
     const amountUsdOverride =
         amountUsdFromQuote && !Number.isNaN(Number(amountUsdFromQuote))
-            ? formatCurrency(Number(amountUsdFromQuote))
+            ? formatCurrencyWithSubCent(Number(amountUsdFromQuote))
             : null;
 
     const infoItems: InfoItem[] = [

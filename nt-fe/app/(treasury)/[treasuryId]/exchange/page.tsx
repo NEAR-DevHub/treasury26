@@ -43,7 +43,7 @@ import {
 import { parseTokenQueryParam } from "@/lib/token-query-param";
 import {
     formatBalance,
-    formatCurrency,
+    formatCurrencyWithSubCent,
     formatDurationSeconds,
     formatTokenDisplayAmount,
 } from "@/lib/utils";
@@ -570,7 +570,7 @@ function Step2({ handleBack }: StepProps) {
                                                           {marketPriceDifference.isFavorable
                                                               ? "+"
                                                               : "-"}
-                                                          {formatCurrency(
+                                                          {formatCurrencyWithSubCent(
                                                               Math.abs(
                                                                   Number(
                                                                       marketPriceDifference.usdDifference,

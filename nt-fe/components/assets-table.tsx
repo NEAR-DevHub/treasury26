@@ -52,7 +52,7 @@ import { getDashboardBucketVisibility } from "@/lib/dashboard-balance-view";
 import {
     cn,
     formatBalance,
-    formatCurrency,
+    formatCurrencyWithSubCent,
     formatSmartAmount,
 } from "@/lib/utils";
 import { buildTokenQueryParam } from "@/lib/token-query-param";
@@ -298,7 +298,7 @@ function MobileAssetViewModal({
                                 {t("coinPrice")}
                             </span>
                             <span className="text-sm font-medium">
-                                {formatCurrency(selectedAsset.price)}
+                                {formatCurrencyWithSubCent(selectedAsset.price)}
                             </span>
                         </div>
                         {view === "available" && (
@@ -534,7 +534,7 @@ function AvailableView({
                     />
                 </TableCell>
                 <TableCell className="p-4 text-right font-medium hidden sm:table-cell">
-                    {formatCurrency(asset.price)}
+                    {formatCurrencyWithSubCent(asset.price)}
                 </TableCell>
                 <TableCell className="p-4 text-right hidden sm:table-cell">
                     <div className="flex items-center justify-end gap-3">
@@ -815,7 +815,7 @@ function LockedView({
                     />
                 </TableCell>
                 <TableCell className="p-4 text-right font-medium hidden sm:table-cell">
-                    {formatCurrency(asset.price)}
+                    {formatCurrencyWithSubCent(asset.price)}
                 </TableCell>
                 <TableCell className="p-4 text-right hidden sm:table-cell">
                     <BalanceCell
@@ -1032,7 +1032,7 @@ function EarningView({
                     />
                 </TableCell>
                 <TableCell className="p-4 text-right font-medium hidden sm:table-cell">
-                    {formatCurrency(asset.price)}
+                    {formatCurrencyWithSubCent(asset.price)}
                 </TableCell>
                 <TableCell className="p-4 text-right hidden sm:table-cell">
                     <BalanceCell
@@ -1652,7 +1652,8 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                             <SelectContent align="start" className="min-w-56">
                                 {visibleViews.map(([id, label, value]) => (
                                     <SelectItem key={id} value={id}>
-                                        {label} {formatCurrency(value)}
+                                        {label}{" "}
+                                        {formatCurrencyWithSubCent(value)}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -1696,7 +1697,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                             : "text-muted-foreground",
                                     )}
                                 >
-                                    {formatCurrency(value)}
+                                    {formatCurrencyWithSubCent(value)}
                                 </p>
                             </Button>
                         ))}

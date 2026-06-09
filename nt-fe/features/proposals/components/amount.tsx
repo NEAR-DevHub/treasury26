@@ -10,7 +10,7 @@ import { useToken } from "@/hooks/use-treasury-queries";
 import { getLocalizedNetworkDisplayName } from "@/lib/intents-network";
 import {
     formatBalance,
-    formatCurrency,
+    formatCurrencyWithSubCent,
     formatTokenDisplayAmount,
     getNearTokenTypeLabel,
 } from "@/lib/utils";
@@ -109,7 +109,7 @@ export function Amount({
         }
 
         const price = tokenData?.price;
-        return `≈ ${formatCurrency(parsedAmount * price!)}`;
+        return `≈ ${formatCurrencyWithSubCent(parsedAmount * price!)}`;
     }, [usdTextOverride, tokenData, rawAmountValue, tCommon]);
     const networkLabel = resolveAmountNetworkLabel({
         tokenId,
