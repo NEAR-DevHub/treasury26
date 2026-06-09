@@ -45,11 +45,10 @@ struct ConfidentialBalanceChangeRow {
     destination_balance_after: Option<BigDecimal>,
     recipient: String,
     counterparty: String,
-    block_height: Option<i64>,
-    block_time: Option<DateTime<Utc>>,
-    transaction_hash: Option<String>,
+    proposal_execution_block_height: Option<i64>,
+    proposal_executed_at: Option<DateTime<Utc>>,
+    proposal_execution_transaction_hash: Option<String>,
     quote_created_at: DateTime<Utc>,
-    executed_at: Option<DateTime<Utc>>,
     created_at: DateTime<Utc>,
     proposal_id: Option<i64>,
 }
@@ -78,11 +77,11 @@ impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for ConfidentialBalanceChangeRow {
             destination_balance_after: row.try_get("destination_balance_after")?,
             recipient: row.try_get("recipient")?,
             counterparty: row.try_get("counterparty")?,
-            block_height: row.try_get("block_height")?,
-            block_time: row.try_get("block_time")?,
-            transaction_hash: row.try_get("transaction_hash")?,
+            proposal_execution_block_height: row.try_get("proposal_execution_block_height")?,
+            proposal_executed_at: row.try_get("proposal_executed_at")?,
+            proposal_execution_transaction_hash: row
+                .try_get("proposal_execution_transaction_hash")?,
             quote_created_at: row.try_get("quote_created_at")?,
-            executed_at: row.try_get("executed_at")?,
             created_at: row.try_get("created_at")?,
             proposal_id: row.try_get("proposal_id")?,
         })
@@ -159,7 +158,7 @@ pub async fn fetch_balance_change_legs(
     // Apply token / account / amount / date filters in SQL *before* pagination
     // so a small limit can't drop legs that would otherwise match the filter
     // (the old in-Rust filter ran post-limit). Date sort/filter uses
-    // event_time (block_time → executed_at → quote_created_at) rather than
+    // event_time (proposal_executed_at → quote_created_at) rather than
     // gold_confidential_history_events.created_at, which is the projection insert
     // time and would surface old transactions as today's activity. Amount
     // bounds compare against the formatted decimal amount directly — gold
@@ -174,14 +173,16 @@ pub async fn fetch_balance_change_legs(
                 origin_balance_before, origin_balance_after,
                 destination_balance_before, destination_balance_after,
                 recipient, counterparty,
-                block_height, block_time, transaction_hash,
-                quote_created_at, executed_at, created_at,
+                proposal_execution_block_height,
+                proposal_executed_at,
+                proposal_execution_transaction_hash,
+                quote_created_at, created_at,
                 (
                     SELECT ci.proposal_id
                     FROM confidential_intents ci
                     WHERE ci.id = gold_confidential_history_events.intent_id
                 ) AS proposal_id,
-                COALESCE(block_time, executed_at, quote_created_at) AS event_time,
+                COALESCE(proposal_executed_at, quote_created_at) AS event_time,
                 CASE
                     WHEN transaction_type = 'sent'
                         THEN COALESCE(origin_asset, destination_asset)
@@ -218,8 +219,10 @@ pub async fn fetch_balance_change_legs(
             origin_balance_before, origin_balance_after,
             destination_balance_before, destination_balance_after,
             recipient, counterparty,
-            block_height, block_time, transaction_hash,
-            quote_created_at, executed_at, created_at, proposal_id
+            proposal_execution_block_height,
+            proposal_executed_at,
+            proposal_execution_transaction_hash,
+            quote_created_at, created_at, proposal_id
         FROM legs
         WHERE 1 = 1
         "#,
@@ -238,13 +241,13 @@ pub async fn fetch_balance_change_legs(
         builder.push(" AND transaction_type IN (");
         let mut sep = builder.separated(", ");
         for t in types {
-            sep.push_bind(t.as_str());
+            sep.push_bind(*t);
         }
         builder.push(")");
     }
 
     if let Some(tx_hash) = params.tx_hash.as_ref().filter(|s| !s.is_empty()) {
-        builder.push(" AND transaction_hash ILIKE ");
+        builder.push(" AND proposal_execution_transaction_hash ILIKE ");
         builder.push_bind(format!("%{}%", tx_hash));
     }
 
@@ -432,17 +435,17 @@ impl LegRow {
             destination_balance_after,
             recipient,
             counterparty,
-            block_height,
-            block_time,
-            transaction_hash,
+            proposal_execution_block_height,
+            proposal_executed_at,
+            proposal_execution_transaction_hash,
             quote_created_at,
-            executed_at,
             created_at,
             proposal_id,
         } = row;
 
-        let resolved_block_time = block_time.or(executed_at).unwrap_or(quote_created_at);
-        let block_height = block_height.unwrap_or(0);
+        let resolved_block_time = proposal_executed_at.unwrap_or(quote_created_at);
+        let block_height = proposal_execution_block_height.unwrap_or(0);
+        let transaction_hash = proposal_execution_transaction_hash;
 
         let dao_id_str = dao_id.as_str().to_string();
         match transaction_type {
@@ -672,14 +675,14 @@ mod tests {
                 origin_asset, destination_asset, amount_in, amount_out,
                 origin_balance_before, origin_balance_after,
                 recipient, refund_to, counterparty, deposit_address,
-                quote_created_at, executed_at, block_time
+                quote_created_at, proposal_executed_at
             )
             VALUES (
                 $1, $2, 'sent',
                 'nep141:usdc.near', 'nep141:usdc.near', 5, 0,
                 10, 5,
                 $3, $2, $3, $4,
-                $5, $5, $5
+                $5, $5
             )
             "#,
         )
@@ -729,14 +732,14 @@ mod tests {
                 origin_asset, destination_asset, amount_in, amount_out,
                 destination_balance_before, destination_balance_after,
                 recipient, refund_to, counterparty, deposit_address,
-                quote_created_at, executed_at, block_time
+                quote_created_at, proposal_executed_at
             )
             VALUES (
                 $1, $2, 'deposit',
                 'nep141:usdc.near', 'nep141:usdc.near', 1, 0.6,
                 $3, $4,
                 $2, $2, 'intents.near', $5,
-                $6, $6, $6
+                $6, $6
             )
             "#,
         )

@@ -74,7 +74,7 @@ struct ConfidentialProposalMetadataRow {
     correlation_id: Option<String>,
     notes: Option<String>,
     proposal_created_at: Option<chrono::DateTime<chrono::Utc>>,
-    executed_at: Option<chrono::DateTime<chrono::Utc>>,
+    proposal_executed_at: Option<chrono::DateTime<chrono::Utc>>,
     gold_amount_in_usd: Option<String>,
     gold_amount_out_usd: Option<String>,
     gold_usd_change: Option<String>,
@@ -352,7 +352,7 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
             ci.correlation_id,
             ci.notes,
             ci.proposal_created_at,
-            ci.executed_at,
+            ci.proposal_executed_at,
             gold.amount_in_usd::TEXT AS gold_amount_in_usd,
             gold.amount_out_usd::TEXT AS gold_amount_out_usd,
             gold.usd_change::TEXT AS gold_usd_change
@@ -361,7 +361,7 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
             SELECT amount_in_usd, amount_out_usd, usd_change
             FROM gold_confidential_history_events
             WHERE intent_id = ci.id
-            ORDER BY COALESCE(block_time, executed_at, quote_created_at) DESC, id DESC
+            ORDER BY COALESCE(proposal_executed_at, quote_created_at) DESC, id DESC
             LIMIT 1
         ) gold ON TRUE
         WHERE ci.dao_id = $1 AND ci.payload_hash = ANY($2)
@@ -392,7 +392,7 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
                     "correlation_id": row.correlation_id,
                     "notes": row.notes,
                     "proposal_created_at": row.proposal_created_at,
-                    "executed_at": row.executed_at,
+                    "proposal_executed_at": row.proposal_executed_at,
                     "gold_metadata": {
                         "amount_in_usd": row.gold_amount_in_usd,
                         "amount_out_usd": row.gold_amount_out_usd,

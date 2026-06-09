@@ -34,12 +34,11 @@ pub(crate) struct GoldHistoryEvent {
     pub(crate) counterparty: String,
     pub(crate) deposit_address: String,
     pub(crate) deposit_memo: Option<String>,
-    pub(crate) block_height: Option<i64>,
-    pub(crate) block_time: Option<DateTime<Utc>>,
-    pub(crate) transaction_hash: Option<String>,
+    pub(crate) proposal_execution_block_height: Option<i64>,
+    pub(crate) proposal_executed_at: Option<DateTime<Utc>>,
+    pub(crate) proposal_execution_transaction_hash: Option<String>,
     pub(crate) quote_created_at: DateTime<Utc>,
     pub(crate) proposal_created_at: Option<DateTime<Utc>>,
-    pub(crate) executed_at: Option<DateTime<Utc>>,
 }
 
 /// Back-compat alias used by repository upsert.
@@ -92,9 +91,9 @@ pub(crate) struct BronzeProjectionRow {
     pub(crate) raw_payload: Value,
     pub(crate) intent_id: Option<i32>,
     pub(crate) proposal_created_at: Option<DateTime<Utc>>,
-    pub(crate) executed_at: Option<DateTime<Utc>>,
-    pub(crate) execution_block_height: Option<i64>,
-    pub(crate) execution_transaction_hash: Option<String>,
+    pub(crate) proposal_executed_at: Option<DateTime<Utc>>,
+    pub(crate) proposal_execution_block_height: Option<i64>,
+    pub(crate) proposal_execution_transaction_hash: Option<String>,
 }
 
 /// Worker entry point for gold projection cycles.

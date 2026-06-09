@@ -1,5 +1,7 @@
 -- Confidential 1Click history: bronze ingest + gold projection tables.
 
+CREATE TYPE confidential_transaction_type AS ENUM ('sent', 'exchange', 'deposit');
+
 CREATE TABLE IF NOT EXISTS bronze_confidential_history_events (
     id BIGSERIAL PRIMARY KEY,
     account_id VARCHAR(128) NOT NULL,
@@ -18,8 +20,6 @@ CREATE TABLE IF NOT EXISTS bronze_confidential_history_events (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_bche_unique_event
     ON bronze_confidential_history_events (account_id, created_at_external, deposit_address);
-CREATE INDEX IF NOT EXISTS idx_bche_in_flight
-    ON bronze_confidential_history_events (account_id, status) WHERE status IN ('SUCCESS');
 CREATE INDEX IF NOT EXISTS idx_bche_gold_scan
     ON bronze_confidential_history_events (account_id, status, created_at_external, id);
 
@@ -57,8 +57,7 @@ CREATE TABLE IF NOT EXISTS gold_confidential_history_events (
         REFERENCES bronze_confidential_history_events(id) ON DELETE CASCADE,
     intent_id                   INTEGER REFERENCES confidential_intents(id),
     dao_id                      TEXT NOT NULL,
-    transaction_type            TEXT NOT NULL
-        CHECK (transaction_type IN ('sent', 'exchange', 'deposit')),
+    transaction_type            confidential_transaction_type NOT NULL,
     origin_asset                TEXT,
     destination_asset           TEXT NOT NULL,
     amount_in                   NUMERIC,
@@ -75,27 +74,32 @@ CREATE TABLE IF NOT EXISTS gold_confidential_history_events (
     counterparty                TEXT NOT NULL,
     deposit_address             TEXT NOT NULL,
     deposit_memo                TEXT,
-    block_height                BIGINT,
-    block_time                  TIMESTAMPTZ,
-    transaction_hash            TEXT,
+    proposal_execution_block_height BIGINT,
+    proposal_executed_at        TIMESTAMPTZ,
+    proposal_execution_transaction_hash TEXT,
     quote_created_at            TIMESTAMPTZ NOT NULL,
     proposal_created_at         TIMESTAMPTZ,
-    executed_at                 TIMESTAMPTZ,
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_gche_dao_created
-    ON gold_confidential_history_events (dao_id, created_at DESC, id DESC);
-CREATE INDEX IF NOT EXISTS idx_gche_dao_type_created
-    ON gold_confidential_history_events (dao_id, transaction_type, created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_gche_intent_id
     ON gold_confidential_history_events (intent_id);
 CREATE INDEX IF NOT EXISTS idx_gche_dao_quote_created
-    ON gold_confidential_history_events (dao_id, quote_created_at, history_event_id);
+    ON gold_confidential_history_events (dao_id, quote_created_at);
+
+-- Read paths sort by business event time, not projection insert time. `id` is
+-- only a stable tie-breaker for rows with identical event timestamps.
 CREATE INDEX IF NOT EXISTS idx_gche_dao_event_time
     ON gold_confidential_history_events (
         dao_id,
-        (COALESCE(block_time, executed_at, quote_created_at)) DESC,
+        (COALESCE(proposal_executed_at, quote_created_at)) DESC,
+        id DESC
+    );
+CREATE INDEX IF NOT EXISTS idx_gche_dao_type_event_time
+    ON gold_confidential_history_events (
+        dao_id,
+        transaction_type,
+        (COALESCE(proposal_executed_at, quote_created_at)) DESC,
         id DESC
     );
 

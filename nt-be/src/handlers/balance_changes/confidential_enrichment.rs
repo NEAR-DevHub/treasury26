@@ -116,9 +116,9 @@ pub async fn mark_confidential_intent_submitted(
     app_pool: &PgPool,
     dao_id: &str,
     payload_hash: &str,
-    executed_at: chrono::DateTime<chrono::Utc>,
-    block_height: Option<i64>,
-    transaction_hash: Option<&str>,
+    proposal_executed_at: chrono::DateTime<chrono::Utc>,
+    proposal_execution_block_height: Option<i64>,
+    proposal_execution_transaction_hash: Option<&str>,
 ) -> Result<Option<SubmittedIntentInfo>, Box<dyn std::error::Error>> {
     let row = sqlx::query_as::<_, (Option<Value>,)>(
         r#"
@@ -142,9 +142,9 @@ pub async fn mark_confidential_intent_submitted(
         r#"
         UPDATE confidential_intents
         SET status = 'submitted',
-            executed_at = COALESCE(executed_at, $3),
-            execution_block_height = COALESCE(execution_block_height, $4),
-            execution_transaction_hash = COALESCE(execution_transaction_hash, $5),
+            proposal_executed_at = COALESCE(proposal_executed_at, $3),
+            proposal_execution_block_height = COALESCE(proposal_execution_block_height, $4),
+            proposal_execution_transaction_hash = COALESCE(proposal_execution_transaction_hash, $5),
             updated_at = NOW()
         WHERE dao_id = $1
           AND payload_hash = $2
@@ -152,9 +152,9 @@ pub async fn mark_confidential_intent_submitted(
     )
     .bind(dao_id)
     .bind(payload_hash)
-    .bind(executed_at)
-    .bind(block_height)
-    .bind(transaction_hash)
+    .bind(proposal_executed_at)
+    .bind(proposal_execution_block_height)
+    .bind(proposal_execution_transaction_hash)
     .execute(app_pool)
     .await?;
 

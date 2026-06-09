@@ -311,12 +311,11 @@ pub(crate) fn project_row(
             .deposit_memo
             .clone()
             .or_else(|| payload_str(&row.raw_payload, "depositMemo")),
-        block_height: row.execution_block_height,
-        block_time: row.executed_at,
-        transaction_hash: row.execution_transaction_hash.clone(),
+        proposal_execution_block_height: row.proposal_execution_block_height,
+        proposal_executed_at: row.proposal_executed_at,
+        proposal_execution_transaction_hash: row.proposal_execution_transaction_hash.clone(),
         quote_created_at: row.created_at_external,
         proposal_created_at: row.proposal_created_at,
-        executed_at: row.executed_at,
     }))
 }
 
@@ -355,9 +354,9 @@ mod tests {
             raw_payload,
             intent_id: None,
             proposal_created_at: None,
-            executed_at: None,
-            execution_block_height: None,
-            execution_transaction_hash: None,
+            proposal_executed_at: None,
+            proposal_execution_block_height: None,
+            proposal_execution_transaction_hash: None,
         }
     }
 

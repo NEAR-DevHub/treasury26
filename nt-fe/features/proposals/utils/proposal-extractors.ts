@@ -891,7 +891,7 @@ export function extractConfidentialRequestData(
         payloadHash,
         status: meta?.status,
         proposalCreatedAt: meta?.proposal_created_at,
-        executedAt: meta?.executed_at,
+        executedAt: meta?.proposal_executed_at,
         mapped,
         title,
     };

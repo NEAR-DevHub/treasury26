@@ -18,10 +18,9 @@ pub async fn refresh_gold_metadata_for_intent(
         UPDATE gold_confidential_history_events cbc
         SET intent_id = ci.id,
             proposal_created_at = ci.proposal_created_at,
-            executed_at = ci.executed_at,
-            block_height = ci.execution_block_height,
-            block_time = ci.executed_at,
-            transaction_hash = ci.execution_transaction_hash,
+            proposal_executed_at = ci.proposal_executed_at,
+            proposal_execution_block_height = ci.proposal_execution_block_height,
+            proposal_execution_transaction_hash = ci.proposal_execution_transaction_hash,
             updated_at = NOW()
         FROM confidential_intents ci
         WHERE ci.dao_id = $1
@@ -180,9 +179,9 @@ pub(crate) async fn load_bronze_suffix(
             he.raw_payload,
             ci.id AS intent_id,
             ci.proposal_created_at,
-            ci.executed_at,
-            ci.execution_block_height,
-            ci.execution_transaction_hash
+            ci.proposal_executed_at,
+            ci.proposal_execution_block_height,
+            ci.proposal_execution_transaction_hash
         FROM bronze_confidential_history_events he
         LEFT JOIN confidential_intents ci ON ci.history_event_id = he.id
         WHERE he.account_id = $1
@@ -224,17 +223,16 @@ pub(crate) async fn upsert_projection(
             counterparty,
             deposit_address,
             deposit_memo,
-            block_height,
-            block_time,
-            transaction_hash,
+            proposal_execution_block_height,
+            proposal_executed_at,
+            proposal_execution_transaction_hash,
             quote_created_at,
-            proposal_created_at,
-            executed_at
+            proposal_created_at
         )
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
             $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-            $21, $22, $23, $24, $25, $26
+            $21, $22, $23, $24, $25
         )
         ON CONFLICT (history_event_id) DO UPDATE SET
             intent_id = EXCLUDED.intent_id,
@@ -256,19 +254,18 @@ pub(crate) async fn upsert_projection(
             counterparty = EXCLUDED.counterparty,
             deposit_address = EXCLUDED.deposit_address,
             deposit_memo = EXCLUDED.deposit_memo,
-            block_height = EXCLUDED.block_height,
-            block_time = EXCLUDED.block_time,
-            transaction_hash = EXCLUDED.transaction_hash,
+            proposal_execution_block_height = EXCLUDED.proposal_execution_block_height,
+            proposal_executed_at = EXCLUDED.proposal_executed_at,
+            proposal_execution_transaction_hash = EXCLUDED.proposal_execution_transaction_hash,
             quote_created_at = EXCLUDED.quote_created_at,
             proposal_created_at = EXCLUDED.proposal_created_at,
-            executed_at = EXCLUDED.executed_at,
             updated_at = NOW()
         "#,
     )
     .bind(row.history_event_id)
     .bind(row.intent_id)
     .bind(row.dao_id.as_str())
-    .bind(row.transaction_type.as_str())
+    .bind(row.transaction_type)
     .bind(&row.origin_asset)
     .bind(&row.destination_asset)
     .bind(&row.amount_in)
@@ -285,12 +282,11 @@ pub(crate) async fn upsert_projection(
     .bind(&row.counterparty)
     .bind(&row.deposit_address)
     .bind(&row.deposit_memo)
-    .bind(row.block_height)
-    .bind(row.block_time)
-    .bind(&row.transaction_hash)
+    .bind(row.proposal_execution_block_height)
+    .bind(row.proposal_executed_at)
+    .bind(&row.proposal_execution_transaction_hash)
     .bind(row.quote_created_at)
     .bind(row.proposal_created_at)
-    .bind(row.executed_at)
     .execute(&mut **tx)
     .await?;
 
@@ -349,6 +345,11 @@ pub(crate) async fn upsert_projection_error(
     Ok(())
 }
 
+// Gold is a replayed projection of Bronze, so an existing Gold row can become
+// stale during recomputation. For example, a Bronze row may be updated by
+// 1Click, stop being `SUCCESS`, or start getting skipped by the classifier. In
+// that case we remove the old projection so history/export stays aligned with
+// Bronze.
 pub(crate) async fn delete_stale_gold_rows(
     tx: &mut Transaction<'_, Postgres>,
     dao_id: &str,

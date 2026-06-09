@@ -47,13 +47,10 @@ impl DepositType {
 
 /// Gold `transaction_type` column.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[sqlx(type_name = "confidential_transaction_type", rename_all = "lowercase")]
 pub enum ConfidentialTxType {
-    #[sqlx(rename = "sent")]
     Sent,
-    #[sqlx(rename = "exchange")]
     Exchange,
-    #[sqlx(rename = "deposit")]
     Deposit,
 }
 

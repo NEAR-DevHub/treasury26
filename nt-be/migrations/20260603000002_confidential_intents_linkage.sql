@@ -6,9 +6,9 @@ ALTER TABLE confidential_intents
     ADD COLUMN IF NOT EXISTS history_event_id BIGINT REFERENCES bronze_confidential_history_events(id),
     ADD COLUMN IF NOT EXISTS proposal_id BIGINT,
     ADD COLUMN IF NOT EXISTS proposal_created_at TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS executed_at TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS execution_block_height BIGINT,
-    ADD COLUMN IF NOT EXISTS execution_transaction_hash TEXT;
+    ADD COLUMN IF NOT EXISTS proposal_executed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS proposal_execution_block_height BIGINT,
+    ADD COLUMN IF NOT EXISTS proposal_execution_transaction_hash TEXT;
 
 UPDATE confidential_intents
 SET deposit_address = quote_metadata->'quote'->>'depositAddress'
