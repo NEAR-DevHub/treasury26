@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Gift, Globe, Loader2, Shield } from "lucide-react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
@@ -13,6 +12,7 @@ import z from "zod";
 import { APP_ACTIVE_TREASURY } from "@/constants/config";
 import { Alert, AlertDescription } from "@/components/alert";
 import { Button } from "@/components/button";
+import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
 import {
     CreationProgressModal,
     type CreationStep,
@@ -73,6 +73,8 @@ export function CreateTreasuryEntry() {
     const [createdTreasuryId, setCreatedTreasuryId] = useState<string | null>(
         null,
     );
+    const [showLoginScreen, setShowLoginScreen] = useState(false);
+    const [forceStayOnCreatePage, setForceStayOnCreatePage] = useState(false);
     const [waitlistContact, setWaitlistContact] = useState("");
     const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
     const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
@@ -84,12 +86,14 @@ export function CreateTreasuryEntry() {
         treasuries[0]?.daoId;
     const shouldStayOnCreatePage =
         searchParams.get("context") === CREATE_TREASURY_CONTEXT;
+    const shouldKeepUserOnCreatePage =
+        shouldStayOnCreatePage || forceStayOnCreatePage;
     const creationAvailable = creationStatus?.creationAvailable ?? true;
     const showWaitlist =
         !!accountId && !isLoading && !preferredTreasuryId && !creationAvailable;
 
     useEffect(() => {
-        if (shouldStayOnCreatePage) return;
+        if (shouldKeepUserOnCreatePage) return;
         if (!accountId || isLoading) return;
         if (!preferredTreasuryId) return;
         router.replace(`/${preferredTreasuryId}`);
@@ -98,7 +102,7 @@ export function CreateTreasuryEntry() {
         isLoading,
         preferredTreasuryId,
         router,
-        shouldStayOnCreatePage,
+        shouldKeepUserOnCreatePage,
     ]);
 
     const NON_CONFIDENTIAL_STEPS: CreationStep[] = useMemo(
@@ -184,6 +188,11 @@ export function CreateTreasuryEntry() {
         toast.error(authError, { duration: 8000 });
     }, [authError]);
 
+    useEffect(() => {
+        if (!accountId) return;
+        setShowLoginScreen(false);
+    }, [accountId]);
+
     const validateAccountName = async (accountName: string) => {
         const fullAccountId = `${accountName}${ACCOUNT_SUFFIX}`;
         setIsCheckingHandle(true);
@@ -216,8 +225,8 @@ export function CreateTreasuryEntry() {
         }
 
         if (!accountId) {
-            if (authError) clearError();
-            await connect();
+            setForceStayOnCreatePage(true);
+            setShowLoginScreen(true);
             return;
         }
 
@@ -307,7 +316,7 @@ export function CreateTreasuryEntry() {
 
     if (
         accountId &&
-        !shouldStayOnCreatePage &&
+        !shouldKeepUserOnCreatePage &&
         (isLoading || preferredTreasuryId)
     ) {
         return <LoadingScreen />;
@@ -521,16 +530,36 @@ export function CreateTreasuryEntry() {
                 {!accountId && (
                     <p className="text-center text-sm">
                         {t("alreadyHaveTreasuryLabel")}{" "}
-                        <Link
-                            href="/login?context=onboarding"
-                            className="underline"
+                        <Button
+                            type="button"
+                            variant="unstyled"
+                            className="h-auto p-0 underline"
+                            onClick={() => {
+                                setForceStayOnCreatePage(true);
+                                setShowLoginScreen(true);
+                            }}
                         >
                             {t("signInLabel")}
-                        </Link>
+                        </Button>
                     </p>
                 )}
             </div>
         </>
+    );
+
+    const loginScreenBody = (
+        <div className="mx-auto mt-6 w-full max-w-[668px] md:mt-8">
+            <ConnectWalletSelector
+                source="/"
+                connectFlow="onboarding"
+                isConnectingWallet={isAuthenticating}
+                onBack={() => setShowLoginScreen(false)}
+                onConnectSupported={async (walletId?: string) => {
+                    if (authError) clearError();
+                    await connect(walletId);
+                }}
+            />
+        </div>
     );
 
     const waitlistBody = (
@@ -612,12 +641,17 @@ export function CreateTreasuryEntry() {
             {!accountId && (
                 <p className="text-center text-sm">
                     {t("alreadyHaveTreasuryLabel")}{" "}
-                    <Link
-                        href="/login?context=onboarding"
-                        className="underline"
+                    <Button
+                        type="button"
+                        variant="unstyled"
+                        className="h-auto p-0 underline"
+                        onClick={() => {
+                            setForceStayOnCreatePage(true);
+                            setShowLoginScreen(true);
+                        }}
                     >
                         {t("signInLabel")}
-                    </Link>
+                    </Button>
                 </p>
             )}
         </div>
@@ -644,7 +678,11 @@ export function CreateTreasuryEntry() {
                     hideCollapseButton
                     transparentHeader
                 >
-                    {showWaitlist ? waitlistBody : createFormBody}
+                    {showWaitlist
+                        ? waitlistBody
+                        : showLoginScreen
+                          ? loginScreenBody
+                          : createFormBody}
                 </PageComponentLayout>
             </>
         );
@@ -670,7 +708,11 @@ export function CreateTreasuryEntry() {
                     }
                 }}
             />
-            {showWaitlist ? waitlistBody : createFormBody}
+            {showWaitlist
+                ? waitlistBody
+                : showLoginScreen
+                  ? loginScreenBody
+                  : createFormBody}
         </PageComponentLayout>
     );
 }

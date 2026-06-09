@@ -12,7 +12,6 @@ import {
 import { Input } from "@/components/input";
 import { cn } from "@/lib/utils";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
-import { useThemeStore } from "@/stores/theme-store";
 import { ScrollArea } from "./ui/scroll-area";
 
 interface TokenOption {
@@ -34,7 +33,6 @@ export function TokenSelectPopover({
     className,
 }: TokenSelectPopoverProps) {
     const t = useTranslations("tokenSelect");
-    const { theme } = useThemeStore();
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [tokens, setTokens] = useState<TokenOption[]>([]);
@@ -79,7 +77,7 @@ export function TokenSelectPopover({
         };
 
         loadTokens();
-    }, [theme]);
+    }, []);
 
     const filteredTokens = useMemo(() => {
         if (!search) return tokens;

@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowDown, ChevronRight, Loader2, Shield } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { trackEvent } from "@/lib/analytics";
@@ -49,7 +50,6 @@ import {
 } from "@/lib/utils";
 import { buildConfidentialProposal } from "../../../../features/confidential/utils/proposal-builder";
 import { useNear } from "@/stores/near-store";
-import { useThemeStore } from "@/stores/theme-store";
 import { ExchangeSettingsModal } from "./components/exchange-settings-modal";
 import { ExchangeSummaryCard } from "./components/exchange-summary-card";
 import { Rate } from "./components/rate";
@@ -97,7 +97,7 @@ function Step1({ handleNext }: StepProps) {
         ExchangeFormValues & { slippageTolerance?: number }
     >();
     const { treasuryId: selectedTreasury, isConfidential } = useTreasury();
-    const { theme } = useThemeStore();
+    const { resolvedTheme } = useTheme();
     const sellToken = form.watch("sellToken");
     const receiveToken = form.watch("receiveToken");
     const sellAmount = form.watch("sellAmount");
@@ -258,6 +258,8 @@ function Step1({ handleNext }: StepProps) {
         form.setValue("receiveAmount", "");
     };
 
+    const isDarkTheme = resolvedTheme === "dark";
+
     return (
         <PageCard className="relative">
             <div className="flex items-center justify-between gap-2">
@@ -388,7 +390,7 @@ function Step1({ handleNext }: StepProps) {
                 <span className="font-semibold flex items-center gap-1">
                     <img
                         src={
-                            theme === "dark"
+                            isDarkTheme
                                 ? "/near-intents-dark.svg"
                                 : "/near-intents-light.svg"
                         }

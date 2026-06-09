@@ -5,8 +5,6 @@ import { useEffect, useMemo } from "react";
 import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
 import Logo from "@/components/icons/logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { useTreasury } from "@/hooks/use-treasury";
-import { trackEvent } from "@/lib/analytics";
 import { useNear } from "@/stores/near-store";
 
 const UTM_KEYS = [
@@ -44,7 +42,6 @@ export default function LoginPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { accountId, connect, isAuthenticating } = useNear();
-    const { treasuries, lastTreasuryId, isLoading } = useTreasury();
 
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
     const returnToWithUtms = useMemo(
@@ -52,45 +49,15 @@ export default function LoginPage() {
             returnTo ? appendUtmParamsToReturnTo(returnTo, searchParams) : null,
         [returnTo, searchParams],
     );
-    const context = searchParams.get("context");
-    const connectFlow: "onboarding" | "within_treasury" =
-        context === "onboarding" ? "onboarding" : "within_treasury";
     const loginHeaderLogo = <Logo size="sm" />;
-    const preferredTreasuryId =
-        (lastTreasuryId &&
-            treasuries.some((treasury) => treasury.daoId === lastTreasuryId) &&
-            lastTreasuryId) ||
-        treasuries[0]?.daoId;
 
     useEffect(() => {
         if (!accountId) return;
 
         if (returnToWithUtms) {
             router.replace(returnToWithUtms);
-            return;
         }
-
-        if (connectFlow === "onboarding") {
-            if (isLoading) return;
-            if (preferredTreasuryId) {
-                trackEvent("existing_user_treasury_opened", {
-                    source: "/login",
-                    treasury_id: preferredTreasuryId,
-                });
-                router.replace(`/${preferredTreasuryId}`);
-                return;
-            }
-
-            router.replace("/");
-        }
-    }, [
-        accountId,
-        connectFlow,
-        isLoading,
-        preferredTreasuryId,
-        returnToWithUtms,
-        router,
-    ]);
+    }, [accountId, returnToWithUtms, router]);
 
     return (
         <PageComponentLayout
@@ -103,7 +70,7 @@ export default function LoginPage() {
             <div className="mx-auto mt-6 max-w-[668px] md:mt-8">
                 <ConnectWalletSelector
                     source="/login"
-                    connectFlow={connectFlow}
+                    connectFlow="within_treasury"
                     isConnectingWallet={isAuthenticating}
                     onBack={() => {
                         if (returnToWithUtms) {
