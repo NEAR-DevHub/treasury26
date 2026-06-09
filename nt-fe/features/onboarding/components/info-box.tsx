@@ -52,16 +52,16 @@ export function InfoBox() {
     const infoItems = useMemo<InfoItemProps[]>(
         () => [
             {
-                icon: <Eye className="size-5" />,
-                title: t("demoTitle"),
-                description: t("demoDescription"),
-                href: APP_ACTIVE_TREASURY,
-            },
-            {
                 icon: <CirclePlay className="size-5" />,
                 title: t("videoTitle"),
                 description: t("videoDescription"),
                 href: APP_DEMO_URL,
+            },
+            {
+                icon: <Eye className="size-5" />,
+                title: t("demoTitle"),
+                description: t("demoDescription"),
+                href: APP_ACTIVE_TREASURY,
             },
             {
                 icon: <File className="size-5" />,
