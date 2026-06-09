@@ -121,7 +121,7 @@ pub async fn refresh_dao_jwt(
         .send()
         .await
         .map_err(|e| {
-            log::error!("Error refreshing JWT for DAO {}: {}", dao_id, e);
+            tracing::error!("Error refreshing JWT for DAO {}: {}", dao_id, e);
             (
                 StatusCode::BAD_GATEWAY,
                 format!("Failed to refresh JWT: {}", e),
@@ -131,7 +131,7 @@ pub async fn refresh_dao_jwt(
     let status = response.status();
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_default();
-        log::error!(
+        tracing::error!(
             "JWT refresh failed for DAO {} ({}): {}",
             dao_id,
             status,
@@ -175,13 +175,13 @@ pub async fn refresh_dao_jwt(
     .execute(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Failed to update JWT for DAO {}: {}", dao_id, e);
+        tracing::error!("Failed to update JWT for DAO {}: {}", dao_id, e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to update JWT tokens: {}", e),
         )
     })?;
 
-    log::info!("Refreshed confidential JWT for DAO {}", dao_id);
+    tracing::info!("Refreshed confidential JWT for DAO {}", dao_id);
     Ok(auth_response.access_token)
 }

@@ -27,11 +27,7 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
     let account_ref = match AccountIdRef::new(dao_id) {
         Ok(account_ref) => account_ref,
         Err(e) => {
-            log::warn!(
-                "[confidential-balance-snapshot] invalid account {}: {}",
-                dao_id,
-                e
-            );
+            tracing::warn!("invalid account {}: {}", dao_id, e);
             return;
         }
     };
@@ -39,12 +35,7 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
     let live_balances = match fetch_confidential_balances(state, account_ref).await {
         Ok(balances) => balances,
         Err((status, message)) => {
-            log::warn!(
-                "[confidential-balance-snapshot] fetch failed for {} ({}): {}",
-                dao_id,
-                status,
-                message
-            );
+            tracing::warn!("fetch failed for {} ({}): {}", dao_id, status, message);
             return;
         }
     };
@@ -52,11 +43,7 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
     let prior_balances = match load_latest_balances_per_asset(&state.db_pool, dao_id).await {
         Ok(map) => map,
         Err(e) => {
-            log::warn!(
-                "[confidential-balance-snapshot] prior snapshot load failed for {}: {}",
-                dao_id,
-                e
-            );
+            tracing::warn!("prior snapshot load failed for {}: {}", dao_id, e);
             return;
         }
     };
@@ -70,8 +57,8 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
         let raw_balance = match BigDecimal::from_str(&raw_available) {
             Ok(value) => value,
             Err(e) => {
-                log::warn!(
-                    "[confidential-balance-snapshot] {} {} unparseable raw balance '{}': {}",
+                tracing::warn!(
+                    "{} {} unparseable raw balance '{}': {}",
                     dao_id,
                     asset,
                     raw_available,
@@ -82,11 +69,7 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
         };
 
         let Some(token_info) = defuse_map.get(&asset) else {
-            log::warn!(
-                "[confidential-balance-snapshot] {} unknown defuse asset {}, skipping",
-                dao_id,
-                asset
-            );
+            tracing::warn!("{} unknown defuse asset {}, skipping", dao_id, asset);
             continue;
         };
         let scale = (0..token_info.decimals).fold(BigDecimal::from(1u32), |acc, _| {
@@ -117,26 +100,13 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
     }
 
     if rows.is_empty() {
-        log::debug!(
-            "[confidential-balance-snapshot] {} no rows to write at {}",
-            dao_id,
-            snapshot_at
-        );
+        tracing::debug!("{} no rows to write at {}", dao_id, snapshot_at);
         return;
     }
 
     match insert_snapshot_rows(&state.db_pool, dao_id, snapshot_at, &rows).await {
-        Ok(inserted) => log::info!(
-            "[confidential-balance-snapshot] {} wrote {} rows at {}",
-            dao_id,
-            inserted,
-            snapshot_at
-        ),
-        Err(e) => log::warn!(
-            "[confidential-balance-snapshot] {} insert failed: {}",
-            dao_id,
-            e
-        ),
+        Ok(inserted) => tracing::info!("{} wrote {} rows at {}", dao_id, inserted, snapshot_at),
+        Err(e) => tracing::warn!("{} insert failed: {}", dao_id, e),
     }
 }
 
@@ -146,18 +116,15 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
     let dao_ids = match load_confidential_history_accounts(&state.db_pool).await {
         Ok(ids) => ids,
         Err(e) => {
-            log::error!(
-                "[confidential-balance-snapshot-cron] account load failed: {}",
-                e
-            );
+            tracing::error!("account load failed: {}", e);
             return;
         }
     };
 
     let accounts_seen = dao_ids.len();
     if accounts_seen > 0 {
-        log::info!(
-            "[confidential-balance-snapshot-cron] processing {} accounts with {} workers",
+        tracing::info!(
+            "processing {} accounts with {} workers",
             accounts_seen,
             CONFIDENTIAL_BALANCE_SNAPSHOT_WORKERS
         );
@@ -172,20 +139,12 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
             async move {
                 match latest_snapshot_at(&state.db_pool, &dao_id).await {
                     Ok(Some(latest)) if latest > dedup_cutoff => {
-                        log::debug!(
-                            "[confidential-balance-snapshot-cron] {} skipped, recent snapshot at {}",
-                            dao_id,
-                            latest
-                        );
+                        tracing::debug!("{} skipped, recent snapshot at {}", dao_id, latest);
                         return;
                     }
                     Ok(_) => {}
                     Err(e) => {
-                        log::warn!(
-                            "[confidential-balance-snapshot-cron] latest_snapshot_at failed for {}: {}",
-                            dao_id,
-                            e
-                        );
+                        tracing::warn!("latest_snapshot_at failed for {}: {}", dao_id, e);
                         return;
                     }
                 }
@@ -199,7 +158,7 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
 /// Background worker: periodically ticks the confidential balance snapshot cron.
 pub fn spawn_confidential_snapshot_worker(state: Arc<AppState>) {
     tokio::spawn(async move {
-        log::info!(
+        tracing::info!(
             "Starting confidential balance snapshot cron ({:?} tick)",
             HOURLY_SNAPSHOT_CRON_TICK
         );

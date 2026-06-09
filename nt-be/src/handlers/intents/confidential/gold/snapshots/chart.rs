@@ -132,11 +132,7 @@ async fn enrich_with_prices<P: crate::services::PriceProvider>(
         let prices = match price_service.get_prices_batch(asset, &dates).await {
             Ok(p) => p,
             Err(e) => {
-                log::warn!(
-                    "[confidential-balance-chart] price lookup failed for {}: {}",
-                    asset,
-                    e
-                );
+                tracing::warn!("price lookup failed for {}: {}", asset, e);
                 continue;
             }
         };

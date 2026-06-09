@@ -102,10 +102,10 @@ async fn async_main() {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(45u64);
 
-            log::info!(
-                "Starting confidential poll worker ({}s interval, {}s initial delay)",
-                interval_secs,
-                initial_delay
+            tracing::info!(
+                interval_secs = interval_secs,
+                initial_delay_secs = initial_delay,
+                "Starting confidential poll worker"
             );
 
             tokio::time::sleep(Duration::from_secs(initial_delay)).await;
@@ -113,7 +113,7 @@ async fn async_main() {
             loop {
                 timer.tick().await;
                 if let Err(e) = run_confidential_poll_cycle(&state_clone).await {
-                    log::error!("[confidential-poll] cycle failed: {}", e);
+                    tracing::error!(error = %e, "confidential poll cycle failed");
                 }
             }
         });

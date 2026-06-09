@@ -164,8 +164,8 @@ pub async fn upsert_history_events(
             result.links_created += 1;
             result.earliest_changed_at =
                 min_datetime(result.earliest_changed_at, Some(created_at_external));
-            log::info!(
-                "[confidential-history] linked history_event_id={} to confidential_intent_id={}",
+            tracing::info!(
+                "linked history_event_id={} to confidential_intent_id={}",
                 history_event_id,
                 intent_id
             );

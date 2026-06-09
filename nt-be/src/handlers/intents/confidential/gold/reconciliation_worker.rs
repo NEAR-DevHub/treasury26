@@ -14,7 +14,7 @@ pub const CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL: Duration = Duration::from_s
 /// Background worker: runs gold reconciliation once at startup, then daily.
 pub fn spawn_confidential_gold_reconciliation_worker(pool: PgPool) {
     tokio::spawn(async move {
-        log::info!(
+        tracing::info!(
             "Starting confidential gold reconciliation ({:?} interval, {} workers)",
             CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL,
             CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS
@@ -34,22 +34,18 @@ pub fn spawn_confidential_gold_reconciliation_worker(pool: PgPool) {
 
 async fn run_reconciliation_pass(pool: &PgPool, phase: &str) {
     match mark_backfilled_confidential_daos_gold_dirty(pool).await {
-        Ok(rows) => log::info!(
-            "[confidential-gold] {} reconciliation marked {} backfilled cursor rows dirty",
+        Ok(rows) => tracing::info!(
+            "{} reconciliation marked {} backfilled cursor rows dirty",
             phase,
             rows
         ),
-        Err(e) => log::error!(
-            "[confidential-gold] {} reconciliation mark-dirty failed: {}",
-            phase,
-            e
-        ),
+        Err(e) => tracing::error!("{} reconciliation mark-dirty failed: {}", phase, e),
     }
     match project_confidential_gold_for_dirty_daos(pool, CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS)
         .await
     {
-        Ok(stats) if stats.accounts_seen > 0 => log::info!(
-            "[confidential-gold] {} reconciliation seen={} projected={} locked={} failed={} rows={} deleted={} errors={}",
+        Ok(stats) if stats.accounts_seen > 0 => tracing::info!(
+            "{} reconciliation seen={} projected={} locked={} failed={} rows={} deleted={} errors={}",
             phase,
             stats.accounts_seen,
             stats.accounts_projected,
@@ -60,10 +56,6 @@ async fn run_reconciliation_pass(pool: &PgPool, phase: &str) {
             stats.errors_written
         ),
         Ok(_) => {}
-        Err(e) => log::error!(
-            "[confidential-gold] {} reconciliation projection failed: {}",
-            phase,
-            e
-        ),
+        Err(e) => tracing::error!("{} reconciliation projection failed: {}", phase, e),
     }
 }

@@ -101,11 +101,7 @@ pub async fn fetch_history_with_token(
     }
 
     let resp = req.send().await.map_err(|e| {
-        log::error!(
-            "[confidential-history] {} request failed: {}",
-            account_id,
-            e
-        );
+        tracing::error!("{} request failed: {}", account_id, e);
         (
             StatusCode::BAD_GATEWAY,
             format!("history fetch failed: {}", e),
@@ -115,12 +111,7 @@ pub async fn fetch_history_with_token(
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
-        log::error!(
-            "[confidential-history] {} API returned {}: {}",
-            account_id,
-            status,
-            body
-        );
+        tracing::error!("{} API returned {}: {}", account_id, status, body);
         return Err((
             StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
             format!("history API error ({}): {}", status, body),
@@ -135,7 +126,7 @@ pub async fn fetch_history_with_token(
     })?;
 
     let parsed = parse_history_page(&body_text).map_err(|e| {
-        log::error!("[confidential-history] {} parse failed: {}", account_id, e);
+        tracing::error!("{} parse failed: {}", account_id, e);
         (
             StatusCode::BAD_GATEWAY,
             format!("history parse failed: {}", e),

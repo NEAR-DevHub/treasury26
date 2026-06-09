@@ -75,7 +75,7 @@ pub async fn generate_intent(
             )
         })?;
 
-    log::info!(
+    tracing::info!(
         "generate_intent called: type={}, signerId={}",
         request.r#type,
         request.signer_id
@@ -101,7 +101,7 @@ pub async fn generate_intent(
         req = req.header("x-api-key", api_key);
     }
     let response = req.json(&body).send().await.map_err(|e| {
-        log::error!("Error calling 1Click generate-intent API: {}", e);
+        tracing::error!("Error calling 1Click generate-intent API: {}", e);
         (
             StatusCode::BAD_GATEWAY,
             format!("Failed to generate intent: {}", e),
@@ -158,7 +158,7 @@ pub async fn generate_intent(
         )
         .await
         {
-            log::warn!("Failed to store pending intent for {}: {}", dao_id, e);
+            tracing::warn!("Failed to store pending intent for {}: {}", dao_id, e);
         }
 
         // Include the payload hash in the response so the frontend can use it

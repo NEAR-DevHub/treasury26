@@ -161,8 +161,8 @@ pub async fn mark_confidential_intent_submitted(
     if let Some(history_event_id) =
         link_intent_to_history_event(app_pool, dao_id, payload_hash).await?
     {
-        log::info!(
-            "[goldsky-enrichment] linked submitted intent {}/{} to history_event_id={}",
+        tracing::info!(
+            "linked submitted intent {}/{} to history_event_id={}",
             dao_id,
             payload_hash,
             history_event_id
@@ -206,8 +206,8 @@ pub async fn handle_confidential_outgoing(
     .await?;
 
     let Some(row) = row else {
-        log::warn!(
-            "[goldsky-enrichment] No confidential_intents row for dao={} payload_hash={}",
+        tracing::warn!(
+            "No confidential_intents row for dao={} payload_hash={}",
             dao_id,
             payload_hash
         );
@@ -215,8 +215,8 @@ pub async fn handle_confidential_outgoing(
     };
 
     let Some(quote_metadata) = row.quote_metadata else {
-        log::warn!(
-            "[goldsky-enrichment] confidential_intents for dao={} payload_hash={} has no quote_metadata",
+        tracing::warn!(
+            "confidential_intents for dao={} payload_hash={} has no quote_metadata",
             dao_id,
             payload_hash
         );
@@ -245,8 +245,8 @@ pub async fn handle_confidential_outgoing(
         .and_then(|v| v.as_str())
         .map(bare_account);
     let (Some(origin_raw), Some(amount_in_raw)) = (origin_raw, amount_in_raw) else {
-        log::warn!(
-            "[goldsky-enrichment] quote_metadata for dao={} payload_hash={} missing originAsset or amountIn",
+        tracing::warn!(
+            "quote_metadata for dao={} payload_hash={} missing originAsset or amountIn",
             dao_id,
             payload_hash
         );
@@ -337,8 +337,8 @@ pub async fn handle_confidential_outgoing(
     .fetch_one(app_pool)
     .await?;
 
-    log::info!(
-        "[goldsky-enrichment] Confidential outgoing leg for {}/{} amount=-{} (payload_hash={})",
+    tracing::info!(
+        "Confidential outgoing leg for {}/{} amount=-{} (payload_hash={})",
         dao_id,
         storage_token_id,
         amount_in,
@@ -357,8 +357,8 @@ pub async fn handle_confidential_outgoing(
             Some(raw) => match ensure_ft_metadata(app_pool, network, &received_storage_id).await {
                 Ok(decimals) => convert_raw_to_decimal(raw, decimals).ok(),
                 Err(e) => {
-                    log::warn!(
-                        "[goldsky-enrichment] ensure_ft_metadata({}) failed: {} — seeding detected_swaps without received_amount",
+                    tracing::warn!(
+                        "ensure_ft_metadata({}) failed: {} — seeding detected_swaps without received_amount",
                         received_storage_id,
                         e
                     );
@@ -406,8 +406,8 @@ pub async fn handle_confidential_outgoing(
         .execute(app_pool)
         .await
         {
-            log::warn!(
-                "[goldsky-enrichment] pre-seed detected_swaps failed for dao={} payload_hash={}: {}",
+            tracing::warn!(
+                "pre-seed detected_swaps failed for dao={} payload_hash={}: {}",
                 dao_id,
                 payload_hash,
                 e

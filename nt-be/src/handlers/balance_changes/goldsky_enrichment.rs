@@ -112,8 +112,8 @@ async fn get_cursor(
 
             match latest {
                 Some((id, block)) => {
-                    log::info!(
-                        "[goldsky-enrichment] No cursor found, seeding from latest block {} in Goldsky sink",
+                    tracing::info!(
+                        "No cursor found, seeding from latest block {} in Goldsky sink",
                         block
                     );
                     update_cursor(app_pool, consumer_name, &id, block).await?;
@@ -253,10 +253,7 @@ fn parse_log_events(logs: &str, executor_id: &str) -> Vec<ParsedEvent> {
                         events.extend(parse_nep245_event(&event, executor_id));
                     }
                     _ => {
-                        log::debug!(
-                            "[goldsky-enrichment] Unknown event standard: {}",
-                            event.standard
-                        );
+                        tracing::debug!("Unknown event standard: {}", event.standard);
                     }
                 }
             }
@@ -612,8 +609,8 @@ async fn update_confidential_intent_proposal(
         if let Some(history_event_id) =
             link_intent_to_history_event(app_pool, dao_id, payload_hash).await?
         {
-            log::info!(
-                "[goldsky-enrichment] linked proposal intent {}/{} to history_event_id={}",
+            tracing::info!(
+                "linked proposal intent {}/{} to history_event_id={}",
                 dao_id,
                 payload_hash,
                 history_event_id
@@ -636,8 +633,8 @@ async fn handle_confidential_add_proposal(
     let dao_account: near_api::AccountId = match dao_id.parse() {
         Ok(account) => account,
         Err(e) => {
-            log::warn!(
-                "[goldsky-enrichment] invalid DAO account id for proposal lookup {}: {}",
+            tracing::warn!(
+                "invalid DAO account id for proposal lookup {}: {}",
                 dao_id,
                 e
             );
@@ -648,8 +645,8 @@ async fn handle_confidential_add_proposal(
     let proposal = match fetch_proposal(network, &dao_account, proposal_id).await {
         Ok(proposal) => proposal,
         Err(e) => {
-            log::warn!(
-                "[goldsky-enrichment] failed to fetch proposal {}/{}: {:?}",
+            tracing::warn!(
+                "failed to fetch proposal {}/{}: {:?}",
                 dao_id,
                 proposal_id,
                 e
@@ -672,8 +669,8 @@ async fn handle_confidential_add_proposal(
     .await?;
 
     if updated {
-        log::info!(
-            "[goldsky-enrichment] linked confidential proposal {}/{} to payload_hash={}",
+        tracing::info!(
+            "linked confidential proposal {}/{} to payload_hash={}",
             dao_id,
             proposal_id,
             payload_hash
@@ -696,11 +693,7 @@ async fn mark_confidential_history_due_for_execution(
     };
 
     if let Err(e) = mark_confidential_history_activity_due(&state.db_pool, dao_id).await {
-        log::warn!(
-            "[goldsky-enrichment] cannot mark confidential history due for {}: {}",
-            dao_id,
-            e
-        );
+        tracing::warn!("cannot mark confidential history due for {}: {}", dao_id, e);
     }
 
     let Some(recipient) = recipient else {
@@ -712,8 +705,8 @@ async fn mark_confidential_history_due_for_execution(
     if matches!(monitored.get(recipient), Some(true))
         && let Err(e) = mark_confidential_history_activity_due(&state.db_pool, recipient).await
     {
-        log::warn!(
-            "[goldsky-enrichment] cannot mark confidential history due for {}: {}",
+        tracing::warn!(
+            "cannot mark confidential history due for {}: {}",
             recipient,
             e
         );
@@ -761,8 +754,8 @@ pub async fn run_enrichment_cycle(
     }
 
     let batch_size = outcomes.len();
-    log::info!(
-        "[goldsky-enrichment] Processing batch of {} outcomes (cursor: block={}, id={})",
+    tracing::info!(
+        "Processing batch of {} outcomes (cursor: block={}, id={})",
         batch_size,
         cursor.last_processed_block,
         if cursor.last_processed_id.is_empty() {
@@ -810,8 +803,8 @@ pub async fn run_enrichment_cycle(
                 Ok(true) => {}
                 Ok(false) => {}
                 Err(e) => {
-                    log::error!(
-                        "[goldsky-enrichment] confidential proposal linkage failed for {}/{}: {}",
+                    tracing::error!(
+                        "confidential proposal linkage failed for {}/{}: {}",
                         dao_id,
                         proposal_id,
                         e
@@ -843,8 +836,8 @@ pub async fn run_enrichment_cycle(
                 {
                     Ok(info) => info,
                     Err(e) => {
-                        log::error!(
-                            "[goldsky-enrichment] failed to mark confidential intent submitted for {}: {}",
+                        tracing::error!(
+                            "failed to mark confidential intent submitted for {}: {}",
                             call.dao_id,
                             e
                         );
@@ -870,11 +863,7 @@ pub async fn run_enrichment_cycle(
                 }
                 Ok(false) => {}
                 Err(e) => {
-                    log::error!(
-                        "[goldsky-enrichment] confidential outgoing failed for {}: {}",
-                        call.dao_id,
-                        e
-                    );
+                    tracing::error!("confidential outgoing failed for {}: {}", call.dao_id, e);
                 }
             }
             mark_confidential_history_due_for_execution(
@@ -927,8 +916,8 @@ pub async fn run_enrichment_cycle(
                 .await
                 {
                     Ok((block, action_info)) => {
-                        log::debug!(
-                            "[goldsky-enrichment] receipt {} → block {:?} (trigger was {})",
+                        tracing::debug!(
+                            "receipt {} → block {:?} (trigger was {})",
                             outcome.id,
                             block,
                             block_height,
@@ -936,8 +925,8 @@ pub async fn run_enrichment_cycle(
                         (block, action_info)
                     }
                     Err(e) => {
-                        log::warn!(
-                            "[goldsky-enrichment] Failed to resolve receipt {}: {} — using trigger block",
+                        tracing::warn!(
+                            "Failed to resolve receipt {}: {} — using trigger block",
                             outcome.id,
                             e,
                         );
@@ -953,10 +942,7 @@ pub async fn run_enrichment_cycle(
 
         for event in &events {
             if !monitored.contains_key(&event.account_id) {
-                log::warn!(
-                    "[goldsky-enrichment] Unmonitored account {}",
-                    event.account_id
-                );
+                tracing::warn!("Unmonitored account {}", event.account_id);
             }
 
             // Ensure FT metadata is cached (needed for decimal conversion in RPC balance queries)
@@ -965,8 +951,8 @@ pub async fn run_enrichment_cycle(
                 && !event.token_id.contains(':')
                 && let Err(e) = ensure_ft_metadata(app_pool, network, &event.token_id).await
             {
-                log::warn!(
-                    "[goldsky-enrichment] Failed to ensure FT metadata for {}: {} — skipping",
+                tracing::warn!(
+                    "Failed to ensure FT metadata for {}: {} — skipping",
                     event.token_id,
                     e
                 );
@@ -986,8 +972,8 @@ pub async fn run_enrichment_cycle(
             {
                 Ok((bb, ba)) => (check_block, bb, ba),
                 Err(e) => {
-                    log::warn!(
-                        "[goldsky-enrichment] RPC error for {}/{} at block {}: {} — skipping",
+                    tracing::warn!(
+                        "RPC error for {}/{} at block {}: {} — skipping",
                         event.account_id,
                         event.token_id,
                         check_block,
@@ -1068,8 +1054,8 @@ pub async fn run_enrichment_cycle(
             .await
             {
                 Ok(_) => {
-                    log::info!(
-                        "[goldsky-enrichment] Upserted {}/{} at block {} amount={}",
+                    tracing::info!(
+                        "Upserted {}/{} at block {} amount={}",
                         event.account_id,
                         event.token_id,
                         actual_block,
@@ -1080,8 +1066,8 @@ pub async fn run_enrichment_cycle(
                         swap_candidate_accounts.insert(event.account_id.clone());
                     }
                 }
-                Err(e) => log::error!(
-                    "[goldsky-enrichment] Failed to upsert {}/{} at block {}: {}",
+                Err(e) => tracing::error!(
+                    "Failed to upsert {}/{} at block {}: {}",
                     event.account_id,
                     event.token_id,
                     block_height,
@@ -1123,27 +1109,15 @@ pub async fn run_enrichment_cycle(
         {
             Ok(swaps) if !swaps.is_empty() => match store_detected_swaps(app_pool, &swaps).await {
                 Ok(inserted) if inserted > 0 => {
-                    log::info!(
-                        "[goldsky-enrichment] Detected and stored {} swaps for {}",
-                        inserted,
-                        account_id
-                    );
+                    tracing::info!("Detected and stored {} swaps for {}", inserted, account_id);
                 }
                 Err(e) => {
-                    log::error!(
-                        "[goldsky-enrichment] Error storing swaps for {}: {}",
-                        account_id,
-                        e
-                    );
+                    tracing::error!("Error storing swaps for {}: {}", account_id, e);
                 }
                 _ => {}
             },
             Err(e) => {
-                log::error!(
-                    "[goldsky-enrichment] Error detecting swaps for {}: {}",
-                    account_id,
-                    e
-                );
+                tracing::error!("Error detecting swaps for {}: {}", account_id, e);
             }
             _ => {}
         }
@@ -1151,15 +1125,15 @@ pub async fn run_enrichment_cycle(
         // Classify DAO proposal-based swap deposits
         match classify_proposal_swap_deposits(app_pool, network, account_id).await {
             Ok(count) if count > 0 => {
-                log::info!(
-                    "[goldsky-enrichment] Classified {} proposal swap deposits for {}",
+                tracing::info!(
+                    "Classified {} proposal swap deposits for {}",
                     count,
                     account_id
                 );
             }
             Err(e) => {
-                log::warn!(
-                    "[goldsky-enrichment] Error classifying proposal swap deposits for {}: {}",
+                tracing::warn!(
+                    "Error classifying proposal swap deposits for {}: {}",
                     account_id,
                     e
                 );
@@ -1168,8 +1142,8 @@ pub async fn run_enrichment_cycle(
         }
     }
 
-    log::info!(
-        "[goldsky-enrichment] Batch complete: {} outcomes, cursor now at block={}, id={}",
+    tracing::info!(
+        "Batch complete: {} outcomes, cursor now at block={}, id={}",
         batch_size,
         last_processed_block,
         last_processed_id,
@@ -1184,7 +1158,7 @@ pub async fn run_enrichment_cycle(
 /// configured (logs once and returns).
 pub fn spawn_goldsky_enrichment_worker(state: std::sync::Arc<AppState>) {
     let Some(goldsky_pool) = state.goldsky_pool.clone() else {
-        log::info!("Goldsky enrichment worker disabled (GOLDSKY_DATABASE_URL not set)");
+        tracing::info!("Goldsky enrichment worker disabled (GOLDSKY_DATABASE_URL not set)");
         return;
     };
 
@@ -1198,7 +1172,7 @@ pub fn spawn_goldsky_enrichment_worker(state: std::sync::Arc<AppState>) {
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(15u64);
-        log::info!(
+        tracing::info!(
             "Starting Goldsky enrichment worker ({}s interval, {}s initial delay)",
             enrichment_interval,
             enrichment_initial_delay
@@ -1224,15 +1198,12 @@ pub fn spawn_goldsky_enrichment_worker(state: std::sync::Arc<AppState>) {
             {
                 Ok(processed) => {
                     if processed > 0 {
-                        log::info!(
-                            "[goldsky-enrichment] Processed {} outcomes this cycle",
-                            processed
-                        );
+                        tracing::info!("Processed {} outcomes this cycle", processed);
                     }
                     processed < BATCH_SIZE
                 }
                 Err(e) => {
-                    log::error!("[goldsky-enrichment] Enrichment cycle failed: {}", e);
+                    tracing::error!("Enrichment cycle failed: {}", e);
                     true
                 }
             };

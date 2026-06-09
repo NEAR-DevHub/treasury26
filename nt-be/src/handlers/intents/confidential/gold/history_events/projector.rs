@@ -143,8 +143,8 @@ pub async fn project_confidential_gold_for_dirty_daos(
                 stats.rows_projected += dao_stats.rows_projected;
                 stats.rows_deleted += dao_stats.rows_deleted;
                 stats.errors_written += dao_stats.errors_written;
-                log::info!(
-                    "[confidential-gold] projected dao={} dirty_since={} recompute_from={:?} rows={} deleted={} errors={}",
+                tracing::info!(
+                    "projected dao={} dirty_since={} recompute_from={:?} rows={} deleted={} errors={}",
                     dao_id,
                     dirty_since,
                     recompute_from,
@@ -155,8 +155,8 @@ pub async fn project_confidential_gold_for_dirty_daos(
             }
             Err(e) => {
                 stats.accounts_failed += 1;
-                log::warn!(
-                    "[confidential-gold] projection failed for dao={} dirty_since={} recompute_from={:?}: {}",
+                tracing::warn!(
+                    "projection failed for dao={} dirty_since={} recompute_from={:?}: {}",
                     dao_id,
                     dirty_since,
                     recompute_from,

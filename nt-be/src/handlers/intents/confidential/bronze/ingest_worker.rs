@@ -45,7 +45,13 @@ fn internal_err(
     account_id: &str,
     e: impl std::fmt::Display,
 ) -> (StatusCode, String) {
-    log::error!("[{}] {} {} failed: {}", log_tag, account_id, op, e);
+    tracing::error!(
+        log_tag = log_tag,
+        account_id = account_id,
+        op = op,
+        error = %e,
+        "confidential history operation failed"
+    );
     (
         StatusCode::INTERNAL_SERVER_ERROR,
         format!("{} failed: {}", op, e),
@@ -150,11 +156,7 @@ pub async fn poll_confidential_history_once(
     account_id: &AccountIdRef,
     limit: u32,
 ) -> HandlerResult<HistoryPollResult> {
-    log::debug!(
-        "[confidential-history] {} latest page poll limit={}",
-        account_id,
-        limit
-    );
+    tracing::debug!("{} latest page poll limit={}", account_id, limit);
 
     let page = fetch_history(state, account_id, limit, None, None).await?;
 
@@ -341,8 +343,8 @@ pub async fn backfill_confidential_history(
         }
     }
 
-    log::warn!(
-        "[confidential-history-backfill] {} drain loop hit cap of {} pages without completion",
+    tracing::warn!(
+        "{} drain loop hit cap of {} pages without completion",
         account_id,
         MAX_BACKFILL_DRAIN_PAGES
     );
@@ -373,29 +375,21 @@ pub async fn trigger_confidential_history_refresh(state: &AppState, account_id: 
     let account_ref = match AccountIdRef::new(account_id) {
         Ok(account_ref) => account_ref,
         Err(e) => {
-            log::warn!(
-                "[confidential-history-trigger] cannot refresh invalid account {}: {}",
-                account_id,
-                e
-            );
+            tracing::warn!("cannot refresh invalid account {}: {}", account_id, e);
             return;
         }
     };
 
     if let Err(e) = mark_confidential_history_activity_due(&state.db_pool, account_id).await {
-        log::warn!(
-            "[confidential-history-trigger] cannot mark activity due for {}: {}",
-            account_id,
-            e
-        );
+        tracing::warn!("cannot mark activity due for {}: {}", account_id, e);
     }
 
     match run_account_history_full_drain(state, account_ref, CONFIDENTIAL_HISTORY_TRIGGER_LIMIT)
         .await
     {
         Ok(result) => {
-            log::info!(
-                "[confidential-history-trigger] {} forward_items={} backfill_items={}",
+            tracing::info!(
+                "{} forward_items={} backfill_items={}",
                 account_id,
                 result.forward_items(),
                 result.backfill_items()
@@ -408,8 +402,8 @@ pub async fn trigger_confidential_history_refresh(state: &AppState, account_id: 
                     } else {
                         ""
                     };
-                    log::info!(
-                        "[confidential-history-trigger] gold projection {}dao={} rows={} deleted={} errors={}",
+                    tracing::info!(
+                        "gold projection {}dao={} rows={} deleted={} errors={}",
                         prefix,
                         account_id,
                         stats.rows_projected,
@@ -418,19 +412,15 @@ pub async fn trigger_confidential_history_refresh(state: &AppState, account_id: 
                     );
                 }
                 Err(e) => {
-                    log::warn!(
-                        "[confidential-history-trigger] gold projection failed for {}: {}",
-                        account_id,
-                        e
-                    );
+                    tracing::warn!("gold projection failed for {}: {}", account_id, e);
                 }
             }
 
             snapshot_confidential_dao_balances(state, account_id).await;
         }
         Err((status, message)) => {
-            log::warn!(
-                "[confidential-history-trigger] refresh failed for {} ({}): {}",
+            tracing::warn!(
+                "refresh failed for {} ({}): {}",
                 account_id,
                 status,
                 message
@@ -448,7 +438,7 @@ async fn process_confidential_history_account(
         Ok(account_ref) => account_ref,
         Err(e) => {
             let error = format!("invalid account id: {}", e);
-            log::warn!("[confidential-history-cycle] {}: {}", account_id, error);
+            tracing::warn!("{}: {}", account_id, error);
             return HistoryCycleAccountResult::failed(account_id, error);
         }
     };
@@ -457,7 +447,7 @@ async fn process_confidential_history_account(
         Ok(forward) => forward,
         Err((status, message)) => {
             let error = format!("forward poll failed ({}): {}", status, message);
-            log::warn!("[confidential-history-cycle] {}: {}", account_id, error);
+            tracing::warn!("{}: {}", account_id, error);
             return HistoryCycleAccountResult::failed(account_id, error);
         }
     };
@@ -472,7 +462,7 @@ async fn process_confidential_history_account(
             Ok(backfill) => backfill,
             Err((status, message)) => {
                 let error = format!("backfill failed ({}): {}", status, message);
-                log::warn!("[confidential-history-cycle] {}: {}", account_id, error);
+                tracing::warn!("{}: {}", account_id, error);
                 return HistoryCycleAccountResult::failed_after_forward(account_id, forward, error);
             }
         };
@@ -532,10 +522,7 @@ pub async fn tick_confidential_history_scheduler(
     )
     .await
     .map_err(|e| {
-        log::error!(
-            "[confidential-history-cycle] due account load failed: {}",
-            e
-        );
+        tracing::error!("due account load failed: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("due history account load failed: {}", e),
@@ -545,8 +532,8 @@ pub async fn tick_confidential_history_scheduler(
     let accounts_seen = account_ids.len();
     let worker_limit = confidential_history_account_workers();
     if accounts_seen > 0 {
-        log::info!(
-            "[confidential-history-cycle] processing {} due accounts with {} workers",
+        tracing::info!(
+            "processing {} due accounts with {} workers",
             accounts_seen,
             worker_limit
         );
@@ -571,8 +558,8 @@ pub async fn tick_confidential_history_scheduler(
     .await
     {
         Ok(stats) if stats.accounts_seen > 0 => {
-            log::info!(
-                "[confidential-history-cycle] gold projection seen={} projected={} locked={} failed={} rows={} deleted={} errors={}",
+            tracing::info!(
+                "gold projection seen={} projected={} locked={} failed={} rows={} deleted={} errors={}",
                 stats.accounts_seen,
                 stats.accounts_projected,
                 stats.accounts_skipped_locked,
@@ -584,10 +571,7 @@ pub async fn tick_confidential_history_scheduler(
         }
         Ok(_) => {}
         Err(e) => {
-            log::error!(
-                "[confidential-history-cycle] gold projection failed after Bronze cycle: {}",
-                e
-            );
+            tracing::error!("gold projection failed after Bronze cycle: {}", e);
         }
     }
 
@@ -606,7 +590,7 @@ impl BronzeIngestWorker {
 /// Background worker: periodically ticks the confidential history scheduler.
 pub fn spawn_confidential_history_worker(state: Arc<AppState>) {
     tokio::spawn(async move {
-        log::info!(
+        tracing::info!(
             "Starting confidential history worker ({:?} scheduler tick)",
             CONFIDENTIAL_HISTORY_SCHEDULER_TICK
         );
@@ -618,8 +602,8 @@ pub fn spawn_confidential_history_worker(state: Arc<AppState>) {
             let started_at = Instant::now();
             match tick_confidential_history_scheduler(&state, 100).await {
                 Ok(result) => {
-                    log::info!(
-                        "[confidential-history-poll] cycle finished in {:.2}s accounts_seen={} processed={} failed={}",
+                    tracing::info!(
+                        "cycle finished in {:.2}s accounts_seen={} processed={} failed={}",
                         started_at.elapsed().as_secs_f64(),
                         result.accounts_seen,
                         result.accounts_processed,
@@ -627,8 +611,8 @@ pub fn spawn_confidential_history_worker(state: Arc<AppState>) {
                     );
                 }
                 Err(e) => {
-                    log::error!(
-                        "[confidential-history-poll] cycle failed in {:.2}s: {}",
+                    tracing::error!(
+                        "cycle failed in {:.2}s: {}",
                         started_at.elapsed().as_secs_f64(),
                         e.1
                     );

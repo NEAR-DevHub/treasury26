@@ -48,7 +48,7 @@ pub async fn fetch_confidential_balances(
     }
 
     let response = req.send().await.map_err(|e| {
-        log::error!("Error fetching confidential balances for {}: {}", dao_id, e);
+        tracing::error!("Error fetching confidential balances for {}: {}", dao_id, e);
         (
             StatusCode::BAD_GATEWAY,
             format!("Failed to fetch confidential balances: {}", e),
@@ -58,7 +58,7 @@ pub async fn fetch_confidential_balances(
     let status = response.status();
     if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
-        log::error!("1Click API returned {} for {}: {}", status, dao_id, body);
+        tracing::error!("1Click API returned {} for {}: {}", status, dao_id, body);
         return Err((
             StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
             format!("1Click API error: {}", body),
