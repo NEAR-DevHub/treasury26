@@ -534,10 +534,7 @@ export function CreateTreasuryEntry() {
                             type="button"
                             variant="unstyled"
                             className="h-auto p-0 underline"
-                            onClick={() => {
-                                setForceStayOnCreatePage(true);
-                                setShowLoginScreen(true);
-                            }}
+                            onClick={() => setShowLoginScreen(true)}
                         >
                             {t("signInLabel")}
                         </Button>
@@ -645,10 +642,7 @@ export function CreateTreasuryEntry() {
                         type="button"
                         variant="unstyled"
                         className="h-auto p-0 underline"
-                        onClick={() => {
-                            setForceStayOnCreatePage(true);
-                            setShowLoginScreen(true);
-                        }}
+                        onClick={() => setShowLoginScreen(true)}
                     >
                         {t("signInLabel")}
                     </Button>

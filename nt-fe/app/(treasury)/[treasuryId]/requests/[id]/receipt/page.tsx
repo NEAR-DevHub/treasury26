@@ -235,8 +235,7 @@ function ReceiptLayout({
 }: ReceiptLayoutProps) {
     const tReceipt = useTranslations("receiptPage");
     const tCommon = useTranslations("common");
-    const createTreasuryUrl =
-        typeof window !== "undefined" ? `${window.location.origin}/` : "/";
+    const createTreasuryUrl = "https://trezu.org/";
 
     return (
         <div className="space-y-6">
