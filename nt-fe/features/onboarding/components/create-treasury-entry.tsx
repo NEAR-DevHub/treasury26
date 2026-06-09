@@ -89,8 +89,7 @@ export function CreateTreasuryEntry() {
     const shouldKeepUserOnCreatePage =
         shouldStayOnCreatePage || forceStayOnCreatePage;
     const creationAvailable = creationStatus?.creationAvailable ?? true;
-    const showWaitlist =
-        !!accountId && !isLoading && !preferredTreasuryId && !creationAvailable;
+    const showWaitlist = !isLoading && !creationAvailable;
 
     useEffect(() => {
         if (shouldKeepUserOnCreatePage) return;

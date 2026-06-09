@@ -286,6 +286,23 @@ async fn run_creation(
         });
     }
 
+    // Temporary flow-testing mode:
+    // keep frontend progress/success behavior, but skip all real treasury creation side effects.
+
+    send_progress(&tx, "creating_dao", "in_progress").await;
+    send_progress(&tx, "creating_dao", "completed").await;
+    send_progress(&tx, "finalizing", "in_progress").await;
+    send_progress(&tx, "finalizing", "completed").await;
+    let _ = tx
+        .send(ProgressEvent {
+            step: "done",
+            status: "completed",
+            treasury: Some(treasury.to_string()),
+            message: None,
+        })
+        .await;
+    return Ok(());
+
     // ── Step 1: Create DAO ─────────────────────────────────────────────
     send_progress(&tx, "creating_dao", "in_progress").await;
 
