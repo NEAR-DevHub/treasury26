@@ -38,8 +38,16 @@ export function formatCurrency(
     value: number | Big,
     options: FormatCurrencyOptions = {},
 ) {
+    if (typeof value === "number" && !Number.isFinite(value)) {
+        return "$0.00";
+    }
+
     const bigValue = typeof value === "number" ? Big(value) : value;
     const numericValue = Number(bigValue.toString());
+    if (!Number.isFinite(numericValue)) {
+        return "$0.00";
+    }
+
     const absoluteValue = bigValue.abs();
     const { showSubCentAsLessThan = false, minimumFractionDigits = 2 } =
         options;
