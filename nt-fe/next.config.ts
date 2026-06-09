@@ -10,7 +10,6 @@ const nextConfig: NextConfig = {
     transpilePackages: ["@hot-labs/near-connect"],
     // Required to support PostHog trailing slash API requests
     skipTrailingSlashRedirect: true,
-    allowedDevOrigins: ["127.0.0.1", "localhost"],
     headers: async () => {
         return [
             // Allow CORS so NEAR Connect can load trezu-wallet.js
