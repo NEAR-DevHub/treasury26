@@ -389,11 +389,10 @@ test("Ledger login flow", async ({ page, context }) => {
     await page.waitForTimeout(1500); // Pause to show the initial page
 
     // Click Sign In from onboarding card footer (routes to /login?context=onboarding)
-    await page.getByRole("link", { name: /sign in/i }).click();
+    await page.getByRole("button", { name: /sign in/i }).click();
     await page.waitForTimeout(1000); // Pause to show the button
 
-    // Verify we are on the dedicated wallet connection page.
-    await expect(page).toHaveURL(/\/login\?context=onboarding$/);
+    await expect(page.getByText("Choose how to sign in")).toBeVisible();
     await page.waitForTimeout(1500); // Pause to show wallet connection page
 
     // Verify Ledger option is visible in available options and click it
@@ -451,13 +450,7 @@ test("Ledger login flow", async ({ page, context }) => {
 
     // Wait for login to complete
     await page.waitForTimeout(2000);
-
-    // Verify login succeeded - should redirect away from the login page
-    // to either /app/new (no treasury) or /{treasuryId} (has treasury in sandbox)
-    await expect(page).not.toHaveURL("/", {
-        timeout: 10000,
-    });
-    console.log("Login successful - redirected to:", page.url());
+    await expect(page.getByText("Choose how to sign in")).not.toBeVisible();
 
     // Pause at the end to clearly show the successful login result
     await page.waitForTimeout(3000);
