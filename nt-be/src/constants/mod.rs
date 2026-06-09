@@ -1,4 +1,5 @@
 use near_account_id::AccountIdRef;
+use near_api::NearToken;
 
 pub mod intents_chains;
 pub mod intents_tokens;
@@ -16,3 +17,6 @@ pub const BLOCKS_PER_HOUR: u64 = 300; // Approximate blocks per hour on NEAR
 
 pub const TREASURY_FACTORY_CONTRACT_ID: &AccountIdRef =
     AccountIdRef::new_or_panic("sputnik-dao.near");
+
+/// Minimum liquid NEAR the sponsor (`SIGNER_ID`) must hold for treasury creation and ops health.
+pub const LOW_BALANCE_THRESHOLD: NearToken = NearToken::from_near(5);
