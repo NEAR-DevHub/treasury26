@@ -6,9 +6,9 @@ use tokio::sync::RwLock;
 
 use crate::{AppState, constants::LOW_BALANCE_THRESHOLD, utils::telegram::TelegramClient};
 
-const ALERT_COOLDOWN: Duration = Duration::from_secs(60 * 60);
-const DEFAULT_POLL_INTERVAL_SECS: u64 = 60;
-const INITIAL_DELAY_SECS: u64 = 20;
+const ALERT_COOLDOWN: Duration = Duration::from_secs(3600);
+const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(60);
+const INITIAL_DELAY: Duration = Duration::from_secs(20);
 
 static LAST_ALERT_SENT_AT: LazyLock<RwLock<Option<Instant>>> = LazyLock::new(|| RwLock::new(None));
 
@@ -25,20 +25,10 @@ pub(crate) fn cooldown_allows_alert(last_sent: Option<Instant>, now: Instant) ->
     }
 }
 
-pub(crate) fn format_near_display(amount: NearToken) -> String {
-    const ONE_NEAR: u128 = 10u128.pow(24);
-    let yocto = amount.as_yoctonear();
-    let whole = yocto / ONE_NEAR;
-    let frac = (yocto % ONE_NEAR) * 10_000 / ONE_NEAR;
-    format!("{}.{:04}", whole, frac)
-}
-
 pub(crate) fn format_low_balance_message(account_id: &str, liquid: NearToken) -> String {
     format!(
-        "⚠️ Sponsor balance low\nAccount: {}\nLiquid: {} NEAR (threshold: {} NEAR)",
-        account_id,
-        format_near_display(liquid),
-        format_near_display(LOW_BALANCE_THRESHOLD),
+        "⚠️ Sponsor balance low\nAccount: {}\nLiquid: {} (threshold: {})",
+        account_id, liquid, LOW_BALANCE_THRESHOLD,
     )
 }
 
@@ -62,15 +52,14 @@ async fn run_monitor_cycle(
     state: &Arc<AppState>,
     telegram_client: &TelegramClient,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let liquid = fetch_sponsor_liquid_balance(state).await?;
-
-    if !is_balance_low(liquid) {
-        return Ok(());
-    }
-
     let now = Instant::now();
     let last_sent = *LAST_ALERT_SENT_AT.read().await;
     if !cooldown_allows_alert(last_sent, now) {
+        return Ok(());
+    }
+
+    let liquid = fetch_sponsor_liquid_balance(state).await?;
+    if !is_balance_low(liquid) {
         return Ok(());
     }
 
@@ -79,9 +68,9 @@ async fn run_monitor_cycle(
 
     *LAST_ALERT_SENT_AT.write().await = Some(now);
     log::warn!(
-        "[sponsor-alerts] Sent low-balance alert for {} (liquid: {} NEAR)",
+        "[sponsor-alerts] Sent low-balance alert for {} (liquid: {})",
         state.signer_id,
-        format_near_display(liquid),
+        liquid,
     );
 
     Ok(())
@@ -90,20 +79,21 @@ async fn run_monitor_cycle(
 /// Poll sponsor liquid balance and send Telegram ops alerts when below threshold.
 pub fn run_sponsor_balance_monitor_loop(state: Arc<AppState>, telegram_client: TelegramClient) {
     tokio::spawn(async move {
-        let interval_secs = std::env::var("SPONSOR_BALANCE_POLL_INTERVAL_SECONDS")
+        let poll_interval = std::env::var("SPONSOR_BALANCE_POLL_INTERVAL_SECONDS")
             .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(DEFAULT_POLL_INTERVAL_SECS);
+            .and_then(|s| s.parse::<u64>().ok())
+            .map(Duration::from_secs)
+            .unwrap_or(DEFAULT_POLL_INTERVAL);
 
         log::info!(
             "Starting sponsor balance monitor ({}s interval, {}s initial delay)",
-            interval_secs,
-            INITIAL_DELAY_SECS,
+            poll_interval.as_secs(),
+            INITIAL_DELAY.as_secs(),
         );
 
-        tokio::time::sleep(Duration::from_secs(INITIAL_DELAY_SECS)).await;
+        tokio::time::sleep(INITIAL_DELAY).await;
 
-        let mut interval_timer = tokio::time::interval(Duration::from_secs(interval_secs));
+        let mut interval_timer = tokio::time::interval(poll_interval);
         loop {
             interval_timer.tick().await;
 
@@ -117,7 +107,6 @@ pub fn run_sponsor_balance_monitor_loop(state: Arc<AppState>, telegram_client: T
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
 
     #[test]
     fn is_balance_low_when_below_threshold() {
@@ -134,14 +123,14 @@ mod tests {
     #[test]
     fn cooldown_blocks_within_one_hour() {
         let now = Instant::now();
-        let recent = now - Duration::from_secs(30 * 60);
+        let recent = now - Duration::from_secs(1800);
         assert!(!cooldown_allows_alert(Some(recent), now));
     }
 
     #[test]
     fn cooldown_allows_after_one_hour() {
         let now = Instant::now();
-        let old = now - Duration::from_secs(60 * 60);
+        let old = now - ALERT_COOLDOWN;
         assert!(cooldown_allows_alert(Some(old), now));
     }
 
@@ -149,7 +138,7 @@ mod tests {
     fn format_low_balance_message_includes_account_and_amounts() {
         let msg = format_low_balance_message("sponsor.trezu.near", NearToken::from_near(3));
         assert!(msg.contains("sponsor.trezu.near"));
-        assert!(msg.contains("3.0000 NEAR"));
-        assert!(msg.contains("5.0000 NEAR"));
+        assert!(msg.contains(&NearToken::from_near(3).to_string()));
+        assert!(msg.contains(&LOW_BALANCE_THRESHOLD.to_string()));
     }
 }
