@@ -337,7 +337,7 @@ fn is_w_execute_signed_action(signed_delegate_action: &SignedDelegateAction) -> 
         .actions
         .iter()
         .map(Deref::deref)
-        .any(|action| {
+        .all(|action| {
             matches!(
                 action,
                 Action::FunctionCall(fc) if fc.method_name == "w_execute_signed"
@@ -381,20 +381,17 @@ async fn relay_w_execute_signed(
         .actions
         .iter()
         .map(Deref::deref)
-        .fold(NearToken::from_millinear(0), |acc, action| {
+        .fold(NearToken::from_near(0), |acc, action| {
             if let Action::FunctionCall(fc) = action {
                 acc.saturating_add(fc.deposit)
             } else {
                 acc
             }
         });
-    if deposits > MAX_SPONSORING {
+    if deposits > NearToken::from_near(0) {
         return Err(error_response(
             StatusCode::BAD_REQUEST,
-            format!(
-                "Total deposit exceeds sponsorship limit of {} millinear",
-                MAX_SPONSORING.as_millinear()
-            ),
+            "Total deposit exceeds sponsorship limit of 0 NEAR".to_owned(),
         ));
     }
 
