@@ -706,6 +706,10 @@ export default function MembersPage() {
 
         // Update roles efficiently - single pass through roles
         updatedPolicy.roles = updatedPolicy.roles.map((role: any) => {
+            if (!(typeof role.kind === "object" && "Group" in role.kind)) {
+                return role;
+            }
+
             const roleName = role.name;
             let newGroup = [...(role.kind.Group || [])];
 
@@ -751,6 +755,9 @@ export default function MembersPage() {
 
         // Update roles by filtering out members to remove
         updatedPolicy.roles.forEach((role: any) => {
+            if (!(typeof role.kind === "object" && "Group" in role.kind)) {
+                return;
+            }
             role.kind.Group = (role.kind.Group || []).filter(
                 (m: string) => !memberIdsToRemove.includes(m),
             );
