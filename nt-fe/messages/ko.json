@@ -779,16 +779,16 @@
             "removeMemberSuccess": "멤버 제거 요청이 성공적으로 생성되었습니다"
         },
         "infoSection": {
-            "title": "Why add more members?",
-            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
-            "readGuide": "Read the full guide",
-            "dismiss": "Dismiss",
-            "strongerProtectionTitle": "Stronger protection",
-            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
-            "rolesForEveryoneTitle": "Roles for everyone",
-            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
-            "neverLoseAccessTitle": "Never lose access",
-            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
+            "title": "왜 멤버를 더 추가해야 하나요?",
+            "description": "멤버를 더 추가하면 자금을 안전하게 보호하고 지갑을 잃어도 접근이 막히지 않습니다.",
+            "readGuide": "전체 가이드 읽기",
+            "dismiss": "닫기",
+            "strongerProtectionTitle": "더 강력한 보호",
+            "strongerProtectionDescription": "자금 이동 전 요청에는 두 명 이상 승인이 필요합니다.",
+            "rolesForEveryoneTitle": "모두를 위한 역할",
+            "rolesForEveryoneDescription": "각 멤버는 역할을 가집니다 - 결제 요청, 승인 또는 설정 관리.",
+            "neverLoseAccessTitle": "접근 권한을 잃지 마세요",
+            "neverLoseAccessDescription": "지갑을 잃어도 미리 추가한 백업으로 접근 권한을 복구할 수 있습니다."
         }
     },
     "settings": {

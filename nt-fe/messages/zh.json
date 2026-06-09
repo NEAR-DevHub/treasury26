@@ -779,16 +779,16 @@
             "removeMemberSuccess": "成员移除请求已成功创建"
         },
         "infoSection": {
-            "title": "Why add more members?",
-            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
-            "readGuide": "Read the full guide",
-            "dismiss": "Dismiss",
-            "strongerProtectionTitle": "Stronger protection",
-            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
-            "rolesForEveryoneTitle": "Roles for everyone",
-            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
-            "neverLoseAccessTitle": "Never lose access",
-            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
+            "title": "为什么要添加更多成员？",
+            "description": "添加更多成员可以让您的资金更安全，并确保丢失钱包时不会被锁定在账户之外。",
+            "readGuide": "阅读完整指南",
+            "dismiss": "关闭",
+            "strongerProtectionTitle": "更强保护",
+            "strongerProtectionDescription": "资金转移前，请求需要多个成员批准。",
+            "rolesForEveryoneTitle": "人人都有角色",
+            "rolesForEveryoneDescription": "每位成员都有角色 - 发起付款请求、批准请求或管理设置。",
+            "neverLoseAccessTitle": "永不失去访问权限",
+            "neverLoseAccessDescription": "如果您丢失钱包，也可以通过已添加的备份恢复访问权限。"
         }
     },
     "settings": {

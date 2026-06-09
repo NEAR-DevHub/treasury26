@@ -779,16 +779,16 @@
             "removeMemberSuccess": "Đã tạo thành công yêu cầu xóa thành viên"
         },
         "infoSection": {
-            "title": "Why add more members?",
-            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
-            "readGuide": "Read the full guide",
-            "dismiss": "Dismiss",
-            "strongerProtectionTitle": "Stronger protection",
-            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
-            "rolesForEveryoneTitle": "Roles for everyone",
-            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
-            "neverLoseAccessTitle": "Never lose access",
-            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
+            "title": "Vì sao nên thêm thành viên?",
+            "description": "Thêm thành viên giúp tiền của bạn an toàn và đảm bảo mất ví sẽ không khiến bạn bị khóa quyền truy cập.",
+            "readGuide": "Đọc hướng dẫn đầy đủ",
+            "dismiss": "Đóng",
+            "strongerProtectionTitle": "Bảo vệ mạnh hơn",
+            "strongerProtectionDescription": "Yêu cầu cần nhiều hơn một phê duyệt trước khi tiền có thể được chuyển.",
+            "rolesForEveryoneTitle": "Vai trò cho mọi người",
+            "rolesForEveryoneDescription": "Mỗi thành viên có một vai trò: tạo yêu cầu thanh toán, phê duyệt hoặc quản lý cài đặt.",
+            "neverLoseAccessTitle": "Không bao giờ mất quyền truy cập",
+            "neverLoseAccessDescription": "Nếu bạn mất ví, bạn có thể khôi phục quyền truy cập từ bản sao lưu đã thêm trước đó."
         }
     },
     "settings": {

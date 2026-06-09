@@ -779,16 +779,16 @@
             "removeMemberSuccess": "Запит на видалення учасника створено"
         },
         "infoSection": {
-            "title": "Why add more members?",
-            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
-            "readGuide": "Read the full guide",
-            "dismiss": "Dismiss",
-            "strongerProtectionTitle": "Stronger protection",
-            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
-            "rolesForEveryoneTitle": "Roles for everyone",
-            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
-            "neverLoseAccessTitle": "Never lose access",
-            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
+            "title": "Навіщо додавати більше учасників?",
+            "description": "Додавання учасників зберігає ваші кошти в безпеці та не дає втраті гаманця заблокувати вам доступ.",
+            "readGuide": "Прочитати повний гайд",
+            "dismiss": "Закрити",
+            "strongerProtectionTitle": "Кращий захист",
+            "strongerProtectionDescription": "Запити потребують більше ніж одного схвалення, перш ніж кошти можна буде перемістити.",
+            "rolesForEveryoneTitle": "Ролі для кожного",
+            "rolesForEveryoneDescription": "Кожен учасник отримує роль: створювати запити, схвалювати їх або керувати налаштуваннями.",
+            "neverLoseAccessTitle": "Ніколи не втрачайте доступ",
+            "neverLoseAccessDescription": "Якщо ви втратите гаманець, доступ можна відновити з резервного варіанту, який ви вже додали."
         }
     },
     "settings": {

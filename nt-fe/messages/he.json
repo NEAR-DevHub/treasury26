@@ -779,16 +779,16 @@
             "removeMemberSuccess": "בקשת הסרת חבר נוצרה בהצלחה"
         },
         "infoSection": {
-            "title": "Why add more members?",
-            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
-            "readGuide": "Read the full guide",
-            "dismiss": "Dismiss",
-            "strongerProtectionTitle": "Stronger protection",
-            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
-            "rolesForEveryoneTitle": "Roles for everyone",
-            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
-            "neverLoseAccessTitle": "Never lose access",
-            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
+            "title": "למה להוסיף עוד חברים?",
+            "description": "הוספת חברים שומרת על הכספים שלך בטוחים ומבטיחה שארנק שאבד לא ינעל אותך מחוץ לחשבון.",
+            "readGuide": "קרא את המדריך המלא",
+            "dismiss": "סגור",
+            "strongerProtectionTitle": "הגנה חזקה יותר",
+            "strongerProtectionDescription": "בקשות דורשות יותר מאישור אחד לפני שניתן להזיז כספים.",
+            "rolesForEveryoneTitle": "תפקידים לכולם",
+            "rolesForEveryoneDescription": "כל חבר מקבל תפקיד - לבקש תשלומים, לאשר אותם או לנהל הגדרות.",
+            "neverLoseAccessTitle": "לעולם אל תאבד גישה",
+            "neverLoseAccessDescription": "אם איבדת ארנק, אפשר לשחזר גישה מגיבוי שכבר הוספת."
         }
     },
     "settings": {

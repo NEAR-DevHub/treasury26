@@ -779,16 +779,16 @@
             "removeMemberSuccess": "Anfrage zur Mitgliederentfernung erfolgreich erstellt"
         },
         "infoSection": {
-            "title": "Why add more members?",
-            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
-            "readGuide": "Read the full guide",
-            "dismiss": "Dismiss",
-            "strongerProtectionTitle": "Stronger protection",
-            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
-            "rolesForEveryoneTitle": "Roles for everyone",
-            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
-            "neverLoseAccessTitle": "Never lose access",
-            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
+            "title": "Warum mehr Mitglieder hinzufügen?",
+            "description": "Mehr Mitglieder halten Ihre Gelder sicher und verhindern, dass Sie durch eine verlorene Wallet ausgesperrt werden.",
+            "readGuide": "Vollständigen Leitfaden lesen",
+            "dismiss": "Schließen",
+            "strongerProtectionTitle": "Stärkerer Schutz",
+            "strongerProtectionDescription": "Anfragen benötigen mehr als eine Genehmigung, bevor Gelder bewegt werden können.",
+            "rolesForEveryoneTitle": "Rollen für alle",
+            "rolesForEveryoneDescription": "Jedes Mitglied erhält eine Rolle - Zahlungen anfragen, genehmigen oder Einstellungen verwalten.",
+            "neverLoseAccessTitle": "Niemals den Zugriff verlieren",
+            "neverLoseAccessDescription": "Wenn Sie eine Wallet verlieren, können Sie den Zugriff über eine bereits hinzugefügte Sicherung wiederherstellen."
         }
     },
     "settings": {

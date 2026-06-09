@@ -779,16 +779,16 @@
             "removeMemberSuccess": "メンバー削除リクエストが正常に作成されました"
         },
         "infoSection": {
-            "title": "Why add more members?",
-            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
-            "readGuide": "Read the full guide",
-            "dismiss": "Dismiss",
-            "strongerProtectionTitle": "Stronger protection",
-            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
-            "rolesForEveryoneTitle": "Roles for everyone",
-            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
-            "neverLoseAccessTitle": "Never lose access",
-            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
+            "title": "なぜメンバーを増やすのですか？",
+            "description": "メンバーを増やすことで資金の安全性が高まり、ウォレットを失ってもアクセス不能になることを防げます。",
+            "readGuide": "完全ガイドを読む",
+            "dismiss": "閉じる",
+            "strongerProtectionTitle": "より強い保護",
+            "strongerProtectionDescription": "資金を動かす前に、リクエストには複数の承認が必要です。",
+            "rolesForEveryoneTitle": "全員に役割",
+            "rolesForEveryoneDescription": "各メンバーに役割が割り当てられます - 支払いの申請、承認、設定管理。",
+            "neverLoseAccessTitle": "アクセスを失わない",
+            "neverLoseAccessDescription": "ウォレットを失っても、事前に追加したバックアップからアクセスを復元できます。"
         }
     },
     "settings": {

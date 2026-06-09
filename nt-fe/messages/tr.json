@@ -779,16 +779,16 @@
             "removeMemberSuccess": "Üye kaldırma talebi başarıyla oluşturuldu"
         },
         "infoSection": {
-            "title": "Why add more members?",
-            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
-            "readGuide": "Read the full guide",
-            "dismiss": "Dismiss",
-            "strongerProtectionTitle": "Stronger protection",
-            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
-            "rolesForEveryoneTitle": "Roles for everyone",
-            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
-            "neverLoseAccessTitle": "Never lose access",
-            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
+            "title": "Neden daha fazla üye eklemelisiniz?",
+            "description": "Daha fazla üye eklemek fonlarınızı güvende tutar ve kaybolan bir cüzdanın erişiminizi kilitlemesini önler.",
+            "readGuide": "Tam rehberi oku",
+            "dismiss": "Kapat",
+            "strongerProtectionTitle": "Daha güçlü koruma",
+            "strongerProtectionDescription": "Fonlar hareket etmeden önce isteklerin birden fazla onay alması gerekir.",
+            "rolesForEveryoneTitle": "Herkes için roller",
+            "rolesForEveryoneDescription": "Her üyeye bir rol verilir - ödeme talep etme, onaylama veya ayarları yönetme.",
+            "neverLoseAccessTitle": "Erişimi asla kaybetmeyin",
+            "neverLoseAccessDescription": "Bir cüzdanı kaybederseniz, daha önce eklediğiniz yedekten erişimi geri alabilirsiniz."
         }
     },
     "settings": {

@@ -779,16 +779,16 @@
             "removeMemberSuccess": "Permintaan penghapusan anggota berhasil dibuat"
         },
         "infoSection": {
-            "title": "Why add more members?",
-            "description": "Adding more members keeps your funds safe and ensures a lost wallet can't lock you out.",
-            "readGuide": "Read the full guide",
-            "dismiss": "Dismiss",
-            "strongerProtectionTitle": "Stronger protection",
-            "strongerProtectionDescription": "Requests need more than one approval before funds can move.",
-            "rolesForEveryoneTitle": "Roles for everyone",
-            "rolesForEveryoneDescription": "Each member gets a role - request payments, approve them, or manage settings.",
-            "neverLoseAccessTitle": "Never lose access",
-            "neverLoseAccessDescription": "If you lose a wallet, you can recover access from a backup you've already added."
+            "title": "Mengapa menambahkan lebih banyak anggota?",
+            "description": "Menambahkan lebih banyak anggota menjaga dana Anda tetap aman dan memastikan dompet yang hilang tidak mengunci akses Anda.",
+            "readGuide": "Baca panduan lengkap",
+            "dismiss": "Tutup",
+            "strongerProtectionTitle": "Perlindungan lebih kuat",
+            "strongerProtectionDescription": "Permintaan membutuhkan lebih dari satu persetujuan sebelum dana dapat dipindahkan.",
+            "rolesForEveryoneTitle": "Peran untuk semua orang",
+            "rolesForEveryoneDescription": "Setiap anggota mendapat peran - meminta pembayaran, menyetujui, atau mengelola pengaturan.",
+            "neverLoseAccessTitle": "Jangan pernah kehilangan akses",
+            "neverLoseAccessDescription": "Jika Anda kehilangan dompet, Anda dapat memulihkan akses dari cadangan yang sudah ditambahkan."
         }
     },
     "settings": {
