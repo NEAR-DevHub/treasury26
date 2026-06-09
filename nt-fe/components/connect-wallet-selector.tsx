@@ -19,7 +19,6 @@ import { useNear } from "@/stores/near-store";
 
 const WALLET_IDS = {
     NEAR: "near",
-    EVM_WALLETS: "evm-wallets",
     LEDGER: "ledger",
     EVM: "walletcontract-eip712",
     PASSKEY: "passkey",
@@ -27,10 +26,6 @@ const WALLET_IDS = {
     INTEAR: "intear-wallet",
     NEAR_MOBILE: "near-mobile",
     NEAR_CLI: "near-cli",
-    METAMASK: "metamask",
-    WALLET_CONNECT: "wallet-connect",
-    BINANCE_WEB3: "binance-web3",
-    COINBASE: "coinbase",
     PHANTOM: "phantom",
 } as const;
 
@@ -42,7 +37,6 @@ const MANIFEST_WALLET_IDS = {
     INTEAR: WALLET_IDS.INTEAR,
     NEAR_MOBILE: WALLET_IDS.NEAR_MOBILE,
     NEAR_CLI: WALLET_IDS.NEAR_CLI,
-    WALLET_CONNECT: WALLET_IDS.WALLET_CONNECT,
     EVM: WALLET_IDS.EVM,
 } as const;
 
@@ -58,7 +52,7 @@ export type WalletOption = {
     supported: boolean;
 };
 
-type WalletPickerType = "near" | "evm";
+type WalletPickerType = "near";
 const LAST_USED_WALLET_STORAGE_KEY = "trezu:last-used-wallet";
 const SELECTED_WALLET_STORAGE_KEY = "selected-wallet";
 
@@ -89,7 +83,7 @@ const WALLET_OPTIONS: WalletOption[] = [
         supported: false,
     },
     {
-        id: WALLET_IDS.EVM_WALLETS,
+        id: WALLET_IDS.EVM,
         label: "EVM Wallets",
         imgSrc: "/icons/metamask.svg",
         secondaryIconSrc: "/icons/walletconnect.svg",
@@ -156,19 +150,12 @@ const MANIFEST_WALLET_ID_BY_OPTION: Partial<
     [WALLET_IDS.INTEAR]: MANIFEST_WALLET_IDS.INTEAR,
     [WALLET_IDS.NEAR_MOBILE]: MANIFEST_WALLET_IDS.NEAR_MOBILE,
     [WALLET_IDS.NEAR_CLI]: MANIFEST_WALLET_IDS.NEAR_CLI,
-    [WALLET_IDS.WALLET_CONNECT]: MANIFEST_WALLET_IDS.WALLET_CONNECT,
-    [WALLET_IDS.METAMASK]: MANIFEST_WALLET_IDS.EVM,
-    [WALLET_IDS.BINANCE_WEB3]: MANIFEST_WALLET_IDS.WALLET_CONNECT,
+    [WALLET_IDS.EVM]: MANIFEST_WALLET_IDS.EVM,
 };
 
 const WALLET_GROUP_BY_ID: Partial<Record<WalletId, WalletId>> = {
     [WALLET_IDS.NEAR]: WALLET_IDS.NEAR,
-    [WALLET_IDS.EVM_WALLETS]: WALLET_IDS.EVM_WALLETS,
-    [WALLET_IDS.EVM]: WALLET_IDS.EVM_WALLETS,
-    [WALLET_IDS.WALLET_CONNECT]: WALLET_IDS.EVM_WALLETS,
-    [WALLET_IDS.METAMASK]: WALLET_IDS.EVM_WALLETS,
-    [WALLET_IDS.BINANCE_WEB3]: WALLET_IDS.EVM_WALLETS,
-    [WALLET_IDS.COINBASE]: WALLET_IDS.EVM_WALLETS,
+    [WALLET_IDS.EVM]: WALLET_IDS.EVM,
     [WALLET_IDS.LEDGER]: WALLET_IDS.LEDGER,
     [WALLET_IDS.PASSKEY]: WALLET_IDS.PASSKEY,
     [WALLET_IDS.PHANTOM]: WALLET_IDS.PHANTOM,
@@ -230,33 +217,6 @@ export function ConnectWalletSelector({
         },
     ];
 
-    const evmWalletChoices: WalletOption[] = [
-        {
-            id: WALLET_IDS.METAMASK,
-            label: "MetaMask",
-            imgSrc: "/icons/metamask.svg",
-            supported: true,
-        },
-        {
-            id: WALLET_IDS.WALLET_CONNECT,
-            label: "Wallet Connect",
-            imgSrc: "/icons/walletconnect.svg",
-            supported: true,
-        },
-        {
-            id: WALLET_IDS.BINANCE_WEB3,
-            label: "Binance Web3",
-            imgSrc: "/icons/binance-web3.svg",
-            supported: true,
-        },
-        {
-            id: WALLET_IDS.COINBASE,
-            label: "Coinbase",
-            imgSrc: "/icons/coinbase.svg",
-            supported: false,
-        },
-    ];
-
     const closeUnsupportedWalletModal = () => {
         setUnsupportedWallet(null);
     };
@@ -280,7 +240,7 @@ export function ConnectWalletSelector({
         if (!walletId) return null;
 
         if (walletId.includes("phantom")) return WALLET_IDS.PHANTOM;
-        if (walletId.includes("walletconnect")) return WALLET_IDS.EVM_WALLETS;
+        if (walletId.includes("walletcontract-eip712")) return WALLET_IDS.EVM;
         const knownGroup = WALLET_GROUP_BY_ID[walletId as WalletId];
         if (knownGroup) return knownGroup;
         return WALLET_IDS.NEAR;
@@ -351,16 +311,6 @@ export function ConnectWalletSelector({
             setWalletPickerOpen("near");
             return;
         }
-        if (
-            wallet.id === WALLET_IDS.EVM_WALLETS &&
-            wallet.label === "EVM Wallets"
-        ) {
-            setUnsupportedWallet(null);
-            setIsGuideOpen(false);
-            setWalletPickerOpen("evm");
-            return;
-        }
-
         trackEvent("onboarding_wallet_option_clicked", {
             wallet_id: wallet.id,
             is_supported: wallet.supported,
@@ -381,8 +331,7 @@ export function ConnectWalletSelector({
         setUnsupportedWallet(wallet);
     };
 
-    const walletPickerChoices =
-        walletPickerOpen === "near" ? nearWalletChoices : evmWalletChoices;
+    const walletPickerChoices = nearWalletChoices;
 
     return (
         <PageCard>
@@ -446,7 +395,7 @@ export function ConnectWalletSelector({
                         <DialogTitle>
                             {walletPickerOpen === "near"
                                 ? t("walletSelector.chooseNearWallet")
-                                : t("walletSelector.chooseEvmWallet")}
+                                : t("walletSelector.chooseNearWallet")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -693,9 +642,9 @@ export function ConnectWalletSelector({
                                 className="w-full"
                                 onClick={() =>
                                     handleWalletChoice({
-                                        id: WALLET_IDS.WALLET_CONNECT,
-                                        label: "Wallet Connect",
-                                        imgSrc: "/icons/walletconnect.svg",
+                                        id: WALLET_IDS.EVM,
+                                        label: "EVM Wallets",
+                                        imgSrc: "/icons/metamask.svg",
                                         supported: true,
                                     })
                                 }
