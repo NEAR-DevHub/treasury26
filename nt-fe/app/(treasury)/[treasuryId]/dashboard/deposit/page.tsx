@@ -27,7 +27,7 @@ export default function DepositPage() {
                         prefillNetworkId={initialPrefillRef.current.network}
                     />
                 </div>
-                <div className="flex flex-col max-w-[300px] w-full shrink-0">
+                <div className="flex flex-col md:max-w-[300px] w-full shrink-0">
                     <DepositFaq />
                 </div>
             </div>

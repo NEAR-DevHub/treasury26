@@ -63,7 +63,7 @@ export function NearWrapSwapCell({ data, textOnly = false }: SwapCellProps) {
     return (
         <div className="flex items-center gap-2">
             <Amount
-                amount={data.amountIn}
+                amountWithDecimals={data.amountIn}
                 tokenId={data.tokenIn}
                 showUSDValue={false}
                 showNetworkTooltip
@@ -72,7 +72,7 @@ export function NearWrapSwapCell({ data, textOnly = false }: SwapCellProps) {
             />
             <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
             <Amount
-                amount={data.amountOut}
+                amountWithDecimals={data.amountOut}
                 tokenId={data.tokenOut}
                 showUSDValue={false}
                 showNetworkTooltip

@@ -9,6 +9,8 @@ export const NEAR_CHAIN_ICONS: ChainIcons = {
     icon: "https://near.com/static/icons/network/near.svg",
 };
 
+export const NEAR_TOKEN_DECIMALS = 24;
+
 export const NEAR_COM_ICON = "/near.com.svg";
 
 export const default_near_token = (isConfidential: boolean) => {

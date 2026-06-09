@@ -8,80 +8,22 @@ Naming is mixed today (`snake_case` and `kebab-case`) due to legacy events. New 
 
 ---
 
-## Onboarding & Treasury Creation (Current)
-
-### `onboarding_landing_viewed`
-
-Landing screen is viewed on `/`.
-
-
-| Property | Type   | Description |
-| -------- | ------ | ----------- |
-| `source` | string | `"/"`       |
-
-
-**Source:** [nt-fe/app/(init)/page.tsx](../nt-fe/app/(init)/page.tsx)
-
----
-
-### `onboarding_path_selected`
-
-User chooses onboarding route on landing page.
-
-
-| Property    | Type   | Description                          |
-| ----------- | ------ | ------------------------------------ |
-| `path`      | string | `"new_user"` or `"existing_user"`    |
-
-
-**Source:** [nt-fe/app/(init)/page.tsx](../nt-fe/app/(init)/page.tsx)
-
----
-
-### `onboarding_cta_clicked`
-
-UI-only CTA click event used for non-semantic onboarding interactions (primarily modal actions).
-
-
-| Property | Type   | Description                                   |
-| -------- | ------ | --------------------------------------------- |
-| `cta`    | string | CTA identifier (example: `view_demo`, `keep_exploring`) |
-| `source` | string | UI surface (example: `"/"` or `"/app/new"`) |
-
-
-**Source:** [nt-fe/features/onboarding/components/create-treasury-prompt-modal.tsx](../nt-fe/features/onboarding/components/create-treasury-prompt-modal.tsx)
-
----
-
-### `onboarding_step_completed`
-
-Canonical onboarding step completion event.
-
-
-| Property         | Type          | Description |
-| ---------------- | ------------- | ----------- |
-| `step_name`      | string        | `about_you`, `details`, `members`, `treasury_type`, `review` |
-| `members_count`  | number        | Present on `members` step |
-| `treasury_type`  | string        | Present on `treasury_type` step |
-
-
-**Source:** [nt-fe/features/onboarding/components/onboarding-questions-step.tsx](../nt-fe/features/onboarding/components/onboarding-questions-step.tsx), [nt-fe/app/(treasury)/app/new/page.tsx](../nt-fe/app/(treasury)/app/new/page.tsx)
-
----
+## Onboarding & Login (Current)
 
 ### `onboarding_wallet_option_clicked`
 
-User clicks a wallet option in the Review-step wallet selector.
+User clicks a wallet option in the current shared wallet selector.
 
 
-| Property       | Type    | Description                       |
-| -------------- | ------- | --------------------------------- |
+| Property       | Type    | Description |
+| -------------- | ------- | ----------- |
 | `wallet_id`    | string  | Wallet key (e.g. `near`, `ledger`) |
 | `is_supported` | boolean | Whether wallet is currently supported |
-| `source`       | string  | Example values: `"/app/new"`, `"/login"` |
+| `source`       | string  | UI surface (e.g. `"/login"`) |
+| `connect_flow` | string  | `"onboarding"` or `"within_treasury"` |
 
 
-**Source:** [nt-fe/app/(treasury)/app/new/page.tsx](../nt-fe/app/(treasury)/app/new/page.tsx)
+**Source:** [nt-fe/components/connect-wallet-selector.tsx](../nt-fe/components/connect-wallet-selector.tsx)
 
 ---
 
@@ -92,11 +34,11 @@ Wallet auth flow successfully completed.
 
 | Property     | Type   | Description |
 | ------------ | ------ | ----------- |
-| `source`     | string | Example values: `"wallet-sign-in"`, `"wallet-sign-in-and-message"`, `"terms-accepted"` |
+| `source`     | string | Current values: `"resolve-auth"` or `"terms-accepted"` |
 | `account_id` | string | NEAR account ID when available |
 
 
-**Source:** [nt-fe/stores/near-store.ts](../nt-fe/stores/near-store.ts), [nt-fe/app/(init)/page.tsx](../nt-fe/app/(init)/page.tsx)
+**Source:** [nt-fe/stores/near-store.ts](../nt-fe/stores/near-store.ts)
 
 ---
 
@@ -115,24 +57,9 @@ Wallet selected in connector callbacks.
 
 ---
 
-### `onboarding_completed`, `treasury-created`
-
-Treasury creation flow successfully completes.
-
-
-| Property      | Type   | Description |
-| ------------- | ------ | ----------- |
-| `source`      | string | `"/app/new"` |
-| `treasury_id` | string | Created treasury ID |
-
-
-**Source:** [nt-fe/app/(treasury)/app/new/page.tsx](../nt-fe/app/(treasury)/app/new/page.tsx)
-
----
-
 ### `existing_user_treasury_opened`
 
-Existing-user flow identified at least one treasury and navigates to it.
+Login flow identified at least one treasury and navigates to it.
 
 
 | Property      | Type   | Description |
@@ -142,20 +69,6 @@ Existing-user flow identified at least one treasury and navigates to it.
 
 
 **Source:** [nt-fe/app/(treasury)/login/page.tsx](../nt-fe/app/(treasury)/login/page.tsx)
-
----
-
-### `create-treasury-prompt-shown`
-
-Create treasury prompt modal is shown to eligible existing users with zero treasuries.
-
-
-| Property | Type   | Description |
-| -------- | ------ | ----------- |
-| `source` | string | `"onboarding"` or `"app"` |
-
-
-**Source:** [nt-fe/features/onboarding/components/create-treasury-prompt-controller.tsx](../nt-fe/features/onboarding/components/create-treasury-prompt-controller.tsx)
 
 ---
 
@@ -191,22 +104,6 @@ Onboarding survey progress/completion payload is sent on Continue/Skip.
 
 ---
 
-## Waitlist
-
-### `waitlist-submitted`
-
-User submits their NEAR account to the waitlist.
-
-
-| Property     | Type   | Description               |
-| ------------ | ------ | ------------------------- |
-| `account_id` | string | NEAR account ID submitted |
-
-
-**Source:** [nt-fe/app/(init)/page.tsx](../nt-fe/app/(init)/page.tsx)
-
----
-
 ## Legacy / Deprecated (Onboarding)
 
 These are retained only for historical references and may still exist in old PostHog data/actions.
@@ -215,6 +112,14 @@ These are retained only for historical references and may still exist in old Pos
 - `treasury-creation-step-2-completed`
 - `treasury-creation-step-3-viewed`
 - `new-wallet-connected`
+- `onboarding_landing_viewed`
+- `onboarding_path_selected`
+- `onboarding_cta_clicked`
+- `onboarding_step_completed`
+- `onboarding-completed`
+- `treasury-created`
+- `create-treasury-prompt-shown`
+- `waitlist-submitted`
 
 ## Treasury Settings
 

@@ -236,9 +236,7 @@ function ReceiptLayout({
     const tReceipt = useTranslations("receiptPage");
     const tCommon = useTranslations("common");
     const createTreasuryUrl =
-        typeof window !== "undefined"
-            ? `${window.location.origin}/app/new`
-            : "/app/new";
+        typeof window !== "undefined" ? `${window.location.origin}/` : "/";
 
     return (
         <div className="space-y-6">
@@ -675,6 +673,8 @@ export default function RequestReceiptPage({
     }, [proposalId]);
     const proposalUiKind = proposal ? getProposalUIKind(proposal) : undefined;
     const isBatchPaymentProposal = proposalUiKind === "Batch Payment Request";
+    const isConfidentialRequestProposal =
+        proposalUiKind === "Confidential Request";
     const isReceiptEligibleProposal =
         isReceiptEligibleProposalKind(proposalUiKind);
     const isSingleReceiptProposal = !isBatchPaymentProposal;
@@ -708,6 +708,10 @@ export default function RequestReceiptPage({
     const destinationAmountWithDecimals =
         receiptProposalData?.destinationAmountWithDecimals;
     const isExecutableReceipt = status === "Executed";
+    const shouldUseSwapExecutionDate =
+        isExecutableReceipt &&
+        !!depositAddress &&
+        !isConfidentialRequestProposal;
 
     const { data: transaction, isLoading: isLoadingTransaction } =
         useProposalTransaction(
@@ -719,7 +723,7 @@ export default function RequestReceiptPage({
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress,
         undefined,
-        isExecutableReceipt && !!depositAddress,
+        shouldUseSwapExecutionDate,
     );
     const transactionDate = getProposalExecutedDate(swapStatus, transaction);
     const isExchangeProposal = receiptProposalVariant === "exchange";
@@ -867,8 +871,9 @@ export default function RequestReceiptPage({
     const isTransactionDateLoading =
         isExecutableReceipt &&
         isSingleReceiptProposal &&
-        ((hasDepositAddress && isLoadingSwapStatus) ||
-            (!hasDepositAddress && isLoadingTransaction));
+        (shouldUseSwapExecutionDate
+            ? isLoadingSwapStatus
+            : isLoadingTransaction);
     const isRateLoading = hasDepositAddress
         ? isSingleReceiptProposal && isLoadingQuoteByDepositAddress
         : isLoadingSourceHistoricalPrice ||

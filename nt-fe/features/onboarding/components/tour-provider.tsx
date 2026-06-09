@@ -7,6 +7,16 @@ import { useUiStore } from "@/stores/ui-store";
 import { TOURS } from "../steps";
 import { TourCard } from "./tour-card";
 
+function setActiveOnboardingTour(tourName: string | null) {
+    if (typeof document === "undefined") return;
+
+    if (tourName) {
+        document.body.dataset.onboardingTour = tourName;
+    } else {
+        delete document.body.dataset.onboardingTour;
+    }
+}
+
 export function TourProvider({ children }: { children: React.ReactNode }) {
     const setLockSelectOutside = useOnboardingStore(
         (state) => state.setLockSelectOutside,
@@ -22,15 +32,18 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                 navigationAdapter={useNextAdapter}
                 shadowOpacity="0.5"
                 noInViewScroll
-                onStart={() => {
+                onStart={(tourName) => {
+                    setActiveOnboardingTour(tourName);
                     setLockSelectOutside(true);
                     pushOverlay();
                 }}
                 onComplete={() => {
+                    setActiveOnboardingTour(null);
                     setLockSelectOutside(false);
                     popOverlay();
                 }}
                 onSkip={() => {
+                    setActiveOnboardingTour(null);
                     setLockSelectOutside(false);
                     popOverlay();
                 }}
