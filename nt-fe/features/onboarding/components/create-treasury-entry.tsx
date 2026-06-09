@@ -63,7 +63,8 @@ export function CreateTreasuryEntry() {
         clearError,
     } = useNear();
     const { treasuries, isLoading, lastTreasuryId } = useTreasury();
-    const { data: creationStatus } = useTreasuryCreationStatus();
+    const { data: creationStatus, isLoading: isCreationStatusLoading } =
+        useTreasuryCreationStatus();
 
     const [accountNameEdited, setAccountNameEdited] = useState(false);
     const [isCheckingHandle, setIsCheckingHandle] = useState(false);
@@ -89,7 +90,7 @@ export function CreateTreasuryEntry() {
     const shouldKeepUserOnCreatePage =
         shouldStayOnCreatePage || forceStayOnCreatePage;
     const creationAvailable = creationStatus?.creationAvailable ?? true;
-    const showWaitlist = !isLoading && !creationAvailable;
+    const showWaitlist = !creationAvailable;
 
     useEffect(() => {
         if (shouldKeepUserOnCreatePage) return;
@@ -309,7 +310,7 @@ export function CreateTreasuryEntry() {
 
     const unauthHeaderLogo = <Logo size="sm" />;
 
-    if (isInitializing) {
+    if (isInitializing || isCreationStatusLoading) {
         return <LoadingScreen />;
     }
 

@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use near_api::{NearToken, Tokens};
 use tokio::sync::RwLock;
 
-use crate::{AppState, constants::LOW_BALANCE_THRESHOLD, utils::telegram::TelegramClient};
+use crate::{AppState, constants::ALERT_LOW_BALANCE_THRESHOLD, utils::telegram::TelegramClient};
 
 const ALERT_COOLDOWN: Duration = Duration::from_secs(3600);
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(60);
@@ -14,7 +14,7 @@ static LAST_ALERT_SENT_AT: LazyLock<RwLock<Option<Instant>>> = LazyLock::new(|| 
 
 /// Returns true when liquid balance is below the sponsor low-balance threshold.
 pub(crate) fn is_balance_low(liquid: NearToken) -> bool {
-    liquid < LOW_BALANCE_THRESHOLD
+    liquid < ALERT_LOW_BALANCE_THRESHOLD
 }
 
 /// Returns true when enough time has passed since the last alert to send another.
@@ -28,7 +28,7 @@ pub(crate) fn cooldown_allows_alert(last_sent: Option<Instant>, now: Instant) ->
 pub(crate) fn format_low_balance_message(account_id: &str, liquid: NearToken) -> String {
     format!(
         "⚠️ Sponsor balance low\nAccount: {}\nLiquid: {} (threshold: {})",
-        account_id, liquid, LOW_BALANCE_THRESHOLD,
+        account_id, liquid, ALERT_LOW_BALANCE_THRESHOLD,
     )
 }
 
@@ -139,6 +139,6 @@ mod tests {
         let msg = format_low_balance_message("sponsor.trezu.near", NearToken::from_near(3));
         assert!(msg.contains("sponsor.trezu.near"));
         assert!(msg.contains(&NearToken::from_near(3).to_string()));
-        assert!(msg.contains(&LOW_BALANCE_THRESHOLD.to_string()));
+        assert!(msg.contains(&ALERT_LOW_BALANCE_THRESHOLD.to_string()));
     }
 }

@@ -5,7 +5,7 @@ use near_api::{NearToken, Tokens};
 use reqwest::StatusCode;
 use serde::Serialize;
 
-use crate::{AppState, constants::LOW_BALANCE_THRESHOLD};
+use crate::{AppState, constants::CREATION_LOW_BALANCE_THRESHOLD};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,7 +39,7 @@ pub async fn get_treasury_creation_status(
             .saturating_sub(balance.storage_locked.as_yoctonear()),
     );
 
-    let creation_available = liquid >= LOW_BALANCE_THRESHOLD;
+    let creation_available = liquid >= CREATION_LOW_BALANCE_THRESHOLD;
 
     Ok(Json(TreasuryCreationStatusResponse { creation_available }))
 }
