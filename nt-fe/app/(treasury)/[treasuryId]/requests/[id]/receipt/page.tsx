@@ -62,6 +62,7 @@ import {
 } from "@/lib/utils";
 import { recordReceiptMetric } from "@/lib/proposals-api";
 import type { BatchPaymentRequestData } from "@/features/proposals/types/index";
+import { LANDING_PAGE } from "@/constants/config";
 
 interface RequestReceiptPageProps {
     params: Promise<{
@@ -235,7 +236,6 @@ function ReceiptLayout({
 }: ReceiptLayoutProps) {
     const tReceipt = useTranslations("receiptPage");
     const tCommon = useTranslations("common");
-    const createTreasuryUrl = "https://trezu.org/";
 
     return (
         <div className="space-y-6">
@@ -283,7 +283,7 @@ function ReceiptLayout({
                     </p>
                 </div>
                 <div>
-                    <QRCode size={66} value={createTreasuryUrl} />
+                    <QRCode size={66} value={LANDING_PAGE} />
                 </div>
             </div>
         </div>
