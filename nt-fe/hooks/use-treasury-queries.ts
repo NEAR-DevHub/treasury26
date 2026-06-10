@@ -21,7 +21,6 @@ import {
     getRecentActivityRecipients,
     getRecentActivitySenders,
     getExportHistory,
-    getTreasuryCreationStatus,
 } from "@/lib/api";
 import { useTreasury } from "./use-treasury";
 import { useAssets } from "./use-assets";
@@ -387,13 +386,5 @@ export function useExportHistory(accountId: string | null | undefined) {
         queryFn: () => getExportHistory(accountId!),
         enabled: !!accountId,
         staleTime: Infinity,
-    });
-}
-
-export function useTreasuryCreationStatus() {
-    return useQuery({
-        queryKey: ["treasuryCreationStatus"],
-        queryFn: getTreasuryCreationStatus,
-        staleTime: 30 * 1000,
     });
 }

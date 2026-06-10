@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Gift, Globe, Loader2, Shield } from "lucide-react";
+import { Check, Eye, Gift, Globe, Loader2, Shield } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
@@ -25,7 +25,6 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import Logo from "@/components/icons/logo";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useTreasuryCreationStatus } from "@/hooks/use-treasury-queries";
 import {
     type CreateTreasuryRequest,
     checkHandleUnused,
@@ -53,7 +52,6 @@ export function CreateTreasuryEntry() {
     const tSteps = useTranslations("createTreasury.steps");
     const tPages = useTranslations("pages.createTreasury");
     const tLanding = useTranslations("landing");
-    const tCommon = useTranslations("common");
     const {
         accountId,
         connect,
@@ -63,9 +61,6 @@ export function CreateTreasuryEntry() {
         clearError,
     } = useNear();
     const { treasuries, isLoading, lastTreasuryId } = useTreasury();
-    const { data: creationStatus, isLoading: isCreationStatusLoading } =
-        useTreasuryCreationStatus();
-
     const [accountNameEdited, setAccountNameEdited] = useState(false);
     const [isCheckingHandle, setIsCheckingHandle] = useState(false);
     const [progressOpen, setProgressOpen] = useState(false);
@@ -79,6 +74,7 @@ export function CreateTreasuryEntry() {
     const [waitlistContact, setWaitlistContact] = useState("");
     const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
     const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
+    const [showWaitlist, setShowWaitlist] = useState(false);
 
     const preferredTreasuryId =
         (lastTreasuryId &&
@@ -89,8 +85,6 @@ export function CreateTreasuryEntry() {
         searchParams.get("context") === CREATE_TREASURY_CONTEXT;
     const shouldKeepUserOnCreatePage =
         shouldStayOnCreatePage || forceStayOnCreatePage;
-    const creationAvailable = creationStatus?.creationAvailable ?? true;
-    const showWaitlist = !creationAvailable;
 
     useEffect(() => {
         if (shouldKeepUserOnCreatePage) return;
@@ -247,6 +241,7 @@ export function CreateTreasuryEntry() {
         setProgressSteps(initialSteps.map((step) => ({ ...step })));
         setProgressError(null);
         setCreatedTreasuryId(null);
+        setShowWaitlist(false);
         setProgressOpen(true);
 
         try {
@@ -275,14 +270,8 @@ export function CreateTreasuryEntry() {
                 }
 
                 if (event.step === "error") {
-                    setProgressSteps((prev) =>
-                        prev.map((step) =>
-                            step.status === "in_progress"
-                                ? { ...step, status: "error" }
-                                : step,
-                        ),
-                    );
-                    setProgressError(event.message ?? t("unexpectedError"));
+                    setProgressOpen(false);
+                    setShowWaitlist(true);
                     return;
                 }
 
@@ -297,20 +286,14 @@ export function CreateTreasuryEntry() {
                 );
             });
         } catch {
-            setProgressSteps((prev) =>
-                prev.map((step) =>
-                    step.status === "in_progress"
-                        ? { ...step, status: "error" }
-                        : step,
-                ),
-            );
-            setProgressError(t("creationFailed"));
+            setProgressOpen(false);
+            setShowWaitlist(true);
         }
     };
 
     const unauthHeaderLogo = <Logo size="sm" />;
 
-    if (isInitializing || isCreationStatusLoading) {
+    if (isInitializing) {
         return <LoadingScreen />;
     }
 
@@ -564,6 +547,11 @@ export function CreateTreasuryEntry() {
             <PageCard className="py-20">
                 <div className="mx-auto w-full max-w-[580px] space-y-6">
                     <div className="space-y-2">
+                        {isWaitlistSubmitted && (
+                            <div className="mx-auto size-14 rounded-full bg-general-success-background-faded flex items-center justify-center">
+                                <Check className="size-8 text-general-success-foreground" />
+                            </div>
+                        )}
                         <h1 className="text-center text-2xl font-semibold tracking-tight">
                             {isWaitlistSubmitted
                                 ? tLanding("waitlistSubmittedTitle")
@@ -578,7 +566,7 @@ export function CreateTreasuryEntry() {
 
                     {!isWaitlistSubmitted && (
                         <div className="space-y-5">
-                            <div className="space-y-1">
+                            <div>
                                 <LargeInput
                                     value={waitlistContact}
                                     onChange={(e) =>
@@ -590,9 +578,6 @@ export function CreateTreasuryEntry() {
                                     borderless
                                     className="px-3 bg-muted border-none focus-visible:ring-0 text-sm!"
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    {tLanding("waitlistPrivacyNote")}
-                                </p>
                             </div>
                             <Button
                                 className="w-full"
@@ -626,28 +611,31 @@ export function CreateTreasuryEntry() {
                         </div>
                     )}
 
-                    <Button
-                        variant={isWaitlistSubmitted ? "secondary" : "ghost"}
-                        className="w-full"
-                        onClick={() => router.push(APP_ACTIVE_TREASURY)}
-                    >
-                        {tCommon("seeDemo")}
-                    </Button>
+                    {isWaitlistSubmitted ? (
+                        <Button
+                            variant="secondary"
+                            className="w-full"
+                            onClick={() => router.push(APP_ACTIVE_TREASURY)}
+                        >
+                            <Eye className="size-5" />
+                            {tLanding("waitlistSeeDemo")}
+                        </Button>
+                    ) : (
+                        <p className="text-center text-sm text-muted-foreground">
+                            {tLanding("waitlistLookAroundFirst")}{" "}
+                            <Button
+                                type="button"
+                                variant="unstyled"
+                                className="h-auto p-0 text-primary underline"
+                                onClick={() => router.push(APP_ACTIVE_TREASURY)}
+                            >
+                                {tLanding("waitlistSeeDemo")}
+                            </Button>
+                            .
+                        </p>
+                    )}
                 </div>
             </PageCard>
-            {!accountId && (
-                <p className="text-center text-sm">
-                    {t("alreadyHaveTreasuryLabel")}{" "}
-                    <Button
-                        type="button"
-                        variant="unstyled"
-                        className="h-auto p-0 underline"
-                        onClick={() => setShowLoginScreen(true)}
-                    >
-                        {t("signInLabel")}
-                    </Button>
-                </p>
-            )}
         </div>
     );
 
