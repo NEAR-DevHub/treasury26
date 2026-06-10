@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "Kami hanya akan menggunakan ini untuk memberi tahu Anda",
         "waitlistSubmit": "Bergabung dengan Daftar Tunggu",
         "waitlistSubmitFailed": "Gagal mengirim. Silakan coba lagi.",
+        "waitlistInvalidContact": "Masukkan alamat email yang valid atau nama pengguna Telegram (mis. @username).",
         "welcomeAlt": "selamat datang"
     },
     "blocked": {

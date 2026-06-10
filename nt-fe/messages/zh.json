@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "我们仅会用此信息来通知您",
         "waitlistSubmit": "加入等待名单",
         "waitlistSubmitFailed": "提交失败。请再试一次。",
+        "waitlistInvalidContact": "请输入有效的电子邮件地址或 Telegram 用户名（例如 @username）。",
         "welcomeAlt": "欢迎"
     },
     "blocked": {

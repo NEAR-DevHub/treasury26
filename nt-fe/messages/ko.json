@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "알림 용도로만 사용됩니다",
         "waitlistSubmit": "대기 명단 등록",
         "waitlistSubmitFailed": "제출에 실패했습니다. 다시 시도해 주세요.",
+        "waitlistInvalidContact": "유효한 이메일 주소 또는 Telegram 사용자명(예: @username)을 입력하세요.",
         "welcomeAlt": "환영합니다"
     },
     "blocked": {

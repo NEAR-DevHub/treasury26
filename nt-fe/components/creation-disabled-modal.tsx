@@ -12,6 +12,7 @@ import {
     DialogTitle,
 } from "@/components/modal";
 import { submitWhitelistRequest } from "@/lib/api";
+import { isValidWaitlistContact } from "@/lib/waitlist-contact-validation";
 import { useNear } from "@/stores/near-store";
 import { Input } from "./input";
 
@@ -32,12 +33,18 @@ export function CreationDisabledModal({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
 
+    const trimmedContact = contact.trim();
+    const showContactError =
+        trimmedContact.length > 0 && !isValidWaitlistContact(contact);
+    const canSubmit =
+        trimmedContact.length > 0 && isValidWaitlistContact(contact);
+
     const handleSubmit = async () => {
-        if (!contact.trim()) return;
+        if (!canSubmit) return;
         setIsSubmitting(true);
         try {
             await submitWhitelistRequest({
-                contact: contact.trim(),
+                contact: trimmedContact,
                 accountId: accountId ?? undefined,
             });
             setSubmitted(true);
@@ -87,14 +94,20 @@ export function CreationDisabledModal({
                                 value={contact}
                                 onChange={(e) => setContact(e.target.value)}
                             />
-                            <p className="text-xs text-muted-foreground">
-                                {tL("waitlistPrivacyNote")}
-                            </p>
+                            {showContactError ? (
+                                <p className="text-xs text-destructive">
+                                    {tL("waitlistInvalidContact")}
+                                </p>
+                            ) : (
+                                <p className="text-xs text-muted-foreground">
+                                    {tL("waitlistPrivacyNote")}
+                                </p>
+                            )}
                         </div>
                         <Button
                             className="w-full"
                             onClick={handleSubmit}
-                            disabled={isSubmitting || !contact.trim()}
+                            disabled={isSubmitting || !canSubmit}
                         >
                             {isSubmitting && (
                                 <Loader2 className="h-4 w-4 animate-spin" />

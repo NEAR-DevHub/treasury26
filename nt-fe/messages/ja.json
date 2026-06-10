@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "通知のためだけに使用します",
         "waitlistSubmit": "ウェイトリストに参加",
         "waitlistSubmitFailed": "送信に失敗しました。もう一度お試しください。",
+        "waitlistInvalidContact": "有効なメールアドレスまたはTelegramユーザー名（例: @username）を入力してください。",
         "welcomeAlt": "ようこそ"
     },
     "blocked": {

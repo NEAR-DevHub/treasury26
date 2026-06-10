@@ -33,6 +33,7 @@ import {
     submitWhitelistRequest,
 } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
+import { isValidWaitlistContact } from "@/lib/waitlist-contact-validation";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
@@ -559,6 +560,21 @@ export function CreateTreasuryEntry() {
         </div>
     );
 
+    const {
+        trimmedWaitlistContact,
+        showWaitlistContactError,
+        canSubmitWaitlist,
+    } = useMemo(() => {
+        const trimmed = waitlistContact.trim();
+        const isValid = isValidWaitlistContact(waitlistContact);
+
+        return {
+            trimmedWaitlistContact: trimmed,
+            showWaitlistContactError: trimmed.length > 0 && !isValid,
+            canSubmitWaitlist: trimmed.length > 0 && isValid,
+        };
+    }, [waitlistContact]);
+
     const waitlistBody = (
         <div className="mx-auto mt-6 w-full max-w-[668px] space-y-3 md:mt-10">
             <PageCard className="py-20">
@@ -589,19 +605,26 @@ export function CreateTreasuryEntry() {
                                     )}
                                     borderless
                                     className="px-3 bg-muted border-none focus-visible:ring-0 text-sm!"
+                                    aria-invalid={showWaitlistContactError}
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    {tLanding("waitlistPrivacyNote")}
-                                </p>
+                                {showWaitlistContactError ? (
+                                    <p className="text-xs text-destructive">
+                                        {tLanding("waitlistInvalidContact")}
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground">
+                                        {tLanding("waitlistPrivacyNote")}
+                                    </p>
+                                )}
                             </div>
                             <Button
                                 className="w-full"
                                 onClick={async () => {
-                                    if (!waitlistContact.trim()) return;
+                                    if (!canSubmitWaitlist) return;
                                     setIsSubmittingWaitlist(true);
                                     try {
                                         await submitWhitelistRequest({
-                                            contact: waitlistContact.trim(),
+                                            contact: trimmedWaitlistContact,
                                             accountId: accountId ?? undefined,
                                         });
                                         setIsWaitlistSubmitted(true);
@@ -614,8 +637,7 @@ export function CreateTreasuryEntry() {
                                     }
                                 }}
                                 disabled={
-                                    isSubmittingWaitlist ||
-                                    !waitlistContact.trim()
+                                    isSubmittingWaitlist || !canSubmitWaitlist
                                 }
                             >
                                 {isSubmittingWaitlist && (

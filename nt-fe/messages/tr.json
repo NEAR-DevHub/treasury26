@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "Bunu yalnızca size haber vermek için kullanacağız",
         "waitlistSubmit": "Bekleme Listesine Katıl",
         "waitlistSubmitFailed": "Gönderilemedi. Lütfen tekrar deneyin.",
+        "waitlistInvalidContact": "Geçerli bir e-posta adresi veya Telegram kullanıcı adı girin (ör. @username).",
         "welcomeAlt": "hoş geldiniz"
     },
     "blocked": {

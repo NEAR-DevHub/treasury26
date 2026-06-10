@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "Chúng tôi chỉ sử dụng thông tin này để thông báo cho bạn",
         "waitlistSubmit": "Tham gia danh sách chờ",
         "waitlistSubmitFailed": "Gửi không thành công. Vui lòng thử lại.",
+        "waitlistInvalidContact": "Nhập địa chỉ email hợp lệ hoặc tên người dùng Telegram (ví dụ: @username).",
         "welcomeAlt": "chào mừng"
     },
     "blocked": {

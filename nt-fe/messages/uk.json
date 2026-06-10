@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "Ми використаємо це лише для сповіщення",
         "waitlistSubmit": "Приєднатись до списку очікування",
         "waitlistSubmitFailed": "Не вдалось надіслати. Спробуйте ще раз.",
+        "waitlistInvalidContact": "Введіть дійсну адресу електронної пошти або ім'я користувача Telegram (наприклад, @username).",
         "welcomeAlt": "вітаємо"
     },
     "blocked": {

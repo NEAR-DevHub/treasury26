@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "Solo lo usaremos para avisarte",
         "waitlistSubmit": "Unirme a la lista de espera",
         "waitlistSubmitFailed": "Error al enviar. Inténtalo de nuevo.",
+        "waitlistInvalidContact": "Introduce un correo electrónico válido o un nombre de usuario de Telegram (p. ej. @username).",
         "welcomeAlt": "bienvenido"
     },
     "blocked": {

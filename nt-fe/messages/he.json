@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "נשתמש בזה רק כדי להודיע לך",
         "waitlistSubmit": "הצטרף לרשימת ההמתנה",
         "waitlistSubmitFailed": "השליחה נכשלה. אנא נסה שוב.",
+        "waitlistInvalidContact": "הזן כתובת אימייל תקינה או שם משתמש בטלגרם (למשל @username).",
         "welcomeAlt": "ברוכים הבאים"
     },
     "blocked": {

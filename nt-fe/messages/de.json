@@ -130,6 +130,7 @@
         "waitlistPrivacyNote": "Wir verwenden diese Daten ausschließlich zur Benachrichtigung",
         "waitlistSubmit": "Auf die Warteliste setzen",
         "waitlistSubmitFailed": "Übermittlung fehlgeschlagen. Bitte erneut versuchen.",
+        "waitlistInvalidContact": "Geben Sie eine gültige E-Mail-Adresse oder einen Telegram-Benutzernamen ein (z. B. @username).",
         "welcomeAlt": "Willkommen"
     },
     "blocked": {
