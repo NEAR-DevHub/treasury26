@@ -197,7 +197,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
     );
     metadata.insert(
         "layerx".to_string(),
-        ChainMetadata::new("LayerX", "layerx.svg"),
+        ChainMetadata::new("XLayer", "layerx.svg"),
     );
     add_chain_alias(&mut metadata, "xlayer", "layerx");
     metadata.insert("dash".to_string(), ChainMetadata::new("Dash", "dash.svg"));
