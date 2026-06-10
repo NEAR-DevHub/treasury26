@@ -14,6 +14,6 @@ export function useAddressBook() {
         enabled,
         staleTime: 1000 * 60, //1 minute
         refetchInterval: 1000 * 60, //1 minute
-        refetchIntervalInBackground: true
+        refetchIntervalInBackground: true,
     });
 }
