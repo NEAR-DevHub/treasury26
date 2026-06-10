@@ -68,14 +68,16 @@ struct ProposalKind {
 
 #[derive(Debug, Deserialize)]
 struct TransferKind {
-    #[serde(default)]
-    token_id: String,
-    receiver_id: String,
+    // Native NEAR uses the sentinel token_id "", which is not a valid
+    // AccountId; such transfers fail to deserialize and yield no registration
+    // (correct — native NEAR needs none).
+    token_id: AccountId,
+    receiver_id: AccountId,
 }
 
 #[derive(Debug, Deserialize)]
 struct FunctionCallKind {
-    receiver_id: String,
+    receiver_id: AccountId,
     #[serde(default)]
     actions: Vec<ProposalFunctionCall>,
 }
@@ -90,19 +92,20 @@ struct ProposalFunctionCall {
 
 #[derive(Debug, Deserialize)]
 struct FtTransferArgs {
-    receiver_id: String,
+    receiver_id: AccountId,
 }
 
 #[derive(Debug, Deserialize)]
 struct FtTransferCallArgs {
-    receiver_id: String,
+    receiver_id: AccountId,
     #[serde(default)]
     msg: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct MtTransferCallArgs {
-    receiver_id: String,
+    receiver_id: AccountId,
+    /// Intents asset id, e.g. `nep141:usdc.near` — not a bare AccountId.
     token_id: String,
     #[serde(default)]
     msg: String,
@@ -232,15 +235,10 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
 
     // Sputnik native `Transfer` kind (the main direct-FT-payment path).
     if let Some(transfer) = kind.transfer {
-        if !is_native_token(&transfer.token_id)
-            && let (Ok(account_id), Ok(token_id)) = (
-                transfer.receiver_id.parse::<AccountId>(),
-                transfer.token_id.parse::<AccountId>(),
-            )
-        {
+        if !is_native_token(transfer.token_id.as_str()) {
             out.direct.push(Registration {
-                account_id,
-                token_id,
+                account_id: transfer.receiver_id,
+                token_id: transfer.token_id,
             });
         }
         return out;
@@ -254,15 +252,10 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
         match action.method_name.as_str() {
             // `ft_transfer` on a token contract → register the recipient on it.
             "ft_transfer" => {
-                if let Some(args) = decode_args::<FtTransferArgs>(&action.args)
-                    && let (Ok(account_id), Ok(token_id)) = (
-                        args.receiver_id.parse::<AccountId>(),
-                        func_call.receiver_id.parse::<AccountId>(),
-                    )
-                {
+                if let Some(args) = decode_args::<FtTransferArgs>(&action.args) {
                     out.direct.push(Registration {
-                        account_id,
-                        token_id,
+                        account_id: args.receiver_id,
+                        token_id: func_call.receiver_id.clone(),
                     });
                 }
             }
@@ -273,14 +266,12 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
                 let Some(args) = decode_args::<FtTransferCallArgs>(&action.args) else {
                     continue;
                 };
-                let Ok(token_id) = func_call.receiver_id.parse::<AccountId>() else {
-                    continue;
-                };
-                if args.receiver_id == bulk_contract.as_str() {
+                let token_id = func_call.receiver_id.clone();
+                if args.receiver_id == *bulk_contract {
                     out.push_bulk(bulk_contract, token_id, args.msg);
-                } else if let Ok(account_id) = args.receiver_id.parse::<AccountId>() {
+                } else {
                     out.direct.push(Registration {
-                        account_id,
+                        account_id: args.receiver_id,
                         token_id,
                     });
                 }
@@ -291,7 +282,7 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
                 let Some(args) = decode_args::<MtTransferCallArgs>(&action.args) else {
                     continue;
                 };
-                if args.receiver_id != bulk_contract.as_str() {
+                if args.receiver_id != *bulk_contract {
                     continue;
                 }
                 let Some(contract) = extract_intents_contract(&args.token_id) else {
