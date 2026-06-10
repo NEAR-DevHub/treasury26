@@ -13,6 +13,7 @@
 use std::collections::HashSet;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::time::Duration;
 
 use base64::Engine as _;
 use near_api::{
@@ -22,7 +23,8 @@ use near_api::{
         transaction::{actions::FunctionCallAction, delegate_action::SignedDelegateAction},
     },
 };
-use serde_json::Value;
+use serde::Deserialize;
+use serde::de::DeserializeOwned;
 
 use crate::{
     AppState,
@@ -35,36 +37,108 @@ use crate::{
 
 /// Standard NEP-141 registration cost (0.00125 NEAR). The contract refunds any
 /// excess, and `registration_only: true` is a no-op when already registered.
-pub const STORAGE_DEPOSIT_AMOUNT: NearToken = NearToken::from_micronear(1250);
+pub(crate) const STORAGE_DEPOSIT_AMOUNT: NearToken = NearToken::from_micronear(1250);
 const STORAGE_DEPOSIT_GAS: NearGas = NearGas::from_tgas(30);
 /// Upper bound on registrations performed for a single approval. Bulk payment
 /// lists are capped well under this on the contract side; this is a backstop.
 const MAX_STORAGE_DEPOSITS: usize = 200;
+/// How many times to retry a single `storage_deposit` send before failing the
+/// approval, to ride out transient RPC/network errors.
+const MAX_REGISTER_ATTEMPTS: usize = 3;
+const REGISTER_RETRY_DELAY: Duration = Duration::from_millis(500);
 
-/// A single `(account_to_register, token_contract)` registration target.
-type Target = (AccountId, AccountId);
+/// A single account that must be registered on a token contract.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Registration {
+    account_id: AccountId,
+    token_id: AccountId,
+}
+
+// ─── Typed views over the on-chain proposal kind / action args ──────────────────
+
+/// Sputnik proposal `kind`. Only the variants that can imply a NEP-141
+/// registration are modelled; everything else deserializes to `None` fields.
+#[derive(Debug, Default, Deserialize)]
+struct ProposalKind {
+    #[serde(rename = "Transfer")]
+    transfer: Option<TransferKind>,
+    #[serde(rename = "FunctionCall")]
+    function_call: Option<FunctionCallKind>,
+}
+
+#[derive(Debug, Deserialize)]
+struct TransferKind {
+    #[serde(default)]
+    token_id: String,
+    receiver_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct FunctionCallKind {
+    receiver_id: String,
+    #[serde(default)]
+    actions: Vec<ProposalFunctionCall>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ProposalFunctionCall {
+    method_name: String,
+    /// Base64-encoded JSON args.
+    #[serde(default)]
+    args: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct FtTransferArgs {
+    receiver_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct FtTransferCallArgs {
+    receiver_id: String,
+    #[serde(default)]
+    msg: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct MtTransferCallArgs {
+    receiver_id: String,
+    token_id: String,
+    #[serde(default)]
+    msg: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ActProposalArgs {
+    id: u64,
+    action: String,
+}
 
 fn is_native_token(token_id: &str) -> bool {
     token_id.is_empty() || token_id.eq_ignore_ascii_case("near")
 }
 
+/// Decode base64-encoded JSON action args into a typed struct.
+fn decode_args<T: DeserializeOwned>(encoded: &str) -> Option<T> {
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .ok()?;
+    serde_json::from_slice(&bytes).ok()
+}
+
 /// Return the proposal id if these `act_proposal` args represent a `VoteApprove`.
-fn approve_id_from_act_proposal_args(args: &Value) -> Option<u64> {
-    if args.get("action").and_then(Value::as_str) == Some("VoteApprove") {
-        args.get("id").and_then(Value::as_u64)
-    } else {
-        None
-    }
+fn approve_proposal_id(args: &ActProposalArgs) -> Option<u64> {
+    (args.action == "VoteApprove").then_some(args.id)
 }
 
 /// Collect the proposal ids being approved (`VoteApprove`) in this delegate action.
-pub fn vote_approve_proposal_ids(signed_delegate_action: &SignedDelegateAction) -> Vec<u64> {
+pub(crate) fn vote_approve_proposal_ids(signed_delegate_action: &SignedDelegateAction) -> Vec<u64> {
     let mut ids = Vec::new();
     for action in &signed_delegate_action.delegate_action.actions {
         if let Action::FunctionCall(function_call) = action.deref()
             && function_call.method_name == "act_proposal"
-            && let Ok(args) = serde_json::from_slice::<Value>(&function_call.args)
-            && let Some(id) = approve_id_from_act_proposal_args(&args)
+            && let Ok(args) = serde_json::from_slice::<ActProposalArgs>(&function_call.args)
+            && let Some(id) = approve_proposal_id(&args)
         {
             ids.push(id);
         }
@@ -82,17 +156,17 @@ struct BulkList {
 /// lists whose recipients still need to be resolved over the network.
 #[derive(Default)]
 struct ClassifiedTargets {
-    direct: Vec<Target>,
+    direct: Vec<Registration>,
     bulk_lists: Vec<BulkList>,
 }
 
 /// Fetch a proposal by id and derive its storage-deposit targets. Failures to
 /// read the proposal are logged and yield no targets (the vote still proceeds).
-pub async fn derive_targets_for_proposal(
+pub(crate) async fn derive_targets_for_proposal(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
     proposal_id: u64,
-) -> Vec<Target> {
+) -> Vec<Registration> {
     let proposal = match fetch_proposal(&state.network, treasury_id, proposal_id).await {
         Ok(proposal) => proposal,
         Err(e) => {
@@ -119,8 +193,11 @@ pub async fn derive_targets_for_proposal(
             Ok(list) => {
                 for payment in list.payments {
                     // Non-NEAR (cross-chain) recipients can't be NEP-141 registered.
-                    if let Ok(recipient) = payment.recipient.parse::<AccountId>() {
-                        direct.push((recipient, token.clone()));
+                    if let Ok(account_id) = payment.recipient.parse::<AccountId>() {
+                        direct.push(Registration {
+                            account_id,
+                            token_id: token.clone(),
+                        });
                     }
                 }
             }
@@ -137,14 +214,6 @@ pub async fn derive_targets_for_proposal(
     direct
 }
 
-fn decode_action_args(action: &Value) -> Option<Value> {
-    let args_b64 = action.get("args")?.as_str()?;
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(args_b64)
-        .ok()?;
-    serde_json::from_slice::<Value>(&bytes).ok()
-}
-
 /// Classify a proposal's on-chain `kind` into storage-deposit targets, without
 /// any network access. Bulk recipient lists are returned for later expansion.
 ///
@@ -154,108 +223,84 @@ fn decode_action_args(action: &Value) -> Option<Value> {
 ///   special case that registers the bulk contract and expands recipients).
 /// - `FunctionCall` action `mt_transfer_call` to the bulk contract when the
 ///   intents `token_id` is a `nep141:` asset.
-fn classify_kind(kind: &Value, bulk_contract: &AccountId) -> ClassifiedTargets {
+fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> ClassifiedTargets {
     let mut out = ClassifiedTargets::default();
 
+    let Ok(kind) = serde_json::from_value::<ProposalKind>(kind.clone()) else {
+        return out;
+    };
+
     // Sputnik native `Transfer` kind (the main direct-FT-payment path).
-    if let Some(transfer) = kind.get("Transfer") {
-        let token_id = transfer
-            .get("token_id")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        let receiver_id = transfer
-            .get("receiver_id")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        if !is_native_token(token_id)
-            && let (Ok(account), Ok(token)) =
-                (receiver_id.parse::<AccountId>(), token_id.parse::<AccountId>())
+    if let Some(transfer) = kind.transfer {
+        if !is_native_token(&transfer.token_id)
+            && let (Ok(account_id), Ok(token_id)) = (
+                transfer.receiver_id.parse::<AccountId>(),
+                transfer.token_id.parse::<AccountId>(),
+            )
         {
-            out.direct.push((account, token));
+            out.direct.push(Registration {
+                account_id,
+                token_id,
+            });
         }
         return out;
     }
 
-    let Some(func_call) = kind.get("FunctionCall") else {
-        return out;
-    };
-    let call_receiver = func_call
-        .get("receiver_id")
-        .and_then(Value::as_str)
-        .unwrap_or("");
-    let Some(actions) = func_call.get("actions").and_then(Value::as_array) else {
+    let Some(func_call) = kind.function_call else {
         return out;
     };
 
-    for action in actions {
-        let method = action
-            .get("method_name")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        match method {
+    for action in &func_call.actions {
+        match action.method_name.as_str() {
             // `ft_transfer` on a token contract → register the recipient on it.
             "ft_transfer" => {
-                if let Some(args) = decode_action_args(action)
-                    && let Some(recv) = args.get("receiver_id").and_then(Value::as_str)
-                    && let (Ok(account), Ok(token)) =
-                        (recv.parse::<AccountId>(), call_receiver.parse::<AccountId>())
+                if let Some(args) = decode_args::<FtTransferArgs>(&action.args)
+                    && let (Ok(account_id), Ok(token_id)) = (
+                        args.receiver_id.parse::<AccountId>(),
+                        func_call.receiver_id.parse::<AccountId>(),
+                    )
                 {
-                    out.direct.push((account, token));
+                    out.direct.push(Registration {
+                        account_id,
+                        token_id,
+                    });
                 }
             }
             // `ft_transfer_call` on a token contract. To the bulk contract →
             // register the bulk contract + every NEAR recipient; otherwise →
             // register the call's receiver.
             "ft_transfer_call" => {
-                let Some(args) = decode_action_args(action) else {
+                let Some(args) = decode_args::<FtTransferCallArgs>(&action.args) else {
                     continue;
                 };
-                let Ok(token) = call_receiver.parse::<AccountId>() else {
+                let Ok(token_id) = func_call.receiver_id.parse::<AccountId>() else {
                     continue;
                 };
-                let arg_receiver = args
-                    .get("receiver_id")
-                    .and_then(Value::as_str)
-                    .unwrap_or("");
-                if arg_receiver == bulk_contract.as_str() {
-                    out.direct.push((bulk_contract.clone(), token.clone()));
-                    if let Some(list_id) = args.get("msg").and_then(Value::as_str) {
-                        out.bulk_lists.push(BulkList {
-                            token,
-                            list_id: list_id.to_string(),
-                        });
-                    }
-                } else if let Ok(account) = arg_receiver.parse::<AccountId>() {
-                    out.direct.push((account, token));
+                if args.receiver_id == bulk_contract.as_str() {
+                    out.push_bulk(bulk_contract, token_id, args.msg);
+                } else if let Ok(account_id) = args.receiver_id.parse::<AccountId>() {
+                    out.direct.push(Registration {
+                        account_id,
+                        token_id,
+                    });
                 }
             }
             // Intents bulk payment: `mt_transfer_call` to the bulk contract on
             // `intents.near`, where the underlying token is a `nep141:` asset.
             "mt_transfer_call" => {
-                let Some(args) = decode_action_args(action) else {
+                let Some(args) = decode_args::<MtTransferCallArgs>(&action.args) else {
                     continue;
                 };
-                let arg_receiver = args
-                    .get("receiver_id")
-                    .and_then(Value::as_str)
-                    .unwrap_or("");
-                if arg_receiver != bulk_contract.as_str() {
+                if args.receiver_id != bulk_contract.as_str() {
                     continue;
                 }
-                let token_id_field = args.get("token_id").and_then(Value::as_str).unwrap_or("");
-                let Some(contract) = extract_intents_contract(token_id_field) else {
+                let Some(contract) = extract_intents_contract(&args.token_id) else {
                     continue;
                 };
-                let Ok(token) = contract.parse::<AccountId>() else {
+                let Ok(token_id) = contract.parse::<AccountId>() else {
                     continue;
                 };
-                out.direct.push((bulk_contract.clone(), token.clone()));
-                if let Some(list_id) = args.get("msg").and_then(Value::as_str) {
-                    out.bulk_lists.push(BulkList {
-                        token,
-                        list_id: list_id.to_string(),
-                    });
-                }
+                out.push_bulk(bulk_contract, token_id, args.msg);
             }
             _ => {}
         }
@@ -264,12 +309,29 @@ fn classify_kind(kind: &Value, bulk_contract: &AccountId) -> ClassifiedTargets {
     out
 }
 
+impl ClassifiedTargets {
+    /// Register the bulk payment contract on `token` and queue its recipient
+    /// list (identified by `list_id`) for expansion.
+    fn push_bulk(&mut self, bulk_contract: &AccountId, token: AccountId, list_id: String) {
+        self.direct.push(Registration {
+            account_id: bulk_contract.clone(),
+            token_id: token.clone(),
+        });
+        if !list_id.is_empty() {
+            self.bulk_lists.push(BulkList {
+                token,
+                list_id,
+            });
+        }
+    }
+}
+
 /// Dedupe targets and enforce the per-approval cap.
-fn prepare_targets(targets: Vec<Target>) -> Result<Vec<Target>, String> {
+fn prepare_targets(targets: Vec<Registration>) -> Result<Vec<Registration>, String> {
     let mut seen = HashSet::new();
-    let deduped: Vec<Target> = targets
+    let deduped: Vec<Registration> = targets
         .into_iter()
-        .filter(|(account, token)| seen.insert((account.to_string(), token.to_string())))
+        .filter(|r| seen.insert((r.account_id.to_string(), r.token_id.to_string())))
         .collect();
 
     if deduped.len() > MAX_STORAGE_DEPOSITS {
@@ -285,18 +347,18 @@ fn prepare_targets(targets: Vec<Target>) -> Result<Vec<Target>, String> {
 /// Perform the required registrations concurrently, skipping already-registered
 /// accounts. Returns the number of `storage_deposit` calls actually sent (for
 /// `paid_near` accounting). Errors if a required registration fails.
-pub async fn execute_storage_deposits(
+pub(crate) async fn execute_storage_deposits(
     state: &Arc<AppState>,
-    targets: Vec<Target>,
+    targets: Vec<Registration>,
 ) -> Result<u32, String> {
     let deduped = prepare_targets(targets)?;
     if deduped.is_empty() {
         return Ok(0);
     }
 
-    let futures = deduped.into_iter().map(|(account, token)| {
+    let futures = deduped.into_iter().map(|registration| {
         let state = state.clone();
-        async move { register_one(&state, &account, &token).await }
+        async move { register_one(&state, &registration).await }
     });
     let results = futures::future::join_all(futures).await;
 
@@ -313,11 +375,13 @@ pub async fn execute_storage_deposits(
 
 /// Register a single account on a token contract. Returns `Ok(true)` when a
 /// `storage_deposit` was actually sent, `Ok(false)` when already registered.
-async fn register_one(
-    state: &Arc<AppState>,
-    account_id: &AccountId,
-    token_id: &AccountId,
-) -> Result<bool, String> {
+/// Retries transient send failures up to `MAX_REGISTER_ATTEMPTS` times.
+async fn register_one(state: &Arc<AppState>, registration: &Registration) -> Result<bool, String> {
+    let Registration {
+        account_id,
+        token_id,
+    } = registration;
+
     match check_storage_deposit(state, account_id.clone(), token_id.clone()).await {
         Ok(true) => return Ok(false),
         Ok(false) => {}
@@ -339,6 +403,41 @@ async fn register_one(
     }))
     .map_err(|e| e.to_string())?;
 
+    let mut last_error = String::new();
+    for attempt in 1..=MAX_REGISTER_ATTEMPTS {
+        match send_storage_deposit(state, token_id, args.clone()).await {
+            // storage_deposit is idempotent (registration_only refunds), so a
+            // retry after a partially-applied send is safe.
+            Ok(()) => return Ok(true),
+            Err(e) => {
+                last_error = e;
+                log::warn!(
+                    "storage_deposit attempt {}/{} failed for {} on {}: {}",
+                    attempt,
+                    MAX_REGISTER_ATTEMPTS,
+                    account_id,
+                    token_id,
+                    last_error
+                );
+                if attempt < MAX_REGISTER_ATTEMPTS {
+                    tokio::time::sleep(REGISTER_RETRY_DELAY).await;
+                }
+            }
+        }
+    }
+
+    Err(format!(
+        "storage_deposit failed for {} on {} after {} attempts: {}",
+        account_id, token_id, MAX_REGISTER_ATTEMPTS, last_error
+    ))
+}
+
+/// Send a single sponsor-signed `storage_deposit` transaction.
+async fn send_storage_deposit(
+    state: &Arc<AppState>,
+    token_id: &AccountId,
+    args: Vec<u8>,
+) -> Result<(), String> {
     Transaction::construct(state.signer_id.clone(), token_id.clone())
         .add_action(Action::FunctionCall(Box::new(FunctionCallAction {
             method_name: "storage_deposit".to_string(),
@@ -349,21 +448,10 @@ async fn register_one(
         .with_signer(state.signer.clone())
         .send_to(&state.network)
         .await
-        .map_err(|e| {
-            format!(
-                "Failed to send storage_deposit for {} on {}: {}",
-                account_id, token_id, e
-            )
-        })?
+        .map_err(|e| format!("send failed: {}", e))?
         .into_result()
-        .map_err(|e| {
-            format!(
-                "storage_deposit failed for {} on {}: {}",
-                account_id, token_id, e
-            )
-        })?;
-
-    Ok(true)
+        .map_err(|e| format!("execution failed: {}", e))?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -377,6 +465,13 @@ mod tests {
 
     fn acc(s: &str) -> AccountId {
         s.parse().unwrap()
+    }
+
+    fn reg(account: &str, token: &str) -> Registration {
+        Registration {
+            account_id: acc(account),
+            token_id: acc(token),
+        }
     }
 
     /// Build a FunctionCall action with base64-encoded JSON args.
@@ -394,7 +489,7 @@ mod tests {
     fn transfer_ft_registers_recipient() {
         let kind = json!({ "Transfer": { "token_id": "usdc.near", "receiver_id": "alice.near" } });
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![(acc("alice.near"), acc("usdc.near"))]);
+        assert_eq!(out.direct, vec![reg("alice.near", "usdc.near")]);
         assert!(out.bulk_lists.is_empty());
     }
 
@@ -415,7 +510,7 @@ mod tests {
             vec![fc_action("ft_transfer", json!({ "receiver_id": "deposit.near", "amount": "5" }))],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![(acc("deposit.near"), acc("usdc.near"))]);
+        assert_eq!(out.direct, vec![reg("deposit.near", "usdc.near")]);
         assert!(out.bulk_lists.is_empty());
     }
 
@@ -430,7 +525,7 @@ mod tests {
             ],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![(acc("1click.near"), acc("wrap.near"))]);
+        assert_eq!(out.direct, vec![reg("1click.near", "wrap.near")]);
     }
 
     #[test]
@@ -443,7 +538,7 @@ mod tests {
             )],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![(acc("somecontract.near"), acc("usdc.near"))]);
+        assert_eq!(out.direct, vec![reg("somecontract.near", "usdc.near")]);
         assert!(out.bulk_lists.is_empty());
     }
 
@@ -457,7 +552,7 @@ mod tests {
             )],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![(bulk(), acc("usdc.near"))]);
+        assert_eq!(out.direct, vec![reg("bulkpayment.near", "usdc.near")]);
         assert_eq!(out.bulk_lists.len(), 1);
         assert_eq!(out.bulk_lists[0].token, acc("usdc.near"));
         assert_eq!(out.bulk_lists[0].list_id, "list-7");
@@ -478,7 +573,7 @@ mod tests {
             )],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![(bulk(), acc("usdt.tether-token.near"))]);
+        assert_eq!(out.direct, vec![reg("bulkpayment.near", "usdt.tether-token.near")]);
         assert_eq!(out.bulk_lists.len(), 1);
         assert_eq!(out.bulk_lists[0].token, acc("usdt.tether-token.near"));
         assert_eq!(out.bulk_lists[0].list_id, "list-9");
@@ -517,17 +612,28 @@ mod tests {
     }
 
     #[test]
+    fn non_payment_kind_registers_nothing() {
+        // Unmodelled proposal kinds (e.g. ChangePolicy) must classify cleanly to none.
+        let kind = json!({ "ChangePolicy": { "policy": {} } });
+        let out = classify_kind(&kind, &bulk());
+        assert!(out.direct.is_empty());
+        assert!(out.bulk_lists.is_empty());
+    }
+
+    #[test]
     fn approve_id_parsing() {
         assert_eq!(
-            approve_id_from_act_proposal_args(&json!({ "id": 12, "action": "VoteApprove" })),
+            approve_proposal_id(&ActProposalArgs {
+                id: 12,
+                action: "VoteApprove".to_string()
+            }),
             Some(12)
         );
         assert_eq!(
-            approve_id_from_act_proposal_args(&json!({ "id": 12, "action": "VoteReject" })),
-            None
-        );
-        assert_eq!(
-            approve_id_from_act_proposal_args(&json!({ "action": "VoteApprove" })),
+            approve_proposal_id(&ActProposalArgs {
+                id: 12,
+                action: "VoteReject".to_string()
+            }),
             None
         );
     }
@@ -535,9 +641,9 @@ mod tests {
     #[test]
     fn prepare_targets_dedupes() {
         let targets = vec![
-            (acc("alice.near"), acc("usdc.near")),
-            (acc("alice.near"), acc("usdc.near")),
-            (acc("bob.near"), acc("usdc.near")),
+            reg("alice.near", "usdc.near"),
+            reg("alice.near", "usdc.near"),
+            reg("bob.near", "usdc.near"),
         ];
         let prepared = prepare_targets(targets).unwrap();
         assert_eq!(prepared.len(), 2);
@@ -545,8 +651,8 @@ mod tests {
 
     #[test]
     fn prepare_targets_enforces_cap() {
-        let targets: Vec<Target> = (0..(MAX_STORAGE_DEPOSITS + 1))
-            .map(|i| (acc(&format!("a{i}.near")), acc("usdc.near")))
+        let targets: Vec<Registration> = (0..(MAX_STORAGE_DEPOSITS + 1))
+            .map(|i| reg(&format!("a{i}.near"), "usdc.near"))
             .collect();
         assert!(prepare_targets(targets).is_err());
     }
