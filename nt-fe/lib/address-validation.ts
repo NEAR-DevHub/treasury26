@@ -21,7 +21,11 @@ export interface ValidationResult {
  */
 const ADDRESS_PATTERNS: Record<BlockchainType, RegExp | null> = {
     near: null, // NEAR has custom validation logic in near-validation.ts
-    bitcoin: /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}$/i,
+    // Legacy P2PKH/P2SH (Base58), SegWit v0 (bech32) and Taproot (bech32m).
+    // Bech32 data part excludes "1bio" and must not be mixed-case, so the
+    // all-uppercase form is matched as a separate alternative.
+    bitcoin:
+        /^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[ac-hj-np-z02-9]{39,59}|BC1[AC-HJ-NP-Z02-9]{39,59})$/,
     bitcoincash:
         /^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bitcoincash:[qp][a-z0-9]{41})$/,
     litecoin: /^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/,
