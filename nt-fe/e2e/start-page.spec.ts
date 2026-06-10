@@ -13,11 +13,9 @@ async function setupStartPageMocks(
     page: Page,
     {
         accountId,
-        creationAvailable,
         treasuries,
     }: {
         accountId?: string;
-        creationAvailable: boolean;
         treasuries?: unknown[];
     },
 ) {
@@ -38,17 +36,6 @@ async function setupStartPageMocks(
                 body: accountId
                     ? JSON.stringify({ accountId, termsAccepted: true })
                     : JSON.stringify({ error: "Not authenticated" }),
-            });
-        }
-
-        if (
-            url.includes("/api/treasury/creation-status") ||
-            url.includes("/treasury/creation-status")
-        ) {
-            return route.fulfill({
-                status: 200,
-                contentType: "application/json",
-                body: JSON.stringify({ creationAvailable }),
             });
         }
 
@@ -82,7 +69,7 @@ async function gotoStartPageAndWaitForBootstrapRequests(page: Page) {
 test("Start page shows create treasury form when signed out", async ({
     page,
 }) => {
-    await setupStartPageMocks(page, { creationAvailable: true });
+    await setupStartPageMocks(page, {});
 
     await page.goto("/");
 
@@ -99,7 +86,6 @@ test("Signed in + no treasuries => stays on create treasury form", async ({
 }) => {
     await setupStartPageMocks(page, {
         accountId: "test.near",
-        creationAvailable: true,
         treasuries: [],
     });
 
@@ -115,7 +101,6 @@ test("Signed in + has treasury => redirects to /{daoId}", async ({ page }) => {
     const daoId = "webassemblymusic-treasury.sputnik-dao.near";
     await setupStartPageMocks(page, {
         accountId: "test.near",
-        creationAvailable: true,
         treasuries: [
             {
                 daoId,
@@ -135,22 +120,42 @@ test("Signed in + has treasury => redirects to /{daoId}", async ({ page }) => {
     );
 });
 
-test("Signed in + no treasuries + creation disabled => waitlist is shown", async ({
+test("Signed in + no treasuries + creation error => waitlist is shown", async ({
     page,
 }) => {
     await setupStartPageMocks(page, {
         accountId: "test.near",
-        creationAvailable: false,
         treasuries: [],
     });
 
+    await page.route("**/api/treasury/check-handle-unused**", async (route) =>
+        route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ unused: true }),
+        }),
+    );
+    await page.route("**/api/treasury/create-stream", async (route) =>
+        route.fulfill({
+            status: 200,
+            headers: { "content-type": "text/event-stream" },
+            body: `data: {"step":"error","status":"error","message":"Mocked creation failure"}\n\n`,
+        }),
+    );
+
     await gotoStartPageAndWaitForBootstrapRequests(page);
+
+    await page.getByRole("button", { name: /public best for daos/i }).click();
+    await page
+        .getByRole("textbox", { name: "My Treasury" })
+        .fill("testing-by-playwright");
+    await page.getByRole("button", { name: /create treasury/i }).click();
 
     await expect(page).toHaveURL(/\/$/);
     await expect(
-        page.getByRole("heading", { name: /join the trezu waitlist/i }),
+        page.getByRole("heading", { name: /give us a little time/i }),
     ).toBeVisible();
     await expect(
-        page.getByRole("button", { name: /join the waitlist/i }),
+        page.getByRole("button", { name: /notify me/i }),
     ).toBeVisible();
 });
