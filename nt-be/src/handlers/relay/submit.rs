@@ -638,7 +638,7 @@ pub async fn relay_delegate_action(
     // Targets are derived from the authoritative on-chain proposal kind.
     let approved_proposal_ids =
         crate::handlers::relay::storage_deposit::vote_approve_proposal_ids(&signed_delegate_action);
-    let mut storage_deposit_targets = Vec::new();
+    let mut storage_deposit_targets = HashSet::new();
     for proposal_id in approved_proposal_ids {
         storage_deposit_targets.extend(
             crate::handlers::relay::storage_deposit::derive_targets_for_proposal(

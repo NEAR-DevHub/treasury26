@@ -48,7 +48,7 @@ const MAX_REGISTER_ATTEMPTS: usize = 3;
 const REGISTER_RETRY_DELAY: Duration = Duration::from_millis(500);
 
 /// A single account that must be registered on a token contract.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Registration {
     account_id: AccountId,
     token_id: AccountId,
@@ -157,9 +157,10 @@ struct BulkList {
 
 /// Result of classifying a proposal kind: directly-known targets plus any bulk
 /// lists whose recipients still need to be resolved over the network.
+/// Targets are deduplicated via the `HashSet` as they are collected.
 #[derive(Default)]
 struct ClassifiedTargets {
-    direct: Vec<Registration>,
+    direct: HashSet<Registration>,
     bulk_lists: Vec<BulkList>,
 }
 
@@ -169,7 +170,7 @@ pub(crate) async fn derive_targets_for_proposal(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
     proposal_id: u64,
-) -> Vec<Registration> {
+) -> HashSet<Registration> {
     let proposal = match fetch_proposal(&state.network, treasury_id, proposal_id).await {
         Ok(proposal) => proposal,
         Err(e) => {
@@ -179,7 +180,7 @@ pub(crate) async fn derive_targets_for_proposal(
                 treasury_id,
                 e
             );
-            return Vec::new();
+            return HashSet::new();
         }
     };
 
@@ -197,7 +198,7 @@ pub(crate) async fn derive_targets_for_proposal(
                 for payment in list.payments {
                     // Non-NEAR (cross-chain) recipients can't be NEP-141 registered.
                     if let Ok(account_id) = payment.recipient.parse::<AccountId>() {
-                        direct.push(Registration {
+                        direct.insert(Registration {
                             account_id,
                             token_id: token.clone(),
                         });
@@ -236,7 +237,7 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
     // Sputnik native `Transfer` kind (the main direct-FT-payment path).
     if let Some(transfer) = kind.transfer {
         if !is_native_token(transfer.token_id.as_str()) {
-            out.direct.push(Registration {
+            out.direct.insert(Registration {
                 account_id: transfer.receiver_id,
                 token_id: transfer.token_id,
             });
@@ -253,7 +254,7 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
             // `ft_transfer` on a token contract → register the recipient on it.
             "ft_transfer" => {
                 if let Some(args) = decode_args::<FtTransferArgs>(&action.args) {
-                    out.direct.push(Registration {
+                    out.direct.insert(Registration {
                         account_id: args.receiver_id,
                         token_id: func_call.receiver_id.clone(),
                     });
@@ -270,7 +271,7 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
                 if args.receiver_id == *bulk_contract {
                     out.push_bulk(bulk_contract, token_id, args.msg);
                 } else {
-                    out.direct.push(Registration {
+                    out.direct.insert(Registration {
                         account_id: args.receiver_id,
                         token_id,
                     });
@@ -304,7 +305,7 @@ impl ClassifiedTargets {
     /// Register the bulk payment contract on `token` and queue its recipient
     /// list (identified by `list_id`) for expansion.
     fn push_bulk(&mut self, bulk_contract: &AccountId, token: AccountId, list_id: String) {
-        self.direct.push(Registration {
+        self.direct.insert(Registration {
             account_id: bulk_contract.clone(),
             token_id: token.clone(),
         });
@@ -314,37 +315,27 @@ impl ClassifiedTargets {
     }
 }
 
-/// Dedupe targets and enforce the per-approval cap.
-fn prepare_targets(targets: Vec<Registration>) -> Result<Vec<Registration>, String> {
-    let mut seen = HashSet::new();
-    let deduped: Vec<Registration> = targets
-        .into_iter()
-        .filter(|r| seen.insert((r.account_id.to_string(), r.token_id.to_string())))
-        .collect();
-
-    if deduped.len() > MAX_STORAGE_DEPOSITS {
+/// Perform the required registrations concurrently, skipping already-registered
+/// accounts. The targets are already deduplicated (collected into a `HashSet`).
+/// Returns the number of `storage_deposit` calls actually sent (for `paid_near`
+/// accounting). Errors if the per-approval cap is exceeded or a required
+/// registration fails.
+pub(crate) async fn execute_storage_deposits(
+    state: &Arc<AppState>,
+    targets: HashSet<Registration>,
+) -> Result<u32, String> {
+    if targets.is_empty() {
+        return Ok(0);
+    }
+    if targets.len() > MAX_STORAGE_DEPOSITS {
         return Err(format!(
             "Too many storage_deposit registrations required ({} > {})",
-            deduped.len(),
+            targets.len(),
             MAX_STORAGE_DEPOSITS
         ));
     }
-    Ok(deduped)
-}
 
-/// Perform the required registrations concurrently, skipping already-registered
-/// accounts. Returns the number of `storage_deposit` calls actually sent (for
-/// `paid_near` accounting). Errors if a required registration fails.
-pub(crate) async fn execute_storage_deposits(
-    state: &Arc<AppState>,
-    targets: Vec<Registration>,
-) -> Result<u32, String> {
-    let deduped = prepare_targets(targets)?;
-    if deduped.is_empty() {
-        return Ok(0);
-    }
-
-    let futures = deduped.into_iter().map(|registration| {
+    let futures = targets.into_iter().map(|registration| {
         let state = state.clone();
         async move { register_one(&state, &registration).await }
     });
@@ -462,6 +453,10 @@ mod tests {
         }
     }
 
+    fn regs(items: &[(&str, &str)]) -> HashSet<Registration> {
+        items.iter().map(|(a, t)| reg(a, t)).collect()
+    }
+
     /// Build a FunctionCall action with base64-encoded JSON args.
     fn fc_action(method: &str, args: serde_json::Value) -> serde_json::Value {
         let encoded =
@@ -477,7 +472,7 @@ mod tests {
     fn transfer_ft_registers_recipient() {
         let kind = json!({ "Transfer": { "token_id": "usdc.near", "receiver_id": "alice.near" } });
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![reg("alice.near", "usdc.near")]);
+        assert_eq!(out.direct, regs(&[("alice.near", "usdc.near")]));
         assert!(out.bulk_lists.is_empty());
     }
 
@@ -501,7 +496,7 @@ mod tests {
             )],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![reg("deposit.near", "usdc.near")]);
+        assert_eq!(out.direct, regs(&[("deposit.near", "usdc.near")]));
         assert!(out.bulk_lists.is_empty());
     }
 
@@ -519,7 +514,7 @@ mod tests {
             ],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![reg("1click.near", "wrap.near")]);
+        assert_eq!(out.direct, regs(&[("1click.near", "wrap.near")]));
     }
 
     #[test]
@@ -532,7 +527,7 @@ mod tests {
             )],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![reg("somecontract.near", "usdc.near")]);
+        assert_eq!(out.direct, regs(&[("somecontract.near", "usdc.near")]));
         assert!(out.bulk_lists.is_empty());
     }
 
@@ -546,7 +541,7 @@ mod tests {
             )],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![reg("bulkpayment.near", "usdc.near")]);
+        assert_eq!(out.direct, regs(&[("bulkpayment.near", "usdc.near")]));
         assert_eq!(out.bulk_lists.len(), 1);
         assert_eq!(out.bulk_lists[0].token, acc("usdc.near"));
         assert_eq!(out.bulk_lists[0].list_id, "list-7");
@@ -569,7 +564,7 @@ mod tests {
         let out = classify_kind(&kind, &bulk());
         assert_eq!(
             out.direct,
-            vec![reg("bulkpayment.near", "usdt.tether-token.near")]
+            regs(&[("bulkpayment.near", "usdt.tether-token.near")])
         );
         assert_eq!(out.bulk_lists.len(), 1);
         assert_eq!(out.bulk_lists[0].token, acc("usdt.tether-token.near"));
@@ -636,21 +631,16 @@ mod tests {
     }
 
     #[test]
-    fn prepare_targets_dedupes() {
-        let targets = vec![
-            reg("alice.near", "usdc.near"),
-            reg("alice.near", "usdc.near"),
-            reg("bob.near", "usdc.near"),
-        ];
-        let prepared = prepare_targets(targets).unwrap();
-        assert_eq!(prepared.len(), 2);
-    }
-
-    #[test]
-    fn prepare_targets_enforces_cap() {
-        let targets: Vec<Registration> = (0..(MAX_STORAGE_DEPOSITS + 1))
-            .map(|i| reg(&format!("a{i}.near"), "usdc.near"))
-            .collect();
-        assert!(prepare_targets(targets).is_err());
+    fn classify_dedupes_repeated_targets() {
+        // Two identical ft_transfers collapse to a single registration via the HashSet.
+        let transfer = || {
+            fc_action(
+                "ft_transfer",
+                json!({ "receiver_id": "deposit.near", "amount": "5" }),
+            )
+        };
+        let kind = function_call_kind("usdc.near", vec![transfer(), transfer()]);
+        let out = classify_kind(&kind, &bulk());
+        assert_eq!(out.direct, regs(&[("deposit.near", "usdc.near")]));
     }
 }
