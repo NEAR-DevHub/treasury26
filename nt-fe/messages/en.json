@@ -727,14 +727,14 @@
         "member": "Member",
         "activeMembers": "Active Members",
         "noActiveMembers": "No active members found.",
-        "addNewMember": "Add New Member",
+        "addNewMember": "Add Member",
         "membersSelected": "{count, plural, =0 {no members} one {# member} other {# members}} selected",
         "remove": "Remove",
         "edit": "Edit",
         "requestorOnlyTooltip": "You can only add the Requestor role for this member, as they are responsible for creating payment requests from NEARN.",
         "memberModal": {
             "editRoles": "Edit Roles",
-            "addNewMember": "Add New Member",
+            "addNewMember": "Add Member",
             "validatingAddresses": "Validating addresses...",
             "creatingProposal": "Creating proposal...",
             "reviewRequest": "Review Request",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "Want to use a hardware wallet",
                 "connectWalletBullet3": "Don't have biometrics on your device",
                 "comingSoon": "Coming Soon",
-                "passkeyTitle": "Passkey for Touch ID and Face ID",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Sign in with Face ID, Touch ID, or your device passcode.",
                 "passkeyBullet1": "Are new to crypto wallets",
                 "passkeyBullet2": "Want the simplest setup",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "Creator (you)",
         "memberAddress": "Member Address",
-        "addNewMember": "Add New Member",
+        "addNewMember": "Add Member",
         "validation": {
             "rolesRequired": "At least one role is required",
             "duplicateAddress": "Address is already a member"
@@ -1780,7 +1780,7 @@
         "newPermissions": "New Permissions",
         "category": "Category",
         "transactionDetails": "Transaction Details",
-        "addNewMember": "Add New Member",
+        "addNewMember": "Add Member",
         "addNewMembers": "Add New Members",
         "removeMember": "Remove Member",
         "removeMembers": "Remove Members",

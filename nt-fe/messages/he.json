@@ -727,14 +727,14 @@
         "member": "חבר",
         "activeMembers": "חברים פעילים",
         "noActiveMembers": "לא נמצאו חברים פעילים.",
-        "addNewMember": "הוסף חבר חדש",
+        "addNewMember": "הוסף חבר",
         "membersSelected": "{count, plural, =0 {אין חברים} one {# חבר} two {# חברים} many {# חברים} other {# חברים}} נבחרו",
         "remove": "הסרה",
         "edit": "עריכה",
         "requestorOnlyTooltip": "ניתן להוסיף רק את התפקיד מבקש עבור חבר זה, מכיוון שהוא אחראי ליצירת בקשות תשלום מ-NEARN.",
         "memberModal": {
             "editRoles": "ערוך תפקידים",
-            "addNewMember": "הוסף חבר חדש",
+            "addNewMember": "הוסף חבר",
             "validatingAddresses": "מאמת כתובות...",
             "creatingProposal": "יוצר הצעה...",
             "reviewRequest": "סקור בקשה",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "רוצה להשתמש בארנק חומרה",
                 "connectWalletBullet3": "אין לך ביומטריה במכשיר",
                 "comingSoon": "בקרוב",
-                "passkeyTitle": "Passkey עבור Touch ID ו-Face ID",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "התחבר עם Face ID, Touch ID או קוד המכשיר שלך.",
                 "passkeyBullet1": "חדש בארנקי קריפטו",
                 "passkeyBullet2": "רוצה את ההגדרה הפשוטה ביותר",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "יוצר (אתה)",
         "memberAddress": "כתובת החבר",
-        "addNewMember": "הוסף חבר חדש",
+        "addNewMember": "הוסף חבר",
         "validation": {
             "rolesRequired": "לפחות תפקיד אחד נדרש",
             "duplicateAddress": "הכתובת כבר חברה"
@@ -1780,7 +1780,7 @@
         "newPermissions": "הרשאות חדשות",
         "category": "קטגוריה",
         "transactionDetails": "פרטי עסקה",
-        "addNewMember": "הוסף חבר חדש",
+        "addNewMember": "הוסף חבר",
         "addNewMembers": "הוסף חברים חדשים",
         "removeMember": "הסר חבר",
         "removeMembers": "הסר חברים",

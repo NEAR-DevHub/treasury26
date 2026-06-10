@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Wallet } from "lucide-react";
+import { Check, Fingerprint, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/button";
@@ -43,7 +43,7 @@ const MANIFEST_WALLET_IDS = {
 export type WalletOption = {
     id: WalletId;
     label: string;
-    imgSrc: string;
+    imgSrc?: string;
     imageClassName?: string;
     secondaryIconSrc?: string;
     tertiaryIconSrc?: string;
@@ -73,7 +73,6 @@ const WALLET_OPTIONS: WalletOption[] = [
     {
         id: WALLET_IDS.PASSKEY,
         label: "Passkey",
-        imgSrc: "/icons/passkey.svg",
         supported: false,
     },
     {
@@ -86,7 +85,7 @@ const WALLET_OPTIONS: WalletOption[] = [
         id: WALLET_IDS.EVM,
         label: "EVM Wallets",
         imgSrc: "/icons/metamask.svg",
-        secondaryIconSrc: "/icons/walletconnect.svg",
+        secondaryIconSrc: "/icons/fireblocks.svg",
         tertiaryIconSrc: "/icons/binance-web3.svg",
         supported: true,
     },
@@ -100,6 +99,21 @@ function WalletOptionIcon({
     size?: "lg" | "xl";
 }) {
     const sizeClass = size === "xl" ? "size-12" : "size-8";
+    if (wallet.id === WALLET_IDS.PASSKEY) {
+        return (
+            <div className="flex items-center">
+                <div
+                    className={cn(
+                        `${sizeClass} rounded-full bg-foreground text-background flex items-center justify-center`,
+                        wallet.imageClassName,
+                    )}
+                >
+                    <Fingerprint className="size-4" />
+                </div>
+            </div>
+        );
+    }
+
     const stackedSources = [
         wallet.tertiaryIconSrc,
         wallet.secondaryIconSrc,
@@ -116,7 +130,8 @@ function WalletOptionIcon({
                         index === stackedSources.length - 1 ? wallet.label : ""
                     }
                     className={cn(
-                        `${sizeClass} rounded-full border-2 border-card bg-black object-cover`,
+                        `${sizeClass} rounded-full bg-black object-cover`,
+                        stackedSources.length > 1 && "border-2 border-card",
                         index > 0 && "-ml-3",
                         index === stackedSources.length - 1
                             ? "relative z-30"
@@ -228,7 +243,7 @@ export function ConnectWalletSelector({
             {t("walletSelector.subtitle")}{" "}
             <button
                 type="button"
-                className="underline underline-offset-2"
+                className="text-muted-foreground underline underline-offset-2 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm transition-colors cursor-pointer"
                 onClick={() => setIsGuideOpen(true)}
             >
                 {t("walletSelector.helpCta")}
@@ -448,8 +463,8 @@ export function ConnectWalletSelector({
                     <div className="space-y-4">
                         <div className="rounded-xl border border-general-border p-4">
                             <div className="space-y-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black">
-                                    <Wallet className="size-4 text-white" />
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background">
+                                    <Wallet className="size-4" />
                                 </div>
                                 <div className="flex flex-col">
                                     <div className="text-lg font-semibold">
@@ -501,7 +516,6 @@ export function ConnectWalletSelector({
                                         wallet={{
                                             id: WALLET_IDS.PASSKEY,
                                             label: "Passkey",
-                                            imgSrc: "/icons/passkey.svg",
                                             supported: false,
                                         }}
                                     />

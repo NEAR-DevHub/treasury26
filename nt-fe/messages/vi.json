@@ -727,14 +727,14 @@
         "member": "Thành viên",
         "activeMembers": "Thành viên đang hoạt động",
         "noActiveMembers": "Không tìm thấy thành viên đang hoạt động.",
-        "addNewMember": "Thêm thành viên mới",
+        "addNewMember": "Thêm thành viên",
         "membersSelected": "Đã chọn {count, plural, =0 {không có thành viên nào} other {# thành viên}}",
         "remove": "Xóa",
         "edit": "Chỉnh sửa",
         "requestorOnlyTooltip": "Bạn chỉ có thể thêm vai trò Người yêu cầu cho thành viên này, vì họ chịu trách nhiệm tạo các yêu cầu thanh toán từ NEARN.",
         "memberModal": {
             "editRoles": "Chỉnh sửa vai trò",
-            "addNewMember": "Thêm thành viên mới",
+            "addNewMember": "Thêm thành viên",
             "validatingAddresses": "Đang xác thực địa chỉ...",
             "creatingProposal": "Đang tạo đề xuất...",
             "reviewRequest": "Xem lại yêu cầu",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "muốn dùng ví phần cứng",
                 "connectWalletBullet3": "không có sinh trắc học trên thiết bị",
                 "comingSoon": "Sắp ra mắt",
-                "passkeyTitle": "Passkey cho Touch ID và Face ID",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Đăng nhập bằng Face ID, Touch ID hoặc mã thiết bị của bạn.",
                 "passkeyBullet1": "mới dùng ví tiền mã hóa",
                 "passkeyBullet2": "muốn thiết lập đơn giản nhất",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "Người tạo (bạn)",
         "memberAddress": "Địa chỉ thành viên",
-        "addNewMember": "Thêm thành viên mới",
+        "addNewMember": "Thêm thành viên",
         "validation": {
             "rolesRequired": "Cần ít nhất một vai trò",
             "duplicateAddress": "Địa chỉ đã là một thành viên"
@@ -1780,7 +1780,7 @@
         "newPermissions": "Quyền mới",
         "category": "Danh mục",
         "transactionDetails": "Chi tiết giao dịch",
-        "addNewMember": "Thêm thành viên mới",
+        "addNewMember": "Thêm thành viên",
         "addNewMembers": "Thêm thành viên mới",
         "removeMember": "Xóa thành viên",
         "removeMembers": "Xóa thành viên",

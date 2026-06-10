@@ -727,14 +727,14 @@
         "member": "Anggota",
         "activeMembers": "Anggota Aktif",
         "noActiveMembers": "Tidak ada anggota aktif ditemukan.",
-        "addNewMember": "Tambah Anggota Baru",
+        "addNewMember": "Tambah Anggota",
         "membersSelected": "{count, plural, =0 {tidak ada anggota} other {# anggota}} dipilih",
         "remove": "Hapus",
         "edit": "Ubah",
         "requestorOnlyTooltip": "Anda hanya dapat menambahkan peran Requestor untuk anggota ini, karena mereka bertanggung jawab membuat permintaan pembayaran dari NEARN.",
         "memberModal": {
             "editRoles": "Ubah Peran",
-            "addNewMember": "Tambah Anggota Baru",
+            "addNewMember": "Tambah Anggota",
             "validatingAddresses": "Memvalidasi alamat...",
             "creatingProposal": "Membuat usulan...",
             "reviewRequest": "Tinjau Permintaan",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "ingin menggunakan wallet hardware",
                 "connectWalletBullet3": "tidak memiliki biometrik di perangkat",
                 "comingSoon": "Segera hadir",
-                "passkeyTitle": "Passkey untuk Touch ID dan Face ID",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Masuk dengan Face ID, Touch ID, atau kode perangkat Anda.",
                 "passkeyBullet1": "baru menggunakan wallet kripto",
                 "passkeyBullet2": "ingin setup yang paling sederhana",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "Pembuat (Anda)",
         "memberAddress": "Alamat Anggota",
-        "addNewMember": "Tambah Anggota Baru",
+        "addNewMember": "Tambah Anggota",
         "validation": {
             "rolesRequired": "Setidaknya satu peran diperlukan",
             "duplicateAddress": "Alamat sudah menjadi anggota"
@@ -1780,7 +1780,7 @@
         "newPermissions": "Izin Baru",
         "category": "Kategori",
         "transactionDetails": "Detail Transaksi",
-        "addNewMember": "Tambah Anggota Baru",
+        "addNewMember": "Tambah Anggota",
         "addNewMembers": "Tambah Anggota Baru",
         "removeMember": "Hapus Anggota",
         "removeMembers": "Hapus Anggota",

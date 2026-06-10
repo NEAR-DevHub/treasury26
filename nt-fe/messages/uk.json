@@ -727,14 +727,14 @@
         "member": "Учасник",
         "activeMembers": "Активні учасники",
         "noActiveMembers": "Активних учасників не знайдено.",
-        "addNewMember": "Додати нового учасника",
+        "addNewMember": "Додати учасника",
         "membersSelected": "{count, plural, =0 {немає учасників} one {# учасника} few {# учасників} many {# учасників} other {# учасників}} вибрано",
         "remove": "Видалити",
         "edit": "Редагувати",
         "requestorOnlyTooltip": "Для цього учасника можна додати лише роль Ініціатора, оскільки він відповідає за створення запитів на платежі з NEARN.",
         "memberModal": {
             "editRoles": "Редагувати ролі",
-            "addNewMember": "Додати нового учасника",
+            "addNewMember": "Додати учасника",
             "validatingAddresses": "Перевірка адрес...",
             "creatingProposal": "Створення пропозиції...",
             "reviewRequest": "Переглянути запит",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "хочете використовувати апаратний гаманець",
                 "connectWalletBullet3": "не маєте біометрії на пристрої",
                 "comingSoon": "Скоро",
-                "passkeyTitle": "Passkey для Touch ID і Face ID",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Увійдіть за допомогою Face ID, Touch ID або коду пристрою.",
                 "passkeyBullet1": "новачок у криптогаманцях",
                 "passkeyBullet2": "хочете найпростіше налаштування",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "Творець (ви)",
         "memberAddress": "Адреса учасника",
-        "addNewMember": "Додати нового учасника",
+        "addNewMember": "Додати учасника",
         "validation": {
             "rolesRequired": "Потрібна щонайменше одна роль",
             "duplicateAddress": "Ця адреса вже є учасником"
@@ -1780,7 +1780,7 @@
         "newPermissions": "Нові дозволи",
         "category": "Категорія",
         "transactionDetails": "Деталі транзакції",
-        "addNewMember": "Додати нового учасника",
+        "addNewMember": "Додати учасника",
         "addNewMembers": "Додати нових учасників",
         "removeMember": "Видалити учасника",
         "removeMembers": "Видалити учасників",

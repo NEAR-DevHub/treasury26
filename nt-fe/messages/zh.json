@@ -727,14 +727,14 @@
         "member": "成员",
         "activeMembers": "活跃成员",
         "noActiveMembers": "未找到活跃成员。",
-        "addNewMember": "添加新成员",
+        "addNewMember": "添加成员",
         "membersSelected": "已选择 {count, plural, =0 {无成员} other {# 名成员}}",
         "remove": "移除",
         "edit": "编辑",
         "requestorOnlyTooltip": "您只能为此成员添加 Requestor 角色,因为他们负责从 NEARN 创建付款请求。",
         "memberModal": {
             "editRoles": "编辑角色",
-            "addNewMember": "添加新成员",
+            "addNewMember": "添加成员",
             "validatingAddresses": "正在验证地址...",
             "creatingProposal": "正在创建提案...",
             "reviewRequest": "审核请求",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "你希望使用硬件钱包",
                 "connectWalletBullet3": "你的设备没有生物识别功能",
                 "comingSoon": "即将推出",
-                "passkeyTitle": "用于 Touch ID 和 Face ID 的 Passkey",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "使用 Face ID、Touch ID 或设备密码登录。",
                 "passkeyBullet1": "你是加密钱包新手",
                 "passkeyBullet2": "你想要最简单的设置方式",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "创建者(您)",
         "memberAddress": "成员地址",
-        "addNewMember": "添加新成员",
+        "addNewMember": "添加成员",
         "validation": {
             "rolesRequired": "至少需要一个角色",
             "duplicateAddress": "地址已是成员"
@@ -1780,7 +1780,7 @@
         "newPermissions": "新权限",
         "category": "类别",
         "transactionDetails": "交易详情",
-        "addNewMember": "添加新成员",
+        "addNewMember": "添加成员",
         "addNewMembers": "添加新成员",
         "removeMember": "移除成员",
         "removeMembers": "移除成员",

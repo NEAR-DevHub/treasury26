@@ -727,14 +727,14 @@
         "member": "Üye",
         "activeMembers": "Aktif Üyeler",
         "noActiveMembers": "Aktif üye bulunamadı.",
-        "addNewMember": "Yeni Üye Ekle",
+        "addNewMember": "Üye Ekle",
         "membersSelected": "{count, plural, =0 {üye yok} one {# üye} other {# üye}} seçildi",
         "remove": "Kaldır",
         "edit": "Düzenle",
         "requestorOnlyTooltip": "Bu üye için yalnızca Talep Eden rolünü ekleyebilirsiniz, çünkü NEARN'den ödeme talepleri oluşturmaktan sorumludurlar.",
         "memberModal": {
             "editRoles": "Rolleri Düzenle",
-            "addNewMember": "Yeni Üye Ekle",
+            "addNewMember": "Üye Ekle",
             "validatingAddresses": "Adresler doğrulanıyor...",
             "creatingProposal": "Öneri oluşturuluyor...",
             "reviewRequest": "Talebi İncele",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "donanım cüzdanı kullanmak istiyorsanız",
                 "connectWalletBullet3": "cihazınızda biyometrik yoksa",
                 "comingSoon": "Yakında",
-                "passkeyTitle": "Touch ID ve Face ID için Passkey",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Face ID, Touch ID veya cihaz parolanızla giriş yapın.",
                 "passkeyBullet1": "kripto cüzdanlara yeniyseniz",
                 "passkeyBullet2": "en basit kurulumu istiyorsanız",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "Oluşturan (siz)",
         "memberAddress": "Üye Adresi",
-        "addNewMember": "Yeni Üye Ekle",
+        "addNewMember": "Üye Ekle",
         "validation": {
             "rolesRequired": "En az bir rol gereklidir",
             "duplicateAddress": "Adres zaten bir üye"
@@ -1780,7 +1780,7 @@
         "newPermissions": "Yeni İzinler",
         "category": "Kategori",
         "transactionDetails": "İşlem Ayrıntıları",
-        "addNewMember": "Yeni Üye Ekle",
+        "addNewMember": "Üye Ekle",
         "addNewMembers": "Yeni Üyeler Ekle",
         "removeMember": "Üyeyi Kaldır",
         "removeMembers": "Üyeleri Kaldır",

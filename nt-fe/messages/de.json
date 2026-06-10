@@ -727,14 +727,14 @@
         "member": "Mitglied",
         "activeMembers": "Aktive Mitglieder",
         "noActiveMembers": "Keine aktiven Mitglieder gefunden.",
-        "addNewMember": "Neues Mitglied hinzufügen",
+        "addNewMember": "Mitglied hinzufügen",
         "membersSelected": "{count, plural, =0 {keine Mitglieder} one {# Mitglied} other {# Mitglieder}} ausgewählt",
         "remove": "Entfernen",
         "edit": "Bearbeiten",
         "requestorOnlyTooltip": "Sie können diesem Mitglied nur die Antragsteller-Rolle zuweisen, da es für die Erstellung von Zahlungsanfragen aus NEARN verantwortlich ist.",
         "memberModal": {
             "editRoles": "Rollen bearbeiten",
-            "addNewMember": "Neues Mitglied hinzufügen",
+            "addNewMember": "Mitglied hinzufügen",
             "validatingAddresses": "Adressen werden validiert...",
             "creatingProposal": "Vorschlag wird erstellt...",
             "reviewRequest": "Anfrage prüfen",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "eine Hardware-Wallet verwenden möchtest",
                 "connectWalletBullet3": "keine Biometrie auf deinem Gerät hast",
                 "comingSoon": "Demnächst",
-                "passkeyTitle": "Passkey für Touch ID und Face ID",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Melde dich mit Face ID, Touch ID oder dem Gerätecode an.",
                 "passkeyBullet1": "neu bei Krypto-Wallets bist",
                 "passkeyBullet2": "das einfachste Setup möchtest",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "Ersteller (Sie)",
         "memberAddress": "Mitgliedsadresse",
-        "addNewMember": "Neues Mitglied hinzufügen",
+        "addNewMember": "Mitglied hinzufügen",
         "validation": {
             "rolesRequired": "Mindestens eine Rolle ist erforderlich",
             "duplicateAddress": "Adresse ist bereits Mitglied"
@@ -1780,7 +1780,7 @@
         "newPermissions": "Neue Berechtigungen",
         "category": "Kategorie",
         "transactionDetails": "Transaktionsdetails",
-        "addNewMember": "Neues Mitglied hinzufügen",
+        "addNewMember": "Mitglied hinzufügen",
         "addNewMembers": "Neue Mitglieder hinzufügen",
         "removeMember": "Mitglied entfernen",
         "removeMembers": "Mitglieder entfernen",

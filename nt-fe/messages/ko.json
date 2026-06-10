@@ -727,14 +727,14 @@
         "member": "멤버",
         "activeMembers": "활성 멤버",
         "noActiveMembers": "활성 멤버를 찾을 수 없습니다.",
-        "addNewMember": "새 멤버 추가",
+        "addNewMember": "멤버 추가",
         "membersSelected": "{count, plural, =0 {멤버 없음} other {멤버 #명}} 선택됨",
         "remove": "제거",
         "edit": "편집",
         "requestorOnlyTooltip": "이 멤버는 NEARN에서 결제 요청을 생성하는 역할을 담당하므로 Requestor 역할만 추가할 수 있습니다.",
         "memberModal": {
             "editRoles": "역할 편집",
-            "addNewMember": "새 멤버 추가",
+            "addNewMember": "멤버 추가",
             "validatingAddresses": "주소 검증 중...",
             "creatingProposal": "제안 생성 중...",
             "reviewRequest": "요청 검토",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "하드웨어 지갑을 사용하고 싶은 경우",
                 "connectWalletBullet3": "기기에 생체인증이 없는 경우",
                 "comingSoon": "곧 출시",
-                "passkeyTitle": "Touch ID / Face ID용 패스키",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Face ID, Touch ID 또는 기기 비밀번호로 로그인하세요.",
                 "passkeyBullet1": "암호화폐 지갑이 처음인 경우",
                 "passkeyBullet2": "가장 간단한 설정을 원하는 경우",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "생성자 (본인)",
         "memberAddress": "멤버 주소",
-        "addNewMember": "새 멤버 추가",
+        "addNewMember": "멤버 추가",
         "validation": {
             "rolesRequired": "최소 하나의 역할이 필요합니다",
             "duplicateAddress": "주소가 이미 멤버입니다"
@@ -1780,7 +1780,7 @@
         "newPermissions": "새 권한",
         "category": "카테고리",
         "transactionDetails": "트랜잭션 세부정보",
-        "addNewMember": "새 멤버 추가",
+        "addNewMember": "멤버 추가",
         "addNewMembers": "새 멤버 추가",
         "removeMember": "멤버 제거",
         "removeMembers": "멤버 제거",

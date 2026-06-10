@@ -727,14 +727,14 @@
         "member": "Membre",
         "activeMembers": "Membres actifs",
         "noActiveMembers": "Aucun membre actif trouvé.",
-        "addNewMember": "Ajouter un nouveau membre",
+        "addNewMember": "Ajouter un membre",
         "membersSelected": "{count, plural, =0 {aucun membre} one {# membre} other {# membres}} sélectionné{count, plural, =0 {} one {} other {s}}",
         "remove": "Supprimer",
         "edit": "Modifier",
         "requestorOnlyTooltip": "Vous ne pouvez ajouter que le rôle de Demandeur pour ce membre, car il est responsable de la création des demandes de paiement depuis NEARN.",
         "memberModal": {
             "editRoles": "Modifier les rôles",
-            "addNewMember": "Ajouter un nouveau membre",
+            "addNewMember": "Ajouter un membre",
             "validatingAddresses": "Validation des adresses...",
             "creatingProposal": "Création de la proposition...",
             "reviewRequest": "Vérifier la demande",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "souhaitez utiliser un wallet matériel",
                 "connectWalletBullet3": "n'avez pas de biométrie sur votre appareil",
                 "comingSoon": "Bientôt disponible",
-                "passkeyTitle": "Passkey pour Touch ID et Face ID",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Connectez-vous avec Face ID, Touch ID ou le code de votre appareil.",
                 "passkeyBullet1": "êtes nouveau dans les wallets crypto",
                 "passkeyBullet2": "souhaitez la configuration la plus simple",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "Créateur (vous)",
         "memberAddress": "Adresse du membre",
-        "addNewMember": "Ajouter un nouveau membre",
+        "addNewMember": "Ajouter un membre",
         "validation": {
             "rolesRequired": "Au moins un rôle est requis",
             "duplicateAddress": "L'adresse est déjà membre"
@@ -1780,7 +1780,7 @@
         "newPermissions": "Nouvelles autorisations",
         "category": "Catégorie",
         "transactionDetails": "Détails de la transaction",
-        "addNewMember": "Ajouter un nouveau membre",
+        "addNewMember": "Ajouter un membre",
         "addNewMembers": "Ajouter de nouveaux membres",
         "removeMember": "Supprimer un membre",
         "removeMembers": "Supprimer des membres",

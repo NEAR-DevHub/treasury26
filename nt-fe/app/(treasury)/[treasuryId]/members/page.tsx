@@ -1210,7 +1210,7 @@ export default function MembersPage() {
     return (
         <PageComponentLayout title={t("title")} description={t("description")}>
             {!isInfoSectionDismissed && canAddMember && (
-                <PageCard className="p-4 gap-3 bg-general-tertiary mb-4">
+                <PageCard className="py-4 px-6 gap-3 bg-general-tertiary mb-4">
                     <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                             <h2 className="text-base font-semibold">
@@ -1241,7 +1241,7 @@ export default function MembersPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3 bg-card">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                         {membersInfoItems.map((item) => {
                             const { icon: Icon, title, description } = item;
                             return (
@@ -1272,7 +1272,7 @@ export default function MembersPage() {
             <PageCard className="gap-0 p-0">
                 {/* Hide header when members are selected */}
                 {!(selectedMembers.length > 0) && (
-                    <div className="flex flex-row items-center justify-between gap-3 sm:gap-4 py-3.5 px-8 border-b">
+                    <div className="flex flex-row items-center justify-between gap-3 sm:gap-4 py-3.5 px-6 border-b">
                         <div className="flex items-center gap-2 w-fit">
                             <StepperHeader title={tMembers("activeMembers")} />
                             <NumberBadge

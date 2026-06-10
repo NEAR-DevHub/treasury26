@@ -727,14 +727,14 @@
         "member": "Miembro",
         "activeMembers": "Miembros activos",
         "noActiveMembers": "No se encontraron miembros activos.",
-        "addNewMember": "Añadir nuevo miembro",
+        "addNewMember": "Añadir miembro",
         "membersSelected": "{count, plural, =0 {ningún miembro} one {# miembro} other {# miembros}} seleccionado(s)",
         "remove": "Eliminar",
         "edit": "Editar",
         "requestorOnlyTooltip": "Solo puedes añadir el rol de Solicitante para este miembro, ya que es responsable de crear solicitudes de pago desde NEARN.",
         "memberModal": {
             "editRoles": "Editar roles",
-            "addNewMember": "Añadir nuevo miembro",
+            "addNewMember": "Añadir miembro",
             "validatingAddresses": "Validando direcciones...",
             "creatingProposal": "Creando propuesta...",
             "reviewRequest": "Revisar solicitud",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "Quieres usar una wallet de hardware",
                 "connectWalletBullet3": "No tienes biometría en tu dispositivo",
                 "comingSoon": "Próximamente",
-                "passkeyTitle": "Passkey para Touch ID y Face ID",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Inicia sesión con Face ID, Touch ID o el código de tu dispositivo.",
                 "passkeyBullet1": "Eres nuevo en wallets cripto",
                 "passkeyBullet2": "Quieres la configuración más simple",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "Creador (tú)",
         "memberAddress": "Dirección del miembro",
-        "addNewMember": "Añadir nuevo miembro",
+        "addNewMember": "Añadir miembro",
         "validation": {
             "rolesRequired": "Se requiere al menos un rol",
             "duplicateAddress": "La dirección ya es miembro"
@@ -1780,7 +1780,7 @@
         "newPermissions": "Permisos nuevos",
         "category": "Categoría",
         "transactionDetails": "Detalles de transacción",
-        "addNewMember": "Añadir nuevo miembro",
+        "addNewMember": "Añadir miembro",
         "addNewMembers": "Añadir nuevos miembros",
         "removeMember": "Eliminar miembro",
         "removeMembers": "Eliminar miembros",

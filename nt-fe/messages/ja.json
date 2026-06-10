@@ -727,14 +727,14 @@
         "member": "メンバー",
         "activeMembers": "アクティブなメンバー",
         "noActiveMembers": "アクティブなメンバーは見つかりませんでした。",
-        "addNewMember": "新しいメンバーを追加",
+        "addNewMember": "メンバーを追加",
         "membersSelected": "{count, plural, =0 {メンバーが選択されていません} other {# 名のメンバーを選択中}}",
         "remove": "削除",
         "edit": "編集",
         "requestorOnlyTooltip": "このメンバーはNEARNからの支払いリクエスト作成を担当するため、Requestorロールのみ追加できます。",
         "memberModal": {
             "editRoles": "ロールを編集",
-            "addNewMember": "新しいメンバーを追加",
+            "addNewMember": "メンバーを追加",
             "validatingAddresses": "アドレスを検証中...",
             "creatingProposal": "提案を作成中...",
             "reviewRequest": "リクエストを確認",
@@ -1217,7 +1217,7 @@
                 "connectWalletBullet2": "ハードウェアウォレットを使いたい",
                 "connectWalletBullet3": "デバイスに生体認証がない",
                 "comingSoon": "近日公開",
-                "passkeyTitle": "Touch ID / Face ID 用パスキー",
+                "passkeyTitle": "Passkey",
                 "passkeyDescription": "Face ID、Touch ID、またはデバイスのパスコードでサインインします。",
                 "passkeyBullet1": "暗号資産ウォレットを初めて使う",
                 "passkeyBullet2": "最も簡単なセットアップをしたい",
@@ -1482,7 +1482,7 @@
     "memberInput": {
         "creatorYou": "作成者(あなた)",
         "memberAddress": "メンバーアドレス",
-        "addNewMember": "新しいメンバーを追加",
+        "addNewMember": "メンバーを追加",
         "validation": {
             "rolesRequired": "少なくとも1つのロールが必要です",
             "duplicateAddress": "アドレスはすでにメンバーです"
@@ -1780,7 +1780,7 @@
         "newPermissions": "新権限",
         "category": "カテゴリ",
         "transactionDetails": "トランザクションの詳細",
-        "addNewMember": "新しいメンバーを追加",
+        "addNewMember": "メンバーを追加",
         "addNewMembers": "新しいメンバーを追加",
         "removeMember": "メンバーを削除",
         "removeMembers": "メンバーを削除",
