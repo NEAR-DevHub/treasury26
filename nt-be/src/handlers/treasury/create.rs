@@ -12,7 +12,7 @@ use tokio::sync::mpsc;
 
 use crate::{
     AppState,
-    constants::{CREATION_LOW_BALANCE_THRESHOLD, TREASURY_FACTORY_CONTRACT_ID},
+    constants::TREASURY_FACTORY_CONTRACT_ID,
     services::{
         mark_testing_if_needed, register_new_dao_and_wait, register_or_refresh_monitored_account,
         should_mark_testing,
@@ -284,41 +284,6 @@ async fn run_creation(
         if let Err(e) = state.telegram_client.send_message(&message).await {
             log::warn!("Failed to send Telegram notification: {}", e);
         }
-        return Err(ProgressEvent {
-            step: "error",
-            status: "error",
-            treasury: None,
-            message: Some(message),
-        });
-    }
-
-    // Ensure sponsor can afford at least one create action before starting the flow.
-    let sponsor_balance = Tokens::account(state.signer_id.clone())
-        .near_balance()
-        .fetch_from(&state.network)
-        .await
-        .map_err(|e| ProgressEvent {
-            step: "error",
-            status: "error",
-            treasury: None,
-            message: Some(format!("Failed to fetch sponsor balance: {e}")),
-        })?;
-    let sponsor_liquid = NearToken::from_yoctonear(
-        sponsor_balance
-            .total
-            .as_yoctonear()
-            .saturating_sub(sponsor_balance.storage_locked.as_yoctonear()),
-    );
-    if sponsor_liquid < CREATION_LOW_BALANCE_THRESHOLD {
-        let message =
-            "Treasury creation is temporarily unavailable. Please try again in a few minutes."
-                .to_string();
-        log::warn!(
-            "Insufficient balance for treasury creation. signer_id={}, available={}, required={}",
-            state.signer_id,
-            sponsor_liquid,
-            CREATION_LOW_BALANCE_THRESHOLD
-        );
         return Err(ProgressEvent {
             step: "error",
             status: "error",

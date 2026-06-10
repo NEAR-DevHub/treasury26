@@ -18,9 +18,5 @@ pub const BLOCKS_PER_HOUR: u64 = 300; // Approximate blocks per hour on NEAR
 pub const TREASURY_FACTORY_CONTRACT_ID: &AccountIdRef =
     AccountIdRef::new_or_panic("sputnik-dao.near");
 
-/// Minimum liquid NEAR the sponsor (`SIGNER_ID`) must hold for treasury creation availability.
-/// Confidential treasury creation includes extra setup transactions
-pub const CREATION_LOW_BALANCE_THRESHOLD: NearToken = NearToken::from_near(1);
-
 /// Minimum liquid NEAR at which Telegram ops alerting should trigger.
 pub const ALERT_LOW_BALANCE_THRESHOLD: NearToken = NearToken::from_near(5);
