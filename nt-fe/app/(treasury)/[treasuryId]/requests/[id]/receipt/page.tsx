@@ -273,17 +273,37 @@ function ReceiptLayout({
                 })}
             </p>
             {children}
-            <div className="flex justify-between rounded-lg bg-secondary p-3">
-                <div>
-                    <p className="text-base font-medium">
-                        {tReceipt("createYourTreasury")}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                        {tReceipt("createYourTreasuryDescription")}
-                    </p>
+            <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
+                <div className="space-y-2">
+                    <span className="inline-flex rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background">
+                        Free to start
+                    </span>
+                    <div>
+                        <p className="text-base font-medium">
+                            {tReceipt("createYourTreasury")}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            {tReceipt("createYourTreasuryDescription")}
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <QRCode size={66} value={LANDING_PAGE} />
+                <div className="flex flex-col items-center gap-2">
+                    <a
+                        href={LANDING_PAGE}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Open Trezu landing page"
+                    >
+                        <QRCode size={66} value={LANDING_PAGE} />
+                    </a>
+                    <a
+                        href={LANDING_PAGE}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[16px] font-medium underline"
+                    >
+                        trezu.org
+                    </a>
                 </div>
             </div>
         </div>
@@ -344,12 +364,16 @@ function ReceiptPdfSkeletonCard() {
                     </div>
                 </section>
 
-                <div className="flex justify-between rounded-lg bg-secondary p-3">
+                <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
                     <div className="space-y-2">
+                        <Skeleton className="h-6 w-24 rounded-md" />
                         <Skeleton className="h-5 w-44" />
                         <Skeleton className="h-4 w-72" />
                     </div>
-                    <Skeleton className="size-[50px]" />
+                    <div className="space-y-2">
+                        <Skeleton className="size-[66px]" />
+                        <Skeleton className="h-4 w-20" />
+                    </div>
                 </div>
             </div>
         </PageCard>
