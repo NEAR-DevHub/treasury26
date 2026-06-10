@@ -12,6 +12,8 @@ export function useAddressBook() {
         queryKey: ["address-book", treasuryId, accountId],
         queryFn: () => getAddressBook(treasuryId!),
         enabled,
-        staleTime: 1000 * 30,
+        staleTime: 1000 * 60, //1 minute
+        refetchInterval: 1000 * 60, //1 minute
+        refetchIntervalInBackground: true
     });
 }
