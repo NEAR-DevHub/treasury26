@@ -44,7 +44,11 @@ import { generateIntent, getIntentsQuote } from "@/lib/api";
 import type { IntentsQuoteResponse } from "@/lib/api";
 import Big from "@/lib/big";
 import { getBlockchainType } from "@/lib/blockchain-utils";
-import { buildIntentsTransferProposal } from "@/lib/near-proposal-builders";
+import {
+    buildIntentsTransferProposal,
+    buildNativeNearIntentsKind,
+    buildNearFtIntentsKind,
+} from "@/lib/near-proposal-builders";
 import {
     isEthImplicitNearAddress,
     isValidNearAddressFormat,
@@ -76,11 +80,7 @@ import {
     isNearChainNativeToken,
 } from "@/lib/intents-fee";
 import { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
-import {
-    buildDirectTransferKind,
-    buildNativeNEARIntentsProposal,
-    buildNearFtIntentsProposal,
-} from "./utils/proposal-builder";
+import { buildDirectTransferKind } from "./utils/proposal-builder";
 
 function buildPaymentFormSchema(messages: {
     recipientMin: string;
@@ -1050,12 +1050,12 @@ export default function PaymentsPage() {
                             amountIn,
                         );
                     } else if (isNearNativeToken) {
-                        proposalKind = buildNativeNEARIntentsProposal(
+                        proposalKind = buildNativeNearIntentsKind(
                             depositAddress,
                             amountIn,
                         );
                     } else {
-                        proposalKind = buildNearFtIntentsProposal(
+                        proposalKind = buildNearFtIntentsKind(
                             data.token.address,
                             depositAddress,
                             amountIn,

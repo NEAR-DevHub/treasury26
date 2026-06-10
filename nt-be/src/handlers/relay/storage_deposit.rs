@@ -318,10 +318,7 @@ impl ClassifiedTargets {
             token_id: token.clone(),
         });
         if !list_id.is_empty() {
-            self.bulk_lists.push(BulkList {
-                token,
-                list_id,
-            });
+            self.bulk_lists.push(BulkList { token, list_id });
         }
     }
 }
@@ -476,8 +473,8 @@ mod tests {
 
     /// Build a FunctionCall action with base64-encoded JSON args.
     fn fc_action(method: &str, args: serde_json::Value) -> serde_json::Value {
-        let encoded = base64::engine::general_purpose::STANDARD
-            .encode(serde_json::to_vec(&args).unwrap());
+        let encoded =
+            base64::engine::general_purpose::STANDARD.encode(serde_json::to_vec(&args).unwrap());
         json!({ "method_name": method, "args": encoded })
     }
 
@@ -507,7 +504,10 @@ mod tests {
     fn ft_transfer_registers_receiver_on_token() {
         let kind = function_call_kind(
             "usdc.near",
-            vec![fc_action("ft_transfer", json!({ "receiver_id": "deposit.near", "amount": "5" }))],
+            vec![fc_action(
+                "ft_transfer",
+                json!({ "receiver_id": "deposit.near", "amount": "5" }),
+            )],
         );
         let out = classify_kind(&kind, &bulk());
         assert_eq!(out.direct, vec![reg("deposit.near", "usdc.near")]);
@@ -521,7 +521,10 @@ mod tests {
             "wrap.near",
             vec![
                 fc_action("near_deposit", json!({})),
-                fc_action("ft_transfer", json!({ "receiver_id": "1click.near", "amount": "5" })),
+                fc_action(
+                    "ft_transfer",
+                    json!({ "receiver_id": "1click.near", "amount": "5" }),
+                ),
             ],
         );
         let out = classify_kind(&kind, &bulk());
@@ -573,7 +576,10 @@ mod tests {
             )],
         );
         let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, vec![reg("bulkpayment.near", "usdt.tether-token.near")]);
+        assert_eq!(
+            out.direct,
+            vec![reg("bulkpayment.near", "usdt.tether-token.near")]
+        );
         assert_eq!(out.bulk_lists.len(), 1);
         assert_eq!(out.bulk_lists[0].token, acc("usdt.tether-token.near"));
         assert_eq!(out.bulk_lists[0].list_id, "list-9");
