@@ -24,6 +24,10 @@ import {
     useFeatureAnnouncementQueueSlot,
     useFeatureAnnouncementsUnlocked,
 } from "@/features/onboarding/feature-announcement-queue";
+import {
+    buildPaymentPendingRefetchInterval,
+    clearPaymentPending,
+} from "@/features/onboarding/payment-pending";
 
 // Tour names
 export const TOUR_NAMES = {
@@ -342,7 +346,18 @@ export function CongratsTooltip() {
         {
             types: ["Payments"],
         },
+        true,
+        {
+            refetchOnMount: "always",
+            refetchInterval: buildPaymentPendingRefetchInterval(treasuryId),
+        },
     );
+
+    useEffect(() => {
+        if (treasuryId && (proposals?.proposals?.length ?? 0) > 0) {
+            clearPaymentPending(treasuryId);
+        }
+    }, [proposals, treasuryId]);
 
     const isLoading =
         isLoadingAssets || isLoadingProposals || isLoadingGuestTreasury;
