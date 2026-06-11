@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Pour soutenir les nouveaux projets, TREZU couvre tous les frais ponctuels de déploiement et de stockage réseau.",
         "createButton": "Créer la trésorerie",
         "connectWalletCreate": "Connecter le portefeuille pour créer la trésorerie",
-        "walletNotSupportedTitle": "Wallet pas encore prise en charge",
-        "walletNotSupportedDescription": "{wallet} n'est pas encore prise en charge, mais nous y travaillons. Vous pouvez continuer avec un wallet NEAR pris en charge, Ledger ou Wallet Connect.",
+        "walletNotSupportedTitle": "{wallet} n'est pas encore pris en charge",
+        "walletNotSupportedDescription": "Nous l'ajouterons plus tard. En attendant, connectez-vous avec NEAR, Ledger ou des wallets EVM, selon ce que vous avez deja.",
         "connectNear": "Connecter NEAR",
         "connectLedger": "Connecter Ledger",
         "headerDescription": "Configurez une trésorerie multisig pour votre équipe ou pour vous-même",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "Choisissez vos wallets EVM",
             "signInWithNear": "Se connecter avec des wallets NEAR",
             "signInWithLedger": "Se connecter avec Ledger",
-            "signInWithWalletConnect": "Se connecter avec WalletConnect",
+            "signInWithWalletConnect": "Se connecter avec des wallets EVM",
             "guide": {
                 "title": "Quelle méthode de connexion dois-je utiliser ?",
                 "connectWalletTitle": "Connecter un wallet",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Création de la trésorerie...",
         "titleDone": "Trésorerie créée",
-        "titleFailed": "Échec de la création de la trésorerie",
-        "viewTreasury": "Voir la trésorerie"
+        "titleFailed": "Échec de la création de la trésorerie"
     },
     "memberValidation": {
         "noManagePermission": "Vous n'avez pas l'autorisation de gérer les membres",

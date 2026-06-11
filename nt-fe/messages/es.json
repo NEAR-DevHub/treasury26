@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Para apoyar nuevos proyectos, TREZU cubre todas las comisiones únicas de despliegue y almacenamiento de red.",
         "createButton": "Crear tesorería",
         "connectWalletCreate": "Conecta la cartera para crear tesorería",
-        "walletNotSupportedTitle": "La wallet aún no es compatible",
-        "walletNotSupportedDescription": "{wallet} aún no es compatible, pero estamos trabajando en ello. Puedes continuar con una wallet NEAR compatible, Ledger o Wallet Connect.",
+        "walletNotSupportedTitle": "{wallet} aún no es compatible",
+        "walletNotSupportedDescription": "Lo añadiremos más adelante. Mientras tanto, inicia sesión con NEAR, Ledger o wallets EVM, la que ya tengas.",
         "connectNear": "Conectar NEAR",
         "connectLedger": "Conectar Ledger",
         "headerDescription": "Configura una tesorería multifirma para tu equipo o para ti",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "Elige tu wallet de EVM",
             "signInWithNear": "Iniciar sesión con wallets de NEAR",
             "signInWithLedger": "Iniciar sesión con Ledger",
-            "signInWithWalletConnect": "Iniciar sesión con WalletConnect",
+            "signInWithWalletConnect": "Iniciar sesión con wallets EVM",
             "guide": {
                 "title": "¿Qué inicio de sesión debo usar?",
                 "connectWalletTitle": "Conectar una wallet",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Creando tesorería...",
         "titleDone": "Tesorería creada",
-        "titleFailed": "Error al crear tesorería",
-        "viewTreasury": "Ver tesorería"
+        "titleFailed": "Error al crear tesorería"
     },
     "memberValidation": {
         "noManagePermission": "No tienes permiso para gestionar miembros",

@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "To support new projects, TREZU covers all one-time deployment and network storage fees.",
         "createButton": "Create Treasury",
         "connectWalletCreate": "Connect Wallet To Create Treasury",
-        "walletNotSupportedTitle": "Wallet not supported yet",
-        "walletNotSupportedDescription": "{wallet} is not supported yet, but we're working on it. You can continue using a supported NEAR wallet, Ledger, or Wallet Connect.",
+        "walletNotSupportedTitle": "{wallet} not supported yet",
+        "walletNotSupportedDescription": "We'll add it later. In the meantime, sign in with NEAR, Ledger, or EVM Wallets - whichever you already have.",
         "connectNear": "Connect NEAR",
         "connectLedger": "Connect Ledger",
         "headerDescription": "Set up a multisig treasury for your team or yourself",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "Choose your EVM wallets",
             "signInWithNear": "Sign in with NEAR Wallets",
             "signInWithLedger": "Sign in with Ledger",
-            "signInWithWalletConnect": "Sign in with Wallet Connect",
+            "signInWithWalletConnect": "Sign in with EVM Wallets",
             "guide": {
                 "title": "Which sign in should I use?",
                 "connectWalletTitle": "Connect a wallet",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Creating Treasury...",
         "titleDone": "Treasury Created",
-        "titleFailed": "Treasury Creation Failed",
-        "viewTreasury": "View Treasury"
+        "titleFailed": "Treasury Creation Failed"
     },
     "memberValidation": {
         "noManagePermission": "You don't have permission to manage members",

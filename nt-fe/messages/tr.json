@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Yeni projeleri desteklemek için TREZU, tüm tek seferlik dağıtım ve ağ depolama ücretlerini karşılar.",
         "createButton": "Hazine Oluştur",
         "connectWalletCreate": "Hazine Oluşturmak İçin Cüzdan Bağla",
-        "walletNotSupportedTitle": "Cüzdan henüz desteklenmiyor",
-        "walletNotSupportedDescription": "{wallet} henüz desteklenmiyor, ancak bunun üzerinde çalışıyoruz. Desteklenen bir NEAR cüzdanı, Ledger veya Wallet Connect ile devam edebilirsiniz.",
+        "walletNotSupportedTitle": "{wallet} henüz desteklenmiyor",
+        "walletNotSupportedDescription": "Bunu daha sonra ekleyeceğiz. Bu arada, elinizde hangisi varsa NEAR, Ledger veya EVM Cüzdanları ile giriş yapabilirsiniz.",
         "connectNear": "NEAR'a Bağlan",
         "connectLedger": "Ledger'a Bağlan",
         "headerDescription": "Ekibiniz veya kendiniz için bir multisig hazine kurun",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "EVM cüzdanınızı seçin",
             "signInWithNear": "NEAR cüzdanlarıyla giriş yap",
             "signInWithLedger": "Ledger ile giriş yap",
-            "signInWithWalletConnect": "WalletConnect ile giriş yap",
+            "signInWithWalletConnect": "EVM Cüzdanları ile giriş yap",
             "guide": {
                 "title": "Hangi giriş yöntemini kullanmalıyım?",
                 "connectWalletTitle": "Bir cüzdan bağla",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Hazine Oluşturuluyor...",
         "titleDone": "Hazine Oluşturuldu",
-        "titleFailed": "Hazine Oluşturulamadı",
-        "viewTreasury": "Hazineyi Görüntüle"
+        "titleFailed": "Hazine Oluşturulamadı"
     },
     "memberValidation": {
         "noManagePermission": "Üyeleri yönetme izniniz yok",

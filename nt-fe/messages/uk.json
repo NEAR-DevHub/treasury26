@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Щоб підтримати нові проєкти, TREZU покриває всі одноразові комісії за розгортання та мережеве сховище.",
         "createButton": "Створити скарбницю",
         "connectWalletCreate": "Підключіть гаманець для створення скарбниці",
-        "walletNotSupportedTitle": "Гаманець ще не підтримується",
-        "walletNotSupportedDescription": "{wallet} ще не підтримується, але ми над цим працюємо. Ви можете продовжити з підтримуваним гаманцем NEAR, Ledger або Wallet Connect.",
+        "walletNotSupportedTitle": "{wallet} ще не підтримується",
+        "walletNotSupportedDescription": "Ми додамо це пізніше. Поки що увійдіть через NEAR, Ledger або EVM-гаманці — залежно від того, що у вас вже є.",
         "connectNear": "Підключити NEAR",
         "connectLedger": "Підключити Ledger",
         "headerDescription": "Налаштуйте мультипідписну скарбницю для вашої команди або для себе",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "Оберіть ваші EVM-гаманці",
             "signInWithNear": "Увійти через NEAR-гаманці",
             "signInWithLedger": "Увійти через Ledger",
-            "signInWithWalletConnect": "Увійти через WalletConnect",
+            "signInWithWalletConnect": "Увійти через EVM-гаманці",
             "guide": {
                 "title": "Який спосіб входу обрати?",
                 "connectWalletTitle": "Підключити гаманець",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Створення скарбниці...",
         "titleDone": "Скарбницю створено",
-        "titleFailed": "Не вдалось створити скарбницю",
-        "viewTreasury": "Переглянути скарбницю"
+        "titleFailed": "Не вдалось створити скарбницю"
     },
     "memberValidation": {
         "noManagePermission": "У вас немає прав керувати учасниками",

@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "新しいプロジェクトを支援するため、TREZUは1回限りのデプロイとネットワークストレージ手数料をすべて負担します。",
         "createButton": "トレジャリーを作成",
         "connectWalletCreate": "トレジャリー作成のためにウォレットを接続",
-        "walletNotSupportedTitle": "このウォレットはまだサポートされていません",
-        "walletNotSupportedDescription": "{wallet} はまだサポートされていませんが、現在対応を進めています。対応済みのNEARウォレット、Ledger、またはWallet Connectで続行できます。",
+        "walletNotSupportedTitle": "{wallet} はまだサポートされていません",
+        "walletNotSupportedDescription": "今後対応予定です。今は、すでにお持ちの NEAR、Ledger、または EVM ウォレットでサインインしてください。",
         "connectNear": "NEARを接続",
         "connectLedger": "Ledgerを接続",
         "headerDescription": "チームまたはご自身のためにマルチシグトレジャリーを設定します",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "EVMウォレットを選択",
             "signInWithNear": "NEARウォレットでサインイン",
             "signInWithLedger": "Ledgerでサインイン",
-            "signInWithWalletConnect": "WalletConnectでサインイン",
+            "signInWithWalletConnect": "EVMウォレットでサインイン",
             "guide": {
                 "title": "どのサインイン方法を使うべきですか？",
                 "connectWalletTitle": "ウォレットを接続",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "トレジャリーを作成中...",
         "titleDone": "トレジャリーが作成されました",
-        "titleFailed": "トレジャリーの作成に失敗しました",
-        "viewTreasury": "トレジャリーを表示"
+        "titleFailed": "トレジャリーの作成に失敗しました"
     },
     "memberValidation": {
         "noManagePermission": "メンバーを管理する権限がありません",

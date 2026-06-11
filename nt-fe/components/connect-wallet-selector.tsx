@@ -611,7 +611,9 @@ export function ConnectWalletSelector({
                         </div>
                         <div className="space-y-1">
                             <h3 className="text-xl font-semibold">
-                                {t("walletNotSupportedTitle")}
+                                {t("walletNotSupportedTitle", {
+                                    wallet: unsupportedWallet?.label ?? "",
+                                })}
                             </h3>
                             <p className="text-muted-foreground text-sm">
                                 {t("walletNotSupportedDescription", {
