@@ -45,7 +45,8 @@ function SemiCircleProgress({
     current: number;
     total: number;
 }) {
-    const progress = current / total;
+    const progress = total > 0 ? Math.min(Math.max(current / total, 0), 1) : 0;
+    const hasProgress = progress > 0;
     const arcLength = 440; // 2 * PI * 70 (approx circumference)
     const dashArray = 220; // Half circle
 
@@ -102,12 +103,14 @@ function SemiCircleProgress({
                     fill="#CFD4DB61"
                     fillOpacity="0.38"
                 />
-                <path
-                    clipPath="url(#svg-draw)"
-                    d={PROGRESS_ARC_PATH}
-                    fill="url(#progress-gradient)"
-                    mask="url(#progress-mask)"
-                />
+                {hasProgress ? (
+                    <path
+                        clipPath="url(#svg-draw)"
+                        d={PROGRESS_ARC_PATH}
+                        fill="url(#progress-gradient)"
+                        mask="url(#progress-mask)"
+                    />
+                ) : null}
             </svg>
 
             <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-foreground text-base font-bold z-10">
@@ -127,9 +130,12 @@ function StepCard({ step }: { step: OnboardingStep }) {
     return (
         <div
             className={cn(
-                "flex flex-col gap-2 xl:flex-row xl:items-center items-start p-3 rounded-[10.5px] w-full",
+                "flex flex-col gap-2 xl:flex-row xl:items-center items-start p-3 rounded-[10.5px] overflow-hidden w-full",
                 isActive
-                    ? "bg-linear-to-r from-[#E2F2FF] to-[#D4EBFF] dark:from-[rgba(23,81,132,0.55)] dark:to-[rgba(23,81,132,0.71)]"
+                    ? cn(
+                          "bg-linear-to-r from-[#E2F2FF] to-[#D4EBFF] dark:from-[rgba(23,81,132,0.55)] dark:to-[rgba(23,81,132,0.71)]",
+                          "border border-[rgba(9,83,255,0.12)]",
+                      )
                     : "bg-secondary dark:bg-linear-to-r dark:from-[rgba(13,39,62,0.5)] dark:to-[rgba(4,25,17,0.5)] justify-center xl:justify-start",
             )}
         >

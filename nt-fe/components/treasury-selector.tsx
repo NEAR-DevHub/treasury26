@@ -30,8 +30,6 @@ interface TreasurySelectorProps {
     onOpenChange?: (open: boolean) => void;
 }
 
-const CREATE_TREASURY_CONTEXT_QUERY = "/?context=create_treasury";
-
 export function TreasurySelector({
     reducedMode = false,
     isOpen,
@@ -110,6 +108,7 @@ export function TreasurySelector({
     };
 
     const displayName = config ? (config.name ?? treasuryId) : t("select");
+    const createTreasuryRoute = `/create?returnTo=${encodeURIComponent(pathname || "/")}`;
 
     return (
         <>
@@ -262,9 +261,7 @@ export function TreasurySelector({
                         variant="ghost"
                         type="button"
                         className="w-full justify-start gap-2 px-3.5!"
-                        onClick={() =>
-                            router.push(CREATE_TREASURY_CONTEXT_QUERY)
-                        }
+                        onClick={() => router.push(createTreasuryRoute)}
                     >
                         <span className="text-lg">+</span>
                         <span>{t("createTreasury")}</span>
