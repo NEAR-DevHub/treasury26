@@ -182,11 +182,17 @@ export function TreasuryOnboardingPage({
     useEffect(() => {
         if (shouldKeepUserOnCreatePage) return;
         if (!accountId || isLoading) return;
-        if (!preferredTreasuryId) return;
+        if (!preferredTreasuryId) {
+            if (pathname === "/") {
+                router.replace("/create");
+            }
+            return;
+        }
         router.replace(`/${preferredTreasuryId}`);
     }, [
         accountId,
         isLoading,
+        pathname,
         preferredTreasuryId,
         router,
         shouldKeepUserOnCreatePage,
