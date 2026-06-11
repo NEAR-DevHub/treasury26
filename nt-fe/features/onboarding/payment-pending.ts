@@ -28,7 +28,7 @@ export function clearPaymentPending(treasuryId: string) {
 }
 
 /**
- * Builds a `refetchInterval` for the onboarding payments query: poll every 10s,
+ * Builds a `refetchInterval` for the onboarding payments query: poll every 5 seconds,
  * but only while a payment was recently created (flag set, within the window)
  * and no payment has appeared yet.
  */
