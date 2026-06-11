@@ -13,10 +13,8 @@ import { default_near_token } from "@/constants/token";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
-import { getBatchStorageDepositIsRegistered } from "@/lib/api";
 import Big from "@/lib/big";
 import {
-    BULK_PAYMENT_CONTRACT_ID,
     buildApproveListProposal,
     generateListId,
     submitPaymentList,
@@ -35,7 +33,6 @@ import {
     buildBulkPaymentFormSchema,
     type EditPaymentFormValues,
 } from "./schemas";
-import { needsStorageDepositCheck } from "./utils";
 
 export default function BulkPaymentPage() {
     const t = useTranslations("pages.payments");
@@ -242,75 +239,8 @@ export default function BulkPaymentPage() {
                 proposalBond,
             });
 
-            // Build storage deposit transactions
-            const additionalTransactions: any[] = [];
-            if (needsStorageDepositCheck(selectedToken)) {
-                const gas = "30000000000000";
-                const depositInYocto = Big(0.00125)
-                    .mul(Big(10).pow(24))
-                    .toFixed();
-
-                // Check if bulk payment contract is registered
-                const bulkPaymentContractRegistration =
-                    await getBatchStorageDepositIsRegistered([
-                        {
-                            accountId: BULK_PAYMENT_CONTRACT_ID,
-                            tokenId: selectedToken.address,
-                        },
-                    ]);
-
-                const isBulkPaymentContractRegistered =
-                    bulkPaymentContractRegistration.length > 0 &&
-                    bulkPaymentContractRegistration[0].isRegistered;
-
-                // Add storage deposit for bulk payment contract if needed
-                if (!isBulkPaymentContractRegistered) {
-                    additionalTransactions.push({
-                        receiverId: selectedToken.address,
-                        actions: [
-                            {
-                                type: "FunctionCall",
-                                params: {
-                                    methodName: "storage_deposit",
-                                    args: {
-                                        account_id: BULK_PAYMENT_CONTRACT_ID,
-                                        registration_only: true,
-                                    } as any,
-                                    gas,
-                                    deposit: depositInYocto,
-                                },
-                            } as any,
-                        ],
-                    });
-                }
-
-                // Add storage deposits for unregistered recipients
-                const unregisteredRecipients = paymentData.filter(
-                    (payment) =>
-                        payment.isRegistered === false &&
-                        !payment.validationError,
-                );
-
-                for (const payment of unregisteredRecipients) {
-                    additionalTransactions.push({
-                        receiverId: selectedToken.address,
-                        actions: [
-                            {
-                                type: "FunctionCall",
-                                params: {
-                                    methodName: "storage_deposit",
-                                    args: {
-                                        account_id: payment.recipient,
-                                        registration_only: true,
-                                    } as any,
-                                    gas,
-                                    deposit: depositInYocto,
-                                },
-                            } as any,
-                        ],
-                    });
-                }
-            }
+            // NEP-141 storage_deposit registrations (bulk contract + recipients)
+            // are handled by the backend at approval time.
 
             // Submit payment list to backend first.
             const submitResult = await submitPaymentList({
@@ -361,7 +291,6 @@ export default function BulkPaymentPage() {
                         kind: proposal.args.proposal.kind,
                     },
                     proposalBond,
-                    additionalTransactions,
                     proposalType: "payment",
                 },
                 false,
