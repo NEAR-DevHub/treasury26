@@ -151,7 +151,7 @@ test("Signed in + no treasuries + creation error => waitlist is shown", async ({
         .fill("testing-by-playwright");
     await page.getByRole("button", { name: /create treasury/i }).click();
 
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/create/);
     await expect(
         page.getByRole("heading", { name: /give us a little time/i }),
     ).toBeVisible();
