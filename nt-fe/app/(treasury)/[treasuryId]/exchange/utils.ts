@@ -180,6 +180,7 @@ export type ExchangeErrorCode =
 export function classifyExchangeError(errorMessage: string): {
     code: ExchangeErrorCode;
     raw: string;
+    minAmountRaw?: string;
 } {
     const lowerError = errorMessage.toLowerCase();
 
@@ -193,7 +194,12 @@ export function classifyExchangeError(errorMessage: string): {
         return { code: "noRoute", raw: errorMessage };
     }
     if (lowerError.includes("amount") && lowerError.includes("low")) {
-        return { code: "amountTooLow", raw: errorMessage };
+        const match = errorMessage.match(/at least\s+([0-9]+(?:\.[0-9]+)?)/i);
+        return {
+            code: "amountTooLow",
+            raw: errorMessage,
+            minAmountRaw: match?.[1],
+        };
     }
     if (lowerError.includes("insufficient") || lowerError.includes("balance")) {
         return { code: "insufficientBalance", raw: errorMessage };
