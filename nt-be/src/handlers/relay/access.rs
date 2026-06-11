@@ -1,0 +1,195 @@
+//! Authorization for a relay request: who may have it sponsored, and on what terms.
+
+use std::{collections::HashSet, sync::Arc};
+
+use axum::http::StatusCode;
+use chrono::{DateTime, Utc};
+use near_api::{AccountId, types::transaction::delegate_action::SignedDelegateAction};
+
+use crate::{
+    AppState,
+    auth::AuthUser,
+    config::plans::{PlanType, has_gas_covered_credits},
+    handlers::relay::{
+        allowlist,
+        dto::{RelayError, RelayRequest, error_response},
+        proposal::ProposalRequest,
+        sponsorship::SponsorshipTier,
+    },
+};
+
+/// The treasury's `monitored_accounts` row, as far as the relay cares.
+pub struct TreasuryRecord {
+    pub gas_covered_transactions: i32,
+    pub plan_type: PlanType,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Fetch the treasury's `monitored_accounts` row, if it is tracked.
+///
+/// Presence here is also the "sanctioned Sputnik DAO" signal used for storage
+/// balancing — see [`super::sponsorship::is_sputnik_treasury`].
+pub async fn fetch_treasury_record(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+) -> Result<Option<TreasuryRecord>, RelayError> {
+    sqlx::query_as::<_, (i32, PlanType, DateTime<Utc>)>(
+        r#"
+        SELECT gas_covered_transactions, plan_type, created_at
+        FROM monitored_accounts
+        WHERE account_id = $1
+        "#,
+    )
+    .bind(treasury_id.as_str())
+    .fetch_optional(&state.db_pool)
+    .await
+    .map(|row| {
+        row.map(
+            |(gas_covered_transactions, plan_type, created_at)| TreasuryRecord {
+                gas_covered_transactions,
+                plan_type,
+                created_at,
+            },
+        )
+    })
+    .map_err(|e| error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))
+}
+
+/// Authorize the caller and return the treasury's sponsorship tier.
+///
+/// Three checks, in order:
+///
+/// 1. **Identity** binds to the authenticated user differently per wire shape:
+///    `w_execute_signed` carries the user's own on-chain-verified signature, so we
+///    check the receiver is the user's wallet account; a meta-transaction is bound
+///    to its `sender_id`.
+/// 2. **DAO proposal/vote permissions** are checked from the parsed proposals, so
+///    the rule is identical for both shapes (the proposal calls are the same; only
+///    their envelope differs).
+/// 3. **Billing + receiver allowlist** apply to meta-transactions only — a tracked
+///    treasury with gas-covered credits, and a receiver on the allowlist.
+///
+/// The tier follows the treasury (its onboarding date), NOT the wire shape: an old
+/// DAO accessed via a `w_execute_signed` wallet still gets bond-based sponsorship.
+/// Untracked treasuries default to `Standard`.
+#[allow(clippy::too_many_arguments)]
+pub async fn authorize(
+    state: &Arc<AppState>,
+    auth_user: &AuthUser,
+    relay_request: &RelayRequest,
+    signed_delegate_action: &SignedDelegateAction,
+    is_wallet_contract_action: bool,
+    action_receiver_id: &AccountId,
+    treasury_record: Option<&TreasuryRecord>,
+    proposals: &[ProposalRequest],
+) -> Result<SponsorshipTier, RelayError> {
+    // 1. Identity binding (shape-specific).
+    if is_wallet_contract_action {
+        if action_receiver_id != &auth_user.account_id {
+            return Err(error_response(
+                StatusCode::FORBIDDEN,
+                format!(
+                    "w_execute_signed receiver '{}' does not match authenticated user '{}'",
+                    action_receiver_id, auth_user.account_id
+                ),
+            ));
+        }
+    } else {
+        let sender_id = signed_delegate_action.delegate_action.sender_id.to_string();
+        if sender_id != auth_user.account_id {
+            return Err(error_response(
+                StatusCode::FORBIDDEN,
+                format!(
+                    "Delegate action sender '{}' does not match authenticated user '{}'",
+                    sender_id, auth_user.account_id
+                ),
+            ));
+        }
+    }
+
+    // 2. DAO proposal/vote permissions — equal for both shapes.
+    verify_proposal_access(state, auth_user, &relay_request.treasury_id, proposals).await?;
+
+    // 3. Billing + receiver allowlist (meta-transactions only).
+    if !is_wallet_contract_action {
+        let treasury_record = treasury_record.ok_or_else(|| {
+            error_response(
+                StatusCode::NOT_FOUND,
+                format!(
+                    "Treasury '{}' not found in monitored accounts",
+                    relay_request.treasury_id.as_str()
+                ),
+            )
+        })?;
+        if !has_gas_covered_credits(
+            treasury_record.plan_type,
+            treasury_record.gas_covered_transactions,
+        ) {
+            return Err(error_response(
+                StatusCode::PAYMENT_REQUIRED,
+                "No gas-covered transaction credits remaining. Please upgrade your plan.",
+            ));
+        }
+        allowlist::verify_receiver_allowed(
+            state,
+            &relay_request.treasury_id,
+            action_receiver_id,
+        )
+        .await?;
+    }
+
+    Ok(treasury_record
+        .map(|record| SponsorshipTier::for_treasury(record.created_at))
+        .unwrap_or(SponsorshipTier::Standard))
+}
+
+/// Verify the authenticated user may perform every parsed proposal operation on the
+/// treasury, following on-chain DAO permissions: `add_proposal` needs add
+/// permission; each vote needs the matching vote permission (including Everyone
+/// roles). Derived from the parsed proposals so it is identical for both wire shapes.
+async fn verify_proposal_access(
+    state: &Arc<AppState>,
+    auth_user: &AuthUser,
+    treasury_id: &AccountId,
+    proposals: &[ProposalRequest],
+) -> Result<(), RelayError> {
+    let mut has_add_proposal = false;
+    let mut vote_actions = HashSet::new();
+    for proposal in proposals {
+        match proposal {
+            ProposalRequest::Add(_) => has_add_proposal = true,
+            ProposalRequest::Act(act) => match act.action.as_str() {
+                "VoteApprove" | "VoteReject" | "VoteRemove" => {
+                    vote_actions.insert(act.action.clone());
+                }
+                other => {
+                    return Err(error_response(
+                        StatusCode::BAD_REQUEST,
+                        format!("Unsupported vote action '{}'", other),
+                    ));
+                }
+            },
+        }
+    }
+
+    if has_add_proposal {
+        auth_user
+            .verify_can_add_proposal(state, treasury_id)
+            .await
+            .map_err(|(status, msg)| error_response(status, msg))?;
+    }
+
+    if !vote_actions.is_empty() {
+        let policy = auth_user
+            .fetch_dao_policy(state, treasury_id)
+            .await
+            .map_err(|(status, msg)| error_response(status, msg))?;
+        for vote_action in vote_actions {
+            auth_user
+                .verify_can_perform_action_with_policy(&policy, treasury_id, &vote_action)
+                .map_err(|(status, msg)| error_response(status, msg))?;
+        }
+    }
+
+    Ok(())
+}
