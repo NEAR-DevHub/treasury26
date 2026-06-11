@@ -263,7 +263,8 @@ mod tests {
 
     #[test]
     fn validates_add_proposal_and_sums_deposit() {
-        let kind = json!({ "Transfer": { "token_id": "", "receiver_id": "bob.near", "amount": "1" } });
+        let kind =
+            json!({ "Transfer": { "token_id": "", "receiver_id": "bob.near", "amount": "1" } });
         let parsed = validate_calls(
             &acc("dao.sputnik-dao.near"),
             vec![add_call("dao.sputnik-dao.near", kind, 100)],
@@ -299,8 +300,18 @@ mod tests {
             })
         };
         let calls = vec![
-            act_call("dao.sputnik-dao.near", 1, "VoteApprove", Some(v1_kind("aaaa"))),
-            act_call("dao.sputnik-dao.near", 2, "VoteApprove", Some(v1_kind("bbbb"))),
+            act_call(
+                "dao.sputnik-dao.near",
+                1,
+                "VoteApprove",
+                Some(v1_kind("aaaa")),
+            ),
+            act_call(
+                "dao.sputnik-dao.near",
+                2,
+                "VoteApprove",
+                Some(v1_kind("bbbb")),
+            ),
         ];
         let parsed = validate_calls(&acc("dao.sputnik-dao.near"), calls).unwrap();
         assert_eq!(
@@ -323,7 +334,8 @@ mod tests {
 
     #[test]
     fn rejects_call_to_other_receiver() {
-        let kind = json!({ "Transfer": { "token_id": "", "receiver_id": "bob.near", "amount": "1" } });
+        let kind =
+            json!({ "Transfer": { "token_id": "", "receiver_id": "bob.near", "amount": "1" } });
         let err = validate_calls(
             &acc("dao.sputnik-dao.near"),
             vec![add_call("evil.near", kind, 0)],

@@ -367,7 +367,12 @@ async fn register_one(state: &Arc<AppState>, registration: &Registration) -> Res
             STORAGE_DEPOSIT_AMOUNT,
         )
         .await
-        .map_err(|e| format!("storage_deposit failed for {} on {}: {}", account_id, token_id, e))?;
+        .map_err(|e| {
+            format!(
+                "storage_deposit failed for {} on {}: {}",
+                account_id, token_id, e
+            )
+        })?;
     Ok(true)
 }
 

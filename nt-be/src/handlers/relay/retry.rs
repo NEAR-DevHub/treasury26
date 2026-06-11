@@ -21,11 +21,7 @@ impl RetryPolicy {
 /// Run `operation`, retrying while it errors up to `policy.max_attempts`. Only use
 /// for operations that are safe to repeat (reads, or sends with on-chain replay
 /// protection / idempotency) — never for bare value transfers.
-pub async fn retry<T, E, F, Fut>(
-    policy: RetryPolicy,
-    label: &str,
-    mut operation: F,
-) -> Result<T, E>
+pub async fn retry<T, E, F, Fut>(policy: RetryPolicy, label: &str, mut operation: F) -> Result<T, E>
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<T, E>>,

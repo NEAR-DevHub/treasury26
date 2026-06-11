@@ -15,10 +15,7 @@ use near_api::{
     AccountId, NearGas, NearToken, NetworkConfig, Signer, Tokens, Transaction,
     types::{
         Action,
-        transaction::{
-            actions::FunctionCallAction,
-            delegate_action::{NonDelegateAction, SignedDelegateAction},
-        },
+        transaction::{actions::FunctionCallAction, delegate_action::SignedDelegateAction},
     },
 };
 
@@ -101,20 +98,19 @@ impl Sponsor {
         Ok(debug)
     }
 
-    /// Replay a `w_execute_signed` delegate action's inner actions directly to the
-    /// user's wallet contract. Safe to retry — the wallet request nonce rejects a
-    /// double-land.
+    /// Replay the sponsor's prepared actions directly to the user's wallet contract.
+    /// Safe to retry — the wallet request nonce rejects a double-land.
     pub async fn replay_actions(
         &self,
         receiver: &AccountId,
-        actions: &[NonDelegateAction],
+        actions: Vec<Action>,
     ) -> Result<ExecutionDebug, String> {
         let outcome = self
             .send_retried("replay w_execute_signed", || async {
                 let mut transaction =
                     Transaction::construct(self.signer_id.clone(), receiver.clone());
-                for action in actions {
-                    transaction = transaction.add_action((**action).clone());
+                for action in &actions {
+                    transaction = transaction.add_action(action.clone());
                 }
                 transaction
                     .with_signer(self.signer.clone())

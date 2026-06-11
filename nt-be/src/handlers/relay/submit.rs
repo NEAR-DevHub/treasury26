@@ -40,7 +40,12 @@ pub async fn relay_delegate_action(
     let signed_delegate_action = SignedDelegateAction::try_from_slice(
         &relay_request.signed_delegate_action.0,
     )
-    .map_err(|e| error_response(StatusCode::BAD_REQUEST, format!("Invalid delegate action: {}", e)))?;
+    .map_err(|e| {
+        error_response(
+            StatusCode::BAD_REQUEST,
+            format!("Invalid delegate action: {}", e),
+        )
+    })?;
     let is_wallet_contract_action = wallet::is_wallet_contract_action(&signed_delegate_action);
     // The delegate action's receiver: the user's wallet contract for
     // `w_execute_signed`, or the DAO treasury for a meta-transaction.
@@ -76,10 +81,9 @@ pub async fn relay_delegate_action(
     // 4. Bound the attached deposit, then compensate the DAO contract for the
     //    storage a NEW proposal occupies. Only `add_proposal` grows DAO storage, so
     //    `act_proposal`-only relays (votes) get no top-up.
-    let compensate_proposal_storage = sponsorship::is_sputnik_treasury(
-        &relay_request.treasury_id,
-        treasury_record.is_some(),
-    ) && proposal::contains_add_proposal(&proposals);
+    let compensate_proposal_storage =
+        sponsorship::is_sputnik_treasury(&relay_request.treasury_id, treasury_record.is_some())
+            && proposal::contains_add_proposal(&proposals);
     let proposal_storage_cost = if compensate_proposal_storage {
         sponsorship::proposal_storage_cost(relay_request.storage_bytes.0)
     } else {
@@ -182,11 +186,13 @@ async fn execute_relay(
 ) -> Result<ExecutionDebug, RelayError> {
     let sponsor = Sponsor::from_state(state);
     let execution = if is_wallet_contract_action {
+        // Rebuild the outer w_execute_signed actions with their deposit set to the
+        // sponsored inner bond, so the sponsor attaches exactly the bounded amount.
+        let replay_actions =
+            wallet::build_sponsored_actions(&signed_delegate_action.delegate_action.actions)
+                .map_err(|message| error_response(StatusCode::INTERNAL_SERVER_ERROR, message))?;
         sponsor
-            .replay_actions(
-                action_receiver_id,
-                &signed_delegate_action.delegate_action.actions,
-            )
+            .replay_actions(action_receiver_id, replay_actions)
             .await
     } else {
         sponsor.relay_meta_tx(signed_delegate_action).await

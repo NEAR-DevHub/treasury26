@@ -15,7 +15,10 @@ use std::ops::Deref;
 use base64::Engine as _;
 use near_api::{
     AccountId, NearToken,
-    types::{Action, transaction::delegate_action::SignedDelegateAction},
+    types::{
+        Action,
+        transaction::{actions::FunctionCallAction, delegate_action::SignedDelegateAction},
+    },
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -44,32 +47,59 @@ pub(crate) fn collect_calls(
 ) -> Result<Vec<DaoCall>, String> {
     let mut calls = Vec::new();
     for action in actions {
-        let Action::FunctionCall(fc) = action.deref() else {
-            return Err("w_execute_signed relay contains a non-FunctionCall action".to_owned());
-        };
-        if fc.method_name != "w_execute_signed" {
-            return Err(format!(
-                "Unexpected method '{}' in w_execute_signed relay",
-                fc.method_name
-            ));
-        }
-        // The sponsor replays this call verbatim as predecessor, so any deposit on
-        // the outer `w_execute_signed` call is paid by the sponsor. It is never
-        // legitimately needed (the sponsored deposits live inside the wallet
-        // promises), so reject it rather than silently spend unaccounted NEAR.
-        if fc.deposit > NearToken::from_near(0) {
-            return Err(format!(
-                "w_execute_signed call must not attach a deposit, got {}",
-                fc.deposit
-            ));
-        }
-        collect_w_execute_args(&fc.args, &mut calls)?;
+        let function_call = as_w_execute_call(action.deref())?;
+        calls.extend(inner_calls(&function_call.args)?);
     }
     Ok(calls)
 }
 
-/// Parse one `{ msg, proof }` argument and append its sponsored DAO calls.
-fn collect_w_execute_args(args: &[u8], collected_calls: &mut Vec<DaoCall>) -> Result<(), String> {
+/// Build the sponsor's replay actions for a wallet-contract relay: each outer
+/// `w_execute_signed` call, with its attached deposit overridden to exactly the NEAR
+/// its inner promises require (the proposal bond).
+///
+/// The sponsor replays these as predecessor, so the outer deposit is what the
+/// sponsor pays. Setting it to the inner sum means the wallet contract receives
+/// exactly the bond it forwards to the DAO — the sponsor compensates the bond — and
+/// the outer deposit can no longer diverge from the bounded, accounted inner sum
+/// (whatever the client attached).
+pub(crate) fn build_sponsored_actions(
+    actions: &[impl Deref<Target = Action>],
+) -> Result<Vec<Action>, String> {
+    actions
+        .iter()
+        .map(|action| {
+            let function_call = as_w_execute_call(action.deref())?;
+            let inner_deposit = inner_calls(&function_call.args)?
+                .iter()
+                .fold(NearToken::from_near(0), |sum, call| {
+                    sum.saturating_add(call.deposit)
+                });
+            Ok(Action::FunctionCall(Box::new(FunctionCallAction {
+                method_name: function_call.method_name.clone(),
+                args: function_call.args.clone(),
+                gas: function_call.gas,
+                deposit: inner_deposit,
+            })))
+        })
+        .collect()
+}
+
+/// Validate that an action is a `w_execute_signed` FunctionCall and return it.
+fn as_w_execute_call(action: &Action) -> Result<&FunctionCallAction, String> {
+    let Action::FunctionCall(function_call) = action else {
+        return Err("w_execute_signed relay contains a non-FunctionCall action".to_owned());
+    };
+    if function_call.method_name != "w_execute_signed" {
+        return Err(format!(
+            "Unexpected method '{}' in w_execute_signed relay",
+            function_call.method_name
+        ));
+    }
+    Ok(function_call)
+}
+
+/// Parse one `{ msg, proof }` argument into its sponsored DAO calls.
+fn inner_calls(args: &[u8]) -> Result<Vec<DaoCall>, String> {
     let parsed: WExecuteSignedArgs = serde_json::from_slice(args)
         .map_err(|e| format!("Invalid w_execute_signed args: {}", e))?;
     if !parsed.msg.request.ops.is_empty() {
@@ -77,7 +107,9 @@ fn collect_w_execute_args(args: &[u8], collected_calls: &mut Vec<DaoCall>) -> Re
             "w_execute_signed request carries wallet ops, which are not sponsorable".to_owned(),
         );
     }
-    collect_dag(&parsed.msg.request.out, collected_calls)
+    let mut calls = Vec::new();
+    collect_dag(&parsed.msg.request.out, &mut calls)?;
+    Ok(calls)
 }
 
 fn collect_dag(dag: &PromiseDag, collected_calls: &mut Vec<DaoCall>) -> Result<(), String> {
@@ -120,7 +152,12 @@ fn parse_yocto_deposit(deposit: &Option<String>) -> Result<NearToken, String> {
         Some(raw) => raw
             .parse::<u128>()
             .map(NearToken::from_yoctonear)
-            .map_err(|e| format!("Invalid deposit '{}' in w_execute_signed action: {}", raw, e)),
+            .map_err(|e| {
+                format!(
+                    "Invalid deposit '{}' in w_execute_signed action: {}",
+                    raw, e
+                )
+            }),
     }
 }
 
@@ -189,9 +226,7 @@ mod tests {
 
     /// Decode just the `out` promises of a `{ msg: { request } }` payload.
     fn collect(args: &Value) -> Result<Vec<DaoCall>, String> {
-        let mut out = Vec::new();
-        collect_w_execute_args(&serde_json::to_vec(args).unwrap(), &mut out)?;
-        Ok(out)
+        inner_calls(&serde_json::to_vec(args).unwrap())
     }
 
     /// A wrapper that `Deref`s to `Action`, so `collect_calls` can be exercised
@@ -215,16 +250,28 @@ mod tests {
     }
 
     #[test]
-    fn rejects_nonzero_outer_deposit() {
-        // The outer deposit is sponsor-paid; a non-zero one must be rejected before
-        // the inner args are even parsed.
-        let action = w_execute_action(&json!({}), NearToken::from_yoctonear(1));
-        let err = collect_calls(&[action]).unwrap_err();
-        assert!(err.contains("must not attach a deposit"), "{err}");
+    fn build_sponsored_actions_overrides_outer_deposit() {
+        // Inner promise bond of 5 yocto; the client's outer deposit (1) is ignored —
+        // the sponsor attaches exactly the inner sum it forwards as the bond.
+        let args = json!({
+            "msg": { "request": { "out": { "then": [{
+                "receiver_id": "dao.sputnik-dao.near",
+                // base64("{}") for the inner args — only the deposit matters here.
+                "actions": [{ "action": "function_call", "function_name": "add_proposal", "args": "e30=", "deposit": "5" }]
+            }] } } }
+        });
+        let action = w_execute_action(&args, NearToken::from_yoctonear(1));
+        let built = build_sponsored_actions(&[action]).unwrap();
+        assert_eq!(built.len(), 1);
+        let Action::FunctionCall(function_call) = &built[0] else {
+            panic!("expected a FunctionCall");
+        };
+        assert_eq!(function_call.method_name, "w_execute_signed");
+        assert_eq!(function_call.deposit, NearToken::from_yoctonear(5));
     }
 
     #[test]
-    fn accepts_zero_outer_deposit() {
+    fn collect_calls_flattens_inner_proposal() {
         let args = json!({
             "msg": { "request": { "out": { "then": [{
                 "receiver_id": "dao.sputnik-dao.near",
@@ -257,7 +304,10 @@ mod tests {
         });
         let calls = collect(&args).unwrap();
         assert_eq!(calls.len(), 1);
-        assert_eq!(calls[0].receiver_id, acc("testing-astradao.sputnik-dao.near"));
+        assert_eq!(
+            calls[0].receiver_id,
+            acc("testing-astradao.sputnik-dao.near")
+        );
         assert_eq!(calls[0].method_name, "add_proposal");
         assert_eq!(calls[0].deposit, NearToken::from_near(0));
     }

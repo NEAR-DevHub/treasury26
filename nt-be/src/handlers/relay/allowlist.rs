@@ -47,7 +47,10 @@ pub async fn verify_receiver_allowed(
     } else {
         Err(error_response(
             StatusCode::FORBIDDEN,
-            format!("Contract '{}' is not allowed for relayed actions", receiver_id),
+            format!(
+                "Contract '{}' is not allowed for relayed actions",
+                receiver_id
+            ),
         ))
     }
 }

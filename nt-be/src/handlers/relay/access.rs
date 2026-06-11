@@ -52,7 +52,12 @@ pub async fn fetch_treasury_record(
             },
         )
     })
-    .map_err(|e| error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))
+    .map_err(|e| {
+        error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+    })
 }
 
 /// Authorize the caller and return the treasury's sponsorship tier.
@@ -130,12 +135,8 @@ pub async fn authorize(
                 "No gas-covered transaction credits remaining. Please upgrade your plan.",
             ));
         }
-        allowlist::verify_receiver_allowed(
-            state,
-            &relay_request.treasury_id,
-            action_receiver_id,
-        )
-        .await?;
+        allowlist::verify_receiver_allowed(state, &relay_request.treasury_id, action_receiver_id)
+            .await?;
     }
 
     Ok(treasury_record
