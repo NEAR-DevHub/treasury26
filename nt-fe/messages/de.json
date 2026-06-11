@@ -1825,6 +1825,7 @@
     "exchangeErrors": {
         "noRoute": "Kein Tausch gefunden. Versuchen Sie einen kleineren Betrag oder ein anderes Token.",
         "amountTooLow": "Betrag zu niedrig für den Tausch. Cross-Chain-Tausche erfordern ein höheres Minimum, um Netzwerkgebühren abzudecken.",
+        "amountTooLowWithMin": "Der Betrag ist zu niedrig, um die Netzwerkgebühren zu decken. Geben Sie mindestens {min} {token} ein.",
         "insufficientBalance": "Unzureichendes Guthaben für diesen Tausch.",
         "networkError": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
         "fetchFailed": "Abrufen des Angebots fehlgeschlagen"

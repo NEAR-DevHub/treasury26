@@ -193,12 +193,37 @@ export function useExchangeQuote({
 
                 if (isDryRun) {
                     // Only show errors for dry run (user is still on Step 1)
-                    const { code, raw } = classifyExchangeError(
+                    const { code, raw, minAmountRaw } = classifyExchangeError(
                         error?.message || tEx("fetchFailed"),
                     );
+
+                    let message = code === "unknown" ? raw : tEx(code);
+
+                    // Surface the specific bridge minimum when the backend
+                    // provides one (e.g. "...try at least 10000").
+                    if (code === "amountTooLow" && minAmountRaw) {
+                        try {
+                            const threshold = Big(minAmountRaw);
+                            const parsedAmount = minAmountRaw.includes(".")
+                                ? threshold
+                                : threshold.div(
+                                      Big(10).pow(sellToken.decimals),
+                                  );
+                            const min = parsedAmount
+                                .toFixed(sellToken.decimals)
+                                .replace(/\.?0+$/, "");
+                            message = tEx("amountTooLowWithMin", {
+                                min,
+                                token: sellToken.symbol,
+                            });
+                        } catch {
+                            // Fall back to the generic low-amount message.
+                        }
+                    }
+
                     form.setError("receiveAmount", {
                         type: "manual",
-                        message: code === "unknown" ? raw : tEx(code),
+                        message,
                     });
                 }
                 return null;

@@ -1825,6 +1825,7 @@
     "exchangeErrors": {
         "noRoute": "No exchange found. Try a smaller amount or different token.",
         "amountTooLow": "Amount too low for swap. Cross-chain swaps require a higher minimum to cover network fees.",
+        "amountTooLowWithMin": "Amount is too low to cover network fees. Enter at least {min} {token}.",
         "insufficientBalance": "Insufficient balance for this swap.",
         "networkError": "Network error. Please check your connection and try again.",
         "fetchFailed": "Failed to fetch quote"
