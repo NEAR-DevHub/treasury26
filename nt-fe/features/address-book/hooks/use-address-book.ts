@@ -12,9 +12,9 @@ export function useAddressBook() {
         queryKey: ["address-book", treasuryId, accountId],
         queryFn: () => getAddressBook(treasuryId!),
         enabled,
-        staleTime: 1000* 10, //10 seconds
+        staleTime: 1000 * 10, //10 seconds
         refetchInterval: 1000 * 60, //1 minute
         refetchIntervalInBackground: true,
-        refetchOnWindowFocus: true
+        refetchOnWindowFocus: true,
     });
 }
