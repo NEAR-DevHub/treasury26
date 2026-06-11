@@ -53,6 +53,16 @@ pub(crate) fn collect_calls(
                 fc.method_name
             ));
         }
+        // The sponsor replays this call verbatim as predecessor, so any deposit on
+        // the outer `w_execute_signed` call is paid by the sponsor. It is never
+        // legitimately needed (the sponsored deposits live inside the wallet
+        // promises), so reject it rather than silently spend unaccounted NEAR.
+        if fc.deposit > NearToken::from_near(0) {
+            return Err(format!(
+                "w_execute_signed call must not attach a deposit, got {}",
+                fc.deposit
+            ));
+        }
         collect_w_execute_args(&fc.args, &mut calls)?;
     }
     Ok(calls)
@@ -170,6 +180,7 @@ enum PromiseAction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use near_api::{NearGas, types::transaction::actions::FunctionCallAction};
     use serde_json::json;
 
     fn acc(s: &str) -> AccountId {
@@ -181,6 +192,51 @@ mod tests {
         let mut out = Vec::new();
         collect_w_execute_args(&serde_json::to_vec(args).unwrap(), &mut out)?;
         Ok(out)
+    }
+
+    /// A wrapper that `Deref`s to `Action`, so `collect_calls` can be exercised
+    /// without building a `NonDelegateAction`.
+    struct ActionRef(Action);
+    impl std::ops::Deref for ActionRef {
+        type Target = Action;
+        fn deref(&self) -> &Action {
+            &self.0
+        }
+    }
+
+    /// A top-level `w_execute_signed` FunctionCall with the given outer deposit.
+    fn w_execute_action(args: &Value, deposit: NearToken) -> ActionRef {
+        ActionRef(Action::FunctionCall(Box::new(FunctionCallAction {
+            method_name: "w_execute_signed".to_owned(),
+            args: serde_json::to_vec(args).unwrap(),
+            gas: NearGas::from_tgas(30),
+            deposit,
+        })))
+    }
+
+    #[test]
+    fn rejects_nonzero_outer_deposit() {
+        // The outer deposit is sponsor-paid; a non-zero one must be rejected before
+        // the inner args are even parsed.
+        let action = w_execute_action(&json!({}), NearToken::from_yoctonear(1));
+        let err = collect_calls(&[action]).unwrap_err();
+        assert!(err.contains("must not attach a deposit"), "{err}");
+    }
+
+    #[test]
+    fn accepts_zero_outer_deposit() {
+        let args = json!({
+            "msg": { "request": { "out": { "then": [{
+                "receiver_id": "dao.sputnik-dao.near",
+                // base64("{}") — collect_calls only base64-decodes the inner args.
+                "actions": [{ "action": "function_call", "function_name": "add_proposal", "args": "e30=", "deposit": "0" }]
+            }] } } }
+        });
+        let action = w_execute_action(&args, NearToken::from_near(0));
+        let calls = collect_calls(&[action]).unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].method_name, "add_proposal");
+        assert_eq!(calls[0].deposit, NearToken::from_near(0));
     }
 
     #[test]
