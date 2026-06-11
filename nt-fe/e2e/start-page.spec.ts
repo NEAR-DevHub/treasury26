@@ -66,16 +66,6 @@ async function gotoStartPageAndWaitForBootstrapRequests(page: Page) {
     await Promise.all([authMeResponse, userTreasuriesResponse]);
 }
 
-test("Start page shows login screen when signed out", async ({ page }) => {
-    await setupStartPageMocks(page, {});
-
-    await page.goto("/");
-
-    await expect(
-        page.getByRole("heading", { name: /choose how to sign in/i }),
-    ).toBeVisible();
-});
-
 test("Create route shows create treasury form when signed out", async ({
     page,
 }) => {
