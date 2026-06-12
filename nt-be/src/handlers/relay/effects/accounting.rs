@@ -10,7 +10,7 @@ use near_api::AccountId;
 use super::background;
 use crate::{
     AppState,
-    handlers::relay::{dto::RelayRequest, sponsor::policy::SpentNear},
+    handlers::relay::{parse::RelayRequest, sponsor::policy::SpentNear},
     services::platform_metrics::{self, PlatformMetric},
 };
 

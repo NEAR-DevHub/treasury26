@@ -6,7 +6,7 @@
 //! signed intent is submitted to the 1Click API automatically.
 
 use crate::{
-    AppState, constants::V1_SIGNER_CONTRACT_ID, handlers::relay::sputnik::ProposalKind,
+    AppState, constants::V1_SIGNER_CONTRACT_ID, handlers::relay::parse::ProposalKind,
     utils::cache::CacheKey,
 };
 use base64::Engine;

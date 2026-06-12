@@ -11,8 +11,7 @@ use crate::{
     auth::AuthUser,
     config::plans::{PlanType, has_gas_covered_credits},
     handlers::relay::{
-        dto::{RelayError, RelayRequest, error_response},
-        parse::{RelayOperation, RelayShape},
+        parse::{RelayError, RelayOperation, RelayRequest, RelayShape, error_response},
         sponsor::policy::SponsorshipTier,
     },
 };

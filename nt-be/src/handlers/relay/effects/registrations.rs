@@ -24,9 +24,8 @@ use crate::{
     handlers::{
         proposals::scraper::{fetch_batch_payment_list, fetch_proposal},
         relay::{
-            dto::{RelayError, error_response},
+            parse::{ProposalKind, RelayError, error_response},
             sponsor::Sponsor,
-            sputnik::ProposalKind,
         },
         token::storage_deposit::is_registered::check_storage_deposit,
     },

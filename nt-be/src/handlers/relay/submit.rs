@@ -11,9 +11,11 @@ use crate::{
     auth::AuthUser,
     handlers::relay::{
         access, confidential,
-        dto::{RelayError, RelayRequest, RelayResponse, error_response, success_response},
         effects::{accounting, registrations},
-        parse::{self, ParsedRelay, RelayShape},
+        parse::{
+            self, ParsedRelay, RelayError, RelayRequest, RelayResponse, RelayShape, error_response,
+            success_response,
+        },
         sponsor::{
             ExecutionDebug, Sponsor,
             policy::{self, SpentNear},

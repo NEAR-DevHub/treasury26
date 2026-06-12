@@ -20,7 +20,7 @@ use near_api::{
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::proposal::DaoCall;
+use super::DaoCall;
 
 /// Flatten the `w_execute_signed` delegate action into its sponsored DAO calls.
 pub(crate) fn collect_calls(

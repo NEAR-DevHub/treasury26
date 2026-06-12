@@ -22,7 +22,7 @@ use super::{
 };
 use crate::{
     AppState,
-    handlers::relay::dto::{RelayError, error_response},
+    handlers::relay::parse::{RelayError, error_response},
 };
 
 const SPUTNIK_DAO_SUFFIX: &str = ".sputnik-dao.near";
