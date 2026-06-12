@@ -220,8 +220,6 @@ export function RecipientNetworkSelect({
         onChange("");
     }, [value, availableOptions, compatibleOptions, onChange]);
 
-    // Intentionally do not auto-select a network from recipient input.
-    // Users must explicitly confirm recipient network to avoid surprise picks.
     const placeholderText = !recipient
         ? t("enterAddressFirst")
         : !hasCompatibleNetwork
