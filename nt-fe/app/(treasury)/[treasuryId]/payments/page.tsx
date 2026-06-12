@@ -647,6 +647,11 @@ function buildQuoteContextKey(params: {
     ].join("|");
 }
 
+type CachedQuote = {
+    key: string;
+    quote: IntentsQuoteResponse;
+};
+
 export default function PaymentsPage() {
     const t = useTranslations("pages.payments");
     const tPay = useTranslations("payments");
@@ -668,9 +673,8 @@ export default function PaymentsPage() {
     const [step, setStep] = useState(0);
     const searchParams = useSearchParams();
     const autoSelectedTokenKeyRef = useRef<string | null>(null);
-    // Cached quote — avoids re-fetching between step 1 → step 2 → submit.
-    const quoteRef = useRef<IntentsQuoteResponse | null>(null);
-    const quoteKeyRef = useRef<string | null>(null);
+    // Cached quote + context key — avoids re-fetching while preventing stale reuse.
+    const cachedQuoteRef = useRef<CachedQuote | null>(null);
     // "recipient" for typed amount (exact output), "total" for MAX (exact input).
     const [intentsAmountMode, setIntentsAmountMode] =
         useState<IntentsAmountMode>("recipient");
@@ -855,15 +859,15 @@ export default function PaymentsPage() {
 
     // Keep the quote ref in sync so onSubmit can use it without re-fetching.
     useEffect(() => {
-        quoteRef.current = liveQuote ?? null;
-        quoteKeyRef.current = liveQuote ? quoteContextKey : null;
+        cachedQuoteRef.current = liveQuote
+            ? { key: quoteContextKey, quote: liveQuote }
+            : null;
     }, [liveQuote, quoteContextKey]);
 
     // Invalidate cached quote whenever core quote inputs change so review never
     // shows stale data from a previous token/address/network combination.
     useEffect(() => {
-        quoteRef.current = null;
-        quoteKeyRef.current = null;
+        cachedQuoteRef.current = null;
     }, [
         watchedToken.address,
         watchedAmount,
@@ -938,8 +942,10 @@ export default function PaymentsPage() {
         });
         if (result.ok) {
             if (result.quote) {
-                quoteRef.current = result.quote;
-                quoteKeyRef.current = ensureRequestKey;
+                cachedQuoteRef.current = {
+                    key: ensureRequestKey,
+                    quote: result.quote,
+                };
             }
             form.clearErrors("amount");
             return true;
@@ -1082,8 +1088,8 @@ export default function PaymentsPage() {
                     amountMode: intentsAmountMode,
                 });
                 const cachedQuote =
-                    quoteKeyRef.current === submitQuoteKey
-                        ? quoteRef.current
+                    cachedQuoteRef.current?.key === submitQuoteKey
+                        ? cachedQuoteRef.current.quote
                         : null;
                 const quote =
                     cachedQuote ??
@@ -1178,8 +1184,7 @@ export default function PaymentsPage() {
                         amount: data.amount,
                     });
                     form.reset();
-                    quoteRef.current = null;
-                    quoteKeyRef.current = null;
+                    cachedQuoteRef.current = null;
                     setIsAddressBookRecipientSelected(false);
                     setStep(0);
                     triggerPendingTour();
@@ -1229,8 +1234,8 @@ export default function PaymentsPage() {
                 props: {
                     liveQuote:
                         liveQuote ??
-                        (quoteKeyRef.current === quoteContextKey
-                            ? quoteRef.current
+                        (cachedQuoteRef.current?.key === quoteContextKey
+                            ? cachedQuoteRef.current.quote
                             : null),
                     isLoadingLiveQuote,
                     isFetchingLiveQuote,
