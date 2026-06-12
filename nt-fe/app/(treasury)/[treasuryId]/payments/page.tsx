@@ -125,6 +125,7 @@ interface Step1Props extends StepProps {
     onMaxSet?: (maxAmount: string) => void;
     onAddressBookSelectionChange?: (isFromAddressBook: boolean) => void;
     bridgeAssets?: BridgeAsset[];
+    isBridgeAssetsLoading?: boolean;
 }
 
 function Step1({
@@ -138,6 +139,7 @@ function Step1({
     onMaxSet,
     onAddressBookSelectionChange,
     bridgeAssets = [],
+    isBridgeAssetsLoading = false,
 }: Step1Props) {
     const tPay = useTranslations("payments");
     const form = useFormContext<PaymentFormValues>();
@@ -244,6 +246,7 @@ function Step1({
                 onMaxSet={onMaxSet}
                 onAddressBookSelectionChange={onAddressBookSelectionChange}
                 bridgeAssets={bridgeAssets}
+                isBridgeAssetsLoading={isBridgeAssetsLoading}
             />
         </PageCard>
     );
@@ -694,9 +697,11 @@ export default function PaymentsPage() {
         () => preferredNetworks.join(","),
         [preferredNetworks],
     );
-    const { data: bridgeAssets = [] } = useBridgeTokens(
-        preferredNetworks.length > 0,
-    );
+    const {
+        data: bridgeAssets = [],
+        isLoading: isBridgeAssetsLoading,
+        isFetching: isBridgeAssetsFetching,
+    } = useBridgeTokens(true);
 
     const defaultToken = useMemo(() => {
         const fallbackToken = default_near_token(isConfidential);
@@ -1227,6 +1232,8 @@ export default function PaymentsPage() {
                     onAddressBookSelectionChange:
                         setIsAddressBookRecipientSelected,
                     bridgeAssets,
+                    isBridgeAssetsLoading:
+                        isBridgeAssetsLoading || isBridgeAssetsFetching,
                 },
             },
             {
@@ -1256,6 +1263,8 @@ export default function PaymentsPage() {
             isLoadingLiveQuote,
             isFetchingLiveQuote,
             bridgeAssets,
+            isBridgeAssetsLoading,
+            isBridgeAssetsFetching,
             quoteContextKey,
         ],
     );

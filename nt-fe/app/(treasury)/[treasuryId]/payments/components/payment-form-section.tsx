@@ -70,6 +70,7 @@ interface PaymentFormSectionProps<
     /** Hide recipient network selector (e.g. bulk payments). Default false. */
     hideRecipientNetwork?: boolean;
     bridgeAssets?: BridgeAsset[];
+    isBridgeAssetsLoading?: boolean;
 }
 
 export function PaymentFormSection<
@@ -93,6 +94,7 @@ export function PaymentFormSection<
     destinationNetworkNameFieldName,
     hideRecipientNetwork = false,
     bridgeAssets = [],
+    isBridgeAssetsLoading = false,
 }: PaymentFormSectionProps<TFieldValues, TTokenPath>) {
     const t = useTranslations("paymentFormSection");
     const tRecipientNetwork = useTranslations("recipientNetworkSelect");
@@ -452,6 +454,7 @@ export function PaymentFormSection<
                             }}
                             bridgeAssets={bridgeAssets}
                             token={token}
+                            isBridgeAssetsLoading={isBridgeAssetsLoading}
                         />
                     )}
                 />

@@ -43,6 +43,7 @@ interface RecipientNetworkSelectProps {
      */
     recipient: string;
     bridgeAssets: BridgeAsset[];
+    isBridgeAssetsLoading?: boolean;
     sectionRules: SectionRule<RecipientNetworkRuleOption>[];
     /**
      * Fires when the user picks a network. Carries the raw network name so
@@ -116,6 +117,7 @@ export function RecipientNetworkSelect({
     token,
     recipient,
     bridgeAssets,
+    isBridgeAssetsLoading = false,
     sectionRules,
     onNetworkChange,
 }: RecipientNetworkSelectProps) {
@@ -209,7 +211,8 @@ export function RecipientNetworkSelect({
     }, [enrichedOptions, sectionRules]);
 
     const hasCompatibleNetwork = compatibleOptions.length > 0;
-    const isDisabled = !recipient || !hasCompatibleNetwork;
+    const isDisabled =
+        !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork;
 
     // Clear the selection when the address no longer matches it (e.g. user
     // edited the address into a different chain's format).
