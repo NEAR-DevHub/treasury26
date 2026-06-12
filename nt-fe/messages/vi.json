@@ -1845,7 +1845,7 @@
     },
     "intentsQuote": {
         "initializing": "Dịch vụ báo giá vẫn đang khởi tạo. Vui lòng thử lại.",
-        "noRoute": "Hiện không thể chuẩn bị tuyến thanh toán. Vui lòng thử lại.",
+        "noRoute": "Hiện không có thanh khoản khả dụng cho token và mạng này.",
         "fetchFailed": "Hiện không thể chuẩn bị tuyến thanh toán. Vui lòng thử lại.",
         "amountTooLow": "Số tiền quá thấp để chi trả phí mạng. Hãy nhập số tiền cao hơn và thử lại.",
         "amountTooLowWithMin": "Số tiền quá thấp để chi trả phí mạng. Hãy nhập ít nhất {min} {token}.",

@@ -1845,7 +1845,7 @@
     },
     "intentsQuote": {
         "initializing": "Layanan kuotasi masih diinisialisasi. Silakan coba lagi.",
-        "noRoute": "Tidak dapat menyiapkan rute pembayaran sekarang. Silakan coba lagi.",
+        "noRoute": "Saat ini tidak ada likuiditas yang tersedia untuk token dan jaringan ini.",
         "fetchFailed": "Tidak dapat menyiapkan rute pembayaran sekarang. Silakan coba lagi.",
         "amountTooLow": "Jumlah terlalu rendah untuk menutupi biaya jaringan. Masukkan jumlah lebih tinggi dan coba lagi.",
         "amountTooLowWithMin": "Jumlah terlalu rendah untuk menutupi biaya jaringan. Masukkan minimal {min} {token}.",

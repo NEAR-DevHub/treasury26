@@ -32,6 +32,7 @@ import {
 } from "./recipient-network-select";
 import { cn } from "@/lib/utils";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 
 interface PaymentFormSectionProps<
     TFieldValues extends FieldValues = FieldValues,
@@ -68,6 +69,7 @@ interface PaymentFormSectionProps<
     destinationNetworkNameFieldName?: Path<TFieldValues>;
     /** Hide recipient network selector (e.g. bulk payments). Default false. */
     hideRecipientNetwork?: boolean;
+    bridgeAssets?: BridgeAsset[];
 }
 
 export function PaymentFormSection<
@@ -90,6 +92,7 @@ export function PaymentFormSection<
     destinationNetworkName,
     destinationNetworkNameFieldName,
     hideRecipientNetwork = false,
+    bridgeAssets = [],
 }: PaymentFormSectionProps<TFieldValues, TTokenPath>) {
     const t = useTranslations("paymentFormSection");
     const tRecipientNetwork = useTranslations("recipientNetworkSelect");
@@ -424,6 +427,16 @@ export function PaymentFormSection<
                             sectionRules={networkSectionRules}
                             onChange={(id) => {
                                 field.onChange(id);
+                                if (!id && destinationNetworkNameFieldName) {
+                                    setValue(
+                                        destinationNetworkNameFieldName,
+                                        "" as PathValue<
+                                            TFieldValues,
+                                            Path<TFieldValues>
+                                        >,
+                                        { shouldDirty: true },
+                                    );
+                                }
                             }}
                             onNetworkChange={(opt) => {
                                 if (destinationNetworkNameFieldName) {
@@ -437,6 +450,7 @@ export function PaymentFormSection<
                                     );
                                 }
                             }}
+                            bridgeAssets={bridgeAssets}
                             token={token}
                         />
                     )}

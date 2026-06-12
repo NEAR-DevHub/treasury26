@@ -1845,7 +1845,7 @@
     },
     "intentsQuote": {
         "initializing": "O serviço de cotação ainda está inicializando. Por favor, tente novamente.",
-        "noRoute": "Não foi possível preparar uma rota de pagamento agora. Por favor, tente novamente.",
+        "noRoute": "Não há liquidez disponível para este token e esta rede no momento.",
         "fetchFailed": "Não foi possível preparar uma rota de pagamento agora. Por favor, tente novamente.",
         "amountTooLow": "O valor é muito baixo para cobrir as taxas de rede. Insira um valor maior e tente novamente.",
         "amountTooLowWithMin": "O valor é muito baixo para cobrir as taxas de rede. Insira pelo menos {min} {token}.",

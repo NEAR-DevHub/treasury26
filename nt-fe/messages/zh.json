@@ -1845,7 +1845,7 @@
     },
     "intentsQuote": {
         "initializing": "报价服务仍在初始化中。请再试一次。",
-        "noRoute": "目前无法准备付款路径。请重试。",
+        "noRoute": "当前该代币和网络暂无可用流动性。",
         "fetchFailed": "目前无法准备付款路径。请重试。",
         "amountTooLow": "金额过低,无法支付网络手续费。请输入更高金额后再试。",
         "amountTooLowWithMin": "金额过低,无法支付网络手续费。请输入至少 {min} {token}。",

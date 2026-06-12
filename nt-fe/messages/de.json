@@ -1845,7 +1845,7 @@
     },
     "intentsQuote": {
         "initializing": "Der Angebotsdienst wird noch initialisiert. Bitte erneut versuchen.",
-        "noRoute": "Derzeit kann keine Zahlungsroute vorbereitet werden. Bitte erneut versuchen.",
+        "noRoute": "Derzeit ist für dieses Token und dieses Netzwerk keine Liquidität verfügbar.",
         "fetchFailed": "Derzeit kann keine Zahlungsroute vorbereitet werden. Bitte erneut versuchen.",
         "amountTooLow": "Der Betrag ist zu niedrig, um die Netzwerkgebühren zu decken. Geben Sie einen höheren Betrag ein und versuchen Sie es erneut.",
         "amountTooLowWithMin": "Der Betrag ist zu niedrig, um die Netzwerkgebühren zu decken. Geben Sie mindestens {min} {token} ein.",

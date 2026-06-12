@@ -1845,7 +1845,7 @@
     },
     "intentsQuote": {
         "initializing": "El servicio de cotización aún se está iniciando. Inténtalo de nuevo.",
-        "noRoute": "No se pudo preparar una ruta de pago ahora mismo. Reintenta.",
+        "noRoute": "No hay liquidez disponible para este token y red en este momento.",
         "fetchFailed": "No se pudo preparar una ruta de pago ahora mismo. Reintenta.",
         "amountTooLow": "El importe es demasiado bajo para cubrir las comisiones de red. Introduce un importe mayor e inténtalo de nuevo.",
         "amountTooLowWithMin": "El importe es demasiado bajo para cubrir las comisiones de red. Introduce al menos {min} {token}.",

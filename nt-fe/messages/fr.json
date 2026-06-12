@@ -1845,7 +1845,7 @@
     },
     "intentsQuote": {
         "initializing": "Le service de devis est encore en cours d'initialisation. Veuillez réessayer.",
-        "noRoute": "Impossible de préparer un itinéraire de paiement pour le moment. Veuillez réessayer.",
+        "noRoute": "Aucune liquidité n'est disponible pour ce token et ce réseau pour le moment.",
         "fetchFailed": "Impossible de préparer un itinéraire de paiement pour le moment. Veuillez réessayer.",
         "amountTooLow": "Le montant est trop faible pour couvrir les frais de réseau. Saisissez un montant plus élevé et réessayez.",
         "amountTooLowWithMin": "Le montant est trop faible pour couvrir les frais de réseau. Saisissez au moins {min} {token}.",

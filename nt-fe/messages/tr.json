@@ -1845,7 +1845,7 @@
     },
     "intentsQuote": {
         "initializing": "Teklif servisi hâlâ başlatılıyor. Lütfen tekrar deneyin.",
-        "noRoute": "Şu anda bir ödeme rotası hazırlanamıyor. Lütfen tekrar deneyin.",
+        "noRoute": "Şu anda bu token ve ağ için kullanılabilir likidite yok.",
         "fetchFailed": "Şu anda bir ödeme rotası hazırlanamıyor. Lütfen tekrar deneyin.",
         "amountTooLow": "Miktar ağ ücretlerini karşılamak için çok düşük. Daha yüksek bir miktar girin ve tekrar deneyin.",
         "amountTooLowWithMin": "Miktar ağ ücretlerini karşılamak için çok düşük. En az {min} {token} girin.",

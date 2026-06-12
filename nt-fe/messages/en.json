@@ -1845,7 +1845,7 @@
     },
     "intentsQuote": {
         "initializing": "Quote service is still initializing. Please try again.",
-        "noRoute": "Could not prepare a payment route right now. Please retry.",
+        "noRoute": "No liquidity available for this token and network right now.",
         "fetchFailed": "Could not prepare a payment route right now. Please retry.",
         "amountTooLow": "Amount is too low to cover network fees. Enter a higher amount and try again.",
         "amountTooLowWithMin": "Amount is too low to cover network fees. Enter at least {min} {token}.",
