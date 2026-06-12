@@ -4125,6 +4125,7 @@ dependencies = [
  "near-primitives",
  "near-token",
  "prettytable",
+ "rand",
  "reqwest",
  "serde",
  "serde_json",

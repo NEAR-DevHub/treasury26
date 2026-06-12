@@ -37,6 +37,7 @@ shell-words = "1.0.0"
 prettytable = "0.10.0"
 
 near-crypto = "0.35"
+rand = "0.8"
 near-primitives = "0.35"
 near-cli-rs = { version = "0.26", default-features = false }
 
