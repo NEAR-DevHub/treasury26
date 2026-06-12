@@ -23,7 +23,7 @@ use near_api::{
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::confidential::extract_v1_signer_hash_from_kind;
+use crate::handlers::relay::confidential::extract_v1_signer_hash_from_kind;
 
 /// The sponsored operation of a single relay. Homogeneous by construction.
 #[derive(Debug, Clone, PartialEq)]

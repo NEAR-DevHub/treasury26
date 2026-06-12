@@ -7,9 +7,10 @@ use std::sync::Arc;
 use bigdecimal::BigDecimal;
 use near_api::AccountId;
 
+use super::background;
 use crate::{
     AppState,
-    handlers::relay::{background, dto::RelayRequest, sponsorship::SpentNear},
+    handlers::relay::{dto::RelayRequest, sponsor::policy::SpentNear},
     services::platform_metrics::{self, PlatformMetric},
 };
 

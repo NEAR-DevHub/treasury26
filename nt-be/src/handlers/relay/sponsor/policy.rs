@@ -7,7 +7,7 @@
 //!   on-chain storage a NEW proposal occupies — i.e. for `add_proposal` only.
 //!   `act_proposal` (voting) does not grow the DAO contract's storage, so it gets
 //!   no top-up. This is unrelated to NEP-141 `storage_deposit` registrations, which
-//!   the sponsor pays separately (see [`super::storage_deposit`]).
+//!   the sponsor pays separately (see [`crate::handlers::relay::effects::registrations`]).
 
 use std::sync::Arc;
 
@@ -16,13 +16,13 @@ use chrono::{DateTime, TimeZone, Utc};
 use near_api::{AccountId, Contract, NearToken, types::tokens::STORAGE_COST_PER_BYTE};
 use serde_json::Value;
 
+use super::{
+    Sponsor,
+    retry::{RetryPolicy, retry},
+};
 use crate::{
     AppState,
-    handlers::relay::{
-        dto::{RelayError, error_response},
-        retry::{RetryPolicy, retry},
-        sponsor::Sponsor,
-    },
+    handlers::relay::dto::{RelayError, error_response},
 };
 
 const SPUTNIK_DAO_SUFFIX: &str = ".sputnik-dao.near";

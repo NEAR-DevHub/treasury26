@@ -10,12 +10,14 @@ use crate::{
     AppState,
     auth::AuthUser,
     handlers::relay::{
-        access, accounting, confidential,
+        access, confidential,
         dto::{RelayError, RelayRequest, RelayResponse, error_response, success_response},
-        proposal::{self, ParsedRelay},
-        sponsor::{ExecutionDebug, Sponsor},
-        sponsorship::{self, SpentNear},
-        storage_deposit, wallet,
+        effects::{accounting, registrations},
+        parse::{self, ParsedRelay},
+        sponsor::{
+            ExecutionDebug, Sponsor,
+            policy::{self, SpentNear},
+        },
     },
 };
 
@@ -46,7 +48,7 @@ pub async fn relay_delegate_action(
             format!("Invalid delegate action: {}", e),
         )
     })?;
-    let is_wallet_contract_action = wallet::is_wallet_contract_action(&signed_delegate_action);
+    let is_wallet_contract_action = parse::is_wallet_contract_action(&signed_delegate_action);
     // The delegate action's receiver: the user's wallet contract for
     // `w_execute_signed`, or the DAO treasury for a meta-transaction.
     let action_receiver_id = signed_delegate_action.delegate_action.receiver_id.clone();
@@ -56,7 +58,7 @@ pub async fn relay_delegate_action(
     let ParsedRelay {
         operation,
         attached_deposit,
-    } = proposal::parse_sponsored_proposals(
+    } = parse::parse_sponsored_proposals(
         &relay_request.treasury_id,
         is_wallet_contract_action,
         &action_receiver_id,
@@ -82,14 +84,14 @@ pub async fn relay_delegate_action(
     //    storage a NEW proposal occupies. Only `add_proposal` grows DAO storage, so
     //    `act_proposal`-only relays (votes) get no top-up.
     let compensate_proposal_storage =
-        sponsorship::is_sputnik_treasury(&relay_request.treasury_id, treasury_record.is_some())
+        policy::is_sputnik_treasury(&relay_request.treasury_id, treasury_record.is_some())
             && operation.is_add_proposals();
     let proposal_storage_cost = if compensate_proposal_storage {
-        sponsorship::proposal_storage_cost(relay_request.storage_bytes.0)
+        policy::proposal_storage_cost(relay_request.storage_bytes.0)
     } else {
         NearToken::from_near(0)
     };
-    sponsorship::enforce_deposit_limit(
+    policy::enforce_deposit_limit(
         &state,
         &relay_request.treasury_id,
         tier,
@@ -98,7 +100,7 @@ pub async fn relay_delegate_action(
     )
     .await?;
     if compensate_proposal_storage {
-        sponsorship::top_up_proposal_storage(
+        policy::top_up_proposal_storage(
             &state,
             &relay_request.treasury_id,
             relay_request.storage_bytes.0,
@@ -119,7 +121,7 @@ pub async fn relay_delegate_action(
     // 5. Sponsor-paid NEP-141 registrations for any approving votes. Their spend is
     //    recorded even when a required registration fails and aborts the relay.
     let approve_proposal_ids = operation.vote_approve_ids();
-    let registrations = storage_deposit::register_vote_approvals(
+    let registrations = registrations::register_vote_approvals(
         &state,
         &relay_request.treasury_id,
         &approve_proposal_ids,
@@ -192,7 +194,7 @@ async fn execute_relay(
         // Rebuild the outer w_execute_signed actions with their deposit set to the
         // sponsored inner bond, so the sponsor attaches exactly the bounded amount.
         let replay_actions =
-            wallet::build_sponsored_actions(&signed_delegate_action.delegate_action.actions)
+            parse::build_sponsored_actions(&signed_delegate_action.delegate_action.actions)
                 .map_err(|message| error_response(StatusCode::INTERNAL_SERVER_ERROR, message))?;
         sponsor
             .replay_actions(action_receiver_id, replay_actions)

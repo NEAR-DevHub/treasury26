@@ -9,6 +9,9 @@
 //! - [`Sponsor::transfer_once`] is a bare value transfer with no replay protection,
 //!   so it is never retried after broadcast.
 
+pub mod policy;
+pub mod retry;
+
 use std::{fmt::Display, future::Future, sync::Arc};
 
 use near_api::{
@@ -19,10 +22,9 @@ use near_api::{
     },
 };
 
-use crate::{
-    AppState,
-    handlers::relay::retry::{RetryPolicy, retry},
-};
+use crate::AppState;
+
+use self::retry::{RetryPolicy, retry};
 
 /// The result of a relayed transaction: the debug string of the execution outcome,
 /// mined later for MPC signatures by `confidential`.

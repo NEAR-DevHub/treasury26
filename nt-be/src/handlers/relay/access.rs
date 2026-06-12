@@ -12,8 +12,8 @@ use crate::{
     config::plans::{PlanType, has_gas_covered_credits},
     handlers::relay::{
         dto::{RelayError, RelayRequest, error_response},
-        proposal::RelayOperation,
-        sponsorship::SponsorshipTier,
+        parse::RelayOperation,
+        sponsor::policy::SponsorshipTier,
     },
 };
 
