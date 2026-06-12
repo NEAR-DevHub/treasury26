@@ -17,8 +17,6 @@
 
 mod wallet_contract;
 
-pub(crate) use wallet_contract::build_sponsored_actions;
-
 use std::ops::Deref;
 
 use axum::{Json, http::StatusCode};
@@ -27,7 +25,7 @@ use near_api::{
     types::{
         Action,
         json::{Base64VecU8, U128},
-        transaction::delegate_action::NonDelegateAction,
+        transaction::delegate_action::{NonDelegateAction, SignedDelegateAction},
     },
 };
 use serde::{Deserialize, Serialize};
@@ -149,20 +147,33 @@ pub enum RelayOperation {
     Votes(Vec<ActProposal>),
 }
 
-/// Which wire shape the relay arrived in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RelayShape {
-    /// NEP-366 meta-transaction: the inner actions call the treasury directly.
-    MetaTransaction,
-    /// WalletContract: the actions call `w_execute_signed`, wrapping the proposal
-    /// calls inside the wallet request.
-    WalletContract,
+/// How the relay is executed on-chain — and, by construction, all that survives
+/// parsing of the raw delegate action. There is no way to reach back to the
+/// pre-validation form.
+#[derive(Debug)]
+pub enum RelayExecution {
+    /// WalletContract `w_execute_signed`: the sponsor replays these prepared actions
+    /// (deposits already set to the bounded bond) to the user's wallet contract.
+    WalletContract(WalletReplay),
+    /// NEP-366 meta-transaction: the sponsor wraps and relays the original signed
+    /// delegate action.
+    MetaTransaction(SignedDelegateAction),
+}
+
+/// The sponsor-prepared replay of a `w_execute_signed` relay.
+#[derive(Debug)]
+pub struct WalletReplay {
+    /// The user's wallet contract (the delegate action's receiver).
+    pub wallet_account: AccountId,
+    /// Outer `w_execute_signed` actions, with each deposit overridden to the
+    /// sponsored inner bond (see [`wallet_contract::build_sponsored_actions`]).
+    pub actions: Vec<Action>,
 }
 
 /// The result of parsing a relayed delegate action.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct ParsedRelay {
-    pub shape: RelayShape,
+    pub execution: RelayExecution,
     pub operation: RelayOperation,
     /// Total NEAR attached across the sponsored calls (proposal bonds).
     pub attached_deposit: NearToken,
@@ -225,32 +236,35 @@ impl RelayOperation {
     }
 }
 
-/// Parse a relayed delegate action into the operation to sponsor, rejecting anything
-/// that is not a homogeneous set of `add_proposal`/`act_proposal` calls targeting
-/// `treasury_id`.
+/// Consume a relayed delegate action into the operation to sponsor and how to
+/// execute it ([`RelayExecution`]), rejecting anything that is not a homogeneous set
+/// of `add_proposal`/`act_proposal` calls targeting `treasury_id`.
 ///
-/// `action_receiver_id` is the delegate action's receiver — the contract the inner
-/// actions call in the direct shape. For `w_execute_signed` the receiver is read
-/// from each inner promise instead, so this argument is ignored there.
+/// Consuming the signed action means the caller cannot reach back to the raw,
+/// pre-validation form: a `w_execute_signed` relay keeps only its sponsor-prepared
+/// replay actions, while a meta-transaction keeps the original action to wrap.
 pub fn parse_sponsored_proposals(
     treasury_id: &AccountId,
-    action_receiver_id: &AccountId,
-    actions: &[NonDelegateAction],
+    signed_delegate_action: SignedDelegateAction,
 ) -> Result<ParsedRelay, String> {
-    let (shape, calls) = if is_wallet_contract_shape(actions) {
-        (
-            RelayShape::WalletContract,
-            wallet_contract::collect_calls(actions)?,
-        )
+    let delegate_action = &signed_delegate_action.delegate_action;
+    let (execution, calls) = if is_wallet_contract_shape(&delegate_action.actions) {
+        let calls = wallet_contract::collect_calls(&delegate_action.actions)?;
+        let replay = WalletReplay {
+            actions: wallet_contract::build_sponsored_actions(&delegate_action.actions)?,
+            wallet_account: delegate_action.receiver_id.clone(),
+        };
+        (RelayExecution::WalletContract(replay), calls)
     } else {
+        let calls = collect_direct_calls(&delegate_action.receiver_id, &delegate_action.actions)?;
         (
-            RelayShape::MetaTransaction,
-            collect_direct_calls(action_receiver_id, actions)?,
+            RelayExecution::MetaTransaction(signed_delegate_action),
+            calls,
         )
     };
     let (operation, attached_deposit) = validate_calls(treasury_id, calls)?;
     Ok(ParsedRelay {
-        shape,
+        execution,
         operation,
         attached_deposit,
     })

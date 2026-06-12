@@ -4,14 +4,14 @@ use std::{collections::HashSet, sync::Arc};
 
 use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
-use near_api::{AccountId, types::transaction::delegate_action::SignedDelegateAction};
+use near_api::AccountId;
 
 use crate::{
     AppState,
     auth::AuthUser,
     config::plans::{PlanType, has_gas_covered_credits},
     handlers::relay::{
-        parse::{RelayError, RelayOperation, RelayRequest, RelayShape, error_response},
+        parse::{RelayError, RelayExecution, RelayOperation, error_response},
         sponsor::policy::SponsorshipTier,
     },
 };
@@ -74,31 +74,28 @@ pub async fn fetch_treasury_record(
 ///
 /// The tier follows the treasury (its onboarding date), NOT the wire shape: an old
 /// DAO accessed via a `w_execute_signed` wallet still gets bond-based sponsorship.
-#[allow(clippy::too_many_arguments)]
 pub async fn authorize(
     state: &Arc<AppState>,
     auth_user: &AuthUser,
-    relay_request: &RelayRequest,
-    signed_delegate_action: &SignedDelegateAction,
-    shape: RelayShape,
-    action_receiver_id: &AccountId,
+    treasury_id: &AccountId,
+    execution: &RelayExecution,
     treasury_record: Option<&TreasuryRecord>,
     operation: &RelayOperation,
 ) -> Result<SponsorshipTier, RelayError> {
     // 1. Identity binding (shape-specific).
-    match shape {
-        RelayShape::WalletContract => {
-            if action_receiver_id != &auth_user.account_id {
+    match execution {
+        RelayExecution::WalletContract(replay) => {
+            if replay.wallet_account != auth_user.account_id {
                 return Err(error_response(
                     StatusCode::FORBIDDEN,
                     format!(
                         "w_execute_signed receiver '{}' does not match authenticated user '{}'",
-                        action_receiver_id, auth_user.account_id
+                        replay.wallet_account, auth_user.account_id
                     ),
                 ));
             }
         }
-        RelayShape::MetaTransaction => {
+        RelayExecution::MetaTransaction(signed_delegate_action) => {
             let sender_id = signed_delegate_action.delegate_action.sender_id.to_string();
             if sender_id != auth_user.account_id {
                 return Err(error_response(
@@ -113,7 +110,7 @@ pub async fn authorize(
     }
 
     // 2. DAO proposal/vote permissions — equal for both shapes.
-    verify_proposal_access(state, auth_user, &relay_request.treasury_id, operation).await?;
+    verify_proposal_access(state, auth_user, treasury_id, operation).await?;
 
     // 3. Billing — equal for every sponsored request: the treasury must be tracked
     //    and have gas-covered credits.
@@ -122,7 +119,7 @@ pub async fn authorize(
             StatusCode::NOT_FOUND,
             format!(
                 "Treasury '{}' not found in monitored accounts",
-                relay_request.treasury_id.as_str()
+                treasury_id.as_str()
             ),
         )
     })?;

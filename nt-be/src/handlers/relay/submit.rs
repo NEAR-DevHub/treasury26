@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use axum::{Json, extract::State, http::StatusCode};
 use borsh::BorshDeserialize;
-use near_api::{AccountId, NearToken, types::transaction::delegate_action::SignedDelegateAction};
+use near_api::{NearToken, types::transaction::delegate_action::SignedDelegateAction};
 
 use crate::{
     AppState,
@@ -13,8 +13,8 @@ use crate::{
         access, confidential,
         effects::{accounting, registrations},
         parse::{
-            self, ParsedRelay, RelayError, RelayRequest, RelayResponse, RelayShape, error_response,
-            success_response,
+            self, ParsedRelay, RelayError, RelayExecution, RelayRequest, RelayResponse,
+            error_response, success_response,
         },
         sponsor::{
             ExecutionDebug, Sponsor,
@@ -40,43 +40,41 @@ pub async fn relay_delegate_action(
     auth_user: AuthUser,
     Json(relay_request): Json<RelayRequest>,
 ) -> Result<Json<RelayResponse>, RelayError> {
-    // 1. Decode the signed delegate action and recognize its wire shape.
-    let signed_delegate_action = SignedDelegateAction::try_from_slice(
-        &relay_request.signed_delegate_action.0,
-    )
-    .map_err(|e| {
-        error_response(
-            StatusCode::BAD_REQUEST,
-            format!("Invalid delegate action: {}", e),
-        )
-    })?;
-    // The delegate action's receiver: the user's wallet contract for
-    // `w_execute_signed`, or the DAO treasury for a meta-transaction.
-    let action_receiver_id = signed_delegate_action.delegate_action.receiver_id.clone();
+    // Decouple the request into owned parts so the raw signed action and the
+    // treasury id are independent from here on.
+    let RelayRequest {
+        treasury_id,
+        storage_bytes,
+        signed_delegate_action: raw_signed_delegate_action,
+        proposal_type,
+        address_book_payment,
+    } = relay_request;
 
-    // 2. Flatten both shapes into the proposal operations we will sponsor; reject
-    //    anything that is not an add_proposal/act_proposal targeting the treasury.
-    //    The parser also reports which wire shape the relay arrived in.
+    // 1. Decode the borsh bytes once; the raw form is dropped here.
+    let signed_delegate_action =
+        SignedDelegateAction::try_from_slice(&raw_signed_delegate_action.0).map_err(|e| {
+            error_response(
+                StatusCode::BAD_REQUEST,
+                format!("Invalid delegate action: {}", e),
+            )
+        })?;
+
+    // 2. Consume the signed action into the operation to sponsor and how to execute
+    //    it; reject anything that is not an add_proposal/act_proposal on the treasury.
     let ParsedRelay {
-        shape,
+        execution,
         operation,
         attached_deposit,
-    } = parse::parse_sponsored_proposals(
-        &relay_request.treasury_id,
-        &action_receiver_id,
-        &signed_delegate_action.delegate_action.actions,
-    )
-    .map_err(|msg| error_response(StatusCode::BAD_REQUEST, msg))?;
+    } = parse::parse_sponsored_proposals(&treasury_id, signed_delegate_action)
+        .map_err(|msg| error_response(StatusCode::BAD_REQUEST, msg))?;
 
     // 3. Load the treasury record (tracked ⇒ whitelisted Sputnik DAO) and authorize.
-    let treasury_record = access::fetch_treasury_record(&state, &relay_request.treasury_id).await?;
+    let treasury_record = access::fetch_treasury_record(&state, &treasury_id).await?;
     let tier = access::authorize(
         &state,
         &auth_user,
-        &relay_request,
-        &signed_delegate_action,
-        shape,
-        &action_receiver_id,
+        &treasury_id,
+        &execution,
         treasury_record.as_ref(),
         &operation,
     )
@@ -86,16 +84,16 @@ pub async fn relay_delegate_action(
     //    storage a NEW proposal occupies. Only `add_proposal` grows DAO storage, so
     //    `act_proposal`-only relays (votes) get no top-up.
     let compensate_proposal_storage =
-        policy::is_sputnik_treasury(&relay_request.treasury_id, treasury_record.is_some())
+        policy::is_sputnik_treasury(&treasury_id, treasury_record.is_some())
             && operation.is_add_proposals();
     let proposal_storage_cost = if compensate_proposal_storage {
-        policy::proposal_storage_cost(relay_request.storage_bytes.0)
+        policy::proposal_storage_cost(storage_bytes.0)
     } else {
         NearToken::from_near(0)
     };
     policy::enforce_deposit_limit(
         &state,
-        &relay_request.treasury_id,
+        &treasury_id,
         tier,
         attached_deposit,
         proposal_storage_cost,
@@ -104,8 +102,8 @@ pub async fn relay_delegate_action(
     if compensate_proposal_storage {
         policy::top_up_proposal_storage(
             &state,
-            &relay_request.treasury_id,
-            relay_request.storage_bytes.0,
+            &treasury_id,
+            storage_bytes.0,
             proposal_storage_cost,
         )
         .await?;
@@ -123,53 +121,49 @@ pub async fn relay_delegate_action(
     // 5. Sponsor-paid NEP-141 registrations for any approving votes. Their spend is
     //    recorded even when a required registration fails and aborts the relay.
     let approve_proposal_ids = operation.vote_approve_ids();
-    let registrations = registrations::register_vote_approvals(
-        &state,
-        &relay_request.treasury_id,
-        &approve_proposal_ids,
-    )
-    .await;
+    let registrations =
+        registrations::register_vote_approvals(&state, &treasury_id, &approve_proposal_ids).await;
     if let Some(registration_error) = registrations.error {
-        accounting::spawn_record_spend(
-            &state,
-            &relay_request.treasury_id,
-            fronted_spend(registrations.spent),
-        );
+        accounting::spawn_record_spend(&state, &treasury_id, fronted_spend(registrations.spent));
         return Err(registration_error);
     }
     let registrations_spend = registrations.spent;
 
     // 6. Submit (retried on transient send errors via on-chain nonce protection).
     //    On failure the NEAR already fronted is still recorded; no credit is spent.
-    let execution_debug =
-        match execute_relay(&state, shape, signed_delegate_action, &action_receiver_id).await {
-            Ok(execution_debug) => execution_debug,
-            Err(submit_error) => {
-                accounting::spawn_record_spend(
-                    &state,
-                    &relay_request.treasury_id,
-                    fronted_spend(registrations_spend),
-                );
-                return Err(submit_error);
-            }
-        };
+    let execution_debug = match execute_relay(&state, execution).await {
+        Ok(execution_debug) => execution_debug,
+        Err(submit_error) => {
+            accounting::spawn_record_spend(
+                &state,
+                &treasury_id,
+                fronted_spend(registrations_spend),
+            );
+            return Err(submit_error);
+        }
+    };
 
     // 7. Success: charge a gas credit plus the full spend (incl. attached deposits),
     //    then run the remaining non-critical work in the background.
     accounting::spawn_charge(
         &state,
-        &relay_request.treasury_id,
+        &treasury_id,
         SpentNear {
             proposal_storage: proposal_storage_spend,
             deposits: attached_deposit,
             registrations: registrations_spend,
         },
     );
-    accounting::record_metrics(&state, &relay_request);
+    accounting::record_metrics(
+        &state,
+        &treasury_id,
+        proposal_type.as_deref(),
+        address_book_payment,
+    );
     // Empty for add-proposal relays, so this is a no-op outside confidential votes.
     confidential::spawn_auto_submit_intents(
         &state,
-        relay_request.treasury_id.as_str(),
+        treasury_id.as_str(),
         operation.confidential_payload_hashes(),
         &execution_debug,
     );
@@ -181,28 +175,21 @@ pub async fn relay_delegate_action(
 /// which `confidential` later mines for MPC signatures.
 async fn execute_relay(
     state: &Arc<AppState>,
-    shape: RelayShape,
-    signed_delegate_action: SignedDelegateAction,
-    action_receiver_id: &AccountId,
+    execution: RelayExecution,
 ) -> Result<ExecutionDebug, RelayError> {
     let sponsor = Sponsor::from_state(state);
-    let execution = match shape {
-        RelayShape::WalletContract => {
-            // Rebuild the outer w_execute_signed actions with their deposit set to the
-            // sponsored inner bond, so the sponsor attaches exactly the bounded amount.
-            let replay_actions =
-                parse::build_sponsored_actions(&signed_delegate_action.delegate_action.actions)
-                    .map_err(|message| {
-                        error_response(StatusCode::INTERNAL_SERVER_ERROR, message)
-                    })?;
+    let result = match execution {
+        RelayExecution::WalletContract(replay) => {
             sponsor
-                .replay_actions(action_receiver_id, replay_actions)
+                .replay_actions(&replay.wallet_account, replay.actions)
                 .await
         }
-        RelayShape::MetaTransaction => sponsor.relay_meta_tx(signed_delegate_action).await,
+        RelayExecution::MetaTransaction(signed_delegate_action) => {
+            sponsor.relay_meta_tx(signed_delegate_action).await
+        }
     };
 
-    execution.map_err(|error_message| {
+    result.map_err(|error_message| {
         log::error!("Relay execution failed: {}", error_message);
         error_response(StatusCode::INTERNAL_SERVER_ERROR, error_message)
     })

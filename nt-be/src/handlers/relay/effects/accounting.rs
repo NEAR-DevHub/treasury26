@@ -10,7 +10,7 @@ use near_api::AccountId;
 use super::background;
 use crate::{
     AppState,
-    handlers::relay::{parse::RelayRequest, sponsor::policy::SpentNear},
+    handlers::relay::sponsor::policy::SpentNear,
     services::platform_metrics::{self, PlatformMetric},
 };
 
@@ -91,23 +91,26 @@ fn apply_spend(
 ///
 /// `gas_covered_transactions` fires for every relay; the proposal-type metric only
 /// fires when `proposalType` was provided.
-pub fn record_metrics(state: &Arc<AppState>, relay_request: &RelayRequest) {
+pub fn record_metrics(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+    proposal_type: Option<&str>,
+    address_book_payment: bool,
+) {
     let mut metrics = vec![PlatformMetric::GasCoveredTransactions];
-    match relay_request.proposal_type.as_deref() {
+    match proposal_type {
         Some("swap") => metrics.push(PlatformMetric::SwapProposals),
         Some("payment") => metrics.push(PlatformMetric::PaymentProposals),
         Some("vote") => metrics.push(PlatformMetric::VotesCasted),
         Some(_) => metrics.push(PlatformMetric::OtherProposalsSubmitted),
         None => {}
     }
-    if relay_request.address_book_payment
-        && relay_request.proposal_type.as_deref() == Some("payment")
-    {
+    if address_book_payment && proposal_type == Some("payment") {
         metrics.push(PlatformMetric::AddressBookPaymentProposals);
     }
 
     let state = state.clone();
-    let treasury_id = relay_request.treasury_id.to_string();
+    let treasury_id = treasury_id.to_string();
     background::spawn("record metrics", async move {
         platform_metrics::record_events(&state.db_pool, &treasury_id, &metrics).await;
     });
