@@ -29,11 +29,7 @@ import {
     getKindFromProposal,
     type ProposalPermissionKind,
 } from "@/lib/config-utils";
-import type {
-    Proposal,
-    ProposalsResponse,
-    Vote as ProposalVote,
-} from "@/lib/proposals-api";
+import type { Proposal, Vote as ProposalVote } from "@/lib/proposals-api";
 import {
     estimateProposalStorage,
     estimateVoteStorage,
@@ -736,14 +732,7 @@ export const useNear = () => {
         // Signal the onboarding flow that a payment request was just made so it
         // can poll for it while the backend indexer catches up.
         if (params.proposalType === "payment") {
-            const hasExistingProposals = queryClient
-                .getQueriesData<ProposalsResponse>({
-                    queryKey: ["proposals", params.treasuryId],
-                })
-                .some(([, data]) => (data?.proposals?.length ?? 0) > 0);
-            if (!hasExistingProposals) {
-                markPaymentPending(params.treasuryId);
-            }
+            markPaymentPending(params.treasuryId, queryClient);
         }
         // Invalidate queries after delay
         await new Promise((resolve) => setTimeout(resolve, 2000));

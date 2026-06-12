@@ -1,4 +1,4 @@
-import type { Query } from "@tanstack/react-query";
+import type { Query, QueryClient } from "@tanstack/react-query";
 import type { ProposalsResponse } from "@/lib/proposals-api";
 
 // How long after a payment request is created we keep polling for it to show up
@@ -14,8 +14,20 @@ function paymentPendingKey(treasuryId: string) {
  * Marks that a payment request was just created for a treasury, so onboarding
  * surfaces poll for it until the indexer reflects it.
  */
-export function markPaymentPending(treasuryId: string) {
+export function markPaymentPending(
+    treasuryId: string,
+    queryClient: QueryClient,
+) {
     if (typeof window === "undefined") return;
+    const hasExistingProposals = queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["proposals", treasuryId] })
+        .some(
+            (query) =>
+                ((query.state.data as ProposalsResponse)?.proposals?.length ??
+                    0) > 0,
+        );
+    if (hasExistingProposals) return;
     window.localStorage.setItem(
         paymentPendingKey(treasuryId),
         String(Date.now()),
