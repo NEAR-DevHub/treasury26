@@ -75,7 +75,7 @@ pub enum PaymentsCommand {
 #[interactive_clap(output_context = PaymentTokenContext)]
 pub struct PaymentSend {
     #[interactive_clap(skip_default_input_arg)]
-    /// Token to send (e.g. NEAR, USDT, USDC)
+    /// Token to send: a symbol (USDT), symbol@flavor (USDT@intents, USDT@ft, NEAR@near), or a contract id
     token: String,
     #[interactive_clap(named_arg)]
     /// Specify payment details
@@ -86,22 +86,34 @@ impl PaymentSend {
     fn input_token(context: &TreasuryContext) -> color_eyre::eyre::Result<Option<String>> {
         let api = ApiClient::new(&context.config);
         let assets = api.get_assets(&context.treasury_id)?;
+        let sendable: Vec<&SimplifiedToken> = assets.iter().filter(|t| is_sendable(t)).collect();
 
-        if assets.is_empty() {
-            return Err(color_eyre::eyre::eyre!("No assets available in treasury."));
+        if sendable.is_empty() {
+            return Err(color_eyre::eyre::eyre!(
+                "No transferable assets available in treasury."
+            ));
         }
 
-        let options: Vec<String> = assets
+        // The same symbol can appear in several flavors (native NEAR vs NEAR
+        // on Intents, NEAR-chain FT vs Intents balance, …) — make each entry
+        // distinguishable and return an unambiguous selector, not the symbol.
+        let options: Vec<String> = sendable
             .iter()
             .map(|t| {
                 let balance = crate::assets::format_balance_human(&t.balance, t.decimals);
-                format!("{} (balance: {})", t.symbol, balance)
+                format!(
+                    "{} — {} (balance: {})",
+                    t.symbol,
+                    token_flavor_label(t),
+                    balance
+                )
             })
             .collect();
 
-        let selection = inquire::Select::new("Select token to send:", options).prompt()?;
-        let symbol = selection.split(' ').next().unwrap().to_string();
-        Ok(Some(symbol))
+        let selection =
+            inquire::Select::new("Select token to send:", options.clone()).prompt()?;
+        let index = options.iter().position(|o| o == &selection).unwrap();
+        Ok(Some(token_selector(sendable[index], &sendable)))
     }
 }
 
@@ -135,22 +147,7 @@ impl PaymentTokenContext {
 
         let api = ApiClient::new(config);
         let assets = api.get_assets(treasury_id)?;
-
-        let token = assets
-            .iter()
-            .find(|t| t.symbol.eq_ignore_ascii_case(&scope.token))
-            .ok_or_else(|| {
-                color_eyre::eyre::eyre!(
-                    "Token '{}' not found in treasury. Available: {}",
-                    scope.token,
-                    assets
-                        .iter()
-                        .map(|t| t.symbol.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            })?
-            .clone();
+        let token = resolve_token(&assets, &scope.token)?.clone();
 
         let policy = api.get_treasury_policy(treasury_id)?;
         let treasury_config = api.get_treasury_config(treasury_id)?;
@@ -553,6 +550,179 @@ impl From<PaymentSendContext> for near_cli_rs::commands::ActionContext {
                 None,
             )),
         }
+    }
+}
+
+/// Only liquid balances can be sent as payments; lockup/staked rows cannot.
+fn is_sendable(token: &SimplifiedToken) -> bool {
+    matches!(
+        token.residency,
+        TokenResidency::Near | TokenResidency::Ft | TokenResidency::Intents
+    )
+}
+
+/// Short residency tag used in `SYMBOL@flavor` selectors.
+fn residency_tag(residency: &TokenResidency) -> &'static str {
+    match residency {
+        TokenResidency::Near => "near",
+        TokenResidency::Ft => "ft",
+        TokenResidency::Intents => "intents",
+        TokenResidency::Lockup => "lockup",
+        TokenResidency::Staked => "staked",
+    }
+}
+
+/// Human-readable flavor for the token selection list.
+fn token_flavor_label(token: &SimplifiedToken) -> String {
+    match token.residency {
+        TokenResidency::Near => "native, on NEAR".to_string(),
+        TokenResidency::Ft => format!(
+            "on NEAR{}",
+            token
+                .contract_id
+                .as_deref()
+                .map(|c| format!(", {c}"))
+                .unwrap_or_default()
+        ),
+        TokenResidency::Intents => format!(
+            "on Intents{}",
+            token
+                .contract_id
+                .as_deref()
+                .map(|c| format!(", {c}"))
+                .unwrap_or_default()
+        ),
+        TokenResidency::Lockup => "lockup".to_string(),
+        TokenResidency::Staked => "staked".to_string(),
+    }
+}
+
+/// Shortest unambiguous CLI selector for a token among its siblings:
+/// plain symbol when unique, `SYMBOL@flavor` when the symbol repeats across
+/// residencies, the contract id as a last resort.
+fn token_selector(token: &SimplifiedToken, all: &[&SimplifiedToken]) -> String {
+    let same_symbol = all
+        .iter()
+        .filter(|t| t.symbol.eq_ignore_ascii_case(&token.symbol))
+        .count();
+    if same_symbol <= 1 {
+        return token.symbol.clone();
+    }
+    let same_flavor = all
+        .iter()
+        .filter(|t| {
+            t.symbol.eq_ignore_ascii_case(&token.symbol) && t.residency == token.residency
+        })
+        .count();
+    if same_flavor <= 1 {
+        return format!("{}@{}", token.symbol, residency_tag(&token.residency));
+    }
+    token
+        .contract_id
+        .clone()
+        .unwrap_or_else(|| format!("{}@{}", token.symbol, residency_tag(&token.residency)))
+}
+
+/// Resolve a user-supplied token query against the treasury assets.
+///
+/// Accepted forms, in priority order:
+/// 1. contract id, with or without the `nep141:` prefix (always unambiguous)
+/// 2. `SYMBOL@flavor` where flavor is `near` | `ft` | `intents`
+/// 3. plain symbol — only when the treasury holds a single flavor of it
+fn resolve_token<'a>(
+    assets: &'a [SimplifiedToken],
+    query: &str,
+) -> color_eyre::eyre::Result<&'a SimplifiedToken> {
+    let sendable: Vec<&SimplifiedToken> = assets.iter().filter(|t| is_sendable(t)).collect();
+    let query = query.trim();
+
+    let available = || {
+        sendable
+            .iter()
+            .map(|t| token_selector(t, &sendable))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+
+    if sendable.is_empty() {
+        return Err(color_eyre::eyre::eyre!(
+            "No transferable assets available in treasury."
+        ));
+    }
+
+    // 1. Contract id match. The same contract can back several flavors (a
+    // NEAR-chain FT row and an Intents row), so demand uniqueness here too.
+    let normalized_query = normalize_near_asset_id(query);
+    let contract_matches: Vec<&&SimplifiedToken> = sendable
+        .iter()
+        .filter(|t| {
+            t.contract_id
+                .as_deref()
+                .is_some_and(|c| normalize_near_asset_id(c) == normalized_query)
+        })
+        .collect();
+    match contract_matches.as_slice() {
+        [token] => return Ok(token),
+        [] => {}
+        _ => {
+            return Err(color_eyre::eyre::eyre!(
+                "Contract '{}' matches several token flavors — specify one of: {}",
+                query,
+                contract_matches
+                    .iter()
+                    .map(|t| token_selector(t, &sendable))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+    }
+
+    // 2. SYMBOL@flavor match.
+    if let Some((symbol, flavor)) = query.split_once('@') {
+        let flavor = flavor.to_ascii_lowercase();
+        let matches: Vec<&&SimplifiedToken> = sendable
+            .iter()
+            .filter(|t| {
+                t.symbol.eq_ignore_ascii_case(symbol) && residency_tag(&t.residency) == flavor
+            })
+            .collect();
+        return match matches.as_slice() {
+            [token] => Ok(token),
+            [] => Err(color_eyre::eyre::eyre!(
+                "Token '{}' not found in treasury. Available: {}",
+                query,
+                available()
+            )),
+            _ => Err(color_eyre::eyre::eyre!(
+                "Token '{}' is ambiguous — use a contract id instead. Available: {}",
+                query,
+                available()
+            )),
+        };
+    }
+
+    // 3. Plain symbol — must be unique.
+    let matches: Vec<&&SimplifiedToken> = sendable
+        .iter()
+        .filter(|t| t.symbol.eq_ignore_ascii_case(query))
+        .collect();
+    match matches.as_slice() {
+        [token] => Ok(token),
+        [] => Err(color_eyre::eyre::eyre!(
+            "Token '{}' not found in treasury. Available: {}",
+            query,
+            available()
+        )),
+        _ => Err(color_eyre::eyre::eyre!(
+            "Treasury holds {} flavors of '{}' — specify which one: {}",
+            matches.len(),
+            query,
+            matches
+                .iter()
+                .map(|t| token_selector(t, &sendable))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )),
     }
 }
 
@@ -990,6 +1160,122 @@ fn json_to_base64(value: &serde_json::Value) -> color_eyre::eyre::Result<String>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn token(symbol: &str, residency: TokenResidency, contract_id: Option<&str>) -> SimplifiedToken {
+        SimplifiedToken {
+            id: symbol.to_lowercase(),
+            contract_id: contract_id.map(|s| s.to_string()),
+            lockup_instance_id: None,
+            ft_lockup_schedule: None,
+            residency,
+            network: "near".to_string(),
+            chain_name: "NEAR".to_string(),
+            symbol: symbol.to_string(),
+            balance: crate::types::Balance::Standard {
+                total: "0".to_string(),
+                locked: "0".to_string(),
+            },
+            decimals: 6,
+            price: "0".to_string(),
+            name: symbol.to_string(),
+            icon: None,
+            chain_icons: None,
+        }
+    }
+
+    fn sample_assets() -> Vec<SimplifiedToken> {
+        vec![
+            token("NEAR", TokenResidency::Near, None),
+            token(
+                "NEAR",
+                TokenResidency::Intents,
+                Some("nep141:wrap.near"),
+            ),
+            token(
+                "USDT",
+                TokenResidency::Ft,
+                Some("usdt.tether-token.near"),
+            ),
+            token(
+                "USDT",
+                TokenResidency::Intents,
+                Some("nep141:usdt.tether-token.near"),
+            ),
+            token("USDC", TokenResidency::Intents, Some("nep141:usdc.near")),
+            token("NEAR", TokenResidency::Staked, None),
+        ]
+    }
+
+    #[test]
+    fn resolve_token_unique_symbol() {
+        let assets = sample_assets();
+        let t = resolve_token(&assets, "usdc").unwrap();
+        assert_eq!(t.residency, TokenResidency::Intents);
+    }
+
+    #[test]
+    fn resolve_token_ambiguous_symbol_errors_with_selectors() {
+        let assets = sample_assets();
+        let err = resolve_token(&assets, "USDT").unwrap_err().to_string();
+        assert!(err.contains("USDT@ft"), "got: {err}");
+        assert!(err.contains("USDT@intents"), "got: {err}");
+    }
+
+    #[test]
+    fn resolve_token_by_flavor() {
+        let assets = sample_assets();
+        assert_eq!(
+            resolve_token(&assets, "USDT@ft").unwrap().residency,
+            TokenResidency::Ft
+        );
+        assert_eq!(
+            resolve_token(&assets, "usdt@intents").unwrap().residency,
+            TokenResidency::Intents
+        );
+        assert_eq!(
+            resolve_token(&assets, "NEAR@near").unwrap().residency,
+            TokenResidency::Near
+        );
+    }
+
+    #[test]
+    fn resolve_token_by_contract_id() {
+        let assets = sample_assets();
+        let t = resolve_token(&assets, "nep141:usdc.near").unwrap();
+        assert_eq!(t.symbol, "USDC");
+        let t = resolve_token(&assets, "usdc.near").unwrap();
+        assert_eq!(t.symbol, "USDC");
+        // Same contract backs both the Ft and the Intents USDT rows →
+        // ambiguous, must list flavor selectors.
+        let err = resolve_token(&assets, "usdt.tether-token.near")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("USDT@ft") && err.contains("USDT@intents"), "got: {err}");
+    }
+
+    #[test]
+    fn resolve_token_ignores_staked_and_unknown() {
+        let assets = sample_assets();
+        assert!(resolve_token(&assets, "NEAR@staked").is_err());
+        assert!(resolve_token(&assets, "DOGE").is_err());
+    }
+
+    #[test]
+    fn token_selector_prefers_shortest_unambiguous_form() {
+        let assets = sample_assets();
+        let sendable: Vec<&SimplifiedToken> =
+            assets.iter().filter(|t| is_sendable(t)).collect();
+        assert_eq!(token_selector(sendable[4], &sendable), "USDC");
+        assert_eq!(token_selector(sendable[2], &sendable), "USDT@ft");
+        assert_eq!(token_selector(sendable[0], &sendable), "NEAR@near");
+        // Every selector must resolve back to the same token.
+        for t in &sendable {
+            let selector = token_selector(t, &sendable);
+            let resolved = resolve_token(&assets, &selector).unwrap();
+            assert_eq!(resolved.residency, t.residency, "selector {selector}");
+            assert_eq!(resolved.contract_id, t.contract_id, "selector {selector}");
+        }
+    }
 
     #[test]
     fn validate_amount_accepts_positive_decimals() {
