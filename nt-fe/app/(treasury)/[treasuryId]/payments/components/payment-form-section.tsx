@@ -424,6 +424,19 @@ export function PaymentFormSection<
                             sectionRules={networkSectionRules}
                             onChange={(id) => {
                                 field.onChange(id);
+                                // Selection cleared (recipient changed or no
+                                // longer compatible) — drop the raw network
+                                // name too, it gates form submission.
+                                if (!id && destinationNetworkNameFieldName) {
+                                    setValue(
+                                        destinationNetworkNameFieldName,
+                                        "" as PathValue<
+                                            TFieldValues,
+                                            Path<TFieldValues>
+                                        >,
+                                        { shouldDirty: true },
+                                    );
+                                }
                             }}
                             onNetworkChange={(opt) => {
                                 if (destinationNetworkNameFieldName) {

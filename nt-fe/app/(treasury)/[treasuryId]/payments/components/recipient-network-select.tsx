@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { Button } from "@/components/button";
 import { InputBlock } from "@/components/input-block";
@@ -127,7 +127,8 @@ export function RecipientNetworkSelect({
 
     // Need bridge networks before the modal opens so we can split available
     // vs. incompatible based on the entered recipient address.
-    const { data: bridgeAssets = [] } = useBridgeTokens(true);
+    const { data: bridgeAssets = [], isPending: isBridgeAssetsPending } =
+        useBridgeTokens(true);
 
     const nearComOption: RecipientNetworkOption = useMemo(
         () => ({
@@ -216,6 +217,16 @@ export function RecipientNetworkSelect({
     const hasCompatibleNetwork = compatibleOptions.length > 0;
     const isDisabled = !recipient || !hasCompatibleNetwork;
 
+    // Reset the selection whenever the recipient address changes so a network
+    // chosen for the previous address can't silently carry over; auto-pick
+    // below re-selects when the new address matches exactly one network.
+    const prevRecipientRef = useRef(recipient);
+    useEffect(() => {
+        if (prevRecipientRef.current === recipient) return;
+        prevRecipientRef.current = recipient;
+        if (value) onChange("");
+    }, [recipient, value, onChange]);
+
     // Clear the selection when the address no longer matches it (e.g. user
     // edited the address into a different chain's format).
     useEffect(() => {
@@ -225,17 +236,28 @@ export function RecipientNetworkSelect({
         onChange("");
     }, [value, availableOptions, compatibleOptions, onChange]);
 
-    // Auto-pick when there's exactly one compatible network and nothing's
-    // selected (or the selection no longer matches). Skips when the user
-    // already chose a still-compatible network.
+    // Auto-pick when the entered address positively matches exactly one
+    // network. Waits for bridge networks to load (otherwise near.com — the
+    // only option known upfront — would win by default), requires an entered
+    // address, and never picks a network we can't actually validate against.
     useEffect(() => {
+        if (isBridgeAssetsPending) return;
+        if (!recipient) return;
         if (compatibleOptions.length !== 1) return;
         const only = compatibleOptions[0];
+        if (getBlockchainType(only.networkName) === "unknown") return;
         if (value === only.id) return;
         if (value && compatibleOptions.some((o) => o.id === value)) return;
         onChange(only.id);
         onNetworkChange?.(only);
-    }, [compatibleOptions, value, onChange, onNetworkChange]);
+    }, [
+        isBridgeAssetsPending,
+        recipient,
+        compatibleOptions,
+        value,
+        onChange,
+        onNetworkChange,
+    ]);
     const placeholderText = !recipient
         ? t("enterAddressFirst")
         : !hasCompatibleNetwork

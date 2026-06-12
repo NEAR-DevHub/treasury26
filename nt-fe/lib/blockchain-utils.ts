@@ -76,6 +76,7 @@ export function getBlockchainType(chainName: string): BlockchainType {
         "optimism",
         "op",
         "avalanche",
+        "avax",
         "aurora",
         "turbochain",
         "vertex",
