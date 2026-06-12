@@ -26,7 +26,6 @@ use crate::{
         relay::{
             allowlist::extract_intents_contract,
             dto::{RelayError, error_response},
-            proposal::{self, ProposalRequest},
             sponsor::Sponsor,
             sputnik::ProposalKind,
         },
@@ -109,10 +108,10 @@ struct ClassifiedTargets {
 pub async fn register_vote_approvals(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
-    proposals: &[ProposalRequest],
+    approve_proposal_ids: &[u64],
 ) -> RegistrationOutcome {
     let mut registration_targets = HashSet::new();
-    for proposal_id in proposal::vote_approve_proposal_ids(proposals) {
+    for &proposal_id in approve_proposal_ids {
         registration_targets
             .extend(derive_targets_for_proposal(state, treasury_id, proposal_id).await);
     }

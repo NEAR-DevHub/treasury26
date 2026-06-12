@@ -54,7 +54,7 @@ pub async fn relay_delegate_action(
     // 2. Flatten both shapes into the proposal operations we will sponsor; reject
     //    anything that is not an add_proposal/act_proposal targeting the treasury.
     let ParsedRelay {
-        proposals,
+        operation,
         attached_deposit,
     } = proposal::parse_sponsored_proposals(
         &relay_request.treasury_id,
@@ -74,7 +74,7 @@ pub async fn relay_delegate_action(
         is_wallet_contract_action,
         &action_receiver_id,
         treasury_record.as_ref(),
-        &proposals,
+        &operation,
     )
     .await?;
 
@@ -83,7 +83,7 @@ pub async fn relay_delegate_action(
     //    `act_proposal`-only relays (votes) get no top-up.
     let compensate_proposal_storage =
         sponsorship::is_sputnik_treasury(&relay_request.treasury_id, treasury_record.is_some())
-            && proposal::contains_add_proposal(&proposals);
+            && operation.is_add_proposals();
     let proposal_storage_cost = if compensate_proposal_storage {
         sponsorship::proposal_storage_cost(relay_request.storage_bytes.0)
     } else {
@@ -118,9 +118,13 @@ pub async fn relay_delegate_action(
 
     // 5. Sponsor-paid NEP-141 registrations for any approving votes. Their spend is
     //    recorded even when a required registration fails and aborts the relay.
-    let registrations =
-        storage_deposit::register_vote_approvals(&state, &relay_request.treasury_id, &proposals)
-            .await;
+    let approve_proposal_ids = operation.vote_approve_ids();
+    let registrations = storage_deposit::register_vote_approvals(
+        &state,
+        &relay_request.treasury_id,
+        &approve_proposal_ids,
+    )
+    .await;
     if let Some(registration_error) = registrations.error {
         accounting::spawn_record_spend(
             &state,
@@ -164,14 +168,13 @@ pub async fn relay_delegate_action(
         },
     );
     accounting::record_metrics(&state, &relay_request);
-    if relay_request.proposal_type.as_deref() == Some("vote") {
-        confidential::spawn_auto_submit_intents(
-            &state,
-            relay_request.treasury_id.as_str(),
-            proposal::confidential_payload_hashes(&proposals),
-            &execution_debug,
-        );
-    }
+    // Empty for add-proposal relays, so this is a no-op outside confidential votes.
+    confidential::spawn_auto_submit_intents(
+        &state,
+        relay_request.treasury_id.as_str(),
+        operation.confidential_payload_hashes(),
+        &execution_debug,
+    );
 
     Ok(success_response())
 }

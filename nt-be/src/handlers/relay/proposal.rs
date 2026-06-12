@@ -1,8 +1,7 @@
 //! The Sputnik DAO proposal operations the relay is willing to sponsor, and the
 //! parser that recovers them from a relayed delegate action.
 //!
-//! Two wire shapes carry the same intent and flatten to the same
-//! `Vec<ProposalRequest>`:
+//! Two wire shapes carry the same intent:
 //!
 //! 1. **Direct NEP-366 meta-transaction** — the delegate action's inner
 //!    `FunctionCall` actions call `add_proposal`/`act_proposal` on the
@@ -10,8 +9,9 @@
 //! 2. **`w_execute_signed` on a WalletContract** — the same calls live inside the
 //!    wallet request; see [`super::wallet`].
 //!
-//! Anything that is not an `add_proposal`/`act_proposal` targeting the treasury is
-//! rejected: the relay only sponsors DAO proposals. (Storage registrations are
+//! A single relay is homogeneous: all `add_proposal` or all `act_proposal`. Mixing
+//! the two is rejected, and anything that is not an `add_proposal`/`act_proposal`
+//! targeting the treasury is rejected too. (NEP-141 storage registrations are
 //! derived and paid by the backend separately; they are never relayed as actions.)
 
 use std::ops::Deref;
@@ -25,18 +25,26 @@ use serde_json::Value;
 
 use super::confidential::extract_v1_signer_hash_from_kind;
 
-/// A Sputnik DAO proposal operation the relay can sponsor.
+/// The sponsored operation of a single relay. Homogeneous by construction.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ProposalRequest {
-    /// `add_proposal { proposal }`.
-    Add(ProposalInput),
-    /// `act_proposal { id, action, proposal? }`.
-    Act(ActProposal),
+pub enum RelayOperation {
+    /// One or more `add_proposal` calls.
+    AddProposals(Vec<ProposalInput>),
+    /// One or more `act_proposal` (vote) calls.
+    Votes(Vec<ActProposal>),
 }
 
-/// The `proposal` argument of `add_proposal`. `kind` is kept as raw JSON because
-/// the relay does not authorize on it — DAO permissions are enforced on-chain and
-/// via [`super::access::verify_relay_access`].
+/// The result of parsing a relayed delegate action.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedRelay {
+    pub operation: RelayOperation,
+    /// Total NEAR attached across the sponsored calls (proposal bonds).
+    pub attached_deposit: NearToken,
+}
+
+/// The `proposal` argument of `add_proposal`. `kind` is kept as raw JSON because the
+/// relay does not authorize on it — DAO permissions are enforced on-chain and via
+/// the permission checks in [`super::access`].
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct ProposalInput {
     #[serde(default)]
@@ -54,62 +62,45 @@ pub struct ActProposal {
     pub kind: Option<Value>,
 }
 
-/// The result of flattening a relayed delegate action.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ParsedRelay {
-    pub proposals: Vec<ProposalRequest>,
-    /// Total NEAR attached across the sponsored proposal calls (proposal bonds).
-    pub attached_deposit: NearToken,
-}
+impl RelayOperation {
+    /// Whether this relay adds proposals. Only `add_proposal` grows the DAO
+    /// contract's storage, so only then does the relayer top up its balance.
+    pub fn is_add_proposals(&self) -> bool {
+        matches!(self, RelayOperation::AddProposals(_))
+    }
 
-impl ProposalRequest {
-    /// The proposal id when this is an approving vote (`VoteApprove`).
-    fn vote_approve_id(&self) -> Option<u64> {
+    /// Proposal ids being approved (`VoteApprove`), in order. Empty for add relays.
+    pub fn vote_approve_ids(&self) -> Vec<u64> {
         match self {
-            ProposalRequest::Act(act) if act.action == "VoteApprove" => Some(act.id),
-            _ => None,
+            RelayOperation::Votes(votes) => votes
+                .iter()
+                .filter(|vote| vote.action == "VoteApprove")
+                .map(|vote| vote.id)
+                .collect(),
+            RelayOperation::AddProposals(_) => Vec::new(),
         }
     }
 
-    /// The confidential `payload_v2.Eddsa` hash, when this operation references a
-    /// `v1.signer` proposal kind.
-    fn confidential_payload_hash(&self) -> Option<String> {
+    /// Confidential `v1.signer` payload hashes referenced by the votes, in order. A
+    /// single relay can carry several (e.g. multiple confidential votes). Empty for
+    /// add relays.
+    pub fn confidential_payload_hashes(&self) -> Vec<String> {
         match self {
-            ProposalRequest::Act(act) => {
-                act.kind.as_ref().and_then(extract_v1_signer_hash_from_kind)
-            }
-            ProposalRequest::Add(_) => None,
+            RelayOperation::Votes(votes) => votes
+                .iter()
+                .filter_map(|vote| {
+                    vote.kind
+                        .as_ref()
+                        .and_then(extract_v1_signer_hash_from_kind)
+                })
+                .collect(),
+            RelayOperation::AddProposals(_) => Vec::new(),
         }
     }
 }
 
-/// Whether this relay adds a proposal. Only `add_proposal` grows the DAO contract's
-/// storage, so only then does the relayer top up its balance.
-pub fn contains_add_proposal(proposals: &[ProposalRequest]) -> bool {
-    proposals
-        .iter()
-        .any(|proposal| matches!(proposal, ProposalRequest::Add(_)))
-}
-
-/// Proposal ids being approved (`VoteApprove`) in this relay, in order.
-pub fn vote_approve_proposal_ids(proposals: &[ProposalRequest]) -> Vec<u64> {
-    proposals
-        .iter()
-        .filter_map(ProposalRequest::vote_approve_id)
-        .collect()
-}
-
-/// All confidential `v1.signer` payload hashes referenced by this relay, in order.
-/// A single relay can carry several (e.g. multiple confidential votes).
-pub fn confidential_payload_hashes(proposals: &[ProposalRequest]) -> Vec<String> {
-    proposals
-        .iter()
-        .filter_map(ProposalRequest::confidential_payload_hash)
-        .collect()
-}
-
-/// Parse a relayed delegate action into the proposal operations to sponsor,
-/// rejecting anything that is not an `add_proposal`/`act_proposal` targeting
+/// Parse a relayed delegate action into the operation to sponsor, rejecting anything
+/// that is not a homogeneous set of `add_proposal`/`act_proposal` calls targeting
 /// `treasury_id`.
 ///
 /// `action_receiver_id` is the delegate action's receiver — the contract the inner
@@ -161,13 +152,16 @@ fn collect_direct_calls(
         .collect()
 }
 
-/// Validate the normalized calls and map them to proposal operations.
+/// Validate the normalized calls: each must target the treasury and be an
+/// `add_proposal`/`act_proposal`, and the relay must be homogeneous (all of one
+/// kind). Returns the sponsored operation plus the total attached deposit.
 fn validate_calls(treasury_id: &AccountId, calls: Vec<DaoCall>) -> Result<ParsedRelay, String> {
     if calls.is_empty() {
         return Err("Delegate action contains no sponsorable proposal calls".to_owned());
     }
 
-    let mut proposals = Vec::with_capacity(calls.len());
+    let mut add_proposals = Vec::new();
+    let mut votes = Vec::new();
     let mut attached_deposit = NearToken::from_near(0);
     for call in calls {
         if &call.receiver_id != treasury_id {
@@ -177,36 +171,51 @@ fn validate_calls(treasury_id: &AccountId, calls: Vec<DaoCall>) -> Result<Parsed
             ));
         }
         attached_deposit = attached_deposit.saturating_add(call.deposit);
-        proposals.push(parse_call(&call)?);
+        match call.method_name.as_str() {
+            "add_proposal" => add_proposals.push(parse_add_proposal(&call)?),
+            "act_proposal" => votes.push(parse_act_proposal(&call)?),
+            other => {
+                return Err(format!(
+                    "Unsupported relayed method '{}' (only add_proposal/act_proposal are sponsored)",
+                    other
+                ));
+            }
+        }
     }
 
+    let operation = match (add_proposals.is_empty(), votes.is_empty()) {
+        (false, true) => RelayOperation::AddProposals(add_proposals),
+        (true, false) => RelayOperation::Votes(votes),
+        // Both non-empty: a mix. (Both empty is impossible — calls is non-empty and
+        // every call is one kind or the other.)
+        _ => {
+            return Err(
+                "A relay must contain only add_proposal or only act_proposal calls, not a mix"
+                    .to_owned(),
+            );
+        }
+    };
+
     Ok(ParsedRelay {
-        proposals,
+        operation,
         attached_deposit,
     })
 }
 
-fn parse_call(call: &DaoCall) -> Result<ProposalRequest, String> {
-    match call.method_name.as_str() {
-        "add_proposal" => {
-            let args: AddProposalArgs = serde_json::from_slice(&call.args)
-                .map_err(|e| format!("Invalid add_proposal args: {}", e))?;
-            Ok(ProposalRequest::Add(args.proposal))
-        }
-        "act_proposal" => {
-            let args: ActProposalArgs = serde_json::from_slice(&call.args)
-                .map_err(|e| format!("Invalid act_proposal args: {}", e))?;
-            Ok(ProposalRequest::Act(ActProposal {
-                id: args.id,
-                action: args.action,
-                kind: args.proposal,
-            }))
-        }
-        other => Err(format!(
-            "Unsupported relayed method '{}' (only add_proposal/act_proposal are sponsored)",
-            other
-        )),
-    }
+fn parse_add_proposal(call: &DaoCall) -> Result<ProposalInput, String> {
+    let args: AddProposalArgs = serde_json::from_slice(&call.args)
+        .map_err(|e| format!("Invalid add_proposal args: {}", e))?;
+    Ok(args.proposal)
+}
+
+fn parse_act_proposal(call: &DaoCall) -> Result<ActProposal, String> {
+    let args: ActProposalArgs = serde_json::from_slice(&call.args)
+        .map_err(|e| format!("Invalid act_proposal args: {}", e))?;
+    Ok(ActProposal {
+        id: args.id,
+        action: args.action,
+        kind: args.proposal,
+    })
 }
 
 #[derive(Deserialize)]
@@ -226,6 +235,8 @@ struct ActProposalArgs {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    const TREASURY: &str = "dao.sputnik-dao.near";
 
     fn acc(s: &str) -> AccountId {
         s.parse().unwrap()
@@ -261,29 +272,33 @@ mod tests {
         }
     }
 
+    fn transfer_kind() -> Value {
+        json!({ "Transfer": { "token_id": "", "receiver_id": "bob.near", "amount": "1" } })
+    }
+
     #[test]
-    fn validates_add_proposal_and_sums_deposit() {
-        let kind =
-            json!({ "Transfer": { "token_id": "", "receiver_id": "bob.near", "amount": "1" } });
+    fn validates_add_proposals_and_sums_deposit() {
         let parsed = validate_calls(
-            &acc("dao.sputnik-dao.near"),
-            vec![add_call("dao.sputnik-dao.near", kind, 100)],
+            &acc(TREASURY),
+            vec![add_call(TREASURY, transfer_kind(), 100)],
         )
         .unwrap();
-        assert_eq!(parsed.proposals.len(), 1);
-        assert!(matches!(parsed.proposals[0], ProposalRequest::Add(_)));
+        match parsed.operation {
+            RelayOperation::AddProposals(ref inputs) => assert_eq!(inputs.len(), 1),
+            other => panic!("expected AddProposals, got {other:?}"),
+        }
         assert_eq!(parsed.attached_deposit, NearToken::from_yoctonear(100));
     }
 
     #[test]
     fn extracts_vote_approve_ids() {
         let calls = vec![
-            act_call("dao.sputnik-dao.near", 7, "VoteApprove", None),
-            act_call("dao.sputnik-dao.near", 8, "VoteReject", None),
-            act_call("dao.sputnik-dao.near", 9, "VoteApprove", None),
+            act_call(TREASURY, 7, "VoteApprove", None),
+            act_call(TREASURY, 8, "VoteReject", None),
+            act_call(TREASURY, 9, "VoteApprove", None),
         ];
-        let parsed = validate_calls(&acc("dao.sputnik-dao.near"), calls).unwrap();
-        assert_eq!(vote_approve_proposal_ids(&parsed.proposals), vec![7, 9]);
+        let parsed = validate_calls(&acc(TREASURY), calls).unwrap();
+        assert_eq!(parsed.operation.vote_approve_ids(), vec![7, 9]);
     }
 
     #[test]
@@ -300,45 +315,46 @@ mod tests {
             })
         };
         let calls = vec![
-            act_call(
-                "dao.sputnik-dao.near",
-                1,
-                "VoteApprove",
-                Some(v1_kind("aaaa")),
-            ),
-            act_call(
-                "dao.sputnik-dao.near",
-                2,
-                "VoteApprove",
-                Some(v1_kind("bbbb")),
-            ),
+            act_call(TREASURY, 1, "VoteApprove", Some(v1_kind("aaaa"))),
+            act_call(TREASURY, 2, "VoteApprove", Some(v1_kind("bbbb"))),
         ];
-        let parsed = validate_calls(&acc("dao.sputnik-dao.near"), calls).unwrap();
+        let parsed = validate_calls(&acc(TREASURY), calls).unwrap();
         assert_eq!(
-            confidential_payload_hashes(&parsed.proposals),
+            parsed.operation.confidential_payload_hashes(),
             vec!["aaaa".to_owned(), "bbbb".to_owned()]
+        );
+    }
+
+    #[test]
+    fn rejects_mixed_add_and_act() {
+        let calls = vec![
+            add_call(TREASURY, transfer_kind(), 0),
+            act_call(TREASURY, 1, "VoteApprove", None),
+        ];
+        let err = validate_calls(&acc(TREASURY), calls).unwrap_err();
+        assert!(
+            err.contains("only add_proposal or only act_proposal"),
+            "{err}"
         );
     }
 
     #[test]
     fn rejects_non_proposal_method() {
         let call = DaoCall {
-            receiver_id: acc("dao.sputnik-dao.near"),
+            receiver_id: acc(TREASURY),
             method_name: "storage_deposit".to_owned(),
             args: b"{}".to_vec(),
             deposit: NearToken::from_near(0),
         };
-        let err = validate_calls(&acc("dao.sputnik-dao.near"), vec![call]).unwrap_err();
+        let err = validate_calls(&acc(TREASURY), vec![call]).unwrap_err();
         assert!(err.contains("Unsupported relayed method"), "{err}");
     }
 
     #[test]
     fn rejects_call_to_other_receiver() {
-        let kind =
-            json!({ "Transfer": { "token_id": "", "receiver_id": "bob.near", "amount": "1" } });
         let err = validate_calls(
-            &acc("dao.sputnik-dao.near"),
-            vec![add_call("evil.near", kind, 0)],
+            &acc(TREASURY),
+            vec![add_call("evil.near", transfer_kind(), 0)],
         )
         .unwrap_err();
         assert!(err.contains("only the treasury"), "{err}");

@@ -13,7 +13,7 @@ use crate::{
     handlers::relay::{
         allowlist,
         dto::{RelayError, RelayRequest, error_response},
-        proposal::ProposalRequest,
+        proposal::RelayOperation,
         sponsorship::SponsorshipTier,
     },
 };
@@ -87,7 +87,7 @@ pub async fn authorize(
     is_wallet_contract_action: bool,
     action_receiver_id: &AccountId,
     treasury_record: Option<&TreasuryRecord>,
-    proposals: &[ProposalRequest],
+    operation: &RelayOperation,
 ) -> Result<SponsorshipTier, RelayError> {
     // 1. Identity binding (shape-specific).
     if is_wallet_contract_action {
@@ -114,7 +114,7 @@ pub async fn authorize(
     }
 
     // 2. DAO proposal/vote permissions — equal for both shapes.
-    verify_proposal_access(state, auth_user, &relay_request.treasury_id, proposals).await?;
+    verify_proposal_access(state, auth_user, &relay_request.treasury_id, operation).await?;
 
     // 3. Billing — equal for every sponsored request: the treasury must be tracked
     //    and have gas-covered credits.
@@ -147,53 +147,47 @@ pub async fn authorize(
     Ok(SponsorshipTier::for_treasury(treasury_record.created_at))
 }
 
-/// Verify the authenticated user may perform every parsed proposal operation on the
-/// treasury, following on-chain DAO permissions: `add_proposal` needs add
-/// permission; each vote needs the matching vote permission (including Everyone
-/// roles). Derived from the parsed proposals so it is identical for both wire shapes.
+/// Verify the authenticated user may perform the relay's operation on the treasury,
+/// following on-chain DAO permissions: `add_proposal` needs add permission; each
+/// distinct vote needs the matching vote permission (including Everyone roles).
+/// Derived from the parsed operation so it is identical for both wire shapes.
 async fn verify_proposal_access(
     state: &Arc<AppState>,
     auth_user: &AuthUser,
     treasury_id: &AccountId,
-    proposals: &[ProposalRequest],
+    operation: &RelayOperation,
 ) -> Result<(), RelayError> {
-    let mut has_add_proposal = false;
-    let mut vote_actions = HashSet::new();
-    for proposal in proposals {
-        match proposal {
-            ProposalRequest::Add(_) => has_add_proposal = true,
-            ProposalRequest::Act(act) => match act.action.as_str() {
-                "VoteApprove" | "VoteReject" | "VoteRemove" => {
-                    vote_actions.insert(act.action.clone());
-                }
-                other => {
-                    return Err(error_response(
-                        StatusCode::BAD_REQUEST,
-                        format!("Unsupported vote action '{}'", other),
-                    ));
-                }
-            },
-        }
-    }
-
-    if has_add_proposal {
-        auth_user
+    match operation {
+        RelayOperation::AddProposals(_) => auth_user
             .verify_can_add_proposal(state, treasury_id)
             .await
-            .map_err(|(status, msg)| error_response(status, msg))?;
-    }
+            .map_err(|(status, msg)| error_response(status, msg)),
+        RelayOperation::Votes(votes) => {
+            let mut vote_actions = HashSet::new();
+            for vote in votes {
+                match vote.action.as_str() {
+                    "VoteApprove" | "VoteReject" | "VoteRemove" => {
+                        vote_actions.insert(vote.action.clone());
+                    }
+                    other => {
+                        return Err(error_response(
+                            StatusCode::BAD_REQUEST,
+                            format!("Unsupported vote action '{}'", other),
+                        ));
+                    }
+                }
+            }
 
-    if !vote_actions.is_empty() {
-        let policy = auth_user
-            .fetch_dao_policy(state, treasury_id)
-            .await
-            .map_err(|(status, msg)| error_response(status, msg))?;
-        for vote_action in vote_actions {
-            auth_user
-                .verify_can_perform_action_with_policy(&policy, treasury_id, &vote_action)
+            let policy = auth_user
+                .fetch_dao_policy(state, treasury_id)
+                .await
                 .map_err(|(status, msg)| error_response(status, msg))?;
+            for vote_action in vote_actions {
+                auth_user
+                    .verify_can_perform_action_with_policy(&policy, treasury_id, &vote_action)
+                    .map_err(|(status, msg)| error_response(status, msg))?;
+            }
+            Ok(())
         }
     }
-
-    Ok(())
 }
