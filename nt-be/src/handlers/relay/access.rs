@@ -111,8 +111,8 @@ pub async fn authorize(
             }
         }
         RelaySubmission::MetaTransaction(signed_delegate_action) => {
-            let sender_id = signed_delegate_action.delegate_action.sender_id.to_string();
-            if sender_id != auth_user.account_id {
+            let sender_id = &signed_delegate_action.delegate_action.sender_id;
+            if sender_id != &auth_user.account_id {
                 return Err(error_response(
                     StatusCode::FORBIDDEN,
                     format!(
