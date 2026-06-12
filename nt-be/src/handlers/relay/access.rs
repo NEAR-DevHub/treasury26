@@ -11,7 +11,6 @@ use crate::{
     auth::AuthUser,
     config::plans::{PlanType, has_gas_covered_credits},
     handlers::relay::{
-        allowlist,
         dto::{RelayError, RelayRequest, error_response},
         proposal::RelayOperation,
         sponsorship::SponsorshipTier,
@@ -62,19 +61,17 @@ pub async fn fetch_treasury_record(
 
 /// Authorize the caller and return the treasury's sponsorship tier.
 ///
-/// Four checks, in order:
+/// Three checks, in order:
 ///
 /// 1. **Identity** binds to the authenticated user differently per wire shape:
 ///    `w_execute_signed` carries the user's own on-chain-verified signature, so we
 ///    check the receiver is the user's wallet account; a meta-transaction is bound
 ///    to its `sender_id`.
-/// 2. **DAO proposal/vote permissions** are checked from the parsed proposals, so
+/// 2. **DAO proposal/vote permissions** are checked from the parsed operation, so
 ///    the rule is identical for both shapes (the proposal calls are the same; only
 ///    their envelope differs).
 /// 3. **Billing** applies to every sponsored request regardless of wire shape: the
 ///    treasury must be tracked in `monitored_accounts` and have gas-covered credits.
-/// 4. **Receiver allowlist** applies to meta-transactions only — a `w_execute_signed`
-///    relay's receiver is the user's own wallet account, not a DAO/token contract.
 ///
 /// The tier follows the treasury (its onboarding date), NOT the wire shape: an old
 /// DAO accessed via a `w_execute_signed` wallet still gets bond-based sponsorship.
@@ -135,13 +132,6 @@ pub async fn authorize(
             StatusCode::PAYMENT_REQUIRED,
             "No gas-covered transaction credits remaining. Please upgrade your plan.",
         ));
-    }
-
-    // 4. Receiver allowlist (meta-transactions only; the wallet receiver is the
-    //    user's own wallet account, not a DAO/token contract).
-    if !is_wallet_contract_action {
-        allowlist::verify_receiver_allowed(state, &relay_request.treasury_id, action_receiver_id)
-            .await?;
     }
 
     Ok(SponsorshipTier::for_treasury(treasury_record.created_at))

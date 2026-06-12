@@ -24,7 +24,6 @@ use crate::{
     handlers::{
         proposals::scraper::{fetch_batch_payment_list, fetch_proposal},
         relay::{
-            allowlist::extract_intents_contract,
             dto::{RelayError, error_response},
             sponsor::Sponsor,
             sputnik::ProposalKind,
@@ -75,6 +74,16 @@ struct MtTransferCallArgs {
 
 fn is_native_token(token_id: &str) -> bool {
     token_id.is_empty() || token_id.eq_ignore_ascii_case("near")
+}
+
+/// Extract the NEP-141 contract id from an Intents asset id
+/// (`nep141:<contract>` or `nep245:<contract>:<token>`).
+fn extract_intents_contract(asset_id: &str) -> Option<&str> {
+    asset_id.strip_prefix("nep141:").or_else(|| {
+        asset_id
+            .strip_prefix("nep245:")
+            .and_then(|s| s.split(":").next())
+    })
 }
 
 /// Decode base64-encoded JSON action args into a typed struct.
