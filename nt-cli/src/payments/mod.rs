@@ -110,8 +110,7 @@ impl PaymentSend {
             })
             .collect();
 
-        let selection =
-            inquire::Select::new("Select token to send:", options.clone()).prompt()?;
+        let selection = inquire::Select::new("Select token to send:", options.clone()).prompt()?;
         let index = options.iter().position(|o| o == &selection).unwrap();
         Ok(Some(token_selector(sendable[index], &sendable)))
     }
@@ -346,7 +345,12 @@ impl PaymentSendContext {
             scope.amount.cyan(),
             token.symbol.cyan(),
             scope.receiver.cyan(),
-            if is_direct { "NEAR direct" } else { destination_network }.cyan(),
+            if is_direct {
+                "NEAR direct"
+            } else {
+                destination_network
+            }
+            .cyan(),
         );
 
         let (description, kind) = if is_direct {
@@ -399,12 +403,7 @@ impl PaymentSendContext {
                 // destination-side decimals (they can differ, e.g. 18 vs 24).
                 let bridge = api.get_bridge_tokens()?;
                 let network = find_bridge_asset(&bridge.assets, &origin_asset)
-                    .and_then(|asset| {
-                        asset
-                            .networks
-                            .iter()
-                            .find(|n| n.id == destination_network)
-                    })
+                    .and_then(|asset| asset.networks.iter().find(|n| n.id == destination_network))
                     .ok_or_else(|| {
                         color_eyre::eyre::eyre!(
                             "Destination network '{}' is not available for {} (origin {})",
@@ -413,11 +412,7 @@ impl PaymentSendContext {
                             origin_asset
                         )
                     })?;
-                (
-                    network.id.clone(),
-                    "DESTINATION_CHAIN",
-                    network.decimals,
-                )
+                (network.id.clone(), "DESTINATION_CHAIN", network.decimals)
             };
 
             let deposit_type = if is_confidential {
@@ -610,9 +605,7 @@ fn token_selector(token: &SimplifiedToken, all: &[&SimplifiedToken]) -> String {
     }
     let same_flavor = all
         .iter()
-        .filter(|t| {
-            t.symbol.eq_ignore_ascii_case(&token.symbol) && t.residency == token.residency
-        })
+        .filter(|t| t.symbol.eq_ignore_ascii_case(&token.symbol) && t.residency == token.residency)
         .count();
     if same_flavor <= 1 {
         return format!("{}@{}", token.symbol, residency_tag(&token.residency));
@@ -729,8 +722,7 @@ fn resolve_token<'a>(
 /// Map a treasury token to its 1Click intents origin asset id, mirrors
 /// nt-fe `classifyPaymentToken().intentsOriginAsset`.
 fn resolve_origin_asset(token: &SimplifiedToken) -> String {
-    if token.symbol.eq_ignore_ascii_case("NEAR")
-        && matches!(token.residency, TokenResidency::Near)
+    if token.symbol.eq_ignore_ascii_case("NEAR") && matches!(token.residency, TokenResidency::Near)
     {
         return "nep141:wrap.near".to_string();
     }
@@ -796,11 +788,7 @@ fn validate_amount(input: &str) -> Result<(), String> {
 }
 
 /// Parse a human amount (e.g. "0.5") into a raw integer string at `decimals`.
-fn normalize_amount(
-    amount: &str,
-    symbol: &str,
-    decimals: u8,
-) -> color_eyre::eyre::Result<String> {
+fn normalize_amount(amount: &str, symbol: &str, decimals: u8) -> color_eyre::eyre::Result<String> {
     // Re-validate here: amounts passed as CLI arguments skip the interactive
     // prompt validator.
     validate_amount(amount).map_err(|e| color_eyre::eyre::eyre!(e))?;
@@ -1161,7 +1149,11 @@ fn json_to_base64(value: &serde_json::Value) -> color_eyre::eyre::Result<String>
 mod tests {
     use super::*;
 
-    fn token(symbol: &str, residency: TokenResidency, contract_id: Option<&str>) -> SimplifiedToken {
+    fn token(
+        symbol: &str,
+        residency: TokenResidency,
+        contract_id: Option<&str>,
+    ) -> SimplifiedToken {
         SimplifiedToken {
             id: symbol.to_lowercase(),
             contract_id: contract_id.map(|s| s.to_string()),
@@ -1186,16 +1178,8 @@ mod tests {
     fn sample_assets() -> Vec<SimplifiedToken> {
         vec![
             token("NEAR", TokenResidency::Near, None),
-            token(
-                "NEAR",
-                TokenResidency::Intents,
-                Some("nep141:wrap.near"),
-            ),
-            token(
-                "USDT",
-                TokenResidency::Ft,
-                Some("usdt.tether-token.near"),
-            ),
+            token("NEAR", TokenResidency::Intents, Some("nep141:wrap.near")),
+            token("USDT", TokenResidency::Ft, Some("usdt.tether-token.near")),
             token(
                 "USDT",
                 TokenResidency::Intents,
@@ -1250,7 +1234,10 @@ mod tests {
         let err = resolve_token(&assets, "usdt.tether-token.near")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("USDT@ft") && err.contains("USDT@intents"), "got: {err}");
+        assert!(
+            err.contains("USDT@ft") && err.contains("USDT@intents"),
+            "got: {err}"
+        );
     }
 
     #[test]
@@ -1263,8 +1250,7 @@ mod tests {
     #[test]
     fn token_selector_prefers_shortest_unambiguous_form() {
         let assets = sample_assets();
-        let sendable: Vec<&SimplifiedToken> =
-            assets.iter().filter(|t| is_sendable(t)).collect();
+        let sendable: Vec<&SimplifiedToken> = assets.iter().filter(|t| is_sendable(t)).collect();
         assert_eq!(token_selector(sendable[4], &sendable), "USDC");
         assert_eq!(token_selector(sendable[2], &sendable), "USDT@ft");
         assert_eq!(token_selector(sendable[0], &sendable), "NEAR@near");
