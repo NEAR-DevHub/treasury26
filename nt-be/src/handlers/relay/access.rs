@@ -62,7 +62,7 @@ pub async fn fetch_treasury_record(
 
 /// Authorize the caller and return the treasury's sponsorship tier.
 ///
-/// Three checks, in order:
+/// Four checks, in order:
 ///
 /// 1. **Identity** binds to the authenticated user differently per wire shape:
 ///    `w_execute_signed` carries the user's own on-chain-verified signature, so we
@@ -71,12 +71,13 @@ pub async fn fetch_treasury_record(
 /// 2. **DAO proposal/vote permissions** are checked from the parsed proposals, so
 ///    the rule is identical for both shapes (the proposal calls are the same; only
 ///    their envelope differs).
-/// 3. **Billing + receiver allowlist** apply to meta-transactions only — a tracked
-///    treasury with gas-covered credits, and a receiver on the allowlist.
+/// 3. **Billing** applies to every sponsored request regardless of wire shape: the
+///    treasury must be tracked in `monitored_accounts` and have gas-covered credits.
+/// 4. **Receiver allowlist** applies to meta-transactions only — a `w_execute_signed`
+///    relay's receiver is the user's own wallet account, not a DAO/token contract.
 ///
 /// The tier follows the treasury (its onboarding date), NOT the wire shape: an old
 /// DAO accessed via a `w_execute_signed` wallet still gets bond-based sponsorship.
-/// Untracked treasuries default to `Standard`.
 #[allow(clippy::too_many_arguments)]
 pub async fn authorize(
     state: &Arc<AppState>,
@@ -115,33 +116,35 @@ pub async fn authorize(
     // 2. DAO proposal/vote permissions — equal for both shapes.
     verify_proposal_access(state, auth_user, &relay_request.treasury_id, proposals).await?;
 
-    // 3. Billing + receiver allowlist (meta-transactions only).
+    // 3. Billing — equal for every sponsored request: the treasury must be tracked
+    //    and have gas-covered credits.
+    let treasury_record = treasury_record.ok_or_else(|| {
+        error_response(
+            StatusCode::NOT_FOUND,
+            format!(
+                "Treasury '{}' not found in monitored accounts",
+                relay_request.treasury_id.as_str()
+            ),
+        )
+    })?;
+    if !has_gas_covered_credits(
+        treasury_record.plan_type,
+        treasury_record.gas_covered_transactions,
+    ) {
+        return Err(error_response(
+            StatusCode::PAYMENT_REQUIRED,
+            "No gas-covered transaction credits remaining. Please upgrade your plan.",
+        ));
+    }
+
+    // 4. Receiver allowlist (meta-transactions only; the wallet receiver is the
+    //    user's own wallet account, not a DAO/token contract).
     if !is_wallet_contract_action {
-        let treasury_record = treasury_record.ok_or_else(|| {
-            error_response(
-                StatusCode::NOT_FOUND,
-                format!(
-                    "Treasury '{}' not found in monitored accounts",
-                    relay_request.treasury_id.as_str()
-                ),
-            )
-        })?;
-        if !has_gas_covered_credits(
-            treasury_record.plan_type,
-            treasury_record.gas_covered_transactions,
-        ) {
-            return Err(error_response(
-                StatusCode::PAYMENT_REQUIRED,
-                "No gas-covered transaction credits remaining. Please upgrade your plan.",
-            ));
-        }
         allowlist::verify_receiver_allowed(state, &relay_request.treasury_id, action_receiver_id)
             .await?;
     }
 
-    Ok(treasury_record
-        .map(|record| SponsorshipTier::for_treasury(record.created_at))
-        .unwrap_or(SponsorshipTier::Standard))
+    Ok(SponsorshipTier::for_treasury(treasury_record.created_at))
 }
 
 /// Verify the authenticated user may perform every parsed proposal operation on the
