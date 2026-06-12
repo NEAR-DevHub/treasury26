@@ -161,7 +161,8 @@ impl PaymentTokenContext {
             token.residency,
             token.contract_id,
             token.decimals,
-            resolve_origin_asset(&token),
+            resolve_origin_asset(&token)
+                .unwrap_or_else(|_| "<none: NEAR-direct transfers only>".to_string()),
         );
 
         Ok(Self {
@@ -232,9 +233,11 @@ impl PaymentDetails {
 
         // Cross-chain destinations come from the 1Click bridge catalog: the
         // entry whose networks include this token's origin asset id.
-        if is_intents_token || !context.is_confidential {
+        if let (true, Ok(origin_asset)) = (
+            is_intents_token || !context.is_confidential,
+            resolve_origin_asset(token),
+        ) {
             let api = ApiClient::new(&context.trezu_config);
-            let origin_asset = resolve_origin_asset(token);
             match api.get_bridge_tokens() {
                 Ok(bridge) => {
                     if let Some(asset) = find_bridge_asset(&bridge.assets, &origin_asset) {
@@ -364,17 +367,18 @@ impl PaymentSendContext {
                 ));
             }
             let raw_amount = normalize_amount(&scope.amount, &token.symbol, token.decimals)?;
+            let token_id = resolve_token_id(token)?;
             tracing::info!(
                 target: "near_teach_me",
                 parent: &tracing::Span::none(),
                 "Direct transfer route: Sputnik `Transfer` proposal kind, token_id='{}', raw amount {} ({} decimals)",
-                resolve_token_id(token),
+                token_id,
                 raw_amount,
                 token.decimals
             );
             let kind = serde_json::json!({
                 "Transfer": {
-                    "token_id": resolve_token_id(token),
+                    "token_id": token_id,
                     "receiver_id": scope.receiver,
                     "amount": raw_amount,
                     "msg": serde_json::Value::Null,
@@ -386,7 +390,7 @@ impl PaymentSendContext {
             )
         } else {
             // 1Click intents route (near.com or cross-chain).
-            let origin_asset = resolve_origin_asset(token);
+            let origin_asset = resolve_origin_asset(token)?;
             let (destination_asset, recipient_type, amount_decimals) = if is_near_com {
                 (
                     origin_asset.clone(),
@@ -720,29 +724,33 @@ fn resolve_token<'a>(
 }
 
 /// Map a treasury token to its 1Click intents origin asset id, mirrors
-/// nt-fe `classifyPaymentToken().intentsOriginAsset`.
-fn resolve_origin_asset(token: &SimplifiedToken) -> String {
-    if token.symbol.eq_ignore_ascii_case("NEAR") && matches!(token.residency, TokenResidency::Near)
-    {
-        return "nep141:wrap.near".to_string();
+/// nt-fe `classifyPaymentToken().intentsOriginAsset`. Native NEAR is keyed
+/// off residency (wrapped NEAR FT rows also carry the "NEAR" symbol).
+fn resolve_origin_asset(token: &SimplifiedToken) -> color_eyre::eyre::Result<String> {
+    if matches!(token.residency, TokenResidency::Near) {
+        return Ok("nep141:wrap.near".to_string());
     }
-    if let Some(contract_id) = &token.contract_id {
-        if contract_id.starts_with("nep141:") || contract_id.starts_with("nep245:") {
-            contract_id.clone()
-        } else {
-            format!("nep141:{}", contract_id)
-        }
+    let contract_id = token.contract_id.as_deref().ok_or_else(|| {
+        color_eyre::eyre::eyre!(
+            "Token {} ({}) has no contract id — cannot route it through intents",
+            token.symbol,
+            token.residency
+        )
+    })?;
+    if contract_id.starts_with("nep141:") || contract_id.starts_with("nep245:") {
+        Ok(contract_id.to_string())
     } else {
-        "nep141:wrap.near".to_string()
+        Ok(format!("nep141:{}", contract_id))
     }
 }
 
-/// Strip the `nep141:` prefix for id matching, mirrors nt-fe
-/// `normalizeNearAssetId`.
+/// Strip the multi-token standard prefix (`nep141:` / `nep245:`) for id
+/// matching, extends nt-fe `normalizeNearAssetId` to nep245 ids.
 fn normalize_near_asset_id(value: &str) -> String {
     let normalized = value.trim().to_lowercase();
     normalized
         .strip_prefix("nep141:")
+        .or_else(|| normalized.strip_prefix("nep245:"))
         .map(|s| s.to_string())
         .unwrap_or(normalized)
 }
@@ -804,20 +812,25 @@ fn normalize_amount(amount: &str, symbol: &str, decimals: u8) -> color_eyre::eyr
     Ok(normalized.amount().to_string())
 }
 
-/// Sputnik Transfer kind token id: "" for native NEAR, bare contract otherwise.
-fn resolve_token_id(token: &SimplifiedToken) -> String {
-    if token.symbol.eq_ignore_ascii_case("NEAR") {
-        return String::new();
+/// Sputnik Transfer kind token id: "" for native NEAR (by residency, not
+/// symbol — wrapped NEAR FT rows are also labeled "NEAR"), bare contract
+/// otherwise.
+fn resolve_token_id(token: &SimplifiedToken) -> color_eyre::eyre::Result<String> {
+    if matches!(token.residency, TokenResidency::Near) {
+        return Ok(String::new());
     }
 
-    if let Some(contract_id) = &token.contract_id {
-        contract_id
-            .strip_prefix("nep141:")
-            .unwrap_or(contract_id)
-            .to_string()
-    } else {
-        String::new()
-    }
+    let contract_id = token.contract_id.as_deref().ok_or_else(|| {
+        color_eyre::eyre::eyre!(
+            "Token {} ({}) has no contract id — cannot build a transfer for it",
+            token.symbol,
+            token.residency
+        )
+    })?;
+    Ok(contract_id
+        .strip_prefix("nep141:")
+        .unwrap_or(contract_id)
+        .to_string())
 }
 
 /// Replicates nt-fe `encodeToMarkdown`: "* Key Name: value" pairs joined with
@@ -1071,7 +1084,7 @@ fn build_public_intents_proposal(
         // NEAR-chain FT → ft_transfer on the token contract.
         _ => serde_json::json!({
             "FunctionCall": {
-                "receiver_id": resolve_token_id(token),
+                "receiver_id": resolve_token_id(token)?,
                 "actions": [
                     {
                         "method_name": "ft_transfer",
@@ -1261,6 +1274,45 @@ mod tests {
             assert_eq!(resolved.residency, t.residency, "selector {selector}");
             assert_eq!(resolved.contract_id, t.contract_id, "selector {selector}");
         }
+    }
+
+    #[test]
+    fn normalize_near_asset_id_strips_multi_token_prefixes() {
+        assert_eq!(normalize_near_asset_id("nep141:wrap.near"), "wrap.near");
+        assert_eq!(
+            normalize_near_asset_id("nep245:v2_1.omni.hot.tg:56_2CMM"),
+            "v2_1.omni.hot.tg:56_2cmm"
+        );
+        assert_eq!(normalize_near_asset_id("wrap.near"), "wrap.near");
+    }
+
+    #[test]
+    fn origin_asset_and_token_id_key_off_residency() {
+        // Native NEAR by residency, regardless of other rows sharing the symbol.
+        let native = token("NEAR", TokenResidency::Near, None);
+        assert_eq!(resolve_origin_asset(&native).unwrap(), "nep141:wrap.near");
+        assert_eq!(resolve_token_id(&native).unwrap(), "");
+
+        // A wrapped-NEAR FT row also labeled "NEAR" must keep its contract.
+        let wnear = token("NEAR", TokenResidency::Ft, Some("wrap.near"));
+        assert_eq!(resolve_origin_asset(&wnear).unwrap(), "nep141:wrap.near");
+        assert_eq!(resolve_token_id(&wnear).unwrap(), "wrap.near");
+
+        // nep245 ids pass through unchanged.
+        let omni = token(
+            "USDT",
+            TokenResidency::Intents,
+            Some("nep245:v2_1.omni.hot.tg:56_2CMM"),
+        );
+        assert_eq!(
+            resolve_origin_asset(&omni).unwrap(),
+            "nep245:v2_1.omni.hot.tg:56_2CMM"
+        );
+
+        // Missing contract on a non-native token is an error, not wrap.near.
+        let broken = token("USDT", TokenResidency::Ft, None);
+        assert!(resolve_origin_asset(&broken).is_err());
+        assert!(resolve_token_id(&broken).is_err());
     }
 
     #[test]

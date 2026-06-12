@@ -517,14 +517,7 @@ fn input_pending_proposal_id(
     let options: Vec<String> = result
         .proposals
         .iter()
-        .map(|p| {
-            let desc = if p.description.len() > 60 {
-                format!("{}...", &p.description[..57])
-            } else {
-                p.description.clone()
-            };
-            format!("#{} — {}", p.id, desc)
-        })
+        .map(|p| format!("#{} — {}", p.id, truncate_chars(&p.description, 60)))
         .collect();
 
     let selection =
@@ -533,17 +526,41 @@ fn input_pending_proposal_id(
     Ok(Some(result.proposals[index].id))
 }
 
+/// Truncate to at most `max_chars` characters (not bytes — slicing byte
+/// indices panics on multi-byte UTF-8), appending "..." when shortened.
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    if text.chars().count() <= max_chars {
+        return text.to_string();
+    }
+    let truncated: String = text.chars().take(max_chars.saturating_sub(3)).collect();
+    format!("{truncated}...")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_chars;
+
+    #[test]
+    fn truncate_chars_is_utf8_safe() {
+        assert_eq!(truncate_chars("short", 50), "short");
+        assert_eq!(truncate_chars("abcdefgh", 8), "abcdefgh");
+        assert_eq!(truncate_chars("abcdefghi", 8), "abcde...");
+        // Multi-byte content around the cut point must not panic.
+        let cyrillic = "Підтвердження платежу через приватні інтенти приховано";
+        let truncated = truncate_chars(cyrillic, 20);
+        assert_eq!(truncated.chars().count(), 20);
+        assert!(truncated.ends_with("..."));
+        assert!(truncate_chars("💸💸💸💸💸", 4).ends_with("..."));
+    }
+}
+
 fn print_proposals_table(proposals: &[crate::types::Proposal]) {
     let mut table = prettytable::Table::new();
     table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
     table.set_titles(prettytable::row![bFc => "ID", "Status", "Proposer", "Description", "Votes"]);
 
     for p in proposals {
-        let desc = if p.description.len() > 50 {
-            format!("{}...", &p.description[..47])
-        } else {
-            p.description.clone()
-        };
+        let desc = truncate_chars(&p.description, 50);
 
         let vote_summary = if p.votes.is_empty() {
             "-".to_string()
