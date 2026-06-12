@@ -22,17 +22,13 @@ import { Button } from "./button";
 import { Tooltip } from "./tooltip";
 import { TreasuryBalance, TreasuryLogo } from "./treasury-info";
 import { Skeleton } from "./ui/skeleton";
-import { useMemo, useState } from "react";
-import { useTreasuryCreationStatus } from "@/hooks/use-treasury-queries";
-import { CreationDisabledModal } from "./creation-disabled-modal";
+import { useMemo } from "react";
 
 interface TreasurySelectorProps {
     reducedMode?: boolean;
     isOpen?: boolean;
     onOpenChange?: (open: boolean) => void;
 }
-
-const CREATE_TREASURY_CONTEXT_QUERY = "/?context=create_treasury";
 
 export function TreasurySelector({
     reducedMode = false,
@@ -56,9 +52,6 @@ export function TreasurySelector({
     const lockSelectOutside = useOnboardingStore(
         (state) => state.lockSelectOutside,
     );
-    const { data: creationStatus } = useTreasuryCreationStatus();
-    const creationAvailable = creationStatus?.creationAvailable ?? true;
-    const [showLowBalanceModal, setShowLowBalanceModal] = useState(false);
 
     const memberTreasuries = useMemo(
         () => treasuries.filter((treasury) => treasury.isMember),
@@ -115,6 +108,7 @@ export function TreasurySelector({
     };
 
     const displayName = config ? (config.name ?? treasuryId) : t("select");
+    const createTreasuryRoute = `/create?returnTo=${encodeURIComponent(pathname || "/")}`;
 
     return (
         <>
@@ -267,23 +261,13 @@ export function TreasurySelector({
                         variant="ghost"
                         type="button"
                         className="w-full justify-start gap-2 px-3.5!"
-                        onClick={() => {
-                            if (!creationAvailable) {
-                                setShowLowBalanceModal(true);
-                            } else {
-                                router.push(CREATE_TREASURY_CONTEXT_QUERY);
-                            }
-                        }}
+                        onClick={() => router.push(createTreasuryRoute)}
                     >
                         <span className="text-lg">+</span>
                         <span>{t("createTreasury")}</span>
                     </Button>
                 </SelectContent>
             </Select>
-            <CreationDisabledModal
-                open={showLowBalanceModal}
-                onClose={() => setShowLowBalanceModal(false)}
-            />
         </>
     );
 }

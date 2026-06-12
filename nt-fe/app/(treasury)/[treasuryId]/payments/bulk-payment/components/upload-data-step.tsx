@@ -600,7 +600,7 @@ export function UploadDataStep({
                                                                         key={
                                                                             idx
                                                                         }
-                                                                        className="text-sm text-destructive break-all wrap-anywhere"
+                                                                        className="text-sm text-destructive break-word wrap-anywhere"
                                                                     >
                                                                         {
                                                                             error.message
@@ -658,7 +658,7 @@ export function UploadDataStep({
                                                                         key={
                                                                             idx
                                                                         }
-                                                                        className="text-sm text-destructive break-all wrap-anywhere"
+                                                                        className="text-sm text-destructive break-word wrap-anywhere"
                                                                     >
                                                                         {
                                                                             error.message

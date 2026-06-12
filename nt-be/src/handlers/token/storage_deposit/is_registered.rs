@@ -28,7 +28,7 @@ pub struct StorageDepositResponse {
 }
 
 /// Check storage deposit for a single token
-async fn check_storage_deposit(
+pub(crate) async fn check_storage_deposit(
     state: &Arc<AppState>,
     account_id: AccountId,
     token_id: AccountId,

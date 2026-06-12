@@ -246,6 +246,12 @@ pub async fn create_treasury_stream(
 
     tokio::spawn(async move {
         if let Err(evt) = run_creation(state, payload, tx.clone()).await {
+            log::error!(
+                "Treasury creation failed: step={}, status={}, message={}",
+                evt.step,
+                evt.status,
+                evt.message.as_deref().unwrap_or("unknown error")
+            );
             let _ = tx.send(evt).await;
         }
     });
@@ -305,7 +311,7 @@ async fn run_creation(
     };
 
     let args = prepare_args(&payload, &creation_policy).map_err(|e| {
-        eprintln!("Error preparing args: {}", e);
+        log::error!("Error preparing args: {}", e);
         ProgressEvent {
             step: "error",
             status: "error",
@@ -323,7 +329,7 @@ async fn run_creation(
         .send_to(&state.network)
         .await
         .map_err(|e| {
-            eprintln!("Error creating treasury: {}", e);
+            log::error!("Error creating treasury: {}", e);
             ProgressEvent {
                 step: "error",
                 status: "error",
@@ -333,7 +339,7 @@ async fn run_creation(
         })?
         .into_result()
         .map_err(|e| {
-            eprintln!("Error creating treasury: {}", e);
+            log::error!("Error creating treasury: {}", e);
             ProgressEvent {
                 step: "error",
                 status: "error",
@@ -424,7 +430,7 @@ async fn run_creation(
         .fetch_from(&state.network)
         .await
         .map_err(|e| {
-            eprintln!("Error fetching near balance: {}", e);
+            log::error!("Error fetching near balance: {}", e);
             ProgressEvent {
                 step: "error",
                 status: "error",

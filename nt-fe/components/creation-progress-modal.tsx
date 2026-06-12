@@ -3,7 +3,6 @@
 import { Check, Loader2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/button";
 import {
     Dialog,
     DialogContent,
@@ -22,7 +21,6 @@ interface CreationProgressModalProps {
     steps: CreationStep[];
     error?: string | null;
     treasuryId?: string | null;
-    onNavigate: () => void;
     onClose: () => void;
 }
 
@@ -58,7 +56,6 @@ export function CreationProgressModal({
     steps,
     error,
     treasuryId,
-    onNavigate,
     onClose,
 }: CreationProgressModalProps) {
     const t = useTranslations("progressModal");
@@ -112,12 +109,6 @@ export function CreationProgressModal({
                     <p className="text-sm text-general-destructive-foreground">
                         {error}
                     </p>
-                )}
-
-                {isDone && (
-                    <Button className="w-full mt-2" onClick={onNavigate}>
-                        {t("viewTreasury")}
-                    </Button>
                 )}
             </DialogContent>
         </Dialog>

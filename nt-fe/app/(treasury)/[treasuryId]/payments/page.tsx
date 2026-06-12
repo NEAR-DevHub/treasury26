@@ -44,7 +44,11 @@ import { generateIntent, getIntentsQuote } from "@/lib/api";
 import type { IntentsQuoteResponse } from "@/lib/api";
 import Big from "@/lib/big";
 import { getBlockchainType } from "@/lib/blockchain-utils";
-import { buildIntentsTransferProposal } from "@/lib/near-proposal-builders";
+import {
+    buildIntentsTransferProposal,
+    buildNativeNearIntentsKind,
+    buildNearFtIntentsKind,
+} from "@/lib/near-proposal-builders";
 import {
     isEthImplicitNearAddress,
     isValidNearAddressFormat,
@@ -76,12 +80,7 @@ import {
     isNearChainNativeToken,
 } from "@/lib/intents-fee";
 import { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
-import {
-    buildDirectTransferKind,
-    buildDirectFtStorageDepositTxs,
-    buildNativeNEARIntentsProposal,
-    buildNearFtIntentsProposal,
-} from "./utils/proposal-builder";
+import { buildDirectTransferKind } from "./utils/proposal-builder";
 
 function buildPaymentFormSchema(messages: {
     recipientMin: string;
@@ -991,9 +990,6 @@ export default function PaymentsPage() {
 
             let description = encodeToMarkdown({ notes: data.memo || "" });
             let proposalKind: FunctionCallKind | TransferKind;
-            let additionalTransactions:
-                | Array<{ receiverId: string; actions: any[] }>
-                | undefined;
 
             if (shouldUseIntents) {
                 const tokenForQuote = tokenClassification.tokenForIntentsQuote;
@@ -1047,7 +1043,6 @@ export default function PaymentsPage() {
                     description = buildIntentTransferDescription(data, quote);
                     const { depositAddress, amountIn } = quote.quote;
 
-                    let result;
                     if (isIntentsToken(data.token)) {
                         proposalKind = buildIntentsTransferProposal(
                             data.token.address,
@@ -1055,21 +1050,16 @@ export default function PaymentsPage() {
                             amountIn,
                         );
                     } else if (isNearNativeToken) {
-                        result = await buildNativeNEARIntentsProposal({
-                            treasuryId: treasuryId!,
+                        proposalKind = buildNativeNearIntentsKind(
                             depositAddress,
                             amountIn,
-                        });
-                        proposalKind = result.kind;
-                        additionalTransactions = result.additionalTransactions;
+                        );
                     } else {
-                        result = await buildNearFtIntentsProposal({
-                            tokenAddress: data.token.address,
+                        proposalKind = buildNearFtIntentsKind(
+                            data.token.address,
                             depositAddress,
                             amountIn,
-                        });
-                        proposalKind = result.kind;
-                        additionalTransactions = result.additionalTransactions;
+                        );
                     }
                 }
             } else {
@@ -1080,16 +1070,6 @@ export default function PaymentsPage() {
                     directTransferAmount,
                     isConfidential,
                 );
-
-                if (isNearFtToken) {
-                    const storageTxs = await buildDirectFtStorageDepositTxs(
-                        trimmedAddress,
-                        data.token.address,
-                    );
-                    if (storageTxs.length > 0) {
-                        additionalTransactions = storageTxs;
-                    }
-                }
             }
 
             await createProposal(tPay("paymentSubmitted"), {
@@ -1099,7 +1079,6 @@ export default function PaymentsPage() {
                     kind: proposalKind!,
                 },
                 proposalBond,
-                additionalTransactions,
                 proposalType: "payment",
                 addressBookPayment: isAddressBookRecipientSelected,
             })

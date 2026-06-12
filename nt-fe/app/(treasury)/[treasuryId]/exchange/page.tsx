@@ -829,7 +829,6 @@ export default function ExchangePage() {
                     treasuryId: selectedTreasury,
                     proposal: result.proposal,
                     proposalBond,
-                    additionalTransactions: result.additionalTransactions,
                     proposalType: "swap",
                 });
             }

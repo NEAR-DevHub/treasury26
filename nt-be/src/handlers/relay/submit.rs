@@ -165,7 +165,7 @@ impl AllowedContractsFetchOutcome {
     }
 }
 
-fn extract_intents_contract(asset_id: &str) -> Option<&str> {
+pub(crate) fn extract_intents_contract(asset_id: &str) -> Option<&str> {
     asset_id.strip_prefix("nep141:").or_else(|| {
         asset_id
             .strip_prefix("nep245:")
@@ -633,6 +633,35 @@ pub async fn relay_delegate_action(
             })?;
     }
 
+    // Step 5b: For approving votes, perform any required NEP-141 storage_deposit
+    // registrations (sponsor-paid) before the act_proposal executes the transfer.
+    // Targets are derived from the authoritative on-chain proposal kind.
+    let approved_proposal_ids =
+        crate::handlers::relay::storage_deposit::vote_approve_proposal_ids(&signed_delegate_action);
+    let mut storage_deposit_targets = HashSet::new();
+    for proposal_id in approved_proposal_ids {
+        storage_deposit_targets.extend(
+            crate::handlers::relay::storage_deposit::derive_targets_for_proposal(
+                &state,
+                &request.treasury_id,
+                proposal_id,
+            )
+            .await,
+        );
+    }
+    let storage_deposit_count = if storage_deposit_targets.is_empty() {
+        0
+    } else {
+        crate::handlers::relay::storage_deposit::execute_storage_deposits(
+            &state,
+            storage_deposit_targets,
+        )
+        .await
+        .map_err(|msg| error_response(StatusCode::BAD_REQUEST, msg))?
+    };
+    let storage_deposit_spent = crate::handlers::relay::storage_deposit::STORAGE_DEPOSIT_AMOUNT
+        .saturating_mul(u128::from(storage_deposit_count));
+
     // Step 6: Submit the wrapped delegate action transaction.
     let execution_result = Transaction::construct(state.signer_id.clone(), receiver_id)
         .add_action(Action::Delegate(Box::new(signed_delegate_action)))
@@ -651,7 +680,8 @@ pub async fn relay_delegate_action(
                         storage_cost.saturating_add(deposits)
                     } else {
                         deposits
-                    };
+                    }
+                    .saturating_add(storage_deposit_spent);
                     let near_spent_yocto: BigDecimal = near_spent.as_yoctonear().into();
                     let db_result = sqlx::query_as::<_, (i32,)>(
                         r#"

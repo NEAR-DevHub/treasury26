@@ -30,6 +30,7 @@ import {
     NEAR_COM_DIRECT_NETWORK_ID,
     NEAR_COM_NETWORK_NAME,
 } from "@/constants/network-ids";
+import { NEAR_CHAIN_ICONS } from "@/constants/token";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { PageCard } from "@/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/underline-tabs";
@@ -530,7 +531,7 @@ export function DepositModal({
                     id: "other:near",
                     name: "Near",
                     symbol: "Other",
-                    chainIcons: null,
+                    chainIcons: NEAR_CHAIN_ICONS,
                     chainId: "near:mainnet",
                     decimals: 24,
                 },
