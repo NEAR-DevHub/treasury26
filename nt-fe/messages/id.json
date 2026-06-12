@@ -1148,7 +1148,7 @@
         "treasuryName": "Nama Treasury",
         "treasuryNamePlaceholder": "Treasury Saya",
         "accountName": "Nama Akun",
-        "accountNameInfo": "Ini adalah nama unik akun Anda. Akan digunakan dalam URL Treasury Anda dan ditampilkan dalam transaksi untuk mengidentifikasi siapa yang mengirim pembayaran. Pilih nama yang singkat dan mudah dikenali untuk akun Anda.",
+        "accountNameInfo": "Alamat permanen treasury Anda. Digunakan di URL treasury Anda dan ditampilkan pada pembayaran. Pilih sesuatu yang singkat dan mudah dikenali - nanti tidak bisa diubah.",
         "accountPlaceholder": "treasury-saya",
         "continue": "Lanjutkan",
         "votingThreshold": "Ambang Pemungutan Suara",
@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Untuk mendukung proyek baru, TREZU menanggung semua biaya deployment dan penyimpanan jaringan satu kali.",
         "createButton": "Buat Treasury",
         "connectWalletCreate": "Hubungkan Dompet Untuk Membuat Treasury",
-        "walletNotSupportedTitle": "Dompet belum didukung",
-        "walletNotSupportedDescription": "{wallet} belum didukung, tetapi kami sedang mengerjakannya. Anda dapat melanjutkan dengan dompet NEAR yang didukung atau Ledger.",
+        "walletNotSupportedTitle": "{wallet} belum didukung",
+        "walletNotSupportedDescription": "Kami akan menambahkannya nanti. Sementara itu, masuklah dengan NEAR, Ledger, atau dompet EVM yang sudah Anda miliki.",
         "connectNear": "Hubungkan NEAR",
         "connectLedger": "Hubungkan Ledger",
         "headerDescription": "Siapkan treasury multisig untuk tim Anda atau untuk Anda sendiri",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "Pilih wallet EVM Anda",
             "signInWithNear": "Masuk dengan wallet NEAR",
             "signInWithLedger": "Masuk dengan Ledger",
-            "signInWithWalletConnect": "Masuk dengan WalletConnect",
+            "signInWithWalletConnect": "Masuk dengan dompet EVM",
             "guide": {
                 "title": "Sebaiknya saya pakai metode masuk yang mana?",
                 "connectWalletTitle": "Hubungkan wallet",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Membuat Treasury...",
         "titleDone": "Treasury Dibuat",
-        "titleFailed": "Pembuatan Treasury Gagal",
-        "viewTreasury": "Lihat Treasury"
+        "titleFailed": "Pembuatan Treasury Gagal"
     },
     "memberValidation": {
         "noManagePermission": "Anda tidak memiliki izin untuk mengelola anggota",
@@ -1825,6 +1824,7 @@
     "exchangeErrors": {
         "noRoute": "Tidak ada pertukaran ditemukan. Coba jumlah lebih kecil atau token berbeda.",
         "amountTooLow": "Jumlah terlalu rendah untuk swap. Swap lintas-rantai memerlukan minimum lebih tinggi untuk menutupi biaya jaringan.",
+        "amountTooLowWithMin": "Jumlah terlalu rendah untuk menutupi biaya jaringan. Masukkan minimal {min} {token}.",
         "insufficientBalance": "Saldo tidak mencukupi untuk swap ini.",
         "networkError": "Kesalahan jaringan. Silakan periksa koneksi Anda dan coba lagi.",
         "fetchFailed": "Gagal mengambil kuotasi"

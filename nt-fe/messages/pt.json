@@ -1148,7 +1148,7 @@
         "treasuryName": "Nome da tesouraria",
         "treasuryNamePlaceholder": "Minha tesouraria",
         "accountName": "Nome da conta",
-        "accountNameInfo": "Este é o nome único da sua conta. Será usado na URL da sua tesouraria e exibido nas transações para identificar quem enviou o pagamento. Escolha um nome curto e reconhecível para sua conta.",
+        "accountNameInfo": "O endereco permanente da sua tesouraria. E usado na URL da sua tesouraria e exibido nos pagamentos. Escolha algo curto e reconhecivel - nao pode ser alterado depois.",
         "accountPlaceholder": "minha-tesouraria",
         "continue": "Continuar",
         "votingThreshold": "Limite de votação",
@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Para apoiar novos projetos, a TREZU cobre todas as taxas únicas de implantação e armazenamento de rede.",
         "createButton": "Criar tesouraria",
         "connectWalletCreate": "Conecte a carteira para criar a tesouraria",
-        "walletNotSupportedTitle": "Carteira ainda não suportada",
-        "walletNotSupportedDescription": "{wallet} ainda não é suportada, mas estamos trabalhando nisso. Você pode continuar usando uma carteira NEAR suportada ou Ledger.",
+        "walletNotSupportedTitle": "{wallet} ainda não é suportada",
+        "walletNotSupportedDescription": "Vamos adicionar isso depois. Enquanto isso, faça login com NEAR, Ledger ou carteiras EVM, a que você já tiver.",
         "connectNear": "Conectar NEAR",
         "connectLedger": "Conectar Ledger",
         "headerDescription": "Configure uma tesouraria multisig para sua equipe ou para você",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "Escolha suas carteiras EVM",
             "signInWithNear": "Entrar com carteiras NEAR",
             "signInWithLedger": "Entrar com Ledger",
-            "signInWithWalletConnect": "Entrar com WalletConnect",
+            "signInWithWalletConnect": "Entrar com carteiras EVM",
             "guide": {
                 "title": "Qual tipo de login devo usar?",
                 "connectWalletTitle": "Conectar uma carteira",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Criando tesouraria...",
         "titleDone": "Tesouraria criada",
-        "titleFailed": "Falha na criação da tesouraria",
-        "viewTreasury": "Ver tesouraria"
+        "titleFailed": "Falha na criação da tesouraria"
     },
     "memberValidation": {
         "noManagePermission": "Você não tem permissão para gerenciar membros",
@@ -1825,6 +1824,7 @@
     "exchangeErrors": {
         "noRoute": "Nenhuma troca encontrada. Tente um valor menor ou um token diferente.",
         "amountTooLow": "Valor muito baixo para o swap. Swaps multichain exigem um mínimo maior para cobrir as taxas de rede.",
+        "amountTooLowWithMin": "O valor é muito baixo para cobrir as taxas de rede. Insira pelo menos {min} {token}.",
         "insufficientBalance": "Saldo insuficiente para este swap.",
         "networkError": "Erro de rede. Por favor, verifique sua conexão e tente novamente.",
         "fetchFailed": "Falha ao obter cotação"

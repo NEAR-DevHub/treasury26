@@ -1148,7 +1148,7 @@
         "treasuryName": "Назва скарбниці",
         "treasuryNamePlaceholder": "Моя скарбниця",
         "accountName": "Назва облікового запису",
-        "accountNameInfo": "Це унікальне ім'я облікового запису. Воно буде в URL вашої скарбниці та відображатиметься у транзакціях. Оберіть коротке впізнаване ім'я.",
+        "accountNameInfo": "Це постійна адреса вашої скарбниці. Вона використовується в URL вашої скарбниці та відображається в платежах. Оберіть щось коротке й упізнаване - пізніше це не можна змінити.",
         "accountPlaceholder": "moya-skarbnytsya",
         "continue": "Продовжити",
         "votingThreshold": "Поріг голосування",
@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Щоб підтримати нові проєкти, TREZU покриває всі одноразові комісії за розгортання та мережеве сховище.",
         "createButton": "Створити скарбницю",
         "connectWalletCreate": "Підключіть гаманець для створення скарбниці",
-        "walletNotSupportedTitle": "Гаманець ще не підтримується",
-        "walletNotSupportedDescription": "{wallet} ще не підтримується, але ми над цим працюємо. Ви можете продовжити з підтримуваним гаманцем NEAR або Ledger.",
+        "walletNotSupportedTitle": "{wallet} ще не підтримується",
+        "walletNotSupportedDescription": "Ми додамо це пізніше. Поки що увійдіть через NEAR, Ledger або EVM-гаманці — залежно від того, що у вас вже є.",
         "connectNear": "Підключити NEAR",
         "connectLedger": "Підключити Ledger",
         "headerDescription": "Налаштуйте мультипідписну скарбницю для вашої команди або для себе",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "Оберіть ваші EVM-гаманці",
             "signInWithNear": "Увійти через NEAR-гаманці",
             "signInWithLedger": "Увійти через Ledger",
-            "signInWithWalletConnect": "Увійти через WalletConnect",
+            "signInWithWalletConnect": "Увійти через EVM-гаманці",
             "guide": {
                 "title": "Який спосіб входу обрати?",
                 "connectWalletTitle": "Підключити гаманець",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Створення скарбниці...",
         "titleDone": "Скарбницю створено",
-        "titleFailed": "Не вдалось створити скарбницю",
-        "viewTreasury": "Переглянути скарбницю"
+        "titleFailed": "Не вдалось створити скарбницю"
     },
     "memberValidation": {
         "noManagePermission": "У вас немає прав керувати учасниками",
@@ -1825,6 +1824,7 @@
     "exchangeErrors": {
         "noRoute": "Обмін не знайдено. Спробуйте меншу суму або інший токен.",
         "amountTooLow": "Сума надто мала для свопу. Міжмережеві свопи потребують більшого мінімуму для покриття мережевих комісій.",
+        "amountTooLowWithMin": "Сума занадто мала, щоб покрити мережеві комісії. Введіть щонайменше {min} {token}.",
         "insufficientBalance": "Недостатньо балансу для цього свопу.",
         "networkError": "Помилка мережі. Перевірте з'єднання та спробуйте ще раз.",
         "fetchFailed": "Не вдалось отримати котирування"

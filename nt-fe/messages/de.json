@@ -1148,7 +1148,7 @@
         "treasuryName": "Treasury-Name",
         "treasuryNamePlaceholder": "Meine Treasury",
         "accountName": "Kontoname",
-        "accountNameInfo": "Dies ist der eindeutige Name Ihres Kontos. Er wird in Ihrer Treasury-URL verwendet und in Transaktionen angezeigt, um zu identifizieren, wer die Zahlung gesendet hat. Wählen Sie einen kurzen, einprägsamen Namen für Ihr Konto.",
+        "accountNameInfo": "Die permanente Adresse Ihrer Treasury. Sie wird in Ihrer Treasury-URL verwendet und bei Zahlungen angezeigt. Wahlen Sie etwas Kurzes und Wiedererkennbares - es kann spater nicht geandert werden.",
         "accountPlaceholder": "meine-treasury",
         "continue": "Weiter",
         "votingThreshold": "Abstimmungsschwellenwert",
@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Zur Unterstützung neuer Projekte übernimmt TREZU alle einmaligen Bereitstellungs- und Netzwerkspeichergebühren.",
         "createButton": "Treasury erstellen",
         "connectWalletCreate": "Wallet verbinden, um Treasury zu erstellen",
-        "walletNotSupportedTitle": "Wallet wird noch nicht unterstützt",
-        "walletNotSupportedDescription": "{wallet} wird noch nicht unterstützt, aber wir arbeiten daran. Du kannst mit einer unterstützten NEAR-Wallet oder Ledger fortfahren.",
+        "walletNotSupportedTitle": "{wallet} wird noch nicht unterstützt",
+        "walletNotSupportedDescription": "Wir fügen es später hinzu. In der Zwischenzeit melde dich mit NEAR, Ledger oder EVM-Wallets an - je nachdem, was du bereits hast.",
         "connectNear": "NEAR verbinden",
         "connectLedger": "Ledger verbinden",
         "headerDescription": "Richte eine Multisig-Treasury für dein Team oder für dich selbst ein",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "Wähle deine EVM-Wallets",
             "signInWithNear": "Mit NEAR-Wallets anmelden",
             "signInWithLedger": "Mit Ledger anmelden",
-            "signInWithWalletConnect": "Mit WalletConnect anmelden",
+            "signInWithWalletConnect": "Mit EVM-Wallets anmelden",
             "guide": {
                 "title": "Welche Anmeldung soll ich verwenden?",
                 "connectWalletTitle": "Wallet verbinden",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Treasury wird erstellt...",
         "titleDone": "Treasury erstellt",
-        "titleFailed": "Treasury-Erstellung fehlgeschlagen",
-        "viewTreasury": "Treasury anzeigen"
+        "titleFailed": "Treasury-Erstellung fehlgeschlagen"
     },
     "memberValidation": {
         "noManagePermission": "Sie haben keine Berechtigung, Mitglieder zu verwalten",
@@ -1825,6 +1824,7 @@
     "exchangeErrors": {
         "noRoute": "Kein Tausch gefunden. Versuchen Sie einen kleineren Betrag oder ein anderes Token.",
         "amountTooLow": "Betrag zu niedrig für den Tausch. Cross-Chain-Tausche erfordern ein höheres Minimum, um Netzwerkgebühren abzudecken.",
+        "amountTooLowWithMin": "Der Betrag ist zu niedrig, um die Netzwerkgebühren zu decken. Geben Sie mindestens {min} {token} ein.",
         "insufficientBalance": "Unzureichendes Guthaben für diesen Tausch.",
         "networkError": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
         "fetchFailed": "Abrufen des Angebots fehlgeschlagen"

@@ -1148,7 +1148,7 @@
         "treasuryName": "金库名称",
         "treasuryNamePlaceholder": "我的金库",
         "accountName": "账户名称",
-        "accountNameInfo": "这是您账户的唯一名称。它将用于您的金库 URL,并显示在交易中以标识付款人。请为您的账户选择一个简短易识别的名称。",
+        "accountNameInfo": "这是您金库的永久地址。它会用于您的金库 URL，并显示在付款中。请选择简短且易于识别的名称 - 之后无法更改。",
         "accountPlaceholder": "my-treasury",
         "continue": "继续",
         "votingThreshold": "投票阈值",
@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "为支持新项目,TREZU 承担所有一次性部署及网络存储费用。",
         "createButton": "创建金库",
         "connectWalletCreate": "连接钱包以创建金库",
-        "walletNotSupportedTitle": "该钱包暂不支持",
-        "walletNotSupportedDescription": "{wallet} 暂不支持，但我们正在适配中。你可以使用受支持的 NEAR 钱包或 Ledger 继续。",
+        "walletNotSupportedTitle": "{wallet} 暂不支持",
+        "walletNotSupportedDescription": "我们之后会补上。现在你可以使用已支持的 NEAR、Ledger 或 EVM 钱包登录。",
         "connectNear": "连接 NEAR",
         "connectLedger": "连接 Ledger",
         "headerDescription": "为你的团队或你自己设置一个多签金库",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "选择你的 EVM 钱包",
             "signInWithNear": "使用 NEAR 钱包登录",
             "signInWithLedger": "使用 Ledger 登录",
-            "signInWithWalletConnect": "使用 WalletConnect 登录",
+            "signInWithWalletConnect": "使用 EVM 钱包登录",
             "guide": {
                 "title": "我应该使用哪种登录方式？",
                 "connectWalletTitle": "连接钱包",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "正在创建金库...",
         "titleDone": "金库已创建",
-        "titleFailed": "金库创建失败",
-        "viewTreasury": "查看金库"
+        "titleFailed": "金库创建失败"
     },
     "memberValidation": {
         "noManagePermission": "您没有管理成员的权限",
@@ -1825,6 +1824,7 @@
     "exchangeErrors": {
         "noRoute": "未找到兑换路径。请尝试更小的金额或不同的代币。",
         "amountTooLow": "兑换金额过低。跨链兑换需要更高的最低金额以支付网络手续费。",
+        "amountTooLowWithMin": "金额过低,无法支付网络手续费。请输入至少 {min} {token}。",
         "insufficientBalance": "此次兑换余额不足。",
         "networkError": "网络错误。请检查您的连接并再试一次。",
         "fetchFailed": "获取报价失败"

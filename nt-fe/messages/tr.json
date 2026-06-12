@@ -1148,7 +1148,7 @@
         "treasuryName": "Hazine Adı",
         "treasuryNamePlaceholder": "Hazinem",
         "accountName": "Hesap Adı",
-        "accountNameInfo": "Bu, hesabınızın benzersiz adıdır. Hazine URL'nizde kullanılacak ve ödemeyi kimin gönderdiğini tanımlamak için işlemlerde gösterilecek. Hesabınız için kısa, tanınabilir bir ad seçin.",
+        "accountNameInfo": "Hazinenizin kalici adresi. Hazine URL'nizde kullanilir ve odemelerde gosterilir. Kisa ve kolay taninan bir sey secin - daha sonra degistirilemez.",
         "accountPlaceholder": "hazinem",
         "continue": "Devam Et",
         "votingThreshold": "Oylama Eşiği",
@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Yeni projeleri desteklemek için TREZU, tüm tek seferlik dağıtım ve ağ depolama ücretlerini karşılar.",
         "createButton": "Hazine Oluştur",
         "connectWalletCreate": "Hazine Oluşturmak İçin Cüzdan Bağla",
-        "walletNotSupportedTitle": "Cüzdan henüz desteklenmiyor",
-        "walletNotSupportedDescription": "{wallet} henüz desteklenmiyor, ancak bunun üzerinde çalışıyoruz. Desteklenen bir NEAR cüzdanı veya Ledger ile devam edebilirsiniz.",
+        "walletNotSupportedTitle": "{wallet} henüz desteklenmiyor",
+        "walletNotSupportedDescription": "Bunu daha sonra ekleyeceğiz. Bu arada, elinizde hangisi varsa NEAR, Ledger veya EVM Cüzdanları ile giriş yapabilirsiniz.",
         "connectNear": "NEAR'a Bağlan",
         "connectLedger": "Ledger'a Bağlan",
         "headerDescription": "Ekibiniz veya kendiniz için bir multisig hazine kurun",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "EVM cüzdanınızı seçin",
             "signInWithNear": "NEAR cüzdanlarıyla giriş yap",
             "signInWithLedger": "Ledger ile giriş yap",
-            "signInWithWalletConnect": "WalletConnect ile giriş yap",
+            "signInWithWalletConnect": "EVM Cüzdanları ile giriş yap",
             "guide": {
                 "title": "Hangi giriş yöntemini kullanmalıyım?",
                 "connectWalletTitle": "Bir cüzdan bağla",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Hazine Oluşturuluyor...",
         "titleDone": "Hazine Oluşturuldu",
-        "titleFailed": "Hazine Oluşturulamadı",
-        "viewTreasury": "Hazineyi Görüntüle"
+        "titleFailed": "Hazine Oluşturulamadı"
     },
     "memberValidation": {
         "noManagePermission": "Üyeleri yönetme izniniz yok",
@@ -1825,6 +1824,7 @@
     "exchangeErrors": {
         "noRoute": "Takas bulunamadı. Daha küçük bir miktar veya farklı bir token deneyin.",
         "amountTooLow": "Takas için miktar çok düşük. Zincirler arası takaslar ağ ücretlerini karşılamak için daha yüksek bir minimum gerektirir.",
+        "amountTooLowWithMin": "Miktar ağ ücretlerini karşılamak için çok düşük. En az {min} {token} girin.",
         "insufficientBalance": "Bu takas için yetersiz bakiye.",
         "networkError": "Ağ hatası. Lütfen bağlantınızı kontrol edin ve tekrar deneyin.",
         "fetchFailed": "Teklif alınamadı"

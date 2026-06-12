@@ -2,10 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Eye, Gift, Globe, Loader2, Shield } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Check, Gift, Globe, Loader2, Shield } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
@@ -37,14 +37,99 @@ import { useNear } from "@/stores/near-store";
 
 const ACCOUNT_SUFFIX = ".sputnik-dao.near";
 const CREATE_TREASURY_CONTEXT = "create_treasury";
+type InitialScreen = "create" | "login";
 type FormValues = {
     treasuryName: string;
     accountName: string;
     isConfidential: boolean | null;
 };
 
-export function CreateTreasuryEntry() {
+function sanitizeReturnTo(raw: string | null): string | null {
+    if (!raw) return null;
+    if (!raw.startsWith("/")) return null;
+    return raw;
+}
+
+function TreasuryTypeOption({
+    icon,
+    title,
+    description,
+    selected,
+    onClick,
+}: {
+    icon: ReactNode;
+    title: string;
+    description: string;
+    selected: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            className="h-full rounded-xl border border-general-border p-4 text-left transition hover:bg-muted/70"
+            onClick={onClick}
+        >
+            <div className="flex h-full items-start justify-between gap-3">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                        {icon}
+                        <p className="font-semibold">{title}</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        {description}
+                    </p>
+                </div>
+                <div className="self-start size-5 min-h-5 min-w-5 shrink-0 rounded-full border-2 border-general-unofficial-border-3 flex items-center justify-center">
+                    {selected && (
+                        <div className="size-2.5 rounded-full bg-foreground" />
+                    )}
+                </div>
+            </div>
+        </button>
+    );
+}
+
+function WaitlistInner({
+    gapClassName,
+    children,
+}: {
+    gapClassName: string;
+    children: ReactNode;
+}) {
+    return (
+        <div
+            className={cn(
+                "mx-auto flex w-full max-w-[580px] flex-col items-center justify-center px-4 sm:px-8 md:px-12 lg:px-[60px]",
+                gapClassName,
+            )}
+        >
+            {children}
+        </div>
+    );
+}
+
+function WaitlistActionButton({
+    className,
+    ...props
+}: React.ComponentProps<typeof Button>) {
+    return (
+        <Button
+            className={cn(
+                "min-h-9 w-full rounded-lg px-4 py-2 text-sm leading-5 tracking-normal",
+                className,
+            )}
+            {...props}
+        />
+    );
+}
+
+export function TreasuryOnboardingPage({
+    initialScreen = "create",
+}: {
+    initialScreen?: InitialScreen;
+}) {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const queryClient = useQueryClient();
     const t = useTranslations("createTreasury");
@@ -69,12 +154,18 @@ export function CreateTreasuryEntry() {
     const [createdTreasuryId, setCreatedTreasuryId] = useState<string | null>(
         null,
     );
-    const [showLoginScreen, setShowLoginScreen] = useState(false);
+    const [showLoginScreen, setShowLoginScreen] = useState(
+        initialScreen === "login",
+    );
     const [forceStayOnCreatePage, setForceStayOnCreatePage] = useState(false);
     const [waitlistContact, setWaitlistContact] = useState("");
     const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
     const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
     const [showWaitlist, setShowWaitlist] = useState(false);
+    const waitlistCardClassName =
+        "mx-auto h-[516px] w-full max-w-[600px] items-center justify-center gap-5 overflow-hidden rounded-xl border border-border bg-card p-4";
+    const waitlistSubtextClassName =
+        "w-full text-center text-sm leading-5 tracking-normal text-muted-foreground";
 
     const preferredTreasuryId =
         (lastTreasuryId &&
@@ -82,18 +173,26 @@ export function CreateTreasuryEntry() {
             lastTreasuryId) ||
         treasuries[0]?.daoId;
     const shouldStayOnCreatePage =
+        pathname === "/create" ||
         searchParams.get("context") === CREATE_TREASURY_CONTEXT;
+    const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
     const shouldKeepUserOnCreatePage =
         shouldStayOnCreatePage || forceStayOnCreatePage;
 
     useEffect(() => {
         if (shouldKeepUserOnCreatePage) return;
         if (!accountId || isLoading) return;
-        if (!preferredTreasuryId) return;
+        if (!preferredTreasuryId) {
+            if (pathname === "/") {
+                router.replace("/create");
+            }
+            return;
+        }
         router.replace(`/${preferredTreasuryId}`);
     }, [
         accountId,
         isLoading,
+        pathname,
         preferredTreasuryId,
         router,
         shouldKeepUserOnCreatePage,
@@ -266,6 +365,7 @@ export function CreateTreasuryEntry() {
                     queryClient.invalidateQueries({
                         queryKey: ["userTreasuries", accountId],
                     });
+                    router.push(`/${treasuryId}`);
                     return;
                 }
 
@@ -307,7 +407,7 @@ export function CreateTreasuryEntry() {
 
     const createFormBody = (
         <>
-            <div className="mx-auto mt-6 w-full max-w-[668px] space-y-3 md:mt-10">
+            <div className="mx-auto mt-8 w-full max-w-[600px] space-y-3 md:mt-10">
                 <PageCard className="">
                     <Form {...form}>
                         <form
@@ -323,82 +423,33 @@ export function CreateTreasuryEntry() {
                                 {t("selectTreasuryTypeLabel")}
                             </p>
                             <div className="grid gap-3 md:grid-cols-2">
-                                <button
-                                    type="button"
-                                    className={cn(
-                                        "rounded-xl border border-general-border p-4 text-left transition hover:bg-muted/70",
-                                    )}
+                                <TreasuryTypeOption
+                                    icon={
+                                        <Globe className="size-4 text-foreground" />
+                                    }
+                                    title={t("public")}
+                                    description={t("publicCardDescription")}
+                                    selected={isConfidential === false}
                                     onClick={() =>
                                         form.setValue("isConfidential", false)
                                     }
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <Globe
-                                                    className={
-                                                        "size-4 text-foreground"
-                                                    }
-                                                />
-                                                <p className="font-semibold">
-                                                    {t("public")}
-                                                </p>
-                                            </div>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t("publicCardDescription")}
-                                            </p>
-                                        </div>
-                                        <div
-                                            className={cn(
-                                                "mt-1 size-5 min-h-5 min-w-5 shrink-0 rounded-full border-2 border-general-unofficial-border-3 bg-[rgba(0,0,0,0.05)] flex items-center justify-center",
-                                            )}
-                                        >
-                                            {isConfidential === false && (
-                                                <div className="size-2.5 rounded-full bg-foreground" />
-                                            )}
-                                        </div>
-                                    </div>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className={cn(
-                                        "rounded-xl border border-general-border p-4 text-left transition hover:bg-muted/70",
+                                />
+                                <TreasuryTypeOption
+                                    icon={
+                                        <Shield
+                                            className="size-4 text-foreground"
+                                            fill="currentColor"
+                                        />
+                                    }
+                                    title={t("confidential")}
+                                    description={t(
+                                        "confidentialCardDescription",
                                     )}
+                                    selected={isConfidential === true}
                                     onClick={() =>
                                         form.setValue("isConfidential", true)
                                     }
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <Shield
-                                                    className={
-                                                        "size-4 text-foreground"
-                                                    }
-                                                    fill="currentColor"
-                                                />
-                                                <p className="font-semibold">
-                                                    {t("confidential")}
-                                                </p>
-                                            </div>
-                                            <p className="text-sm text-muted-foreground">
-                                                {t(
-                                                    "confidentialCardDescription",
-                                                )}
-                                            </p>
-                                        </div>
-                                        <div
-                                            className={cn(
-                                                "mt-1 size-5 min-h-5 min-w-5 shrink-0 rounded-full border-2 border-general-unofficial-border-3 bg-[rgba(0,0,0,0.05)] flex items-center justify-center",
-                                            )}
-                                        >
-                                            {isConfidential === true && (
-                                                <div className="size-2.5 rounded-full bg-foreground" />
-                                            )}
-                                        </div>
-                                    </div>
-                                </button>
+                                />
                             </div>
 
                             <FormField
@@ -530,12 +581,14 @@ export function CreateTreasuryEntry() {
     );
 
     const loginScreenBody = (
-        <div className="mx-auto mt-6 w-full max-w-[668px] md:mt-8">
+        <div className="mx-auto mt-8 w-full max-w-[600px] md:mt-8">
             <ConnectWalletSelector
-                source="/"
-                connectFlow="onboarding"
+                source={shouldStayOnCreatePage ? "/create" : "/"}
+                connectFlow={
+                    shouldStayOnCreatePage ? "onboarding" : "within_treasury"
+                }
                 isConnectingWallet={isAuthenticating}
-                onBack={() => setShowLoginScreen(false)}
+                onBack={returnTo ? () => router.push(returnTo) : undefined}
                 onConnectSupported={async (walletId?: string) => {
                     if (authError) clearError();
                     await connect(walletId);
@@ -545,30 +598,23 @@ export function CreateTreasuryEntry() {
     );
 
     const waitlistBody = (
-        <div className="mx-auto mt-6 w-full max-w-[668px] space-y-3 md:mt-10">
-            <PageCard className="py-20">
-                <div className="mx-auto w-full max-w-[580px] space-y-6">
-                    <div className="space-y-2">
-                        {isWaitlistSubmitted && (
-                            <div className="mx-auto size-14 rounded-full bg-general-success-background-faded flex items-center justify-center">
-                                <Check className="size-8 text-general-success-foreground" />
+        <div className="mx-auto mt-6 w-full max-w-[600px] space-y-3 md:mt-10">
+            <PageCard className={waitlistCardClassName}>
+                {!isWaitlistSubmitted ? (
+                    <WaitlistInner gapClassName="gap-8">
+                        <div className="flex w-full flex-col items-center justify-center gap-2">
+                            <h1 className="w-full text-center text-2xl leading-7 font-semibold text-foreground">
+                                {tLanding("waitlistTitle")}
+                            </h1>
+                            <div className="flex w-full flex-col items-center gap-1">
+                                <p className={waitlistSubtextClassName}>
+                                    {tLanding("waitlistDescription")}
+                                </p>
                             </div>
-                        )}
-                        <h1 className="text-center text-2xl font-semibold tracking-tight">
-                            {isWaitlistSubmitted
-                                ? tLanding("waitlistSubmittedTitle")
-                                : tLanding("waitlistTitle")}
-                        </h1>
-                        <p className="mx-auto max-w-[560px] text-center text-sm text-muted-foreground">
-                            {isWaitlistSubmitted
-                                ? tLanding("waitlistSubmittedDescription")
-                                : tLanding("waitlistDescription")}
-                        </p>
-                    </div>
+                        </div>
 
-                    {!isWaitlistSubmitted && (
-                        <div className="space-y-5">
-                            <div>
+                        <div className="flex w-full flex-col gap-5">
+                            <div className="flex w-full flex-col gap-1">
                                 <LargeInput
                                     value={waitlistContact}
                                     onChange={(e) =>
@@ -578,65 +624,88 @@ export function CreateTreasuryEntry() {
                                         "waitlistInputPlaceholder",
                                     )}
                                     borderless
-                                    className="px-3 bg-muted border-none focus-visible:ring-0 text-sm!"
+                                    className="h-9 rounded-lg border-none bg-muted px-3 py-2 text-sm! leading-5 tracking-normal focus-visible:ring-0 focus-visible:ring-offset-0"
                                 />
+                                <p className="w-full text-xs leading-4 tracking-normal text-muted-foreground">
+                                    {tLanding("waitlistPrivacyNote")}
+                                </p>
                             </div>
-                            <Button
-                                className="w-full"
-                                onClick={async () => {
-                                    if (!waitlistContact.trim()) return;
-                                    setIsSubmittingWaitlist(true);
-                                    try {
-                                        await submitWhitelistRequest({
-                                            contact: waitlistContact.trim(),
-                                            accountId: accountId ?? undefined,
-                                        });
-                                        setIsWaitlistSubmitted(true);
-                                    } catch {
-                                        toast.error(
-                                            tLanding("waitlistSubmitFailed"),
-                                        );
-                                    } finally {
-                                        setIsSubmittingWaitlist(false);
-                                    }
-                                }}
-                                disabled={
-                                    isSubmittingWaitlist ||
-                                    !waitlistContact.trim()
-                                }
-                            >
-                                {isSubmittingWaitlist && (
-                                    <Loader2 className="size-4 animate-spin" />
-                                )}
-                                {tLanding("waitlistSubmit")}
-                            </Button>
-                        </div>
-                    )}
 
-                    {isWaitlistSubmitted ? (
-                        <Button
-                            variant="secondary"
-                            className="w-full"
-                            onClick={() => router.push(APP_ACTIVE_TREASURY)}
-                        >
-                            <Eye className="size-5" />
-                            {tLanding("waitlistSeeDemo")}
-                        </Button>
-                    ) : (
-                        <p className="text-center text-sm text-muted-foreground">
-                            {tLanding("waitlistLookAroundFirst")}{" "}
-                            <Button
-                                type="button"
-                                variant="unstyled"
-                                className="h-auto p-0 text-primary underline"
+                            <div className="flex w-full flex-col gap-3">
+                                <WaitlistActionButton
+                                    onClick={async () => {
+                                        if (!waitlistContact.trim()) return;
+                                        setIsSubmittingWaitlist(true);
+                                        try {
+                                            await submitWhitelistRequest({
+                                                contact: waitlistContact.trim(),
+                                                accountId:
+                                                    accountId ?? undefined,
+                                            });
+                                            setIsWaitlistSubmitted(true);
+                                        } catch {
+                                            toast.error(
+                                                tLanding(
+                                                    "waitlistSubmitFailed",
+                                                ),
+                                            );
+                                        } finally {
+                                            setIsSubmittingWaitlist(false);
+                                        }
+                                    }}
+                                    disabled={
+                                        isSubmittingWaitlist ||
+                                        !waitlistContact.trim()
+                                    }
+                                >
+                                    {isSubmittingWaitlist && (
+                                        <Loader2 className="size-4 animate-spin" />
+                                    )}
+                                    {tLanding("waitlistSubmit")}
+                                </WaitlistActionButton>
+
+                                <p className={waitlistSubtextClassName}>
+                                    {tLanding("waitlistLookAroundFirst")}{" "}
+                                    <Button
+                                        type="button"
+                                        variant="unstyled"
+                                        className="h-auto p-0 text-sm font-normal leading-5 tracking-normal text-muted-foreground underline"
+                                        onClick={() =>
+                                            router.push(APP_ACTIVE_TREASURY)
+                                        }
+                                    >
+                                        {tLanding("waitlistSeeDemo")}
+                                    </Button>
+                                </p>
+                            </div>
+                        </div>
+                    </WaitlistInner>
+                ) : (
+                    <WaitlistInner gapClassName="gap-6">
+                        <div className="flex w-full flex-col items-center justify-center gap-2">
+                            <div className="inline-flex size-9 items-center justify-center rounded-full bg-general-success-background-faded">
+                                <Check className="size-5 text-general-success-foreground" />
+                            </div>
+                            <h1 className="w-full text-center text-2xl leading-7 font-semibold text-foreground">
+                                {tLanding("waitlistSubmittedTitle")}
+                            </h1>
+                            <div className="flex w-full flex-col items-center gap-1">
+                                <p className="w-full max-w-[310px] text-center text-sm leading-5 tracking-normal text-foreground">
+                                    {tLanding("waitlistSubmittedDescription")}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex w-full flex-col items-center gap-3">
+                            <WaitlistActionButton
+                                variant="secondary"
                                 onClick={() => router.push(APP_ACTIVE_TREASURY)}
                             >
                                 {tLanding("waitlistSeeDemo")}
-                            </Button>
-                            .
-                        </p>
-                    )}
-                </div>
+                            </WaitlistActionButton>
+                        </div>
+                    </WaitlistInner>
+                )}
             </PageCard>
         </div>
     );
@@ -650,16 +719,11 @@ export function CreateTreasuryEntry() {
                     error={progressError}
                     treasuryId={createdTreasuryId}
                     onClose={() => setProgressOpen(false)}
-                    onNavigate={() => {
-                        if (createdTreasuryId) {
-                            router.push(`/${createdTreasuryId}`);
-                        }
-                    }}
                 />
                 <PageComponentLayout
                     title={tPages("title")}
                     description={t("headerDescription")}
-                    backButton={shouldStayOnCreatePage}
+                    backButton={returnTo || false}
                     hideCollapseButton
                     hideSystemStatusBanner
                     transparentHeader
@@ -689,11 +753,6 @@ export function CreateTreasuryEntry() {
                 error={progressError}
                 treasuryId={createdTreasuryId}
                 onClose={() => setProgressOpen(false)}
-                onNavigate={() => {
-                    if (createdTreasuryId) {
-                        router.push(`/${createdTreasuryId}`);
-                    }
-                }}
             />
             {showWaitlist
                 ? waitlistBody

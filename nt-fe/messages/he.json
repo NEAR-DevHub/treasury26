@@ -1148,7 +1148,7 @@
         "treasuryName": "שם האוצר",
         "treasuryNamePlaceholder": "האוצר שלי",
         "accountName": "שם חשבון",
-        "accountNameInfo": "זהו שם ייחודי של החשבון שלך. הוא ישמש בכתובת ה-URL של האוצר שלך ויוצג בעסקאות כדי לזהות מי שלח את התשלום. בחר שם קצר ומוכר עבור החשבון שלך.",
+        "accountNameInfo": "הכתובת הקבועה של האוצר שלך. היא משמשת ב-URL של האוצר שלך ומוצגת בתשלומים. בחרו משהו קצר ומזוהה - אי אפשר לשנות זאת אחר כך.",
         "accountPlaceholder": "my-treasury",
         "continue": "המשך",
         "votingThreshold": "סף הצבעה",
@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "כדי לתמוך בפרויקטים חדשים, TREZU מכסה את כל עמלות הפריסה החד-פעמיות ואחסון הרשת.",
         "createButton": "צור אוצר",
         "connectWalletCreate": "התחבר לארנק כדי ליצור אוצר",
-        "walletNotSupportedTitle": "הארנק עדיין לא נתמך",
-        "walletNotSupportedDescription": "{wallet} עדיין לא נתמך, אבל אנחנו עובדים על זה. אפשר להמשיך עם ארנק NEAR נתמך או Ledger.",
+        "walletNotSupportedTitle": "{wallet} עדיין לא נתמך",
+        "walletNotSupportedDescription": "נוסיף את זה בהמשך. בינתיים אפשר להתחבר עם NEAR, Ledger או ארנקי EVM שכבר יש לכם.",
         "connectNear": "חיבור ל-NEAR",
         "connectLedger": "חיבור ל-Ledger",
         "headerDescription": "הגדר כספת מרובת חתימות לצוות שלך או לעצמך",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "בחר את ארנקי ה-EVM שלך",
             "signInWithNear": "התחבר עם ארנקי NEAR",
             "signInWithLedger": "התחבר עם Ledger",
-            "signInWithWalletConnect": "התחבר עם WalletConnect",
+            "signInWithWalletConnect": "התחבר עם ארנקי EVM",
             "guide": {
                 "title": "באיזו שיטת התחברות כדאי להשתמש?",
                 "connectWalletTitle": "חיבור ארנק",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "יוצר אוצר...",
         "titleDone": "האוצר נוצר",
-        "titleFailed": "יצירת האוצר נכשלה",
-        "viewTreasury": "הצג אוצר"
+        "titleFailed": "יצירת האוצר נכשלה"
     },
     "memberValidation": {
         "noManagePermission": "אין לך הרשאה לנהל חברים",
@@ -1825,6 +1824,7 @@
     "exchangeErrors": {
         "noRoute": "לא נמצאה החלפה. נסה סכום קטן יותר או טוקן אחר.",
         "amountTooLow": "הסכום נמוך מדי להחלפה. החלפות חוצות-רשתות דורשות מינימום גבוה יותר כדי לכסות את עמלות הרשת.",
+        "amountTooLowWithMin": "הסכום נמוך מדי לכיסוי עמלות רשת. הזן לפחות {min} {token}.",
         "insufficientBalance": "יתרה לא מספקת להחלפה זו.",
         "networkError": "שגיאת רשת. אנא בדוק את החיבור שלך ונסה שוב.",
         "fetchFailed": "אחזור הציטוט נכשל"

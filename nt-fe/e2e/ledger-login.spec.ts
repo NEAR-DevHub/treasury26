@@ -385,7 +385,7 @@ test("Ledger login flow", async ({ page, context }) => {
     });
 
     // Navigate to onboarding entry page
-    await page.goto("/");
+    await page.goto("/create");
     await page.waitForTimeout(1500); // Pause to show the initial page
 
     // Click Sign In from onboarding card footer (routes to /login?context=onboarding)

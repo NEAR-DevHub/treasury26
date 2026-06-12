@@ -1148,7 +1148,7 @@
         "treasuryName": "Tên ngân quỹ",
         "treasuryNamePlaceholder": "Ngân quỹ của tôi",
         "accountName": "Tên tài khoản",
-        "accountNameInfo": "Đây là tên duy nhất của tài khoản bạn. Nó sẽ được dùng trong URL ngân quỹ của bạn và hiển thị trong các giao dịch để xác định người gửi tiền. Hãy chọn một cái tên ngắn và dễ nhận biết cho tài khoản.",
+        "accountNameInfo": "Day la dia chi vinh vien cua kho bac cua ban. No duoc dung trong URL kho bac cua ban va hien thi tren cac khoan thanh toan. Hay chon thu gi do ngan gon, de nhan biet - sau nay khong the thay doi.",
         "accountPlaceholder": "my-treasury",
         "continue": "Tiếp tục",
         "votingThreshold": "Ngưỡng bỏ phiếu",
@@ -1183,8 +1183,8 @@
         "noDeploymentFeeDescription": "Để hỗ trợ các dự án mới, TREZU bao gồm tất cả phí triển khai một lần và phí lưu trữ mạng.",
         "createButton": "Tạo Ngân quỹ",
         "connectWalletCreate": "Kết nối ví để tạo ngân quỹ",
-        "walletNotSupportedTitle": "Ví chưa được hỗ trợ",
-        "walletNotSupportedDescription": "{wallet} hiện chưa được hỗ trợ, nhưng chúng tôi đang phát triển. Bạn có thể tiếp tục bằng ví NEAR được hỗ trợ hoặc Ledger.",
+        "walletNotSupportedTitle": "{wallet} chưa được hỗ trợ",
+        "walletNotSupportedDescription": "Chúng tôi sẽ bổ sung sau. Trong lúc này, hãy đăng nhập bằng NEAR, Ledger hoặc ví EVM mà bạn đang có.",
         "connectNear": "Kết nối NEAR",
         "connectLedger": "Kết nối Ledger",
         "headerDescription": "Thiết lập kho bạc đa chữ ký cho nhóm của bạn hoặc cho chính bạn",
@@ -1209,7 +1209,7 @@
             "chooseEvmWallet": "Chọn ví EVM của bạn",
             "signInWithNear": "Đăng nhập bằng ví NEAR",
             "signInWithLedger": "Đăng nhập bằng Ledger",
-            "signInWithWalletConnect": "Đăng nhập bằng WalletConnect",
+            "signInWithWalletConnect": "Đăng nhập bằng ví EVM",
             "guide": {
                 "title": "Tôi nên dùng cách đăng nhập nào?",
                 "connectWalletTitle": "Kết nối ví",
@@ -1448,8 +1448,7 @@
     "progressModal": {
         "titleCreating": "Đang tạo Ngân quỹ...",
         "titleDone": "Đã tạo Ngân quỹ",
-        "titleFailed": "Tạo Ngân quỹ thất bại",
-        "viewTreasury": "Xem Ngân quỹ"
+        "titleFailed": "Tạo Ngân quỹ thất bại"
     },
     "memberValidation": {
         "noManagePermission": "Bạn không có quyền quản lý thành viên",
@@ -1825,6 +1824,7 @@
     "exchangeErrors": {
         "noRoute": "Không tìm thấy giao dịch trao đổi. Hãy thử số tiền nhỏ hơn hoặc token khác.",
         "amountTooLow": "Số tiền quá thấp để hoán đổi. Hoán đổi liên chuỗi yêu cầu mức tối thiểu cao hơn để chi trả phí mạng.",
+        "amountTooLowWithMin": "Số tiền quá thấp để chi trả phí mạng. Hãy nhập ít nhất {min} {token}.",
         "insufficientBalance": "Số dư không đủ cho giao dịch hoán đổi này.",
         "networkError": "Lỗi mạng. Vui lòng kiểm tra kết nối và thử lại.",
         "fetchFailed": "Không thể lấy báo giá"

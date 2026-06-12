@@ -3,12 +3,12 @@ import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
 import { TreasuryOnboardingPage } from "@/features/onboarding/components/create-treasury-entry";
 
-export default function Page() {
+export default function CreatePage() {
     return (
         <QueryProvider>
             <NearInitializer />
             <AuthProvider>
-                <TreasuryOnboardingPage initialScreen="login" />
+                <TreasuryOnboardingPage initialScreen="create" />
             </AuthProvider>
         </QueryProvider>
     );
