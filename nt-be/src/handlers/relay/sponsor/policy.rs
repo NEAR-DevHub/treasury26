@@ -25,7 +25,6 @@ use crate::{
     handlers::relay::parse::{RelayError, error_response},
 };
 
-const SPUTNIK_DAO_SUFFIX: &str = ".sputnik-dao.near";
 /// Maximum DAO-contract storage (in bytes) the relayer will compensate for a single
 /// `add_proposal`.
 const MAX_PROPOSAL_STORAGE_BYTES: u128 = 4000;
@@ -58,16 +57,6 @@ fn cutoff() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(year, month, day, 0, 0, 0)
         .single()
         .expect("sponsorship cutoff is a valid timestamp")
-}
-
-/// Whether the treasury is a Sputnik DAO that needs storage balancing.
-///
-/// A treasury qualifies if its account id ends in `.sputnik-dao.near` OR it is
-/// tracked in `monitored_accounts` — some Sputnik DAOs run under custom account ids
-/// and are whitelisted there (registration only admits a non-suffixed account that
-/// already exists, see `services::monitored_accounts`).
-pub fn is_sputnik_treasury(treasury_id: &AccountId, is_tracked: bool) -> bool {
-    is_tracked || treasury_id.as_str().ends_with(SPUTNIK_DAO_SUFFIX)
 }
 
 /// NEAR the relayer fronts to compensate the DAO contract for the storage an
@@ -212,10 +201,6 @@ async fn fetch_treasury_deposit_bond(
 mod tests {
     use super::*;
 
-    fn acc(s: &str) -> AccountId {
-        s.parse().unwrap()
-    }
-
     fn at(year: i32, month: u32, day: u32) -> DateTime<Utc> {
         Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).unwrap()
     }
@@ -230,15 +215,6 @@ mod tests {
             SponsorshipTier::for_treasury(at(2026, 4, 1)),
             SponsorshipTier::Standard
         );
-    }
-
-    #[test]
-    fn sputnik_by_suffix_or_whitelist() {
-        // Suffix accounts are always Sputnik, tracked or not.
-        assert!(is_sputnik_treasury(&acc("dao.sputnik-dao.near"), false));
-        // Custom-named accounts only when tracked in monitored_accounts.
-        assert!(is_sputnik_treasury(&acc("astradao.near"), true));
-        assert!(!is_sputnik_treasury(&acc("astradao.near"), false));
     }
 
     #[test]

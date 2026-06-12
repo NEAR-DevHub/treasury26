@@ -26,9 +26,9 @@ use crate::AppState;
 
 use self::retry::{RetryPolicy, retry};
 
-/// The result of a relayed transaction: the debug string of the execution outcome,
-/// mined later for MPC signatures by `confidential`.
-pub type ExecutionDebug = String;
+/// The debug string of a transaction's execution outcome, mined later for MPC
+/// signatures by `confidential`.
+pub type OutcomeDebug = String;
 
 #[derive(Clone)]
 pub struct Sponsor {
@@ -81,7 +81,7 @@ impl Sponsor {
     pub async fn relay_meta_tx(
         &self,
         signed: SignedDelegateAction,
-    ) -> Result<ExecutionDebug, String> {
+    ) -> Result<OutcomeDebug, String> {
         let outer_receiver = signed.delegate_action.sender_id.clone();
         let outcome = self
             .send_retried("relay meta-tx", || async {
@@ -106,7 +106,7 @@ impl Sponsor {
         &self,
         receiver: &AccountId,
         actions: Vec<Action>,
-    ) -> Result<ExecutionDebug, String> {
+    ) -> Result<OutcomeDebug, String> {
         let outcome = self
             .send_retried("replay w_execute_signed", || async {
                 let mut transaction =

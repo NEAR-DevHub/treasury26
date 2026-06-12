@@ -6,7 +6,9 @@
 //! signed intent is submitted to the 1Click API automatically.
 
 use crate::{
-    AppState, constants::V1_SIGNER_CONTRACT_ID, handlers::relay::parse::ProposalKind,
+    AppState,
+    constants::V1_SIGNER_CONTRACT_ID,
+    handlers::relay::{effects::background, parse::ProposalKind},
     utils::cache::CacheKey,
 };
 use base64::Engine;
@@ -188,7 +190,7 @@ pub fn spawn_auto_submit_intents(
         let state = state.clone();
         let treasury_id = treasury_id.to_owned();
         let result_debug = result_debug.to_owned();
-        tokio::spawn(async move {
+        background::spawn("auto-submit confidential intent", async move {
             try_auto_submit_intent(&state, &treasury_id, &payload_hash, &result_debug).await;
         });
     }

@@ -10,14 +10,15 @@ use crate::{
     AppState,
     auth::AuthUser,
     handlers::relay::{
-        access, confidential,
+        access::{self, AuthorizedRelay},
+        confidential,
         effects::{accounting, registrations},
         parse::{
-            self, ParsedRelay, RelayError, RelayExecution, RelayRequest, RelayResponse,
-            error_response, success_response,
+            self, RelayError, RelayRequest, RelayResponse, RelaySubmission, error_response,
+            success_response,
         },
         sponsor::{
-            ExecutionDebug, Sponsor,
+            OutcomeDebug, Sponsor,
             policy::{self, SpentNear},
         },
     },
@@ -59,33 +60,27 @@ pub async fn relay_delegate_action(
             )
         })?;
 
-    // 2. Consume the signed action into the operation to sponsor and how to execute
+    // 2. Consume the signed action into the operation to sponsor and how to submit
     //    it; reject anything that is not an add_proposal/act_proposal on the treasury.
-    let ParsedRelay {
-        execution,
-        operation,
-        attached_deposit,
-    } = parse::parse_sponsored_proposals(&treasury_id, signed_delegate_action)
+    let parsed = parse::parse_sponsored_proposals(treasury_id, signed_delegate_action)
         .map_err(|msg| error_response(StatusCode::BAD_REQUEST, msg))?;
 
-    // 3. Load the treasury record (tracked ⇒ whitelisted Sputnik DAO) and authorize.
-    let treasury_record = access::fetch_treasury_record(&state, &treasury_id).await?;
-    let tier = access::authorize(
-        &state,
-        &auth_user,
-        &treasury_id,
-        &execution,
-        treasury_record.as_ref(),
-        &operation,
-    )
-    .await?;
+    // 3. Load the treasury record and authorize, consuming the parsed relay. The
+    //    returned AuthorizedRelay proves the treasury is a tracked Sputnik DAO.
+    let treasury_record = access::fetch_treasury_record(&state, &parsed.treasury_id).await?;
+    let AuthorizedRelay {
+        treasury_id,
+        submission,
+        operation,
+        attached_deposit,
+        tier,
+    } = access::authorize(&state, &auth_user, parsed, treasury_record).await?;
 
-    // 4. Bound the attached deposit, then compensate the DAO contract for the
-    //    storage a NEW proposal occupies. Only `add_proposal` grows DAO storage, so
-    //    `act_proposal`-only relays (votes) get no top-up.
-    let compensate_proposal_storage =
-        policy::is_sputnik_treasury(&treasury_id, treasury_record.is_some())
-            && operation.is_add_proposals();
+    // 4. Bound the attached deposit, then compensate the DAO contract for the storage
+    //    a NEW proposal occupies. Only `add_proposal` grows DAO storage, so
+    //    `act_proposal`-only relays (votes) get no top-up. (Authorization already
+    //    proved the treasury is a Sputnik DAO, so no further check is needed here.)
+    let compensate_proposal_storage = operation.is_add_proposals();
     let proposal_storage_cost = if compensate_proposal_storage {
         policy::proposal_storage_cost(storage_bytes.0)
     } else {
@@ -131,8 +126,8 @@ pub async fn relay_delegate_action(
 
     // 6. Submit (retried on transient send errors via on-chain nonce protection).
     //    On failure the NEAR already fronted is still recorded; no credit is spent.
-    let execution_debug = match execute_relay(&state, execution).await {
-        Ok(execution_debug) => execution_debug,
+    let outcome_debug = match submit_relay(&state, submission).await {
+        Ok(outcome_debug) => outcome_debug,
         Err(submit_error) => {
             accounting::spawn_record_spend(
                 &state,
@@ -165,26 +160,26 @@ pub async fn relay_delegate_action(
         &state,
         treasury_id.as_str(),
         operation.confidential_payload_hashes(),
-        &execution_debug,
+        &outcome_debug,
     );
 
     Ok(success_response())
 }
 
-/// Submit the relay transaction and return the execution result's debug string,
+/// Submit the relay transaction and return the execution outcome's debug string,
 /// which `confidential` later mines for MPC signatures.
-async fn execute_relay(
+async fn submit_relay(
     state: &Arc<AppState>,
-    execution: RelayExecution,
-) -> Result<ExecutionDebug, RelayError> {
+    submission: RelaySubmission,
+) -> Result<OutcomeDebug, RelayError> {
     let sponsor = Sponsor::from_state(state);
-    let result = match execution {
-        RelayExecution::WalletContract(replay) => {
+    let result = match submission {
+        RelaySubmission::WalletContract(replay) => {
             sponsor
                 .replay_actions(&replay.wallet_account, replay.actions)
                 .await
         }
-        RelayExecution::MetaTransaction(signed_delegate_action) => {
+        RelaySubmission::MetaTransaction(signed_delegate_action) => {
             sponsor.relay_meta_tx(signed_delegate_action).await
         }
     };

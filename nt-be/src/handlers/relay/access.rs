@@ -4,14 +4,14 @@ use std::{collections::HashSet, sync::Arc};
 
 use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
-use near_api::AccountId;
+use near_api::{AccountId, NearToken};
 
 use crate::{
     AppState,
     auth::AuthUser,
     config::plans::{PlanType, has_gas_covered_credits},
     handlers::relay::{
-        parse::{RelayError, RelayExecution, RelayOperation, error_response},
+        parse::{ParsedRelay, RelayError, RelayOperation, RelaySubmission, error_response},
         sponsor::policy::SponsorshipTier,
     },
 };
@@ -23,10 +23,20 @@ pub struct TreasuryRecord {
     pub created_at: DateTime<Utc>,
 }
 
-/// Fetch the treasury's `monitored_accounts` row, if it is tracked.
-///
-/// Presence here is also the "sanctioned Sputnik DAO" signal used for storage
-/// balancing — see [`super::sponsorship::is_sputnik_treasury`].
+/// A relay that passed [`authorize`]: the same payload as [`ParsedRelay`] plus the
+/// resolved sponsorship tier. Holding one is proof the treasury is tracked (a
+/// sanctioned Sputnik DAO), so downstream code needs no further "is this a Sputnik
+/// DAO?" check.
+pub struct AuthorizedRelay {
+    pub treasury_id: AccountId,
+    pub submission: RelaySubmission,
+    pub operation: RelayOperation,
+    pub attached_deposit: NearToken,
+    pub tier: SponsorshipTier,
+}
+
+/// Fetch the treasury's `monitored_accounts` row, if it is tracked. Presence here is
+/// also the "sanctioned Sputnik DAO" signal, enforced by [`authorize`].
 pub async fn fetch_treasury_record(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
@@ -58,7 +68,7 @@ pub async fn fetch_treasury_record(
     })
 }
 
-/// Authorize the caller and return the treasury's sponsorship tier.
+/// Authorize the parsed relay, consuming it and returning the [`AuthorizedRelay`].
 ///
 /// Three checks, in order:
 ///
@@ -77,14 +87,19 @@ pub async fn fetch_treasury_record(
 pub async fn authorize(
     state: &Arc<AppState>,
     auth_user: &AuthUser,
-    treasury_id: &AccountId,
-    execution: &RelayExecution,
-    treasury_record: Option<&TreasuryRecord>,
-    operation: &RelayOperation,
-) -> Result<SponsorshipTier, RelayError> {
+    parsed: ParsedRelay,
+    treasury_record: Option<TreasuryRecord>,
+) -> Result<AuthorizedRelay, RelayError> {
+    let ParsedRelay {
+        treasury_id,
+        submission,
+        operation,
+        attached_deposit,
+    } = parsed;
+
     // 1. Identity binding (shape-specific).
-    match execution {
-        RelayExecution::WalletContract(replay) => {
+    match &submission {
+        RelaySubmission::WalletContract(replay) => {
             if replay.wallet_account != auth_user.account_id {
                 return Err(error_response(
                     StatusCode::FORBIDDEN,
@@ -95,7 +110,7 @@ pub async fn authorize(
                 ));
             }
         }
-        RelayExecution::MetaTransaction(signed_delegate_action) => {
+        RelaySubmission::MetaTransaction(signed_delegate_action) => {
             let sender_id = signed_delegate_action.delegate_action.sender_id.to_string();
             if sender_id != auth_user.account_id {
                 return Err(error_response(
@@ -110,7 +125,7 @@ pub async fn authorize(
     }
 
     // 2. DAO proposal/vote permissions — equal for both shapes.
-    verify_proposal_access(state, auth_user, treasury_id, operation).await?;
+    verify_proposal_access(state, auth_user, &treasury_id, &operation).await?;
 
     // 3. Billing — equal for every sponsored request: the treasury must be tracked
     //    and have gas-covered credits.
@@ -133,7 +148,13 @@ pub async fn authorize(
         ));
     }
 
-    Ok(SponsorshipTier::for_treasury(treasury_record.created_at))
+    Ok(AuthorizedRelay {
+        tier: SponsorshipTier::for_treasury(treasury_record.created_at),
+        treasury_id,
+        submission,
+        operation,
+        attached_deposit,
+    })
 }
 
 /// Verify the authenticated user may perform the relay's operation on the treasury,
