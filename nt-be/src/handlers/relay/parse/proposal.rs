@@ -7,7 +7,7 @@
 //!    `FunctionCall` actions call `add_proposal`/`act_proposal` on the
 //!    `*.sputnik-dao.near` treasury directly.
 //! 2. **`w_execute_signed` on a WalletContract** — the same calls live inside the
-//!    wallet request; see [`super::wallet`].
+//!    wallet request; see [`super::wallet_contract`].
 //!
 //! A single relay is homogeneous: all `add_proposal` or all `act_proposal`. Mixing
 //! the two is rejected, and anything that is not an `add_proposal`/`act_proposal`
@@ -34,9 +34,20 @@ pub enum RelayOperation {
     Votes(Vec<ActProposal>),
 }
 
+/// Which wire shape the relay arrived in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RelayShape {
+    /// NEP-366 meta-transaction: the inner actions call the treasury directly.
+    MetaTransaction,
+    /// WalletContract: the actions call `w_execute_signed`, wrapping the proposal
+    /// calls inside the wallet request.
+    WalletContract,
+}
+
 /// The result of parsing a relayed delegate action.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedRelay {
+    pub shape: RelayShape,
     pub operation: RelayOperation,
     /// Total NEAR attached across the sponsored calls (proposal bonds).
     pub attached_deposit: NearToken,
@@ -108,16 +119,36 @@ impl RelayOperation {
 /// from each inner promise instead, so this argument is ignored there.
 pub fn parse_sponsored_proposals(
     treasury_id: &AccountId,
-    is_wallet_contract_action: bool,
     action_receiver_id: &AccountId,
     actions: &[NonDelegateAction],
 ) -> Result<ParsedRelay, String> {
-    let calls = if is_wallet_contract_action {
-        super::wallet::collect_calls(actions)?
+    let (shape, calls) = if is_wallet_contract_shape(actions) {
+        (
+            RelayShape::WalletContract,
+            super::wallet_contract::collect_calls(actions)?,
+        )
     } else {
-        collect_direct_calls(action_receiver_id, actions)?
+        (
+            RelayShape::MetaTransaction,
+            collect_direct_calls(action_receiver_id, actions)?,
+        )
     };
-    validate_calls(treasury_id, calls)
+    let (operation, attached_deposit) = validate_calls(treasury_id, calls)?;
+    Ok(ParsedRelay {
+        shape,
+        operation,
+        attached_deposit,
+    })
+}
+
+/// A relay is WalletContract-shaped when its actions call `w_execute_signed`. We peek
+/// the first action to route; [`super::wallet_contract::collect_calls`] then validates
+/// every action (via `as_w_execute_call`), rejecting a mixed delegate action.
+fn is_wallet_contract_shape(actions: &[NonDelegateAction]) -> bool {
+    matches!(
+        actions.first().map(Deref::deref),
+        Some(Action::FunctionCall(fc)) if fc.method_name == "w_execute_signed"
+    )
 }
 
 /// A single contract call extracted from either wire shape, normalized so the two
@@ -155,7 +186,10 @@ fn collect_direct_calls(
 /// Validate the normalized calls: each must target the treasury and be an
 /// `add_proposal`/`act_proposal`, and the relay must be homogeneous (all of one
 /// kind). Returns the sponsored operation plus the total attached deposit.
-fn validate_calls(treasury_id: &AccountId, calls: Vec<DaoCall>) -> Result<ParsedRelay, String> {
+fn validate_calls(
+    treasury_id: &AccountId,
+    calls: Vec<DaoCall>,
+) -> Result<(RelayOperation, NearToken), String> {
     if calls.is_empty() {
         return Err("Delegate action contains no sponsorable proposal calls".to_owned());
     }
@@ -196,10 +230,7 @@ fn validate_calls(treasury_id: &AccountId, calls: Vec<DaoCall>) -> Result<Parsed
         }
     };
 
-    Ok(ParsedRelay {
-        operation,
-        attached_deposit,
-    })
+    Ok((operation, attached_deposit))
 }
 
 fn parse_add_proposal(call: &DaoCall) -> Result<ProposalInput, String> {
@@ -278,16 +309,16 @@ mod tests {
 
     #[test]
     fn validates_add_proposals_and_sums_deposit() {
-        let parsed = validate_calls(
+        let (operation, attached_deposit) = validate_calls(
             &acc(TREASURY),
             vec![add_call(TREASURY, transfer_kind(), 100)],
         )
         .unwrap();
-        match parsed.operation {
+        match operation {
             RelayOperation::AddProposals(ref inputs) => assert_eq!(inputs.len(), 1),
             other => panic!("expected AddProposals, got {other:?}"),
         }
-        assert_eq!(parsed.attached_deposit, NearToken::from_yoctonear(100));
+        assert_eq!(attached_deposit, NearToken::from_yoctonear(100));
     }
 
     #[test]
@@ -297,8 +328,8 @@ mod tests {
             act_call(TREASURY, 8, "VoteReject", None),
             act_call(TREASURY, 9, "VoteApprove", None),
         ];
-        let parsed = validate_calls(&acc(TREASURY), calls).unwrap();
-        assert_eq!(parsed.operation.vote_approve_ids(), vec![7, 9]);
+        let (operation, _) = validate_calls(&acc(TREASURY), calls).unwrap();
+        assert_eq!(operation.vote_approve_ids(), vec![7, 9]);
     }
 
     #[test]
@@ -318,9 +349,9 @@ mod tests {
             act_call(TREASURY, 1, "VoteApprove", Some(v1_kind("aaaa"))),
             act_call(TREASURY, 2, "VoteApprove", Some(v1_kind("bbbb"))),
         ];
-        let parsed = validate_calls(&acc(TREASURY), calls).unwrap();
+        let (operation, _) = validate_calls(&acc(TREASURY), calls).unwrap();
         assert_eq!(
-            parsed.operation.confidential_payload_hashes(),
+            operation.confidential_payload_hashes(),
             vec!["aaaa".to_owned(), "bbbb".to_owned()]
         );
     }

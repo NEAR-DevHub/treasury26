@@ -2,9 +2,9 @@
 //! into the homogeneous [`RelayOperation`] the relay sponsors.
 
 mod proposal;
-mod wallet;
+mod wallet_contract;
 
 pub use proposal::{
-    ActProposal, ParsedRelay, ProposalInput, RelayOperation, parse_sponsored_proposals,
+    ActProposal, ParsedRelay, ProposalInput, RelayOperation, RelayShape, parse_sponsored_proposals,
 };
-pub(crate) use wallet::{build_sponsored_actions, is_wallet_contract_action};
+pub(crate) use wallet_contract::build_sponsored_actions;

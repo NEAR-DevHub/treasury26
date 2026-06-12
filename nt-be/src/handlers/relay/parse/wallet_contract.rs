@@ -15,31 +15,12 @@ use std::ops::Deref;
 use base64::Engine as _;
 use near_api::{
     AccountId, NearToken,
-    types::{
-        Action,
-        transaction::{actions::FunctionCallAction, delegate_action::SignedDelegateAction},
-    },
+    types::{Action, transaction::actions::FunctionCallAction},
 };
 use serde::Deserialize;
 use serde_json::Value;
 
 use super::proposal::DaoCall;
-
-/// True when the relay is a WalletContract action: every top-level action of the
-/// delegate action is a `w_execute_signed` function call.
-pub(crate) fn is_wallet_contract_action(signed_delegate_action: &SignedDelegateAction) -> bool {
-    signed_delegate_action
-        .delegate_action
-        .actions
-        .iter()
-        .map(Deref::deref)
-        .all(|action| {
-            matches!(
-                action,
-                Action::FunctionCall(fc) if fc.method_name == "w_execute_signed"
-            )
-        })
-}
 
 /// Flatten the `w_execute_signed` delegate action into its sponsored DAO calls.
 pub(crate) fn collect_calls(

@@ -13,7 +13,7 @@ use crate::{
         access, confidential,
         dto::{RelayError, RelayRequest, RelayResponse, error_response, success_response},
         effects::{accounting, registrations},
-        parse::{self, ParsedRelay},
+        parse::{self, ParsedRelay, RelayShape},
         sponsor::{
             ExecutionDebug, Sponsor,
             policy::{self, SpentNear},
@@ -48,19 +48,19 @@ pub async fn relay_delegate_action(
             format!("Invalid delegate action: {}", e),
         )
     })?;
-    let is_wallet_contract_action = parse::is_wallet_contract_action(&signed_delegate_action);
     // The delegate action's receiver: the user's wallet contract for
     // `w_execute_signed`, or the DAO treasury for a meta-transaction.
     let action_receiver_id = signed_delegate_action.delegate_action.receiver_id.clone();
 
     // 2. Flatten both shapes into the proposal operations we will sponsor; reject
     //    anything that is not an add_proposal/act_proposal targeting the treasury.
+    //    The parser also reports which wire shape the relay arrived in.
     let ParsedRelay {
+        shape,
         operation,
         attached_deposit,
     } = parse::parse_sponsored_proposals(
         &relay_request.treasury_id,
-        is_wallet_contract_action,
         &action_receiver_id,
         &signed_delegate_action.delegate_action.actions,
     )
@@ -73,7 +73,7 @@ pub async fn relay_delegate_action(
         &auth_user,
         &relay_request,
         &signed_delegate_action,
-        is_wallet_contract_action,
+        shape,
         &action_receiver_id,
         treasury_record.as_ref(),
         &operation,
@@ -139,24 +139,18 @@ pub async fn relay_delegate_action(
 
     // 6. Submit (retried on transient send errors via on-chain nonce protection).
     //    On failure the NEAR already fronted is still recorded; no credit is spent.
-    let execution_debug = match execute_relay(
-        &state,
-        is_wallet_contract_action,
-        signed_delegate_action,
-        &action_receiver_id,
-    )
-    .await
-    {
-        Ok(execution_debug) => execution_debug,
-        Err(submit_error) => {
-            accounting::spawn_record_spend(
-                &state,
-                &relay_request.treasury_id,
-                fronted_spend(registrations_spend),
-            );
-            return Err(submit_error);
-        }
-    };
+    let execution_debug =
+        match execute_relay(&state, shape, signed_delegate_action, &action_receiver_id).await {
+            Ok(execution_debug) => execution_debug,
+            Err(submit_error) => {
+                accounting::spawn_record_spend(
+                    &state,
+                    &relay_request.treasury_id,
+                    fronted_spend(registrations_spend),
+                );
+                return Err(submit_error);
+            }
+        };
 
     // 7. Success: charge a gas credit plus the full spend (incl. attached deposits),
     //    then run the remaining non-critical work in the background.
@@ -185,22 +179,25 @@ pub async fn relay_delegate_action(
 /// which `confidential` later mines for MPC signatures.
 async fn execute_relay(
     state: &Arc<AppState>,
-    is_wallet_contract_action: bool,
+    shape: RelayShape,
     signed_delegate_action: SignedDelegateAction,
     action_receiver_id: &AccountId,
 ) -> Result<ExecutionDebug, RelayError> {
     let sponsor = Sponsor::from_state(state);
-    let execution = if is_wallet_contract_action {
-        // Rebuild the outer w_execute_signed actions with their deposit set to the
-        // sponsored inner bond, so the sponsor attaches exactly the bounded amount.
-        let replay_actions =
-            parse::build_sponsored_actions(&signed_delegate_action.delegate_action.actions)
-                .map_err(|message| error_response(StatusCode::INTERNAL_SERVER_ERROR, message))?;
-        sponsor
-            .replay_actions(action_receiver_id, replay_actions)
-            .await
-    } else {
-        sponsor.relay_meta_tx(signed_delegate_action).await
+    let execution = match shape {
+        RelayShape::WalletContract => {
+            // Rebuild the outer w_execute_signed actions with their deposit set to the
+            // sponsored inner bond, so the sponsor attaches exactly the bounded amount.
+            let replay_actions =
+                parse::build_sponsored_actions(&signed_delegate_action.delegate_action.actions)
+                    .map_err(|message| {
+                        error_response(StatusCode::INTERNAL_SERVER_ERROR, message)
+                    })?;
+            sponsor
+                .replay_actions(action_receiver_id, replay_actions)
+                .await
+        }
+        RelayShape::MetaTransaction => sponsor.relay_meta_tx(signed_delegate_action).await,
     };
 
     execution.map_err(|error_message| {

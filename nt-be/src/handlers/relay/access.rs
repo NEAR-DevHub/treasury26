@@ -12,7 +12,7 @@ use crate::{
     config::plans::{PlanType, has_gas_covered_credits},
     handlers::relay::{
         dto::{RelayError, RelayRequest, error_response},
-        parse::RelayOperation,
+        parse::{RelayOperation, RelayShape},
         sponsor::policy::SponsorshipTier,
     },
 };
@@ -81,32 +81,35 @@ pub async fn authorize(
     auth_user: &AuthUser,
     relay_request: &RelayRequest,
     signed_delegate_action: &SignedDelegateAction,
-    is_wallet_contract_action: bool,
+    shape: RelayShape,
     action_receiver_id: &AccountId,
     treasury_record: Option<&TreasuryRecord>,
     operation: &RelayOperation,
 ) -> Result<SponsorshipTier, RelayError> {
     // 1. Identity binding (shape-specific).
-    if is_wallet_contract_action {
-        if action_receiver_id != &auth_user.account_id {
-            return Err(error_response(
-                StatusCode::FORBIDDEN,
-                format!(
-                    "w_execute_signed receiver '{}' does not match authenticated user '{}'",
-                    action_receiver_id, auth_user.account_id
-                ),
-            ));
+    match shape {
+        RelayShape::WalletContract => {
+            if action_receiver_id != &auth_user.account_id {
+                return Err(error_response(
+                    StatusCode::FORBIDDEN,
+                    format!(
+                        "w_execute_signed receiver '{}' does not match authenticated user '{}'",
+                        action_receiver_id, auth_user.account_id
+                    ),
+                ));
+            }
         }
-    } else {
-        let sender_id = signed_delegate_action.delegate_action.sender_id.to_string();
-        if sender_id != auth_user.account_id {
-            return Err(error_response(
-                StatusCode::FORBIDDEN,
-                format!(
-                    "Delegate action sender '{}' does not match authenticated user '{}'",
-                    sender_id, auth_user.account_id
-                ),
-            ));
+        RelayShape::MetaTransaction => {
+            let sender_id = signed_delegate_action.delegate_action.sender_id.to_string();
+            if sender_id != auth_user.account_id {
+                return Err(error_response(
+                    StatusCode::FORBIDDEN,
+                    format!(
+                        "Delegate action sender '{}' does not match authenticated user '{}'",
+                        sender_id, auth_user.account_id
+                    ),
+                ));
+            }
         }
     }
 
