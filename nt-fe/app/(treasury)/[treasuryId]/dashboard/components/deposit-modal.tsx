@@ -72,6 +72,7 @@ interface SelectOption {
     gradient?: string;
     networks?: BridgeNetwork[];
     chainId?: string;
+    supportsPublicNearDepositSource?: boolean;
 }
 
 const assetSchema = z.object({
@@ -180,6 +181,8 @@ function toNetworkOption(network: BridgeNetwork): SelectOption {
         icon: iconUrl || network.name.charAt(0),
         gradient: "bg-linear-to-br from-green-500 to-teal-500",
         chainId: network.chainId,
+        supportsPublicNearDepositSource:
+            network.supportsPublicNearDepositSource,
     };
 }
 
@@ -382,7 +385,12 @@ export function DepositModal({
     const selectedAsset = form.watch("asset");
     const selectedNetwork = form.watch("network");
     const { data: bridgeAssets = [], isLoading: isLoadingAssets } =
-        useBridgeTokens(true);
+        useBridgeTokens(true, { includeNearNetwork: true });
+
+    const invalidatePendingAddressRequest = useCallback(() => {
+        latestAddressRequestRef.current += 1;
+        setIsLoadingAddress(false);
+    }, []);
 
     useEffect(() => {
         if (selectedAsset && selectedNetwork) {
@@ -816,10 +824,13 @@ export function DepositModal({
     // Handle asset selection - show all assets but update network list
     const handleAssetSelect = useCallback(
         (asset: SelectOption) => {
+            invalidatePendingAddressRequest();
+            setAddressSourceTab("public");
             form.setValue("asset", asset);
             form.clearErrors();
 
             setDepositInfo(null);
+            setSingleUseExpiresAt(null);
 
             const availableNetworks = assetNetworksMap.get(asset.id) || [];
             dispatchDepositAssets({
@@ -837,33 +848,56 @@ export function DepositModal({
             // Auto-select network only when there is exactly one option.
             if (availableNetworks.length === 1) {
                 form.setValue("network", availableNetworks[0]);
-            } else if (
-                selectedNetwork &&
-                !availableNetworks.some((n) => n.id === selectedNetwork.id)
-            ) {
+            } else {
                 form.setValue("network", null);
             }
         },
-        [form, assetNetworksMap, selectedNetwork, networkBalancesByAsset],
+        [
+            form,
+            assetNetworksMap,
+            networkBalancesByAsset,
+            invalidatePendingAddressRequest,
+        ],
     );
 
     // Handle network selection
     const handleNetworkSelect = useCallback(
         (network: SelectOption) => {
+            invalidatePendingAddressRequest();
+            setAddressSourceTab("public");
             form.setValue("network", network);
             form.clearErrors();
 
             setDepositInfo(null);
+            setSingleUseExpiresAt(null);
         },
-        [form],
+        [form, invalidatePendingAddressRequest],
     );
 
+    console.log({ selectedAsset });
     // Fetch deposit address when both asset and network are selected
     useEffect(() => {
         const fetchAddress = async () => {
             if (!selectedNetwork || !selectedAsset) {
                 setDepositInfo(null);
                 setSingleUseExpiresAt(null);
+                return;
+            }
+
+            const isNearNetwork = (
+                selectedNetwork.chainId ?? selectedNetwork.id
+            )
+                .toLowerCase()
+                .includes(NEAR_NETWORK_ID);
+            const isConfidentialNearFallbackOnly =
+                isConfidential &&
+                isNearNetwork &&
+                selectedBridgeNetwork?.supportsPublicNearDepositSource ===
+                    false;
+            if (isConfidentialNearFallbackOnly) {
+                setDepositInfo(null);
+                setSingleUseExpiresAt(null);
+                setIsLoadingAddress(false);
                 return;
             }
             const requestId = ++latestAddressRequestRef.current;
@@ -949,6 +983,7 @@ export function DepositModal({
         if (selectedAsset && selectedNetwork) {
             fetchAddress();
         } else {
+            invalidatePendingAddressRequest();
             setDepositInfo(null);
             setSingleUseExpiresAt(null);
         }
@@ -959,11 +994,16 @@ export function DepositModal({
         selectedBridgeNetwork,
         t,
         treasuryId,
+        invalidatePendingAddressRequest,
     ]);
 
     const isNearNetworkSelected = isNearNetworkId(
         selectedNetwork?.chainId ?? selectedNetwork?.id,
     );
+    const isConfidentialNearFallbackOnly =
+        isConfidential &&
+        isNearNetworkSelected &&
+        selectedBridgeNetwork?.supportsPublicNearDepositSource === false;
 
     const formatAddress = useCallback(
         (address: string) => {
@@ -990,9 +1030,13 @@ export function DepositModal({
         [isNearNetworkSelected],
     );
 
-    const canSwitchDepositSource = isConfidential && isNearNetworkSelected;
+    const canSwitchDepositSource =
+        isConfidential &&
+        isNearNetworkSelected &&
+        !isConfidentialNearFallbackOnly;
     const isConfidentialSourceSelected =
-        canSwitchDepositSource && addressSourceTab === "confidential";
+        isConfidentialNearFallbackOnly ||
+        (canSwitchDepositSource && addressSourceTab === "confidential");
     const showConfidentialDepositWarning =
         isConfidential && !isConfidentialSourceSelected;
     const displayDepositInfo = isConfidentialSourceSelected
@@ -1030,10 +1074,23 @@ export function DepositModal({
     }, [singleUseExpiresAt, countdownNow]);
 
     useEffect(() => {
-        if (!canSwitchDepositSource && addressSourceTab !== "public") {
+        if (
+            isConfidentialNearFallbackOnly &&
+            addressSourceTab !== "confidential"
+        ) {
+            setAddressSourceTab("confidential");
+        } else if (
+            !isConfidentialNearFallbackOnly &&
+            !canSwitchDepositSource &&
+            addressSourceTab !== "public"
+        ) {
             setAddressSourceTab("public");
         }
-    }, [canSwitchDepositSource, addressSourceTab]);
+    }, [
+        canSwitchDepositSource,
+        addressSourceTab,
+        isConfidentialNearFallbackOnly,
+    ]);
 
     useEffect(() => {
         setHasAcknowledgedSingleUse(false);
@@ -1233,7 +1290,8 @@ export function DepositModal({
                                 </p>
                             </div>
 
-                            {canSwitchDepositSource && (
+                            {(canSwitchDepositSource ||
+                                isConfidentialNearFallbackOnly) && (
                                 <Tabs
                                     value={addressSourceTab}
                                     onValueChange={(value) =>
@@ -1244,13 +1302,17 @@ export function DepositModal({
                                     className="gap-0"
                                 >
                                     <TabsList className="px-2 pb-0 border-b border-border">
-                                        <TabsTrigger
-                                            value="public"
-                                            className="text-base font-semibold pb-2"
-                                        >
-                                            <Globe className="size-5" />
-                                            <span>{t("tabs.fromPublic")}</span>
-                                        </TabsTrigger>
+                                        {canSwitchDepositSource && (
+                                            <TabsTrigger
+                                                value="public"
+                                                className="text-base font-semibold pb-2"
+                                            >
+                                                <Globe className="size-5" />
+                                                <span>
+                                                    {t("tabs.fromPublic")}
+                                                </span>
+                                            </TabsTrigger>
+                                        )}
                                         <TabsTrigger
                                             value="confidential"
                                             className="text-base font-semibold pb-2"
@@ -1558,6 +1620,7 @@ export function DepositModal({
             showAddressLoading,
             displayDepositInfo,
             canSwitchDepositSource,
+            isConfidentialNearFallbackOnly,
             addressSourceTab,
             showConfidentialDepositWarning,
             shouldBlurConfidentialAddress,

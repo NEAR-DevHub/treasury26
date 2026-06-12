@@ -173,6 +173,10 @@
             "descriptionDetails": "Détails de la demande",
             "descriptionList": "Transactions récentes sur tous les actifs"
         },
+        "apiDocs": {
+            "title": "Documentation de l'API",
+            "description": "Documentation interactive de l'API d'activité récente de Trezu"
+        },
         "requests": {
             "title": "Demandes",
             "description": "Consultez et gérez toutes les demandes multisig en attente",
@@ -369,6 +373,48 @@
             "contract": "Contrat",
             "transaction": "Transaction"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpoint",
+        "endpointDescription": "Renvoie l'activité récente (variations de solde enrichies) d'un compte de trésorerie.",
+        "authentication": "Authentification",
+        "authIntro": "Authentifiez-vous avec le JWT de session stocké dans le cookie {cookie} :",
+        "authStep1": "Ouvrez les DevTools du navigateur → Application → Cookies",
+        "authStep2": "Copiez la valeur du cookie {cookie}",
+        "authStep3": "Remplacez {placeholder} dans les exemples ci-dessous",
+        "authPublicNote": "Les trésoreries publiques peuvent être interrogées sans jeton. Les trésoreries confidentielles nécessitent le jeton de session d'un membre de la trésorerie.",
+        "signedInAs": "Connecté en tant que {accountId} — s'exécute avec votre session actuelle.",
+        "notSignedIn": "Non connecté — la requête s'exécute sans session.",
+        "parameters": "Paramètres de requête",
+        "paramName": "Paramètre",
+        "paramDescription": "Description",
+        "required": "obligatoire",
+        "params": {
+            "accountId": "ID du compte de trésorerie (obligatoire)",
+            "limit": "Nombre d'éléments à renvoyer (10 par défaut, 100 max)",
+            "offset": "Nombre d'éléments à ignorer pour la pagination (0 par défaut)",
+            "minUsdValue": "N'inclure que les variations d'au moins cette valeur en USD",
+            "transactionType": "Filtrer par type : incoming, outgoing, staking_rewards ou exchange",
+            "tokenSymbol": "N'inclure que ce symbole de jeton",
+            "tokenSymbolNot": "Exclure ce symbole de jeton",
+            "txHash": "Filtrer par hash de transaction",
+            "from": "Comptes expéditeurs à inclure, séparés par des virgules",
+            "fromNot": "Comptes expéditeurs à exclure, séparés par des virgules",
+            "to": "Comptes destinataires à inclure, séparés par des virgules",
+            "toNot": "Comptes destinataires à exclure, séparés par des virgules",
+            "startDate": "N'inclure que l'activité à partir de cette date incluse (ISO 8601)",
+            "endDate": "N'inclure que l'activité jusqu'à cette date incluse (ISO 8601)"
+        },
+        "examples": "Exemples de code",
+        "limitLabel": "Limite",
+        "offsetLabel": "Décalage",
+        "transactionTypeLabel": "Type de transaction",
+        "run": "Exécuter la requête",
+        "running": "Exécution…",
+        "response": "Réponse",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "La requête a échoué",
+        "copy": "Copier"
     },
     "export": {
         "types": {
@@ -1148,7 +1194,7 @@
         "treasuryName": "Nom de la trésorerie",
         "treasuryNamePlaceholder": "Ma trésorerie",
         "accountName": "Nom du compte",
-        "accountNameInfo": "Il s'agit du nom unique de votre compte. Il sera utilisé dans l'URL de votre trésorerie et affiché dans les transactions pour identifier l'expéditeur du paiement. Choisissez un nom court et reconnaissable pour votre compte.",
+        "accountNameInfo": "L'adresse permanente de votre tresorerie. Utilisee dans l'URL de votre tresorerie et affichee sur les paiements. Choisissez quelque chose de court et reconnaissable - cela ne pourra plus etre modifie.",
         "accountPlaceholder": "ma-tresorerie",
         "continue": "Continuer",
         "votingThreshold": "Seuil de vote",
@@ -1183,8 +1229,8 @@
         "noDeploymentFeeDescription": "Pour soutenir les nouveaux projets, TREZU couvre tous les frais ponctuels de déploiement et de stockage réseau.",
         "createButton": "Créer la trésorerie",
         "connectWalletCreate": "Connecter le portefeuille pour créer la trésorerie",
-        "walletNotSupportedTitle": "Wallet pas encore prise en charge",
-        "walletNotSupportedDescription": "{wallet} n'est pas encore prise en charge, mais nous y travaillons. Vous pouvez continuer avec un wallet NEAR pris en charge ou Ledger.",
+        "walletNotSupportedTitle": "{wallet} n'est pas encore pris en charge",
+        "walletNotSupportedDescription": "Nous l'ajouterons plus tard. En attendant, connectez-vous avec NEAR, Ledger ou des wallets EVM, selon ce que vous avez deja.",
         "connectNear": "Connecter NEAR",
         "connectLedger": "Connecter Ledger",
         "headerDescription": "Configurez une trésorerie multisig pour votre équipe ou pour vous-même",
@@ -1209,7 +1255,7 @@
             "chooseEvmWallet": "Choisissez vos wallets EVM",
             "signInWithNear": "Se connecter avec des wallets NEAR",
             "signInWithLedger": "Se connecter avec Ledger",
-            "signInWithWalletConnect": "Se connecter avec WalletConnect",
+            "signInWithWalletConnect": "Se connecter avec des wallets EVM",
             "guide": {
                 "title": "Quelle méthode de connexion dois-je utiliser ?",
                 "connectWalletTitle": "Connecter un wallet",
@@ -1428,28 +1474,27 @@
         "resources": "Ressources",
         "support": "Support",
         "websiteTitle": "Site web Trezu",
-        "websiteDescription": "Apprenez-en plus sur Trezu et lisez notre blog.",
+        "websiteDescription": "Lisez à propos de Trezu et les nouveautés.",
         "demo": "Démo Trezu",
         "demoTitle": "Explorer la version publique",
-        "demoDescription": "Voyez un compte public en direct en action.",
+        "demoDescription": "Une trésorerie réelle que tout le monde peut consulter.",
         "confidentialDemoTitle": "Explorer la version confidentielle",
-        "confidentialDemoDescription": "Explorez un compte confidentiel en direct en action.",
+        "confidentialDemoDescription": "À quoi ressemble une trésorerie privée en usage.",
         "videoTitle": "Regarder la démo",
-        "videoDescription": "Regardez une courte vidéo montrant comment Trezu fonctionne.",
+        "videoDescription": "Vidéo courte — découvrez Trezu de bout en bout.",
         "xTitle": "Suivez-nous sur X",
-        "xDescription": "Restez informé de nos dernières sorties et perspectives.",
+        "xDescription": "Voyez ce que nous construisons, en temps réel.",
         "statsTitle": "Statistiques",
-        "statsDescription": "Voir les actifs totaux sous gestion sur l'ensemble des DAO sputnik.",
+        "statsDescription": "Voir le total des actifs gérés sur l'ensemble des trésoreries.",
         "docsTitle": "Documentation",
-        "docsDescription": "Découvrez toutes les fonctionnalités dans la documentation.",
+        "docsDescription": "Guides pour chaque fonctionnalité, étape par étape.",
         "productSupportTitle": "Support produit",
-        "productSupportDescription": "Contactez notre équipe de support pour obtenir de l'aide."
+        "productSupportDescription": "Contactez notre équipe pour obtenir de l'aide."
     },
     "progressModal": {
         "titleCreating": "Création de la trésorerie...",
         "titleDone": "Trésorerie créée",
-        "titleFailed": "Échec de la création de la trésorerie",
-        "viewTreasury": "Voir la trésorerie"
+        "titleFailed": "Échec de la création de la trésorerie"
     },
     "memberValidation": {
         "noManagePermission": "Vous n'avez pas l'autorisation de gérer les membres",
@@ -1846,7 +1891,7 @@
     },
     "intentsQuote": {
         "initializing": "Le service de devis est encore en cours d'initialisation. Veuillez réessayer.",
-        "noRoute": "Impossible de préparer un itinéraire de paiement pour le moment. Veuillez réessayer.",
+        "noRoute": "Aucune liquidité n'est disponible pour ce token et ce réseau pour le moment.",
         "fetchFailed": "Impossible de préparer un itinéraire de paiement pour le moment. Veuillez réessayer.",
         "amountTooLow": "Le montant est trop faible pour couvrir les frais de réseau. Saisissez un montant plus élevé et réessayez.",
         "amountTooLowWithMin": "Le montant est trop faible pour couvrir les frais de réseau. Saisissez au moins {min} {token}.",

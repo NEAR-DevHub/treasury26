@@ -5,20 +5,17 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeResponse {
-    pub nonce: String,
+    /// Unique message the wallet authorizes via NEP-641 `resolveAuth`.
+    pub payload: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginRequest {
     pub account_id: String,
-    pub public_key: String,
-    pub signature: String,
-    pub message: String,
-    pub nonce: String,
-    pub recipient: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub callback_url: Option<String>,
+    /// JSON-stringified NEP-641 authorization blob. For key-based signing this
+    /// is a NEP-413 `SignedMessage` the backend verifies as the fallback path.
+    pub authorization: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

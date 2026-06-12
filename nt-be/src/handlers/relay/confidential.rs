@@ -5,13 +5,17 @@
 //! approves the proposal and the MPC signature is in the execution result, the
 //! signed intent is submitted to the 1Click API automatically.
 
-use crate::{AppState, constants::V1_SIGNER_CONTRACT_ID, utils::cache::CacheKey};
+use crate::{
+    AppState,
+    constants::V1_SIGNER_CONTRACT_ID,
+    handlers::relay::{effects::background, parse::ProposalKind},
+    utils::cache::CacheKey,
+};
 use base64::Engine;
-use near_api::types::{Action, transaction::delegate_action::NonDelegateAction};
 use reqwest::StatusCode;
 use serde_json::Value;
 use sqlx::PgPool;
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 /// Compute the NEP-413 payload hash (the value used in `payload_v2.Eddsa`).
 ///
@@ -148,45 +152,48 @@ pub(crate) fn extract_mpc_signature(result_debug: &str) -> Option<Vec<u8>> {
     bytes
 }
 
-/// Extract the `payload_v2.Eddsa` hash from a delegate action's `act_proposal` call.
+/// Extract the `payload_v2.Eddsa` hash from a Sputnik proposal `kind`.
 ///
-/// Looks for a `FunctionCall` with `method_name == "act_proposal"`, then checks if
-/// `proposal.FunctionCall.receiver_id == "v1.signer"` and extracts the hash from the
-/// inner `sign` action's args.
-pub fn extract_v1_signer_hash(actions: &[NonDelegateAction]) -> Option<String> {
-    for action in actions {
-        if let Action::FunctionCall(fc) = action.deref() {
-            if fc.method_name != "act_proposal" {
-                continue;
-            }
-            let args: Value = serde_json::from_slice(&fc.args).ok()?;
-            let proposal = args.get("proposal")?;
-            let func_call = proposal.get("FunctionCall")?;
-
-            if func_call.get("receiver_id")?.as_str()? != "v1.signer" {
-                return None;
-            }
-
-            let inner_actions = func_call.get("actions")?.as_array()?;
-            let first_action = inner_actions.first()?;
-            let inner_args_b64 = first_action.get("args")?.as_str()?;
-
-            use base64::Engine;
-            let inner_args_bytes = base64::engine::general_purpose::STANDARD
-                .decode(inner_args_b64)
-                .ok()?;
-            let inner_args: Value = serde_json::from_slice(&inner_args_bytes).ok()?;
-
-            let hash = inner_args
-                .get("request")?
-                .get("payload_v2")?
-                .get("Eddsa")?
-                .as_str()?;
-
-            return Some(hash.to_string());
-        }
+/// Returns the hash when `kind` is a `FunctionCall` to `v1.signer` whose first
+/// inner action signs a `payload_v2.Eddsa` request; otherwise `None`. The `kind`
+/// is the value carried in an `act_proposal`'s `proposal` argument.
+pub fn extract_v1_signer_hash_from_kind(kind: &Value) -> Option<String> {
+    let function_call = ProposalKind::from_value(kind).function_call?;
+    if function_call.receiver_id.as_str() != "v1.signer" {
+        return None;
     }
-    None
+
+    let first_action = function_call.actions.first()?;
+    let inner_args_bytes = base64::engine::general_purpose::STANDARD
+        .decode(&first_action.args)
+        .ok()?;
+    let inner_args: Value = serde_json::from_slice(&inner_args_bytes).ok()?;
+
+    inner_args
+        .get("request")?
+        .get("payload_v2")?
+        .get("Eddsa")?
+        .as_str()
+        .map(str::to_owned)
+}
+
+/// Spawn a background auto-submit for each confidential intent referenced by an
+/// approving vote relay. Each task matches its payload hash to a pending intent
+/// and, if the MPC signature is in the execution result, submits it to 1Click.
+pub fn spawn_auto_submit_intents(
+    state: &Arc<AppState>,
+    treasury_id: &str,
+    payload_hashes: Vec<String>,
+    result_debug: &str,
+) {
+    for payload_hash in payload_hashes {
+        let state = state.clone();
+        let treasury_id = treasury_id.to_owned();
+        let result_debug = result_debug.to_owned();
+        background::spawn("auto-submit confidential intent", async move {
+            try_auto_submit_intent(&state, &treasury_id, &payload_hash, &result_debug).await;
+        });
+    }
 }
 
 /// Try to auto-submit a confidential intent after a vote relay succeeds.

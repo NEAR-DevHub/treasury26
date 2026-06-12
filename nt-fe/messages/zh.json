@@ -173,6 +173,10 @@
             "descriptionDetails": "请求详情",
             "descriptionList": "所有资产的近期交易"
         },
+        "apiDocs": {
+            "title": "API 文档",
+            "description": "Trezu 近期活动 API 的交互式文档"
+        },
         "requests": {
             "title": "请求",
             "description": "查看并管理所有待处理的多签请求",
@@ -369,6 +373,48 @@
             "contract": "合约",
             "transaction": "交易"
         }
+    },
+    "apiDocs": {
+        "endpoint": "接口地址",
+        "endpointDescription": "返回金库账户的近期活动（已补充信息的余额变动）。",
+        "authentication": "身份验证",
+        "authIntro": "使用存储在 Cookie {cookie} 中的会话 JWT 进行身份验证：",
+        "authStep1": "打开浏览器 DevTools → Application → Cookies",
+        "authStep2": "复制 {cookie} Cookie 的值",
+        "authStep3": "替换下方示例中的 {placeholder}",
+        "authPublicNote": "公开金库无需令牌即可查询。机密金库需要金库成员的会话令牌。",
+        "signedInAs": "已以 {accountId} 登录——使用您当前的会话运行。",
+        "notSignedIn": "未登录——请求将在无会话的情况下运行。",
+        "parameters": "查询参数",
+        "paramName": "参数",
+        "paramDescription": "说明",
+        "required": "必填",
+        "params": {
+            "accountId": "金库账户 ID（必填）",
+            "limit": "返回的条目数（默认 10，最大 100）",
+            "offset": "分页时跳过的条目数（默认 0）",
+            "minUsdValue": "仅包含至少达到此美元价值的变动",
+            "transactionType": "按类型筛选：incoming、outgoing、staking_rewards 或 exchange",
+            "tokenSymbol": "仅包含此代币符号",
+            "tokenSymbolNot": "排除此代币符号",
+            "txHash": "按交易哈希筛选",
+            "from": "要包含的发送方账户，以逗号分隔",
+            "fromNot": "要排除的发送方账户，以逗号分隔",
+            "to": "要包含的接收方账户，以逗号分隔",
+            "toNot": "要排除的接收方账户，以逗号分隔",
+            "startDate": "仅包含此日期当天或之后的活动（ISO 8601）",
+            "endDate": "仅包含此日期当天或之前的活动（ISO 8601）"
+        },
+        "examples": "代码示例",
+        "limitLabel": "数量",
+        "offsetLabel": "偏移量",
+        "transactionTypeLabel": "交易类型",
+        "run": "运行请求",
+        "running": "运行中…",
+        "response": "响应",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "请求失败",
+        "copy": "复制"
     },
     "export": {
         "types": {
@@ -1148,7 +1194,7 @@
         "treasuryName": "金库名称",
         "treasuryNamePlaceholder": "我的金库",
         "accountName": "账户名称",
-        "accountNameInfo": "这是您账户的唯一名称。它将用于您的金库 URL,并显示在交易中以标识付款人。请为您的账户选择一个简短易识别的名称。",
+        "accountNameInfo": "这是您金库的永久地址。它会用于您的金库 URL，并显示在付款中。请选择简短且易于识别的名称 - 之后无法更改。",
         "accountPlaceholder": "my-treasury",
         "continue": "继续",
         "votingThreshold": "投票阈值",
@@ -1183,8 +1229,8 @@
         "noDeploymentFeeDescription": "为支持新项目,TREZU 承担所有一次性部署及网络存储费用。",
         "createButton": "创建金库",
         "connectWalletCreate": "连接钱包以创建金库",
-        "walletNotSupportedTitle": "该钱包暂不支持",
-        "walletNotSupportedDescription": "{wallet} 暂不支持，但我们正在适配中。你可以使用受支持的 NEAR 钱包或 Ledger 继续。",
+        "walletNotSupportedTitle": "{wallet} 暂不支持",
+        "walletNotSupportedDescription": "我们之后会补上。现在你可以使用已支持的 NEAR、Ledger 或 EVM 钱包登录。",
         "connectNear": "连接 NEAR",
         "connectLedger": "连接 Ledger",
         "headerDescription": "为你的团队或你自己设置一个多签金库",
@@ -1209,7 +1255,7 @@
             "chooseEvmWallet": "选择你的 EVM 钱包",
             "signInWithNear": "使用 NEAR 钱包登录",
             "signInWithLedger": "使用 Ledger 登录",
-            "signInWithWalletConnect": "使用 WalletConnect 登录",
+            "signInWithWalletConnect": "使用 EVM 钱包登录",
             "guide": {
                 "title": "我应该使用哪种登录方式？",
                 "connectWalletTitle": "连接钱包",
@@ -1428,28 +1474,27 @@
         "resources": "资源",
         "support": "支持",
         "websiteTitle": "Trezu 网站",
-        "websiteDescription": "了解更多关于 Trezu 的信息并阅读我们的博客。",
+        "websiteDescription": "了解 Trezu 及最新动态。",
         "demo": "Trezu 演示",
         "demoTitle": "探索公开版本",
-        "demoDescription": "查看一个实时的公开账户。",
+        "demoDescription": "任何人都可查看的真实金库。",
         "confidentialDemoTitle": "探索机密版本",
-        "confidentialDemoDescription": "探索一个实时的机密账户。",
+        "confidentialDemoDescription": "私密金库在实际使用中的样子。",
         "videoTitle": "观看演示",
-        "videoDescription": "观看一段简短视频,了解 Trezu 的工作方式。",
+        "videoDescription": "简短视频 — 端到端了解 Trezu。",
         "xTitle": "在 X 上关注我们",
-        "xDescription": "及时获取我们的最新发布与见解。",
+        "xDescription": "实时查看我们正在构建的内容。",
         "statsTitle": "统计",
-        "statsDescription": "查看所有 sputnik DAO 的总管理资产。",
+        "statsDescription": "查看所有金库的总管理资产。",
         "docsTitle": "文档",
-        "docsDescription": "在文档中了解所有功能。",
+        "docsDescription": "每项功能都有分步指南。",
         "productSupportTitle": "产品支持",
-        "productSupportDescription": "联系我们的支持团队寻求帮助。"
+        "productSupportDescription": "联系我们的团队获取帮助。"
     },
     "progressModal": {
         "titleCreating": "正在创建金库...",
         "titleDone": "金库已创建",
-        "titleFailed": "金库创建失败",
-        "viewTreasury": "查看金库"
+        "titleFailed": "金库创建失败"
     },
     "memberValidation": {
         "noManagePermission": "您没有管理成员的权限",
@@ -1846,7 +1891,7 @@
     },
     "intentsQuote": {
         "initializing": "报价服务仍在初始化中。请再试一次。",
-        "noRoute": "目前无法准备付款路径。请重试。",
+        "noRoute": "当前该代币和网络暂无可用流动性。",
         "fetchFailed": "目前无法准备付款路径。请重试。",
         "amountTooLow": "金额过低,无法支付网络手续费。请输入更高金额后再试。",
         "amountTooLowWithMin": "金额过低,无法支付网络手续费。请输入至少 {min} {token}。",

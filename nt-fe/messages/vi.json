@@ -173,6 +173,10 @@
             "descriptionDetails": "Chi tiết yêu cầu",
             "descriptionList": "Giao dịch gần đây trên tất cả tài sản"
         },
+        "apiDocs": {
+            "title": "Tài liệu API",
+            "description": "Tài liệu tương tác cho API hoạt động gần đây của Trezu"
+        },
         "requests": {
             "title": "Yêu cầu",
             "description": "Xem và quản lý tất cả yêu cầu multisig đang chờ",
@@ -369,6 +373,48 @@
             "contract": "Hợp đồng",
             "transaction": "Giao dịch"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpoint",
+        "endpointDescription": "Trả về hoạt động gần đây (các thay đổi số dư đã được bổ sung thông tin) của một tài khoản kho bạc.",
+        "authentication": "Xác thực",
+        "authIntro": "Xác thực bằng JWT phiên được lưu trong cookie {cookie}:",
+        "authStep1": "Mở DevTools của trình duyệt → Application → Cookies",
+        "authStep2": "Sao chép giá trị cookie {cookie}",
+        "authStep3": "Thay {placeholder} trong các ví dụ bên dưới",
+        "authPublicNote": "Kho bạc công khai có thể được truy vấn mà không cần token. Kho bạc bảo mật yêu cầu token phiên của một thành viên kho bạc.",
+        "signedInAs": "Đã đăng nhập với tư cách {accountId} — chạy với phiên hiện tại của bạn.",
+        "notSignedIn": "Chưa đăng nhập — yêu cầu chạy không có phiên.",
+        "parameters": "Tham số truy vấn",
+        "paramName": "Tham số",
+        "paramDescription": "Mô tả",
+        "required": "bắt buộc",
+        "params": {
+            "accountId": "ID tài khoản kho bạc (bắt buộc)",
+            "limit": "Số mục trả về (mặc định 10, tối đa 100)",
+            "offset": "Số mục bỏ qua để phân trang (mặc định 0)",
+            "minUsdValue": "Chỉ bao gồm các thay đổi có giá trị USD tối thiểu này",
+            "transactionType": "Lọc theo loại: incoming, outgoing, staking_rewards hoặc exchange",
+            "tokenSymbol": "Chỉ bao gồm ký hiệu token này",
+            "tokenSymbolNot": "Loại trừ ký hiệu token này",
+            "txHash": "Lọc theo mã băm giao dịch",
+            "from": "Các tài khoản người gửi cần bao gồm, phân tách bằng dấu phẩy",
+            "fromNot": "Các tài khoản người gửi cần loại trừ, phân tách bằng dấu phẩy",
+            "to": "Các tài khoản người nhận cần bao gồm, phân tách bằng dấu phẩy",
+            "toNot": "Các tài khoản người nhận cần loại trừ, phân tách bằng dấu phẩy",
+            "startDate": "Chỉ bao gồm hoạt động vào hoặc sau ngày này (ISO 8601)",
+            "endDate": "Chỉ bao gồm hoạt động vào hoặc trước ngày này (ISO 8601)"
+        },
+        "examples": "Ví dụ mã",
+        "limitLabel": "Giới hạn",
+        "offsetLabel": "Độ lệch",
+        "transactionTypeLabel": "Loại giao dịch",
+        "run": "Chạy yêu cầu",
+        "running": "Đang chạy…",
+        "response": "Phản hồi",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "Yêu cầu thất bại",
+        "copy": "Sao chép"
     },
     "export": {
         "types": {
@@ -1148,7 +1194,7 @@
         "treasuryName": "Tên ngân quỹ",
         "treasuryNamePlaceholder": "Ngân quỹ của tôi",
         "accountName": "Tên tài khoản",
-        "accountNameInfo": "Đây là tên duy nhất của tài khoản bạn. Nó sẽ được dùng trong URL ngân quỹ của bạn và hiển thị trong các giao dịch để xác định người gửi tiền. Hãy chọn một cái tên ngắn và dễ nhận biết cho tài khoản.",
+        "accountNameInfo": "Day la dia chi vinh vien cua kho bac cua ban. No duoc dung trong URL kho bac cua ban va hien thi tren cac khoan thanh toan. Hay chon thu gi do ngan gon, de nhan biet - sau nay khong the thay doi.",
         "accountPlaceholder": "my-treasury",
         "continue": "Tiếp tục",
         "votingThreshold": "Ngưỡng bỏ phiếu",
@@ -1183,8 +1229,8 @@
         "noDeploymentFeeDescription": "Để hỗ trợ các dự án mới, TREZU bao gồm tất cả phí triển khai một lần và phí lưu trữ mạng.",
         "createButton": "Tạo Ngân quỹ",
         "connectWalletCreate": "Kết nối ví để tạo ngân quỹ",
-        "walletNotSupportedTitle": "Ví chưa được hỗ trợ",
-        "walletNotSupportedDescription": "{wallet} hiện chưa được hỗ trợ, nhưng chúng tôi đang phát triển. Bạn có thể tiếp tục bằng ví NEAR được hỗ trợ hoặc Ledger.",
+        "walletNotSupportedTitle": "{wallet} chưa được hỗ trợ",
+        "walletNotSupportedDescription": "Chúng tôi sẽ bổ sung sau. Trong lúc này, hãy đăng nhập bằng NEAR, Ledger hoặc ví EVM mà bạn đang có.",
         "connectNear": "Kết nối NEAR",
         "connectLedger": "Kết nối Ledger",
         "headerDescription": "Thiết lập kho bạc đa chữ ký cho nhóm của bạn hoặc cho chính bạn",
@@ -1209,7 +1255,7 @@
             "chooseEvmWallet": "Chọn ví EVM của bạn",
             "signInWithNear": "Đăng nhập bằng ví NEAR",
             "signInWithLedger": "Đăng nhập bằng Ledger",
-            "signInWithWalletConnect": "Đăng nhập bằng WalletConnect",
+            "signInWithWalletConnect": "Đăng nhập bằng ví EVM",
             "guide": {
                 "title": "Tôi nên dùng cách đăng nhập nào?",
                 "connectWalletTitle": "Kết nối ví",
@@ -1428,28 +1474,27 @@
         "resources": "Tài nguyên",
         "support": "Hỗ trợ",
         "websiteTitle": "Trang web Trezu",
-        "websiteDescription": "Tìm hiểu thêm về Trezu và đọc blog của chúng tôi.",
+        "websiteDescription": "Đọc về Trezu và những cập nhật mới nhất.",
         "demo": "Demo Trezu",
         "demoTitle": "Khám phá phiên bản công khai",
-        "demoDescription": "Xem một tài khoản công khai trực tiếp đang hoạt động.",
+        "demoDescription": "Một treasury thực mà ai cũng có thể xem.",
         "confidentialDemoTitle": "Khám phá phiên bản bảo mật",
-        "confidentialDemoDescription": "Khám phá một tài khoản bảo mật trực tiếp đang hoạt động.",
+        "confidentialDemoDescription": "Cách một treasury riêng tư được dùng trong thực tế.",
         "videoTitle": "Xem demo",
-        "videoDescription": "Xem video ngắn cho thấy cách Trezu hoạt động.",
+        "videoDescription": "Video ngắn - xem Trezu từ đầu đến cuối.",
         "xTitle": "Theo dõi chúng tôi trên X",
-        "xDescription": "Cập nhật các bản phát hành và thông tin chi tiết mới nhất của chúng tôi.",
+        "xDescription": "Xem chúng tôi đang xây dựng gì, theo thời gian thực.",
         "statsTitle": "Thống kê",
-        "statsDescription": "Xem tổng tài sản đang quản lý trên tất cả các sputnik DAO.",
+        "statsDescription": "Xem tổng tài sản được quản lý trên tất cả treasury.",
         "docsTitle": "Tài liệu",
-        "docsDescription": "Tìm hiểu về tất cả tính năng trong tài liệu.",
+        "docsDescription": "Hướng dẫn từng bước cho mọi tính năng.",
         "productSupportTitle": "Hỗ trợ sản phẩm",
-        "productSupportDescription": "Liên hệ đội hỗ trợ của chúng tôi để được giúp đỡ."
+        "productSupportDescription": "Liên hệ đội ngũ của chúng tôi để được hỗ trợ."
     },
     "progressModal": {
         "titleCreating": "Đang tạo Ngân quỹ...",
         "titleDone": "Đã tạo Ngân quỹ",
-        "titleFailed": "Tạo Ngân quỹ thất bại",
-        "viewTreasury": "Xem Ngân quỹ"
+        "titleFailed": "Tạo Ngân quỹ thất bại"
     },
     "memberValidation": {
         "noManagePermission": "Bạn không có quyền quản lý thành viên",
@@ -1846,7 +1891,7 @@
     },
     "intentsQuote": {
         "initializing": "Dịch vụ báo giá vẫn đang khởi tạo. Vui lòng thử lại.",
-        "noRoute": "Hiện không thể chuẩn bị tuyến thanh toán. Vui lòng thử lại.",
+        "noRoute": "Hiện không có thanh khoản khả dụng cho token và mạng này.",
         "fetchFailed": "Hiện không thể chuẩn bị tuyến thanh toán. Vui lòng thử lại.",
         "amountTooLow": "Số tiền quá thấp để chi trả phí mạng. Hãy nhập số tiền cao hơn và thử lại.",
         "amountTooLowWithMin": "Số tiền quá thấp để chi trả phí mạng. Hãy nhập ít nhất {min} {token}.",

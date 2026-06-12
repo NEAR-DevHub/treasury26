@@ -124,6 +124,7 @@ interface Step1Props extends StepProps {
     onAmountInput?: () => void;
     onMaxSet?: (maxAmount: string) => void;
     onAddressBookSelectionChange?: (isFromAddressBook: boolean) => void;
+    bridgeAssets?: BridgeAsset[];
 }
 
 function Step1({
@@ -136,6 +137,7 @@ function Step1({
     onAmountInput,
     onMaxSet,
     onAddressBookSelectionChange,
+    bridgeAssets = [],
 }: Step1Props) {
     const tPay = useTranslations("payments");
     const form = useFormContext<PaymentFormValues>();
@@ -241,6 +243,7 @@ function Step1({
                 onAmountInput={onAmountInput}
                 onMaxSet={onMaxSet}
                 onAddressBookSelectionChange={onAddressBookSelectionChange}
+                bridgeAssets={bridgeAssets}
             />
         </PageCard>
     );
@@ -251,6 +254,7 @@ interface Step2Props extends StepProps {
     isLoadingLiveQuote?: boolean;
     isFetchingLiveQuote?: boolean;
     isViaIntents?: boolean;
+    bridgeAssets?: BridgeAsset[];
 }
 
 function Step2({
@@ -259,6 +263,7 @@ function Step2({
     isLoadingLiveQuote,
     isFetchingLiveQuote,
     isViaIntents,
+    bridgeAssets = [],
 }: Step2Props) {
     const tPay = useTranslations("payments");
     const tIntents = useTranslations("intentsQuote");
@@ -268,8 +273,6 @@ function Step2({
         name: ["token", "amount", "address", "destinationNetwork"],
     }) as [PaymentFormValues["token"], string, string, string];
     const { data: tokenData } = useToken(token.address);
-    const { data: bridgeAssets = [] } = useBridgeTokens();
-
     // Chain icons for the destination network (for the review token icon overlay)
     const destinationChainIcons = useMemo(() => {
         if (!destinationNetwork) {
@@ -628,6 +631,27 @@ function buildIntentTransferDescription(
     });
 }
 
+function buildQuoteContextKey(params: {
+    tokenAddress: string;
+    amount: string;
+    address: string;
+    destinationNetwork?: string;
+    amountMode: IntentsAmountMode;
+}) {
+    return [
+        params.tokenAddress,
+        params.amount.trim(),
+        params.address.trim().toLowerCase(),
+        params.destinationNetwork ?? "",
+        params.amountMode,
+    ].join("|");
+}
+
+type CachedQuote = {
+    key: string;
+    quote: IntentsQuoteResponse;
+};
+
 export default function PaymentsPage() {
     const t = useTranslations("pages.payments");
     const tPay = useTranslations("payments");
@@ -649,8 +673,8 @@ export default function PaymentsPage() {
     const [step, setStep] = useState(0);
     const searchParams = useSearchParams();
     const autoSelectedTokenKeyRef = useRef<string | null>(null);
-    // Cached quote — avoids re-fetching between step 1 → step 2 → submit.
-    const quoteRef = useRef<IntentsQuoteResponse | null>(null);
+    // Cached quote + context key — avoids re-fetching while preventing stale reuse.
+    const cachedQuoteRef = useRef<CachedQuote | null>(null);
     // "recipient" for typed amount (exact output), "total" for MAX (exact input).
     const [intentsAmountMode, setIntentsAmountMode] =
         useState<IntentsAmountMode>("recipient");
@@ -773,6 +797,23 @@ export default function PaymentsPage() {
 
     // Whether this payment will go through the Intents protocol.
     const isViaIntents = isIntentsToken(quoteToken);
+    const quoteContextKey = useMemo(
+        () =>
+            buildQuoteContextKey({
+                tokenAddress: quoteToken.address,
+                amount: watchedAmount ?? "",
+                address: watchedAddress ?? "",
+                destinationNetwork: watchedDestinationNetwork,
+                amountMode: intentsAmountMode,
+            }),
+        [
+            quoteToken.address,
+            watchedAmount,
+            watchedAddress,
+            watchedDestinationNetwork,
+            intentsAmountMode,
+        ],
+    );
 
     const isCrossChainIntentsToken = isIntentsCrossChainToken(watchedToken);
     const destinationAmountDecimals = useMemo(
@@ -818,8 +859,38 @@ export default function PaymentsPage() {
 
     // Keep the quote ref in sync so onSubmit can use it without re-fetching.
     useEffect(() => {
-        quoteRef.current = liveQuote ?? null;
-    }, [liveQuote]);
+        cachedQuoteRef.current = liveQuote
+            ? { key: quoteContextKey, quote: liveQuote }
+            : null;
+    }, [liveQuote, quoteContextKey]);
+
+    // Invalidate cached quote whenever core quote inputs change so review never
+    // shows stale data from a previous token/address/network combination.
+    useEffect(() => {
+        cachedQuoteRef.current = null;
+    }, [
+        watchedToken.address,
+        watchedAmount,
+        watchedAddress,
+        watchedDestinationNetwork,
+        intentsAmountMode,
+    ]);
+
+    // Clear stale quote-related manual errors as soon as the user changes any
+    // quote-driving input. Fresh validation/quote errors will be re-applied by
+    // the live quote flow if still relevant.
+    useEffect(() => {
+        const amountError = form.getFieldState("amount").error;
+        if (amountError?.type !== "manual") return;
+        form.clearErrors("amount");
+    }, [
+        form,
+        watchedToken.address,
+        watchedAmount,
+        watchedAddress,
+        watchedDestinationNetwork,
+        intentsAmountMode,
+    ]);
 
     const isQuoteBusy =
         isViaIntents &&
@@ -857,6 +928,13 @@ export default function PaymentsPage() {
 
     const ensureQuoteBeforeReview = useCallback(async (): Promise<boolean> => {
         const formValues = form.getValues();
+        const ensureRequestKey = buildQuoteContextKey({
+            tokenAddress: quoteToken.address,
+            amount: formValues.amount ?? "",
+            address: formValues.address ?? "",
+            destinationNetwork: formValues.destinationNetwork,
+            amountMode: intentsAmountMode,
+        });
         const result = await ensureBeforeReview({
             token: quoteToken,
             address: formValues.address,
@@ -864,7 +942,10 @@ export default function PaymentsPage() {
         });
         if (result.ok) {
             if (result.quote) {
-                quoteRef.current = result.quote;
+                cachedQuoteRef.current = {
+                    key: ensureRequestKey,
+                    quote: result.quote,
+                };
             }
             form.clearErrors("amount");
             return true;
@@ -880,7 +961,7 @@ export default function PaymentsPage() {
             }
         }
         return false;
-    }, [ensureBeforeReview, form, quoteToken]);
+    }, [ensureBeforeReview, form, quoteToken, intentsAmountMode]);
 
     // ── Effects ───────────────────────────────────────────────────────────────
 
@@ -891,14 +972,17 @@ export default function PaymentsPage() {
     useEffect(() => {
         if (!compatibleDestination) return;
         if (watchedDestinationNetwork) return;
-        form.setValue("destinationNetwork", compatibleDestination.id, {
-            shouldDirty: true,
-        });
-        form.setValue(
-            "destinationNetworkName",
-            compatibleDestination.networkName,
-            { shouldDirty: true },
-        );
+        const timeoutId = window.setTimeout(() => {
+            form.setValue("destinationNetwork", compatibleDestination.id, {
+                shouldDirty: true,
+            });
+            form.setValue(
+                "destinationNetworkName",
+                compatibleDestination.networkName,
+                { shouldDirty: true },
+            );
+        }, 150);
+        return () => window.clearTimeout(timeoutId);
     }, [compatibleDestination, form, watchedDestinationNetwork]);
 
     useEffect(() => {
@@ -996,8 +1080,19 @@ export default function PaymentsPage() {
 
                 // Use the cached quote from the live hook; fall back to a
                 // fresh fetch if the cache is empty (e.g. first load).
+                const submitQuoteKey = buildQuoteContextKey({
+                    tokenAddress: tokenForQuote.address,
+                    amount: data.amount ?? "",
+                    address: trimmedAddress,
+                    destinationNetwork: data.destinationNetwork,
+                    amountMode: intentsAmountMode,
+                });
+                const cachedQuote =
+                    cachedQuoteRef.current?.key === submitQuoteKey
+                        ? cachedQuoteRef.current.quote
+                        : null;
                 const quote =
-                    quoteRef.current ??
+                    cachedQuote ??
                     (await getIntentsQuote(
                         buildIntentsQuoteRequest(
                             treasuryId!,
@@ -1089,7 +1184,7 @@ export default function PaymentsPage() {
                         amount: data.amount,
                     });
                     form.reset();
-                    quoteRef.current = null;
+                    cachedQuoteRef.current = null;
                     setIsAddressBookRecipientSelected(false);
                     setStep(0);
                     triggerPendingTour();
@@ -1131,15 +1226,21 @@ export default function PaymentsPage() {
                     },
                     onAddressBookSelectionChange:
                         setIsAddressBookRecipientSelected,
+                    bridgeAssets,
                 },
             },
             {
                 component: Step2,
                 props: {
-                    liveQuote: liveQuote ?? quoteRef.current,
+                    liveQuote:
+                        liveQuote ??
+                        (cachedQuoteRef.current?.key === quoteContextKey
+                            ? cachedQuoteRef.current.quote
+                            : null),
                     isLoadingLiveQuote,
                     isFetchingLiveQuote,
                     isViaIntents,
+                    bridgeAssets,
                 },
             },
         ],
@@ -1154,6 +1255,8 @@ export default function PaymentsPage() {
             liveQuote,
             isLoadingLiveQuote,
             isFetchingLiveQuote,
+            bridgeAssets,
+            quoteContextKey,
         ],
     );
 

@@ -2,7 +2,11 @@ use crate::{
     constants::intents_tokens::{find_unified_asset_id, get_tokens_map},
     utils::cache::CacheTier,
 };
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{
+    Json,
+    extract::{Query, State},
+    http::StatusCode,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -10,9 +14,14 @@ use std::sync::Arc;
 
 use super::supported_tokens::fetch_supported_tokens_data;
 use crate::{
-    AppState, constants::intents_chains::ChainIcons,
+    AppState,
+    constants::NEAR_DECIMALS,
+    constants::intents_chains::{ChainIcons, get_chain_metadata_by_name},
     handlers::token::metadata::fetch_tokens_metadata_enriched,
 };
+
+const NEAR_MAINNET_NETWORK_ID: &str = "near:mainnet";
+const BLOCKED_NETWORK_IDS: [&str; 1] = ["nep141:nbtc.bridge.near"];
 
 fn metadata_lookup_key(intents_id: &str) -> String {
     format!("intents.near:{intents_id}")
@@ -38,6 +47,8 @@ pub struct NetworkOption {
     pub decimals: u8,
     pub min_deposit_amount: Option<String>,
     pub min_withdrawal_amount: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_public_near_deposit_source: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -55,10 +66,19 @@ pub struct DepositAssetsResponse {
     pub assets: Vec<AssetOption>,
 }
 
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeTokensQuery {
+    #[serde(default)]
+    pub include_near_network: bool,
+}
+
 pub async fn get_bridge_tokens(
+    Query(query): Query<BridgeTokensQuery>,
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<DepositAssetsResponse>, (StatusCode, String)> {
-    let cache_key = "deposit-assets".to_string();
+    let include_near_network = query.include_near_network;
+    let cache_key = format!("deposit-assets:include-near:{}", include_near_network);
     let state_clone = state.clone();
 
     let result = state
@@ -113,6 +133,10 @@ pub async fn get_bridge_tokens(
                 else {
                     continue;
                 };
+
+                if BLOCKED_NETWORK_IDS.contains(&intents_id) {
+                    continue;
+                }
 
                 let lookup_key = metadata_lookup_key(intents_id);
                 let Some(meta) = metadata_map.get(&lookup_key) else {
@@ -180,11 +204,67 @@ pub async fn get_bridge_tokens(
                         decimals: meta.decimals,
                         min_deposit_amount,
                         min_withdrawal_amount,
+                        supports_public_near_deposit_source: None,
                     });
                 }
             }
 
             let mut assets: Vec<AssetOption> = asset_map.into_values().collect();
+
+            if include_near_network {
+                let near_chain_icons = get_chain_metadata_by_name("near")
+                    .map(|metadata| metadata.icon)
+                    .or_else(|| {
+                        Some(ChainIcons {
+                            icon: "https://near.com/static/icons/network/near.svg".to_string(),
+                        })
+                    });
+                // Normalize each asset to at most one canonical NEAR network entry:
+                // - if a "near" network already exists, preserve its token id/decimals
+                // - otherwise, synthesize a NEAR entry for assets that have networks
+                //   (using near:mainnet id as fallback token id)
+                // - skip assets that have no networks at all
+                for asset in &mut assets {
+                    let existing_near_network = asset
+                        .networks
+                        .iter()
+                        .find(|network| network.name.eq_ignore_ascii_case("near"));
+
+                    let (canonical_near_token_id, selection_source) =
+                        if let Some(network) = existing_near_network {
+                            (Some(network.id.clone()), "has_near_network")
+                        } else if !asset.networks.is_empty() {
+                            (Some(NEAR_MAINNET_NETWORK_ID.to_string()), "no_near_network")
+                        } else {
+                            (None, "no_networks_skip")
+                        };
+                    let canonical_near_decimals =
+                        existing_near_network.map_or(NEAR_DECIMALS, |network| network.decimals);
+                    let Some(canonical_near_token_id) = canonical_near_token_id else {
+                        continue;
+                    };
+
+                    asset.networks.retain(|network| {
+                        !network.name.eq_ignore_ascii_case("near")
+                            && network.id != NEAR_MAINNET_NETWORK_ID
+                            && network.chain_id != NEAR_MAINNET_NETWORK_ID
+                    });
+
+                    asset.networks.push(NetworkOption {
+                        id: canonical_near_token_id,
+                        name: "near".to_string(),
+                        symbol: asset.asset_name.clone(),
+                        chain_icons: near_chain_icons.clone(),
+                        chain_id: NEAR_MAINNET_NETWORK_ID.to_string(),
+                        decimals: canonical_near_decimals,
+                        min_deposit_amount: None,
+                        min_withdrawal_amount: None,
+                        supports_public_near_deposit_source: Some(
+                            selection_source == "has_near_network",
+                        ),
+                    });
+                }
+            }
 
             // Sort assets by symbol alphabetically
             assets.sort_by(|a, b| a.id.cmp(&b.id));

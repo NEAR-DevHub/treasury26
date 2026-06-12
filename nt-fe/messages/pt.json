@@ -173,6 +173,10 @@
             "descriptionDetails": "Detalhes da solicitação",
             "descriptionList": "Transações recentes em todos os ativos"
         },
+        "apiDocs": {
+            "title": "Documentação da API",
+            "description": "Documentação interativa da API de atividade recente do Trezu"
+        },
         "requests": {
             "title": "Solicitações",
             "description": "Visualize e gerencie todas as solicitações multisig pendentes",
@@ -369,6 +373,48 @@
             "contract": "Contrato",
             "transaction": "Transação"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpoint",
+        "endpointDescription": "Retorna a atividade recente (alterações de saldo enriquecidas) de uma conta de tesouraria.",
+        "authentication": "Autenticação",
+        "authIntro": "Autentique-se com o JWT de sessão armazenado no cookie {cookie}:",
+        "authStep1": "Abra as DevTools do navegador → Application → Cookies",
+        "authStep2": "Copie o valor do cookie {cookie}",
+        "authStep3": "Substitua {placeholder} nos exemplos abaixo",
+        "authPublicNote": "Tesourarias públicas podem ser consultadas sem token. Tesourarias confidenciais exigem o token de sessão de um membro da tesouraria.",
+        "signedInAs": "Conectado como {accountId} — executa com sua sessão atual.",
+        "notSignedIn": "Não conectado — a solicitação é executada sem sessão.",
+        "parameters": "Parâmetros de consulta",
+        "paramName": "Parâmetro",
+        "paramDescription": "Descrição",
+        "required": "obrigatório",
+        "params": {
+            "accountId": "ID da conta de tesouraria (obrigatório)",
+            "limit": "Número de itens a retornar (padrão 10, máx. 100)",
+            "offset": "Número de itens a pular para paginação (padrão 0)",
+            "minUsdValue": "Incluir apenas alterações com pelo menos este valor em USD",
+            "transactionType": "Filtrar por tipo: incoming, outgoing, staking_rewards ou exchange",
+            "tokenSymbol": "Incluir apenas este símbolo de token",
+            "tokenSymbolNot": "Excluir este símbolo de token",
+            "txHash": "Filtrar por hash de transação",
+            "from": "Contas remetentes a incluir, separadas por vírgulas",
+            "fromNot": "Contas remetentes a excluir, separadas por vírgulas",
+            "to": "Contas destinatárias a incluir, separadas por vírgulas",
+            "toNot": "Contas destinatárias a excluir, separadas por vírgulas",
+            "startDate": "Incluir apenas atividade nesta data ou depois (ISO 8601)",
+            "endDate": "Incluir apenas atividade nesta data ou antes (ISO 8601)"
+        },
+        "examples": "Exemplos de código",
+        "limitLabel": "Limite",
+        "offsetLabel": "Deslocamento",
+        "transactionTypeLabel": "Tipo de transação",
+        "run": "Executar solicitação",
+        "running": "Executando…",
+        "response": "Resposta",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "A solicitação falhou",
+        "copy": "Copiar"
     },
     "export": {
         "types": {
@@ -1148,7 +1194,7 @@
         "treasuryName": "Nome da tesouraria",
         "treasuryNamePlaceholder": "Minha tesouraria",
         "accountName": "Nome da conta",
-        "accountNameInfo": "Este é o nome único da sua conta. Será usado na URL da sua tesouraria e exibido nas transações para identificar quem enviou o pagamento. Escolha um nome curto e reconhecível para sua conta.",
+        "accountNameInfo": "O endereco permanente da sua tesouraria. E usado na URL da sua tesouraria e exibido nos pagamentos. Escolha algo curto e reconhecivel - nao pode ser alterado depois.",
         "accountPlaceholder": "minha-tesouraria",
         "continue": "Continuar",
         "votingThreshold": "Limite de votação",
@@ -1183,8 +1229,8 @@
         "noDeploymentFeeDescription": "Para apoiar novos projetos, a TREZU cobre todas as taxas únicas de implantação e armazenamento de rede.",
         "createButton": "Criar tesouraria",
         "connectWalletCreate": "Conecte a carteira para criar a tesouraria",
-        "walletNotSupportedTitle": "Carteira ainda não suportada",
-        "walletNotSupportedDescription": "{wallet} ainda não é suportada, mas estamos trabalhando nisso. Você pode continuar usando uma carteira NEAR suportada ou Ledger.",
+        "walletNotSupportedTitle": "{wallet} ainda não é suportada",
+        "walletNotSupportedDescription": "Vamos adicionar isso depois. Enquanto isso, faça login com NEAR, Ledger ou carteiras EVM, a que você já tiver.",
         "connectNear": "Conectar NEAR",
         "connectLedger": "Conectar Ledger",
         "headerDescription": "Configure uma tesouraria multisig para sua equipe ou para você",
@@ -1209,7 +1255,7 @@
             "chooseEvmWallet": "Escolha suas carteiras EVM",
             "signInWithNear": "Entrar com carteiras NEAR",
             "signInWithLedger": "Entrar com Ledger",
-            "signInWithWalletConnect": "Entrar com WalletConnect",
+            "signInWithWalletConnect": "Entrar com carteiras EVM",
             "guide": {
                 "title": "Qual tipo de login devo usar?",
                 "connectWalletTitle": "Conectar uma carteira",
@@ -1428,28 +1474,27 @@
         "resources": "Recursos",
         "support": "Suporte",
         "websiteTitle": "Site da Trezu",
-        "websiteDescription": "Saiba mais sobre a Trezu e leia nosso blog.",
+        "websiteDescription": "Leia sobre a Trezu e as novidades.",
         "demo": "Demo da Trezu",
         "demoTitle": "Explore a versão pública",
-        "demoDescription": "Veja uma conta pública ao vivo em ação.",
+        "demoDescription": "Uma tesouraria real que qualquer pessoa pode ver.",
         "confidentialDemoTitle": "Explore a versão confidencial",
-        "confidentialDemoDescription": "Explore uma conta confidencial ao vivo em ação.",
+        "confidentialDemoDescription": "Como uma tesouraria privada funciona na prática.",
         "videoTitle": "Assista à demonstração",
-        "videoDescription": "Assista a um vídeo curto mostrando como a Trezu funciona.",
+        "videoDescription": "Vídeo curto — veja a Trezu de ponta a ponta.",
         "xTitle": "Siga-nos no X",
-        "xDescription": "Mantenha-se atualizado com nossos lançamentos e novidades.",
+        "xDescription": "Veja o que estamos construindo, em tempo real.",
         "statsTitle": "Estatísticas",
-        "statsDescription": "Veja o total de ativos sob gestão em todos os DAOs sputnik.",
+        "statsDescription": "Veja o total de ativos geridos em todas as tesourarias.",
         "docsTitle": "Documentação",
-        "docsDescription": "Conheça todos os recursos na documentação.",
+        "docsDescription": "Guias para cada recurso, passo a passo.",
         "productSupportTitle": "Suporte ao produto",
-        "productSupportDescription": "Entre em contato com nossa equipe de suporte para obter ajuda."
+        "productSupportDescription": "Fale com nossa equipe para obter ajuda."
     },
     "progressModal": {
         "titleCreating": "Criando tesouraria...",
         "titleDone": "Tesouraria criada",
-        "titleFailed": "Falha na criação da tesouraria",
-        "viewTreasury": "Ver tesouraria"
+        "titleFailed": "Falha na criação da tesouraria"
     },
     "memberValidation": {
         "noManagePermission": "Você não tem permissão para gerenciar membros",
@@ -1846,7 +1891,7 @@
     },
     "intentsQuote": {
         "initializing": "O serviço de cotação ainda está inicializando. Por favor, tente novamente.",
-        "noRoute": "Não foi possível preparar uma rota de pagamento agora. Por favor, tente novamente.",
+        "noRoute": "Não há liquidez disponível para este token e esta rede no momento.",
         "fetchFailed": "Não foi possível preparar uma rota de pagamento agora. Por favor, tente novamente.",
         "amountTooLow": "O valor é muito baixo para cobrir as taxas de rede. Insira um valor maior e tente novamente.",
         "amountTooLowWithMin": "O valor é muito baixo para cobrir as taxas de rede. Insira pelo menos {min} {token}.",

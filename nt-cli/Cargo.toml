@@ -1,6 +1,6 @@
 [package]
 name = "trezu-cli"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 resolver = "3"
 description = "Manage your Confidential Multichain Multisig (Trezu) assets from CLI"
@@ -37,6 +37,7 @@ shell-words = "1.0.0"
 prettytable = "0.10.0"
 
 near-crypto = "0.35"
+rand = "0.8"
 near-primitives = "0.35"
 near-cli-rs = { version = "0.26", default-features = false }
 

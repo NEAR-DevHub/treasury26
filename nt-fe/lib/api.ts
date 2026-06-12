@@ -1277,6 +1277,7 @@ export interface IntentsQuoteResponse {
 export async function getIntentsQuote(
     request: IntentsQuoteRequest,
     dry: boolean = true,
+    signal?: AbortSignal,
 ): Promise<IntentsQuoteResponse | null> {
     try {
         const url = `${BACKEND_API_BASE}/intents/quote`;
@@ -1286,7 +1287,7 @@ export async function getIntentsQuote(
                 ...request,
                 dry,
             },
-            { withCredentials: true },
+            { withCredentials: true, signal },
         );
         return response.data;
     } catch (error: any) {

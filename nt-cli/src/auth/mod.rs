@@ -7,7 +7,14 @@ use colored::Colorize;
 use near_cli_rs::commands::message::sign_nep413::{
     FinalSignNep413Context, NEP413Payload, SignedMessage,
 };
+use rand::RngCore;
 use strum::{EnumDiscriminants, EnumIter, EnumMessage};
+
+/// NEP-641 authorization purpose used for dApp authentication.
+const AUTH_PURPOSE: &str = "PROVE_OWNERSHIP";
+/// Bare recipient bound into the authorization. Must match the backend's
+/// `AUTH_RECIPIENT` in `nt-be/src/auth/handlers.rs`.
+const AUTH_RECIPIENT: &str = "Trezu App";
 
 #[derive(Debug, Clone, interactive_clap::InteractiveClap)]
 #[interactive_clap(context = TrezuContext)]
@@ -79,21 +86,24 @@ impl LoginContext {
 
         let api = ApiClient::new(&previous_context.config);
         let challenge = api.get_challenge()?;
-        let nonce_bytes = base64::engine::general_purpose::STANDARD.decode(&challenge.nonce)?;
-        let nonce_32: [u8; 32] = nonce_bytes
-            .as_slice()
-            .try_into()
-            .map_err(|_| color_eyre::eyre::eyre!("Nonce must be 32 bytes"))?;
+
+        // NEP-641 NEP-413 fallback: the challenge payload is the signed message
+        // and the purpose is bound into the recipient as "<PURPOSE>@<recipient>".
+        // The nonce is generated client-side; replay protection comes from the
+        // backend consuming the unique challenge payload.
+        let mut nonce_32 = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut nonce_32);
+        let nonce_b64 = base64::engine::general_purpose::STANDARD.encode(nonce_32);
 
         let payload = NEP413Payload {
-            message: "Login to Trezu".to_string(),
+            message: challenge.payload.clone(),
             nonce: nonce_32,
-            recipient: "trezu.app".to_string(),
+            recipient: format!("{AUTH_PURPOSE}@{AUTH_RECIPIENT}"),
             callback_url: None,
         };
 
         let trezu_config = previous_context.config.clone();
-        let nonce_b64 = challenge.nonce.clone();
+        let challenge_payload = challenge.payload.clone();
         let login_account_id = account_id.clone();
 
         let on_after_signing_callback: near_cli_rs::commands::message::sign_nep413::OnAfterSigningNep413Callback =
@@ -103,6 +113,7 @@ impl LoginContext {
                     &login_account_id,
                     &signed_message.public_key,
                     &signed_message.signature,
+                    &challenge_payload,
                     &nonce_b64,
                 )
             });
@@ -128,20 +139,28 @@ fn complete_login(
     account_id: &str,
     public_key: &str,
     signature: &str,
+    challenge_payload: &str,
     nonce_b64: &str,
 ) -> color_eyre::eyre::Result<()> {
-    let sig_b64 = convert_signature_to_base64(signature)?;
+    if !signature.starts_with("ed25519:") {
+        return Err(color_eyre::eyre::eyre!("Only ED25519 keys are supported"));
+    }
 
     let api = ApiClient::new(config);
 
+    // NEP-413 `SignedMessage` blob the backend's NEP-641 fallback verifies.
+    let authorization = serde_json::json!({
+        "publicKey": public_key,
+        "signature": signature,
+        "message": challenge_payload,
+        "recipient": format!("{AUTH_PURPOSE}@{AUTH_RECIPIENT}"),
+        "nonce": nonce_b64,
+    })
+    .to_string();
+
     let login_request = LoginRequest {
         account_id: account_id.to_string(),
-        public_key: public_key.to_string(),
-        signature: sig_b64,
-        message: "Login to Trezu".to_string(),
-        nonce: nonce_b64.to_string(),
-        recipient: "trezu.app".to_string(),
-        callback_url: None,
+        authorization,
     };
 
     let (me, token) = api.login(&login_request)?;
@@ -164,17 +183,6 @@ fn complete_login(
     );
 
     Ok(())
-}
-
-fn convert_signature_to_base64(signature_str: &str) -> color_eyre::eyre::Result<String> {
-    let sig: near_crypto::Signature = signature_str
-        .parse()
-        .map_err(|e| color_eyre::eyre::eyre!("Failed to parse signature: {}", e))?;
-    let sig_bytes: Vec<u8> = match &sig {
-        near_crypto::Signature::ED25519(sig) => sig.to_bytes().to_vec(),
-        _ => return Err(color_eyre::eyre::eyre!("Only ED25519 keys are supported")),
-    };
-    Ok(base64::engine::general_purpose::STANDARD.encode(sig_bytes))
 }
 
 // --- Logout ---

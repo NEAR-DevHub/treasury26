@@ -173,6 +173,10 @@
             "descriptionDetails": "Details zur Anfrage",
             "descriptionList": "Letzte Transaktionen über alle Vermögenswerte hinweg"
         },
+        "apiDocs": {
+            "title": "API-Dokumentation",
+            "description": "Interaktive Dokumentation für die Trezu-API für letzte Aktivitäten"
+        },
         "requests": {
             "title": "Anfragen",
             "description": "Alle ausstehenden Multisig-Anfragen anzeigen und verwalten",
@@ -369,6 +373,48 @@
             "contract": "Vertrag",
             "transaction": "Transaktion"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpunkt",
+        "endpointDescription": "Gibt die letzten Aktivitäten (angereicherte Kontostandsänderungen) für ein Treasury-Konto zurück.",
+        "authentication": "Authentifizierung",
+        "authIntro": "Authentifizieren Sie sich mit dem Sitzungs-JWT aus dem Cookie {cookie}:",
+        "authStep1": "Öffnen Sie die DevTools Ihres Browsers → Application → Cookies",
+        "authStep2": "Kopieren Sie den Wert des Cookies {cookie}",
+        "authStep3": "Ersetzen Sie {placeholder} in den Snippets unten",
+        "authPublicNote": "Öffentliche Treasuries können ohne Token abgefragt werden. Vertrauliche Treasuries erfordern das Sitzungstoken eines Treasury-Mitglieds.",
+        "signedInAs": "Angemeldet als {accountId} — wird mit Ihrer aktuellen Sitzung ausgeführt.",
+        "notSignedIn": "Nicht angemeldet — die Anfrage wird ohne Sitzung ausgeführt.",
+        "parameters": "Abfrageparameter",
+        "paramName": "Parameter",
+        "paramDescription": "Beschreibung",
+        "required": "erforderlich",
+        "params": {
+            "accountId": "Treasury-Konto-ID (erforderlich)",
+            "limit": "Anzahl der zurückzugebenden Einträge (Standard 10, max. 100)",
+            "offset": "Anzahl der zu überspringenden Einträge für die Paginierung (Standard 0)",
+            "minUsdValue": "Nur Änderungen mit mindestens diesem USD-Wert einschließen",
+            "transactionType": "Nach Typ filtern: incoming, outgoing, staking_rewards oder exchange",
+            "tokenSymbol": "Nur dieses Token-Symbol einschließen",
+            "tokenSymbolNot": "Dieses Token-Symbol ausschließen",
+            "txHash": "Nach Transaktions-Hash filtern",
+            "from": "Kommagetrennte Absenderkonten, die eingeschlossen werden sollen",
+            "fromNot": "Kommagetrennte Absenderkonten, die ausgeschlossen werden sollen",
+            "to": "Kommagetrennte Empfängerkonten, die eingeschlossen werden sollen",
+            "toNot": "Kommagetrennte Empfängerkonten, die ausgeschlossen werden sollen",
+            "startDate": "Nur Aktivitäten an oder nach diesem Datum einschließen (ISO 8601)",
+            "endDate": "Nur Aktivitäten an oder vor diesem Datum einschließen (ISO 8601)"
+        },
+        "examples": "Codebeispiele",
+        "limitLabel": "Limit",
+        "offsetLabel": "Offset",
+        "transactionTypeLabel": "Transaktionstyp",
+        "run": "Anfrage ausführen",
+        "running": "Wird ausgeführt…",
+        "response": "Antwort",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "Anfrage fehlgeschlagen",
+        "copy": "Kopieren"
     },
     "export": {
         "types": {
@@ -1148,7 +1194,7 @@
         "treasuryName": "Treasury-Name",
         "treasuryNamePlaceholder": "Meine Treasury",
         "accountName": "Kontoname",
-        "accountNameInfo": "Dies ist der eindeutige Name Ihres Kontos. Er wird in Ihrer Treasury-URL verwendet und in Transaktionen angezeigt, um zu identifizieren, wer die Zahlung gesendet hat. Wählen Sie einen kurzen, einprägsamen Namen für Ihr Konto.",
+        "accountNameInfo": "Die permanente Adresse Ihrer Treasury. Sie wird in Ihrer Treasury-URL verwendet und bei Zahlungen angezeigt. Wahlen Sie etwas Kurzes und Wiedererkennbares - es kann spater nicht geandert werden.",
         "accountPlaceholder": "meine-treasury",
         "continue": "Weiter",
         "votingThreshold": "Abstimmungsschwellenwert",
@@ -1183,8 +1229,8 @@
         "noDeploymentFeeDescription": "Zur Unterstützung neuer Projekte übernimmt TREZU alle einmaligen Bereitstellungs- und Netzwerkspeichergebühren.",
         "createButton": "Treasury erstellen",
         "connectWalletCreate": "Wallet verbinden, um Treasury zu erstellen",
-        "walletNotSupportedTitle": "Wallet wird noch nicht unterstützt",
-        "walletNotSupportedDescription": "{wallet} wird noch nicht unterstützt, aber wir arbeiten daran. Du kannst mit einer unterstützten NEAR-Wallet oder Ledger fortfahren.",
+        "walletNotSupportedTitle": "{wallet} wird noch nicht unterstützt",
+        "walletNotSupportedDescription": "Wir fügen es später hinzu. In der Zwischenzeit melde dich mit NEAR, Ledger oder EVM-Wallets an - je nachdem, was du bereits hast.",
         "connectNear": "NEAR verbinden",
         "connectLedger": "Ledger verbinden",
         "headerDescription": "Richte eine Multisig-Treasury für dein Team oder für dich selbst ein",
@@ -1209,7 +1255,7 @@
             "chooseEvmWallet": "Wähle deine EVM-Wallets",
             "signInWithNear": "Mit NEAR-Wallets anmelden",
             "signInWithLedger": "Mit Ledger anmelden",
-            "signInWithWalletConnect": "Mit WalletConnect anmelden",
+            "signInWithWalletConnect": "Mit EVM-Wallets anmelden",
             "guide": {
                 "title": "Welche Anmeldung soll ich verwenden?",
                 "connectWalletTitle": "Wallet verbinden",
@@ -1428,28 +1474,27 @@
         "resources": "Ressourcen",
         "support": "Support",
         "websiteTitle": "Trezu-Website",
-        "websiteDescription": "Erfahren Sie mehr über Trezu und lesen Sie unseren Blog.",
+        "websiteDescription": "Lies über Trezu und was es Neues gibt.",
         "demo": "Trezu-Demo",
         "demoTitle": "Öffentliche Version erkunden",
-        "demoDescription": "Sehen Sie ein Live-Konto in Aktion.",
+        "demoDescription": "Eine echte Treasury, die alle einsehen können.",
         "confidentialDemoTitle": "Vertrauliche Version erkunden",
-        "confidentialDemoDescription": "Erkunden Sie ein vertrauliches Live-Konto in Aktion.",
+        "confidentialDemoDescription": "So sieht eine private Treasury im Einsatz aus.",
         "videoTitle": "Demo ansehen",
-        "videoDescription": "Sehen Sie ein kurzes Video, das zeigt, wie Trezu funktioniert.",
+        "videoDescription": "Kurzes Video — Trezu von Anfang bis Ende.",
         "xTitle": "Folgen Sie uns auf X",
-        "xDescription": "Bleiben Sie über unsere neuesten Releases und Einblicke informiert.",
+        "xDescription": "Sieh in Echtzeit, woran wir bauen.",
         "statsTitle": "Statistiken",
-        "statsDescription": "Sehen Sie sich die gesamten Vermögenswerte unter Verwaltung über alle Sputnik-DAOs hinweg an.",
+        "statsDescription": "Sieh das insgesamt verwaltete Vermögen über alle Treasuries.",
         "docsTitle": "Dokumentation",
-        "docsDescription": "Erfahren Sie alles über die Funktionen in der Dokumentation.",
+        "docsDescription": "Anleitungen für jede Funktion, Schritt für Schritt.",
         "productSupportTitle": "Produkt-Support",
-        "productSupportDescription": "Kontaktieren Sie unser Support-Team für Hilfe."
+        "productSupportDescription": "Erreiche unser Team für Hilfe."
     },
     "progressModal": {
         "titleCreating": "Treasury wird erstellt...",
         "titleDone": "Treasury erstellt",
-        "titleFailed": "Treasury-Erstellung fehlgeschlagen",
-        "viewTreasury": "Treasury anzeigen"
+        "titleFailed": "Treasury-Erstellung fehlgeschlagen"
     },
     "memberValidation": {
         "noManagePermission": "Sie haben keine Berechtigung, Mitglieder zu verwalten",
@@ -1846,7 +1891,7 @@
     },
     "intentsQuote": {
         "initializing": "Der Angebotsdienst wird noch initialisiert. Bitte erneut versuchen.",
-        "noRoute": "Derzeit kann keine Zahlungsroute vorbereitet werden. Bitte erneut versuchen.",
+        "noRoute": "Derzeit ist für dieses Token und dieses Netzwerk keine Liquidität verfügbar.",
         "fetchFailed": "Derzeit kann keine Zahlungsroute vorbereitet werden. Bitte erneut versuchen.",
         "amountTooLow": "Der Betrag ist zu niedrig, um die Netzwerkgebühren zu decken. Geben Sie einen höheren Betrag ein und versuchen Sie es erneut.",
         "amountTooLowWithMin": "Der Betrag ist zu niedrig, um die Netzwerkgebühren zu decken. Geben Sie mindestens {min} {token} ein.",

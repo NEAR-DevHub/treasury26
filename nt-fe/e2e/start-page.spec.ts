@@ -66,12 +66,12 @@ async function gotoStartPageAndWaitForBootstrapRequests(page: Page) {
     await Promise.all([authMeResponse, userTreasuriesResponse]);
 }
 
-test("Start page shows create treasury form when signed out", async ({
+test("Create route shows create treasury form when signed out", async ({
     page,
 }) => {
     await setupStartPageMocks(page, {});
 
-    await page.goto("/");
+    await page.goto("/create");
 
     await expect(
         page.getByRole("heading", { name: /create treasury/i }),
@@ -151,7 +151,7 @@ test("Signed in + no treasuries + creation error => waitlist is shown", async ({
         .fill("testing-by-playwright");
     await page.getByRole("button", { name: /create treasury/i }).click();
 
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/create/);
     await expect(
         page.getByRole("heading", { name: /give us a little time/i }),
     ).toBeVisible();
