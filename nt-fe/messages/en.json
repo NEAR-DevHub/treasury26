@@ -173,6 +173,10 @@
             "descriptionDetails": "Details for Request",
             "descriptionList": "Recent transactions across all assets"
         },
+        "apiDocs": {
+            "title": "API Documentation",
+            "description": "Interactive documentation for the Trezu recent-activity API"
+        },
         "requests": {
             "title": "Requests",
             "description": "View and manage all pending multisig requests",
@@ -369,6 +373,45 @@
             "contract": "Contract",
             "transaction": "Transaction"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpoint",
+        "endpointDescription": "Returns recent activity (enriched balance changes) for a treasury account.",
+        "authentication": "Authentication",
+        "authIntro": "Requests are authenticated with your session JWT stored in the HttpOnly {cookie} cookie. JavaScript cannot read it — copy the value from your browser DevTools: Application → Cookies → {cookie}.",
+        "authPublicNote": "Public treasuries can be queried without a token. Confidential treasuries require the session token of a treasury member.",
+        "signedInAs": "Signed in as {accountId} — the Try it button below uses your current session automatically.",
+        "notSignedIn": "You are not signed in. Log in to run the request with your session.",
+        "parameters": "Query parameters",
+        "paramName": "Parameter",
+        "paramDescription": "Description",
+        "params": {
+            "accountId": "Treasury account ID (required)",
+            "limit": "Number of items to return (default 10, max 100)",
+            "offset": "Number of items to skip for pagination (default 0)",
+            "minUsdValue": "Only include changes with at least this USD value",
+            "transactionType": "Filter by type: incoming, outgoing, staking_rewards, or exchange",
+            "tokenSymbol": "Only include this token symbol",
+            "tokenSymbolNot": "Exclude this token symbol",
+            "txHash": "Filter by transaction hash",
+            "from": "Comma-separated sender accounts to include",
+            "fromNot": "Comma-separated sender accounts to exclude",
+            "to": "Comma-separated recipient accounts to include",
+            "toNot": "Comma-separated recipient accounts to exclude",
+            "startDate": "Only include activity on or after this date (ISO 8601)",
+            "endDate": "Only include activity on or before this date (ISO 8601)"
+        },
+        "examples": "Code examples",
+        "limitLabel": "Limit",
+        "offsetLabel": "Offset",
+        "transactionTypeLabel": "Transaction type",
+        "tryIt": "Try it",
+        "tryItDescription": "Runs the request from your browser using your current session cookie.",
+        "run": "Run request",
+        "running": "Running…",
+        "response": "Response",
+        "requestFailed": "Request failed",
+        "copy": "Copy"
     },
     "export": {
         "types": {

@@ -173,6 +173,10 @@
             "descriptionDetails": "请求详情",
             "descriptionList": "所有资产的近期交易"
         },
+        "apiDocs": {
+            "title": "API 文档",
+            "description": "Trezu 近期活动 API 的交互式文档"
+        },
         "requests": {
             "title": "请求",
             "description": "查看并管理所有待处理的多签请求",
@@ -369,6 +373,45 @@
             "contract": "合约",
             "transaction": "交易"
         }
+    },
+    "apiDocs": {
+        "endpoint": "接口地址",
+        "endpointDescription": "返回金库账户的近期活动（已补充信息的余额变动）。",
+        "authentication": "身份验证",
+        "authIntro": "请求使用存储在 HttpOnly Cookie {cookie} 中的会话 JWT 进行身份验证。JavaScript 无法读取它——请从浏览器 DevTools 中复制其值：Application → Cookies → {cookie}。",
+        "authPublicNote": "公开金库无需令牌即可查询。机密金库需要金库成员的会话令牌。",
+        "signedInAs": "已以 {accountId} 登录——下方的“试一试”按钮会自动使用您当前的会话。",
+        "notSignedIn": "您尚未登录。请登录后使用您的会话运行请求。",
+        "parameters": "查询参数",
+        "paramName": "参数",
+        "paramDescription": "说明",
+        "params": {
+            "accountId": "金库账户 ID（必填）",
+            "limit": "返回的条目数（默认 10，最大 100）",
+            "offset": "分页时跳过的条目数（默认 0）",
+            "minUsdValue": "仅包含至少达到此美元价值的变动",
+            "transactionType": "按类型筛选：incoming、outgoing、staking_rewards 或 exchange",
+            "tokenSymbol": "仅包含此代币符号",
+            "tokenSymbolNot": "排除此代币符号",
+            "txHash": "按交易哈希筛选",
+            "from": "要包含的发送方账户，以逗号分隔",
+            "fromNot": "要排除的发送方账户，以逗号分隔",
+            "to": "要包含的接收方账户，以逗号分隔",
+            "toNot": "要排除的接收方账户，以逗号分隔",
+            "startDate": "仅包含此日期当天或之后的活动（ISO 8601）",
+            "endDate": "仅包含此日期当天或之前的活动（ISO 8601）"
+        },
+        "examples": "代码示例",
+        "limitLabel": "数量",
+        "offsetLabel": "偏移量",
+        "transactionTypeLabel": "交易类型",
+        "tryIt": "试一试",
+        "tryItDescription": "使用您当前的会话 Cookie 从浏览器运行请求。",
+        "run": "运行请求",
+        "running": "运行中…",
+        "response": "响应",
+        "requestFailed": "请求失败",
+        "copy": "复制"
     },
     "export": {
         "types": {

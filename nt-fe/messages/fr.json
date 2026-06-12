@@ -173,6 +173,10 @@
             "descriptionDetails": "Détails de la demande",
             "descriptionList": "Transactions récentes sur tous les actifs"
         },
+        "apiDocs": {
+            "title": "Documentation de l'API",
+            "description": "Documentation interactive de l'API d'activité récente de Trezu"
+        },
         "requests": {
             "title": "Demandes",
             "description": "Consultez et gérez toutes les demandes multisig en attente",
@@ -369,6 +373,45 @@
             "contract": "Contrat",
             "transaction": "Transaction"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpoint",
+        "endpointDescription": "Renvoie l'activité récente (variations de solde enrichies) d'un compte de trésorerie.",
+        "authentication": "Authentification",
+        "authIntro": "Les requêtes sont authentifiées avec votre JWT de session stocké dans le cookie HttpOnly {cookie}. JavaScript ne peut pas le lire — copiez la valeur depuis les DevTools de votre navigateur : Application → Cookies → {cookie}.",
+        "authPublicNote": "Les trésoreries publiques peuvent être interrogées sans jeton. Les trésoreries confidentielles nécessitent le jeton de session d'un membre de la trésorerie.",
+        "signedInAs": "Connecté en tant que {accountId} — le bouton Essayer ci-dessous utilise automatiquement votre session actuelle.",
+        "notSignedIn": "Vous n'êtes pas connecté. Connectez-vous pour exécuter la requête avec votre session.",
+        "parameters": "Paramètres de requête",
+        "paramName": "Paramètre",
+        "paramDescription": "Description",
+        "params": {
+            "accountId": "ID du compte de trésorerie (obligatoire)",
+            "limit": "Nombre d'éléments à renvoyer (10 par défaut, 100 max)",
+            "offset": "Nombre d'éléments à ignorer pour la pagination (0 par défaut)",
+            "minUsdValue": "N'inclure que les variations d'au moins cette valeur en USD",
+            "transactionType": "Filtrer par type : incoming, outgoing, staking_rewards ou exchange",
+            "tokenSymbol": "N'inclure que ce symbole de jeton",
+            "tokenSymbolNot": "Exclure ce symbole de jeton",
+            "txHash": "Filtrer par hash de transaction",
+            "from": "Comptes expéditeurs à inclure, séparés par des virgules",
+            "fromNot": "Comptes expéditeurs à exclure, séparés par des virgules",
+            "to": "Comptes destinataires à inclure, séparés par des virgules",
+            "toNot": "Comptes destinataires à exclure, séparés par des virgules",
+            "startDate": "N'inclure que l'activité à partir de cette date incluse (ISO 8601)",
+            "endDate": "N'inclure que l'activité jusqu'à cette date incluse (ISO 8601)"
+        },
+        "examples": "Exemples de code",
+        "limitLabel": "Limite",
+        "offsetLabel": "Décalage",
+        "transactionTypeLabel": "Type de transaction",
+        "tryIt": "Essayer",
+        "tryItDescription": "Exécute la requête depuis votre navigateur en utilisant votre cookie de session actuel.",
+        "run": "Exécuter la requête",
+        "running": "Exécution…",
+        "response": "Réponse",
+        "requestFailed": "La requête a échoué",
+        "copy": "Copier"
     },
     "export": {
         "types": {

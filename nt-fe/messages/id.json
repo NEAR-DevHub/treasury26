@@ -173,6 +173,10 @@
             "descriptionDetails": "Detail Permintaan",
             "descriptionList": "Transaksi terbaru di semua aset"
         },
+        "apiDocs": {
+            "title": "Dokumentasi API",
+            "description": "Dokumentasi interaktif untuk API aktivitas terbaru Trezu"
+        },
         "requests": {
             "title": "Permintaan",
             "description": "Lihat dan kelola semua permintaan multisig yang tertunda",
@@ -369,6 +373,45 @@
             "contract": "Kontrak",
             "transaction": "Transaksi"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpoint",
+        "endpointDescription": "Mengembalikan aktivitas terbaru (perubahan saldo yang diperkaya) untuk akun treasury.",
+        "authentication": "Autentikasi",
+        "authIntro": "Permintaan diautentikasi dengan JWT sesi Anda yang disimpan di cookie HttpOnly {cookie}. JavaScript tidak dapat membacanya — salin nilainya dari DevTools browser Anda: Application → Cookies → {cookie}.",
+        "authPublicNote": "Treasury publik dapat dikueri tanpa token. Treasury rahasia memerlukan token sesi dari anggota treasury.",
+        "signedInAs": "Masuk sebagai {accountId} — tombol Coba di bawah menggunakan sesi Anda saat ini secara otomatis.",
+        "notSignedIn": "Anda belum masuk. Masuk untuk menjalankan permintaan dengan sesi Anda.",
+        "parameters": "Parameter kueri",
+        "paramName": "Parameter",
+        "paramDescription": "Deskripsi",
+        "params": {
+            "accountId": "ID akun treasury (wajib)",
+            "limit": "Jumlah item yang dikembalikan (default 10, maks 100)",
+            "offset": "Jumlah item yang dilewati untuk paginasi (default 0)",
+            "minUsdValue": "Hanya sertakan perubahan dengan nilai USD minimal ini",
+            "transactionType": "Filter berdasarkan tipe: incoming, outgoing, staking_rewards, atau exchange",
+            "tokenSymbol": "Hanya sertakan simbol token ini",
+            "tokenSymbolNot": "Kecualikan simbol token ini",
+            "txHash": "Filter berdasarkan hash transaksi",
+            "from": "Akun pengirim yang disertakan, dipisahkan koma",
+            "fromNot": "Akun pengirim yang dikecualikan, dipisahkan koma",
+            "to": "Akun penerima yang disertakan, dipisahkan koma",
+            "toNot": "Akun penerima yang dikecualikan, dipisahkan koma",
+            "startDate": "Hanya sertakan aktivitas pada atau setelah tanggal ini (ISO 8601)",
+            "endDate": "Hanya sertakan aktivitas pada atau sebelum tanggal ini (ISO 8601)"
+        },
+        "examples": "Contoh kode",
+        "limitLabel": "Batas",
+        "offsetLabel": "Offset",
+        "transactionTypeLabel": "Tipe transaksi",
+        "tryIt": "Coba",
+        "tryItDescription": "Menjalankan permintaan dari browser Anda menggunakan cookie sesi saat ini.",
+        "run": "Jalankan permintaan",
+        "running": "Menjalankan…",
+        "response": "Respons",
+        "requestFailed": "Permintaan gagal",
+        "copy": "Salin"
     },
     "export": {
         "types": {

@@ -173,6 +173,10 @@
             "descriptionDetails": "Details zur Anfrage",
             "descriptionList": "Letzte Transaktionen über alle Vermögenswerte hinweg"
         },
+        "apiDocs": {
+            "title": "API-Dokumentation",
+            "description": "Interaktive Dokumentation für die Trezu-API für letzte Aktivitäten"
+        },
         "requests": {
             "title": "Anfragen",
             "description": "Alle ausstehenden Multisig-Anfragen anzeigen und verwalten",
@@ -369,6 +373,45 @@
             "contract": "Vertrag",
             "transaction": "Transaktion"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpunkt",
+        "endpointDescription": "Gibt die letzten Aktivitäten (angereicherte Kontostandsänderungen) für ein Treasury-Konto zurück.",
+        "authentication": "Authentifizierung",
+        "authIntro": "Anfragen werden mit Ihrem Sitzungs-JWT authentifiziert, das im HttpOnly-Cookie {cookie} gespeichert ist. JavaScript kann es nicht lesen — kopieren Sie den Wert aus den DevTools Ihres Browsers: Application → Cookies → {cookie}.",
+        "authPublicNote": "Öffentliche Treasuries können ohne Token abgefragt werden. Vertrauliche Treasuries erfordern das Sitzungstoken eines Treasury-Mitglieds.",
+        "signedInAs": "Angemeldet als {accountId} — die Schaltfläche „Ausprobieren“ unten verwendet automatisch Ihre aktuelle Sitzung.",
+        "notSignedIn": "Sie sind nicht angemeldet. Melden Sie sich an, um die Anfrage mit Ihrer Sitzung auszuführen.",
+        "parameters": "Abfrageparameter",
+        "paramName": "Parameter",
+        "paramDescription": "Beschreibung",
+        "params": {
+            "accountId": "Treasury-Konto-ID (erforderlich)",
+            "limit": "Anzahl der zurückzugebenden Einträge (Standard 10, max. 100)",
+            "offset": "Anzahl der zu überspringenden Einträge für die Paginierung (Standard 0)",
+            "minUsdValue": "Nur Änderungen mit mindestens diesem USD-Wert einschließen",
+            "transactionType": "Nach Typ filtern: incoming, outgoing, staking_rewards oder exchange",
+            "tokenSymbol": "Nur dieses Token-Symbol einschließen",
+            "tokenSymbolNot": "Dieses Token-Symbol ausschließen",
+            "txHash": "Nach Transaktions-Hash filtern",
+            "from": "Kommagetrennte Absenderkonten, die eingeschlossen werden sollen",
+            "fromNot": "Kommagetrennte Absenderkonten, die ausgeschlossen werden sollen",
+            "to": "Kommagetrennte Empfängerkonten, die eingeschlossen werden sollen",
+            "toNot": "Kommagetrennte Empfängerkonten, die ausgeschlossen werden sollen",
+            "startDate": "Nur Aktivitäten an oder nach diesem Datum einschließen (ISO 8601)",
+            "endDate": "Nur Aktivitäten an oder vor diesem Datum einschließen (ISO 8601)"
+        },
+        "examples": "Codebeispiele",
+        "limitLabel": "Limit",
+        "offsetLabel": "Offset",
+        "transactionTypeLabel": "Transaktionstyp",
+        "tryIt": "Ausprobieren",
+        "tryItDescription": "Führt die Anfrage aus Ihrem Browser mit Ihrem aktuellen Sitzungscookie aus.",
+        "run": "Anfrage ausführen",
+        "running": "Wird ausgeführt…",
+        "response": "Antwort",
+        "requestFailed": "Anfrage fehlgeschlagen",
+        "copy": "Kopieren"
     },
     "export": {
         "types": {

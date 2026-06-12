@@ -173,6 +173,10 @@
             "descriptionDetails": "リクエストの詳細",
             "descriptionList": "すべての資産にわたる最近のトランザクション"
         },
+        "apiDocs": {
+            "title": "APIドキュメント",
+            "description": "Trezu最近のアクティビティAPIのインタラクティブなドキュメント"
+        },
         "requests": {
             "title": "リクエスト",
             "description": "保留中のすべてのマルチシグリクエストを表示・管理",
@@ -369,6 +373,45 @@
             "contract": "コントラクト",
             "transaction": "トランザクション"
         }
+    },
+    "apiDocs": {
+        "endpoint": "エンドポイント",
+        "endpointDescription": "トレジャリーアカウントの最近のアクティビティ（拡充された残高変動）を返します。",
+        "authentication": "認証",
+        "authIntro": "リクエストは、HttpOnlyクッキー {cookie} に保存されたセッションJWTで認証されます。JavaScriptからは読み取れないため、ブラウザのDevToolsから値をコピーしてください：Application → Cookies → {cookie}。",
+        "authPublicNote": "公開トレジャリーはトークンなしで照会できます。機密トレジャリーにはトレジャリーメンバーのセッショントークンが必要です。",
+        "signedInAs": "{accountId} としてサインイン中 — 下の「試す」ボタンは現在のセッションを自動的に使用します。",
+        "notSignedIn": "サインインしていません。セッションでリクエストを実行するにはログインしてください。",
+        "parameters": "クエリパラメータ",
+        "paramName": "パラメータ",
+        "paramDescription": "説明",
+        "params": {
+            "accountId": "トレジャリーアカウントID（必須）",
+            "limit": "返す件数（デフォルト10、最大100）",
+            "offset": "ページネーションのためにスキップする件数（デフォルト0）",
+            "minUsdValue": "このUSD価値以上の変動のみを含める",
+            "transactionType": "タイプで絞り込み：incoming、outgoing、staking_rewards、exchange",
+            "tokenSymbol": "このトークンシンボルのみを含める",
+            "tokenSymbolNot": "このトークンシンボルを除外する",
+            "txHash": "トランザクションハッシュで絞り込み",
+            "from": "含める送信者アカウント（カンマ区切り）",
+            "fromNot": "除外する送信者アカウント（カンマ区切り）",
+            "to": "含める受信者アカウント（カンマ区切り）",
+            "toNot": "除外する受信者アカウント（カンマ区切り）",
+            "startDate": "この日付以降のアクティビティのみを含める（ISO 8601）",
+            "endDate": "この日付以前のアクティビティのみを含める（ISO 8601）"
+        },
+        "examples": "コード例",
+        "limitLabel": "件数",
+        "offsetLabel": "オフセット",
+        "transactionTypeLabel": "トランザクションタイプ",
+        "tryIt": "試す",
+        "tryItDescription": "現在のセッションクッキーを使用して、ブラウザからリクエストを実行します。",
+        "run": "リクエストを実行",
+        "running": "実行中…",
+        "response": "レスポンス",
+        "requestFailed": "リクエストに失敗しました",
+        "copy": "コピー"
     },
     "export": {
         "types": {

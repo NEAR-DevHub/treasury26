@@ -173,6 +173,10 @@
             "descriptionDetails": "Chi tiết yêu cầu",
             "descriptionList": "Giao dịch gần đây trên tất cả tài sản"
         },
+        "apiDocs": {
+            "title": "Tài liệu API",
+            "description": "Tài liệu tương tác cho API hoạt động gần đây của Trezu"
+        },
         "requests": {
             "title": "Yêu cầu",
             "description": "Xem và quản lý tất cả yêu cầu multisig đang chờ",
@@ -369,6 +373,45 @@
             "contract": "Hợp đồng",
             "transaction": "Giao dịch"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpoint",
+        "endpointDescription": "Trả về hoạt động gần đây (các thay đổi số dư đã được bổ sung thông tin) của một tài khoản kho bạc.",
+        "authentication": "Xác thực",
+        "authIntro": "Các yêu cầu được xác thực bằng JWT phiên của bạn được lưu trong cookie HttpOnly {cookie}. JavaScript không thể đọc nó — hãy sao chép giá trị từ DevTools của trình duyệt: Application → Cookies → {cookie}.",
+        "authPublicNote": "Kho bạc công khai có thể được truy vấn mà không cần token. Kho bạc bảo mật yêu cầu token phiên của một thành viên kho bạc.",
+        "signedInAs": "Đã đăng nhập với tư cách {accountId} — nút Dùng thử bên dưới sẽ tự động sử dụng phiên hiện tại của bạn.",
+        "notSignedIn": "Bạn chưa đăng nhập. Hãy đăng nhập để chạy yêu cầu với phiên của bạn.",
+        "parameters": "Tham số truy vấn",
+        "paramName": "Tham số",
+        "paramDescription": "Mô tả",
+        "params": {
+            "accountId": "ID tài khoản kho bạc (bắt buộc)",
+            "limit": "Số mục trả về (mặc định 10, tối đa 100)",
+            "offset": "Số mục bỏ qua để phân trang (mặc định 0)",
+            "minUsdValue": "Chỉ bao gồm các thay đổi có giá trị USD tối thiểu này",
+            "transactionType": "Lọc theo loại: incoming, outgoing, staking_rewards hoặc exchange",
+            "tokenSymbol": "Chỉ bao gồm ký hiệu token này",
+            "tokenSymbolNot": "Loại trừ ký hiệu token này",
+            "txHash": "Lọc theo mã băm giao dịch",
+            "from": "Các tài khoản người gửi cần bao gồm, phân tách bằng dấu phẩy",
+            "fromNot": "Các tài khoản người gửi cần loại trừ, phân tách bằng dấu phẩy",
+            "to": "Các tài khoản người nhận cần bao gồm, phân tách bằng dấu phẩy",
+            "toNot": "Các tài khoản người nhận cần loại trừ, phân tách bằng dấu phẩy",
+            "startDate": "Chỉ bao gồm hoạt động vào hoặc sau ngày này (ISO 8601)",
+            "endDate": "Chỉ bao gồm hoạt động vào hoặc trước ngày này (ISO 8601)"
+        },
+        "examples": "Ví dụ mã",
+        "limitLabel": "Giới hạn",
+        "offsetLabel": "Độ lệch",
+        "transactionTypeLabel": "Loại giao dịch",
+        "tryIt": "Dùng thử",
+        "tryItDescription": "Chạy yêu cầu từ trình duyệt của bạn bằng cookie phiên hiện tại.",
+        "run": "Chạy yêu cầu",
+        "running": "Đang chạy…",
+        "response": "Phản hồi",
+        "requestFailed": "Yêu cầu thất bại",
+        "copy": "Sao chép"
     },
     "export": {
         "types": {
