@@ -388,6 +388,9 @@
         "parameters": "Parâmetros de consulta",
         "paramName": "Parâmetro",
         "paramDescription": "Descrição",
+        "paramValue": "Valor",
+        "parametersDescription": "Defina valores para montar uma solicitação — eles são refletidos nos exemplos de código e na solicitação executável abaixo.",
+        "examplesDescription": "Os trechos refletem os valores de parâmetros definidos acima.",
         "required": "obrigatório",
         "params": {
             "accountId": "ID da conta de tesouraria (obrigatório)",
@@ -406,9 +409,6 @@
             "endDate": "Incluir apenas atividade nesta data ou antes (ISO 8601)"
         },
         "examples": "Exemplos de código",
-        "limitLabel": "Limite",
-        "offsetLabel": "Deslocamento",
-        "transactionTypeLabel": "Tipo de transação",
         "run": "Executar solicitação",
         "running": "Executando…",
         "response": "Resposta",

@@ -388,6 +388,9 @@
         "parameters": "Paramètres de requête",
         "paramName": "Paramètre",
         "paramDescription": "Description",
+        "paramValue": "Valeur",
+        "parametersDescription": "Définissez des valeurs pour construire une requête — elles alimentent les exemples de code et la requête exécutable ci-dessous.",
+        "examplesDescription": "Les extraits reflètent les valeurs des paramètres définies ci-dessus.",
         "required": "obligatoire",
         "params": {
             "accountId": "ID du compte de trésorerie (obligatoire)",
@@ -406,9 +409,6 @@
             "endDate": "N'inclure que l'activité jusqu'à cette date incluse (ISO 8601)"
         },
         "examples": "Exemples de code",
-        "limitLabel": "Limite",
-        "offsetLabel": "Décalage",
-        "transactionTypeLabel": "Type de transaction",
         "run": "Exécuter la requête",
         "running": "Exécution…",
         "response": "Réponse",

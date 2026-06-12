@@ -388,6 +388,9 @@
         "parameters": "쿼리 매개변수",
         "paramName": "매개변수",
         "paramDescription": "설명",
+        "paramValue": "값",
+        "parametersDescription": "값을 설정하여 요청을 구성하세요. 설정한 값은 아래 코드 예제와 실행 가능한 요청에 반영됩니다.",
+        "examplesDescription": "스니펫에는 위에서 설정한 매개변수 값이 반영됩니다.",
         "required": "필수",
         "params": {
             "accountId": "트레저리 계정 ID(필수)",
@@ -406,9 +409,6 @@
             "endDate": "이 날짜 이전의 활동만 포함(ISO 8601)"
         },
         "examples": "코드 예제",
-        "limitLabel": "개수",
-        "offsetLabel": "오프셋",
-        "transactionTypeLabel": "트랜잭션 유형",
         "run": "요청 실행",
         "running": "실행 중…",
         "response": "응답",

@@ -388,6 +388,9 @@
         "parameters": "פרמטרי שאילתה",
         "paramName": "פרמטר",
         "paramDescription": "תיאור",
+        "paramValue": "ערך",
+        "parametersDescription": "הגדירו ערכים כדי לבנות בקשה – הם משתקפים בדוגמאות הקוד ובבקשה הניתנת להרצה למטה.",
+        "examplesDescription": "קטעי הקוד משקפים את ערכי הפרמטרים שהוגדרו למעלה.",
         "required": "חובה",
         "params": {
             "accountId": "מזהה חשבון האוצר (חובה)",
@@ -406,9 +409,6 @@
             "endDate": "כלול רק פעילות בתאריך זה או לפניו (ISO 8601)"
         },
         "examples": "דוגמאות קוד",
-        "limitLabel": "מגבלה",
-        "offsetLabel": "היסט",
-        "transactionTypeLabel": "סוג עסקה",
         "run": "הרץ בקשה",
         "running": "מריץ…",
         "response": "תגובה",

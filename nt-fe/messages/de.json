@@ -388,6 +388,9 @@
         "parameters": "Abfrageparameter",
         "paramName": "Parameter",
         "paramDescription": "Beschreibung",
+        "paramValue": "Wert",
+        "parametersDescription": "Legen Sie Werte fest, um eine Anfrage zu erstellen – sie fließen in die Codebeispiele und die ausführbare Anfrage unten ein.",
+        "examplesDescription": "Die Snippets spiegeln die oben festgelegten Parameterwerte wider.",
         "required": "erforderlich",
         "params": {
             "accountId": "Treasury-Konto-ID (erforderlich)",
@@ -406,9 +409,6 @@
             "endDate": "Nur Aktivitäten an oder vor diesem Datum einschließen (ISO 8601)"
         },
         "examples": "Codebeispiele",
-        "limitLabel": "Limit",
-        "offsetLabel": "Offset",
-        "transactionTypeLabel": "Transaktionstyp",
         "run": "Anfrage ausführen",
         "running": "Wird ausgeführt…",
         "response": "Antwort",

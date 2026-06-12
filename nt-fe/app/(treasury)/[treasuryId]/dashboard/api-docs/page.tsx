@@ -36,6 +36,7 @@ import { useNear } from "@/stores/near-store";
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "";
 const AUTH_COOKIE_NAME = "auth_token";
 const JWT_PLACEHOLDER = "YOUR_JWT";
+const DEFAULT_ACCOUNT_ID = "treasury.sputnik-dao.near";
 
 type TransactionType =
     | "all"
@@ -69,6 +70,36 @@ const QUERY_PARAMS = [
     "endDate",
 ] as const;
 
+type QueryParam = (typeof QUERY_PARAMS)[number];
+
+const PARAM_INPUTS: Record<
+    QueryParam,
+    {
+        type: "text" | "number" | "date" | "select";
+        placeholder?: string;
+        min?: number;
+        max?: number;
+    }
+> = {
+    accountId: { type: "text" },
+    limit: { type: "number", min: 1, max: 100, placeholder: "10" },
+    offset: { type: "number", min: 0, placeholder: "0" },
+    minUsdValue: { type: "number", min: 0, placeholder: "100" },
+    transactionType: { type: "select" },
+    tokenSymbol: { type: "text", placeholder: "USDC" },
+    tokenSymbolNot: { type: "text", placeholder: "NEAR" },
+    txHash: { type: "text" },
+    from: { type: "text", placeholder: "alice.near,bob.near" },
+    fromNot: { type: "text", placeholder: "alice.near" },
+    to: { type: "text", placeholder: "alice.near,bob.near" },
+    toNot: { type: "text", placeholder: "alice.near" },
+    startDate: { type: "date" },
+    endDate: { type: "date" },
+};
+
+// Params the backend parses as numbers — rendered unquoted in Python.
+const NUMERIC_PARAMS = new Set<QueryParam>(["limit", "offset", "minUsdValue"]);
+
 function CodeBlock({ code, copyLabel }: { code: string; copyLabel: string }) {
     return (
         <div className="relative">
@@ -93,10 +124,9 @@ export default function ApiDocsPage() {
     const { treasuryId } = useTreasury();
     const { accountId } = useNear();
 
-    const [limit, setLimit] = useState(10);
-    const [offset, setOffset] = useState(0);
-    const [transactionType, setTransactionType] =
-        useState<TransactionType>("all");
+    const [paramValues, setParamValues] = useState<
+        Partial<Record<QueryParam, string>>
+    >({});
     const [isRunning, setIsRunning] = useState(false);
     const [response, setResponse] = useState<string | null>(null);
     const [responseMeta, setResponseMeta] = useState<{
@@ -105,17 +135,44 @@ export default function ApiDocsPage() {
         duration: number;
     } | null>(null);
 
-    const queryParams = useMemo(() => {
-        const params = new URLSearchParams({
-            accountId: treasuryId ?? "treasury.sputnik-dao.near",
-            limit: String(limit),
-            offset: String(offset),
-        });
-        if (transactionType !== "all") {
-            params.set("transactionType", transactionType);
-        }
-        return params;
-    }, [treasuryId, limit, offset, transactionType]);
+    const defaults = useMemo<Partial<Record<QueryParam, string>>>(
+        () => ({
+            accountId: treasuryId ?? DEFAULT_ACCOUNT_ID,
+            limit: "10",
+            offset: "0",
+            transactionType: "all",
+        }),
+        [treasuryId],
+    );
+
+    const getValue = (param: QueryParam) =>
+        paramValues[param] ?? defaults[param] ?? "";
+
+    const setValue = (param: QueryParam, value: string) =>
+        setParamValues((prev) => ({ ...prev, [param]: value }));
+
+    // Params that end up in the request: non-empty, and "all" means
+    // no transactionType filter.
+    const activeEntries = useMemo(
+        () =>
+            QUERY_PARAMS.map(
+                (param) =>
+                    [
+                        param,
+                        (paramValues[param] ?? defaults[param] ?? "").trim(),
+                    ] as [QueryParam, string],
+            ).filter(
+                ([param, value]) =>
+                    value !== "" &&
+                    !(param === "transactionType" && value === "all"),
+            ),
+        [paramValues, defaults],
+    );
+
+    const queryParams = useMemo(
+        () => new URLSearchParams(activeEntries),
+        [activeEntries],
+    );
 
     const requestUrl = `${BACKEND_API_BASE}/api/recent-activity?${queryParams.toString()}`;
 
@@ -129,14 +186,14 @@ export default function ApiDocsPage() {
     );
 
     const pythonSnippet = useMemo(() => {
-        const paramLines = [
-            `        "accountId": "${treasuryId ?? "treasury.sputnik-dao.near"}",`,
-            `        "limit": ${limit},`,
-            `        "offset": ${offset},`,
-        ];
-        if (transactionType !== "all") {
-            paramLines.push(`        "transactionType": "${transactionType}",`);
-        }
+        const paramLines = activeEntries.map(([param, value]) => {
+            const isNumeric =
+                NUMERIC_PARAMS.has(param) && !Number.isNaN(Number(value));
+            const rendered = isNumeric
+                ? value
+                : `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+            return `        "${param}": ${rendered},`;
+        });
         return [
             "import requests",
             "",
@@ -157,7 +214,7 @@ export default function ApiDocsPage() {
             '    symbol = item["tokenMetadata"]["symbol"]',
             '    print(item["blockTime"], item["amount"], symbol, item["counterparty"])',
         ].join("\n");
-    }, [treasuryId, limit, offset, transactionType]);
+    }, [activeEntries]);
 
     const handleRun = async () => {
         setIsRunning(true);
@@ -227,9 +284,12 @@ export default function ApiDocsPage() {
                     </p>
                 </PageCard>
 
-                {/* Query parameters */}
+                {/* Query parameters: edit values to build the request below */}
                 <PageCard className="gap-3">
                     <p className="font-semibold">{tDocs("parameters")}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {tDocs("parametersDescription")}
+                    </p>
                     <Table>
                         <TableHeader>
                             <TableRow className="hover:bg-transparent">
@@ -239,115 +299,94 @@ export default function ApiDocsPage() {
                                 <TableHead className="text-xs font-medium uppercase text-muted-foreground">
                                     {tDocs("paramDescription")}
                                 </TableHead>
+                                <TableHead className="text-xs font-medium uppercase text-muted-foreground w-56">
+                                    {tDocs("paramValue")}
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {QUERY_PARAMS.map((param) => (
-                                <TableRow key={param}>
-                                    <TableCell className="align-top">
-                                        <code className="text-sm">{param}</code>
-                                        {param === "accountId" && (
-                                            <span className="ml-2 text-xs text-muted-foreground border border-general-border rounded px-1.5 py-0.5">
-                                                {tDocs("required")}
-                                            </span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-sm whitespace-normal">
-                                        {tDocs(`params.${param}`)}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {QUERY_PARAMS.map((param) => {
+                                const input = PARAM_INPUTS[param];
+                                return (
+                                    <TableRow key={param}>
+                                        <TableCell className="align-top pt-4">
+                                            <code className="text-sm">
+                                                {param}
+                                            </code>
+                                            {param === "accountId" && (
+                                                <span className="ml-2 text-xs text-muted-foreground border border-general-border rounded px-1.5 py-0.5">
+                                                    {tDocs("required")}
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-sm whitespace-normal align-top pt-4">
+                                            {tDocs(`params.${param}`)}
+                                        </TableCell>
+                                        <TableCell className="align-top">
+                                            {input.type === "select" ? (
+                                                <Select
+                                                    value={getValue(param)}
+                                                    onValueChange={(value) =>
+                                                        setValue(param, value)
+                                                    }
+                                                >
+                                                    <SelectTrigger
+                                                        aria-label={param}
+                                                        className="w-full"
+                                                    >
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {TRANSACTION_TYPES.map(
+                                                            (type) => (
+                                                                <SelectItem
+                                                                    key={
+                                                                        type.value
+                                                                    }
+                                                                    value={
+                                                                        type.value
+                                                                    }
+                                                                >
+                                                                    {tTabs(
+                                                                        type.labelKey,
+                                                                    )}
+                                                                </SelectItem>
+                                                            ),
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
+                                                <Input
+                                                    aria-label={param}
+                                                    type={input.type}
+                                                    min={input.min}
+                                                    max={input.max}
+                                                    placeholder={
+                                                        input.placeholder
+                                                    }
+                                                    value={getValue(param)}
+                                                    onChange={(e) =>
+                                                        setValue(
+                                                            param,
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                />
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </PageCard>
 
-                {/* Request builder + code examples */}
+                {/* Code examples built from the parameter values above */}
                 <PageCard className="gap-4">
                     <p className="font-semibold">{tDocs("examples")}</p>
-                    <div className="flex flex-wrap gap-4">
-                        <div className="flex flex-col gap-1.5 w-28">
-                            <label
-                                className="text-sm font-medium"
-                                htmlFor="api-docs-limit"
-                            >
-                                {tDocs("limitLabel")}
-                            </label>
-                            <Input
-                                id="api-docs-limit"
-                                type="number"
-                                min={1}
-                                max={100}
-                                value={limit}
-                                onChange={(e) =>
-                                    setLimit(
-                                        Math.max(
-                                            1,
-                                            Math.min(
-                                                100,
-                                                parseInt(
-                                                    e.target.value || "1",
-                                                    10,
-                                                ),
-                                            ),
-                                        ),
-                                    )
-                                }
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1.5 w-28">
-                            <label
-                                className="text-sm font-medium"
-                                htmlFor="api-docs-offset"
-                            >
-                                {tDocs("offsetLabel")}
-                            </label>
-                            <Input
-                                id="api-docs-offset"
-                                type="number"
-                                min={0}
-                                value={offset}
-                                onChange={(e) =>
-                                    setOffset(
-                                        Math.max(
-                                            0,
-                                            parseInt(e.target.value || "0", 10),
-                                        ),
-                                    )
-                                }
-                            />
-                        </div>
-                        <div className="flex flex-col gap-1.5 w-48">
-                            <label
-                                className="text-sm font-medium"
-                                htmlFor="api-docs-transaction-type"
-                            >
-                                {tDocs("transactionTypeLabel")}
-                            </label>
-                            <Select
-                                value={transactionType}
-                                onValueChange={(value) =>
-                                    setTransactionType(value as TransactionType)
-                                }
-                            >
-                                <SelectTrigger
-                                    id="api-docs-transaction-type"
-                                    className="w-full"
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {TRANSACTION_TYPES.map((type) => (
-                                        <SelectItem
-                                            key={type.value}
-                                            value={type.value}
-                                        >
-                                            {tTabs(type.labelKey)}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        {tDocs("examplesDescription")}
+                    </p>
 
                     <Tabs defaultValue="curl">
                         <TabsList>

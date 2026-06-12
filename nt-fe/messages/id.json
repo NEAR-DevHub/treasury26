@@ -388,6 +388,9 @@
         "parameters": "Parameter kueri",
         "paramName": "Parameter",
         "paramDescription": "Deskripsi",
+        "paramValue": "Nilai",
+        "parametersDescription": "Atur nilai untuk menyusun permintaan — nilai tersebut masuk ke contoh kode dan permintaan yang dapat dijalankan di bawah.",
+        "examplesDescription": "Cuplikan kode mencerminkan nilai parameter yang diatur di atas.",
         "required": "wajib",
         "params": {
             "accountId": "ID akun treasury (wajib)",
@@ -406,9 +409,6 @@
             "endDate": "Hanya sertakan aktivitas pada atau sebelum tanggal ini (ISO 8601)"
         },
         "examples": "Contoh kode",
-        "limitLabel": "Batas",
-        "offsetLabel": "Offset",
-        "transactionTypeLabel": "Tipe transaksi",
         "run": "Jalankan permintaan",
         "running": "Menjalankan…",
         "response": "Respons",

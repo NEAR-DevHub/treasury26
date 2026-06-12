@@ -388,6 +388,9 @@
         "parameters": "クエリパラメータ",
         "paramName": "パラメータ",
         "paramDescription": "説明",
+        "paramValue": "値",
+        "parametersDescription": "値を設定してリクエストを組み立てます。設定した値は下のコード例と実行可能なリクエストに反映されます。",
+        "examplesDescription": "スニペットには上で設定したパラメーター値が反映されます。",
         "required": "必須",
         "params": {
             "accountId": "トレジャリーアカウントID（必須）",
@@ -406,9 +409,6 @@
             "endDate": "この日付以前のアクティビティのみを含める（ISO 8601）"
         },
         "examples": "コード例",
-        "limitLabel": "件数",
-        "offsetLabel": "オフセット",
-        "transactionTypeLabel": "トランザクションタイプ",
         "run": "リクエストを実行",
         "running": "実行中…",
         "response": "レスポンス",

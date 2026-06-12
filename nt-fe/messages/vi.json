@@ -388,6 +388,9 @@
         "parameters": "Tham số truy vấn",
         "paramName": "Tham số",
         "paramDescription": "Mô tả",
+        "paramValue": "Giá trị",
+        "parametersDescription": "Đặt giá trị để xây dựng yêu cầu — chúng được đưa vào các ví dụ mã và yêu cầu có thể chạy bên dưới.",
+        "examplesDescription": "Các đoạn mã phản ánh giá trị tham số đã đặt ở trên.",
         "required": "bắt buộc",
         "params": {
             "accountId": "ID tài khoản kho bạc (bắt buộc)",
@@ -406,9 +409,6 @@
             "endDate": "Chỉ bao gồm hoạt động vào hoặc trước ngày này (ISO 8601)"
         },
         "examples": "Ví dụ mã",
-        "limitLabel": "Giới hạn",
-        "offsetLabel": "Độ lệch",
-        "transactionTypeLabel": "Loại giao dịch",
         "run": "Chạy yêu cầu",
         "running": "Đang chạy…",
         "response": "Phản hồi",

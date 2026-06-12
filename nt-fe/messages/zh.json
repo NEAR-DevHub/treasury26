@@ -388,6 +388,9 @@
         "parameters": "查询参数",
         "paramName": "参数",
         "paramDescription": "说明",
+        "paramValue": "值",
+        "parametersDescription": "设置参数值以构建请求——它们会反映在下方的代码示例和可执行请求中。",
+        "examplesDescription": "代码片段会反映上方设置的参数值。",
         "required": "必填",
         "params": {
             "accountId": "金库账户 ID（必填）",
@@ -406,9 +409,6 @@
             "endDate": "仅包含此日期当天或之前的活动（ISO 8601）"
         },
         "examples": "代码示例",
-        "limitLabel": "数量",
-        "offsetLabel": "偏移量",
-        "transactionTypeLabel": "交易类型",
         "run": "运行请求",
         "running": "运行中…",
         "response": "响应",

@@ -388,6 +388,9 @@
         "parameters": "Query parameters",
         "paramName": "Parameter",
         "paramDescription": "Description",
+        "paramValue": "Value",
+        "parametersDescription": "Set values to build a request — they flow into the code examples and the runnable request below.",
+        "examplesDescription": "The snippets reflect the parameter values set above.",
         "required": "required",
         "params": {
             "accountId": "Treasury account ID (required)",
@@ -406,9 +409,6 @@
             "endDate": "Only include activity on or before this date (ISO 8601)"
         },
         "examples": "Code examples",
-        "limitLabel": "Limit",
-        "offsetLabel": "Offset",
-        "transactionTypeLabel": "Transaction type",
         "run": "Run request",
         "running": "Running…",
         "response": "Response",
