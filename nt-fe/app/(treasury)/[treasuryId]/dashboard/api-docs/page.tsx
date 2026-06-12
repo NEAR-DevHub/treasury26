@@ -30,6 +30,7 @@ import {
     TabsTrigger,
 } from "@/components/underline-tabs";
 import { useTreasury } from "@/hooks/use-treasury";
+import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
 const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "";
@@ -98,6 +99,11 @@ export default function ApiDocsPage() {
         useState<TransactionType>("all");
     const [isRunning, setIsRunning] = useState(false);
     const [response, setResponse] = useState<string | null>(null);
+    const [responseMeta, setResponseMeta] = useState<{
+        status: number;
+        ok: boolean;
+        duration: number;
+    } | null>(null);
 
     const queryParams = useMemo(() => {
         const params = new URLSearchParams({
@@ -156,13 +162,20 @@ export default function ApiDocsPage() {
     const handleRun = async () => {
         setIsRunning(true);
         setResponse(null);
+        setResponseMeta(null);
+        const startedAt = performance.now();
         try {
             const res = await fetch(requestUrl, { credentials: "include" });
             const text = await res.text();
+            setResponseMeta({
+                status: res.status,
+                ok: res.ok,
+                duration: Math.round(performance.now() - startedAt),
+            });
             try {
                 setResponse(JSON.stringify(JSON.parse(text), null, 2));
             } catch {
-                setResponse(`HTTP ${res.status}\n${text}`);
+                setResponse(text);
             }
         } catch (error) {
             setResponse(
@@ -198,13 +211,19 @@ export default function ApiDocsPage() {
                     <p className="text-sm text-muted-foreground">
                         {tDocs("authIntro", { cookie: AUTH_COOKIE_NAME })}
                     </p>
+                    <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                        <li>{tDocs("authStep1")}</li>
+                        <li>
+                            {tDocs("authStep2", { cookie: AUTH_COOKIE_NAME })}
+                        </li>
+                        <li>
+                            {tDocs("authStep3", {
+                                placeholder: JWT_PLACEHOLDER,
+                            })}
+                        </li>
+                    </ul>
                     <p className="text-sm text-muted-foreground">
                         {tDocs("authPublicNote")}
-                    </p>
-                    <p className="text-sm">
-                        {accountId
-                            ? tDocs("signedInAs", { accountId })
-                            : tDocs("notSignedIn")}
                     </p>
                 </PageCard>
 
@@ -227,6 +246,11 @@ export default function ApiDocsPage() {
                                 <TableRow key={param}>
                                     <TableCell className="align-top">
                                         <code className="text-sm">{param}</code>
+                                        {param === "accountId" && (
+                                            <span className="ml-2 text-xs text-muted-foreground border border-general-border rounded px-1.5 py-0.5">
+                                                {tDocs("required")}
+                                            </span>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-sm whitespace-normal">
                                         {tDocs(`params.${param}`)}
@@ -343,15 +367,8 @@ export default function ApiDocsPage() {
                             />
                         </TabsContent>
                     </Tabs>
-                </PageCard>
 
-                {/* Try it */}
-                <PageCard className="gap-3">
-                    <p className="font-semibold">{tDocs("tryIt")}</p>
-                    <p className="text-sm text-muted-foreground">
-                        {tDocs("tryItDescription")}
-                    </p>
-                    <div>
+                    <div className="flex flex-wrap items-center gap-3">
                         <Button onClick={handleRun} disabled={isRunning}>
                             {isRunning ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -360,12 +377,35 @@ export default function ApiDocsPage() {
                             )}
                             {isRunning ? tDocs("running") : tDocs("run")}
                         </Button>
+                        <p className="text-sm text-muted-foreground">
+                            {accountId
+                                ? tDocs("signedInAs", { accountId })
+                                : tDocs("notSignedIn")}
+                        </p>
                     </div>
+
                     {response !== null && (
                         <div className="flex flex-col gap-2">
-                            <p className="text-sm font-medium">
-                                {tDocs("response")}
-                            </p>
+                            <div className="flex items-center gap-3">
+                                <p className="text-sm font-medium">
+                                    {tDocs("response")}
+                                </p>
+                                {responseMeta && (
+                                    <span
+                                        className={cn(
+                                            "text-xs font-medium rounded px-1.5 py-0.5",
+                                            responseMeta.ok
+                                                ? "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400"
+                                                : "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400",
+                                        )}
+                                    >
+                                        {tDocs("responseMeta", {
+                                            status: responseMeta.status,
+                                            duration: responseMeta.duration,
+                                        })}
+                                    </span>
+                                )}
+                            </div>
                             <div className="relative">
                                 <pre className="bg-muted rounded-lg p-4 pr-14 text-sm overflow-auto max-h-96 whitespace-pre">
                                     <code>{response}</code>
