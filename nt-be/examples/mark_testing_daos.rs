@@ -41,7 +41,7 @@ async fn mark_explicit_daos(
             continue;
         }
 
-        let exists = sqlx::query_scalar::<_, i64>(
+        let exists = sqlx::query_scalar::<_, i32>(
             r#"
             SELECT 1
             FROM monitored_accounts
