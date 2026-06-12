@@ -1825,6 +1825,7 @@
     "exchangeErrors": {
         "noRoute": "Nenhuma troca encontrada. Tente um valor menor ou um token diferente.",
         "amountTooLow": "Valor muito baixo para o swap. Swaps multichain exigem um mínimo maior para cobrir as taxas de rede.",
+        "amountTooLowWithMin": "O valor é muito baixo para cobrir as taxas de rede. Insira pelo menos {min} {token}.",
         "insufficientBalance": "Saldo insuficiente para este swap.",
         "networkError": "Erro de rede. Por favor, verifique sua conexão e tente novamente.",
         "fetchFailed": "Falha ao obter cotação"

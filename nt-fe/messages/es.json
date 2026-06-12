@@ -1825,6 +1825,7 @@
     "exchangeErrors": {
         "noRoute": "No se encontró intercambio. Prueba con un importe menor u otro token.",
         "amountTooLow": "Importe demasiado bajo para el swap. Los swaps entre cadenas requieren un mínimo mayor para cubrir tarifas de red.",
+        "amountTooLowWithMin": "El importe es demasiado bajo para cubrir las comisiones de red. Introduce al menos {min} {token}.",
         "insufficientBalance": "Saldo insuficiente para este swap.",
         "networkError": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
         "fetchFailed": "No se pudo obtener la cotización"

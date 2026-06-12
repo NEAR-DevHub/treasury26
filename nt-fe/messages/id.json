@@ -1825,6 +1825,7 @@
     "exchangeErrors": {
         "noRoute": "Tidak ada pertukaran ditemukan. Coba jumlah lebih kecil atau token berbeda.",
         "amountTooLow": "Jumlah terlalu rendah untuk swap. Swap lintas-rantai memerlukan minimum lebih tinggi untuk menutupi biaya jaringan.",
+        "amountTooLowWithMin": "Jumlah terlalu rendah untuk menutupi biaya jaringan. Masukkan minimal {min} {token}.",
         "insufficientBalance": "Saldo tidak mencukupi untuk swap ini.",
         "networkError": "Kesalahan jaringan. Silakan periksa koneksi Anda dan coba lagi.",
         "fetchFailed": "Gagal mengambil kuotasi"

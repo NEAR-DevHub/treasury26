@@ -1825,6 +1825,7 @@
     "exchangeErrors": {
         "noRoute": "Takas bulunamadı. Daha küçük bir miktar veya farklı bir token deneyin.",
         "amountTooLow": "Takas için miktar çok düşük. Zincirler arası takaslar ağ ücretlerini karşılamak için daha yüksek bir minimum gerektirir.",
+        "amountTooLowWithMin": "Miktar ağ ücretlerini karşılamak için çok düşük. En az {min} {token} girin.",
         "insufficientBalance": "Bu takas için yetersiz bakiye.",
         "networkError": "Ağ hatası. Lütfen bağlantınızı kontrol edin ve tekrar deneyin.",
         "fetchFailed": "Teklif alınamadı"

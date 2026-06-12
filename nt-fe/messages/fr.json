@@ -1825,6 +1825,7 @@
     "exchangeErrors": {
         "noRoute": "Aucun échange trouvé. Essayez un montant plus petit ou un token différent.",
         "amountTooLow": "Montant trop faible pour le swap. Les swaps multi-chaînes nécessitent un minimum plus élevé pour couvrir les frais de réseau.",
+        "amountTooLowWithMin": "Le montant est trop faible pour couvrir les frais de réseau. Saisissez au moins {min} {token}.",
         "insufficientBalance": "Solde insuffisant pour ce swap.",
         "networkError": "Erreur réseau. Veuillez vérifier votre connexion et réessayer.",
         "fetchFailed": "Échec de la récupération du devis"

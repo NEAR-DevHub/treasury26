@@ -1825,6 +1825,7 @@
     "exchangeErrors": {
         "noRoute": "未找到兑换路径。请尝试更小的金额或不同的代币。",
         "amountTooLow": "兑换金额过低。跨链兑换需要更高的最低金额以支付网络手续费。",
+        "amountTooLowWithMin": "金额过低,无法支付网络手续费。请输入至少 {min} {token}。",
         "insufficientBalance": "此次兑换余额不足。",
         "networkError": "网络错误。请检查您的连接并再试一次。",
         "fetchFailed": "获取报价失败"

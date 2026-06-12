@@ -1825,6 +1825,7 @@
     "exchangeErrors": {
         "noRoute": "Không tìm thấy giao dịch trao đổi. Hãy thử số tiền nhỏ hơn hoặc token khác.",
         "amountTooLow": "Số tiền quá thấp để hoán đổi. Hoán đổi liên chuỗi yêu cầu mức tối thiểu cao hơn để chi trả phí mạng.",
+        "amountTooLowWithMin": "Số tiền quá thấp để chi trả phí mạng. Hãy nhập ít nhất {min} {token}.",
         "insufficientBalance": "Số dư không đủ cho giao dịch hoán đổi này.",
         "networkError": "Lỗi mạng. Vui lòng kiểm tra kết nối và thử lại.",
         "fetchFailed": "Không thể lấy báo giá"
