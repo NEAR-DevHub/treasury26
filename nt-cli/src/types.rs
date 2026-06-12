@@ -220,6 +220,34 @@ pub struct Policy {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BridgeNetwork {
+    /// Intents token id of the asset on this network (e.g. `nep141:eth.omft.near`).
+    /// Doubles as the `destinationAsset` for DESTINATION_CHAIN quotes.
+    pub id: String,
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+    #[serde(default)]
+    pub min_deposit_amount: Option<String>,
+    #[serde(default)]
+    pub min_withdrawal_amount: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeAsset {
+    pub id: String,
+    pub name: String,
+    pub networks: Vec<BridgeNetwork>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BridgeAssetsResponse {
+    pub assets: Vec<BridgeAsset>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecentActivityResponse {
     pub data: Vec<BalanceChange>,
     pub total: i64,

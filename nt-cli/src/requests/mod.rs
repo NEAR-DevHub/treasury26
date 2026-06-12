@@ -408,12 +408,23 @@ fn build_vote_action_context(
                 "id": proposal_id,
                 "action": action,
             });
+            // The embedded proposal kind copy lets the backend relay recognize
+            // v1.signer confidential proposals and extract the NEP-413 payload
+            // hash before the vote executes.
             args.as_object_mut()
                 .unwrap()
                 .insert("proposal".to_string(), proposal_kind.clone());
 
             let args_bytes = serde_json::to_vec(&args)
                 .map_err(|e| color_eyre::eyre::eyre!("Failed to serialize args: {}", e))?;
+
+            tracing::info!(
+                target: "near_teach_me",
+                parent: &tracing::Span::none(),
+                "act_proposal args (proposal kind embedded for the relay's confidential-intent \
+                 detection):\n{}",
+                serde_json::to_string_pretty(&args).unwrap_or_default()
+            );
 
             let receiver_id: near_primitives::types::AccountId = treasury_id
                 .parse()
@@ -448,10 +459,14 @@ fn build_vote_action_context(
             Ok(())
         }),
         sign_as_delegate_action: true,
+        // proposalType "vote" is load-bearing: the backend only scans the vote
+        // execution result for an MPC signature (and auto-submits the pending
+        // confidential intent to 1Click) when the relay request is marked as a
+        // vote. Omitting it makes confidential payments silently no-op.
         on_sending_delegate_action_callback: Some(crate::relay::build_relay_callback(
             trezu_config,
             treasury_id,
-            None,
+            Some("vote".to_string()),
             Some(proposal_id),
         )),
     }
