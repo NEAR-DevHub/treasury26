@@ -243,11 +243,18 @@ impl RequestsPendingContext {
 #[interactive_clap(input_context = TreasuryContext)]
 #[interactive_clap(output_context = RequestsApproveContext)]
 pub struct RequestsApprove {
+    #[interactive_clap(skip_default_input_arg)]
     /// Proposal ID to approve
     proposal_id: u64,
     #[interactive_clap(named_arg)]
     /// Select network
     network_config: near_cli_rs::network_for_transaction::NetworkForTransactionArgs,
+}
+
+impl RequestsApprove {
+    fn input_proposal_id(context: &TreasuryContext) -> color_eyre::eyre::Result<Option<u64>> {
+        input_pending_proposal_id(context, "approve")
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -319,11 +326,18 @@ impl From<RequestsApproveContext> for near_cli_rs::commands::ActionContext {
 #[interactive_clap(input_context = TreasuryContext)]
 #[interactive_clap(output_context = RequestsRejectContext)]
 pub struct RequestsReject {
+    #[interactive_clap(skip_default_input_arg)]
     /// Proposal ID to reject
     proposal_id: u64,
     #[interactive_clap(named_arg)]
     /// Select network
     network_config: near_cli_rs::network_for_transaction::NetworkForTransactionArgs,
+}
+
+impl RequestsReject {
+    fn input_proposal_id(context: &TreasuryContext) -> color_eyre::eyre::Result<Option<u64>> {
+        input_pending_proposal_id(context, "reject")
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -470,6 +484,53 @@ fn build_vote_action_context(
             Some(proposal_id),
         )),
     }
+}
+
+/// Interactive proposal-id input for vote commands: show the pending
+/// proposals table first, then let the user pick one from the list.
+fn input_pending_proposal_id(
+    context: &TreasuryContext,
+    action: &str,
+) -> color_eyre::eyre::Result<Option<u64>> {
+    let api = ApiClient::new(&context.config);
+    let result = api.list_proposals(&context.treasury_id, Some("InProgress"), Some(1), Some(50))?;
+
+    if result.proposals.is_empty() {
+        return Err(color_eyre::eyre::eyre!(
+            "No pending proposals to {} on {}.",
+            action,
+            context.treasury_id
+        ));
+    }
+
+    tracing::info!(
+        "{}",
+        format!(
+            "{} pending proposals on {}",
+            result.total, context.treasury_id
+        )
+        .cyan()
+        .bold()
+    );
+    print_proposals_table(&result.proposals);
+
+    let options: Vec<String> = result
+        .proposals
+        .iter()
+        .map(|p| {
+            let desc = if p.description.len() > 60 {
+                format!("{}...", &p.description[..57])
+            } else {
+                p.description.clone()
+            };
+            format!("#{} — {}", p.id, desc)
+        })
+        .collect();
+
+    let selection =
+        inquire::Select::new(&format!("Select proposal to {action}:"), options.clone()).prompt()?;
+    let index = options.iter().position(|o| o == &selection).unwrap();
+    Ok(Some(result.proposals[index].id))
 }
 
 fn print_proposals_table(proposals: &[crate::types::Proposal]) {

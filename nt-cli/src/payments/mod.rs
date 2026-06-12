@@ -184,6 +184,7 @@ impl PaymentTokenContext {
 #[interactive_clap(input_context = PaymentTokenContext)]
 #[interactive_clap(output_context = PaymentSendContext)]
 pub struct PaymentDetails {
+    #[interactive_clap(skip_default_input_arg)]
     /// Amount the recipient should receive (e.g. 0.5, 100)
     amount: String,
     #[interactive_clap(skip_default_input_arg)]
@@ -200,6 +201,19 @@ pub struct PaymentDetails {
 }
 
 impl PaymentDetails {
+    fn input_amount(context: &PaymentTokenContext) -> color_eyre::eyre::Result<Option<String>> {
+        let amount = inquire::Text::new(&format!(
+            "Amount of {} for the recipient to receive:",
+            context.token.symbol
+        ))
+        .with_validator(|input: &str| match validate_amount(input) {
+            Ok(()) => Ok(inquire::validator::Validation::Valid),
+            Err(msg) => Ok(inquire::validator::Validation::Invalid(msg.into())),
+        })
+        .prompt()?;
+        Ok(Some(amount.trim().to_string()))
+    }
+
     fn input_destination_network(
         context: &PaymentTokenContext,
     ) -> color_eyre::eyre::Result<Option<String>> {
@@ -584,12 +598,43 @@ fn find_bridge_asset<'a>(
     })
 }
 
+/// Validate a human-entered amount: a plain positive decimal number,
+/// strictly greater than zero. Anything else ("", "0", "all", "1e5", "-1",
+/// "1,5", …) is rejected with a clear message.
+fn validate_amount(input: &str) -> Result<(), String> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return Err("Amount is required".to_string());
+    }
+
+    let (int_part, fract_part) = match trimmed.split_once('.') {
+        Some((int_part, fract_part)) => (int_part, Some(fract_part)),
+        None => (trimmed, None),
+    };
+    let is_digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    if !is_digits(int_part) || !fract_part.is_none_or(is_digits) {
+        return Err(format!(
+            "Invalid amount '{trimmed}': expected a positive number like 0.5 or 100"
+        ));
+    }
+
+    if trimmed.bytes().all(|b| b == b'0' || b == b'.') {
+        return Err("Amount must be greater than zero".to_string());
+    }
+
+    Ok(())
+}
+
 /// Parse a human amount (e.g. "0.5") into a raw integer string at `decimals`.
 fn normalize_amount(
     amount: &str,
     symbol: &str,
     decimals: u8,
 ) -> color_eyre::eyre::Result<String> {
+    // Re-validate here: amounts passed as CLI arguments skip the interactive
+    // prompt validator.
+    validate_amount(amount).map_err(|e| color_eyre::eyre::eyre!(e))?;
+
     let ft_input = format!("{} {}", amount.trim(), symbol);
     let ft = near_cli_rs::types::ft_properties::FungibleToken::from_str(&ft_input)
         .map_err(|e| color_eyre::eyre::eyre!("Invalid amount '{}': {}", amount, e))?;
@@ -940,4 +985,36 @@ fn json_to_base64(value: &serde_json::Value) -> color_eyre::eyre::Result<String>
         &base64::engine::general_purpose::STANDARD,
         serde_json::to_string(value)?.as_bytes(),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_amount_accepts_positive_decimals() {
+        for input in ["0.5", "100", "1.000001", " 2 ", "0.000001"] {
+            assert!(validate_amount(input).is_ok(), "expected ok: {input:?}");
+        }
+    }
+
+    #[test]
+    fn validate_amount_rejects_invalid_input() {
+        for input in [
+            "", "  ", "0", "0.0", "00.000", ".", ".5", "5.", "-1", "1e5", "all", "1,5", "1 2",
+            "NaN", "0x10",
+        ] {
+            assert!(validate_amount(input).is_err(), "expected err: {input:?}");
+        }
+    }
+
+    #[test]
+    fn normalize_amount_scales_and_validates() {
+        assert_eq!(normalize_amount("0.5", "USDT", 6).unwrap(), "500000");
+        assert_eq!(normalize_amount("100", "USDT", 6).unwrap(), "100000000");
+        assert!(normalize_amount("", "USDT", 6).is_err());
+        assert!(normalize_amount("0", "USDT", 6).is_err());
+        // more fractional digits than the token supports
+        assert!(normalize_amount("0.0000001", "USDT", 6).is_err());
+    }
 }
