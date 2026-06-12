@@ -11,6 +11,7 @@ export interface BridgeNetwork {
     decimals: number;
     minDepositAmount?: string;
     minWithdrawalAmount?: string;
+    supportsPublicNearDepositSource?: boolean;
 }
 
 export interface BridgeAsset {
@@ -23,11 +24,20 @@ export interface BridgeAsset {
 /**
  * Hook to fetch bridge tokens with React Query
  */
-export function useBridgeTokens(enabled: boolean = true) {
+export function useBridgeTokens(
+    enabled: boolean = true,
+    options?: {
+        includeNearNetwork?: boolean;
+    },
+) {
+    const includeNearNetwork = options?.includeNearNetwork ?? false;
+
     return useQuery({
-        queryKey: ["bridgeTokens"],
+        queryKey: ["bridgeTokens", includeNearNetwork],
         queryFn: async () => {
-            const fetchedAssets = await fetchBridgeTokens();
+            const fetchedAssets = await fetchBridgeTokens({
+                includeNearNetwork,
+            });
 
             const formattedAssets: BridgeAsset[] = fetchedAssets.map(
                 (asset: any) => {
@@ -57,6 +67,8 @@ export function useBridgeTokens(enabled: boolean = true) {
                             decimals: network.decimals,
                             minDepositAmount: network.minDepositAmount,
                             minWithdrawalAmount: network.minWithdrawalAmount,
+                            supportsPublicNearDepositSource:
+                                network.supportsPublicNearDepositSource,
                         })),
                     };
                 },

@@ -20,7 +20,7 @@ use std::sync::Arc;
 use crate::{
     AppState,
     constants::{
-        INTENTS_CONTRACT_ID, NEAR_ICON, REF_FINANCE_CONTRACT_ID,
+        INTENTS_CONTRACT_ID, NEAR_DECIMALS, NEAR_ICON, REF_FINANCE_CONTRACT_ID,
         intents_chains::ChainIcons,
         intents_tokens::{find_token_by_symbol, find_unified_asset_id},
     },
@@ -76,7 +76,7 @@ pub struct TokenMetadata {
 impl TokenMetadata {
     pub fn near() -> Self {
         Self {
-            decimals: 24,
+            decimals: NEAR_DECIMALS,
             symbol: "NEAR".to_string(),
             name: "NEAR".to_string(),
             icon: NEAR_ICON.to_string(),
