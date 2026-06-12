@@ -220,20 +220,8 @@ export function RecipientNetworkSelect({
         onChange("");
     }, [value, availableOptions, compatibleOptions, onChange]);
 
-    // Auto-pick when there's exactly one compatible network and nothing's
-    // selected (or the selection no longer matches). Skips when the user
-    // already chose a still-compatible network.
-    useEffect(() => {
-        if (compatibleOptions.length !== 1) return;
-        const only = compatibleOptions[0];
-        if (value === only.id) return;
-        if (value && compatibleOptions.some((o) => o.id === value)) return;
-        const timeoutId = window.setTimeout(() => {
-            onChange(only.id);
-            onNetworkChange?.(only);
-        }, 150);
-        return () => window.clearTimeout(timeoutId);
-    }, [compatibleOptions, value, onChange, onNetworkChange]);
+    // Intentionally do not auto-select a network from recipient input.
+    // Users must explicitly confirm recipient network to avoid surprise picks.
     const placeholderText = !recipient
         ? t("enterAddressFirst")
         : !hasCompatibleNetwork
