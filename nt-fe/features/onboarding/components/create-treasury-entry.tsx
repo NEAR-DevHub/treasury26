@@ -37,7 +37,6 @@ import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
 const ACCOUNT_SUFFIX = ".sputnik-dao.near";
-const CREATE_TREASURY_CONTEXT = "create_treasury";
 type InitialScreen = "create" | "login";
 type LoginScreenSource = "sign-in" | "connect-wallet";
 type FormValues = {
@@ -179,11 +178,8 @@ export function TreasuryOnboardingPage({
             treasuries.some((treasury) => treasury.daoId === lastTreasuryId) &&
             lastTreasuryId) ||
         treasuries[0]?.daoId;
-    const shouldStayOnCreatePage =
-        searchParams.get("context") === CREATE_TREASURY_CONTEXT;
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
-    const shouldKeepUserOnCreatePage =
-        !!returnTo || shouldStayOnCreatePage || forceStayOnCreatePage;
+    const shouldKeepUserOnCreatePage = !!returnTo || forceStayOnCreatePage;
     const shouldShowHeaderLogo = !returnTo;
     const isCreateRoute = pathname === "/create";
     const isConnectWalletLogin = loginScreenSource === "connect-wallet";
