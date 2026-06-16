@@ -83,6 +83,49 @@ impl fmt::Display for ConfidentialTxType {
     }
 }
 
+/// Provenance of a confidential deposit amount correction
+/// (`confidential_deposit_amount_corrections.source`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
+#[sqlx(
+    type_name = "confidential_deposit_correction_source",
+    rename_all = "snake_case"
+)]
+pub enum ConfidentialDepositCorrectionSource {
+    /// Forward path: live 1Click balance diff at ingest time.
+    LiveFetch,
+    /// Backfill path: poller-recorded `balance_changes` deposit leg.
+    BalanceChanges,
+}
+
+impl ConfidentialDepositCorrectionSource {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ConfidentialDepositCorrectionSource::LiveFetch => "live_fetch",
+            ConfidentialDepositCorrectionSource::BalanceChanges => "balance_changes",
+        }
+    }
+}
+
+impl FromStr for ConfidentialDepositCorrectionSource {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "live_fetch" => Ok(ConfidentialDepositCorrectionSource::LiveFetch),
+            "balance_changes" => Ok(ConfidentialDepositCorrectionSource::BalanceChanges),
+            other => Err(format!(
+                "unknown confidential deposit correction source: {other}"
+            )),
+        }
+    }
+}
+
+impl fmt::Display for ConfidentialDepositCorrectionSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// 1Click `recipientType` / `refundType` values controlling address chain namespace.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecipientAddressType {

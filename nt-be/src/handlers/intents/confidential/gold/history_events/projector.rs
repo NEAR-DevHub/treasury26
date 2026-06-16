@@ -4,13 +4,23 @@ use futures::StreamExt;
 use sqlx::PgPool;
 
 use super::convert::bronze_to_gold;
-use super::models::{DaoProjectionStats, ProjectionCycleStats};
+use super::models::{ConfidentialDepositCorrectionIndex, DaoProjectionStats, ProjectionCycleStats};
 use super::repository::{
     clear_projection_error, delete_stale_gold_rows, earliest_success_for_dao, has_gold_before,
-    load_bronze_suffix, load_dirty_daos, seed_ledger_before, upsert_projection,
-    upsert_projection_error,
+    load_bronze_suffix, load_confidential_deposit_corrections, load_dirty_daos, seed_ledger_before,
+    upsert_projection, upsert_projection_error,
 };
 use crate::handlers::intents::confidential::gold::cursors::clear_gold_dirty_if_not_advanced;
+
+/// Env flag (default ON) gating the confidential deposit-amount correction.
+/// Set `CORRECT_CONFIDENTIAL_DEPOSIT_AMOUNTS=false` to revert to raw 1Click
+/// history amounts; re-project (reconciliation or manual dirty) to apply.
+pub(crate) fn confidential_deposit_corrections_enabled() -> bool {
+    match std::env::var("CORRECT_CONFIDENTIAL_DEPOSIT_AMOUNTS").as_deref() {
+        Ok("false") | Ok("0") => false,
+        _ => true,
+    }
+}
 
 pub async fn project_confidential_gold_for_dao(
     pool: &PgPool,
@@ -71,6 +81,11 @@ pub async fn project_confidential_gold_for_dao(
     let mut stats = DaoProjectionStats::default();
     let mut ledger = seed_ledger_before(&mut tx, dao_id, recompute_from).await?;
     let rows = load_bronze_suffix(&mut tx, dao_id, recompute_from).await?;
+    let corrections = if confidential_deposit_corrections_enabled() {
+        load_confidential_deposit_corrections(&mut tx, dao_id, recompute_from).await?
+    } else {
+        ConfidentialDepositCorrectionIndex::empty_disabled()
+    };
 
     // Preserve gold rows for any bronze event we *considered* and either
     // projected successfully or could not project (errored). A transient
@@ -81,7 +96,7 @@ pub async fn project_confidential_gold_for_dao(
     let mut preserve_ids: HashSet<i64> = HashSet::new();
 
     for row in rows {
-        match bronze_to_gold(&row, &mut ledger) {
+        match bronze_to_gold(&row, &mut ledger, &corrections) {
             Ok(Some(projected)) => {
                 preserve_ids.insert(projected.history_event_id);
                 upsert_projection(&mut tx, &projected).await?;

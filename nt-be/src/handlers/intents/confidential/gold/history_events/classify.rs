@@ -4,7 +4,7 @@ use std::str::FromStr;
 use bigdecimal::{BigDecimal, Zero};
 use serde_json::Value;
 
-use super::models::{BronzeProjectionRow, GoldHistoryEvent};
+use super::models::{BronzeProjectionRow, ConfidentialDepositCorrectionIndex, GoldHistoryEvent};
 use crate::handlers::intents::confidential::types::{
     ConfidentialTxType, DepositType, HistoryApiItem, accounts_equal, bare_account,
 };
@@ -12,6 +12,38 @@ use crate::handlers::intents::confidential::types::{
 enum Classification {
     Project(ConfidentialTxType),
     Skip,
+}
+
+/// True when a row classifies as a deposit (recipient is this DAO, with no
+/// origin asset or the same origin/destination asset) — every deposit shape the
+/// 1Click history API misreports as the ~0.001 quote nominal, and therefore the
+/// shapes we correct.
+pub(crate) fn classify_is_deposit(
+    dao_id: &str,
+    recipient: &str,
+    origin_asset: Option<&str>,
+    destination_asset: &str,
+) -> bool {
+    matches!(
+        classify(dao_id, recipient, origin_asset, destination_asset),
+        Classification::Project(ConfidentialTxType::Deposit)
+    )
+}
+
+/// Rescale the quote's implied per-unit USD price to the corrected quantity:
+/// `usd_nominal * (corrected_qty / qty_nominal)`. Returns `None` when the
+/// nominal USD is absent or the nominal quantity is zero (no derivable price) —
+/// callers store NULL rather than a wrong value.
+fn scale_usd_to_corrected(
+    usd_nominal: Option<&BigDecimal>,
+    qty_nominal: &BigDecimal,
+    corrected_qty: &BigDecimal,
+) -> Option<BigDecimal> {
+    let usd_nominal = usd_nominal?;
+    if qty_nominal.is_zero() {
+        return None;
+    }
+    Some((usd_nominal * corrected_qty) / qty_nominal)
 }
 
 fn normalized_str(value: Option<&str>) -> Option<String> {
@@ -105,6 +137,7 @@ fn is_intents_to_confidential_deposit(row: &BronzeProjectionRow) -> bool {
 pub(crate) fn project_row(
     row: &BronzeProjectionRow,
     ledger: &mut HashMap<String, BigDecimal>,
+    corrections: &ConfidentialDepositCorrectionIndex,
 ) -> Result<Option<GoldHistoryEvent>, String> {
     let dao_id = row.account_id.clone();
     // Parse the DAO account id up front: it is the only fallible step that would
@@ -141,26 +174,26 @@ pub(crate) fn project_row(
     };
 
     let api = history_api_item(&row.raw_payload);
-    let amount_out = parse_decimal(
+    let mut amount_out = parse_decimal(
         api.as_ref()
             .and_then(|i| i.amount_out_formatted.clone())
             .or_else(|| payload_str(&row.raw_payload, "amountOutFormatted")),
         "amountOutFormatted",
     )?;
-    let amount_out_usd = parse_optional_decimal(
+    let mut amount_out_usd = parse_optional_decimal(
         api.as_ref()
             .and_then(|i| i.amount_out_usd.clone())
             .or_else(|| payload_str(&row.raw_payload, "amountOutUsd")),
         "amountOutUsd",
     )?;
-    let amount_in_usd = parse_optional_decimal(
+    let mut amount_in_usd = parse_optional_decimal(
         api.as_ref()
             .and_then(|i| i.amount_in_usd.clone())
             .or_else(|| payload_str(&row.raw_payload, "amountInUsd")),
         "amountInUsd",
     )?;
 
-    let amount_in = match kind {
+    let mut amount_in = match kind {
         ConfidentialTxType::Sent | ConfidentialTxType::Exchange => Some(parse_decimal(
             payload_str(&row.raw_payload, "amountInFormatted"),
             "amountInFormatted",
@@ -177,6 +210,14 @@ pub(crate) fn project_row(
     let amount_out_usd_for_delta = amount_out_usd.clone().unwrap_or_else(BigDecimal::zero);
     let intents_to_confidential_deposit =
         kind == ConfidentialTxType::Deposit && is_intents_to_confidential_deposit(row);
+    // Recorded real deposited quantity for this row, if any. Only consumed by
+    // the pure-external-deposit arm below (origin-less deposits, the case the
+    // 1Click history API misreports). Read-only — does not mutate the ledger.
+    let deposit_correction = if kind == ConfidentialTxType::Deposit && corrections.is_enabled() {
+        corrections.correction_for(row.id)
+    } else {
+        None
+    };
 
     let (
         origin_balance_before,
@@ -245,31 +286,66 @@ pub(crate) fn project_row(
                 .get(&destination_asset)
                 .cloned()
                 .unwrap_or_else(BigDecimal::zero);
-            let net_amount = match amount_in.as_ref() {
-                Some(amount_in) if origin_asset.as_deref() == Some(destination_asset.as_str()) => {
-                    if intents_to_confidential_deposit {
-                        amount_out.clone()
-                    } else {
-                        &amount_out - amount_in
+            // The 1Click history API reports the ~0.001 quote nominal for
+            // deposits (both same-asset `out - in` and origin-less shapes), so
+            // prefer a recorded correction (real deposited quantity) and rescale
+            // the quote-implied USD price to it. Falls back to the raw amount
+            // (or `out - in`) when uncorrected.
+            let net_amount = if let Some(correction) = deposit_correction {
+                amount_out_usd = scale_usd_to_corrected(
+                    amount_out_usd.as_ref(),
+                    &amount_out,
+                    &correction.corrected_net_amount,
+                );
+                correction.corrected_net_amount.clone()
+            } else {
+                match amount_in.as_ref() {
+                    Some(amount_in)
+                        if origin_asset.as_deref() == Some(destination_asset.as_str()) =>
+                    {
+                        if intents_to_confidential_deposit {
+                            amount_out.clone()
+                        } else {
+                            &amount_out - amount_in
+                        }
                     }
+                    _ => amount_out.clone(),
                 }
-                _ => amount_out.clone(),
             };
+            // A zero-net deposit has no balance impact, so it is not a history
+            // event — skip it (e.g. a merge-extra sibling credited 0, or an
+            // uncorrected same-asset nominal where `out == in`). Returning here
+            // before touching the ledger keeps the no-mutation-before-skip
+            // invariant; re-projection re-emits the row if a correction later
+            // makes the net non-zero.
+            if net_amount.is_zero() {
+                return Ok(None);
+            }
             let mut destination_after = &destination_before + &net_amount;
             if destination_after < zero {
                 destination_after = BigDecimal::zero();
             }
             ledger.insert(destination_asset.clone(), destination_after.clone());
+            // Keep the gold row self-consistent: a deposit credits exactly
+            // `destination_after - destination_before` of the destination asset,
+            // so store that delta as amount_out and drop amount_in (a deposit has
+            // no outgoing leg). This holds the invariant
+            // `amount_out == destination_balance_after - destination_balance_before`
+            // the read side already displays. The raw, 1Click-misreported amounts
+            // remain in bronze for provenance.
+            amount_out = &destination_after - &destination_before;
+            // A deposit has no incoming leg: drop amount_in / amount_in_usd and
+            // record the inflow's USD value (the corrected, or nominal,
+            // amount_out_usd) as usd_change.
+            amount_in = None;
+            amount_in_usd = None;
+            let usd_change = amount_out_usd.clone().unwrap_or_else(BigDecimal::zero);
             (
                 None,
                 None,
                 Some(destination_before),
                 Some(destination_after),
-                if intents_to_confidential_deposit {
-                    amount_out_usd_for_delta
-                } else {
-                    amount_out_usd_for_delta - amount_in_usd_for_delta
-                },
+                usd_change,
             )
         }
     };
@@ -453,9 +529,13 @@ mod tests {
         );
         let mut ledger = HashMap::from([("nep141:usdt.near".to_string(), BigDecimal::from(10))]);
 
-        let projected = project_row(&row, &mut ledger)
-            .expect("sent row should project")
-            .expect("sent row should not skip");
+        let projected = project_row(
+            &row,
+            &mut ledger,
+            &ConfidentialDepositCorrectionIndex::empty_disabled(),
+        )
+        .expect("sent row should project")
+        .expect("sent row should not skip");
 
         assert_eq!(projected.transaction_type, ConfidentialTxType::Sent);
         assert_eq!(projected.origin_balance_before, Some(BigDecimal::from(10)));
@@ -495,9 +575,13 @@ mod tests {
         row.recipient_type = Some("CONFIDENTIAL_INTENTS".to_string());
         let mut ledger = HashMap::new();
 
-        let projected = project_row(&row, &mut ledger)
-            .expect("deposit should project")
-            .expect("deposit should not skip");
+        let projected = project_row(
+            &row,
+            &mut ledger,
+            &ConfidentialDepositCorrectionIndex::empty_disabled(),
+        )
+        .expect("deposit should project")
+        .expect("deposit should not skip");
 
         assert_eq!(projected.transaction_type, ConfidentialTxType::Deposit);
         assert_eq!(
@@ -544,10 +628,11 @@ mod tests {
         );
         let mut ledger = HashMap::from([("nep141:usdt.near".to_string(), BigDecimal::from(10))]);
 
-        let exchange = project_row(&exchange, &mut ledger)
+        let disabled = ConfidentialDepositCorrectionIndex::empty_disabled();
+        let exchange = project_row(&exchange, &mut ledger, &disabled)
             .expect("exchange should project")
             .expect("exchange should not skip");
-        let sent = project_row(&sent, &mut ledger)
+        let sent = project_row(&sent, &mut ledger, &disabled)
             .expect("sent should project")
             .expect("sent should not skip");
 
@@ -572,9 +657,185 @@ mod tests {
         );
         let mut ledger = HashMap::new();
 
-        let projected = project_row(&row, &mut ledger).expect("skip should not error");
+        let projected = project_row(
+            &row,
+            &mut ledger,
+            &ConfidentialDepositCorrectionIndex::empty_disabled(),
+        )
+        .expect("skip should not error");
 
         assert!(projected.is_none());
         assert!(ledger.is_empty());
+    }
+
+    fn deposit_correction_index(
+        history_event_id: i64,
+        net: &str,
+    ) -> ConfidentialDepositCorrectionIndex {
+        use super::super::models::ConfidentialDepositCorrection;
+
+        let net = BigDecimal::from_str(net).unwrap();
+        let mut entries = HashMap::new();
+        entries.insert(
+            history_event_id,
+            ConfidentialDepositCorrection {
+                history_event_id,
+                // Raw scale is irrelevant to projection (it consumes net); reuse net.
+                corrected_raw_amount: net.clone(),
+                corrected_net_amount: net,
+            },
+        );
+        ConfidentialDepositCorrectionIndex::new(entries)
+    }
+
+    #[test]
+    fn test_deposit_correction_overrides_amount_and_usd() {
+        let raw_payload = payload(&[
+            ("amountOutFormatted", Value::String("0.001".to_string())),
+            ("amountOutUsd", Value::String("0.0010".to_string())),
+        ]);
+        let row = row(
+            "dao.near",
+            Some("dao.near"),
+            None,
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        let mut ledger = HashMap::new();
+        let corrections = deposit_correction_index(row.id, "5");
+
+        let projected = project_row(&row, &mut ledger, &corrections)
+            .expect("deposit should project")
+            .expect("deposit should not skip");
+
+        assert_eq!(projected.transaction_type, ConfidentialTxType::Deposit);
+        assert_eq!(
+            projected.destination_balance_after,
+            Some(BigDecimal::from(5))
+        );
+        // Per-unit price = 0.0010 / 0.001 = 1.0 → corrected USD = 1.0 * 5 = 5.
+        assert_eq!(
+            projected
+                .amount_out_usd
+                .as_ref()
+                .map(BigDecimal::normalized),
+            Some(BigDecimal::from(5))
+        );
+        assert_eq!(projected.usd_change.normalized(), BigDecimal::from(5));
+        // Gold stores the credited delta (= corrected net), not the raw nominal,
+        // and a deposit carries no amount_in. The raw amounts remain in bronze.
+        assert_eq!(projected.amount_out, BigDecimal::from(5));
+        assert!(projected.amount_in.is_none());
+        // A deposit has no incoming leg, so amount_in_usd is dropped too.
+        assert!(projected.amount_in_usd.is_none());
+        assert_eq!(ledger.get("nep141:wrap.near"), Some(&BigDecimal::from(5)));
+    }
+
+    #[test]
+    fn test_deposit_correction_usd_null_when_no_nominal_usd() {
+        let raw_payload = payload(&[("amountOutFormatted", Value::String("0.001".to_string()))]);
+        let row = row(
+            "dao.near",
+            Some("dao.near"),
+            None,
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        let mut ledger = HashMap::new();
+        let corrections = deposit_correction_index(row.id, "5");
+
+        let projected = project_row(&row, &mut ledger, &corrections)
+            .expect("deposit should project")
+            .expect("deposit should not skip");
+
+        assert_eq!(
+            projected.destination_balance_after,
+            Some(BigDecimal::from(5))
+        );
+        assert!(projected.amount_out_usd.is_none());
+        assert_eq!(projected.usd_change, BigDecimal::zero());
+    }
+
+    #[test]
+    fn test_merge_extra_zero_correction_is_skipped() {
+        // The merge-extra sibling carries a 0 correction → no balance impact →
+        // skipped (no gold row), ledger untouched.
+        let raw_payload = payload(&[
+            ("amountOutFormatted", Value::String("0.001".to_string())),
+            ("amountOutUsd", Value::String("0.0010".to_string())),
+        ]);
+        let mut row = row(
+            "dao.near",
+            Some("dao.near"),
+            None,
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        row.id = 2;
+        let mut ledger = HashMap::from([("nep141:wrap.near".to_string(), BigDecimal::from(8))]);
+        let corrections = deposit_correction_index(2, "0");
+
+        let projected = project_row(&row, &mut ledger, &corrections).expect("should not error");
+
+        assert!(projected.is_none(), "zero-net deposit should be skipped");
+        assert_eq!(ledger.get("nep141:wrap.near"), Some(&BigDecimal::from(8)));
+    }
+
+    #[test]
+    fn test_uncorrected_same_asset_zero_net_deposit_is_skipped() {
+        // origin == destination, amountIn == amountOut, no correction → net is
+        // `out - in = 0` → skipped, ledger untouched.
+        let raw_payload = payload(&[
+            ("amountInFormatted", Value::String("0.0001".to_string())),
+            ("amountOutFormatted", Value::String("0.0001".to_string())),
+        ]);
+        let row = row(
+            "dao.near",
+            Some("dao.near"),
+            Some("nep141:wrap.near"),
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        let mut ledger = HashMap::new();
+        let disabled = ConfidentialDepositCorrectionIndex::empty_disabled();
+
+        let projected = project_row(&row, &mut ledger, &disabled).expect("should not error");
+
+        assert!(
+            projected.is_none(),
+            "uncorrected zero-net same-asset deposit should be skipped"
+        );
+        assert!(ledger.get("nep141:wrap.near").is_none());
+    }
+
+    #[test]
+    fn test_same_asset_deposit_correction_overrides_net() {
+        // origin == destination (same-asset deposit): uncorrected net would be
+        // out - in (= 0 for nominal 0.0001/0.0001); a correction overrides it.
+        let raw_payload = payload(&[
+            ("amountInFormatted", Value::String("0.0001".to_string())),
+            ("amountOutFormatted", Value::String("0.0001".to_string())),
+            ("amountOutUsd", Value::String("0.0001".to_string())),
+        ]);
+        let row = row(
+            "dao.near",
+            Some("dao.near"),
+            Some("nep141:wrap.near"),
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        let mut ledger = HashMap::new();
+        let corrections = deposit_correction_index(row.id, "2");
+
+        let projected = project_row(&row, &mut ledger, &corrections)
+            .expect("deposit should project")
+            .expect("deposit should not skip");
+
+        assert_eq!(projected.transaction_type, ConfidentialTxType::Deposit);
+        assert_eq!(
+            projected.destination_balance_after,
+            Some(BigDecimal::from(2))
+        );
+        assert_eq!(ledger.get("nep141:wrap.near"), Some(&BigDecimal::from(2)));
     }
 }
