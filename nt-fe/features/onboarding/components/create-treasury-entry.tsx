@@ -77,9 +77,9 @@ function TreasuryTypeOption({
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
                         {icon}
-                        <p className="font-semibold">{title}</p>
+                        <p className="text-sm font-semibold">{title}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                         {description}
                     </p>
                 </div>
@@ -420,43 +420,51 @@ export function TreasuryOnboardingPage({
                             className="space-y-4"
                         >
                             {!accountId && (
-                                <h1 className="text-lg font-semibold mb-1 md:mb-3">
+                                <h1 className="text-base font-semibold mb-1 md:mb-3">
                                     {tPages("title")}
                                 </h1>
                             )}
-                            <p className="text-md text-muted-foreground">
-                                {t("selectTreasuryTypeLabel")}
-                            </p>
-                            <div className="grid gap-3 md:grid-cols-2">
-                                <TreasuryTypeOption
-                                    icon={
-                                        <Globe className="size-4 text-foreground" />
-                                    }
-                                    title={t("public")}
-                                    description={t("publicCardDescription")}
-                                    selected={isConfidential === false}
-                                    onClick={() =>
-                                        form.setValue("isConfidential", false)
-                                    }
-                                />
-                                <TreasuryTypeOption
-                                    icon={
-                                        <Shield
-                                            className="size-4 text-foreground"
-                                            fill="currentColor"
-                                        />
-                                    }
-                                    title={t("confidential")}
-                                    description={t(
-                                        "confidentialCardDescription",
-                                    )}
-                                    selected={isConfidential === true}
-                                    onClick={() =>
-                                        form.setValue("isConfidential", true)
-                                    }
-                                />
-                            </div>
+                            <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">
+                                    {t("selectTreasuryTypeLabel")}
+                                </p>
 
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <TreasuryTypeOption
+                                        icon={
+                                            <Globe className="size-4 text-foreground" />
+                                        }
+                                        title={t("public")}
+                                        description={t("publicCardDescription")}
+                                        selected={isConfidential === false}
+                                        onClick={() =>
+                                            form.setValue(
+                                                "isConfidential",
+                                                false,
+                                            )
+                                        }
+                                    />
+                                    <TreasuryTypeOption
+                                        icon={
+                                            <Shield
+                                                className="size-4 text-foreground"
+                                                fill="currentColor"
+                                            />
+                                        }
+                                        title={t("confidential")}
+                                        description={t(
+                                            "confidentialCardDescription",
+                                        )}
+                                        selected={isConfidential === true}
+                                        onClick={() =>
+                                            form.setValue(
+                                                "isConfidential",
+                                                true,
+                                            )
+                                        }
+                                    />
+                                </div>
+                            </div>
                             <FormField
                                 control={form.control}
                                 name="treasuryName"
@@ -550,7 +558,7 @@ export function TreasuryOnboardingPage({
                                             {t("setupOnUsTitle")}
                                         </p>
                                     </div>
-                                    <p className="text-sm">
+                                    <p className="text-xs">
                                         {t("setupOnUsDescription")}
                                     </p>
                                 </AlertDescription>
