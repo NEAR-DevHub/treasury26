@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { SystemStatusBanner } from "@/components/system-status-banner";
 import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
-import { NEW } from "@/features/onboarding/components/new";
 import { TOUR_NAMES } from "@/features/onboarding/steps/dashboard";
 import {
     PAGE_TOUR_SELECTORS,
@@ -339,11 +338,6 @@ export function Sidebar({ onClose }: SidebarProps) {
                                 showBadge={showBadge}
                                 badgeCount={proposals?.total ?? 0}
                                 showLabels={showLabels}
-                                endAdornment={
-                                    link.path === "earn" ? (
-                                        <NEW enabled={!isReduced} />
-                                    ) : undefined
-                                }
                                 onClick={() => {
                                     router.push(href);
                                     if (isMobile) onClose();
@@ -400,11 +394,6 @@ export function Sidebar({ onClose }: SidebarProps) {
                                     icon={link.icon}
                                     label={tNav(link.labelKey)}
                                     showLabels={!isReduced}
-                                    endAdornment={
-                                        link.showNewPill ? (
-                                            <NEW enabled={!isReduced} />
-                                        ) : undefined
-                                    }
                                     onClick={() => {
                                         router.push(href);
                                         if (isMobile) onClose();
