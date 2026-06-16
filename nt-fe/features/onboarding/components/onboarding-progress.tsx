@@ -83,18 +83,11 @@ function SemiCircleProgress({
                         x1="0%"
                         y1="0%"
                         x2="100%"
-                        y2="100%"
+                        y2="0%"
+                        gradientTransform="rotate(181 0.5 0.5)"
                     >
-                        <stop
-                            offset="0%"
-                            stopColor="#48ACEF"
-                            className="dark:[stop-color:#D4EEFF]"
-                        />
-                        <stop
-                            offset="100%"
-                            stopColor="#A8DCFF"
-                            className="dark:[stop-color:#A8DCFF]"
-                        />
+                        <stop offset="0.89%" stopColor="#48ACEF" />
+                        <stop offset="66.39%" stopColor="#A8DCFF" />
                     </linearGradient>
                     <clipPath id="svg-draw">
                         <path d={PROGRESS_ARC_PATH} />
@@ -131,15 +124,14 @@ function StepCard({ step }: { step: OnboardingStep }) {
     const secondaryAction = step.secondaryAction;
     const hasInlineDualActions =
         !isCompleted && !!primaryAction && !!secondaryAction;
+    const activeStepClassName =
+        "border border-transparent [background:linear-gradient(#EFF6FF,#EFF6FF)_padding-box,linear-gradient(180deg,rgba(9,83,255,0.28),rgba(9,83,255,0.05))_border-box] dark:[background:linear-gradient(#080E22,#080E22)_padding-box,linear-gradient(180deg,rgba(9,83,255,0.44),rgba(9,83,255,0.24))_border-box]";
     return (
         <div
             className={cn(
                 "flex flex-col gap-2 xl:flex-row xl:items-center items-start p-3 rounded-[10.5px] overflow-hidden w-full",
                 isActive
-                    ? cn(
-                          "bg-linear-to-r from-[#E2F2FF] to-[#D4EBFF] dark:from-[rgba(23,81,132,0.55)] dark:to-[rgba(23,81,132,0.71)]",
-                          "border border-[rgba(9,83,255,0.12)]",
-                      )
+                    ? activeStepClassName
                     : "bg-secondary dark:bg-linear-to-r dark:from-[rgba(13,39,62,0.5)] dark:to-[rgba(4,25,17,0.5)] justify-center xl:justify-start",
             )}
         >
@@ -190,7 +182,7 @@ function StepCard({ step }: { step: OnboardingStep }) {
                 <Button
                     variant="ghost"
                     onClick={step.action.onClick}
-                    className="ml-6 xl:mx-0 w-[90%] xl:w-auto"
+                    className="self-start ml-4 w-auto xl:ml-0 xl:mx-0"
                 >
                     {step.action.icon === "deposit" ? (
                         <ArrowDownToLine className="size-3.5" />

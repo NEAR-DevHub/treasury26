@@ -66,7 +66,10 @@ function TreasuryTypeOption({
     return (
         <button
             type="button"
-            className="h-full rounded-xl border border-general-border p-4 text-left transition hover:bg-muted/70"
+            className={cn(
+                "h-full rounded-xl border border-general-border p-3 md:p-4 text-left transition hover:bg-muted/70",
+                selected ? "bg-general-tertiary " : "",
+            )}
             onClick={onClick}
         >
             <div className="flex h-full items-start justify-between gap-3">
@@ -402,7 +405,7 @@ export function TreasuryOnboardingPage({
 
     const createFormBody = (
         <>
-            <div className="mx-auto mt-8 w-full max-w-[600px] space-y-3 md:mt-10">
+            <div className="mx-auto w-full max-w-[600px] space-y-3 md:mt-10">
                 <PageCard className="">
                     <Form {...form}>
                         <form
@@ -410,7 +413,7 @@ export function TreasuryOnboardingPage({
                             className="space-y-4"
                         >
                             {!accountId && (
-                                <h1 className="text-lg font-semibold mb-3">
+                                <h1 className="text-lg font-semibold mb-1 md:mb-3">
                                     {tPages("title")}
                                 </h1>
                             )}
@@ -511,6 +514,7 @@ export function TreasuryOnboardingPage({
                                         <LargeInput
                                             borderless
                                             textSizeClassName="text-lg!"
+                                            suffixClassName="text-muted-foreground/60 text-sm!"
                                             placeholder={t(
                                                 "accountPlaceholderUnderscore",
                                             )}
@@ -531,12 +535,14 @@ export function TreasuryOnboardingPage({
                                 )}
                             />
 
-                            <Alert variant="info" className="items-start gap-3">
-                                <Gift className="mt-0.5 size-5 shrink-0" />
-                                <AlertDescription className="gap-0">
-                                    <p className="text-sm font-semibold mb-0">
-                                        {t("setupOnUsTitle")}
-                                    </p>
+                            <Alert variant="info" className="block">
+                                <AlertDescription>
+                                    <div className="flex items-center gap-2">
+                                        <Gift className="size-5 shrink-0" />
+                                        <p className="text-sm font-semibold">
+                                            {t("setupOnUsTitle")}
+                                        </p>
+                                    </div>
                                     <p className="text-sm">
                                         {t("setupOnUsDescription")}
                                     </p>

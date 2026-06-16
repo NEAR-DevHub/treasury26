@@ -317,8 +317,11 @@ export function ProposalSidebar({
     );
     const shouldRequireSwapSuccess =
         hasDepositAddress && !isConfidentialRequestProposal;
+    // Public treasury receipts should remain accessible for logged-out users
+    // and non-members from the requests page.
+    const isPublicTreasuryGuestViewer = !isConfidential && isGuestTreasury;
     const isSwapSuccessReady = shouldRequireSwapSuccess
-        ? swapStatus?.status === "SUCCESS"
+        ? isPublicTreasuryGuestViewer || swapStatus?.status === "SUCCESS"
         : true;
     const isHidden = isConfidential && isGuestTreasury;
     // Receipt button visibility rules:
