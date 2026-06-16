@@ -173,6 +173,10 @@
             "descriptionDetails": "Talep Ayrıntıları",
             "descriptionList": "Tüm varlıklardaki son işlemler"
         },
+        "apiDocs": {
+            "title": "API Dokümantasyonu",
+            "description": "Trezu son etkinlik API'si için etkileşimli dokümantasyon"
+        },
         "requests": {
             "title": "Talepler",
             "description": "Tüm bekleyen multisig taleplerini görüntüleyin ve yönetin",
@@ -370,6 +374,48 @@
             "contract": "Sözleşme",
             "transaction": "İşlem"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Uç nokta",
+        "endpointDescription": "Bir hazine hesabının son etkinliğini (zenginleştirilmiş bakiye değişikliklerini) döndürür.",
+        "authentication": "Kimlik doğrulama",
+        "authIntro": "{cookie} çerezinde saklanan oturum JWT'si ile kimlik doğrulayın:",
+        "authStep1": "Tarayıcı DevTools'unu açın → Application → Cookies",
+        "authStep2": "{cookie} çerezinin değerini kopyalayın",
+        "authStep3": "Aşağıdaki örneklerde {placeholder} değerini değiştirin",
+        "authPublicNote": "Herkese açık hazineler token olmadan sorgulanabilir. Gizli hazineler, bir hazine üyesinin oturum token'ını gerektirir.",
+        "signedInAs": "{accountId} olarak oturum açıldı — mevcut oturumunuzla çalışır.",
+        "notSignedIn": "Oturum açılmadı — istek oturum olmadan çalışır.",
+        "parameters": "Sorgu parametreleri",
+        "paramName": "Parametre",
+        "paramDescription": "Açıklama",
+        "paramValue": "Değer",
+        "parametersDescription": "İstek oluşturmak için değerleri ayarlayın — bu değerler aşağıdaki kod örneklerine ve çalıştırılabilir isteğe yansır.",
+        "examplesDescription": "Kod parçacıkları yukarıda ayarlanan parametre değerlerini yansıtır.",
+        "required": "zorunlu",
+        "params": {
+            "accountId": "Hazine hesap kimliği (zorunlu)",
+            "limit": "Döndürülecek öğe sayısı (varsayılan 10, en fazla 100)",
+            "offset": "Sayfalama için atlanacak öğe sayısı (varsayılan 0)",
+            "minUsdValue": "Yalnızca en az bu USD değerine sahip değişiklikleri dahil et",
+            "transactionType": "Türe göre filtrele: incoming, outgoing, staking_rewards veya exchange",
+            "tokenSymbol": "Yalnızca bu token sembolünü dahil et",
+            "tokenSymbolNot": "Bu token sembolünü hariç tut",
+            "txHash": "İşlem hash'ine göre filtrele",
+            "from": "Dahil edilecek gönderen hesaplar, virgülle ayrılmış",
+            "fromNot": "Hariç tutulacak gönderen hesaplar, virgülle ayrılmış",
+            "to": "Dahil edilecek alıcı hesaplar, virgülle ayrılmış",
+            "toNot": "Hariç tutulacak alıcı hesaplar, virgülle ayrılmış",
+            "startDate": "Yalnızca bu tarihte veya sonrasındaki etkinliği dahil et (ISO 8601)",
+            "endDate": "Yalnızca bu tarihte veya öncesindeki etkinliği dahil et (ISO 8601)"
+        },
+        "examples": "Kod örnekleri",
+        "run": "İsteği çalıştır",
+        "running": "Çalıştırılıyor…",
+        "response": "Yanıt",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "İstek başarısız oldu",
+        "copy": "Kopyala"
     },
     "export": {
         "types": {
@@ -1429,22 +1475,22 @@
         "resources": "Kaynaklar",
         "support": "Destek",
         "websiteTitle": "Trezu Web Sitesi",
-        "websiteDescription": "Trezu hakkında daha fazla bilgi edinin ve blogumuzu okuyun.",
+        "websiteDescription": "Trezu ve yenilikler hakkında bilgi alın.",
         "demo": "Trezu Demo",
         "demoTitle": "Açık Sürümü Keşfedin",
-        "demoDescription": "Canlı bir açık hesabı işlerken görün.",
+        "demoDescription": "Herkesin görebileceği gerçek bir hazine.",
         "confidentialDemoTitle": "Gizli Sürümü Keşfedin",
-        "confidentialDemoDescription": "Canlı bir gizli hesabı işlerken keşfedin.",
+        "confidentialDemoDescription": "Özel bir hazinenin kullanımda nasıl göründüğü.",
         "videoTitle": "Demoyu İzleyin",
-        "videoDescription": "Trezu'nun nasıl çalıştığını gösteren kısa bir video izleyin.",
+        "videoDescription": "Kısa video — Trezu'yu uçtan uca görün.",
         "xTitle": "Bizi X'te Takip Edin",
-        "xDescription": "En son sürümlerimiz ve bilgilerimizden haberdar olun.",
+        "xDescription": "Ne inşa ettiğimizi gerçek zamanlı görün.",
         "statsTitle": "İstatistikler",
-        "statsDescription": "Tüm sputnik DAO'lar genelinde yönetim altındaki toplam varlıkları görüntüleyin.",
+        "statsDescription": "Tüm hazinelerde yönetilen toplam varlıkları görün.",
         "docsTitle": "Belgeler",
-        "docsDescription": "Tüm özellikler hakkında belgelerden bilgi edinin.",
+        "docsDescription": "Her özellik için adım adım rehberler.",
         "productSupportTitle": "Ürün Desteği",
-        "productSupportDescription": "Yardım için destek ekibimizle iletişime geçin."
+        "productSupportDescription": "Yardım için ekibimize ulaşın."
     },
     "progressModal": {
         "titleCreating": "Hazine Oluşturuluyor...",
@@ -1846,7 +1892,7 @@
     },
     "intentsQuote": {
         "initializing": "Teklif servisi hâlâ başlatılıyor. Lütfen tekrar deneyin.",
-        "noRoute": "Şu anda bir ödeme rotası hazırlanamıyor. Lütfen tekrar deneyin.",
+        "noRoute": "Şu anda bu token ve ağ için kullanılabilir likidite yok.",
         "fetchFailed": "Şu anda bir ödeme rotası hazırlanamıyor. Lütfen tekrar deneyin.",
         "amountTooLow": "Miktar ağ ücretlerini karşılamak için çok düşük. Daha yüksek bir miktar girin ve tekrar deneyin.",
         "amountTooLowWithMin": "Miktar ağ ücretlerini karşılamak için çok düşük. En az {min} {token} girin.",

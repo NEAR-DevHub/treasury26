@@ -173,6 +173,10 @@
             "descriptionDetails": "요청 세부정보",
             "descriptionList": "모든 자산의 최근 트랜잭션"
         },
+        "apiDocs": {
+            "title": "API 문서",
+            "description": "Trezu 최근 활동 API에 대한 인터랙티브 문서"
+        },
         "requests": {
             "title": "요청",
             "description": "모든 대기 중인 멀티시그 요청을 보고 관리하세요",
@@ -370,6 +374,48 @@
             "contract": "컨트랙트",
             "transaction": "트랜잭션"
         }
+    },
+    "apiDocs": {
+        "endpoint": "엔드포인트",
+        "endpointDescription": "트레저리 계정의 최근 활동(보강된 잔액 변동)을 반환합니다.",
+        "authentication": "인증",
+        "authIntro": "쿠키 {cookie}에 저장된 세션 JWT로 인증합니다:",
+        "authStep1": "브라우저 DevTools 열기 → Application → Cookies",
+        "authStep2": "{cookie} 쿠키 값 복사",
+        "authStep3": "아래 예제에서 {placeholder}를 교체",
+        "authPublicNote": "공개 트레저리는 토큰 없이 조회할 수 있습니다. 기밀 트레저리는 트레저리 구성원의 세션 토큰이 필요합니다.",
+        "signedInAs": "{accountId}(으)로 로그인됨 — 현재 세션으로 실행됩니다.",
+        "notSignedIn": "로그인되지 않음 — 요청은 세션 없이 실행됩니다.",
+        "parameters": "쿼리 매개변수",
+        "paramName": "매개변수",
+        "paramDescription": "설명",
+        "paramValue": "값",
+        "parametersDescription": "값을 설정하여 요청을 구성하세요. 설정한 값은 아래 코드 예제와 실행 가능한 요청에 반영됩니다.",
+        "examplesDescription": "스니펫에는 위에서 설정한 매개변수 값이 반영됩니다.",
+        "required": "필수",
+        "params": {
+            "accountId": "트레저리 계정 ID(필수)",
+            "limit": "반환할 항목 수(기본 10, 최대 100)",
+            "offset": "페이지네이션을 위해 건너뛸 항목 수(기본 0)",
+            "minUsdValue": "이 USD 가치 이상의 변동만 포함",
+            "transactionType": "유형별 필터: incoming, outgoing, staking_rewards 또는 exchange",
+            "tokenSymbol": "이 토큰 심볼만 포함",
+            "tokenSymbolNot": "이 토큰 심볼 제외",
+            "txHash": "트랜잭션 해시로 필터",
+            "from": "포함할 발신자 계정(쉼표로 구분)",
+            "fromNot": "제외할 발신자 계정(쉼표로 구분)",
+            "to": "포함할 수신자 계정(쉼표로 구분)",
+            "toNot": "제외할 수신자 계정(쉼표로 구분)",
+            "startDate": "이 날짜 이후의 활동만 포함(ISO 8601)",
+            "endDate": "이 날짜 이전의 활동만 포함(ISO 8601)"
+        },
+        "examples": "코드 예제",
+        "run": "요청 실행",
+        "running": "실행 중…",
+        "response": "응답",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "요청 실패",
+        "copy": "복사"
     },
     "export": {
         "types": {
@@ -1429,22 +1475,22 @@
         "resources": "리소스",
         "support": "지원",
         "websiteTitle": "Trezu 웹사이트",
-        "websiteDescription": "Trezu에 대해 자세히 알아보고 블로그를 읽어보세요.",
+        "websiteDescription": "Trezu와 최신 소식을 확인하세요.",
         "demo": "Trezu 데모",
         "demoTitle": "공개 버전 살펴보기",
-        "demoDescription": "실시간 공개 계정의 작동을 확인하세요.",
+        "demoDescription": "누구나 볼 수 있는 실제 트레저리입니다.",
         "confidentialDemoTitle": "비공개 버전 살펴보기",
-        "confidentialDemoDescription": "실시간 비공개 계정의 작동을 살펴보세요.",
+        "confidentialDemoDescription": "비공개 트레저리가 실제로 어떻게 사용되는지.",
         "videoTitle": "데모 시청",
-        "videoDescription": "Trezu 작동 방식을 보여주는 짧은 비디오를 시청하세요.",
+        "videoDescription": "짧은 영상 — Trezu를 처음부터 끝까지 확인하세요.",
         "xTitle": "X에서 팔로우하기",
-        "xDescription": "최신 릴리스 및 인사이트를 받아보세요.",
+        "xDescription": "우리가 무엇을 만들고 있는지 실시간으로 확인하세요.",
         "statsTitle": "통계",
-        "statsDescription": "모든 sputnik DAO의 총 운용 자산을 확인하세요.",
+        "statsDescription": "모든 트레저리에서 관리 중인 총자산을 확인하세요.",
         "docsTitle": "문서",
-        "docsDescription": "문서에서 모든 기능에 대해 알아보세요.",
+        "docsDescription": "모든 기능을 단계별로 안내합니다.",
         "productSupportTitle": "제품 지원",
-        "productSupportDescription": "도움이 필요하시면 지원 팀에 문의하세요."
+        "productSupportDescription": "도움이 필요하면 팀에 문의하세요."
     },
     "progressModal": {
         "titleCreating": "트레저리 생성 중...",
@@ -1846,7 +1892,7 @@
     },
     "intentsQuote": {
         "initializing": "견적 서비스가 아직 초기화 중입니다. 다시 시도해 주세요.",
-        "noRoute": "지금은 결제 경로를 준비할 수 없습니다. 다시 시도해 주세요.",
+        "noRoute": "현재 이 토큰과 네트워크에서는 사용 가능한 유동성이 없습니다.",
         "fetchFailed": "지금은 결제 경로를 준비할 수 없습니다. 다시 시도해 주세요.",
         "amountTooLow": "네트워크 수수료를 충당하기에 금액이 너무 적습니다. 더 높은 금액을 입력하고 다시 시도해 주세요.",
         "amountTooLowWithMin": "네트워크 수수료를 충당하기에 금액이 너무 적습니다. 최소 {min} {token}을(를) 입력하세요.",

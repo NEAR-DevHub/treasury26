@@ -243,11 +243,18 @@ impl RequestsPendingContext {
 #[interactive_clap(input_context = TreasuryContext)]
 #[interactive_clap(output_context = RequestsApproveContext)]
 pub struct RequestsApprove {
+    #[interactive_clap(skip_default_input_arg)]
     /// Proposal ID to approve
     proposal_id: u64,
     #[interactive_clap(named_arg)]
     /// Select network
     network_config: near_cli_rs::network_for_transaction::NetworkForTransactionArgs,
+}
+
+impl RequestsApprove {
+    fn input_proposal_id(context: &TreasuryContext) -> color_eyre::eyre::Result<Option<u64>> {
+        input_pending_proposal_id(context, "approve")
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -319,11 +326,18 @@ impl From<RequestsApproveContext> for near_cli_rs::commands::ActionContext {
 #[interactive_clap(input_context = TreasuryContext)]
 #[interactive_clap(output_context = RequestsRejectContext)]
 pub struct RequestsReject {
+    #[interactive_clap(skip_default_input_arg)]
     /// Proposal ID to reject
     proposal_id: u64,
     #[interactive_clap(named_arg)]
     /// Select network
     network_config: near_cli_rs::network_for_transaction::NetworkForTransactionArgs,
+}
+
+impl RequestsReject {
+    fn input_proposal_id(context: &TreasuryContext) -> color_eyre::eyre::Result<Option<u64>> {
+        input_pending_proposal_id(context, "reject")
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -408,12 +422,23 @@ fn build_vote_action_context(
                 "id": proposal_id,
                 "action": action,
             });
+            // The embedded proposal kind copy lets the backend relay recognize
+            // v1.signer confidential proposals and extract the NEP-413 payload
+            // hash before the vote executes.
             args.as_object_mut()
                 .unwrap()
                 .insert("proposal".to_string(), proposal_kind.clone());
 
             let args_bytes = serde_json::to_vec(&args)
                 .map_err(|e| color_eyre::eyre::eyre!("Failed to serialize args: {}", e))?;
+
+            tracing::info!(
+                target: "near_teach_me",
+                parent: &tracing::Span::none(),
+                "act_proposal args (proposal kind embedded for the relay's confidential-intent \
+                 detection):\n{}",
+                serde_json::to_string_pretty(&args).unwrap_or_default()
+            );
 
             let receiver_id: near_primitives::types::AccountId = treasury_id
                 .parse()
@@ -448,12 +473,84 @@ fn build_vote_action_context(
             Ok(())
         }),
         sign_as_delegate_action: true,
+        // proposalType "vote" is load-bearing: the backend only scans the vote
+        // execution result for an MPC signature (and auto-submits the pending
+        // confidential intent to 1Click) when the relay request is marked as a
+        // vote. Omitting it makes confidential payments silently no-op.
         on_sending_delegate_action_callback: Some(crate::relay::build_relay_callback(
             trezu_config,
             treasury_id,
-            None,
+            Some("vote".to_string()),
             Some(proposal_id),
         )),
+    }
+}
+
+/// Interactive proposal-id input for vote commands: show the pending
+/// proposals table first, then let the user pick one from the list.
+fn input_pending_proposal_id(
+    context: &TreasuryContext,
+    action: &str,
+) -> color_eyre::eyre::Result<Option<u64>> {
+    let api = ApiClient::new(&context.config);
+    let result = api.list_proposals(&context.treasury_id, Some("InProgress"), Some(1), Some(50))?;
+
+    if result.proposals.is_empty() {
+        return Err(color_eyre::eyre::eyre!(
+            "No pending proposals to {} on {}.",
+            action,
+            context.treasury_id
+        ));
+    }
+
+    tracing::info!(
+        "{}",
+        format!(
+            "{} pending proposals on {}",
+            result.total, context.treasury_id
+        )
+        .cyan()
+        .bold()
+    );
+    print_proposals_table(&result.proposals);
+
+    let options: Vec<String> = result
+        .proposals
+        .iter()
+        .map(|p| format!("#{} — {}", p.id, truncate_chars(&p.description, 60)))
+        .collect();
+
+    let selection =
+        inquire::Select::new(&format!("Select proposal to {action}:"), options.clone()).prompt()?;
+    let index = options.iter().position(|o| o == &selection).unwrap();
+    Ok(Some(result.proposals[index].id))
+}
+
+/// Truncate to at most `max_chars` characters (not bytes — slicing byte
+/// indices panics on multi-byte UTF-8), appending "..." when shortened.
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    if text.chars().count() <= max_chars {
+        return text.to_string();
+    }
+    let truncated: String = text.chars().take(max_chars.saturating_sub(3)).collect();
+    format!("{truncated}...")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_chars;
+
+    #[test]
+    fn truncate_chars_is_utf8_safe() {
+        assert_eq!(truncate_chars("short", 50), "short");
+        assert_eq!(truncate_chars("abcdefgh", 8), "abcdefgh");
+        assert_eq!(truncate_chars("abcdefghi", 8), "abcde...");
+        // Multi-byte content around the cut point must not panic.
+        let cyrillic = "Підтвердження платежу через приватні інтенти приховано";
+        let truncated = truncate_chars(cyrillic, 20);
+        assert_eq!(truncated.chars().count(), 20);
+        assert!(truncated.ends_with("..."));
+        assert!(truncate_chars("💸💸💸💸💸", 4).ends_with("..."));
     }
 }
 
@@ -463,11 +560,7 @@ fn print_proposals_table(proposals: &[crate::types::Proposal]) {
     table.set_titles(prettytable::row![bFc => "ID", "Status", "Proposer", "Description", "Votes"]);
 
     for p in proposals {
-        let desc = if p.description.len() > 50 {
-            format!("{}...", &p.description[..47])
-        } else {
-            p.description.clone()
-        };
+        let desc = truncate_chars(&p.description, 50);
 
         let vote_summary = if p.votes.is_empty() {
             "-".to_string()

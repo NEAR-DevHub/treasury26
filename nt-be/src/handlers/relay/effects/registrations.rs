@@ -11,18 +11,11 @@
 //! `get_proposal`) — never the proposal description.
 
 use std::collections::HashSet;
-use std::ops::Deref;
 use std::sync::Arc;
-use std::time::Duration;
 
+use axum::http::StatusCode;
 use base64::Engine as _;
-use near_api::{
-    AccountId, NearGas, NearToken, Transaction,
-    types::{
-        Action,
-        transaction::{actions::FunctionCallAction, delegate_action::SignedDelegateAction},
-    },
-};
+use near_api::{AccountId, NearGas, NearToken};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
@@ -30,7 +23,10 @@ use crate::{
     AppState,
     handlers::{
         proposals::scraper::{fetch_batch_payment_list, fetch_proposal},
-        relay::submit::extract_intents_contract,
+        relay::{
+            parse::{ProposalKind, RelayError, error_response},
+            sponsor::Sponsor,
+        },
         token::storage_deposit::is_registered::check_storage_deposit,
     },
 };
@@ -42,10 +38,6 @@ const STORAGE_DEPOSIT_GAS: NearGas = NearGas::from_tgas(30);
 /// Upper bound on registrations performed for a single approval. Bulk payment
 /// lists are capped well under this on the contract side; this is a backstop.
 const MAX_STORAGE_DEPOSITS: usize = 200;
-/// How many times to retry a single `storage_deposit` send before failing the
-/// approval, to ride out transient RPC/network errors.
-const MAX_REGISTER_ATTEMPTS: usize = 3;
-const REGISTER_RETRY_DELAY: Duration = Duration::from_millis(500);
 
 /// A single account that must be registered on a token contract.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -54,41 +46,9 @@ pub(crate) struct Registration {
     token_id: AccountId,
 }
 
-// ─── Typed views over the on-chain proposal kind / action args ──────────────────
-
-/// Sputnik proposal `kind`. Only the variants that can imply a NEP-141
-/// registration are modelled; everything else deserializes to `None` fields.
-#[derive(Debug, Default, Deserialize)]
-struct ProposalKind {
-    #[serde(rename = "Transfer")]
-    transfer: Option<TransferKind>,
-    #[serde(rename = "FunctionCall")]
-    function_call: Option<FunctionCallKind>,
-}
-
-#[derive(Debug, Deserialize)]
-struct TransferKind {
-    // Native NEAR uses the sentinel token_id "", which is not a valid
-    // AccountId; such transfers fail to deserialize and yield no registration
-    // (correct — native NEAR needs none).
-    token_id: AccountId,
-    receiver_id: AccountId,
-}
-
-#[derive(Debug, Deserialize)]
-struct FunctionCallKind {
-    receiver_id: AccountId,
-    #[serde(default)]
-    actions: Vec<ProposalFunctionCall>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ProposalFunctionCall {
-    method_name: String,
-    /// Base64-encoded JSON args.
-    #[serde(default)]
-    args: String,
-}
+// ─── Typed views over the on-chain action args ──────────────────────────────────
+//
+// The proposal `kind` itself is modelled by the shared `sputnik::ProposalKind`.
 
 #[derive(Debug, Deserialize)]
 struct FtTransferArgs {
@@ -111,14 +71,18 @@ struct MtTransferCallArgs {
     msg: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct ActProposalArgs {
-    id: u64,
-    action: String,
-}
-
 fn is_native_token(token_id: &str) -> bool {
     token_id.is_empty() || token_id.eq_ignore_ascii_case("near")
+}
+
+/// Extract the NEP-141 contract id from an Intents asset id
+/// (`nep141:<contract>` or `nep245:<contract>:<token>`).
+fn extract_intents_contract(asset_id: &str) -> Option<&str> {
+    asset_id.strip_prefix("nep141:").or_else(|| {
+        asset_id
+            .strip_prefix("nep245:")
+            .and_then(|s| s.split(":").next())
+    })
 }
 
 /// Decode base64-encoded JSON action args into a typed struct.
@@ -127,26 +91,6 @@ fn decode_args<T: DeserializeOwned>(encoded: &str) -> Option<T> {
         .decode(encoded)
         .ok()?;
     serde_json::from_slice(&bytes).ok()
-}
-
-/// Return the proposal id if these `act_proposal` args represent a `VoteApprove`.
-fn approve_proposal_id(args: &ActProposalArgs) -> Option<u64> {
-    (args.action == "VoteApprove").then_some(args.id)
-}
-
-/// Collect the proposal ids being approved (`VoteApprove`) in this delegate action.
-pub(crate) fn vote_approve_proposal_ids(signed_delegate_action: &SignedDelegateAction) -> Vec<u64> {
-    let mut ids = Vec::new();
-    for action in &signed_delegate_action.delegate_action.actions {
-        if let Action::FunctionCall(function_call) = action.deref()
-            && function_call.method_name == "act_proposal"
-            && let Ok(args) = serde_json::from_slice::<ActProposalArgs>(&function_call.args)
-            && let Some(id) = approve_proposal_id(&args)
-        {
-            ids.push(id);
-        }
-    }
-    ids
 }
 
 /// A bulk payment list whose recipients must be registered on `token`.
@@ -162,6 +106,38 @@ struct BulkList {
 struct ClassifiedTargets {
     direct: HashSet<Registration>,
     bulk_lists: Vec<BulkList>,
+}
+
+/// Perform every NEP-141 registration implied by the approving votes in this relay
+/// and return the total NEAR spent on them.
+///
+/// Targets are derived from the authoritative on-chain proposal kind, deduplicated,
+/// and registered (sponsor-paid) before the vote executes the transfer.
+pub async fn register_vote_approvals(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+    approve_proposal_ids: &[u64],
+) -> RegistrationOutcome {
+    let mut registration_targets = HashSet::new();
+    for &proposal_id in approve_proposal_ids {
+        registration_targets
+            .extend(derive_targets_for_proposal(state, treasury_id, proposal_id).await);
+    }
+
+    let (sent_count, registration_error) =
+        execute_storage_deposits(state, registration_targets).await;
+    RegistrationOutcome {
+        spent: STORAGE_DEPOSIT_AMOUNT.saturating_mul(u128::from(sent_count)),
+        error: registration_error.map(|msg| error_response(StatusCode::BAD_REQUEST, msg)),
+    }
+}
+
+/// Outcome of registering vote approvals: the NEAR actually spent on
+/// `storage_deposit`s (always charged to `paid_near`), plus the error to fail the
+/// relay with, if a required registration could not be completed.
+pub struct RegistrationOutcome {
+    pub spent: NearToken,
+    pub error: Option<RelayError>,
 }
 
 /// Fetch a proposal by id and derive its storage-deposit targets. Failures to
@@ -228,25 +204,23 @@ pub(crate) async fn derive_targets_for_proposal(
 /// - `FunctionCall` action `mt_transfer_call` to the bulk contract when the
 ///   intents `token_id` is a `nep141:` asset.
 fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> ClassifiedTargets {
-    let mut out = ClassifiedTargets::default();
+    let mut classified = ClassifiedTargets::default();
 
-    let Ok(kind) = serde_json::from_value::<ProposalKind>(kind.clone()) else {
-        return out;
-    };
+    let kind = ProposalKind::from_value(kind);
 
     // Sputnik native `Transfer` kind (the main direct-FT-payment path).
     if let Some(transfer) = kind.transfer {
         if !is_native_token(transfer.token_id.as_str()) {
-            out.direct.insert(Registration {
+            classified.direct.insert(Registration {
                 account_id: transfer.receiver_id,
                 token_id: transfer.token_id,
             });
         }
-        return out;
+        return classified;
     }
 
     let Some(func_call) = kind.function_call else {
-        return out;
+        return classified;
     };
 
     for action in &func_call.actions {
@@ -254,7 +228,7 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
             // `ft_transfer` on a token contract → register the recipient on it.
             "ft_transfer" => {
                 if let Some(args) = decode_args::<FtTransferArgs>(&action.args) {
-                    out.direct.insert(Registration {
+                    classified.direct.insert(Registration {
                         account_id: args.receiver_id,
                         token_id: func_call.receiver_id.clone(),
                     });
@@ -269,9 +243,9 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
                 };
                 let token_id = func_call.receiver_id.clone();
                 if args.receiver_id == *bulk_contract {
-                    out.push_bulk(bulk_contract, token_id, args.msg);
+                    classified.push_bulk(bulk_contract, token_id, args.msg);
                 } else {
-                    out.direct.insert(Registration {
+                    classified.direct.insert(Registration {
                         account_id: args.receiver_id,
                         token_id,
                     });
@@ -292,13 +266,13 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
                 let Ok(token_id) = contract.parse::<AccountId>() else {
                     continue;
                 };
-                out.push_bulk(bulk_contract, token_id, args.msg);
+                classified.push_bulk(bulk_contract, token_id, args.msg);
             }
             _ => {}
         }
     }
 
-    out
+    classified
 }
 
 impl ClassifiedTargets {
@@ -315,46 +289,55 @@ impl ClassifiedTargets {
     }
 }
 
-/// Perform the required registrations concurrently, skipping already-registered
-/// accounts. The targets are already deduplicated (collected into a `HashSet`).
-/// Returns the number of `storage_deposit` calls actually sent (for `paid_near`
-/// accounting). Errors if the per-approval cap is exceeded or a required
-/// registration fails.
-pub(crate) async fn execute_storage_deposits(
+/// Perform the required registrations concurrently and return `(sent, error)`:
+/// the number of `storage_deposit`s actually sent (for `paid_near` accounting) and
+/// the first failure, if any. All registrations run to completion even when one
+/// fails, so `sent` reflects every NEAR actually spent.
+async fn execute_storage_deposits(
     state: &Arc<AppState>,
-    targets: HashSet<Registration>,
-) -> Result<u32, String> {
-    if targets.is_empty() {
-        return Ok(0);
+    registration_targets: HashSet<Registration>,
+) -> (u32, Option<String>) {
+    if registration_targets.is_empty() {
+        return (0, None);
     }
-    if targets.len() > MAX_STORAGE_DEPOSITS {
-        return Err(format!(
-            "Too many storage_deposit registrations required ({} > {})",
-            targets.len(),
-            MAX_STORAGE_DEPOSITS
-        ));
+    if registration_targets.len() > MAX_STORAGE_DEPOSITS {
+        return (
+            0,
+            Some(format!(
+                "Too many storage_deposit registrations required ({} > {})",
+                registration_targets.len(),
+                MAX_STORAGE_DEPOSITS
+            )),
+        );
     }
 
-    let futures = targets.into_iter().map(|registration| {
+    let registrations = registration_targets.into_iter().map(|registration| {
         let state = state.clone();
         async move { register_one(&state, &registration).await }
     });
-    let results = futures::future::join_all(futures).await;
+    let registration_results = futures::future::join_all(registrations).await;
 
-    let mut count: u32 = 0;
-    for result in results {
-        match result {
-            Ok(true) => count += 1,
+    let mut sent_count: u32 = 0;
+    let mut first_error = None;
+    for registration_result in registration_results {
+        match registration_result {
+            Ok(true) => sent_count += 1,
             Ok(false) => {}
-            Err(e) => return Err(e),
+            Err(error_message) => {
+                if first_error.is_none() {
+                    first_error = Some(error_message);
+                }
+            }
         }
     }
-    Ok(count)
+    (sent_count, first_error)
 }
 
 /// Register a single account on a token contract. Returns `Ok(true)` when a
 /// `storage_deposit` was actually sent, `Ok(false)` when already registered.
-/// Retries transient send failures up to `MAX_REGISTER_ATTEMPTS` times.
+///
+/// `storage_deposit` with `registration_only` refunds and is a no-op when already
+/// registered, so [`Sponsor::call_idempotent`] retries transient send failures.
 async fn register_one(state: &Arc<AppState>, registration: &Registration) -> Result<bool, String> {
     let Registration {
         account_id,
@@ -382,55 +365,22 @@ async fn register_one(state: &Arc<AppState>, registration: &Registration) -> Res
     }))
     .map_err(|e| e.to_string())?;
 
-    let mut last_error = String::new();
-    for attempt in 1..=MAX_REGISTER_ATTEMPTS {
-        match send_storage_deposit(state, token_id, args.clone()).await {
-            // storage_deposit is idempotent (registration_only refunds), so a
-            // retry after a partially-applied send is safe.
-            Ok(()) => return Ok(true),
-            Err(e) => {
-                last_error = e;
-                log::warn!(
-                    "storage_deposit attempt {}/{} failed for {} on {}: {}",
-                    attempt,
-                    MAX_REGISTER_ATTEMPTS,
-                    account_id,
-                    token_id,
-                    last_error
-                );
-                if attempt < MAX_REGISTER_ATTEMPTS {
-                    tokio::time::sleep(REGISTER_RETRY_DELAY).await;
-                }
-            }
-        }
-    }
-
-    Err(format!(
-        "storage_deposit failed for {} on {} after {} attempts: {}",
-        account_id, token_id, MAX_REGISTER_ATTEMPTS, last_error
-    ))
-}
-
-/// Send a single sponsor-signed `storage_deposit` transaction.
-async fn send_storage_deposit(
-    state: &Arc<AppState>,
-    token_id: &AccountId,
-    args: Vec<u8>,
-) -> Result<(), String> {
-    Transaction::construct(state.signer_id.clone(), token_id.clone())
-        .add_action(Action::FunctionCall(Box::new(FunctionCallAction {
-            method_name: "storage_deposit".to_string(),
+    Sponsor::from_state(state)
+        .call_idempotent(
+            token_id,
+            "storage_deposit",
             args,
-            gas: STORAGE_DEPOSIT_GAS,
-            deposit: STORAGE_DEPOSIT_AMOUNT,
-        })))
-        .with_signer(state.signer.clone())
-        .send_to(&state.network)
+            STORAGE_DEPOSIT_GAS,
+            STORAGE_DEPOSIT_AMOUNT,
+        )
         .await
-        .map_err(|e| format!("send failed: {}", e))?
-        .into_result()
-        .map_err(|e| format!("execution failed: {}", e))?;
-    Ok(())
+        .map_err(|e| {
+            format!(
+                "storage_deposit failed for {} on {}: {}",
+                account_id, token_id, e
+            )
+        })?;
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -610,24 +560,6 @@ mod tests {
         let out = classify_kind(&kind, &bulk());
         assert!(out.direct.is_empty());
         assert!(out.bulk_lists.is_empty());
-    }
-
-    #[test]
-    fn approve_id_parsing() {
-        assert_eq!(
-            approve_proposal_id(&ActProposalArgs {
-                id: 12,
-                action: "VoteApprove".to_string()
-            }),
-            Some(12)
-        );
-        assert_eq!(
-            approve_proposal_id(&ActProposalArgs {
-                id: 12,
-                action: "VoteReject".to_string()
-            }),
-            None
-        );
     }
 
     #[test]

@@ -14,14 +14,11 @@ import {
     getLocalizedNetworkDisplayName,
 } from "@/lib/intents-network";
 import { NEAR_COM_ICON } from "@/constants/token";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { isValidAddress } from "@/lib/address-validation";
 import { getBlockchainType } from "@/lib/blockchain-utils";
-import {
-    isEthImplicitNearAddress,
-    isValidNearAddressFormat,
-} from "@/lib/near-validation";
+import { isValidNearAddressFormat } from "@/lib/near-validation";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
 import { cn } from "@/lib/utils";
@@ -45,6 +42,8 @@ interface RecipientNetworkSelectProps {
      * in a separate "Incompatible" section and disabled.
      */
     recipient: string;
+    bridgeAssets: BridgeAsset[];
+    isBridgeAssetsLoading?: boolean;
     sectionRules: SectionRule<RecipientNetworkRuleOption>[];
     /**
      * Fires when the user picks a network. Carries the raw network name so
@@ -117,6 +116,8 @@ export function RecipientNetworkSelect({
     onChange,
     token,
     recipient,
+    bridgeAssets,
+    isBridgeAssetsLoading = false,
     sectionRules,
     onNetworkChange,
 }: RecipientNetworkSelectProps) {
@@ -124,10 +125,6 @@ export function RecipientNetworkSelect({
     const tAddressBookTable = useTranslations("addressBookTable");
     const { isConfidential } = useTreasury();
     const [open, setOpen] = useState(false);
-
-    // Need bridge networks before the modal opens so we can split available
-    // vs. incompatible based on the entered recipient address.
-    const { data: bridgeAssets = [] } = useBridgeTokens(true);
 
     const nearComOption: RecipientNetworkOption = useMemo(
         () => ({
@@ -214,7 +211,8 @@ export function RecipientNetworkSelect({
     }, [enrichedOptions, sectionRules]);
 
     const hasCompatibleNetwork = compatibleOptions.length > 0;
-    const isDisabled = !recipient || !hasCompatibleNetwork;
+    const isDisabled =
+        !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork;
 
     // Clear the selection when the address no longer matches it (e.g. user
     // edited the address into a different chain's format).
@@ -225,17 +223,6 @@ export function RecipientNetworkSelect({
         onChange("");
     }, [value, availableOptions, compatibleOptions, onChange]);
 
-    // Auto-pick when there's exactly one compatible network and nothing's
-    // selected (or the selection no longer matches). Skips when the user
-    // already chose a still-compatible network.
-    useEffect(() => {
-        if (compatibleOptions.length !== 1) return;
-        const only = compatibleOptions[0];
-        if (value === only.id) return;
-        if (value && compatibleOptions.some((o) => o.id === value)) return;
-        onChange(only.id);
-        onNetworkChange?.(only);
-    }, [compatibleOptions, value, onChange, onNetworkChange]);
     const placeholderText = !recipient
         ? t("enterAddressFirst")
         : !hasCompatibleNetwork

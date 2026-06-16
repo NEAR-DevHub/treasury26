@@ -12,6 +12,7 @@ import posthog from "posthog-js";
 import { toast } from "sonner";
 import { create } from "zustand";
 import { APP_WALLET_SETUP_URL } from "@/constants/config";
+import { markPaymentPending } from "@/features/onboarding/payment-pending";
 import { getNearStoreMessages } from "@/i18n/store-messages";
 import { trackEvent } from "@/lib/analytics";
 import { markDaoDirty, relayDelegateAction } from "@/lib/api";
@@ -728,11 +729,17 @@ export const useNear = () => {
         showToast: boolean = true,
     ) => {
         await storeCreateProposal(params);
+        // Signal the onboarding flow that a payment request was just made so it
+        // can poll for it while the backend indexer catches up.
+        if (params.proposalType === "payment") {
+            markPaymentPending(params.treasuryId, queryClient);
+        }
         // Invalidate queries after delay
         await new Promise((resolve) => setTimeout(resolve, 2000));
         const promises = [
             queryClient.invalidateQueries({
                 queryKey: ["proposals", params.treasuryId],
+                refetchType: "all",
             }),
             queryClient.invalidateQueries({
                 queryKey: ["proposal", params.treasuryId],
@@ -803,6 +810,7 @@ export const useNear = () => {
         const promises = [
             queryClient.invalidateQueries({
                 queryKey: ["proposals", treasuryId],
+                refetchType: "all",
             }),
             ...votes.map((vote) =>
                 queryClient.invalidateQueries({

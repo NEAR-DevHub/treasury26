@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type Query } from "@tanstack/react-query";
 import {
     getProposals,
     ProposalFilters,
+    ProposalsResponse,
     getProposal,
     getProposalTransaction,
     Proposal,
@@ -46,6 +47,13 @@ export function useProposals(
     daoId: string | null | undefined,
     filters?: ProposalFilters,
     enabled: boolean = true,
+    options?: {
+        refetchInterval?:
+            | number
+            | false
+            | ((query: Query<ProposalsResponse>) => number | false);
+        refetchOnMount?: boolean | "always";
+    },
 ) {
     const filtersKey = filters ? JSON.stringify(filters) : null;
     return useQuery({
@@ -53,6 +61,8 @@ export function useProposals(
         queryFn: () => getProposals(daoId!, filters),
         enabled: enabled && !!daoId,
         staleTime: 1000 * 10, // 10 seconds (proposals can change frequently)
+        refetchOnMount: options?.refetchOnMount,
+        refetchInterval: options?.refetchInterval,
     });
 }
 

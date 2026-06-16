@@ -5,20 +5,17 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeResponse {
-    pub nonce: String,
+    /// Unique message the wallet authorizes via NEP-641 `resolveAuth`.
+    pub payload: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginRequest {
     pub account_id: String,
-    pub public_key: String,
-    pub signature: String,
-    pub message: String,
-    pub nonce: String,
-    pub recipient: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub callback_url: Option<String>,
+    /// JSON-stringified NEP-641 authorization blob. For key-based signing this
+    /// is a NEP-413 `SignedMessage` the backend verifies as the fallback path.
+    pub authorization: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -219,6 +216,34 @@ pub struct Policy {
     pub default_vote_policy: serde_json::Value,
     pub proposal_bond: Option<String>,
     pub proposal_period: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeNetwork {
+    /// Intents token id of the asset on this network (e.g. `nep141:eth.omft.near`).
+    /// Doubles as the `destinationAsset` for DESTINATION_CHAIN quotes.
+    pub id: String,
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+    #[serde(default)]
+    pub min_deposit_amount: Option<String>,
+    #[serde(default)]
+    pub min_withdrawal_amount: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeAsset {
+    pub id: String,
+    pub name: String,
+    pub networks: Vec<BridgeNetwork>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BridgeAssetsResponse {
+    pub assets: Vec<BridgeAsset>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

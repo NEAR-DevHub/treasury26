@@ -327,8 +327,35 @@ impl ApiClient {
         Ok(wrapper.data)
     }
 
+    #[tracing::instrument(name = "Fetching bridge networks ...", skip_all)]
+    pub fn get_bridge_tokens(&self) -> Result<BridgeAssetsResponse> {
+        tracing::info!(
+            target: "near_teach_me",
+            parent: &tracing::Span::none(),
+            "I am making HTTP GET {} to discover which assets/networks the 1Click bridge supports",
+            self.url("/intents/bridge-tokens")
+        );
+        let resp = self
+            .get("/intents/bridge-tokens")
+            .send()
+            .wrap_err("Failed to get bridge tokens")?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().unwrap_or_default();
+            return Err(eyre!("Get bridge tokens failed ({}): {}", status, body));
+        }
+        resp.json().wrap_err("Failed to parse bridge tokens")
+    }
+
     #[tracing::instrument(name = "Getting intents quote ...", skip_all)]
     pub fn get_intents_quote(&self, request: &serde_json::Value) -> Result<serde_json::Value> {
+        tracing::info!(
+            target: "near_teach_me",
+            parent: &tracing::Span::none(),
+            "I am making HTTP POST {} (proxied to 1Click /v0/quote) with body:\n{}",
+            self.url("/intents/quote"),
+            serde_json::to_string_pretty(request).unwrap_or_default()
+        );
         let resp = self
             .post("/intents/quote")
             .json(request)
@@ -339,12 +366,29 @@ impl ApiClient {
             let body = resp.text().unwrap_or_default();
             return Err(eyre!("Get intents quote failed ({}): {}", status, body));
         }
-        resp.json()
-            .wrap_err("Failed to parse intents quote response")
+        let quote: serde_json::Value = resp
+            .json()
+            .wrap_err("Failed to parse intents quote response")?;
+        tracing::info!(
+            target: "near_teach_me",
+            parent: &tracing::Span::none(),
+            "1Click quote response:\n{}",
+            serde_json::to_string_pretty(&quote).unwrap_or_default()
+        );
+        Ok(quote)
     }
 
     #[tracing::instrument(name = "Generating intent ...", skip_all)]
     pub fn generate_intent(&self, request: &serde_json::Value) -> Result<serde_json::Value> {
+        tracing::info!(
+            target: "near_teach_me",
+            parent: &tracing::Span::none(),
+            "I am making HTTP POST {} — the backend stores this intent (keyed by its NEP-413 \
+             payload hash) and will auto-submit it to 1Click once the proposal is approved \
+             and the MPC signature appears in the vote execution result. Body:\n{}",
+            self.url("/confidential-intents/generate-intent"),
+            serde_json::to_string_pretty(request).unwrap_or_default()
+        );
         let resp = self
             .post("/confidential-intents/generate-intent")
             .json(request)
@@ -355,12 +399,31 @@ impl ApiClient {
             let body = resp.text().unwrap_or_default();
             return Err(eyre!("Generate intent failed ({}): {}", status, body));
         }
-        resp.json()
-            .wrap_err("Failed to parse generate intent response")
+        let intent: serde_json::Value = resp
+            .json()
+            .wrap_err("Failed to parse generate intent response")?;
+        tracing::info!(
+            target: "near_teach_me",
+            parent: &tracing::Span::none(),
+            "generate-intent response:\n{}",
+            serde_json::to_string_pretty(&intent).unwrap_or_default()
+        );
+        Ok(intent)
     }
 
     #[tracing::instrument(name = "Relaying delegate action ...", skip_all)]
     pub fn relay_delegate_action(&self, body: &serde_json::Value) -> Result<serde_json::Value> {
+        tracing::info!(
+            target: "near_teach_me",
+            parent: &tracing::Span::none(),
+            "I am making HTTP POST {} with proposalType={} — the backend sponsors gas, executes \
+             the delegate action on-chain, and (for confidential votes) extracts the MPC \
+             signature from the execution result to auto-submit the pending intent",
+            self.url("/relay/delegate-action"),
+            body.get("proposalType")
+                .and_then(|v| v.as_str())
+                .unwrap_or("<none>")
+        );
         let resp = self
             .post("/relay/delegate-action")
             .json(body)
@@ -371,7 +434,14 @@ impl ApiClient {
             let text = resp.text().unwrap_or_default();
             return Err(eyre!("Relay failed ({}): {}", status, text));
         }
-        resp.json().wrap_err("Failed to parse relay response")
+        let result: serde_json::Value = resp.json().wrap_err("Failed to parse relay response")?;
+        tracing::info!(
+            target: "near_teach_me",
+            parent: &tracing::Span::none(),
+            "Relay response:\n{}",
+            serde_json::to_string_pretty(&result).unwrap_or_default()
+        );
+        Ok(result)
     }
 }
 

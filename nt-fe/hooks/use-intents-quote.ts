@@ -131,7 +131,13 @@ function formatErrorMessage(
         return t("amountTooLow");
     }
 
-    if (lower.includes("no route") || lower.includes("no quote")) {
+    if (
+        lower.includes("no route") ||
+        lower.includes("no quote") ||
+        lower.includes("no liquidity") ||
+        lower.includes("insufficient liquidity") ||
+        lower.includes("liquidity unavailable")
+    ) {
         return t("noRoute");
     }
 
@@ -175,7 +181,8 @@ export function useIntentsQuote({
 }: UseIntentsQuoteParams) {
     const t = useTranslations("intentsQuote");
     const isIntents = isIntentsToken(token);
-    const [debouncedAddress] = useDebounce(address, 300);
+    const normalizedAddress = address.trim();
+    const [debouncedAddress] = useDebounce(normalizedAddress, 300);
     const [debouncedAmount] = useDebounce(amount, 400);
     const [isEnsuring, setIsEnsuring] = useState(false);
     const requiresDestinationAmountDecimals =
@@ -188,6 +195,7 @@ export function useIntentsQuote({
 
     const isRecipientReady =
         !!debouncedAddress && isAddressValidForToken(debouncedAddress, token);
+    const requiresDestinationSelectionForPayment = isPayment && isIntents;
     const isQuoteReady =
         isIntents &&
         !!treasuryId &&
@@ -195,6 +203,7 @@ export function useIntentsQuote({
         !!debouncedAmount &&
         Number(debouncedAmount) > 0 &&
         !!proposalPeriod &&
+        (!requiresDestinationSelectionForPayment || !!destinationNetwork) &&
         !feeErrorMessage;
     const missingRequiredDecimalsForQuote =
         isQuoteReady && requestAmountDecimals === undefined;
@@ -226,7 +235,7 @@ export function useIntentsQuote({
             destinationNetwork,
             isPayment,
         ],
-        queryFn: async (): Promise<IntentsQuoteResponse | null> => {
+        queryFn: async ({ signal }): Promise<IntentsQuoteResponse | null> => {
             if (!isQuoteReady) return null;
             if (requestAmountDecimals === undefined) {
                 captureMissingDestinationDecimals(token.address);
@@ -248,6 +257,7 @@ export function useIntentsQuote({
                     isPayment,
                 ),
                 false,
+                signal,
             );
         },
         enabled: isQuoteReady,
@@ -347,7 +357,7 @@ export function useIntentsQuote({
     }, [hasError, error]);
 
     const isSyncPending =
-        amount !== debouncedAmount || address !== debouncedAddress;
+        amount !== debouncedAmount || normalizedAddress !== debouncedAddress;
 
     const ensureBeforeReview = useCallback(
         async (formValues: {
@@ -369,6 +379,9 @@ export function useIntentsQuote({
             }
 
             if (feeErrorMessage) return { ok: false };
+            if (requiresDestinationSelectionForPayment && !destinationNetwork) {
+                return { ok: false };
+            }
 
             if (requestAmountDecimals === undefined) {
                 captureMissingDestinationDecimals(formValues.token.address);
@@ -404,7 +417,7 @@ export function useIntentsQuote({
                     buildIntentsQuoteRequest(
                         treasuryId,
                         formValues.token,
-                        formValues.address,
+                        formValues.address.trim(),
                         immediateParsed,
                         isConfidential,
                         proposalPeriod,
@@ -450,11 +463,13 @@ export function useIntentsQuote({
             isConfidential,
             amountMode,
             destinationNetwork,
+            requiresDestinationSelectionForPayment,
             hasLowAmountQuote,
             lowAmountQuoteDetails,
             requestAmountDecimals,
             captureMissingDestinationDecimals,
             t,
+            isPayment,
         ],
     );
 

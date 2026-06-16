@@ -173,6 +173,10 @@
             "descriptionDetails": "Details for Request",
             "descriptionList": "Recent transactions across all assets"
         },
+        "apiDocs": {
+            "title": "API Documentation",
+            "description": "Interactive documentation for the Trezu recent-activity API"
+        },
         "requests": {
             "title": "Requests",
             "description": "View and manage all pending multisig requests",
@@ -370,6 +374,48 @@
             "contract": "Contract",
             "transaction": "Transaction"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpoint",
+        "endpointDescription": "Returns recent activity (enriched balance changes) for a treasury account.",
+        "authentication": "Authentication",
+        "authIntro": "Authenticate with the session JWT stored in the {cookie} cookie:",
+        "authStep1": "Open your browser DevTools → Application → Cookies",
+        "authStep2": "Copy the {cookie} cookie value",
+        "authStep3": "Replace {placeholder} in the snippets below",
+        "authPublicNote": "Public treasuries can be queried without a token. Confidential treasuries require the session token of a treasury member.",
+        "signedInAs": "Signed in as {accountId} — runs with your current session.",
+        "notSignedIn": "Not signed in — the request runs without a session.",
+        "parameters": "Query parameters",
+        "paramName": "Parameter",
+        "paramDescription": "Description",
+        "paramValue": "Value",
+        "parametersDescription": "Set values to build a request — they flow into the code examples and the runnable request below.",
+        "examplesDescription": "The snippets reflect the parameter values set above.",
+        "required": "required",
+        "params": {
+            "accountId": "Treasury account ID (required)",
+            "limit": "Number of items to return (default 10, max 100)",
+            "offset": "Number of items to skip for pagination (default 0)",
+            "minUsdValue": "Only include changes with at least this USD value",
+            "transactionType": "Filter by type: incoming, outgoing, staking_rewards, or exchange",
+            "tokenSymbol": "Only include this token symbol",
+            "tokenSymbolNot": "Exclude this token symbol",
+            "txHash": "Filter by transaction hash",
+            "from": "Comma-separated sender accounts to include",
+            "fromNot": "Comma-separated sender accounts to exclude",
+            "to": "Comma-separated recipient accounts to include",
+            "toNot": "Comma-separated recipient accounts to exclude",
+            "startDate": "Only include activity on or after this date (ISO 8601)",
+            "endDate": "Only include activity on or before this date (ISO 8601)"
+        },
+        "examples": "Code examples",
+        "run": "Run request",
+        "running": "Running…",
+        "response": "Response",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "Request failed",
+        "copy": "Copy"
     },
     "export": {
         "types": {
@@ -1429,22 +1475,22 @@
         "resources": "Resources",
         "support": "Support",
         "websiteTitle": "Trezu Website",
-        "websiteDescription": "Learn more about Trezu and read our blog.",
+        "websiteDescription": "Read about Trezu and what's new.",
         "demo": "Trezu Demo",
         "demoTitle": "Explore Public Version",
-        "demoDescription": "See a live public account in action.",
+        "demoDescription": "A real treasury anyone can view.",
         "confidentialDemoTitle": "Explore Confidential Version",
-        "confidentialDemoDescription": "Explore a live confidential account in action.",
+        "confidentialDemoDescription": "How a private treasury looks in use.",
         "videoTitle": "Watch the Demo",
-        "videoDescription": "Watch a short video showing how Trezu works.",
+        "videoDescription": "Short video — see Trezu end to end.",
         "xTitle": "Follow Us on X",
-        "xDescription": "Stay updated with our latest releases and insights.",
+        "xDescription": "See what we're building, in real time.",
         "statsTitle": "Stats",
-        "statsDescription": "View total assets under management across all sputnik DAOs.",
+        "statsDescription": "See total assets managed across all treasuries.",
         "docsTitle": "Documentation",
-        "docsDescription": "Learn about all features in the docs.",
+        "docsDescription": "Guides for every feature, step by step.",
         "productSupportTitle": "Product Support",
-        "productSupportDescription": "Contact our support team for help."
+        "productSupportDescription": "Reach our team for help."
     },
     "progressModal": {
         "titleCreating": "Creating Treasury...",
@@ -1846,7 +1892,7 @@
     },
     "intentsQuote": {
         "initializing": "Quote service is still initializing. Please try again.",
-        "noRoute": "Could not prepare a payment route right now. Please retry.",
+        "noRoute": "No liquidity available for this token and network right now.",
         "fetchFailed": "Could not prepare a payment route right now. Please retry.",
         "amountTooLow": "Amount is too low to cover network fees. Enter a higher amount and try again.",
         "amountTooLowWithMin": "Amount is too low to cover network fees. Enter at least {min} {token}.",

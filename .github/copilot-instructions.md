@@ -321,3 +321,114 @@ fn test_all_tokens_have_price_provider_mapping() {
     }
 }
 ```
+
+### Consuming Transformations (Don't Reuse Pre-Transformation Data)
+A multi-step pipeline should take each input by value, transform it into a new owned
+type, and use only the transformed result. After a value is parsed/validated, the
+raw form should be unreachable so it can't be misused. Carry forward exactly what the
+next step needs — keep the heavy original only when a branch actually requires it.
+
+**Do:**
+```rust
+// Each stage consumes its input and hands forward a new value.
+let signed = SignedDelegateAction::try_from_slice(&raw.0)?; // raw bytes dropped
+let parsed = parse::parse_sponsored_proposals(treasury_id, signed)?; // signed consumed
+let authorized = access::authorize(&state, &auth_user, parsed, record).await?; // parsed consumed
+let outcome = submit_relay(&state, authorized.submission).await?; // submission consumed
+```
+
+**Don't:**
+```rust
+// Keeping the raw value around and reaching back into it after transformation.
+let parsed = parse(&signed)?;                       // borrows, doesn't consume
+// ...10 lines later, easy to use the wrong (un-validated) form...
+let outcome = submit(&signed.delegate_action.actions).await?; // reached back to raw
+```
+
+### Make Illegal States Unrepresentable; Resolve Redundant Checks via Types
+Encode invariants in the type system rather than re-checking them. If a step already
+enforces a property, downstream code should rely on its output type as proof, not
+repeat the check. Prefer homogeneous typed enums over a loose collection plus boolean
+flags, and reject mixed/invalid input at the boundary.
+
+**Do:**
+```rust
+// `authorize` only returns AuthorizedRelay for a tracked treasury, so holding one is
+// proof — no downstream `is_tracked`/`is_sputnik` re-check is needed.
+let AuthorizedRelay { operation, tier, .. } = access::authorize(...).await?;
+let compensate_storage = operation.is_add_proposals();
+
+// One enum that can't be "both" — vs. Vec<Proposal> + is_vote: bool.
+enum RelayOperation { AddProposals(Vec<ProposalInput>), Votes(Vec<ActProposal>) }
+```
+
+**Don't:**
+```rust
+// Re-deriving a fact a prior step already guaranteed.
+let tier = authorize(...).await?;
+if is_sputnik_treasury(&treasury_id, record.is_some()) && operation.is_add_proposals() { ... }
+
+// A loose Vec that permits a mix the rest of the code must keep guarding against.
+let proposals: Vec<ProposalRequest> = ...; // could hold both add + vote
+```
+
+### Descriptive Names Over Context-Dependent Generics
+Name things by intent, not by their local role. Avoid generic placeholders like
+`record`, `request`, `data`, `out`, `result`, `shape` when a specific name is clearer.
+Rename a boolean/flag to the high-level concept it represents; keep on-chain method
+names and wire fields verbatim in strings.
+
+**Do:**
+```rust
+let relay_request = ...;            // not `request`
+let treasury_record = ...;          // not `record`
+let registration_targets = ...;     // not `targets`
+fn is_wallet_contract_action(..)    // intent, not the method name `w_execute_signed`
+```
+
+**Don't:**
+```rust
+let request = ...;
+let record = ...;
+let out = ...;
+let shape = ...; // what shape? of what?
+```
+
+### Group Modules by Concern
+Once a module folder grows past a handful of flat files, group them into
+subdirectories that mirror the pipeline/concern (e.g. `parse/`, `sponsor/`,
+`effects/`). Keep entry points and cross-cutting/shared pieces at the top level. Use
+`git mv` so history is preserved, and merge small, tightly related files.
+
+### Centralize Background / Non-Critical Work
+Route all fire-and-forget work through one labeled helper instead of calling
+`tokio::spawn` directly, so non-critical tasks are consistently traceable.
+
+**Do:**
+```rust
+background::spawn("record metrics", async move { record_events(...).await });
+background::spawn("auto-submit confidential intent", async move { ... });
+```
+
+**Don't:**
+```rust
+tokio::spawn(async move { ... }); // unlabeled, bypasses the chokepoint
+```
+
+### Encode Retry-Safety in the API
+Make whether an operation may be retried a property of the method/type you call, not
+a decision each call site re-makes. Retry only idempotent or replay-protected
+operations; never auto-retry a bare value transfer.
+
+**Do:**
+```rust
+sponsor.call_idempotent(...).await?;  // retried (storage_deposit refunds)
+sponsor.relay_meta_tx(signed).await?; // retried (delegate nonce rejects a double-land)
+sponsor.transfer_once(to, amount).await?; // name signals: NOT retried after broadcast
+```
+
+### Section Large Files; Comments Explain "Why"
+In a longer file, separate concerns with header comments
+(`// ─── Request / response DTOs ───`). Doc comments should explain rationale and
+invariants ("native NEAR `token_id: ""` deserializes to None → no registration"),
+not restate the code.
