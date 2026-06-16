@@ -68,7 +68,7 @@ export default function LoginPage() {
             transparentHeader
             logo={loginHeaderLogo}
         >
-            <div className="mx-auto mt-6 max-w-[668px] md:mt-8">
+            <div className="mx-auto max-w-[668px] md:mt-8">
                 <ConnectWalletSelector
                     source="/login"
                     connectFlow="within_treasury"

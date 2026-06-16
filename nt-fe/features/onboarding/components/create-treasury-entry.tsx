@@ -593,7 +593,7 @@ export function TreasuryOnboardingPage({
     );
 
     const loginScreenBody = (
-        <div className="mx-auto mt-8 w-full max-w-[600px] space-y-3 md:mt-8">
+        <div className="mx-auto w-full max-w-[600px] space-y-3 md:mt-8">
             <ConnectWalletSelector
                 source={isCreateRoute ? "/create" : "/"}
                 connectFlow={isCreateRoute ? "onboarding" : "within_treasury"}
@@ -751,6 +751,7 @@ export function TreasuryOnboardingPage({
                     hideSystemStatusBanner
                     transparentHeader
                     logo={headerLogo}
+                    mainClassName="pt-1"
                 >
                     {showWaitlist
                         ? waitlistBody
@@ -771,6 +772,7 @@ export function TreasuryOnboardingPage({
             hideSystemStatusBanner
             transparentHeader
             logo={headerLogo}
+            mainClassName="pt-1"
         >
             <CreationProgressModal
                 open={progressOpen}
