@@ -113,7 +113,9 @@ impl FromStr for ConfidentialDepositCorrectionSource {
         match s {
             "live_fetch" => Ok(ConfidentialDepositCorrectionSource::LiveFetch),
             "balance_changes" => Ok(ConfidentialDepositCorrectionSource::BalanceChanges),
-            other => Err(format!("unknown confidential deposit correction source: {other}")),
+            other => Err(format!(
+                "unknown confidential deposit correction source: {other}"
+            )),
         }
     }
 }
