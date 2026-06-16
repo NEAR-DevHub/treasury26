@@ -5,8 +5,12 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
-use super::models::{BronzeProjectionRow, DirtyDao, GoldBalanceSeedRow, ProjectedRow};
+use super::models::{
+    BronzeProjectionRow, ConfidentialDepositCorrection, ConfidentialDepositCorrectionIndex,
+    DirtyDao, GoldBalanceSeedRow, ProjectedRow,
+};
 use crate::handlers::intents::confidential::gold::cursors::mark_gold_dirty;
+use crate::handlers::intents::confidential::types::ConfidentialDepositCorrectionSource;
 
 pub async fn refresh_gold_metadata_for_intent(
     pool: &PgPool,
@@ -371,4 +375,182 @@ pub(crate) async fn delete_stale_gold_rows(
     .await?;
 
     Ok(result.rows_affected())
+}
+
+/// Load the recorded deposit corrections for a DAO over the recompute window
+/// into an index the projector consumes during replay.
+pub(crate) async fn load_confidential_deposit_corrections(
+    tx: &mut Transaction<'_, Postgres>,
+    dao_id: &str,
+    recompute_from: DateTime<Utc>,
+) -> Result<ConfidentialDepositCorrectionIndex, sqlx::Error> {
+    let rows = sqlx::query_as::<_, ConfidentialDepositCorrection>(
+        r#"
+        SELECT
+            c.history_event_id,
+            c.corrected_raw_amount,
+            c.corrected_net_amount
+        FROM confidential_deposit_amount_corrections c
+        JOIN bronze_confidential_history_events he ON he.id = c.history_event_id
+        WHERE he.account_id = $1
+          AND he.created_at_external >= $2
+        "#,
+    )
+    .bind(dao_id)
+    .bind(recompute_from)
+    .fetch_all(&mut **tx)
+    .await?;
+
+    let entries = rows
+        .into_iter()
+        .map(|row| (row.history_event_id, row))
+        .collect();
+    Ok(ConfidentialDepositCorrectionIndex::new(entries))
+}
+
+/// Upsert a deposit correction. `BalanceChanges` (per-leg, authoritative) wins
+/// over `LiveFetch` (a real-time stopgap): a `balance_changes` row always
+/// overwrites, while a `live_fetch` row never overwrites an existing
+/// `balance_changes` row (it only fills a gap or refreshes another live_fetch).
+pub(crate) async fn upsert_confidential_deposit_correction(
+    pool: &PgPool,
+    history_event_id: i64,
+    corrected_raw_amount: &BigDecimal,
+    corrected_net_amount: &BigDecimal,
+    source: ConfidentialDepositCorrectionSource,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        INSERT INTO confidential_deposit_amount_corrections (
+            history_event_id,
+            corrected_raw_amount,
+            corrected_net_amount,
+            source
+        )
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (history_event_id) DO UPDATE SET
+            corrected_raw_amount = EXCLUDED.corrected_raw_amount,
+            corrected_net_amount = EXCLUDED.corrected_net_amount,
+            source = EXCLUDED.source,
+            updated_at = NOW()
+        WHERE EXCLUDED.source = 'balance_changes'
+           OR confidential_deposit_amount_corrections.source = 'live_fetch'
+        "#,
+    )
+    .bind(history_event_id)
+    .bind(corrected_raw_amount)
+    .bind(corrected_net_amount)
+    .bind(source)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// A poller-recorded confidential deposit increase (`balance_changes` row with
+/// `raw_data.source = '1click-poll'`), the backfill correction source. Swap-in
+/// fulfillments are excluded — those are exchanges, not deposits.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub(crate) struct ConfidentialDepositLeg {
+    pub(crate) asset: String,
+    pub(crate) observed_at: DateTime<Utc>,
+    /// The poller's computed balance increase = the real deposited quantity.
+    pub(crate) amount: BigDecimal,
+}
+
+/// Latest known ledger balance for a token (as either origin or destination
+/// leg) across this DAO's gold rows — the "previous balance from the table"
+/// the forward live-fetch correction diffs against. `None` if the token has no
+/// prior gold row.
+pub(crate) async fn latest_gold_token_balance(
+    pool: &PgPool,
+    dao_id: &str,
+    asset: &str,
+) -> Result<Option<BigDecimal>, sqlx::Error> {
+    sqlx::query_scalar::<_, BigDecimal>(
+        r#"
+        SELECT balance
+        FROM (
+            SELECT origin_balance_after AS balance, quote_created_at, history_event_id
+            FROM gold_confidential_history_events
+            WHERE dao_id = $1 AND origin_asset = $2 AND origin_balance_after IS NOT NULL
+
+            UNION ALL
+
+            SELECT destination_balance_after AS balance, quote_created_at, history_event_id
+            FROM gold_confidential_history_events
+            WHERE dao_id = $1 AND destination_asset = $2 AND destination_balance_after IS NOT NULL
+        ) balances
+        ORDER BY quote_created_at DESC, history_event_id DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(dao_id)
+    .bind(asset)
+    .fetch_optional(pool)
+    .await
+}
+
+/// A projected deposit gold row — the rows whose amount the 1Click history API
+/// misreports (same-asset `out - in` and origin-less shapes), which the backfill
+/// pairs against poller legs.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub(crate) struct GoldDeposit {
+    pub(crate) history_event_id: i64,
+    pub(crate) asset: String,
+    pub(crate) quote_created_at: DateTime<Utc>,
+}
+
+/// Load this DAO's deposit gold rows, time-ordered per (destination) asset, for
+/// ordinal pairing against `balance_changes` deposit legs during backfill.
+pub(crate) async fn load_confidential_gold_deposits(
+    pool: &PgPool,
+    dao_id: &str,
+) -> Result<Vec<GoldDeposit>, sqlx::Error> {
+    sqlx::query_as::<_, GoldDeposit>(
+        r#"
+        SELECT
+            history_event_id,
+            destination_asset AS asset,
+            quote_created_at
+        FROM gold_confidential_history_events
+        WHERE dao_id = $1
+          AND transaction_type = 'deposit'
+        ORDER BY quote_created_at ASC, history_event_id ASC
+        "#,
+    )
+    .bind(dao_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Load the poller's confidential deposit legs for a DAO, time-ordered per
+/// asset, for ordinal pairing against gold deposit rows during backfill.
+pub(crate) async fn load_confidential_deposit_legs(
+    pool: &PgPool,
+    dao_id: &str,
+) -> Result<Vec<ConfidentialDepositLeg>, sqlx::Error> {
+    sqlx::query_as::<_, ConfidentialDepositLeg>(
+        r#"
+        SELECT
+            substring(token_id FROM 'intents\.near:(.*)') AS asset,
+            block_time AS observed_at,
+            amount
+        FROM balance_changes
+        WHERE account_id = $1
+          AND token_id LIKE 'intents.near:%'
+          AND raw_data->>'source' = '1click-poll'
+          AND amount > 0
+          AND counterparty <> 'intents.near'
+          -- Poller deposit rows carry no method; named-method rows (e.g.
+          -- act_proposal) and swap-in fulfillments (counterparty = intents.near)
+          -- are not deposits.
+          AND (method_name IS NULL OR method_name = '')
+          AND block_time IS NOT NULL
+        ORDER BY asset, block_time ASC, id ASC
+        "#,
+    )
+    .bind(dao_id)
+    .fetch_all(pool)
+    .await
 }

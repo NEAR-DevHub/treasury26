@@ -11,3 +11,7 @@ nt-be/examples/playwright/fixtures/*.png
 nt-be/examples/fixtures/auth_response.json
 nt-be/examples/fixtures/mpc_auth_result.txt
 test-results/
+nt-be/src/bin/confidential_deposit_verifier.rs
+
+# local-only confidential deposit verification script
+nt-be/scripts/verify_confidential_deposits.sh

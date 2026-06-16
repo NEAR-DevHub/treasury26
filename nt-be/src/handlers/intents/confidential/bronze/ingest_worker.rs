@@ -6,18 +6,22 @@ use near_account_id::AccountIdRef;
 use reqwest::StatusCode;
 
 use crate::AppState;
-use crate::handlers::intents::confidential::bronze::api::fetch_history;
+use crate::handlers::intents::confidential::bronze::api::{HistoryEvent, fetch_history};
 use crate::handlers::intents::confidential::bronze::store::{
-    load_due_confidential_history_accounts, load_history_cursor,
-    mark_confidential_history_activity_due, mark_history_backfill_done,
+    HistoryEventUpsertOutcome, HistoryEventUpsertState, load_due_confidential_history_accounts,
+    load_history_cursor, mark_confidential_history_activity_due, mark_history_backfill_done,
     record_confidential_history_poll_result, save_backfill_progress, save_latest_page_cursor,
     upsert_history_events,
 };
 use crate::handlers::intents::confidential::gold::history_events::{
-    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS, project_confidential_gold_for_dao,
+    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS, classify_is_deposit,
+    confidential_deposit_corrections_enabled, project_confidential_gold_for_dao,
     project_confidential_gold_for_dirty_daos,
 };
 use crate::handlers::intents::confidential::gold::snapshots::snapshot_confidential_dao_balances;
+use crate::handlers::intents::confidential::gold::{
+    ConfidentialDepositCorrector, InsertedConfidentialDeposit,
+};
 
 pub const CONFIDENTIAL_HISTORY_SCHEDULER_TICK: Duration = Duration::from_secs(10);
 pub const CONFIDENTIAL_HISTORY_TRIGGER_LIMIT: u32 = 50;
@@ -188,6 +192,29 @@ pub async fn poll_confidential_history_once(
         )
     })?;
 
+    // Forward deposit-amount correction: the 1Click history API reports the
+    // ~0.001 quote nominal, so for just-inserted external deposits we record
+    // the real quantity from a live balance fetch. Best-effort — a failure here
+    // is recovered by the daily backfill reconciliation.
+    if confidential_deposit_corrections_enabled() {
+        let inserted_deposits =
+            collect_inserted_deposits(account_id, &page.items, &upsert_result.events);
+        if !inserted_deposits.is_empty()
+            && let Err(e) = ConfidentialDepositCorrector::correct_new_deposits(
+                state,
+                account_id,
+                &inserted_deposits,
+            )
+            .await
+        {
+            tracing::warn!(
+                "{} forward deposit correction failed: {}",
+                account_id,
+                e
+            );
+        }
+    }
+
     Ok(HistoryPollResult {
         account_id: account_id.as_str().to_string(),
         items_fetched: page.items.len(),
@@ -196,6 +223,38 @@ pub async fn poll_confidential_history_once(
         next_cursor: page.next_cursor,
         prev_cursor: page.prev_cursor,
     })
+}
+
+/// Pick the just-inserted deposits from a poll, pairing each page item with its
+/// upsert outcome (pushed in the same order).
+fn collect_inserted_deposits(
+    account_id: &AccountIdRef,
+    items: &[HistoryEvent],
+    outcomes: &[HistoryEventUpsertOutcome],
+) -> Vec<InsertedConfidentialDeposit> {
+    items
+        .iter()
+        .zip(outcomes)
+        .filter_map(|(event, outcome)| {
+            if outcome.state != HistoryEventUpsertState::Inserted {
+                return None;
+            }
+            let item = &event.item;
+            if !classify_is_deposit(
+                account_id.as_str(),
+                item.recipient.as_deref()?,
+                item.origin_asset.as_deref(),
+                &item.destination_asset,
+            ) {
+                return None;
+            }
+            Some(InsertedConfidentialDeposit {
+                history_event_id: outcome.history_event_id,
+                destination_asset: item.destination_asset.clone(),
+                created_at_external: outcome.created_at_external,
+            })
+        })
+        .collect()
 }
 
 async fn poll_and_record_history(
