@@ -44,6 +44,7 @@ export default function LoginPage() {
     const { accountId, connect, isAuthenticating } = useNear();
 
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
+    const shouldShowCreateTreasuryCta = !returnTo || returnTo === "/";
     const returnToWithUtms = useMemo(
         () =>
             returnTo ? appendUtmParamsToReturnTo(returnTo, searchParams) : null,
@@ -72,6 +73,7 @@ export default function LoginPage() {
                     source="/login"
                     connectFlow="within_treasury"
                     isConnectingWallet={isAuthenticating}
+                    showCreateTreasuryCta={shouldShowCreateTreasuryCta}
                     onBack={() => {
                         if (returnToWithUtms) {
                             router.push(returnToWithUtms);

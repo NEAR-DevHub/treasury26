@@ -1244,6 +1244,8 @@
         "continueToWallet": "Weiter zur Wallet",
         "alreadyHaveTreasuryLabel": "Hast du bereits eine Treasury?",
         "signInLabel": "Anmelden",
+        "dontHaveTreasuryLabel": "Noch keine Treasury?",
+        "createOneLabel": "Eine erstellen",
         "walletSelector": {
             "title": "Wähle, wie du dich anmelden möchtest",
             "subtitle": "Deine Anmeldung wird zum ersten Mitglied deiner Treasury.",

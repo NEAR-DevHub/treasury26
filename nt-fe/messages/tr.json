@@ -1244,6 +1244,8 @@
         "continueToWallet": "Cüzdana devam et",
         "alreadyHaveTreasuryLabel": "Zaten bir hazineniz var mı?",
         "signInLabel": "Giriş yap",
+        "dontHaveTreasuryLabel": "Henüz bir hazineniz yok mu?",
+        "createOneLabel": "Bir tane oluştur",
         "walletSelector": {
             "title": "Nasıl giriş yapacağınızı seçin",
             "subtitle": "Girişiniz hazinenizin ilk üyesi olur.",

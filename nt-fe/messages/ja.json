@@ -1244,6 +1244,8 @@
         "continueToWallet": "ウォレットへ進む",
         "alreadyHaveTreasuryLabel": "すでにトレジャリーをお持ちですか？",
         "signInLabel": "サインイン",
+        "dontHaveTreasuryLabel": "まだトレジャリーをお持ちではありませんか？",
+        "createOneLabel": "作成する",
         "walletSelector": {
             "title": "サインイン方法を選択",
             "subtitle": "あなたのサインインがトレジャリーの最初のメンバーになります。",

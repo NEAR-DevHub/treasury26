@@ -1244,6 +1244,8 @@
         "continueToWallet": "Lanjut ke dompet",
         "alreadyHaveTreasuryLabel": "Sudah punya treasury?",
         "signInLabel": "Masuk",
+        "dontHaveTreasuryLabel": "Belum punya treasury?",
+        "createOneLabel": "Buat satu",
         "walletSelector": {
             "title": "Pilih cara masuk",
             "subtitle": "Login Anda menjadi anggota pertama treasury Anda.",

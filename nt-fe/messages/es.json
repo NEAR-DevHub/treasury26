@@ -1244,6 +1244,8 @@
         "continueToWallet": "Continuar al monedero",
         "alreadyHaveTreasuryLabel": "¿Ya tienes una tesorería?",
         "signInLabel": "Iniciar sesión",
+        "dontHaveTreasuryLabel": "¿Aún no tienes una tesorería?",
+        "createOneLabel": "Crear una",
         "walletSelector": {
             "title": "Elige cómo iniciar sesión",
             "subtitle": "Tu inicio de sesión se convierte en el primer miembro de tu tesorería.",

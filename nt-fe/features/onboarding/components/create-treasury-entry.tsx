@@ -3,13 +3,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Gift, Globe, Loader2, Shield } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
-import { APP_ACTIVE_TREASURY } from "@/constants/config";
+import { APP_ACTIVE_TREASURY, LANDING_PAGE } from "@/constants/config";
 import { Alert, AlertDescription } from "@/components/alert";
 import { Button } from "@/components/button";
 import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
@@ -38,6 +39,7 @@ import { useNear } from "@/stores/near-store";
 const ACCOUNT_SUFFIX = ".sputnik-dao.near";
 const CREATE_TREASURY_CONTEXT = "create_treasury";
 type InitialScreen = "create" | "login";
+type LoginScreenSource = "sign-in" | "connect-wallet";
 type FormValues = {
     treasuryName: string;
     accountName: string;
@@ -160,6 +162,8 @@ export function TreasuryOnboardingPage({
     const [showLoginScreen, setShowLoginScreen] = useState(
         initialScreen === "login",
     );
+    const [loginScreenSource, setLoginScreenSource] =
+        useState<LoginScreenSource>("sign-in");
     const [forceStayOnCreatePage, setForceStayOnCreatePage] = useState(false);
     const [waitlistContact, setWaitlistContact] = useState("");
     const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
@@ -176,11 +180,13 @@ export function TreasuryOnboardingPage({
             lastTreasuryId) ||
         treasuries[0]?.daoId;
     const shouldStayOnCreatePage =
-        pathname === "/create" ||
         searchParams.get("context") === CREATE_TREASURY_CONTEXT;
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
     const shouldKeepUserOnCreatePage =
-        shouldStayOnCreatePage || forceStayOnCreatePage;
+        !!returnTo || shouldStayOnCreatePage || forceStayOnCreatePage;
+    const shouldShowHeaderLogo = !returnTo;
+    const isCreateRoute = pathname === "/create";
+    const isConnectWalletLogin = loginScreenSource === "connect-wallet";
 
     useEffect(() => {
         if (shouldKeepUserOnCreatePage) return;
@@ -317,6 +323,7 @@ export function TreasuryOnboardingPage({
 
         if (!accountId) {
             setForceStayOnCreatePage(true);
+            setLoginScreenSource("connect-wallet");
             setShowLoginScreen(true);
             return;
         }
@@ -389,7 +396,11 @@ export function TreasuryOnboardingPage({
         }
     };
 
-    const unauthHeaderLogo = <Logo size="md" />;
+    const headerLogo = shouldShowHeaderLogo ? (
+        <Link href={LANDING_PAGE} aria-label="Trezu home">
+            <Logo size="md" />
+        </Link>
+    ) : undefined;
 
     if (isInitializing) {
         return <LoadingScreen />;
@@ -571,7 +582,11 @@ export function TreasuryOnboardingPage({
                             type="button"
                             variant="unstyled"
                             className="h-auto p-0 underline"
-                            onClick={() => setShowLoginScreen(true)}
+                            onClick={() => {
+                                setForceStayOnCreatePage(false);
+                                setLoginScreenSource("sign-in");
+                                setShowLoginScreen(true);
+                            }}
                         >
                             {t("signInLabel")}
                         </Button>
@@ -582,14 +597,25 @@ export function TreasuryOnboardingPage({
     );
 
     const loginScreenBody = (
-        <div className="mx-auto mt-8 w-full max-w-[600px] md:mt-8">
+        <div className="mx-auto mt-8 w-full max-w-[600px] space-y-3 md:mt-8">
             <ConnectWalletSelector
-                source={shouldStayOnCreatePage ? "/create" : "/"}
-                connectFlow={
-                    shouldStayOnCreatePage ? "onboarding" : "within_treasury"
-                }
+                source={isCreateRoute ? "/create" : "/"}
+                connectFlow={isCreateRoute ? "onboarding" : "within_treasury"}
                 isConnectingWallet={isAuthenticating}
-                onBack={returnTo ? () => router.push(returnTo) : undefined}
+                showBackButton={isConnectWalletLogin}
+                showOnboardingHints={isConnectWalletLogin}
+                showCreateTreasuryCta={!isConnectWalletLogin}
+                onBack={
+                    isConnectWalletLogin
+                        ? () => {
+                              if (returnTo) {
+                                  router.push(returnTo);
+                                  return;
+                              }
+                              setShowLoginScreen(false);
+                          }
+                        : undefined
+                }
                 onConnectSupported={async (walletId?: string) => {
                     if (authError) clearError();
                     await connect(walletId);
@@ -728,6 +754,7 @@ export function TreasuryOnboardingPage({
                     hideCollapseButton
                     hideSystemStatusBanner
                     transparentHeader
+                    logo={headerLogo}
                 >
                     {showWaitlist
                         ? waitlistBody
@@ -742,11 +769,12 @@ export function TreasuryOnboardingPage({
     return (
         <PageComponentLayout
             title={tPages("title")}
+            backButton={returnTo || false}
             hideCollapseButton
             hideLogin
             hideSystemStatusBanner
             transparentHeader
-            logo={unauthHeaderLogo}
+            logo={headerLogo}
         >
             <CreationProgressModal
                 open={progressOpen}

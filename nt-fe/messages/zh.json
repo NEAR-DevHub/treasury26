@@ -1244,6 +1244,8 @@
         "continueToWallet": "继续到钱包",
         "alreadyHaveTreasuryLabel": "已经有金库了？",
         "signInLabel": "登录",
+        "dontHaveTreasuryLabel": "还没有金库吗？",
+        "createOneLabel": "创建一个",
         "walletSelector": {
             "title": "选择登录方式",
             "subtitle": "你的登录身份将成为金库的第一位成员。",

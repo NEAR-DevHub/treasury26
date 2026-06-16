@@ -1244,6 +1244,8 @@
         "continueToWallet": "Continuer vers le portefeuille",
         "alreadyHaveTreasuryLabel": "Vous avez déjà une trésorerie ?",
         "signInLabel": "Se connecter",
+        "dontHaveTreasuryLabel": "Vous n'avez pas encore de trésorerie ?",
+        "createOneLabel": "En créer une",
         "walletSelector": {
             "title": "Choisissez comment vous connecter",
             "subtitle": "Votre connexion devient le premier membre de votre trésorerie.",

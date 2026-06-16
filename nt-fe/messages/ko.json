@@ -1244,6 +1244,8 @@
         "continueToWallet": "지갑으로 계속",
         "alreadyHaveTreasuryLabel": "이미 트레저리가 있나요?",
         "signInLabel": "로그인",
+        "dontHaveTreasuryLabel": "아직 트레저리가 없나요?",
+        "createOneLabel": "하나 만들기",
         "walletSelector": {
             "title": "로그인 방법 선택",
             "subtitle": "로그인한 사용자가 트레저리의 첫 번째 멤버가 됩니다.",

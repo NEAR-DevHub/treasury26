@@ -1244,6 +1244,8 @@
         "continueToWallet": "Tiếp tục đến ví",
         "alreadyHaveTreasuryLabel": "Bạn đã có kho bạc?",
         "signInLabel": "Đăng nhập",
+        "dontHaveTreasuryLabel": "Bạn chưa có kho bạc?",
+        "createOneLabel": "Tạo một",
         "walletSelector": {
             "title": "Chọn cách đăng nhập",
             "subtitle": "Lần đăng nhập của bạn sẽ trở thành thành viên đầu tiên của kho bạc.",

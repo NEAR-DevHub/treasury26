@@ -1244,6 +1244,8 @@
         "continueToWallet": "Continuar para a carteira",
         "alreadyHaveTreasuryLabel": "Já tem uma tesouraria?",
         "signInLabel": "Entrar",
+        "dontHaveTreasuryLabel": "Ainda não tem uma tesouraria?",
+        "createOneLabel": "Criar uma",
         "walletSelector": {
             "title": "Escolha como entrar",
             "subtitle": "Seu login se torna o primeiro membro da sua tesouraria.",
