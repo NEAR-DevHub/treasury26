@@ -341,6 +341,9 @@ export function ConnectWalletSelector({
         });
 
         if (wallet.supported) {
+            setUnsupportedWallet(null);
+            setIsGuideOpen(false);
+            setWalletPickerOpen(null);
             setPendingRecentWalletId(wallet.id);
             const connectWalletId = resolveConnectWalletId(wallet.id);
             const maybeConnect = onConnectSupported(connectWalletId);
