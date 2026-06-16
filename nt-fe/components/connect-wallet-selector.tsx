@@ -595,7 +595,9 @@ export function ConnectWalletSelector({
                 <DialogContent className="max-w-2xl">
                     <DialogHeader className="border-b-0 pb-0">
                         <DialogTitle className="sr-only">
-                            {t("walletNotSupportedTitle")}
+                            {t("walletNotSupportedTitle", {
+                                wallet: unsupportedWallet?.label ?? "",
+                            })}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-5 text-center">

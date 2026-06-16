@@ -277,11 +277,6 @@ export function TreasuryOnboardingPage({
         !treasuryName.trim();
 
     useEffect(() => {
-        if (!authError) return;
-        toast.error(authError, { duration: 8000 });
-    }, [authError]);
-
-    useEffect(() => {
         if (!accountId) return;
         setShowLoginScreen(false);
     }, [accountId]);

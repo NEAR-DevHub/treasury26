@@ -12,6 +12,10 @@ import { useProposals } from "@/hooks/use-proposals";
 import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 import { useTreasury } from "@/hooks/use-treasury";
 import { availableBalance } from "@/lib/balance";
+import {
+    buildPaymentPendingRefetchInterval,
+    clearPaymentPending,
+} from "@/features/onboarding/payment-pending";
 
 export type OnboardingStep = {
     id: string;
@@ -236,8 +240,19 @@ export function OnboardingProgress({
         {
             types: ["Payments"],
         },
+        true,
+        {
+            refetchOnMount: "always",
+            refetchInterval: buildPaymentPendingRefetchInterval(treasuryId),
+        },
     );
     const [soloSelected, setSoloSelected] = useState(false);
+
+    useEffect(() => {
+        if (treasuryId && (proposals?.proposals?.length ?? 0) > 0) {
+            clearPaymentPending(treasuryId);
+        }
+    }, [proposals, treasuryId]);
 
     useEffect(() => {
         if (!treasuryId || typeof window === "undefined") return;

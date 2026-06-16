@@ -173,6 +173,10 @@
             "descriptionDetails": "リクエストの詳細",
             "descriptionList": "すべての資産にわたる最近のトランザクション"
         },
+        "apiDocs": {
+            "title": "APIドキュメント",
+            "description": "Trezu最近のアクティビティAPIのインタラクティブなドキュメント"
+        },
         "requests": {
             "title": "リクエスト",
             "description": "保留中のすべてのマルチシグリクエストを表示・管理",
@@ -370,6 +374,48 @@
             "contract": "コントラクト",
             "transaction": "トランザクション"
         }
+    },
+    "apiDocs": {
+        "endpoint": "エンドポイント",
+        "endpointDescription": "トレジャリーアカウントの最近のアクティビティ（拡充された残高変動）を返します。",
+        "authentication": "認証",
+        "authIntro": "クッキー {cookie} に保存されたセッションJWTで認証します：",
+        "authStep1": "ブラウザのDevToolsを開く → Application → Cookies",
+        "authStep2": "クッキー {cookie} の値をコピーする",
+        "authStep3": "下のスニペットの {placeholder} を置き換える",
+        "authPublicNote": "公開トレジャリーはトークンなしで照会できます。機密トレジャリーにはトレジャリーメンバーのセッショントークンが必要です。",
+        "signedInAs": "{accountId} としてサインイン中 — 現在のセッションで実行されます。",
+        "notSignedIn": "未サインイン — リクエストはセッションなしで実行されます。",
+        "parameters": "クエリパラメータ",
+        "paramName": "パラメータ",
+        "paramDescription": "説明",
+        "paramValue": "値",
+        "parametersDescription": "値を設定してリクエストを組み立てます。設定した値は下のコード例と実行可能なリクエストに反映されます。",
+        "examplesDescription": "スニペットには上で設定したパラメーター値が反映されます。",
+        "required": "必須",
+        "params": {
+            "accountId": "トレジャリーアカウントID（必須）",
+            "limit": "返す件数（デフォルト10、最大100）",
+            "offset": "ページネーションのためにスキップする件数（デフォルト0）",
+            "minUsdValue": "このUSD価値以上の変動のみを含める",
+            "transactionType": "タイプで絞り込み：incoming、outgoing、staking_rewards、exchange",
+            "tokenSymbol": "このトークンシンボルのみを含める",
+            "tokenSymbolNot": "このトークンシンボルを除外する",
+            "txHash": "トランザクションハッシュで絞り込み",
+            "from": "含める送信者アカウント（カンマ区切り）",
+            "fromNot": "除外する送信者アカウント（カンマ区切り）",
+            "to": "含める受信者アカウント（カンマ区切り）",
+            "toNot": "除外する受信者アカウント（カンマ区切り）",
+            "startDate": "この日付以降のアクティビティのみを含める（ISO 8601）",
+            "endDate": "この日付以前のアクティビティのみを含める（ISO 8601）"
+        },
+        "examples": "コード例",
+        "run": "リクエストを実行",
+        "running": "実行中…",
+        "response": "レスポンス",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "リクエストに失敗しました",
+        "copy": "コピー"
     },
     "export": {
         "types": {
@@ -1429,22 +1475,22 @@
         "resources": "リソース",
         "support": "サポート",
         "websiteTitle": "Trezuウェブサイト",
-        "websiteDescription": "Trezuの詳細を確認し、ブログを読みましょう。",
+        "websiteDescription": "Trezu と最新情報をチェック。",
         "demo": "Trezuデモ",
         "demoTitle": "公開バージョンを探索",
-        "demoDescription": "ライブの公開アカウントを実際に見てみましょう。",
+        "demoDescription": "誰でも閲覧できる実際のトレジャリーです。",
         "confidentialDemoTitle": "機密バージョンを探索",
-        "confidentialDemoDescription": "ライブの機密アカウントを実際に見てみましょう。",
+        "confidentialDemoDescription": "プライベートなトレジャリーが実際にどう使われるか。",
         "videoTitle": "デモを見る",
-        "videoDescription": "Trezuの動作を示す短い動画をご覧ください。",
+        "videoDescription": "短い動画 — Trezu を最初から最後まで。",
         "xTitle": "Xでフォロー",
-        "xDescription": "最新リリースやインサイトの最新情報を入手しましょう。",
+        "xDescription": "私たちが作っているものをリアルタイムでチェック。",
         "statsTitle": "統計",
-        "statsDescription": "すべてのSputnik DAOで管理されている総資産を表示します。",
+        "statsDescription": "すべてのトレジャリーで管理されている総資産を確認。",
         "docsTitle": "ドキュメント",
-        "docsDescription": "ドキュメントですべての機能について学びましょう。",
+        "docsDescription": "すべての機能をステップごとに解説。",
         "productSupportTitle": "製品サポート",
-        "productSupportDescription": "サポートチームに問い合わせてヘルプを受けましょう。"
+        "productSupportDescription": "サポートが必要な場合はチームへご連絡ください。"
     },
     "progressModal": {
         "titleCreating": "トレジャリーを作成中...",
@@ -1846,7 +1892,7 @@
     },
     "intentsQuote": {
         "initializing": "見積りサービスはまだ初期化中です。もう一度お試しください。",
-        "noRoute": "現在支払いルートを準備できません。再度お試しください。",
+        "noRoute": "現在、このトークンとネットワークでは利用可能な流動性がありません。",
         "fetchFailed": "現在支払いルートを準備できません。再度お試しください。",
         "amountTooLow": "金額がネットワーク手数料を賄うのに低すぎます。より高い金額を入力してもう一度お試しください。",
         "amountTooLowWithMin": "金額がネットワーク手数料を賄うのに低すぎます。少なくとも{min} {token}を入力してください。",

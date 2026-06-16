@@ -18,7 +18,6 @@ import Link from "next/link";
 import {
     BarChart3,
     CirclePlay,
-    Eye,
     File,
     Globe,
     Headphones,
@@ -84,7 +83,12 @@ function SupportItem({
     }
 
     return (
-        <Link href={href!} target="_blank" className={className}>
+        <Link
+            href={href!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={className}
+        >
             {content}
         </Link>
     );
@@ -106,18 +110,6 @@ export function SupportCenterModal({
                 title: t("websiteTitle"),
                 description: t("websiteDescription"),
                 href: LANDING_PAGE,
-            },
-            {
-                icon: <Eye className="size-5" />,
-                title: t("demoTitle"),
-                description: t("demoDescription"),
-                href: APP_ACTIVE_TREASURY,
-            },
-            {
-                icon: <CirclePlay className="size-5" />,
-                title: t("videoTitle"),
-                description: t("videoDescription"),
-                href: APP_DEMO_URL,
             },
             {
                 icon: <XIcon className="size-5" />,
@@ -148,6 +140,12 @@ export function SupportCenterModal({
                 title: t("confidentialDemoTitle"),
                 description: t("confidentialDemoDescription"),
                 href: APP_ACTIVE_CONFIDENTIAL_TREASURY,
+            },
+            {
+                icon: <CirclePlay className="size-5" />,
+                title: t("videoTitle"),
+                description: t("videoDescription"),
+                href: APP_DEMO_URL,
             },
         ],
         [t],

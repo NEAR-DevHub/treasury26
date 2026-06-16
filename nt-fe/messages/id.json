@@ -173,6 +173,10 @@
             "descriptionDetails": "Detail Permintaan",
             "descriptionList": "Transaksi terbaru di semua aset"
         },
+        "apiDocs": {
+            "title": "Dokumentasi API",
+            "description": "Dokumentasi interaktif untuk API aktivitas terbaru Trezu"
+        },
         "requests": {
             "title": "Permintaan",
             "description": "Lihat dan kelola semua permintaan multisig yang tertunda",
@@ -370,6 +374,48 @@
             "contract": "Kontrak",
             "transaction": "Transaksi"
         }
+    },
+    "apiDocs": {
+        "endpoint": "Endpoint",
+        "endpointDescription": "Mengembalikan aktivitas terbaru (perubahan saldo yang diperkaya) untuk akun treasury.",
+        "authentication": "Autentikasi",
+        "authIntro": "Autentikasi dengan JWT sesi yang disimpan di cookie {cookie}:",
+        "authStep1": "Buka DevTools browser → Application → Cookies",
+        "authStep2": "Salin nilai cookie {cookie}",
+        "authStep3": "Ganti {placeholder} pada contoh di bawah",
+        "authPublicNote": "Treasury publik dapat dikueri tanpa token. Treasury rahasia memerlukan token sesi dari anggota treasury.",
+        "signedInAs": "Masuk sebagai {accountId} — berjalan dengan sesi Anda saat ini.",
+        "notSignedIn": "Belum masuk — permintaan berjalan tanpa sesi.",
+        "parameters": "Parameter kueri",
+        "paramName": "Parameter",
+        "paramDescription": "Deskripsi",
+        "paramValue": "Nilai",
+        "parametersDescription": "Atur nilai untuk menyusun permintaan — nilai tersebut masuk ke contoh kode dan permintaan yang dapat dijalankan di bawah.",
+        "examplesDescription": "Cuplikan kode mencerminkan nilai parameter yang diatur di atas.",
+        "required": "wajib",
+        "params": {
+            "accountId": "ID akun treasury (wajib)",
+            "limit": "Jumlah item yang dikembalikan (default 10, maks 100)",
+            "offset": "Jumlah item yang dilewati untuk paginasi (default 0)",
+            "minUsdValue": "Hanya sertakan perubahan dengan nilai USD minimal ini",
+            "transactionType": "Filter berdasarkan tipe: incoming, outgoing, staking_rewards, atau exchange",
+            "tokenSymbol": "Hanya sertakan simbol token ini",
+            "tokenSymbolNot": "Kecualikan simbol token ini",
+            "txHash": "Filter berdasarkan hash transaksi",
+            "from": "Akun pengirim yang disertakan, dipisahkan koma",
+            "fromNot": "Akun pengirim yang dikecualikan, dipisahkan koma",
+            "to": "Akun penerima yang disertakan, dipisahkan koma",
+            "toNot": "Akun penerima yang dikecualikan, dipisahkan koma",
+            "startDate": "Hanya sertakan aktivitas pada atau setelah tanggal ini (ISO 8601)",
+            "endDate": "Hanya sertakan aktivitas pada atau sebelum tanggal ini (ISO 8601)"
+        },
+        "examples": "Contoh kode",
+        "run": "Jalankan permintaan",
+        "running": "Menjalankan…",
+        "response": "Respons",
+        "responseMeta": "HTTP {status} · {duration} ms",
+        "requestFailed": "Permintaan gagal",
+        "copy": "Salin"
     },
     "export": {
         "types": {
@@ -1429,22 +1475,22 @@
         "resources": "Sumber Daya",
         "support": "Dukungan",
         "websiteTitle": "Situs Web Trezu",
-        "websiteDescription": "Pelajari lebih lanjut tentang Trezu dan baca blog kami.",
+        "websiteDescription": "Baca tentang Trezu dan kabar terbarunya.",
         "demo": "Demo Trezu",
         "demoTitle": "Jelajahi Versi Publik",
-        "demoDescription": "Lihat akun publik langsung beraksi.",
+        "demoDescription": "Treasury nyata yang bisa dilihat siapa saja.",
         "confidentialDemoTitle": "Jelajahi Versi Rahasia",
-        "confidentialDemoDescription": "Jelajahi akun rahasia langsung beraksi.",
+        "confidentialDemoDescription": "Lihat seperti apa treasury privat digunakan.",
         "videoTitle": "Tonton Demo",
-        "videoDescription": "Tonton video singkat yang menunjukkan cara kerja Trezu.",
+        "videoDescription": "Video singkat - lihat Trezu dari awal sampai akhir.",
         "xTitle": "Ikuti Kami di X",
-        "xDescription": "Tetap dapatkan informasi rilis dan wawasan terbaru kami.",
+        "xDescription": "Lihat apa yang sedang kami bangun, secara real time.",
         "statsTitle": "Statistik",
-        "statsDescription": "Lihat total aset di bawah pengelolaan di semua sputnik DAO.",
+        "statsDescription": "Lihat total aset yang dikelola di semua treasury.",
         "docsTitle": "Dokumentasi",
-        "docsDescription": "Pelajari semua fitur di dokumen.",
+        "docsDescription": "Panduan untuk setiap fitur, langkah demi langkah.",
         "productSupportTitle": "Dukungan Produk",
-        "productSupportDescription": "Hubungi tim dukungan kami untuk bantuan."
+        "productSupportDescription": "Hubungi tim kami untuk bantuan."
     },
     "progressModal": {
         "titleCreating": "Membuat Treasury...",
@@ -1846,7 +1892,7 @@
     },
     "intentsQuote": {
         "initializing": "Layanan kuotasi masih diinisialisasi. Silakan coba lagi.",
-        "noRoute": "Tidak dapat menyiapkan rute pembayaran sekarang. Silakan coba lagi.",
+        "noRoute": "Saat ini tidak ada likuiditas yang tersedia untuk token dan jaringan ini.",
         "fetchFailed": "Tidak dapat menyiapkan rute pembayaran sekarang. Silakan coba lagi.",
         "amountTooLow": "Jumlah terlalu rendah untuk menutupi biaya jaringan. Masukkan jumlah lebih tinggi dan coba lagi.",
         "amountTooLowWithMin": "Jumlah terlalu rendah untuk menutupi biaya jaringan. Masukkan minimal {min} {token}.",
