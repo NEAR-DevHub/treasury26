@@ -487,6 +487,8 @@ export function ProposalsTable({
     const selectedProposals = table
         .getFilteredSelectedRowModel()
         .rows.map((row) => row.original);
+    const hasExpandedRequestDetails =
+        table.getExpandedRowModel().rows.length > 0;
 
     const selectedInsufficientIds = selectedProposals
         .map((p) => p.id)
@@ -540,6 +542,7 @@ export function ProposalsTable({
                         </div>
                     </div>
                 )}
+
                 <ScrollArea className="grid">
                     <Table>
                         <TableHeader>
@@ -661,7 +664,7 @@ export function ProposalsTable({
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
 
-                {onPageChange && (
+                {onPageChange && totalPages > 1 && (
                     <div className="pr-2">
                         <Pagination
                             pageIndex={pageIndex}

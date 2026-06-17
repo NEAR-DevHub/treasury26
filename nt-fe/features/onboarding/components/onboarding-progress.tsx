@@ -132,7 +132,7 @@ function StepCard({ step }: { step: OnboardingStep }) {
                 "flex flex-col gap-2 xl:flex-row xl:items-center items-start p-3 rounded-[10.5px] overflow-hidden w-full",
                 isActive
                     ? activeStepClassName
-                    : "bg-secondary dark:bg-linear-to-r dark:from-[rgba(13,39,62,0.5)] dark:to-[rgba(4,25,17,0.5)] justify-center xl:justify-start",
+                    : "bg-secondary justify-center xl:justify-start",
             )}
         >
             <div className="flex flex-1 gap-3 items-center xl:items-start">
@@ -167,7 +167,7 @@ function StepCard({ step }: { step: OnboardingStep }) {
                                 {primaryAction!.label}
                             </Button>
                             <Button
-                                variant="ghost"
+                                variant="unstyled"
                                 onClick={secondaryAction!.onClick}
                                 className="px-2 h-auto"
                             >
@@ -180,9 +180,9 @@ function StepCard({ step }: { step: OnboardingStep }) {
 
             {!isCompleted && step.action && !step.secondaryAction ? (
                 <Button
-                    variant="ghost"
+                    variant="unstyled"
                     onClick={step.action.onClick}
-                    className="self-start ml-4 w-auto xl:ml-0 xl:mx-0"
+                    className="self-start ml-4 w-auto xl:ml-0 xl:mx-0 p-0 h-auto"
                 >
                     {step.action.icon === "deposit" ? (
                         <ArrowDownToLine className="size-3.5" />

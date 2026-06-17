@@ -6,7 +6,7 @@ import { Check, Gift, Globe, Loader2, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
@@ -168,6 +168,7 @@ export function TreasuryOnboardingPage({
     const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
     const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
     const [showWaitlist, setShowWaitlist] = useState(false);
+    const pendingAutoCreateRef = useRef(false);
     const waitlistCardClassName =
         "mx-auto h-[516px] w-full max-w-[600px] items-center justify-center gap-5 overflow-hidden rounded-xl border border-border bg-card p-4";
     const waitlistSubtextClassName =
@@ -284,6 +285,11 @@ export function TreasuryOnboardingPage({
     useEffect(() => {
         if (!accountId) return;
         setShowLoginScreen(false);
+        if (pendingAutoCreateRef.current) {
+            pendingAutoCreateRef.current = false;
+            form.handleSubmit(onSubmit)();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [accountId]);
 
     const validateAccountName = async (accountName: string) => {
@@ -318,6 +324,7 @@ export function TreasuryOnboardingPage({
         }
 
         if (!accountId) {
+            pendingAutoCreateRef.current = true;
             setForceStayOnCreatePage(true);
             setLoginScreenSource("connect-wallet");
             setShowLoginScreen(true);

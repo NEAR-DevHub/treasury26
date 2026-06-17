@@ -369,7 +369,7 @@ export function ConnectWalletSelector({
                 {showOnboardingHints && (
                     <div className="space-y-3 mb-4">
                         <div className="flex items-start gap-2">
-                            <div className="bg-general-success-background-faded rounded-full size-6 flex items-center justify-center">
+                            <div className="bg-general-success-background-faded rounded-full size-7 sm:size-6 flex items-center justify-center p-1 sm:p-0">
                                 <Check className="size-4 shrink-0 text-general-success-foreground " />
                             </div>
                             <p className="text-sm mt-px">
