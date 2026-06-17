@@ -681,7 +681,7 @@ export function ProposalsTable({
                 </ScrollArea>
 
                 {onPageChange && totalPages > 1 && (
-                    <div className="p-3">
+                    <div className="p-3 pb-0">
                         <Pagination
                             pageIndex={pageIndex}
                             totalPages={totalPages}
