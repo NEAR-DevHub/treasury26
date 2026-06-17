@@ -60,7 +60,10 @@ import {
     formatUserDate,
     cn,
 } from "@/lib/utils";
-import { recordReceiptMetric } from "@/lib/proposals-api";
+import {
+    recordReceiptMetric,
+    type SwapQuoteResponse,
+} from "@/lib/proposals-api";
 import type { BatchPaymentRequestData } from "@/features/proposals/types/index";
 import { LANDING_PAGE } from "@/constants/config";
 
@@ -760,18 +763,40 @@ export default function RequestReceiptPage({
             ? transactionDate.toISOString()
             : null;
     const shouldLoadHistoricalPrices =
+        isSingleReceiptProposal && !hasDepositAddress && !!executedAtIso;
+    const shouldFetchQuoteByDepositAddress =
         isSingleReceiptProposal &&
-        isExecutableReceipt &&
-        !hasDepositAddress &&
-        !!executedAtIso;
+        !!depositAddress &&
+        !isConfidentialRequestProposal;
     const {
         data: quoteByDepositAddress,
         isLoading: isLoadingQuoteByDepositAddress,
     } = useQuoteByDepositAddress(
         depositAddress,
         undefined,
-        isSingleReceiptProposal && isExecutableReceipt && !!depositAddress,
+        shouldFetchQuoteByDepositAddress,
     );
+    const confidentialQuote = useMemo<SwapQuoteResponse | null>(() => {
+        if (!isConfidentialRequestProposal) {
+            return null;
+        }
+
+        const quote =
+            proposal?.confidential_metadata?.quote_metadata?.quote ?? null;
+        if (!quote) {
+            return null;
+        }
+
+        return {
+            amountInFormatted: quote.amountInFormatted ?? null,
+            amountOutFormatted: quote.amountOutFormatted ?? null,
+            amountInUsd: quote.amountInUsd ?? null,
+            amountOutUsd: quote.amountOutUsd ?? null,
+        };
+    }, [isConfidentialRequestProposal, proposal?.confidential_metadata]);
+    const effectiveQuote = isConfidentialRequestProposal
+        ? confidentialQuote
+        : quoteByDepositAddress;
     const {
         data: sourceHistoricalPrice,
         isLoading: isLoadingSourceHistoricalPrice,
@@ -860,7 +885,7 @@ export default function RequestReceiptPage({
             buildReceiptAmountModel({
                 isExchangeReceipt: isExchangeProposal,
                 hasDepositAddress,
-                quote: isSingleReceiptProposal ? quoteByDepositAddress : null,
+                quote: isSingleReceiptProposal ? effectiveQuote : null,
                 sourceToken: {
                     amountDecimal: sourceAmountDecimal,
                     amountDisplay:
@@ -879,7 +904,7 @@ export default function RequestReceiptPage({
             }),
         [
             isExchangeProposal,
-            quoteByDepositAddress,
+            effectiveQuote,
             sourceAmountDecimal,
             destinationAmountWithDecimals,
             hasDepositAddress,
@@ -898,7 +923,9 @@ export default function RequestReceiptPage({
             ? isLoadingSwapStatus
             : isLoadingTransaction);
     const isRateLoading = hasDepositAddress
-        ? isSingleReceiptProposal && isLoadingQuoteByDepositAddress
+        ? isSingleReceiptProposal &&
+          !isConfidentialRequestProposal &&
+          isLoadingQuoteByDepositAddress
         : isLoadingSourceHistoricalPrice ||
           (isExchangeProposal && isLoadingDestinationHistoricalPrice);
     const executedTimeValue = transactionDate

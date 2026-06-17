@@ -33,6 +33,16 @@ function toAsyncValue<T>(value: T | null, isLoading: boolean): AsyncValue<T> {
     return { value, isLoading };
 }
 
+function toDisplayRoundedUsd(value?: string | null): number | null {
+    if (!value) return null;
+
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return null;
+    if (Math.abs(parsed) < 0.01) return parsed;
+
+    return Number(parsed.toFixed(2));
+}
+
 export function buildReceiptAmountModel({
     isExchangeReceipt,
     hasDepositAddress,
@@ -63,6 +73,7 @@ export function buildReceiptAmountModel({
         quote?.amountOutFormatted ?? destinationToken.amountDecimal ?? "0";
     const sourceAmountValue = Number(sourceAmountRaw);
     const destinationAmountValue = Number(destinationAmountRaw);
+    const displayedSourceAmountUsd = toDisplayRoundedUsd(quote?.amountInUsd);
     const sourceAmountDisplay = isExchangeReceipt
         ? (quote?.amountInFormatted ?? sourceToken.amountDisplay)
         : sourceToken.amountDisplay;
@@ -71,11 +82,13 @@ export function buildReceiptAmountModel({
         formatTokenDisplayAmount(destinationToken.amountDecimal || "0");
 
     const sourceUnitPriceUsd =
-        sourceAmountValue > 0 && Number(quote?.amountInUsd) > 0
-            ? Number(quote?.amountInUsd) / sourceAmountValue
-            : hasDepositAddress
-              ? sourceToken.tokenPrice
-              : sourceToken.historicalPriceUsd;
+        sourceAmountValue > 0 &&
+        displayedSourceAmountUsd != null &&
+        displayedSourceAmountUsd > 0
+            ? displayedSourceAmountUsd / sourceAmountValue
+            : !hasDepositAddress
+              ? sourceToken.historicalPriceUsd
+              : null;
 
     const sourceAmountUsd = quote?.amountInUsd
         ? formatCurrencyWithSubCent(Number(quote.amountInUsd))
@@ -83,15 +96,11 @@ export function buildReceiptAmountModel({
           ? formatCurrencyWithSubCent(
                 Number(sourceToken.amountDecimal) * sourceUnitPriceUsd,
             )
-          : hasDepositAddress && sourceToken.tokenPrice != null
-            ? formatCurrencyWithSubCent(
-                  Number(sourceToken.amountDecimal) * sourceToken.tokenPrice,
-              )
-            : null;
+          : null;
 
-    const destinationUnitPriceUsd = hasDepositAddress
-        ? destinationToken.tokenPrice
-        : destinationToken.historicalPriceUsd;
+    const destinationUnitPriceUsd = !hasDepositAddress
+        ? destinationToken.historicalPriceUsd
+        : null;
     const destinationAmountUsd = quote?.amountOutUsd
         ? formatCurrencyWithSubCent(Number(quote.amountOutUsd))
         : !hasDepositAddress && destinationUnitPriceUsd != null
@@ -99,14 +108,7 @@ export function buildReceiptAmountModel({
                 Number(destinationToken.amountDecimal ?? "0") *
                     destinationUnitPriceUsd,
             )
-          : hasDepositAddress &&
-              destinationToken.tokenPrice != null &&
-              quote?.amountOutFormatted
-            ? formatCurrencyWithSubCent(
-                  Number(quote.amountOutFormatted) *
-                      destinationToken.tokenPrice,
-              )
-            : sourceAmountUsd;
+          : sourceAmountUsd;
     const destinationPerSourceRate =
         sourceAmountValue > 0 && destinationAmountValue > 0
             ? destinationAmountValue / sourceAmountValue
