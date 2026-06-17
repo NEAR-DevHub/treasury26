@@ -182,7 +182,7 @@ function StepCard({ step }: { step: OnboardingStep }) {
                 <Button
                     variant="unstyled"
                     onClick={step.action.onClick}
-                    className="self-start ml-4 w-auto xl:ml-0 xl:mx-0 p-0 h-auto"
+                    className="self-start ml-4 w-auto p-0 h-auto xl:ml-0 xl:self-center xl:mx-auto"
                 >
                     {step.action.icon === "deposit" ? (
                         <ArrowDownToLine className="size-3.5" />

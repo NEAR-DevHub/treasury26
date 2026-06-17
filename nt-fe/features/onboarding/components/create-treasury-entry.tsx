@@ -565,7 +565,7 @@ export function TreasuryOnboardingPage({
                                             {t("setupOnUsTitle")}
                                         </p>
                                     </div>
-                                    <p className="text-xs">
+                                    <p className="text-xs md:pl-7">
                                         {t("setupOnUsDescription")}
                                     </p>
                                 </AlertDescription>
@@ -709,7 +709,11 @@ export function TreasuryOnboardingPage({
                                         variant="unstyled"
                                         className="h-auto p-0 text-sm font-normal leading-5 tracking-normal text-muted-foreground underline"
                                         onClick={() =>
-                                            router.push(APP_ACTIVE_TREASURY)
+                                            window.open(
+                                                APP_ACTIVE_TREASURY,
+                                                "_blank",
+                                                "noopener,noreferrer",
+                                            )
                                         }
                                     >
                                         {tLanding("waitlistSeeDemo")}
@@ -765,6 +769,7 @@ export function TreasuryOnboardingPage({
                     hideCollapseButton
                     hideSystemStatusBanner
                     transparentHeader
+                    hideHeaderBottomBorder
                     logo={headerLogo}
                     mainClassName="pt-1"
                 >
@@ -786,6 +791,7 @@ export function TreasuryOnboardingPage({
             hideLogin
             hideSystemStatusBanner
             transparentHeader
+            hideHeaderBottomBorder
             logo={headerLogo}
             mainClassName="pt-1"
         >

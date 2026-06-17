@@ -20,7 +20,6 @@ import { InfoAlert } from "@/components/info-alert";
 import { StepIcon } from "@/components/step-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/components/user";
-import { features } from "@/constants/features";
 import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
 import {
     EXCHANGE_EXPIRY_MS,
@@ -330,7 +329,6 @@ export function ProposalSidebar({
     // - Batch receipts are hidden for confidential treasuries.
     // - Hidden (guest) confidential treasuries cannot generate receipts.
     const canShowReceiptButton =
-        features.pdfReceipt &&
         isExecuted &&
         !isHidden &&
         isReceiptEligibleKind &&
