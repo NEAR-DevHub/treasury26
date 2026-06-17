@@ -33,16 +33,6 @@ function toAsyncValue<T>(value: T | null, isLoading: boolean): AsyncValue<T> {
     return { value, isLoading };
 }
 
-function toDisplayRoundedUsd(value?: string | null): number | null {
-    if (!value) return null;
-
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) return null;
-    if (Math.abs(parsed) < 0.01) return parsed;
-
-    return Number(parsed.toFixed(2));
-}
-
 export function buildReceiptAmountModel({
     isExchangeReceipt,
     hasDepositAddress,
@@ -73,7 +63,9 @@ export function buildReceiptAmountModel({
         quote?.amountOutFormatted ?? destinationToken.amountDecimal ?? "0";
     const sourceAmountValue = Number(sourceAmountRaw);
     const destinationAmountValue = Number(destinationAmountRaw);
-    const displayedSourceAmountUsd = toDisplayRoundedUsd(quote?.amountInUsd);
+    const quoteSourceAmountUsd = quote?.amountInUsd
+        ? Number(quote.amountInUsd)
+        : null;
     const sourceAmountDisplay = isExchangeReceipt
         ? (quote?.amountInFormatted ?? sourceToken.amountDisplay)
         : sourceToken.amountDisplay;
@@ -83,9 +75,9 @@ export function buildReceiptAmountModel({
 
     const sourceUnitPriceUsd =
         sourceAmountValue > 0 &&
-        displayedSourceAmountUsd != null &&
-        displayedSourceAmountUsd > 0
-            ? displayedSourceAmountUsd / sourceAmountValue
+        quoteSourceAmountUsd != null &&
+        quoteSourceAmountUsd > 0
+            ? quoteSourceAmountUsd / sourceAmountValue
             : !hasDepositAddress
               ? sourceToken.historicalPriceUsd
               : null;
