@@ -1553,7 +1553,7 @@
         "near": {
             "required": "Adresse ist erforderlich",
             "length": "Adresse muss zwischen 2 und 64 Zeichen umfassen",
-            "missingTld": "Benannte Konten müssen mit .near, .aurora oder .tg enden",
+            "missingTld": "Benannte Konten müssen mit .near, .aurora, .tg oder .sweat enden",
             "invalidChars": "Adresse darf nur Kleinbuchstaben, Ziffern und Trennzeichen (., -, _) enthalten",
             "accountMissing": "Konto existiert nicht auf der NEAR-Blockchain",
             "verifyFailed": "Überprüfung der Kontoexistenz fehlgeschlagen"

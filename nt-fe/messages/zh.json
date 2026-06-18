@@ -1553,7 +1553,7 @@
         "near": {
             "required": "地址为必填项",
             "length": "地址长度必须在 2 到 64 个字符之间",
-            "missingTld": "命名账户必须以 .near、.aurora 或 .tg 结尾",
+            "missingTld": "命名账户必须以 .near、.aurora、.tg 或 .sweat 结尾",
             "invalidChars": "地址只能包含小写字母、数字和分隔符(.、-、_)",
             "accountMissing": "账户在 NEAR 区块链上不存在",
             "verifyFailed": "验证账户存在性失败"

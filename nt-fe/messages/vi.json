@@ -1553,7 +1553,7 @@
         "near": {
             "required": "Bắt buộc nhập địa chỉ",
             "length": "Địa chỉ phải có từ 2 đến 64 ký tự",
-            "missingTld": "Tài khoản có tên phải kết thúc bằng .near, .aurora hoặc .tg",
+            "missingTld": "Tài khoản có tên phải kết thúc bằng .near, .aurora, .tg hoặc .sweat",
             "invalidChars": "Địa chỉ chỉ có thể chứa chữ thường, số và dấu phân cách (., -, _)",
             "accountMissing": "Tài khoản không tồn tại trên blockchain NEAR",
             "verifyFailed": "Không thể xác minh sự tồn tại của tài khoản"

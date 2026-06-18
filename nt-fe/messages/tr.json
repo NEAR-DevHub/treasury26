@@ -1553,7 +1553,7 @@
         "near": {
             "required": "Adres gereklidir",
             "length": "Adres 2 ile 64 karakter arasında olmalıdır",
-            "missingTld": "Adlandırılmış hesaplar .near, .aurora veya .tg ile bitmelidir",
+            "missingTld": "Adlandırılmış hesaplar .near, .aurora, .tg veya .sweat ile bitmelidir",
             "invalidChars": "Adres yalnızca küçük harfler, rakamlar ve ayırıcılar (., -, _) içerebilir",
             "accountMissing": "Hesap NEAR blok zincirinde mevcut değil",
             "verifyFailed": "Hesap varlığı doğrulanamadı"

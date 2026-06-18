@@ -1553,7 +1553,7 @@
         "near": {
             "required": "La dirección es obligatoria",
             "length": "La dirección debe tener entre 2 y 64 caracteres",
-            "missingTld": "Las cuentas con nombre deben terminar en .near, .aurora o .tg",
+            "missingTld": "Las cuentas con nombre deben terminar en .near, .aurora, .tg o .sweat",
             "invalidChars": "La dirección solo puede contener letras minúsculas, dígitos y separadores (., -, _)",
             "accountMissing": "La cuenta no existe en la blockchain NEAR",
             "verifyFailed": "No se pudo verificar la existencia de la cuenta"

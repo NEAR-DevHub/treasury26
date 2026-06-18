@@ -1553,7 +1553,7 @@
         "near": {
             "required": "アドレスは必須です",
             "length": "アドレスは2文字以上64文字以下である必要があります",
-            "missingTld": "名前付きアカウントは.near、.aurora、または.tgで終わる必要があります",
+            "missingTld": "名前付きアカウントは.near、.aurora、.tg、または.sweatで終わる必要があります",
             "invalidChars": "アドレスには小文字、数字、区切り文字(.、-、_)のみ使用できます",
             "accountMissing": "アカウントはNEARブロックチェーン上に存在しません",
             "verifyFailed": "アカウントの存在確認に失敗しました"

@@ -1553,7 +1553,7 @@
         "near": {
             "required": "Alamat diperlukan",
             "length": "Alamat harus antara 2 dan 64 karakter",
-            "missingTld": "Akun bernama harus berakhir dengan .near, .aurora, atau .tg",
+            "missingTld": "Akun bernama harus berakhir dengan .near, .aurora, .tg, atau .sweat",
             "invalidChars": "Alamat hanya dapat berisi huruf kecil, angka, dan pemisah (., -, _)",
             "accountMissing": "Akun tidak ada di blockchain NEAR",
             "verifyFailed": "Gagal memverifikasi keberadaan akun"
