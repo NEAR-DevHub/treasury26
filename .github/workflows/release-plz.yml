@@ -45,6 +45,9 @@ jobs:
     uses: ./.github/workflows/cli-release.yml
     needs: release-plz-release
     if: ${{ needs.release-plz-release.outputs.release_created }}
+    permissions:
+      contents: write
+      id-token: write
     secrets: inherit
     with:
       tag: ${{ needs.release-plz-release.outputs.release_tag }}

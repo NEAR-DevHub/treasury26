@@ -1245,6 +1245,8 @@
         "continueToWallet": "Продовжити до гаманця",
         "alreadyHaveTreasuryLabel": "Уже маєте скарбницю?",
         "signInLabel": "Увійти",
+        "dontHaveTreasuryLabel": "Ще не маєте скарбниці?",
+        "createOneLabel": "Створити",
         "walletSelector": {
             "title": "Оберіть спосіб входу",
             "subtitle": "Ваш вхід стане першим учасником вашої скарбниці.",
@@ -1552,7 +1554,7 @@
         "near": {
             "required": "Потрібна адреса",
             "length": "Адреса має містити від 2 до 64 символів",
-            "missingTld": "Іменовані акаунти мають закінчуватись на .near, .aurora або .tg",
+            "missingTld": "Іменовані акаунти мають закінчуватись на .near, .aurora, .tg або .sweat",
             "invalidChars": "Адреса може містити лише малі літери, цифри та роздільники (., -, _)",
             "accountMissing": "Акаунт не існує в мережі NEAR",
             "verifyFailed": "Не вдалось перевірити існування акаунта"

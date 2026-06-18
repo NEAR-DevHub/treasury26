@@ -30,6 +30,8 @@ interface AmountProps {
     textOnly?: boolean;
     iconSize?: "sm" | "md" | "lg";
     usdTextOverride?: string | null;
+    /** Enable NearBlocks FT metadata fallback for native NEAR tokens */
+    nearFt?: boolean;
 }
 
 function resolveAmountNetworkLabel({
@@ -87,6 +89,7 @@ export function Amount({
     network,
     iconSize = "lg",
     usdTextOverride = null,
+    nearFt,
 }: AmountProps) {
     const tCommon = useTranslations("common");
     const tAmount = useTranslations("amount");
@@ -96,7 +99,8 @@ export function Amount({
         showUSDValue &&
         ((requestDisplayContext?.showUSDValue ?? true) ||
             usdValue !== undefined);
-    const { data: tokenData, isLoading } = useToken(tokenId);
+    const tokenOpts = nearFt ? { nearFt: true } : undefined;
+    const { data: tokenData, isLoading } = useToken(tokenId, tokenOpts);
     const rawAmountValue = amount
         ? formatBalance(amount, tokenData?.decimals || 24)
         : amountWithDecimals || "0";

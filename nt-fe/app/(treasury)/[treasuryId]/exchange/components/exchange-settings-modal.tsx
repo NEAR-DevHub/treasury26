@@ -10,7 +10,7 @@ import {
     DialogTrigger,
 } from "@/components/modal";
 import { Button } from "@/components/button";
-import { Settings } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -96,7 +96,7 @@ export function ExchangeSettingsModal({
                     type="button"
                     className="border-2"
                 >
-                    <Settings className="h-4 w-4" />
+                    <SlidersHorizontal className="h-4 w-4" />
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">

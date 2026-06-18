@@ -3,13 +3,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Gift, Globe, Loader2, Shield } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
-import { APP_ACTIVE_TREASURY } from "@/constants/config";
+import { APP_ACTIVE_TREASURY, LANDING_PAGE } from "@/constants/config";
 import { Alert, AlertDescription } from "@/components/alert";
 import { Button } from "@/components/button";
 import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
@@ -36,8 +37,8 @@ import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
 const ACCOUNT_SUFFIX = ".sputnik-dao.near";
-const CREATE_TREASURY_CONTEXT = "create_treasury";
 type InitialScreen = "create" | "login";
+type LoginScreenSource = "sign-in" | "connect-wallet";
 type FormValues = {
     treasuryName: string;
     accountName: string;
@@ -66,16 +67,19 @@ function TreasuryTypeOption({
     return (
         <button
             type="button"
-            className="h-full rounded-xl border border-general-border p-4 text-left transition hover:bg-muted/70"
+            className={cn(
+                "h-full rounded-xl border border-general-border p-3 md:p-4 text-left transition hover:bg-muted/70",
+                selected ? "bg-general-tertiary " : "",
+            )}
             onClick={onClick}
         >
             <div className="flex h-full items-start justify-between gap-3">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
                         {icon}
-                        <p className="font-semibold">{title}</p>
+                        <p className="text-sm font-semibold">{title}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                         {description}
                     </p>
                 </div>
@@ -157,11 +161,14 @@ export function TreasuryOnboardingPage({
     const [showLoginScreen, setShowLoginScreen] = useState(
         initialScreen === "login",
     );
+    const [loginScreenSource, setLoginScreenSource] =
+        useState<LoginScreenSource>("sign-in");
     const [forceStayOnCreatePage, setForceStayOnCreatePage] = useState(false);
     const [waitlistContact, setWaitlistContact] = useState("");
     const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
     const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
     const [showWaitlist, setShowWaitlist] = useState(false);
+    const pendingAutoCreateRef = useRef(false);
     const waitlistCardClassName =
         "mx-auto h-[516px] w-full max-w-[600px] items-center justify-center gap-5 overflow-hidden rounded-xl border border-border bg-card p-4";
     const waitlistSubtextClassName =
@@ -172,12 +179,11 @@ export function TreasuryOnboardingPage({
             treasuries.some((treasury) => treasury.daoId === lastTreasuryId) &&
             lastTreasuryId) ||
         treasuries[0]?.daoId;
-    const shouldStayOnCreatePage =
-        pathname === "/create" ||
-        searchParams.get("context") === CREATE_TREASURY_CONTEXT;
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
-    const shouldKeepUserOnCreatePage =
-        shouldStayOnCreatePage || forceStayOnCreatePage;
+    const shouldKeepUserOnCreatePage = !!returnTo || forceStayOnCreatePage;
+    const shouldShowHeaderLogo = !returnTo;
+    const isCreateRoute = pathname === "/create";
+    const isConnectWalletLogin = loginScreenSource === "connect-wallet";
 
     useEffect(() => {
         if (shouldKeepUserOnCreatePage) return;
@@ -279,6 +285,11 @@ export function TreasuryOnboardingPage({
     useEffect(() => {
         if (!accountId) return;
         setShowLoginScreen(false);
+        if (pendingAutoCreateRef.current) {
+            pendingAutoCreateRef.current = false;
+            form.handleSubmit(onSubmit)();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [accountId]);
 
     const validateAccountName = async (accountName: string) => {
@@ -313,7 +324,9 @@ export function TreasuryOnboardingPage({
         }
 
         if (!accountId) {
+            pendingAutoCreateRef.current = true;
             setForceStayOnCreatePage(true);
+            setLoginScreenSource("connect-wallet");
             setShowLoginScreen(true);
             return;
         }
@@ -386,7 +399,11 @@ export function TreasuryOnboardingPage({
         }
     };
 
-    const unauthHeaderLogo = <Logo size="md" />;
+    const headerLogo = shouldShowHeaderLogo ? (
+        <Link href={LANDING_PAGE} aria-label="Trezu home">
+            <Logo size="md" />
+        </Link>
+    ) : undefined;
 
     if (isInitializing) {
         return <LoadingScreen />;
@@ -402,7 +419,7 @@ export function TreasuryOnboardingPage({
 
     const createFormBody = (
         <>
-            <div className="mx-auto mt-8 w-full max-w-[600px] space-y-3 md:mt-10">
+            <div className="mx-auto w-full max-w-[600px] space-y-3 md:mt-10">
                 <PageCard className="">
                     <Form {...form}>
                         <form
@@ -410,43 +427,51 @@ export function TreasuryOnboardingPage({
                             className="space-y-4"
                         >
                             {!accountId && (
-                                <h1 className="text-lg font-semibold mb-3">
+                                <h1 className="text-base font-semibold mb-1 md:mb-3">
                                     {tPages("title")}
                                 </h1>
                             )}
-                            <p className="text-md text-muted-foreground">
-                                {t("selectTreasuryTypeLabel")}
-                            </p>
-                            <div className="grid gap-3 md:grid-cols-2">
-                                <TreasuryTypeOption
-                                    icon={
-                                        <Globe className="size-4 text-foreground" />
-                                    }
-                                    title={t("public")}
-                                    description={t("publicCardDescription")}
-                                    selected={isConfidential === false}
-                                    onClick={() =>
-                                        form.setValue("isConfidential", false)
-                                    }
-                                />
-                                <TreasuryTypeOption
-                                    icon={
-                                        <Shield
-                                            className="size-4 text-foreground"
-                                            fill="currentColor"
-                                        />
-                                    }
-                                    title={t("confidential")}
-                                    description={t(
-                                        "confidentialCardDescription",
-                                    )}
-                                    selected={isConfidential === true}
-                                    onClick={() =>
-                                        form.setValue("isConfidential", true)
-                                    }
-                                />
-                            </div>
+                            <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">
+                                    {t("selectTreasuryTypeLabel")}
+                                </p>
 
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <TreasuryTypeOption
+                                        icon={
+                                            <Globe className="size-4 text-foreground" />
+                                        }
+                                        title={t("public")}
+                                        description={t("publicCardDescription")}
+                                        selected={isConfidential === false}
+                                        onClick={() =>
+                                            form.setValue(
+                                                "isConfidential",
+                                                false,
+                                            )
+                                        }
+                                    />
+                                    <TreasuryTypeOption
+                                        icon={
+                                            <Shield
+                                                className="size-4 text-foreground"
+                                                fill="currentColor"
+                                            />
+                                        }
+                                        title={t("confidential")}
+                                        description={t(
+                                            "confidentialCardDescription",
+                                        )}
+                                        selected={isConfidential === true}
+                                        onClick={() =>
+                                            form.setValue(
+                                                "isConfidential",
+                                                true,
+                                            )
+                                        }
+                                    />
+                                </div>
+                            </div>
                             <FormField
                                 control={form.control}
                                 name="treasuryName"
@@ -511,6 +536,7 @@ export function TreasuryOnboardingPage({
                                         <LargeInput
                                             borderless
                                             textSizeClassName="text-lg!"
+                                            suffixClassName="text-muted-foreground/60 text-sm!"
                                             placeholder={t(
                                                 "accountPlaceholderUnderscore",
                                             )}
@@ -531,13 +557,15 @@ export function TreasuryOnboardingPage({
                                 )}
                             />
 
-                            <Alert variant="info" className="items-start gap-3">
-                                <Gift className="mt-0.5 size-5 shrink-0" />
-                                <AlertDescription className="gap-0">
-                                    <p className="text-sm font-semibold mb-0">
-                                        {t("setupOnUsTitle")}
-                                    </p>
-                                    <p className="text-sm">
+                            <Alert variant="info" className="block">
+                                <AlertDescription>
+                                    <div className="flex items-center gap-2">
+                                        <Gift className="size-5 shrink-0" />
+                                        <p className="text-sm font-semibold">
+                                            {t("setupOnUsTitle")}
+                                        </p>
+                                    </div>
+                                    <p className="text-xs md:pl-7">
                                         {t("setupOnUsDescription")}
                                     </p>
                                 </AlertDescription>
@@ -565,7 +593,11 @@ export function TreasuryOnboardingPage({
                             type="button"
                             variant="unstyled"
                             className="h-auto p-0 underline"
-                            onClick={() => setShowLoginScreen(true)}
+                            onClick={() => {
+                                setForceStayOnCreatePage(false);
+                                setLoginScreenSource("sign-in");
+                                setShowLoginScreen(true);
+                            }}
                         >
                             {t("signInLabel")}
                         </Button>
@@ -576,14 +608,25 @@ export function TreasuryOnboardingPage({
     );
 
     const loginScreenBody = (
-        <div className="mx-auto mt-8 w-full max-w-[600px] md:mt-8">
+        <div className="mx-auto w-full max-w-[600px] space-y-3 md:mt-8">
             <ConnectWalletSelector
-                source={shouldStayOnCreatePage ? "/create" : "/"}
-                connectFlow={
-                    shouldStayOnCreatePage ? "onboarding" : "within_treasury"
-                }
+                source={isCreateRoute ? "/create" : "/"}
+                connectFlow={isCreateRoute ? "onboarding" : "within_treasury"}
                 isConnectingWallet={isAuthenticating}
-                onBack={returnTo ? () => router.push(returnTo) : undefined}
+                showBackButton={isConnectWalletLogin}
+                showOnboardingHints={isConnectWalletLogin}
+                showCreateTreasuryCta={!isConnectWalletLogin}
+                onBack={
+                    isConnectWalletLogin
+                        ? () => {
+                              if (returnTo) {
+                                  router.push(returnTo);
+                                  return;
+                              }
+                              setShowLoginScreen(false);
+                          }
+                        : undefined
+                }
                 onConnectSupported={async (walletId?: string) => {
                     if (authError) clearError();
                     await connect(walletId);
@@ -666,7 +709,11 @@ export function TreasuryOnboardingPage({
                                         variant="unstyled"
                                         className="h-auto p-0 text-sm font-normal leading-5 tracking-normal text-muted-foreground underline"
                                         onClick={() =>
-                                            router.push(APP_ACTIVE_TREASURY)
+                                            window.open(
+                                                APP_ACTIVE_TREASURY,
+                                                "_blank",
+                                                "noopener,noreferrer",
+                                            )
                                         }
                                     >
                                         {tLanding("waitlistSeeDemo")}
@@ -722,6 +769,9 @@ export function TreasuryOnboardingPage({
                     hideCollapseButton
                     hideSystemStatusBanner
                     transparentHeader
+                    hideHeaderBottomBorder
+                    logo={headerLogo}
+                    mainClassName="pt-1"
                 >
                     {showWaitlist
                         ? waitlistBody
@@ -736,11 +786,14 @@ export function TreasuryOnboardingPage({
     return (
         <PageComponentLayout
             title={tPages("title")}
+            backButton={returnTo || false}
             hideCollapseButton
             hideLogin
             hideSystemStatusBanner
             transparentHeader
-            logo={unauthHeaderLogo}
+            hideHeaderBottomBorder
+            logo={headerLogo}
+            mainClassName="pt-1"
         >
             <CreationProgressModal
                 open={progressOpen}

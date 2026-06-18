@@ -1245,6 +1245,8 @@
         "continueToWallet": "המשך לארנק",
         "alreadyHaveTreasuryLabel": "כבר יש לך כספת?",
         "signInLabel": "התחברות",
+        "dontHaveTreasuryLabel": "אין לך עדיין כספת?",
+        "createOneLabel": "צור אחת",
         "walletSelector": {
             "title": "בחר איך להתחבר",
             "subtitle": "ההתחברות שלך תהפוך לחבר הראשון בכספת.",
@@ -1552,7 +1554,7 @@
         "near": {
             "required": "כתובת נדרשת",
             "length": "הכתובת חייבת להיות בין 2 ל-64 תווים",
-            "missingTld": "חשבונות עם שם חייבים להסתיים ב-.near, .aurora או .tg",
+            "missingTld": "חשבונות עם שם חייבים להסתיים ב-.near, .aurora, .tg או .sweat",
             "invalidChars": "הכתובת יכולה להכיל רק אותיות קטנות, ספרות ומפרידים (., -, _)",
             "accountMissing": "החשבון אינו קיים בבלוקצ'יין NEAR",
             "verifyFailed": "אימות קיום החשבון נכשל"

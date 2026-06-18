@@ -238,7 +238,7 @@ export function MemberInput<
                                 }
                                 render={({ fieldState }) =>
                                     fieldState.error ? (
-                                        <FormMessage />
+                                        <FormMessage className="text-sm mb-3" />
                                     ) : (
                                         <p className="text-muted-foreground text-xs invisible">
                                             Invisible

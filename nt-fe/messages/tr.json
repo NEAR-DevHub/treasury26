@@ -1245,6 +1245,8 @@
         "continueToWallet": "Cüzdana devam et",
         "alreadyHaveTreasuryLabel": "Zaten bir hazineniz var mı?",
         "signInLabel": "Giriş yap",
+        "dontHaveTreasuryLabel": "Henüz bir hazineniz yok mu?",
+        "createOneLabel": "Bir tane oluştur",
         "walletSelector": {
             "title": "Nasıl giriş yapacağınızı seçin",
             "subtitle": "Girişiniz hazinenizin ilk üyesi olur.",
@@ -1552,7 +1554,7 @@
         "near": {
             "required": "Adres gereklidir",
             "length": "Adres 2 ile 64 karakter arasında olmalıdır",
-            "missingTld": "Adlandırılmış hesaplar .near, .aurora veya .tg ile bitmelidir",
+            "missingTld": "Adlandırılmış hesaplar .near, .aurora, .tg veya .sweat ile bitmelidir",
             "invalidChars": "Adres yalnızca küçük harfler, rakamlar ve ayırıcılar (., -, _) içerebilir",
             "accountMissing": "Hesap NEAR blok zincirinde mevcut değil",
             "verifyFailed": "Hesap varlığı doğrulanamadı"

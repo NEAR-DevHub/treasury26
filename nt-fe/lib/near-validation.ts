@@ -51,7 +51,7 @@ function validateNearAddressFormat(
         return "invalidChars";
     }
 
-    const validTLDs = [".near", ".aurora", ".tg"];
+    const validTLDs = [".near", ".aurora", ".tg", ".sweat"];
     const hasValidTLD = validTLDs.some((tld) => trimmed.endsWith(tld));
 
     if (!hasValidTLD) {

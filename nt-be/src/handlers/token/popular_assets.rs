@@ -39,7 +39,7 @@ pub async fn get_popular_assets_by_activity(
         }
     }
 
-    let metadata_map = fetch_tokens_metadata_enriched(&state, &token_ids).await;
+    let metadata_map = fetch_tokens_metadata_enriched(&state, &token_ids, false).await;
     let data: Vec<TokenMetadata> = token_ids
         .iter()
         .filter_map(|token_id| metadata_map.get(token_id).cloned())

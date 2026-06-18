@@ -70,6 +70,7 @@ import {
     getProposalExecutedDate,
 } from "@/features/proposals/utils/receipt-utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -483,6 +484,13 @@ export function ProposalsTable({
     }
 
     const totalPages = Math.ceil(total / pageSize);
+    const tableRows = table.getRowModel().rows;
+    const lastRowId =
+        tableRows.length > 0 ? tableRows[tableRows.length - 1].id : null;
+    const isLastRowExpanded =
+        tableRows.length > 0 && tableRows[tableRows.length - 1].getIsExpanded();
+    const shouldApplyContainerBottomPadding =
+        tableRows.length > 1 && (Boolean(onPageChange) || !isLastRowExpanded);
     const selectedCount = table.getFilteredSelectedRowModel().rows.length;
     const selectedProposals = table
         .getFilteredSelectedRowModel()
@@ -509,7 +517,12 @@ export function ProposalsTable({
 
     return (
         <>
-            <div className="flex flex-col pb-3">
+            <div
+                className={cn(
+                    "flex flex-col",
+                    shouldApplyContainerBottomPadding && "pb-3",
+                )}
+            >
                 {selectedCount > 0 && (
                     <div className="flex md:text-base text-sm items-center justify-between py-3.5 px-5 border-b">
                         <span className="font-semibold">
@@ -540,6 +553,7 @@ export function ProposalsTable({
                         </div>
                     </div>
                 )}
+
                 <ScrollArea className="grid">
                     <Table>
                         <TableHeader>
@@ -563,7 +577,7 @@ export function ProposalsTable({
                             ))}
                         </TableHeader>
                         <TableBody>
-                            {table.getRowModel().rows.map((row) => (
+                            {tableRows.map((row) => (
                                 <Fragment key={row.id}>
                                     <TableRow
                                         data-state={
@@ -606,7 +620,12 @@ export function ProposalsTable({
                                                 colSpan={
                                                     row.getVisibleCells().length
                                                 }
-                                                className="p-4 bg-general-tertiary"
+                                                className={cn(
+                                                    "p-4 bg-general-tertiary",
+                                                    !shouldApplyContainerBottomPadding &&
+                                                        row.id === lastRowId &&
+                                                        "rounded-b-xl",
+                                                )}
                                             >
                                                 <ExpandedView
                                                     proposal={row.original}
@@ -661,8 +680,8 @@ export function ProposalsTable({
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
 
-                {onPageChange && (
-                    <div className="pr-2">
+                {onPageChange && totalPages > 1 && (
+                    <div className="p-3 pb-0">
                         <Pagination
                             pageIndex={pageIndex}
                             totalPages={totalPages}

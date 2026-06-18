@@ -170,10 +170,13 @@ export function useBatchStorageDepositIsRegistered(
  * Fetches from backend which enriches data from bridge and external price APIs
  * Supports both NEAR and cross-chain tokens
  */
-export function useToken(tokenId: string | null | undefined) {
+export function useToken(
+    tokenId: string | null | undefined,
+    options?: { nearFt?: boolean },
+) {
     return useQuery({
-        queryKey: ["tokenMetadata", tokenId],
-        queryFn: () => getTokenMetadata(tokenId!),
+        queryKey: ["tokenMetadata", tokenId, options?.nearFt ?? false],
+        queryFn: () => getTokenMetadata(tokenId!, options),
         enabled: !!tokenId,
         staleTime: 1000 * 60 * 5, // 5 minutes (token metadata and price)
     });

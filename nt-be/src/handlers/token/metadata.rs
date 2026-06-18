@@ -28,6 +28,10 @@ use crate::{
 pub struct TokenMetadataQuery {
     #[serde(alias = "token_id")]
     pub token_id: String,
+    /// When true, NearBlocks is used as a final fallback for NEAR FT metadata
+    /// even when chain metadata enrichment is enabled.
+    #[serde(default)]
+    pub near_ft: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -593,7 +597,7 @@ pub async fn fetch_tokens_metadata(
     state: &Arc<AppState>,
     token_ids: &[String],
 ) -> Result<Vec<TokenMetadata>, (StatusCode, String)> {
-    let map = fetch_tokens_with_fallback(state, token_ids, true).await;
+    let map = fetch_tokens_with_fallback(state, token_ids, true, false).await;
     let mut out = Vec::new();
     let mut seen = HashSet::new();
     for token_id in token_ids {
@@ -611,10 +615,15 @@ pub async fn fetch_tokens_metadata(
 ///
 /// When `include_chain_metadata` is false, NearBlocks may be used as a final
 /// asset-metadata fallback (no reliable cross-chain network derivation).
+///
+/// `allow_nearblocks` explicitly enables the NearBlocks fallback regardless of
+/// `include_chain_metadata`. Use this when the caller knows the token is a
+/// native NEAR FT (e.g. via the `nearFt` query param).
 pub async fn fetch_tokens_with_fallback(
     state: &Arc<AppState>,
     token_ids: &[String],
     include_chain_metadata: bool,
+    allow_nearblocks: bool,
 ) -> HashMap<String, TokenMetadata> {
     if token_ids.is_empty() {
         return HashMap::new();
@@ -743,9 +752,10 @@ pub async fn fetch_tokens_with_fallback(
             }
         }
 
-        // 5) NearBlocks (asset metadata only; skip when chain metadata is required)
+        // 5) NearBlocks (asset metadata only; skip when chain metadata is required
+        // unless the caller explicitly opted in via allow_nearblocks)
         if metadata.is_none()
-            && !include_chain_metadata
+            && (!include_chain_metadata || allow_nearblocks)
             && let Some(nearblocks_api_key) = state.env_vars.nearblocks_api_key.as_ref()
             && let Some(nearblocks_candidate) = nearblocks_lookup_candidate(&candidates.all)
         {
@@ -801,9 +811,10 @@ pub async fn fetch_tokens_with_fallback(
 pub async fn fetch_tokens_metadata_enriched(
     state: &Arc<AppState>,
     token_ids: &[String],
+    allow_nearblocks: bool,
 ) -> HashMap<String, TokenMetadata> {
     // Extension users expect full enrichment including chain metadata.
-    let mut result = fetch_tokens_with_fallback(state, token_ids, true).await;
+    let mut result = fetch_tokens_with_fallback(state, token_ids, true, allow_nearblocks).await;
     if result.is_empty() {
         return result;
     }
@@ -831,7 +842,12 @@ pub async fn get_token_metadata(
     State(state): State<Arc<AppState>>,
     Query(mut params): Query<TokenMetadataQuery>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, String)> {
-    let cache_key = format!("token-metadata:{}", params.token_id);
+    let near_ft = params.near_ft.unwrap_or(false);
+    let cache_key = if near_ft {
+        format!("token-metadata:{}:nearft", params.token_id)
+    } else {
+        format!("token-metadata:{}", params.token_id)
+    };
     let state_clone = state.clone();
 
     state
@@ -845,7 +861,8 @@ pub async fn get_token_metadata(
 
             // Fetch token metadata using the reusable function
             let tokens =
-                fetch_tokens_metadata_enriched(&state_clone, &[params.token_id.clone()]).await;
+                fetch_tokens_metadata_enriched(&state_clone, &[params.token_id.clone()], near_ft)
+                    .await;
 
             let wrap_metadata = tokens.get(&params.token_id).ok_or_else(|| {
                 (

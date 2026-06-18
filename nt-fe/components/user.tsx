@@ -60,6 +60,7 @@ interface UserWithDataProps {
     name: string;
     address: string;
     iconOnly?: boolean;
+    truncatePrimaryAddress?: boolean;
     size?: UserSize;
     withLink?: boolean;
     withHoverCard?: boolean;
@@ -72,6 +73,7 @@ export function UserWithData({
     address,
     size = "sm",
     iconOnly = false,
+    truncatePrimaryAddress = false,
     withLink = true,
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
@@ -91,9 +93,16 @@ export function UserWithData({
             </div>
             {!iconOnly && (
                 <div className="flex flex-col items-start max-w-60 md:max-w-80 min-w-0">
-                    <span className="font-medium truncate max-w-full text-sm">
-                        {name}
-                    </span>
+                    {truncatePrimaryAddress && name === address ? (
+                        <Address
+                            address={address}
+                            className="font-medium max-w-full text-sm"
+                        />
+                    ) : (
+                        <span className="font-medium truncate max-w-full text-sm">
+                            {name}
+                        </span>
+                    )}
                     <Address
                         address={address}
                         className="text-xs text-muted-foreground truncate max-w-full"
@@ -220,6 +229,8 @@ interface UserProps {
     /** Prefer treasury address-book name when available */
     useAddressBook?: boolean;
     iconOnly?: boolean;
+    /** Use address-style truncation for the primary line when name equals address */
+    truncatePrimaryAddress?: boolean;
     withName?: boolean;
     size?: UserSize;
     withLink?: boolean;
@@ -232,6 +243,7 @@ export function User({
     name: nameProp,
     useAddressBook = false,
     iconOnly = false,
+    truncatePrimaryAddress = false,
     size = "sm",
     withLink = true,
     withName = true,
@@ -262,6 +274,7 @@ export function User({
             useAddressBook={useAddressBook}
             size={size}
             iconOnly={iconOnly}
+            truncatePrimaryAddress={truncatePrimaryAddress}
             withLink={withLink}
             withHoverCard={withHoverCard}
             chainName={chainName}

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Fingerprint, Wallet } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/button";
@@ -151,6 +152,9 @@ interface ConnectWalletSelectorProps {
     connectFlow: "onboarding" | "within_treasury";
     isConnectingWallet?: boolean;
     onBack?: () => void;
+    showBackButton?: boolean;
+    showOnboardingHints?: boolean;
+    showCreateTreasuryCta?: boolean;
     onConnectSupported: (walletId?: string) => Promise<void> | void;
 }
 
@@ -181,8 +185,12 @@ export function ConnectWalletSelector({
     connectFlow,
     isConnectingWallet = false,
     onBack,
+    showBackButton = true,
+    showOnboardingHints = false,
+    showCreateTreasuryCta = true,
     onConnectSupported,
 }: ConnectWalletSelectorProps) {
+    const router = useRouter();
     const t = useTranslations("createTreasury");
     const { accountId, authError } = useNear();
     const [unsupportedWallet, setUnsupportedWallet] =
@@ -236,9 +244,8 @@ export function ConnectWalletSelector({
         setUnsupportedWallet(null);
     };
 
-    const isOnboardingLogin = connectFlow === "onboarding";
     const headerTitle = t("walletSelector.title");
-    const headerDescription = isOnboardingLogin ? (
+    const headerDescription = showOnboardingHints ? (
         <>
             {t("walletSelector.subtitle")}{" "}
             <button
@@ -334,6 +341,9 @@ export function ConnectWalletSelector({
         });
 
         if (wallet.supported) {
+            setUnsupportedWallet(null);
+            setIsGuideOpen(false);
+            setWalletPickerOpen(null);
             setPendingRecentWalletId(wallet.id);
             const connectWalletId = resolveConnectWalletId(wallet.id);
             const maybeConnect = onConnectSupported(connectWalletId);
@@ -349,232 +359,239 @@ export function ConnectWalletSelector({
     const walletPickerChoices = nearWalletChoices;
 
     return (
-        <PageCard>
-            <StepperHeader
-                title={headerTitle}
-                description={headerDescription}
-                handleBack={onBack}
-            />
-            {isOnboardingLogin && (
-                <div className="space-y-3 mb-4">
-                    <div className="flex items-start gap-2">
-                        <div className="bg-general-success-background-faded rounded-full size-6 flex items-center justify-center">
-                            <Check className="size-4 shrink-0 text-general-success-foreground " />
+        <>
+            <PageCard>
+                <StepperHeader
+                    title={headerTitle}
+                    description={headerDescription}
+                    handleBack={showBackButton ? onBack : undefined}
+                />
+                {showOnboardingHints && (
+                    <div className="space-y-3 mb-4">
+                        <div className="flex items-start gap-2">
+                            <div className="bg-general-success-background-faded rounded-full size-7 sm:size-6 flex items-center justify-center p-1 sm:p-0">
+                                <Check className="size-4 shrink-0 text-general-success-foreground " />
+                            </div>
+                            <p className="text-sm mt-px">
+                                {t("walletSelector.noFundsNote")}
+                            </p>
                         </div>
-                        <p className="text-sm mt-px">
-                            {t("walletSelector.noFundsNote")}
-                        </p>
                     </div>
+                )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {WALLET_OPTIONS.map((wallet) => (
+                        <Button
+                            key={wallet.id}
+                            type="button"
+                            variant="secondary"
+                            className="h-26 items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted"
+                            onClick={() => handleWalletChoice(wallet)}
+                            disabled={isConnectingWallet}
+                        >
+                            <div className="flex w-full flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <WalletOptionIcon wallet={wallet} />
+                                    {getTopLevelBadgeLabel(wallet) && (
+                                        <Pill
+                                            title={
+                                                getTopLevelBadgeLabel(wallet)!
+                                            }
+                                            className="bg-general-success-background-faded text-general-success-foreground"
+                                        />
+                                    )}
+                                </div>
+                                <div className="text-lg font-semibold">
+                                    {wallet.label}
+                                </div>
+                            </div>
+                        </Button>
+                    ))}
                 </div>
-            )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {WALLET_OPTIONS.map((wallet) => (
-                    <Button
-                        key={wallet.id}
-                        type="button"
-                        variant="secondary"
-                        className="h-26 items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted"
-                        onClick={() => handleWalletChoice(wallet)}
-                        disabled={isConnectingWallet}
-                    >
-                        <div className="flex w-full flex-col gap-2">
-                            <div className="flex items-center justify-between">
-                                <WalletOptionIcon wallet={wallet} />
-                                {getTopLevelBadgeLabel(wallet) && (
-                                    <Pill
-                                        title={getTopLevelBadgeLabel(wallet)!}
-                                        className="bg-general-success-background-faded text-general-success-foreground"
-                                    />
-                                )}
-                            </div>
-                            <div className="text-lg font-semibold">
-                                {wallet.label}
-                            </div>
-                        </div>
-                    </Button>
-                ))}
-            </div>
-            <Dialog
-                open={walletPickerOpen !== null}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setWalletPickerOpen(null);
-                        return;
-                    }
-                    setUnsupportedWallet(null);
-                    setIsGuideOpen(false);
-                }}
-            >
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {walletPickerOpen === "near"
-                                ? t("walletSelector.chooseNearWallet")
-                                : t("walletSelector.chooseNearWallet")}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {walletPickerChoices.map((wallet) => (
-                            <Button
-                                key={wallet.id}
-                                type="button"
-                                variant="secondary"
-                                className="h-26 items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted"
-                                onClick={() => handleWalletChoice(wallet)}
-                                disabled={isConnectingWallet}
-                            >
-                                <div className="flex w-full flex-col gap-2">
-                                    <div className="flex items-center justify-between">
-                                        <WalletOptionIcon wallet={wallet} />
-                                        {getModalBadgeLabel(wallet) && (
-                                            <Pill
-                                                title={
-                                                    getModalBadgeLabel(wallet)!
-                                                }
-                                                className="bg-general-success-background-faded text-general-success-foreground"
-                                            />
-                                        )}
-                                    </div>
-                                    <div className="text-lg font-semibold">
-                                        {wallet.label}
-                                    </div>
-                                </div>
-                            </Button>
-                        ))}
-                    </div>
-                </DialogContent>
-            </Dialog>
-            <Dialog
-                open={isGuideOpen}
-                onOpenChange={(open) => {
-                    if (open) {
+                <Dialog
+                    open={walletPickerOpen !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setWalletPickerOpen(null);
+                            return;
+                        }
                         setUnsupportedWallet(null);
-                        setWalletPickerOpen(null);
-                    }
-                    setIsGuideOpen(open);
-                }}
-            >
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {t("walletSelector.guide.title")}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div className="rounded-xl border border-general-border p-4">
-                            <div className="space-y-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background">
-                                    <Wallet className="size-4" />
-                                </div>
-                                <div className="flex flex-col">
-                                    <div className="text-lg font-semibold">
-                                        {t(
-                                            "walletSelector.guide.connectWalletTitle",
-                                        )}
+                        setIsGuideOpen(false);
+                    }}
+                >
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {walletPickerOpen === "near"
+                                    ? t("walletSelector.chooseNearWallet")
+                                    : t("walletSelector.chooseNearWallet")}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            {walletPickerChoices.map((wallet) => (
+                                <Button
+                                    key={wallet.id}
+                                    type="button"
+                                    variant="secondary"
+                                    className="h-26 items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted"
+                                    onClick={() => handleWalletChoice(wallet)}
+                                    disabled={isConnectingWallet}
+                                >
+                                    <div className="flex w-full flex-col gap-2">
+                                        <div className="flex items-center justify-between">
+                                            <WalletOptionIcon wallet={wallet} />
+                                            {getModalBadgeLabel(wallet) && (
+                                                <Pill
+                                                    title={
+                                                        getModalBadgeLabel(
+                                                            wallet,
+                                                        )!
+                                                    }
+                                                    className="bg-general-success-background-faded text-general-success-foreground"
+                                                />
+                                            )}
+                                        </div>
+                                        <div className="text-lg font-semibold">
+                                            {wallet.label}
+                                        </div>
                                     </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t(
-                                            "walletSelector.guide.connectWalletDescription",
-                                        )}
-                                    </p>
-                                </div>
-                                <div className="h-px bg-general-border my-3" />
-                                <div className="space-y-2">
-                                    <p className="font-medium mb-1 text-sm">
-                                        {t(
-                                            "walletSelector.guide.pickThisIfYou",
-                                        )}
-                                    </p>
-                                    <ul className="text-sm text-muted-foreground">
-                                        <li>
-                                            -{" "}
+                                </Button>
+                            ))}
+                        </div>
+                    </DialogContent>
+                </Dialog>
+                <Dialog
+                    open={isGuideOpen}
+                    onOpenChange={(open) => {
+                        if (open) {
+                            setUnsupportedWallet(null);
+                            setWalletPickerOpen(null);
+                        }
+                        setIsGuideOpen(open);
+                    }}
+                >
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {t("walletSelector.guide.title")}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <div className="rounded-xl border border-general-border p-4">
+                                <div className="space-y-3">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background">
+                                        <Wallet className="size-4" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="text-lg font-semibold">
                                             {t(
-                                                "walletSelector.guide.connectWalletBullet1",
+                                                "walletSelector.guide.connectWalletTitle",
                                             )}
-                                        </li>
-                                        <li>
-                                            -{" "}
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
                                             {t(
-                                                "walletSelector.guide.connectWalletBullet2",
+                                                "walletSelector.guide.connectWalletDescription",
                                             )}
-                                        </li>
-                                        <li>
-                                            -{" "}
+                                        </p>
+                                    </div>
+                                    <div className="h-px bg-general-border my-3" />
+                                    <div className="space-y-2">
+                                        <p className="font-medium mb-1 text-sm">
                                             {t(
-                                                "walletSelector.guide.connectWalletBullet3",
+                                                "walletSelector.guide.pickThisIfYou",
                                             )}
-                                        </li>
-                                    </ul>
+                                        </p>
+                                        <ul className="text-sm text-muted-foreground">
+                                            <li>
+                                                -{" "}
+                                                {t(
+                                                    "walletSelector.guide.connectWalletBullet1",
+                                                )}
+                                            </li>
+                                            <li>
+                                                -{" "}
+                                                {t(
+                                                    "walletSelector.guide.connectWalletBullet2",
+                                                )}
+                                            </li>
+                                            <li>
+                                                -{" "}
+                                                {t(
+                                                    "walletSelector.guide.connectWalletBullet3",
+                                                )}
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="rounded-xl border border-general-border p-4">
-                            <div className="space-y-3">
-                                <div className="flex items-start justify-between gap-3">
-                                    <WalletOptionIcon
-                                        wallet={{
-                                            id: WALLET_IDS.PASSKEY,
-                                            label: "Passkey",
-                                            supported: false,
-                                        }}
-                                    />
-                                    <Pill
-                                        title={t(
-                                            "walletSelector.guide.comingSoon",
-                                        )}
-                                        variant="info"
-                                    />
-                                </div>
-                                <div className="flex flex-col">
-                                    <div className="text-lg font-semibold">
-                                        {t("walletSelector.guide.passkeyTitle")}
+                            <div className="rounded-xl border border-general-border p-4">
+                                <div className="space-y-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <WalletOptionIcon
+                                            wallet={{
+                                                id: WALLET_IDS.PASSKEY,
+                                                label: "Passkey",
+                                                supported: false,
+                                            }}
+                                        />
+                                        <Pill
+                                            title={t(
+                                                "walletSelector.guide.comingSoon",
+                                            )}
+                                            variant="info"
+                                        />
                                     </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t(
-                                            "walletSelector.guide.passkeyDescription",
-                                        )}
-                                    </p>
-                                </div>
-                                <div className="h-px bg-general-border my-3" />
-                                <div className="space-y-2">
-                                    <p className="font-medium mb-1 text-sm">
-                                        {t(
-                                            "walletSelector.guide.pickThisIfYou",
-                                        )}
-                                    </p>
-                                    <ul className="text-sm text-muted-foreground">
-                                        <li>
-                                            -{" "}
+                                    <div className="flex flex-col">
+                                        <div className="text-lg font-semibold">
                                             {t(
-                                                "walletSelector.guide.passkeyBullet1",
+                                                "walletSelector.guide.passkeyTitle",
                                             )}
-                                        </li>
-                                        <li>
-                                            -{" "}
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
                                             {t(
-                                                "walletSelector.guide.passkeyBullet2",
+                                                "walletSelector.guide.passkeyDescription",
                                             )}
-                                        </li>
-                                        <li>
-                                            -{" "}
+                                        </p>
+                                    </div>
+                                    <div className="h-px bg-general-border my-3" />
+                                    <div className="space-y-2">
+                                        <p className="font-medium mb-1 text-sm">
                                             {t(
-                                                "walletSelector.guide.passkeyBullet3",
+                                                "walletSelector.guide.pickThisIfYou",
                                             )}
-                                        </li>
-                                    </ul>
+                                        </p>
+                                        <ul className="text-sm text-muted-foreground">
+                                            <li>
+                                                -{" "}
+                                                {t(
+                                                    "walletSelector.guide.passkeyBullet1",
+                                                )}
+                                            </li>
+                                            <li>
+                                                -{" "}
+                                                {t(
+                                                    "walletSelector.guide.passkeyBullet2",
+                                                )}
+                                            </li>
+                                            <li>
+                                                -{" "}
+                                                {t(
+                                                    "walletSelector.guide.passkeyBullet3",
+                                                )}
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="rounded-lg bg-general-tertiary px-4 py-3 text-sm text-muted-foreground">
-                            <span className="font-medium text-foreground">
-                                {t("walletSelector.guide.recoveryLabel")}
-                            </span>{" "}
-                            {t("walletSelector.guide.recoveryText")}
-                        </div>
+                            <div className="rounded-lg bg-general-tertiary px-4 py-3 text-sm text-muted-foreground">
+                                <span className="font-medium text-foreground">
+                                    {t("walletSelector.guide.recoveryLabel")}
+                                </span>{" "}
+                                {t("walletSelector.guide.recoveryText")}
+                            </div>
 
-                        {/* <div className="text-center">
+                            {/* <div className="text-center">
                             <a
                                 href="#"
                                 className="inline-flex items-center gap-2 text-sm font-medium underline-offset-2"
@@ -582,97 +599,113 @@ export function ConnectWalletSelector({
                                 Read the full guide <span aria-hidden>↗</span>
                             </a>
                         </div> */}
-                    </div>
-                </DialogContent>
-            </Dialog>
-            <Dialog
-                open={Boolean(unsupportedWallet)}
-                onOpenChange={(open) => {
-                    if (!open && unsupportedWallet)
-                        closeUnsupportedWalletModal();
-                }}
-            >
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader className="border-b-0 pb-0">
-                        <DialogTitle className="sr-only">
-                            {t("walletNotSupportedTitle", {
-                                wallet: unsupportedWallet?.label ?? "",
-                            })}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-5 text-center">
-                        <div className="mx-auto flex items-center justify-center">
-                            {unsupportedWallet ? (
-                                <WalletOptionIcon
-                                    wallet={unsupportedWallet}
-                                    size="xl"
-                                />
-                            ) : (
-                                <Wallet className="size-7" />
-                            )}
                         </div>
-                        <div className="space-y-1">
-                            <h3 className="text-xl font-semibold">
+                    </DialogContent>
+                </Dialog>
+                <Dialog
+                    open={Boolean(unsupportedWallet)}
+                    onOpenChange={(open) => {
+                        if (!open && unsupportedWallet)
+                            closeUnsupportedWalletModal();
+                    }}
+                >
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader className="border-b-0 pb-0">
+                            <DialogTitle className="sr-only">
                                 {t("walletNotSupportedTitle", {
                                     wallet: unsupportedWallet?.label ?? "",
                                 })}
-                            </h3>
-                            <p className="text-muted-foreground text-sm">
-                                {t("walletNotSupportedDescription", {
-                                    wallet: unsupportedWallet?.label ?? "",
-                                })}
-                            </p>
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-5 text-center">
+                            <div className="mx-auto flex items-center justify-center">
+                                {unsupportedWallet ? (
+                                    <WalletOptionIcon
+                                        wallet={unsupportedWallet}
+                                        size="xl"
+                                    />
+                                ) : (
+                                    <Wallet className="size-7" />
+                                )}
+                            </div>
+                            <div className="space-y-1">
+                                <h3 className="text-xl font-semibold">
+                                    {t("walletNotSupportedTitle", {
+                                        wallet: unsupportedWallet?.label ?? "",
+                                    })}
+                                </h3>
+                                <p className="text-muted-foreground text-sm">
+                                    {t("walletNotSupportedDescription", {
+                                        wallet: unsupportedWallet?.label ?? "",
+                                    })}
+                                </p>
+                            </div>
+                            <div className="space-y-3">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="w-full"
+                                    onClick={() =>
+                                        handleWalletChoice({
+                                            id: WALLET_IDS.NEAR,
+                                            label: "NEAR Wallets",
+                                            imgSrc: "/near.com.svg",
+                                            supported: true,
+                                        })
+                                    }
+                                >
+                                    {t("walletSelector.signInWithNear")}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="w-full"
+                                    onClick={() =>
+                                        handleWalletChoice({
+                                            id: WALLET_IDS.LEDGER,
+                                            label: "Ledger",
+                                            imgSrc: "/wallets/ledger.svg",
+                                            supported: true,
+                                        })
+                                    }
+                                >
+                                    {t("walletSelector.signInWithLedger")}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="w-full"
+                                    onClick={() =>
+                                        handleWalletChoice({
+                                            id: WALLET_IDS.EVM,
+                                            label: "EVM Wallets",
+                                            imgSrc: "/icons/metamask.svg",
+                                            supported: true,
+                                        })
+                                    }
+                                >
+                                    {t(
+                                        "walletSelector.signInWithWalletConnect",
+                                    )}
+                                </Button>
+                            </div>
                         </div>
-                        <div className="space-y-3">
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                className="w-full"
-                                onClick={() =>
-                                    handleWalletChoice({
-                                        id: WALLET_IDS.NEAR,
-                                        label: "NEAR Wallets",
-                                        imgSrc: "/near.com.svg",
-                                        supported: true,
-                                    })
-                                }
-                            >
-                                {t("walletSelector.signInWithNear")}
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                className="w-full"
-                                onClick={() =>
-                                    handleWalletChoice({
-                                        id: WALLET_IDS.LEDGER,
-                                        label: "Ledger",
-                                        imgSrc: "/wallets/ledger.svg",
-                                        supported: true,
-                                    })
-                                }
-                            >
-                                {t("walletSelector.signInWithLedger")}
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                className="w-full"
-                                onClick={() =>
-                                    handleWalletChoice({
-                                        id: WALLET_IDS.EVM,
-                                        label: "EVM Wallets",
-                                        imgSrc: "/icons/metamask.svg",
-                                        supported: true,
-                                    })
-                                }
-                            >
-                                {t("walletSelector.signInWithWalletConnect")}
-                            </Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
-        </PageCard>
+                    </DialogContent>
+                </Dialog>
+            </PageCard>
+            {showCreateTreasuryCta && (
+                <p className="mt-3 text-center text-sm">
+                    {t("dontHaveTreasuryLabel")}{" "}
+                    <Button
+                        type="button"
+                        variant="unstyled"
+                        className="h-auto p-0 underline"
+                        onClick={() => router.push("/create")}
+                    >
+                        {t("createOneLabel")}
+                    </Button>
+                </p>
+            )}
+        </>
     );
 }
