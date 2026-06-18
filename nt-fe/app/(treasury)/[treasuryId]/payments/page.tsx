@@ -1063,24 +1063,24 @@ export default function PaymentsPage() {
             const directTransferAmount = Big(data.amount)
                 .mul(Big(10).pow(data.token.decimals))
                 .toFixed();
-            const quoteAmountDecimals =
-                getDestinationAmountDecimalsForExactOutput(
-                    tokenClassification.tokenForIntentsQuote,
-                    data.destinationNetwork,
-                    intentsAmountMode,
-                    bridgeAssets,
-                );
-            if (quoteAmountDecimals === undefined) {
-                throw new Error(tPay("failed1ClickQuote"));
-            }
-            const quoteAmount = Big(data.amount)
-                .mul(Big(10).pow(quoteAmountDecimals))
-                .toFixed();
 
             let description = encodeToMarkdown({ notes: data.memo || "" });
             let proposalKind: FunctionCallKind | TransferKind;
 
             if (shouldUseIntents) {
+                const quoteAmountDecimals =
+                    getDestinationAmountDecimalsForExactOutput(
+                        tokenClassification.tokenForIntentsQuote,
+                        data.destinationNetwork,
+                        intentsAmountMode,
+                        bridgeAssets,
+                    );
+                if (quoteAmountDecimals === undefined) {
+                    throw new Error(tPay("failed1ClickQuote"));
+                }
+                const quoteAmount = Big(data.amount)
+                    .mul(Big(10).pow(quoteAmountDecimals))
+                    .toFixed();
                 const tokenForQuote = tokenClassification.tokenForIntentsQuote;
 
                 // Use the cached quote from the live hook; fall back to a
