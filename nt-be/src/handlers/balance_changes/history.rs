@@ -1707,7 +1707,7 @@ pub async fn get_recent_activity(
 
     if !activity_token_ids.is_empty() {
         let chain_metadata_map =
-            fetch_tokens_with_fallback(&state, &activity_token_ids, true).await;
+            fetch_tokens_with_fallback(&state, &activity_token_ids, true, false).await;
         for change in &mut enriched_changes {
             if let Some(ref mut metadata) = change.token_metadata
                 && let Some(chain_meta) = chain_metadata_map.get(&change.token_id)
@@ -1838,7 +1838,7 @@ pub async fn get_recent_activity(
 
     if !swap_token_ids_vec.is_empty() {
         let swap_metadata_with_chain =
-            fetch_tokens_with_fallback(&state, &swap_token_ids_vec, true).await;
+            fetch_tokens_with_fallback(&state, &swap_token_ids_vec, true, false).await;
         // Override the metadata_map with chain-enriched versions
         metadata_map.extend(swap_metadata_with_chain);
     }

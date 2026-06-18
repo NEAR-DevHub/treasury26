@@ -587,6 +587,7 @@ interface PopularAssetsByActivityResponse {
  */
 export async function getTokenMetadata(
     tokenId: string,
+    options?: { nearFt?: boolean },
 ): Promise<TokenMetadata | null> {
     if (!tokenId) return null;
     let token = tokenId;
@@ -605,7 +606,10 @@ export async function getTokenMetadata(
         const url = `${BACKEND_API_BASE}/token/metadata`;
 
         const response = await axios.get<TokenMetadata>(url, {
-            params: { tokenId: token },
+            params: {
+                tokenId: token,
+                ...(options?.nearFt ? { nearFt: true } : {}),
+            },
         });
 
         return response.data;

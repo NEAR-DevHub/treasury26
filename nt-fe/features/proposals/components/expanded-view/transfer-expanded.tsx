@@ -31,7 +31,10 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
     const tIntents = useTranslations("intentsQuote");
     const requestDisplayContext = useRequestDisplayContext();
     const isExecuted = requestDisplayContext?.isExecuted ?? false;
-    const { data: tokenData } = useToken(data.tokenId);
+    const { data: tokenData } = useToken(
+        data.tokenId,
+        data.nearFt ? { nearFt: true } : undefined,
+    );
     const tokenChainName = tokenData?.network || NEAR_NETWORK_ID;
     const isNearComDestination = isNearComPaymentRoute(data);
 
@@ -127,6 +130,7 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
                     tokenId={data.tokenId}
                     showNetworkTooltip
                     usdTextOverride={amountUsdOverride}
+                    nearFt={data.nearFt}
                 />
             ),
         },

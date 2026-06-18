@@ -555,7 +555,7 @@ pub async fn compute_user_assets(
     token_ids_to_fetch.push("near".to_string());
 
     let metadata_map = if !token_ids_to_fetch.is_empty() {
-        fetch_tokens_metadata_enriched(state, &token_ids_to_fetch).await
+        fetch_tokens_metadata_enriched(state, &token_ids_to_fetch, false).await
     } else {
         HashMap::new()
     };

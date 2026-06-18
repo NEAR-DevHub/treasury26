@@ -60,6 +60,8 @@ export interface PaymentRequestData {
     destinationAssetId?: string;
     /** Optional quote-provided USD value for display */
     quoteAmountInUsd?: string;
+    /** True for plain Transfer proposals — enables NearBlocks FT metadata fallback */
+    nearFt?: boolean;
 }
 
 export interface FunctionCallAction {

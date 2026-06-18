@@ -69,7 +69,8 @@ pub async fn run_telegram_dispatch_cycle(
     }
     token_ids_to_fetch.sort();
     token_ids_to_fetch.dedup();
-    let token_metadata_map = fetch_tokens_metadata_enriched(state, &token_ids_to_fetch).await;
+    let token_metadata_map =
+        fetch_tokens_metadata_enriched(state, &token_ids_to_fetch, false).await;
 
     let mut sent = 0usize;
 

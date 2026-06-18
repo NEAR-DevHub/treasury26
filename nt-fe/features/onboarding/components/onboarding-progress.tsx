@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -49,10 +49,12 @@ function SemiCircleProgress({
     current: number;
     total: number;
 }) {
+    const id = useId();
     const progress = total > 0 ? Math.min(Math.max(current / total, 0), 1) : 0;
     const hasProgress = progress > 0;
-    const arcLength = 440; // 2 * PI * 70 (approx circumference)
-    const dashArray = 220; // Half circle
+    const progressMaskWidth = 165 * progress;
+    const progressMaskId = `${id}-progress-mask`;
+    const arcClipPathId = `${id}-arc-clip`;
 
     return (
         <div className="relative flex items-center justify-center w-[165px] h-[111px]">
@@ -64,18 +66,15 @@ function SemiCircleProgress({
                 xmlns="http://www.w3.org/2000/svg"
             >
                 <defs>
-                    <mask id="progress-mask">
-                        <circle
-                            cx="82.5"
-                            cy="88.8"
-                            r="70"
-                            fill="none"
-                            stroke="white"
-                            strokeWidth="120"
-                            strokeDasharray={`${dashArray} ${arcLength - dashArray}`}
-                            strokeDashoffset={dashArray * (1 - progress)}
-                            transform="rotate(180 82.5 88.8)"
-                            className="transition-[stroke-dashoffset] duration-1000 ease-in-out"
+                    <mask id={progressMaskId}>
+                        <rect width="165" height="111" fill="black" />
+                        <rect
+                            x="0"
+                            y="0"
+                            width={progressMaskWidth}
+                            height="111"
+                            fill="white"
+                            className="transition-[width] duration-1000 ease-in-out"
                         />
                     </mask>
                     <linearGradient
@@ -89,7 +88,7 @@ function SemiCircleProgress({
                         <stop offset="0.89%" stopColor="#48ACEF" />
                         <stop offset="66.39%" stopColor="#A8DCFF" />
                     </linearGradient>
-                    <clipPath id="svg-draw">
+                    <clipPath id={arcClipPathId}>
                         <path d={PROGRESS_ARC_PATH} />
                     </clipPath>
                 </defs>
@@ -102,10 +101,10 @@ function SemiCircleProgress({
                 />
                 {hasProgress ? (
                     <path
-                        clipPath="url(#svg-draw)"
+                        clipPath={`url(#${arcClipPathId})`}
                         d={PROGRESS_ARC_PATH}
                         fill="url(#progress-gradient)"
-                        mask="url(#progress-mask)"
+                        mask={`url(#${progressMaskId})`}
                     />
                 ) : null}
             </svg>

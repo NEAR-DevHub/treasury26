@@ -472,7 +472,8 @@ pub async fn load_latest_public_dashboard_snapshot(
         .map(|t| t.contract_id.clone().unwrap_or_else(|| t.token_id.clone()))
         .collect();
     let metadata =
-        crate::handlers::token::metadata::fetch_tokens_metadata_enriched(state, &lookup_ids).await;
+        crate::handlers::token::metadata::fetch_tokens_metadata_enriched(state, &lookup_ids, false)
+            .await;
 
     // Build NEAR metadata once and reuse for all NEAR variants, mirroring assets.rs.
     let near_meta = {

@@ -166,7 +166,10 @@ export function extractPaymentRequestData(
         proposal.description,
     );
 
+    let isTransferKind = false;
+
     if ("Transfer" in proposal.kind) {
+        isTransferKind = true;
         const transfer = proposal.kind.Transfer;
         const normalizedTokenId = transfer.token_id?.trim();
         tokenId =
@@ -218,8 +221,14 @@ export function extractPaymentRequestData(
         proposal.description,
     );
 
-    // Plain native NEAR transfers without 1Click metadata should resolve to
-    // NEAR network (not near.com route) in destination display.
+    // Transfer proposals are always on-chain NEAR; set explicit destination
+    // network so request details do not depend on token metadata.
+    if (!destinationAssetId && isTransferKind && !depositAddress) {
+        destinationAssetId = NEAR_NETWORK_ID;
+    }
+
+    // Non-Transfer native NEAR payments without 1Click metadata also resolve
+    // to NEAR network in destination display.
     if (!destinationAssetId && tokenId === NEAR_NETWORK_ID && !depositAddress) {
         destinationAssetId = NEAR_NETWORK_ID;
     }
@@ -233,6 +242,7 @@ export function extractPaymentRequestData(
         quoteSignature,
         networkFee,
         destinationAssetId,
+        nearFt: isTransferKind || undefined,
     };
 }
 

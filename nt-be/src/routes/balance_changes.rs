@@ -167,7 +167,8 @@ pub async fn get_balance_changes_internal(
 
                 // Fetch metadata to get decimals using the helper function
                 let metadata_map: std::collections::HashMap<String, TokenMetadata> =
-                    fetch_tokens_with_fallback(state, std::slice::from_ref(token_id), false).await;
+                    fetch_tokens_with_fallback(state, std::slice::from_ref(token_id), false, false)
+                        .await;
                 let metadata = metadata_map.get(token_id);
 
                 let decimals = metadata.map(|m| m.decimals).unwrap_or(24); // Default to NEAR decimals
@@ -342,6 +343,7 @@ pub async fn get_balance_changes_internal(
             state,
             &token_ids,
             params.include_chain_metadata.unwrap_or(false),
+            false,
         )
         .await;
 

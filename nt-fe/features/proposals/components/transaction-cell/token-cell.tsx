@@ -34,6 +34,7 @@ export function TokenCell({
     const tCommon = useTranslations("common");
     const { isConfidential } = useTreasury();
     const effectivePrefix = prefix ?? t("toPrefix");
+    const nearFt = "nearFt" in data ? data.nearFt : undefined;
     const title = (
         <Amount
             amount={data.amount}
@@ -43,6 +44,7 @@ export function TokenCell({
             expandNearComLabel={"destinationAssetId" in data}
             iconSize="sm"
             textOnly={textOnly}
+            nearFt={nearFt}
         />
     );
     const { data: profile } = useProfile(data.receiver);
