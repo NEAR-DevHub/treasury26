@@ -113,11 +113,12 @@ export function SignIn() {
         <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
                 <button className="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-muted cursor-pointer">
-                    <div className="hidden md:block">
+                    <div className="hidden md:block max-w-[180px] min-w-0">
                         <User
                             accountId={signedAccountId}
                             withLink={false}
                             size="md"
+                            truncatePrimaryAddress
                         />
                     </div>
                     <div className="flex md:hidden">

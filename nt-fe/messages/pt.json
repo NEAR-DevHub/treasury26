@@ -1245,6 +1245,8 @@
         "continueToWallet": "Continuar para a carteira",
         "alreadyHaveTreasuryLabel": "Já tem uma tesouraria?",
         "signInLabel": "Entrar",
+        "dontHaveTreasuryLabel": "Ainda não tem uma tesouraria?",
+        "createOneLabel": "Criar uma",
         "walletSelector": {
             "title": "Escolha como entrar",
             "subtitle": "Seu login se torna o primeiro membro da sua tesouraria.",
@@ -1552,7 +1554,7 @@
         "near": {
             "required": "O endereço é obrigatório",
             "length": "O endereço deve ter entre 2 e 64 caracteres",
-            "missingTld": "Contas nomeadas devem terminar com .near, .aurora ou .tg",
+            "missingTld": "Contas nomeadas devem terminar com .near, .aurora, .tg ou .sweat",
             "invalidChars": "O endereço só pode conter letras minúsculas, dígitos e separadores (., -, _)",
             "accountMissing": "A conta não existe na blockchain NEAR",
             "verifyFailed": "Falha ao verificar a existência da conta"

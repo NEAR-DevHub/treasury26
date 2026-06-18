@@ -1231,7 +1231,7 @@ export default function MembersPage() {
                             <Link
                                 href={`${APP_DOCS_URL}/governance/members-and-roles`}
                                 target="_blank"
-                                className="text-sm font-medium underline-offset-2"
+                                className="hidden md:inline-flex text-sm font-medium underline-offset-2"
                             >
                                 {tMembers("infoSection.readGuide")}
                             </Link>
@@ -1273,6 +1273,14 @@ export default function MembersPage() {
                             );
                         })}
                     </div>
+
+                    <Link
+                        href={`${APP_DOCS_URL}/governance/members-and-roles`}
+                        target="_blank"
+                        className="md:hidden inline-flex text-sm font-medium underline-offset-2 mt-2"
+                    >
+                        {tMembers("infoSection.readGuide")}
+                    </Link>
                 </PageCard>
             )}
 

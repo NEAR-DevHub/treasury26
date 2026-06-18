@@ -317,7 +317,7 @@ pub async fn fetch_balance_change_legs(
         if ids.is_empty() {
             HashMap::new()
         } else {
-            fetch_tokens_with_fallback(state, &ids, params.include_chain_metadata.unwrap_or(false))
+            fetch_tokens_with_fallback(state, &ids, params.include_chain_metadata.unwrap_or(false), false)
                 .await
         }
     };

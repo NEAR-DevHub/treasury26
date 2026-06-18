@@ -123,7 +123,8 @@ pub async fn get_bridge_tokens(
                 .collect();
 
             // Step 4: Batch fetch token metadata using the unified metadata function
-            let metadata_map = fetch_tokens_metadata_enriched(&state_clone, &metadata_ids).await;
+            let metadata_map =
+                fetch_tokens_metadata_enriched(&state_clone, &metadata_ids, false).await;
 
             // Step 5: Group by unified_asset_id
             let mut asset_map: HashMap<String, AssetOption> = HashMap::new();

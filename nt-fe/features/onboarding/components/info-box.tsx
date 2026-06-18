@@ -95,7 +95,7 @@ export function InfoBox() {
                     <button
                         type="button"
                         onClick={handleInfoBoxClick}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                         aria-label={t("close")}
                     >
                         <X className="size-4" />

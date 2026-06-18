@@ -12,6 +12,7 @@ import { SignIn } from "@/components/sign-in";
 import { SystemStatusBanner } from "@/components/system-status-banner";
 import { isStaging } from "@/constants/features";
 import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
+import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebar-store";
 
 interface PageComponentLayoutProps {
@@ -22,7 +23,9 @@ interface PageComponentLayoutProps {
     hideCollapseButton?: boolean;
     hideSystemStatusBanner?: boolean;
     transparentHeader?: boolean;
+    hideHeaderBottomBorder?: boolean;
     logo?: ReactNode;
+    mainClassName?: string;
     children: ReactNode;
 }
 
@@ -34,7 +37,9 @@ export function PageComponentLayout({
     hideLogin,
     hideSystemStatusBanner,
     transparentHeader = false,
+    hideHeaderBottomBorder = false,
     logo,
+    mainClassName,
     children,
 }: PageComponentLayoutProps) {
     const { toggleSidebar } = useSidebarStore();
@@ -53,9 +58,11 @@ export function PageComponentLayout({
     return (
         <div className="flex flex-col h-full">
             <header
-                className={`flex items-center min-h-14 justify-between px-2 md:px-6 border-b border-border ${
-                    transparentHeader ? "bg-transparent" : "bg-card"
-                }`}
+                className={cn(
+                    "flex items-center min-h-14 justify-between px-2 md:px-6",
+                    !hideHeaderBottomBorder && "border-b border-border",
+                    transparentHeader ? "bg-transparent" : "bg-card",
+                )}
             >
                 <div className="flex items-center gap-2 md:gap-4">
                     {!hideCollapseButton && (
@@ -139,7 +146,12 @@ export function PageComponentLayout({
                 </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto bg-page-bg p-4">
+            <main
+                className={cn(
+                    "flex-1 overflow-y-auto bg-page-bg p-4",
+                    mainClassName,
+                )}
+            >
                 {!hideSystemStatusBanner && (
                     <SystemStatusBanner className="lg:hidden mb-3" />
                 )}

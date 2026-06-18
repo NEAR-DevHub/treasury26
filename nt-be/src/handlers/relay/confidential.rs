@@ -101,6 +101,7 @@ pub struct PendingIntentInput<'a> {
 pub async fn store_pending_intent(
     pool: &PgPool,
     input: PendingIntentInput<'_>,
+    input: PendingIntentInput<'_>,
 ) -> Result<(), String> {
     tracing::Span::current().record("dao_id", tracing::field::display(input.dao_id));
     tracing::Span::current().record("hash", tracing::field::display(input.payload_hash));
