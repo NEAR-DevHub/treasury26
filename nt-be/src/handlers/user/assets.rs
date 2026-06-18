@@ -538,10 +538,10 @@ pub async fn compute_user_assets(
             if ref_token_ids.contains(contract_id) {
                 continue;
             }
-            if let Some(balance) = balance_map.get(contract_id) {
-                if *balance != U128::from(0) {
-                    ref_tokens_with_balances.push((contract_id.to_string(), balance.clone()));
-                }
+            if let Some(balance) = balance_map.get(contract_id)
+                && *balance != U128::from(0)
+            {
+                ref_tokens_with_balances.push((contract_id.to_string(), balance.clone()));
             }
         }
 

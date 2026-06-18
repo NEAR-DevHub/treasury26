@@ -13,7 +13,7 @@ import {
     getNetworkDisplayCaseClass,
     getLocalizedNetworkDisplayName,
 } from "@/lib/intents-network";
-import { NEAR_COM_ICON } from "@/constants/token";
+import { NEAR_COM_ICON, NEAR_CHAIN_ICONS } from "@/constants/token";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { isValidAddress } from "@/lib/address-validation";
@@ -147,23 +147,39 @@ export function RecipientNetworkSelect({
     );
 
     const tokenNetworkOptions = useMemo((): RecipientNetworkOption[] => {
-        if (!bridgeAssetMatch) return [];
+        if (bridgeAssetMatch) {
+            return bridgeAssetMatch.networks.map((network) => {
+                const iconUrl = network.chainIcons
+                    ? network.chainIcons.icon
+                    : "";
+                return {
+                    id: network.id,
+                    name: getNetworkDisplayName(network.name),
+                    description:
+                        isConfidential &&
+                        getBlockchainType(network.name) === NEAR_NETWORK_ID
+                            ? t("nearDescription")
+                            : undefined,
+                    icon: iconUrl,
+                    networkName: network.name,
+                };
+            });
+        }
 
-        return bridgeAssetMatch.networks.map((network) => {
-            const iconUrl = network.chainIcons ? network.chainIcons.icon : "";
-            return {
-                id: network.id,
-                name: getNetworkDisplayName(network.name),
-                description:
-                    isConfidential &&
-                    getBlockchainType(network.name) === NEAR_NETWORK_ID
-                        ? t("nearDescription")
-                        : undefined,
-                icon: iconUrl,
-                networkName: network.name,
-            };
-        });
-    }, [bridgeAssetMatch, isConfidential, t]);
+        // Native NEAR FTs can be transferred on NEAR network
+        if (token?.residency === "Ft") {
+            return [
+                {
+                    id: NEAR_NETWORK_ID,
+                    name: getNetworkDisplayName(NEAR_NETWORK_ID),
+                    icon: NEAR_CHAIN_ICONS.icon,
+                    networkName: NEAR_NETWORK_ID,
+                },
+            ];
+        }
+
+        return [];
+    }, [bridgeAssetMatch, isConfidential, t, token]);
 
     const availableOptions = useMemo(
         () => [nearComOption, ...tokenNetworkOptions],
