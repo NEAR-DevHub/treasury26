@@ -90,6 +90,7 @@ impl SpentNear {
 /// top-up), capped at [`MAX_SPONSORING`]; `Standard` is limited to 1 yoctoNEAR.
 /// NEP-141 registrations are paid separately by the sponsor (see `storage_deposit`)
 /// and so are not part of this allowance.
+#[tracing::instrument(level = "debug", skip_all, fields(treasury_id = %treasury_id))]
 pub async fn enforce_deposit_limit(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
@@ -129,6 +130,7 @@ pub async fn enforce_deposit_limit(
 /// Top up the DAO contract's balance to cover the storage a NEW proposal occupies,
 /// before the `add_proposal` executes. Only call this for relays that add a proposal
 /// — `act_proposal` does not grow DAO storage.
+#[tracing::instrument(level = "info", skip_all, fields(treasury_id = %treasury_id))]
 pub async fn top_up_proposal_storage(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
@@ -157,6 +159,7 @@ pub async fn top_up_proposal_storage(
 }
 
 /// Read the treasury's `proposal_bond` from its on-chain policy (retried).
+#[tracing::instrument(level = "debug", skip_all, fields(treasury_id = %treasury_id))]
 async fn fetch_treasury_deposit_bond(
     state: &Arc<AppState>,
     treasury_id: &AccountId,

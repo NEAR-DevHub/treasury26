@@ -139,6 +139,7 @@ pub struct ActionLog {
     pub block_height: U64,
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id))]
 pub async fn fetch_proposals(
     client: &NetworkConfig,
     dao_id: &AccountId,
@@ -175,6 +176,7 @@ pub async fn fetch_proposals(
     Ok(all_proposals)
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id, proposal_id = proposal_id))]
 pub async fn fetch_proposal(
     client: &NetworkConfig,
     dao_id: &AccountId,
@@ -188,6 +190,11 @@ pub async fn fetch_proposal(
     Ok(request.data)
 }
 
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(dao_id = %dao_id, proposal_id = proposal_id, block_height = block_height)
+)]
 pub async fn fetch_proposal_at_block(
     client: &NetworkConfig,
     dao_id: &AccountId,
@@ -203,6 +210,7 @@ pub async fn fetch_proposal_at_block(
         .data)
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id))]
 pub async fn fetch_policy(
     client: &NetworkConfig,
     dao_id: &AccountId,
@@ -215,6 +223,7 @@ pub async fn fetch_policy(
         .data)
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id))]
 pub async fn fetch_contract_version(
     client: &NetworkConfig,
     dao_id: &AccountId,
@@ -233,6 +242,7 @@ pub async fn fetch_contract_version(
     }
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id))]
 pub async fn fetch_actions_log(
     client: &NetworkConfig,
     dao_id: &AccountId,
@@ -246,6 +256,7 @@ pub async fn fetch_actions_log(
         .map(|r| r.data)
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(asset_contract = %contract_id))]
 pub async fn fetch_ft_metadata(
     cache: &Cache,
     network: &NetworkConfig,
@@ -277,6 +288,11 @@ pub async fn fetch_ft_metadata(
     Ok(ft_metadata)
 }
 
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(step = "batch_payment_list", asset_contract = %bulk_payment_contract_id, list_id = %batch_id)
+)]
 pub async fn fetch_batch_payment_list(
     network: &NetworkConfig,
     batch_id: &str,

@@ -509,6 +509,11 @@ pub async fn load_latest_public_dashboard_snapshot(
     }))
 }
 
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(job = "public_dashboard_refresh", snapshot_date = %snapshot_date)
+)]
 async fn refresh_public_dashboard_snapshot_for_date(
     state: &Arc<AppState>,
     snapshot_date: NaiveDate,
@@ -654,6 +659,7 @@ async fn snapshot_exists_this_week(pool: &PgPool) -> Result<bool, sqlx::Error> {
     Ok(exists)
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(job = "public_dashboard_refresh"))]
 async fn ensure_this_week_public_dashboard_snapshot(
     state: &Arc<AppState>,
 ) -> Result<Option<RefreshSummary>, Box<dyn std::error::Error + Send + Sync>> {
@@ -667,6 +673,7 @@ async fn ensure_this_week_public_dashboard_snapshot(
         .map(Some)
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(job = "public_dashboard_refresh"))]
 pub async fn run_public_dashboard_refresh_service(state: Arc<AppState>) {
     tracing::info!(
         "Starting public dashboard refresh service (startup check + weekly Monday UTC midnight schedule)"

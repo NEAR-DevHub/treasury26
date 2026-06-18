@@ -57,6 +57,11 @@ pub struct TransactionQueryParams {
     pub action: String,
 }
 
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(dao_id = %dao_id, method = method, after_date = %after_date, before_date = %before_date)
+)]
 async fn fetch_nearblocks_transactions(
     http_client: &reqwest::Client,
     api_key: &str,
@@ -146,6 +151,11 @@ pub async fn find_proposal_execution_transaction(
 /// Reusable lookup: returns the structured `ProposalTransactionResponse`.
 /// Used by the public `/tx` endpoint and by other handlers that need the
 /// execution block for a proposal.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(dao_id = %dao_id, proposal_id = proposal_id)
+)]
 pub async fn find_proposal_execution_transaction_inner(
     state: &Arc<AppState>,
     dao_id: &AccountId,
@@ -294,6 +304,7 @@ pub struct TokenPriceAtTimestampResponse {
 }
 
 /// Search for a receipt by keyword (receipt ID) and return the originating transaction hash
+#[tracing::instrument(level = "info", skip_all, fields(step = "receipt_search"))]
 pub async fn search_receipt(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ReceiptSearchQuery>,
@@ -370,10 +381,17 @@ pub async fn search_receipt(
 /// - exact timestamp provider quote
 /// - cached daily EOD (same UTC day)
 /// - null (no price available or upstream failure)
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(step = "price_lookup", asset_contract = tracing::field::Empty)
+)]
 pub async fn get_token_price_at_timestamp(
     State(state): State<Arc<AppState>>,
     Query(params): Query<TokenPriceAtTimestampQuery>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
+    tracing::Span::current().record("asset_contract", tracing::field::display(&params.token_id));
+
     let timestamp = DateTime::parse_from_rfc3339(&params.timestamp)
         .map(|dt| dt.with_timezone(&Utc))
         .map_err(|_| {

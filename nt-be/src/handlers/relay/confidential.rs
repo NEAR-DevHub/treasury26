@@ -52,6 +52,7 @@ pub fn compute_nep413_hash(payload: &Value) -> Option<String> {
 }
 
 /// Fetch the Ed25519 derived public key for a DAO's path from v1.signer.
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = dao_id))]
 pub(crate) async fn fetch_mpc_public_key(
     state: &Arc<AppState>,
     dao_id: &str,
@@ -91,10 +92,18 @@ pub struct PendingIntentInput<'a> {
 }
 
 /// Store a pending intent for later auto-submission.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(dao_id = tracing::field::Empty, hash = tracing::field::Empty)
+)]
 pub async fn store_pending_intent(
     pool: &PgPool,
     input: PendingIntentInput<'_>,
 ) -> Result<(), String> {
+    tracing::Span::current().record("dao_id", tracing::field::display(input.dao_id));
+    tracing::Span::current().record("hash", tracing::field::display(input.payload_hash));
+
     let quote_metadata = input
         .quote_metadata
         .map(|v| normalize_quote_metadata_accounts(v.clone()));
@@ -204,12 +213,19 @@ pub fn extract_v1_signer_hash_from_kind(kind: &Value) -> Option<String> {
 /// Spawn a background auto-submit for each confidential intent referenced by an
 /// approving vote relay. Each task matches its payload hash to a pending intent
 /// and, if the MPC signature is in the execution result, submits it to 1Click.
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(treasury_id = treasury_id, intent_count = tracing::field::Empty)
+)]
 pub fn spawn_auto_submit_intents(
     state: &Arc<AppState>,
     treasury_id: &str,
     payload_hashes: Vec<String>,
     result_debug: &str,
 ) {
+    tracing::Span::current().record("intent_count", payload_hashes.len());
+
     for payload_hash in payload_hashes {
         let state = state.clone();
         let treasury_id = treasury_id.to_owned();
@@ -225,12 +241,19 @@ pub fn spawn_auto_submit_intents(
 /// This is called in a background task after a successful vote relay.
 /// It uses the payload hash extracted from the delegate action to find the
 /// matching pending intent.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(treasury_id = treasury_id, hash = tracing::field::Empty)
+)]
 pub async fn try_auto_submit_intent(
     state: &Arc<AppState>,
     treasury_id: &str,
     payload_hash: &str,
     result_debug: &str,
 ) {
+    tracing::Span::current().record("hash", tracing::field::display(payload_hash));
+
     // Extract MPC signature from execution result
     let sig_bytes = match extract_mpc_signature(result_debug) {
         Some(bytes) => bytes,

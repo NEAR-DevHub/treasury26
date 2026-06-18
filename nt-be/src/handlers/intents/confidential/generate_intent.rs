@@ -35,6 +35,11 @@ pub struct GenerateIntentRequest {
 ///
 /// The response contains a standard-specific payload (e.g. NEP-413 for NEAR)
 /// that the wallet or v1.signer must sign before submitting via submit-intent.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(step = "generate_intent", dao_id = tracing::field::Empty)
+)]
 pub async fn generate_intent(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
@@ -56,6 +61,7 @@ pub async fn generate_intent(
                 format!("Invalid signer_id '{}': {}", request.signer_id, e),
             )
         })?;
+    tracing::Span::current().record("dao_id", tracing::field::display(&dao_id));
     auth_user.verify_can_add_proposal(&state, &dao_id).await?;
 
     let quote_meta =

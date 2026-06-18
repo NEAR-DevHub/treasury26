@@ -148,6 +148,7 @@ async fn upsert_schedule_row(
     Ok(())
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(instance_id = instance_id))]
 async fn refresh_instance_rows(
     state: Arc<AppState>,
     instance_id: String,
@@ -234,6 +235,7 @@ async fn refresh_instance_rows(
     Ok(rows_upserted)
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(job = "ft_lockup_schedule_refresh"))]
 pub async fn refresh_ft_lockup_dao_schedules(
     state: &Arc<AppState>,
 ) -> Result<FtLockupRefreshSummary, Box<dyn std::error::Error + Send + Sync>> {
@@ -299,12 +301,19 @@ async fn mark_claim_failure(
     Ok(())
 }
 
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(account_id = dao_account_id, asset_contract = tracing::field::Empty, instance_id = instance_id)
+)]
 async fn register_ft_once(
     state: &Arc<AppState>,
     token_account_id: &str,
     dao_account_id: &str,
     instance_id: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    tracing::Span::current().record("asset_contract", tracing::field::display(token_account_id));
+
     let token_account: AccountId = token_account_id.parse()?;
     let dao_account: AccountId = dao_account_id.parse()?;
 
@@ -352,12 +361,18 @@ async fn register_ft_once(
     Ok(())
 }
 
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(job = "ft_lockup_claim", batch_limit = tracing::field::Empty, dry_run = dry_run)
+)]
 pub async fn run_due_ft_lockup_claims(
     state: &Arc<AppState>,
     batch_limit: Option<i64>,
     dry_run: bool,
 ) -> Result<FtLockupClaimSummary, Box<dyn std::error::Error + Send + Sync>> {
     let limit = batch_limit.unwrap_or(DEFAULT_CLAIM_BATCH_LIMIT).max(1);
+    tracing::Span::current().record("batch_limit", limit);
 
     let due_rows = sqlx::query!(
         r#"
@@ -563,6 +578,7 @@ pub async fn run_due_ft_lockup_claims(
     Ok(summary)
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(job = "ft_lockup_scheduler"))]
 pub async fn run_ft_lockup_schedule_refresh_service(state: Arc<AppState>) {
     tracing::info!(
         "Starting FT lockup schedule refresh service (startup + every {}h)",

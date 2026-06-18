@@ -32,6 +32,7 @@ struct PendingNotification {
 /// Read undelivered `dao_notifications` for Telegram-connected DAOs and send messages.
 ///
 /// Returns the number of notifications successfully sent.
+#[tracing::instrument(level = "info", skip_all, fields(job = "telegram_dispatch"))]
 pub async fn run_telegram_dispatch_cycle(
     state: &Arc<AppState>,
     telegram_client: &TelegramClient,

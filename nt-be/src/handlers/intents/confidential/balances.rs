@@ -28,6 +28,7 @@ struct BalancesResponse {
 /// Returns `(token_id, available)` pairs where `token_id` is the raw intents
 /// token ID (e.g. `nep141:wrap.near`) and `available` is a base-10 string of
 /// the raw on-chain amount (pre-decimal-adjustment). Zero balances are filtered.
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id))]
 pub async fn fetch_confidential_balances(
     state: &AppState,
     dao_id: &AccountIdRef,

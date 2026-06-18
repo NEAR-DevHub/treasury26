@@ -55,6 +55,7 @@ pub struct AuthenticateResult {
 
 /// Refresh the JWT access token for a DAO using its stored refresh token.
 /// Called internally before making authenticated API calls.
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id))]
 pub async fn refresh_dao_jwt(
     state: &AppState,
     dao_id: &AccountIdRef,

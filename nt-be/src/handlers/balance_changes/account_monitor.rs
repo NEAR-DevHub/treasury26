@@ -94,6 +94,11 @@ async fn has_new_intents_activity_since_last_swap(
 /// * `intents_api_key` - Optional Intents Explorer API key for swap detection
 /// * `intents_api_url` - Intents Explorer API base URL
 #[allow(clippy::too_many_arguments)]
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(job = "account_maintenance", up_to_block = up_to_block)
+)]
 pub async fn run_maintenance_cycle(
     app_state: &AppState,
     up_to_block: i64,
@@ -591,6 +596,11 @@ async fn discover_ft_tokens_from_receipts(
 /// This catches tokens that the counterparty-based discovery misses — for example,
 /// when a treasury receives a direct FT deposit from an account it has never
 /// transacted with in NEAR.
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(account_id = account_id, up_to_block = up_to_block)
+)]
 pub async fn discover_ft_tokens_from_fastnear(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -680,6 +690,11 @@ pub async fn discover_ft_tokens_from_fastnear(
 /// 1. Calls mt_tokens_for_owner on intents.near to get all tokens held by the account
 /// 2. For newly discovered intents tokens, seeds an initial balance change record
 /// 3. The next monitoring cycle will automatically fill gaps for these tokens
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(account_id = account_id, up_to_block = up_to_block)
+)]
 pub async fn discover_intents_tokens(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -764,6 +779,11 @@ pub async fn discover_intents_tokens(
 ///
 /// Respects `maintenance_block_floor` from monitored_accounts as a hard stop
 /// for how far back gap filling scans (merged with any creation_block floor).
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(account_id = account_id, up_to_block = up_to_block)
+)]
 pub async fn fill_account_gaps(
     pool: &PgPool,
     network: &NetworkConfig,

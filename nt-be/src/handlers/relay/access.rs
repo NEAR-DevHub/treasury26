@@ -37,6 +37,7 @@ pub struct AuthorizedRelay {
 
 /// Fetch the treasury's `monitored_accounts` row, if it is tracked. Presence here is
 /// also the "sanctioned Sputnik DAO" signal, enforced by [`authorize`].
+#[tracing::instrument(level = "debug", skip_all, fields(treasury_id = %treasury_id))]
 pub async fn fetch_treasury_record(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
@@ -84,6 +85,11 @@ pub async fn fetch_treasury_record(
 ///
 /// The tier follows the treasury (its onboarding date), NOT the wire shape: an old
 /// DAO accessed via a `w_execute_signed` wallet still gets bond-based sponsorship.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(step = "relay_access", treasury_id = tracing::field::Empty)
+)]
 pub async fn authorize(
     state: &Arc<AppState>,
     auth_user: &AuthUser,
@@ -96,6 +102,7 @@ pub async fn authorize(
         operation,
         attached_deposit,
     } = parsed;
+    tracing::Span::current().record("treasury_id", tracing::field::display(&treasury_id));
 
     // 1. Identity binding (shape-specific).
     match &submission {
@@ -161,6 +168,7 @@ pub async fn authorize(
 /// following on-chain DAO permissions: `add_proposal` needs add permission; each
 /// distinct vote needs the matching vote permission (including Everyone roles).
 /// Derived from the parsed operation so it is identical for both wire shapes.
+#[tracing::instrument(level = "debug", skip_all, fields(treasury_id = %treasury_id))]
 async fn verify_proposal_access(
     state: &Arc<AppState>,
     auth_user: &AuthUser,

@@ -67,6 +67,11 @@ fn parse_history_page(body_text: &str) -> Result<HistoryPage, String> {
     })
 }
 
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(account_id = account_id, limit = limit)
+)]
 pub async fn fetch_history_with_token(
     state: &AppState,
     account_id: &str,
@@ -135,6 +140,7 @@ pub async fn fetch_history_with_token(
     Ok(parsed)
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(account_id = %account_id, limit = limit))]
 pub async fn fetch_history(
     state: &AppState,
     account_id: &AccountIdRef,

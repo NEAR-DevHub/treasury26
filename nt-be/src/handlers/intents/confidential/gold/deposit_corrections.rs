@@ -111,6 +111,11 @@ impl ConfidentialDepositCorrector {
     /// as the real quantity. Within a poll batch the earliest same-token
     /// deposit takes the full delta and any siblings take 0 (merge rule).
     /// Best-effort — callers log and continue on error.
+    #[tracing::instrument(
+        level = "info",
+        skip_all,
+        fields(account_id = %account_id, inserted_count = inserted.len())
+    )]
     pub(crate) async fn correct_new_deposits(
         state: &AppState,
         account_id: &AccountIdRef,
@@ -223,6 +228,7 @@ impl ConfidentialDepositCorrector {
     /// Backfill path: pair this DAO's external gold deposits with the poller's
     /// deposit legs (per asset, time-ordered) and record the legs' real
     /// amounts. Returns the number of corrections written.
+    #[tracing::instrument(level = "info", skip_all, fields(dao_id = dao_id))]
     pub(crate) async fn reconcile_dao(pool: &PgPool, dao_id: &str) -> Result<usize, sqlx::Error> {
         let gold_deposits = load_confidential_gold_deposits(pool, dao_id).await?;
         if gold_deposits.is_empty() {
@@ -295,6 +301,11 @@ impl ConfidentialDepositCorrector {
 
     /// Run the backfill for every enabled confidential DAO whose bronze history
     /// backfill is complete. Best-effort per DAO.
+    #[tracing::instrument(
+        level = "info",
+        skip_all,
+        fields(job = "confidential_deposit_correction")
+    )]
     pub(crate) async fn reconcile_backfilled_daos(pool: &PgPool) -> Result<usize, sqlx::Error> {
         let dao_ids: Vec<String> = sqlx::query_scalar(
             r#"
