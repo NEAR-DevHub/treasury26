@@ -53,7 +53,7 @@ pub async fn get_system_status(
         .cache
         .cached(CacheTier::ShortTerm, cache_key, async move {
             let response = http_client.get(status_url).send().await.map_err(|e| {
-                log::error!("Error fetching system status: {}", e);
+                tracing::error!("Error fetching system status: {}", e);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Failed to fetch system status: {}", e),
@@ -62,7 +62,7 @@ pub async fn get_system_status(
 
             if !response.status().is_success() {
                 let error_text = response.text().await.unwrap_or_default();
-                log::error!("Instatus API error: {}", error_text);
+                tracing::error!("Instatus API error: {}", error_text);
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Instatus API error: {}", error_text),
@@ -70,7 +70,7 @@ pub async fn get_system_status(
             }
 
             let instatus_response: InstatusResponse = response.json().await.map_err(|e| {
-                log::error!("Error parsing system status response: {}", e);
+                tracing::error!("Error parsing system status response: {}", e);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Failed to parse system status response: {}", e),

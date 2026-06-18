@@ -164,7 +164,7 @@ pub async fn get_proposals(
         )
         .await
         .map_err(|e| {
-            log::warn!("Error filtering proposals: {}", e);
+            tracing::warn!("Error filtering proposals: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to filter proposals".to_string(),
@@ -375,7 +375,7 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
     let rows = match rows {
         Ok(rows) => rows,
         Err(e) => {
-            log::warn!("Failed to fetch confidential intent metadata: {}", e);
+            tracing::warn!("Failed to fetch confidential intent metadata: {}", e);
             return;
         }
     };

@@ -84,7 +84,7 @@ impl PaymentListStatus {
 /// Add a list_id to the pending payment lists table for the worker to process.
 /// Uses ON CONFLICT DO NOTHING for idempotency.
 pub async fn add_pending_list(pool: &PgPool, list_id: &str) -> Result<(), sqlx::Error> {
-    log::info!("Adding list {} to payout worker queue", list_id);
+    tracing::info!("Adding list {} to payout worker queue", list_id);
     sqlx::query!(
         "INSERT INTO pending_payment_lists (list_id) VALUES ($1) ON CONFLICT DO NOTHING",
         list_id
@@ -103,7 +103,7 @@ async fn complete_pending_list(pool: &PgPool, list_id: &str) {
     .execute(pool)
     .await
     {
-        log::error!(
+        tracing::error!(
             "Failed to mark list {} as completed in pending_payment_lists: {}",
             list_id,
             e
@@ -132,7 +132,7 @@ pub async fn query_and_process_pending_lists(
         return Ok(0);
     }
 
-    log::info!(
+    tracing::info!(
         "Worker checking {} pending lists: {:?}",
         list_ids.len(),
         list_ids
@@ -142,7 +142,7 @@ pub async fn query_and_process_pending_lists(
 
     for list_id in &list_ids {
         // First check list status via view call before attempting payout
-        log::info!("Checking status of list {}", list_id);
+        tracing::info!("Checking status of list {}", list_id);
 
         let view_result = Contract(state.bulk_payment_contract_id.clone())
             .call_function(
@@ -159,12 +159,12 @@ pub async fn query_and_process_pending_lists(
             Ok(response) => {
                 let list = response.data;
                 if list.status.is_pending() {
-                    log::debug!("List {} is still pending approval, skipping", list_id);
+                    tracing::debug!("List {} is still pending approval, skipping", list_id);
                     continue;
                 }
                 if !list.status.is_approved() {
                     // List is rejected or in an unknown state — remove from queue
-                    log::info!(
+                    tracing::info!(
                         "List {} is not approved (rejected or unknown status), removing from queue",
                         list_id
                     );
@@ -172,7 +172,7 @@ pub async fn query_and_process_pending_lists(
                     continue;
                 }
                 if !list.has_pending_payments() {
-                    log::info!(
+                    tracing::info!(
                         "List {} has no pending payments (all paid), removing from queue",
                         list_id
                     );
@@ -183,17 +183,17 @@ pub async fn query_and_process_pending_lists(
             Err(e) => {
                 let err_str = e.to_string();
                 if err_str.contains("not found") {
-                    log::info!("List {} not found on-chain, removing from queue", list_id);
+                    tracing::info!("List {} not found on-chain, removing from queue", list_id);
                     complete_pending_list(&state.db_pool, list_id).await;
                 } else {
-                    log::error!("Failed to view list {}: {}", list_id, err_str);
+                    tracing::error!("Failed to view list {}: {}", list_id, err_str);
                 }
                 continue;
             }
         }
 
         // List is approved — proceed with payout
-        log::info!("Processing payout batch for approved list {}", list_id);
+        tracing::info!("Processing payout batch for approved list {}", list_id);
 
         let call_result = Contract(state.bulk_payment_contract_id.clone())
             .call_function(
@@ -210,15 +210,15 @@ pub async fn query_and_process_pending_lists(
         match call_result {
             Ok(_) => {
                 processed_count += 1;
-                log::info!("Successfully processed batch for list {}", list_id);
+                tracing::info!("Successfully processed batch for list {}", list_id);
             }
             Err(e) => {
                 let err_str = e.to_string();
-                log::error!("Failed to process batch for list {}: {}", list_id, err_str);
+                tracing::error!("Failed to process batch for list {}: {}", list_id, err_str);
 
                 // Remove list from tracking if it's not found or completed
                 if err_str.contains("not found") || err_str.contains("No pending payments") {
-                    log::info!("Removing list {} from worker queue", list_id);
+                    tracing::info!("Removing list {} from worker queue", list_id);
                     complete_pending_list(&state.db_pool, list_id).await;
                 }
             }

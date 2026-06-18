@@ -185,7 +185,7 @@ async fn submit_relay(
     };
 
     result.map_err(|error_message| {
-        log::error!("Relay execution failed: {}", error_message);
+        tracing::error!("Relay execution failed: {}", error_message);
         error_response(StatusCode::INTERNAL_SERVER_ERROR, error_message)
     })
 }

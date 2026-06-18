@@ -77,7 +77,7 @@ async fn fetch_nearblocks_transactions(
         .send()
         .await
         .map_err(|e| {
-            log::error!("Failed to fetch from NearBlocks API: {}", e);
+            tracing::error!("Failed to fetch from NearBlocks API: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to fetch from external API".to_string(),
@@ -85,7 +85,7 @@ async fn fetch_nearblocks_transactions(
         })?;
 
     if !response.status().is_success() {
-        log::info!(
+        tracing::info!(
             "No transactions found or API error for method {}: {}",
             method,
             response.status()
@@ -94,7 +94,7 @@ async fn fetch_nearblocks_transactions(
     }
 
     let data: NearBlocksResponse = response.json().await.map_err(|e| {
-        log::error!("Failed to parse NearBlocks response: {}", e);
+        tracing::error!("Failed to parse NearBlocks response: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to parse API response".to_string(),
@@ -152,7 +152,7 @@ pub async fn find_proposal_execution_transaction_inner(
     proposal_id: u64,
     params: &TransactionQueryParams,
 ) -> Result<ProposalTransactionResponse, (StatusCode, String)> {
-    log::info!(
+    tracing::info!(
         "Searching for proposal {} execution between {} and {}",
         proposal_id,
         params.after_date,
@@ -194,13 +194,13 @@ pub async fn find_proposal_execution_transaction_inner(
                 )
                 .await?;
 
-                log::info!(
+                tracing::info!(
                     "Found {} on_proposal_callback transactions",
                     callback_txns.len()
                 );
 
                 if let Some(txn) = find_matching_transaction(&callback_txns, proposal_id, &action) {
-                    log::info!("Found execution transaction: {}", txn.transaction_hash);
+                    tracing::info!("Found execution transaction: {}", txn.transaction_hash);
                     return Ok(ProposalTransactionResponse {
                         transaction_hash: txn.transaction_hash.clone(),
                         nearblocks_url: format!(
@@ -224,13 +224,13 @@ pub async fn find_proposal_execution_transaction_inner(
             )
             .await?;
 
-            log::info!(
+            tracing::info!(
                 "Found {} act_proposal transactions",
                 act_proposal_txns.len()
             );
 
             if let Some(txn) = find_matching_transaction(&act_proposal_txns, proposal_id, &action) {
-                log::info!("Found execution transaction: {}", txn.transaction_hash);
+                tracing::info!("Found execution transaction: {}", txn.transaction_hash);
                 return Ok(ProposalTransactionResponse {
                     transaction_hash: txn.transaction_hash.clone(),
                     nearblocks_url: format!("https://nearblocks.io/txns/{}", txn.transaction_hash),
@@ -239,7 +239,7 @@ pub async fn find_proposal_execution_transaction_inner(
                 });
             }
 
-            log::info!(
+            tracing::info!(
                 "No execution transaction found for proposal {}",
                 proposal_id
             );
@@ -328,7 +328,7 @@ pub async fn search_receipt(
                 .send()
                 .await
                 .map_err(|e| {
-                    log::error!("Failed to fetch from NearBlocks receipt search API: {}", e);
+                    tracing::error!("Failed to fetch from NearBlocks receipt search API: {}", e);
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "Failed to fetch from external API".to_string(),
@@ -336,7 +336,7 @@ pub async fn search_receipt(
                 })?;
 
             if !response.status().is_success() {
-                log::error!("NearBlocks receipt search API error: {}", response.status());
+                tracing::error!("NearBlocks receipt search API error: {}", response.status());
                 return Err((
                     StatusCode::from_u16(response.status().as_u16())
                         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
@@ -346,7 +346,7 @@ pub async fn search_receipt(
             let data = response.json().await;
 
             let data: NearBlocksReceiptSearchResponse = data.map_err(|e| {
-                log::error!("Failed to parse NearBlocks receipt search response: {}", e);
+                tracing::error!("Failed to parse NearBlocks receipt search response: {}", e);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Failed to parse API response".to_string(),
@@ -407,7 +407,7 @@ pub async fn get_token_price_at_timestamp(
                 }
                 Ok(None) => Ok::<_, (StatusCode, String)>(None::<TokenPriceAtTimestampResponse>),
                 Err(e) => {
-                    log::warn!(
+                    tracing::warn!(
                         "Failed to resolve receipt token price for {}: {}",
                         token_id,
                         e

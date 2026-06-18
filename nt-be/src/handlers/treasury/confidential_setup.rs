@@ -74,7 +74,7 @@ pub async fn setup_confidential_treasury(
         send_progress(tx, "authenticating", "in_progress").await;
     }
 
-    log::info!(
+    tracing::info!(
         "Confidential setup: creating auth proposal for {}",
         treasury_id
     );
@@ -84,7 +84,7 @@ pub async fn setup_confidential_treasury(
     let (proposal_id, vote_result_debug) =
         submit_and_approve_proposal(state, treasury_id, auth_proposal).await?;
 
-    log::info!(
+    tracing::info!(
         "Confidential setup: auth proposal #{} approved for {}",
         proposal_id,
         treasury_id
@@ -108,7 +108,7 @@ pub async fn setup_confidential_treasury(
     )
     .await?;
 
-    log::info!(
+    tracing::info!(
         "Confidential setup: DAO {} authenticated with 1Click",
         treasury_id
     );
@@ -136,7 +136,7 @@ pub async fn setup_confidential_treasury(
     let (policy_proposal_id, _) =
         submit_and_approve_proposal(state, treasury_id, change_policy_proposal).await?;
 
-    log::info!(
+    tracing::info!(
         "Confidential setup: policy proposal #{} approved for {}",
         policy_proposal_id,
         treasury_id
@@ -315,7 +315,7 @@ async fn authenticate_with_1click(
         .execute(&state.db_pool)
         .await;
 
-        log::info!(
+        tracing::info!(
             "Stored confidential JWT for DAO {} (expires in {}s)",
             treasury_id,
             expires_in

@@ -29,7 +29,7 @@ pub async fn get_popular_assets_by_activity(
             }
             Ok(_) => {}
             Err((status, err)) => {
-                log::warn!(
+                tracing::warn!(
                     "popular_assets symbol lookup failed: symbol={}, status={}, error={}",
                     symbol,
                     status.as_u16(),

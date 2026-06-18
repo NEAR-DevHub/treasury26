@@ -138,7 +138,9 @@ pub async fn detect_swaps_from_api_with_client(
     api_url: &str,
 ) -> Result<Vec<DetectedSwap>, Box<dyn Error + Send + Sync>> {
     let Some(api_key) = api_key else {
-        log::debug!("No INTENTS_EXPLORER_API_KEY configured, skipping API-based swap detection");
+        tracing::debug!(
+            "No INTENTS_EXPLORER_API_KEY configured, skipping API-based swap detection"
+        );
         return Ok(vec![]);
     };
 
@@ -163,7 +165,7 @@ pub async fn detect_swaps_from_api_with_client(
 
     let api_transactions: Vec<IntentsTransaction> = response.json().await?;
 
-    log::info!(
+    tracing::info!(
         "Intents Explorer API returned {} successful transactions for {}",
         api_transactions.len(),
         account_id
@@ -241,7 +243,7 @@ pub async fn detect_swaps_from_api_with_client(
 
         // Find matching balance change records for this fulfillment
         let Some(matching_records) = tx_to_records.get(fulfillment_tx) else {
-            log::debug!(
+            tracing::debug!(
                 "No balance change found for fulfillment tx {} for {}",
                 fulfillment_tx,
                 account_id
@@ -268,7 +270,7 @@ pub async fn detect_swaps_from_api_with_client(
             });
 
         let Some(fulfillment) = fulfillment_record else {
-            log::debug!(
+            tracing::debug!(
                 "No positive intents token balance change for tx {} for {}",
                 fulfillment_tx,
                 account_id
@@ -367,7 +369,7 @@ pub async fn detect_swaps_from_api_with_client(
     // Sort by fulfillment block height
     swaps.sort_by_key(|s| s.fulfillment_block_height);
 
-    log::info!(
+    tracing::info!(
         "Matched {} swaps from API for {} (from {} API transactions, {} balance changes)",
         swaps.len(),
         account_id,
@@ -480,8 +482,8 @@ pub async fn classify_proposal_swap_deposits(
         return Ok(0);
     }
 
-    log::info!(
-        "[swap-classify] {}: Found {} unlinked on_proposal_callback deposits to check",
+    tracing::info!(
+        "{}: Found {} unlinked on_proposal_callback deposits to check",
         account_id,
         unlinked_deposits.len()
     );
@@ -503,8 +505,8 @@ pub async fn classify_proposal_swap_deposits(
         let proposal_id = match extract_proposal_id(network, &tx_hash, &signer_id).await {
             Some(id) => id,
             None => {
-                log::debug!(
-                    "[swap-classify] Could not extract proposal ID from tx {} for {}",
+                tracing::debug!(
+                    "Could not extract proposal ID from tx {} for {}",
                     tx_hash,
                     account_id
                 );
@@ -516,8 +518,8 @@ pub async fn classify_proposal_swap_deposits(
         let proposal = match fetch_proposal(network, &dao_account_id, proposal_id).await {
             Ok(p) => p,
             Err(e) => {
-                log::debug!(
-                    "[swap-classify] Failed to fetch proposal {} for {}: {}",
+                tracing::debug!(
+                    "Failed to fetch proposal {} for {}: {}",
                     proposal_id,
                     account_id,
                     e
@@ -566,8 +568,8 @@ pub async fn classify_proposal_swap_deposits(
             && r.rows_affected() > 0
         {
             classified += 1;
-            log::info!(
-                "[swap-classify] {}: Linked deposit bc_id={} to existing intents swap",
+            tracing::info!(
+                "{}: Linked deposit bc_id={} to existing intents swap",
                 account_id,
                 deposit.id
             );
@@ -605,8 +607,8 @@ pub async fn classify_proposal_swap_deposits(
                 && r.rows_affected() > 0
             {
                 classified += 1;
-                log::info!(
-                    "[swap-classify] {}: Linked NEAR deposit bc_id={} to existing intents swap (approx)",
+                tracing::info!(
+                    "{}: Linked NEAR deposit bc_id={} to existing intents swap (approx)",
                     account_id,
                     deposit.id
                 );
@@ -662,16 +664,16 @@ pub async fn classify_proposal_swap_deposits(
         match result {
             Ok(r) if r.rows_affected() > 0 => {
                 classified += 1;
-                log::info!(
-                    "[swap-classify] {}: Classified proposal {} as asset-exchange deposit (bc_id={})",
+                tracing::info!(
+                    "{}: Classified proposal {} as asset-exchange deposit (bc_id={})",
                     account_id,
                     proposal_id,
                     deposit.id
                 );
             }
             Err(e) => {
-                log::debug!(
-                    "[swap-classify] {}: Error inserting proposal swap for bc_id={}: {}",
+                tracing::debug!(
+                    "{}: Error inserting proposal swap for bc_id={}: {}",
                     account_id,
                     deposit.id,
                     e

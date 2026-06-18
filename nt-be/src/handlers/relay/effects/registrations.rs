@@ -150,8 +150,8 @@ pub(crate) async fn derive_targets_for_proposal(
     let proposal = match fetch_proposal(&state.network, treasury_id, proposal_id).await {
         Ok(proposal) => proposal,
         Err(e) => {
-            log::warn!(
-                "storage_deposit: failed to fetch proposal {} for {}: {}",
+            tracing::warn!(
+                "failed to fetch proposal {} for {}: {}",
                 proposal_id,
                 treasury_id,
                 e
@@ -182,11 +182,7 @@ pub(crate) async fn derive_targets_for_proposal(
                 }
             }
             Err(e) => {
-                log::warn!(
-                    "storage_deposit: failed to fetch bulk list {}: {}",
-                    list_id,
-                    e
-                );
+                tracing::warn!("failed to fetch bulk list {}: {}", list_id, e);
             }
         }
     }
@@ -350,8 +346,8 @@ async fn register_one(state: &Arc<AppState>, registration: &Registration) -> Res
         Err(e) => {
             // Couldn't verify — attempt anyway; storage_deposit refunds if
             // the account turns out to be already registered.
-            log::warn!(
-                "storage_deposit: registration check failed for {} on {}: {}",
+            tracing::warn!(
+                "registration check failed for {} on {}: {}",
                 account_id,
                 token_id,
                 e

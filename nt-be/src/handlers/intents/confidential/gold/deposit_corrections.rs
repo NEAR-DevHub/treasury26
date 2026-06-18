@@ -149,12 +149,9 @@ impl ConfidentialDepositCorrector {
                 Ok(value) => {
                     live_raw.insert(asset, value);
                 }
-                Err(e) => tracing::warn!(
-                    "[deposit-correction] {} unparseable live balance '{}': {}",
-                    account_id,
-                    raw,
-                    e
-                ),
+                Err(e) => {
+                    tracing::warn!("{} unparseable live balance '{}': {}", account_id, raw, e)
+                }
             }
         }
 
@@ -165,19 +162,11 @@ impl ConfidentialDepositCorrector {
             deposits.sort_by_key(|d| (d.created_at_external, d.history_event_id));
 
             let Some(scale) = token_scale(&asset) else {
-                tracing::warn!(
-                    "[deposit-correction] {} unknown defuse asset {}, skipping",
-                    account_id,
-                    asset
-                );
+                tracing::warn!("{} unknown defuse asset {}, skipping", account_id, asset);
                 continue;
             };
             let Some(raw_live) = live_raw.get(&asset) else {
-                tracing::warn!(
-                    "[deposit-correction] {} no live balance for {}, skipping",
-                    account_id,
-                    asset
-                );
+                tracing::warn!("{} no live balance for {}, skipping", account_id, asset);
                 continue;
             };
 
@@ -188,7 +177,7 @@ impl ConfidentialDepositCorrector {
             let delta = &live_net - &previous;
             if delta <= BigDecimal::zero() {
                 tracing::warn!(
-                    "[deposit-correction] {} {} non-positive delta {} (live {} prev {}), skipping",
+                    "{} {} non-positive delta {} (live {} prev {}), skipping",
                     account_id,
                     asset,
                     delta,
@@ -261,7 +250,7 @@ impl ConfidentialDepositCorrector {
         for (asset, deposits) in gold_by_asset {
             let Some(scale) = token_scale(&asset) else {
                 tracing::warn!(
-                    "[deposit-correction] {} unknown defuse asset {}, skipping backfill",
+                    "{} unknown defuse asset {}, skipping backfill",
                     dao_id,
                     asset
                 );
@@ -326,7 +315,7 @@ impl ConfidentialDepositCorrector {
             match Self::reconcile_dao(pool, &dao_id).await {
                 Ok(written) => total += written,
                 Err(e) => {
-                    tracing::error!("[deposit-correction] backfill failed for {}: {}", dao_id, e)
+                    tracing::error!("backfill failed for {}: {}", dao_id, e)
                 }
             }
         }

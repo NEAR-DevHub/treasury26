@@ -327,7 +327,7 @@ pub async fn get_transaction_hash(
             error: None,
         })),
         Err(e) => {
-            log::error!(
+            tracing::error!(
                 "Failed to lookup transaction hash for recipient {} in block {}: {}",
                 recipient,
                 block_height,
@@ -400,7 +400,7 @@ async fn lookup_transaction_hash(
         match resolve_receipt_to_transaction(network, receipt_id, block_height).await {
             Ok(result) => return Ok(result.transaction_hash),
             Err(e) => {
-                log::debug!(
+                tracing::debug!(
                     "Failed to resolve receipt {} to transaction: {}",
                     receipt_id,
                     e

@@ -24,10 +24,10 @@ pub async fn mark_dao_dirty(pool: &PgPool, dao_id: &str) -> Result<bool, sqlx::E
     .await?;
 
     if result.rows_affected() > 0 {
-        log::info!("Marked DAO {} as dirty", dao_id);
+        tracing::info!("Marked DAO {} as dirty", dao_id);
         Ok(true)
     } else {
-        log::debug!("DAO {} not found in database", dao_id);
+        tracing::debug!("DAO {} not found in database", dao_id);
         Ok(false)
     }
 }
@@ -50,7 +50,7 @@ pub async fn register_new_dao(pool: &PgPool, dao_id: &str) -> Result<(), sqlx::E
     .execute(pool)
     .await?;
 
-    log::info!("Registered/marked DAO {} as dirty", dao_id);
+    tracing::info!("Registered/marked DAO {} as dirty", dao_id);
     Ok(())
 }
 
@@ -88,7 +88,7 @@ async fn wait_for_sync(
             return Ok(true);
         }
         if start.elapsed() >= timeout {
-            log::warn!(
+            tracing::warn!(
                 "Timed out waiting for DAO {} sync after {:?}",
                 dao_id,
                 timeout

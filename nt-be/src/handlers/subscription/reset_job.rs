@@ -69,7 +69,7 @@ async fn reset_due_monthly_plan_credits_at(
             "pro" => PlanType::Pro,
             "enterprise" => PlanType::Enterprise,
             _ => {
-                log::error!(
+                tracing::error!(
                     "Skipping reset for {} due to unknown plan_type {}",
                     account.account_id,
                     account.plan_type
@@ -111,19 +111,19 @@ async fn reset_due_monthly_plan_credits_at(
 
 /// Run background service that resets credits at startup and then at every UTC midnight.
 pub async fn run_monthly_plan_reset_service(pool: PgPool) {
-    log::info!("Starting monthly plan reset service (startup + UTC midnight schedule)");
+    tracing::info!("Starting monthly plan reset service (startup + UTC midnight schedule)");
 
     // Run once on startup.
     match reset_due_monthly_plan_credits(&pool).await {
         Ok(updated) if updated > 0 => {
-            log::info!(
+            tracing::info!(
                 "Startup reset: monthly plan credits reset for {} account(s)",
                 updated
             );
         }
         Ok(_) => {}
         Err(e) => {
-            log::error!("Startup reset failed: {}", e);
+            tracing::error!("Startup reset failed: {}", e);
         }
     }
 
@@ -132,7 +132,7 @@ pub async fn run_monthly_plan_reset_service(pool: PgPool) {
         let sleep_for = duration_until_next_utc_midnight(now);
         let wake_at = now + chrono::Duration::from_std(sleep_for).unwrap_or_default();
 
-        log::info!(
+        tracing::info!(
             "Next monthly plan reset check scheduled at {} UTC",
             wake_at.format("%Y-%m-%d %H:%M:%S")
         );
@@ -142,28 +142,28 @@ pub async fn run_monthly_plan_reset_service(pool: PgPool) {
         // Reset monthly credits
         match reset_due_monthly_plan_credits(&pool).await {
             Ok(updated) if updated > 0 => {
-                log::info!(
+                tracing::info!(
                     "Midnight reset: monthly plan credits reset for {} account(s)",
                     updated
                 );
             }
             Ok(_) => {}
             Err(e) => {
-                log::error!("Midnight reset failed: {}", e);
+                tracing::error!("Midnight reset failed: {}", e);
             }
         }
 
         // Expire old exports
         match expire_old_exports(&pool).await {
             Ok(expired) if expired > 0 => {
-                log::info!(
+                tracing::info!(
                     "Midnight: expired {} old export(s) (older than 2 days)",
                     expired
                 );
             }
             Ok(_) => {}
             Err(e) => {
-                log::error!("Midnight export expiration failed: {}", e);
+                tracing::error!("Midnight export expiration failed: {}", e);
             }
         }
     }

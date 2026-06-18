@@ -90,7 +90,7 @@ pub async fn get_user_treasuries(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Error fetching user DAOs from database: {}", e);
+        tracing::error!("Error fetching user DAOs from database: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to fetch user DAOs".to_string(),
@@ -108,7 +108,7 @@ pub async fn get_user_treasuries(
             let dao_id: AccountId = match dao_id_str.parse() {
                 Ok(id) => id,
                 Err(e) => {
-                    log::warn!("Invalid DAO ID in database: {} - {}", dao_id_str, e);
+                    tracing::warn!("Invalid DAO ID in database: {} - {}", dao_id_str, e);
                     return Ok(None);
                 }
             };
@@ -181,7 +181,7 @@ pub async fn save_user_treasury(
     )
     .await
     .map_err(|e| {
-        log::error!(
+        tracing::error!(
             "Failed to save treasury {} for user {}: {}",
             payload.dao_id,
             payload.account_id,
@@ -218,7 +218,7 @@ pub async fn hide_user_treasury(
     )
     .await
     .map_err(|e| {
-        log::error!(
+        tracing::error!(
             "Failed to update hidden state for treasury {} and user {}: {}",
             payload.dao_id,
             payload.account_id,
@@ -252,7 +252,7 @@ pub async fn remove_user_treasury(
     )
     .await
     .map_err(|e| {
-        log::error!(
+        tracing::error!(
             "Failed to remove saved treasury {} for user {}: {}",
             payload.dao_id,
             payload.account_id,

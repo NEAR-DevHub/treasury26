@@ -18,7 +18,7 @@ const SPUTNIK_DAO_FACTORY: &str = "sputnik-dao.near";
 /// This function runs in a loop, fetching the complete DAO list from sputnik-dao.near
 /// every 5 minutes and upserting into the local database.
 pub async fn run_dao_list_sync_service(pool: PgPool, network: NetworkConfig) {
-    log::info!(
+    tracing::info!(
         "Starting DAO list sync service (interval: {} seconds)",
         DAO_LIST_SYNC_INTERVAL_SECS
     );
@@ -31,11 +31,11 @@ pub async fn run_dao_list_sync_service(pool: PgPool, network: NetworkConfig) {
     loop {
         interval.tick().await;
 
-        log::info!("Running DAO list sync cycle...");
+        tracing::info!("Running DAO list sync cycle...");
 
         match sync_dao_list(&pool, &network).await {
-            Ok(count) => log::info!("DAO list sync complete: {} DAOs synced", count),
-            Err(e) => log::error!("DAO list sync failed: {}", e),
+            Ok(count) => tracing::info!("DAO list sync complete: {} DAOs synced", count),
+            Err(e) => tracing::error!("DAO list sync failed: {}", e),
         }
     }
 }
@@ -58,7 +58,7 @@ async fn sync_dao_list(
         .await?
         .data;
 
-    log::info!(
+    tracing::info!(
         "Fetched {} DAOs from {}",
         all_daos.len(),
         SPUTNIK_DAO_FACTORY

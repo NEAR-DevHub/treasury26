@@ -76,7 +76,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
         let unified_id = match token_id_to_unified_asset_id(token_id) {
             Some(id) => id,
             None => {
-                log::debug!("No unified asset ID mapping for token: {}", token_id);
+                tracing::debug!("No unified asset ID mapping for token: {}", token_id);
                 return Ok(None);
             }
         };
@@ -85,7 +85,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
         let provider_asset_id = match provider.translate_asset_id(&unified_id) {
             Some(id) => id,
             None => {
-                log::debug!(
+                tracing::debug!(
                     "Provider {} does not support asset: {}",
                     provider.source_name(),
                     unified_id
@@ -98,7 +98,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
         let cached_price = self.get_cached_price(&provider_asset_id, date).await?;
 
         if cached_price.is_none() {
-            log::debug!(
+            tracing::debug!(
                 "Cache miss for {} on {} (background sync should populate)",
                 provider_asset_id,
                 date
@@ -146,7 +146,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
         // Log if there are missing prices (background service should fill them)
         let missing_count = dates.len() - cached.len();
         if missing_count > 0 {
-            log::debug!(
+            tracing::debug!(
                 "Cache miss for {} ({} of {} dates not cached)",
                 provider_asset_id,
                 missing_count,

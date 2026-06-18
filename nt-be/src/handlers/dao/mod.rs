@@ -38,7 +38,7 @@ pub async fn mark_dirty(
     mark_dao_dirty(&state.db_pool, &payload.dao_id)
         .await
         .map_err(|e| {
-            log::error!("Failed to mark DAO {} as dirty: {}", payload.dao_id, e);
+            tracing::error!("Failed to mark DAO {} as dirty: {}", payload.dao_id, e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to mark DAO as dirty".to_string(),

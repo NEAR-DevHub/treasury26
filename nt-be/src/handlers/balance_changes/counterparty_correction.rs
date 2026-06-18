@@ -127,14 +127,11 @@ pub async fn correct_near_counterparties(
                     .fetch_one(pool)
                     .await?;
 
-                    log::info!(
-                        "[counterparty-correction] Initialised cursor at block {}",
-                        actual
-                    );
+                    tracing::info!("Initialised cursor at block {}", actual);
                     actual
                 }
                 None => {
-                    log::info!("[counterparty-correction] No records to correct");
+                    tracing::info!("No records to correct");
                     return Ok(0);
                 }
             }
@@ -173,12 +170,12 @@ pub async fn correct_near_counterparties(
         .bind(JOB_NAME)
         .execute(pool)
         .await?;
-        log::info!("[counterparty-correction] Job complete; cursor set to sentinel -1");
+        tracing::info!("Job complete; cursor set to sentinel -1");
         return Ok(0);
     }
 
-    log::info!(
-        "[counterparty-correction] Processing {} records at or below block {}",
+    tracing::info!(
+        "Processing {} records at or below block {}",
         records.len(),
         from_block,
     );
@@ -198,8 +195,8 @@ pub async fn correct_near_counterparties(
         let signer = match record.signer_id.as_deref() {
             Some(s) => s,
             None => {
-                log::warn!(
-                    "[counterparty-correction] Skipping record {} for tx {}: missing signer_id",
+                tracing::warn!(
+                    "Skipping record {} for tx {}: missing signer_id",
                     record.id,
                     tx_hash
                 );
@@ -231,11 +228,7 @@ pub async fn correct_near_counterparties(
         {
             Ok(r) => r,
             Err(e) => {
-                log::warn!(
-                    "[counterparty-correction] Failed to fetch tx {}: {}",
-                    tx_hash,
-                    e
-                );
+                tracing::warn!("Failed to fetch tx {}: {}", tx_hash, e);
                 had_rpc_error = true;
                 continue;
             }
@@ -258,11 +251,7 @@ pub async fn correct_near_counterparties(
         {
             Some(r) => r,
             None => {
-                log::warn!(
-                    "[counterparty-correction] No receipt for {} in tx {}",
-                    record.account_id,
-                    tx_hash
-                );
+                tracing::warn!("No receipt for {} in tx {}", record.account_id, tx_hash);
                 continue;
             }
         };
@@ -299,8 +288,8 @@ pub async fn correct_near_counterparties(
             .execute(pool)
             .await?;
 
-            log::info!(
-                "[counterparty-correction] id={}: {} → {} (tx={}, amount={})",
+            tracing::info!(
+                "id={}: {} → {} (tx={}, amount={})",
                 record.id,
                 record.counterparty,
                 new_cp,
@@ -318,8 +307,8 @@ pub async fn correct_near_counterparties(
     // Permanent skips (missing signer_id, unparseable hash) are not counted as
     // RPC errors and do not block cursor advancement.
     if had_rpc_error {
-        log::warn!(
-            "[counterparty-correction] Skipping cursor advance due to RPC errors; \
+        tracing::warn!(
+            "Skipping cursor advance due to RPC errors; \
              will retry this batch next cycle (cursor stays at {})",
             from_block
         );
@@ -345,8 +334,8 @@ pub async fn correct_near_counterparties(
     .execute(pool)
     .await?;
 
-    log::info!(
-        "[counterparty-correction] Corrected {}/{} records; cursor advanced to block {}",
+    tracing::info!(
+        "Corrected {}/{} records; cursor advanced to block {}",
         corrected,
         records.len(),
         next_cursor,

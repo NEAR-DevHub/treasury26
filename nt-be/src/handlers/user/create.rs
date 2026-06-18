@@ -152,7 +152,7 @@ pub async fn create_user_account(
 
     let details = format!("Ledger user account created: {account_id}",);
     if let Err(e) = state.telegram_client.send_message(&details).await {
-        log::warn!("Failed to send Telegram notification: {}", e);
+        tracing::warn!("Failed to send Telegram notification: {}", e);
     }
 
     Ok(Json(CreateUserResponse {

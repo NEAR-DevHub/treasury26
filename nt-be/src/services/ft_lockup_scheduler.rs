@@ -155,8 +155,8 @@ async fn refresh_instance_rows(
     let accounts = match fetch_ft_lockup_instance_accounts(&state, &instance_id).await {
         Ok(a) => a,
         Err((status, msg)) => {
-            log::warn!(
-                "[ft-lockup][scheduler] skip instance={} list_accounts failed: {} ({})",
+            tracing::warn!(
+                "scheduler skip instance={} list_accounts failed: {} ({})",
                 instance_id,
                 msg,
                 status
@@ -171,8 +171,8 @@ async fn refresh_instance_rows(
     let metadata = match fetch_ft_lockup_contract_metadata(&state, &instance_id).await {
         Ok(m) => m,
         Err((status, msg)) => {
-            log::warn!(
-                "[ft-lockup][scheduler] skip instance={} metadata failed: {} ({})",
+            tracing::warn!(
+                "scheduler skip instance={} metadata failed: {} ({})",
                 instance_id,
                 msg,
                 status
@@ -187,8 +187,8 @@ async fn refresh_instance_rows(
         let dao_account = match dao_account_id.parse::<AccountId>() {
             Ok(v) => v,
             Err(e) => {
-                log::warn!(
-                    "[ft-lockup][scheduler] invalid dao account id={} instance={}: {}",
+                tracing::warn!(
+                    "scheduler invalid dao account id={} instance={}: {}",
                     dao_account_id,
                     instance_id,
                     e
@@ -206,8 +206,8 @@ async fn refresh_instance_rows(
         {
             Ok(account_data) => account_data,
             Err((status, msg)) => {
-                log::warn!(
-                    "[ft-lockup][scheduler] skip account sync instance={} dao={} get_account failed: {} ({})",
+                tracing::warn!(
+                    "scheduler skip account sync instance={} dao={} get_account failed: {} ({})",
                     instance_id,
                     dao_account.as_str(),
                     msg,
@@ -396,8 +396,8 @@ pub async fn run_due_ft_lockup_claims(
                 .expect("claim semaphore should not close");
 
             if dry_run {
-                log::info!(
-                    "[ft-lockup][claim] dry-run due instance={} dao={}",
+                tracing::info!(
+                    "claim dry-run due instance={} dao={}",
                     instance_id,
                     dao_account_id
                 );
@@ -407,8 +407,8 @@ pub async fn run_due_ft_lockup_claims(
             let instance_account = match instance_id.parse::<AccountId>() {
                 Ok(v) => v,
                 Err(e) => {
-                    log::warn!(
-                        "[ft-lockup][claim] invalid instance id instance={} dao={} error={}",
+                    tracing::warn!(
+                        "claim invalid instance id instance={} dao={} error={}",
                         instance_id,
                         dao_account_id,
                         e
@@ -419,16 +419,11 @@ pub async fn run_due_ft_lockup_claims(
             };
 
             if ft_registered_at.is_none()
-                && let Err(e) = register_ft_once(
-                    &state,
-                    &token_account_id,
-                    &dao_account_id,
-                    &instance_id,
-                )
-                .await
+                && let Err(e) =
+                    register_ft_once(&state, &token_account_id, &dao_account_id, &instance_id).await
             {
-                log::warn!(
-                    "[ft-lockup][claim] first registration failed instance={} dao={} token={} error={}",
+                tracing::warn!(
+                    "claim first registration failed instance={} dao={} token={} error={}",
                     instance_id,
                     dao_account_id,
                     token_account_id,
@@ -443,8 +438,8 @@ pub async fn run_due_ft_lockup_claims(
             })) {
                 Ok(v) => v,
                 Err(e) => {
-                    log::warn!(
-                        "[ft-lockup][claim] failed to serialize claim args instance={} dao={} error={}",
+                    tracing::warn!(
+                        "claim failed to serialize claim args instance={} dao={} error={}",
                         instance_id,
                         dao_account_id,
                         e
@@ -471,8 +466,8 @@ pub async fn run_due_ft_lockup_claims(
                         let dao_account = match dao_account_id.parse::<AccountId>() {
                             Ok(v) => v,
                             Err(e) => {
-                                log::warn!(
-                                    "[ft-lockup][claim] invalid dao id after claim instance={} dao={} error={}",
+                                tracing::warn!(
+                                    "claim invalid dao id after claim instance={} dao={} error={}",
                                     instance_id,
                                     dao_account_id,
                                     e
@@ -483,7 +478,8 @@ pub async fn run_due_ft_lockup_claims(
                             }
                         };
 
-                        match fetch_ft_lockup_account_data(&state, &instance_id, &dao_account).await {
+                        match fetch_ft_lockup_account_data(&state, &instance_id, &dao_account).await
+                        {
                             Ok(Some(account_data)) => {
                                 upsert_schedule_row(
                                     &state.db_pool,
@@ -499,8 +495,8 @@ pub async fn run_due_ft_lockup_claims(
                                     .await?;
                             }
                             Err((_, msg)) => {
-                                log::warn!(
-                                    "[ft-lockup][claim] post-claim refresh failed instance={} dao={} error={}",
+                                tracing::warn!(
+                                    "claim post-claim refresh failed instance={} dao={} error={}",
                                     instance_id,
                                     dao_account_id,
                                     msg
@@ -511,8 +507,8 @@ pub async fn run_due_ft_lockup_claims(
                             }
                         }
 
-                        log::info!(
-                            "[ft-lockup][claim] success instance={} dao={}",
+                        tracing::info!(
+                            "claim success instance={} dao={}",
                             instance_id,
                             dao_account_id
                         );
@@ -520,8 +516,8 @@ pub async fn run_due_ft_lockup_claims(
                     }
                     Err(e) => {
                         mark_claim_failure(&state.db_pool, &dao_account_id, &instance_id).await?;
-                        log::warn!(
-                            "[ft-lockup][claim] failed instance={} dao={} error={}",
+                        tracing::warn!(
+                            "claim failed instance={} dao={} error={}",
                             instance_id,
                             dao_account_id,
                             e
@@ -531,8 +527,8 @@ pub async fn run_due_ft_lockup_claims(
                 },
                 Err(e) => {
                     mark_claim_failure(&state.db_pool, &dao_account_id, &instance_id).await?;
-                    log::warn!(
-                        "[ft-lockup][claim] failed instance={} dao={} error={}",
+                    tracing::warn!(
+                        "claim failed instance={} dao={} error={}",
                         instance_id,
                         dao_account_id,
                         e
@@ -555,11 +551,11 @@ pub async fn run_due_ft_lockup_claims(
             }
             Ok(Err(e)) => {
                 summary.failed += 1;
-                log::warn!("[ft-lockup][claim] task failed with error: {}", e);
+                tracing::warn!("claim task failed with error: {}", e);
             }
             Err(e) => {
                 summary.failed += 1;
-                log::warn!("[ft-lockup][claim] task join failed: {}", e);
+                tracing::warn!("claim task join failed: {}", e);
             }
         }
     }
@@ -568,7 +564,7 @@ pub async fn run_due_ft_lockup_claims(
 }
 
 pub async fn run_ft_lockup_schedule_refresh_service(state: Arc<AppState>) {
-    log::info!(
+    tracing::info!(
         "Starting FT lockup schedule refresh service (startup + every {}h)",
         REFRESH_INTERVAL_SECS / 3600
     );
@@ -578,16 +574,16 @@ pub async fn run_ft_lockup_schedule_refresh_service(state: Arc<AppState>) {
     loop {
         match refresh_ft_lockup_dao_schedules(&state).await {
             Ok(summary) => {
-                log::info!(
-                    "[ft-lockup][scheduler] refresh complete instances={} rows_upserted={}",
+                tracing::info!(
+                    "scheduler refresh complete instances={} rows_upserted={}",
                     summary.instances,
                     summary.rows_upserted
                 );
 
                 match run_due_ft_lockup_claims(&state, None, false).await {
                     Ok(claim_summary) => {
-                        log::info!(
-                            "[ft-lockup][claim] cycle done due_rows={} attempted={} succeeded={} failed={}",
+                        tracing::info!(
+                            "claim cycle done due_rows={} attempted={} succeeded={} failed={}",
                             claim_summary.due_rows,
                             claim_summary.attempted,
                             claim_summary.succeeded,
@@ -595,12 +591,12 @@ pub async fn run_ft_lockup_schedule_refresh_service(state: Arc<AppState>) {
                         );
                     }
                     Err(e) => {
-                        log::error!("[ft-lockup][claim] cycle failed after refresh: {}", e);
+                        tracing::error!("claim cycle failed after refresh: {}", e);
                     }
                 }
             }
             Err(e) => {
-                log::error!("[ft-lockup][scheduler] refresh failed: {}", e);
+                tracing::error!("scheduler refresh failed: {}", e);
             }
         }
 

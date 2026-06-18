@@ -97,7 +97,7 @@ async fn get_confidential_deposit_address(
                 if !is_amount_error || attempt == 4 {
                     return Err((status, msg));
                 }
-                log::info!(
+                tracing::info!(
                     "Quote amount {} too low (attempt {}), retrying with 10x",
                     amount,
                     attempt + 1

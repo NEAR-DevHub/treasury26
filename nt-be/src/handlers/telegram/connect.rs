@@ -301,16 +301,16 @@ pub async fn connect_treasuries(
             .edit_message_text(chat_id, message_id, &msg)
             .await
         {
-            log::warn!(
-                "[telegram] Failed to edit or fallback-send connect message {} in chat {}: {}",
+            tracing::warn!(
+                "Failed to edit or fallback-send connect message {} in chat {}: {}",
                 message_id,
                 chat_id,
                 e
             );
         }
     } else {
-        log::warn!(
-            "[telegram] No connect message_id stored for token {}, skipping message edit in chat {}",
+        tracing::warn!(
+            "No connect message_id stored for token {}, skipping message edit in chat {}",
             body.token,
             chat_id
         );
@@ -319,8 +319,8 @@ pub async fn connect_treasuries(
             .send_message_to_chat(chat_id, &msg)
             .await
         {
-            log::warn!(
-                "[telegram] Fallback send failed with missing message_id in chat {}: {}",
+            tracing::warn!(
+                "Fallback send failed with missing message_id in chat {}: {}",
                 chat_id,
                 send_err
             );
@@ -435,8 +435,8 @@ pub async fn disconnect_treasury(
                 .send_message_to_chat(chat_id, &msg)
                 .await
             {
-                log::warn!(
-                    "[telegram] Failed to send disconnect status to chat {} for dao {}: {}",
+                tracing::warn!(
+                    "Failed to send disconnect status to chat {} for dao {}: {}",
                     chat_id,
                     body.dao_id,
                     e
@@ -450,16 +450,16 @@ pub async fn disconnect_treasury(
                 .send_message_to_chat(chat_id, msg)
                 .await
             {
-                log::warn!(
-                    "[telegram] Failed to send final disconnect message to chat {}: {}",
+                tracing::warn!(
+                    "Failed to send final disconnect message to chat {}: {}",
                     chat_id,
                     e
                 );
             }
 
             if let Err(e) = state.telegram_client.leave_chat(chat_id).await {
-                log::warn!(
-                    "[telegram] Failed to leave chat {} after removing last treasury: {}",
+                tracing::warn!(
+                    "Failed to leave chat {} after removing last treasury: {}",
                     chat_id,
                     e
                 );

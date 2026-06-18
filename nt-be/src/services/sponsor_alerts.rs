@@ -67,8 +67,8 @@ async fn run_monitor_cycle(
     telegram_client.send_message(&message).await?;
 
     *LAST_ALERT_SENT_AT.write().await = Some(now);
-    log::warn!(
-        "[sponsor-alerts] Sent low-balance alert for {} (liquid: {})",
+    tracing::warn!(
+        "Sent low-balance alert for {} (liquid: {})",
         state.signer_id,
         liquid,
     );
@@ -85,7 +85,7 @@ pub fn run_sponsor_balance_monitor_loop(state: Arc<AppState>, telegram_client: T
             .map(Duration::from_secs)
             .unwrap_or(DEFAULT_POLL_INTERVAL);
 
-        log::info!(
+        tracing::info!(
             "Starting sponsor balance monitor ({}s interval, {}s initial delay)",
             poll_interval.as_secs(),
             INITIAL_DELAY.as_secs(),
@@ -98,7 +98,7 @@ pub fn run_sponsor_balance_monitor_loop(state: Arc<AppState>, telegram_client: T
             interval_timer.tick().await;
 
             if let Err(e) = run_monitor_cycle(&state, &telegram_client).await {
-                log::error!("[sponsor-alerts] Monitor cycle failed: {}", e);
+                tracing::error!("Monitor cycle failed: {}", e);
             }
         }
     });

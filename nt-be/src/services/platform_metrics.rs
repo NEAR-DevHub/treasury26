@@ -83,7 +83,7 @@ pub async fn record_events(pool: &PgPool, dao_id: &str, metrics: &[PlatformMetri
         .execute(pool)
         .await
     {
-        log::warn!(
+        tracing::warn!(
             "Failed to record platform metrics {:?} for {}: {}",
             metrics,
             dao_id,

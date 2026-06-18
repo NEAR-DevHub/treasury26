@@ -33,7 +33,7 @@ pub async fn submit_whitelist_request(
         .send_message(&message)
         .await
         .map_err(|e| {
-            log::warn!("Failed to send whitelist request to Telegram: {}", e);
+            tracing::warn!("Failed to send whitelist request to Telegram: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
         })?;
 

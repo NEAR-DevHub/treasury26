@@ -48,9 +48,7 @@ async fn get_cursor(
         .flatten();
 
     let seed = latest.unwrap_or(0);
-    log::info!(
-        "[notifications] No cursor for {consumer_name}, seeding from latest {seed_table} id={seed}"
-    );
+    tracing::info!("No cursor for {consumer_name}, seeding from latest {seed_table} id={seed}");
     update_cursor(pool, consumer_name, seed).await?;
     Ok(seed)
 }
@@ -349,8 +347,8 @@ async fn detect_swap_events(
         let received = match &row.received_amount {
             Some(v) => v.to_string(),
             None => {
-                log::warn!(
-                    "[notifications] detected_swap id={} has fulfillment but NULL received_amount; skipping",
+                tracing::warn!(
+                    "detected_swap id={} has fulfillment but NULL received_amount; skipping",
                     row.id
                 );
                 continue;

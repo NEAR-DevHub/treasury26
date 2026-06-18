@@ -52,7 +52,7 @@ pub async fn get_balance_at_block(
             let err_str = e.to_string();
             // Account doesn't exist at this block - balance is 0
             if err_str.contains("UnknownAccount") {
-                log::debug!(
+                tracing::debug!(
                     "Account {} does not exist at block {} - returning balance 0",
                     account_id,
                     block_height

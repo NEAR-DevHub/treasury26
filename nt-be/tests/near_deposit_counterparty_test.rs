@@ -149,7 +149,7 @@ async fn run_enrichment(pool: &PgPool, network: &near_api::NetworkConfig) -> usi
 #[sqlx::test]
 async fn test_incoming_near_counterparty(pool: PgPool) {
     common::load_test_env();
-    let _ = env_logger::try_init();
+    nt_be::observability::init_tracing();
     let network = common::create_archival_network();
 
     load_fixtures(
@@ -184,7 +184,7 @@ async fn test_incoming_near_counterparty(pool: PgPool) {
 #[sqlx::test]
 async fn test_outgoing_near_counterparty(pool: PgPool) {
     common::load_test_env();
-    let _ = env_logger::try_init();
+    nt_be::observability::init_tracing();
     let network = common::create_archival_network();
 
     load_fixtures(
@@ -225,7 +225,7 @@ async fn test_outgoing_near_counterparty(pool: PgPool) {
 #[sqlx::test]
 async fn test_re_enrichment_corrects_wrong_counterparty(pool: PgPool) {
     common::load_test_env();
-    let _ = env_logger::try_init();
+    nt_be::observability::init_tracing();
     let network = common::create_archival_network();
 
     load_fixtures(
@@ -331,7 +331,7 @@ async fn test_re_enrichment_corrects_wrong_counterparty(pool: PgPool) {
 #[sqlx::test]
 async fn test_correct_near_counterparties(pool: PgPool) {
     common::load_test_env();
-    let _ = env_logger::try_init();
+    nt_be::observability::init_tracing();
     let network = common::create_archival_network();
 
     // Insert wrong incoming record (counterparty = receiver_id)

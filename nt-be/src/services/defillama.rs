@@ -195,7 +195,7 @@ impl DeFiLlamaClient {
             self.base_url, timestamp, coins_param
         );
 
-        log::debug!(
+        tracing::debug!(
             "Fetching prices from DeFiLlama at timestamp {} for {} assets",
             timestamp,
             asset_ids.len()
@@ -216,7 +216,7 @@ impl DeFiLlamaClient {
 
         if !status.is_success() {
             // Only log the status line — response body can be huge (e.g. CloudFlare 429 HTML with base64 images)
-            log::warn!(
+            tracing::warn!(
                 "DeFiLlama API error for batch price at {}: {}",
                 timestamp,
                 status,
@@ -232,7 +232,7 @@ impl DeFiLlamaClient {
             .map(|(id, coin)| (id, coin.price))
             .collect();
 
-        log::debug!(
+        tracing::debug!(
             "DeFiLlama: Got {} prices at timestamp {}",
             prices.len(),
             timestamp
@@ -289,7 +289,7 @@ impl PriceProvider for DeFiLlamaClient {
             self.base_url, timestamp, asset_id
         );
 
-        log::debug!(
+        tracing::debug!(
             "Fetching price from DeFiLlama: {} for {} (timestamp: {})",
             asset_id,
             date,
@@ -306,12 +306,12 @@ impl PriceProvider for DeFiLlamaClient {
         let status = response.status();
 
         if status == reqwest::StatusCode::NOT_FOUND {
-            log::debug!("DeFiLlama: Asset {} not found", asset_id);
+            tracing::debug!("DeFiLlama: Asset {} not found", asset_id);
             return Ok(None);
         }
 
         if !status.is_success() {
-            log::warn!("DeFiLlama API error for {}: {}", asset_id, status,);
+            tracing::warn!("DeFiLlama API error for {}: {}", asset_id, status,);
             return Err(format!("DeFiLlama API error: {}", status).into());
         }
 
@@ -320,9 +320,9 @@ impl PriceProvider for DeFiLlamaClient {
         let price = data.coins.get(asset_id).map(|c| c.price);
 
         if let Some(p) = price {
-            log::debug!("DeFiLlama: {} price on {} = ${}", asset_id, date, p);
+            tracing::debug!("DeFiLlama: {} price on {} = ${}", asset_id, date, p);
         } else {
-            log::debug!("DeFiLlama: No price data for {} on {}", asset_id, date);
+            tracing::debug!("DeFiLlama: No price data for {} on {}", asset_id, date);
         }
 
         Ok(price)
@@ -344,7 +344,7 @@ impl PriceProvider for DeFiLlamaClient {
             HISTORICAL_DAYS
         );
 
-        log::info!(
+        tracing::info!(
             "Fetching all historical prices from DeFiLlama for {} ({} days)",
             asset_id,
             HISTORICAL_DAYS
@@ -360,12 +360,12 @@ impl PriceProvider for DeFiLlamaClient {
         let status = response.status();
 
         if status == reqwest::StatusCode::NOT_FOUND {
-            log::debug!("DeFiLlama: Asset {} not found", asset_id);
+            tracing::debug!("DeFiLlama: Asset {} not found", asset_id);
             return Ok(HashMap::new());
         }
 
         if !status.is_success() {
-            log::warn!(
+            tracing::warn!(
                 "DeFiLlama API error fetching history for {}: {}",
                 asset_id,
                 status,
@@ -388,7 +388,7 @@ impl PriceProvider for DeFiLlamaClient {
             }
         }
 
-        log::info!(
+        tracing::info!(
             "DeFiLlama: Fetched {} daily prices for {}",
             daily_prices.len(),
             asset_id
