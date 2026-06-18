@@ -1,7 +1,10 @@
 use axum::{
     Router,
+    body::Body,
+    http::Request,
     http::{HeaderValue, Method, header},
 };
+use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
@@ -18,7 +21,7 @@ fn main() {
 async fn async_main() {
     dotenvy::dotenv().ok();
 
-    nt_be::observability::init_tracing();
+    let _observability_guard = nt_be::observability::init_observability();
 
     // Initialize application state
     let state = Arc::new(
@@ -281,7 +284,9 @@ async fn async_main() {
                 )
                 .with_state(state)
                 .layer(open_cors),
-        );
+        )
+        .layer(SentryHttpLayer::new().enable_transaction())
+        .layer(NewSentryLayer::<Request<Body>>::new_from_top());
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
     let addr = format!("0.0.0.0:{}", port);

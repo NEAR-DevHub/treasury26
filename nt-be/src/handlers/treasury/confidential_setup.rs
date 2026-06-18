@@ -20,6 +20,7 @@ use crate::AppState;
 use crate::constants::INTENTS_CONTRACT_ID;
 use crate::handlers::intents::confidential::prepare_auth::build_auth_proposal;
 use crate::handlers::relay::confidential::{extract_mpc_signature, fetch_mpc_public_key};
+use crate::observability::sanitize_sensitive_json_value;
 
 /// Run the full confidential setup for a newly created treasury.
 ///
@@ -282,9 +283,10 @@ async fn authenticate_with_1click(
     let resp_body: Value = response.json().await.unwrap_or_default();
 
     if !status.is_success() {
+        let sanitized_body = sanitize_sensitive_json_value(&resp_body);
         return Err((
             StatusCode::BAD_GATEWAY,
-            format!("1Click auth failed ({}): {:?}", status, resp_body),
+            format!("1Click auth failed ({}): {:?}", status, sanitized_body),
         ));
     }
 

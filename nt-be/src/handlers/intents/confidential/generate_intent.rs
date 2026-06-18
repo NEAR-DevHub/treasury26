@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::sync::Arc;
 
 use crate::handlers::intents::confidential::types::{ConfidentialQuoteMetadata, as_near_account};
+use crate::observability::sanitize_sensitive_text;
 use crate::{AppState, auth::AuthUser};
 
 /// Request body for generating an intent to sign.
@@ -128,10 +129,11 @@ pub async fn generate_intent(
             .or_else(|| response_body.get("message"))
             .and_then(|v| v.as_str())
             .unwrap_or("Unknown error from 1Click API");
+        let sanitized_error = sanitize_sensitive_text(error_message);
 
         return Err((
             StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
-            error_message.to_string(),
+            sanitized_error,
         ));
     }
 

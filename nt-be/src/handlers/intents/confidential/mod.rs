@@ -4,6 +4,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
 use crate::AppState;
+use crate::observability::sanitize_sensitive_text;
 
 pub mod balances;
 pub mod bronze;
@@ -132,16 +133,17 @@ pub async fn refresh_dao_jwt(
     let status = response.status();
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_default();
+        let sanitized_error = sanitize_sensitive_text(&error_text);
         tracing::error!(
             "JWT refresh failed for DAO {} ({}): {}",
             dao_id,
             status,
-            error_text
+            sanitized_error
         );
 
         return Err((
             StatusCode::UNAUTHORIZED,
-            format!("JWT refresh failed for DAO {}: {}", dao_id, error_text),
+            format!("JWT refresh failed for DAO {}: {}", dao_id, sanitized_error),
         ));
     }
 
@@ -151,7 +153,6 @@ pub async fn refresh_dao_jwt(
             format!("Failed to parse refresh response: {}", e),
         )
     })?;
-    println!("json_value: {:?}", json_value);
     let auth_response: AuthenticateResponse = serde_json::from_value(json_value).map_err(|e| {
         (
             StatusCode::BAD_GATEWAY,

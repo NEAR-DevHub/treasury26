@@ -14,6 +14,7 @@ use crate::{
         types::normalize_quote_metadata_accounts,
     },
     handlers::relay::{effects::background, parse::ProposalKind},
+    observability::sanitize_sensitive_json_value,
     utils::cache::CacheKey,
 };
 use base64::Engine;
@@ -374,6 +375,7 @@ pub async fn try_auto_submit_intent(
         Ok(resp) => {
             let status = resp.status();
             let resp_body: Value = resp.json().await.unwrap_or_default();
+            let sanitized_resp_body = sanitize_sensitive_json_value(&resp_body);
 
             if status.is_success() {
                 tracing::info!(
@@ -381,7 +383,7 @@ pub async fn try_auto_submit_intent(
                     intent_type,
                     treasury_id,
                     payload_hash,
-                    resp_body
+                    sanitized_resp_body
                 );
 
                 // For auth: store the JWT tokens in monitored_accounts
@@ -422,7 +424,7 @@ pub async fn try_auto_submit_intent(
 
                 let update_result = sqlx::query!(
                     "UPDATE confidential_intents SET status = 'submitted', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
-                    &resp_body,
+                    &sanitized_resp_body,
                     treasury_id,
                     payload_hash,
                 )
@@ -478,11 +480,11 @@ pub async fn try_auto_submit_intent(
                     status,
                     treasury_id,
                     payload_hash,
-                    resp_body
+                    sanitized_resp_body
                 );
                 let _ = sqlx::query!(
                     "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
-                    &resp_body,
+                    &sanitized_resp_body,
                     treasury_id,
                     payload_hash,
                 )
