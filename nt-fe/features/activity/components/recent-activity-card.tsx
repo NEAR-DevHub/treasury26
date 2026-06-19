@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
     Card,
     CardContent,
@@ -18,12 +18,22 @@ import {
     Clock,
     ChevronRight,
     Shield,
+    RefreshCw,
 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
-import { useRecentActivity } from "@/hooks/use-treasury-queries";
+import {
+    useConfidentialHistoryRefreshStatus,
+    useRecentActivity,
+    useRefreshConfidentialHistory,
+} from "@/hooks/use-treasury-queries";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
-import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
+import {
+    cn,
+    formatActivityAmount,
+    formatRelativeTime,
+    formatSmartAmount,
+} from "@/lib/utils";
 import {
     useFormatHistoryDuration,
     useGetActivityLabel,
@@ -175,6 +185,7 @@ export function RecentActivitySkeleton() {
 export function RecentActivity() {
     const t = useTranslations("activity");
     const tCommon = useTranslations("common");
+    const locale = useLocale();
     const getActivityLabel = useGetActivityLabel();
     const getActivitySubLabel = useGetActivitySubLabel();
     const formatHistoryDuration = useFormatHistoryDuration();
@@ -194,6 +205,24 @@ export function RecentActivity() {
         hideSmallTransactions ? 1 : undefined,
     );
     const isHidden = isConfidential && isGuestTreasury;
+    const showRefreshButton = isConfidential && !isHidden;
+    const { data: refreshStatus, isLoading: isRefreshStatusLoading } =
+        useConfidentialHistoryRefreshStatus(treasuryId, showRefreshButton);
+    const refreshMutation = useRefreshConfidentialHistory(treasuryId);
+    const isRefreshDisabled =
+        isRefreshStatusLoading ||
+        refreshMutation.isPending ||
+        refreshStatus?.canRefresh === false;
+    const refreshRelativeTime = refreshStatus?.lastUpdatedAt
+        ? formatRelativeTime(refreshStatus.lastUpdatedAt, {
+              justNow: "now",
+              moments: "moments",
+              locale,
+          })
+        : null;
+    const refreshTooltip = refreshRelativeTime
+        ? `Last updated ${refreshRelativeTime}`
+        : "Not updated yet";
 
     const { data: planDetails } = useSubscription(treasuryId);
 
@@ -538,6 +567,27 @@ export function RecentActivity() {
                                         <ChevronRight className="h-4 w-4" />
                                     </Button>
                                 </Link>
+                                {showRefreshButton && (
+                                    <Button
+                                        variant="secondary"
+                                        size="icon"
+                                        className="h-9 w-9"
+                                        tooltipContent={refreshTooltip}
+                                        aria-label="Refresh confidential history"
+                                        disabled={isRefreshDisabled}
+                                        onClick={() =>
+                                            refreshMutation.mutate()
+                                        }
+                                    >
+                                        <RefreshCw
+                                            className={cn(
+                                                "h-4 w-4",
+                                                refreshMutation.isPending &&
+                                                    "animate-spin",
+                                            )}
+                                        />
+                                    </Button>
+                                )}
                             </>
                         )}
                     </div>

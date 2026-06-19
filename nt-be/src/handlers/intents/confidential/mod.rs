@@ -9,6 +9,7 @@ pub mod balances;
 pub mod bronze;
 pub mod generate_intent;
 pub mod gold;
+pub mod history_refresh;
 pub mod prepare_auth;
 pub mod types;
 
