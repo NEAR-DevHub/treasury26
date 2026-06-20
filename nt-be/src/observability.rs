@@ -59,8 +59,12 @@ fn init_tracing_subscriber(enable_sentry: bool) {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let log_format = log_format_from_env_value(std::env::var("LOG_FORMAT").ok().as_deref());
 
-    match (log_format, enable_sentry) {
-        (LogFormat::Json, true) => {
+    // `Option<Layer>` is itself a `Layer` whose `None` variant is a no-op, so a
+    // single registry build covers both the Sentry-on and Sentry-off cases. The
+    // layer is generic over the subscriber type, so it is constructed inside each
+    // format arm where the concrete registry type is known.
+    match log_format {
+        LogFormat::Json => {
             let fmt_layer = fmt::layer()
                 .json()
                 .flatten_event(true)
@@ -68,49 +72,26 @@ fn init_tracing_subscriber(enable_sentry: bool) {
                 .with_target(true)
                 .with_thread_ids(false)
                 .with_thread_names(false);
-            let sentry_layer =
-                sentry::integrations::tracing::layer().event_filter(sentry_event_filter);
-            let subscriber = tracing_subscriber::registry()
+            let sentry_layer = enable_sentry
+                .then(|| sentry::integrations::tracing::layer().event_filter(sentry_event_filter));
+            let _ = tracing_subscriber::registry()
                 .with(env_filter)
                 .with(fmt_layer)
-                .with(sentry_layer);
-            let _ = subscriber.try_init();
+                .with(sentry_layer)
+                .try_init();
         }
-        (LogFormat::Json, false) => {
-            let fmt_layer = fmt::layer()
-                .json()
-                .flatten_event(true)
-                .with_current_span(true)
-                .with_target(true)
-                .with_thread_ids(false)
-                .with_thread_names(false);
-            let subscriber = tracing_subscriber::registry()
-                .with(env_filter)
-                .with(fmt_layer);
-            let _ = subscriber.try_init();
-        }
-        (LogFormat::Pretty, true) => {
+        LogFormat::Pretty => {
             let fmt_layer = fmt::layer()
                 .with_target(true)
                 .with_thread_ids(false)
                 .with_thread_names(false);
-            let sentry_layer =
-                sentry::integrations::tracing::layer().event_filter(sentry_event_filter);
-            let subscriber = tracing_subscriber::registry()
+            let sentry_layer = enable_sentry
+                .then(|| sentry::integrations::tracing::layer().event_filter(sentry_event_filter));
+            let _ = tracing_subscriber::registry()
                 .with(env_filter)
                 .with(fmt_layer)
-                .with(sentry_layer);
-            let _ = subscriber.try_init();
-        }
-        (LogFormat::Pretty, false) => {
-            let fmt_layer = fmt::layer()
-                .with_target(true)
-                .with_thread_ids(false)
-                .with_thread_names(false);
-            let subscriber = tracing_subscriber::registry()
-                .with(env_filter)
-                .with(fmt_layer);
-            let _ = subscriber.try_init();
+                .with(sentry_layer)
+                .try_init();
         }
     }
 }
