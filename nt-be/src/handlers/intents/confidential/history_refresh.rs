@@ -50,7 +50,7 @@ fn build_refresh_status(
     now: DateTime<Utc>,
 ) -> HistoryRefreshStatusResponse {
     let cooldown_ends_at = last_updated_at.map(|last_updated| last_updated + REFRESH_COOLDOWN);
-    let can_refresh = cooldown_ends_at.map_or(true, |ends_at| ends_at <= now);
+    let can_refresh = cooldown_ends_at.is_none_or(|ends_at| ends_at <= now);
 
     HistoryRefreshStatusResponse {
         account_id,

@@ -412,7 +412,10 @@ export async function getConfidentialHistoryRefreshStatus(
         );
         return response.data;
     } catch (error) {
-        console.error("Error getting confidential history refresh status", error);
+        console.error(
+            "Error getting confidential history refresh status",
+            error,
+        );
         return null;
     }
 }
