@@ -16,10 +16,10 @@ use crate::handlers::intents::confidential::gold::cursors::clear_gold_dirty_if_n
 /// Set `CORRECT_CONFIDENTIAL_DEPOSIT_AMOUNTS=false` to revert to raw 1Click
 /// history amounts; re-project (reconciliation or manual dirty) to apply.
 pub(crate) fn confidential_deposit_corrections_enabled() -> bool {
-    match std::env::var("CORRECT_CONFIDENTIAL_DEPOSIT_AMOUNTS").as_deref() {
-        Ok("false") | Ok("0") => false,
-        _ => true,
-    }
+    !matches!(
+        std::env::var("CORRECT_CONFIDENTIAL_DEPOSIT_AMOUNTS").as_deref(),
+        Ok("false") | Ok("0")
+    )
 }
 
 #[tracing::instrument(level = "info", skip_all, fields(dao_id = dao_id))]
