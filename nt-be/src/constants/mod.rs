@@ -3,6 +3,7 @@ use near_api::NearToken;
 
 pub mod intents_chains;
 pub mod intents_tokens;
+pub mod near_ft_whitelist;
 
 pub const REF_FINANCE_CONTRACT_ID: &AccountIdRef =
     AccountIdRef::new_or_panic("v2.ref-finance.near");
