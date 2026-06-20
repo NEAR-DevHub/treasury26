@@ -20,7 +20,6 @@ import type { Token } from "@/components/token-input";
 import { isIntentsToken } from "@/lib/intents-fee";
 
 export type IntentsAmountMode = "recipient" | "total";
-const MAX_FEE_TO_RECIPIENT_RATIO = Big(1);
 
 function isAddressValidForToken(address: string, token: Token): boolean {
     if (!address) return false;
@@ -265,62 +264,10 @@ export function useIntentsQuote({
         retry: false,
     });
 
-    // In recipient mode (EXACT_OUTPUT), some routes return a quote but with
-    // disproportionately high fees; treat those as "amount too low" in UI.
-    const lowAmountQuoteDetails = useMemo(() => {
-        if (amountMode !== "recipient" || !quote?.quote) return false;
-
-        const amountInRaw = quote.quote.minAmountIn ?? quote.quote.amountIn;
-        const amountOutRaw = quote.quote.minAmountOut ?? quote.quote.amountOut;
-
-        if (!amountInRaw || !amountOutRaw) return null;
-
-        try {
-            if (requestAmountDecimals === undefined) return null;
-
-            const amountIn = Big(amountInRaw).div(Big(10).pow(token.decimals));
-            const amountOut = Big(amountOutRaw).div(
-                Big(10).pow(requestAmountDecimals),
-            );
-
-            if (amountOut.lte(0)) return null;
-
-            const fee = amountIn.minus(amountOut);
-            const feeToRecipientRatio = fee.div(amountOut);
-
-            // Treat routes where fee exceeds recipient amount as too low.
-            if (!feeToRecipientRatio.gt(MAX_FEE_TO_RECIPIENT_RATIO)) {
-                return null;
-            }
-
-            const feeAmount = fee
-                .toFixed(requestAmountDecimals)
-                .replace(/\.?0+$/, "");
-
-            return {
-                feeAmount,
-            };
-        } catch {
-            return null;
-        }
-    }, [amountMode, quote, token.decimals, requestAmountDecimals]);
-
-    const hasLowAmountQuote = !!lowAmountQuoteDetails;
-
     const hasError =
-        hasQueryError || hasLowAmountQuote || missingRequiredDecimalsForQuote;
+        hasQueryError || missingRequiredDecimalsForQuote;
 
     const errorMessage = useMemo(() => {
-        if (hasLowAmountQuote) {
-            if (lowAmountQuoteDetails) {
-                return t("amountTooLowWithMin", {
-                    min: lowAmountQuoteDetails.feeAmount,
-                    token: token.symbol,
-                });
-            }
-            return t("amountTooLow");
-        }
-
         if (missingRequiredDecimalsForQuote) {
             return t("fetchFailed");
         }
@@ -337,8 +284,6 @@ export function useIntentsQuote({
             t,
         );
     }, [
-        hasLowAmountQuote,
-        lowAmountQuoteDetails,
         missingRequiredDecimalsForQuote,
         hasQueryError,
         error,
@@ -392,18 +337,6 @@ export function useIntentsQuote({
             }
 
             if (quote && !isLoading && !isFetching && !isSyncPending) {
-                if (hasLowAmountQuote) {
-                    if (lowAmountQuoteDetails) {
-                        return {
-                            ok: false,
-                            error: t("amountTooLowWithMin", {
-                                min: lowAmountQuoteDetails.feeAmount,
-                                token: formValues.token.symbol,
-                            }),
-                        };
-                    }
-                    return { ok: false, error: t("amountTooLow") };
-                }
                 return { ok: true, quote };
             }
 

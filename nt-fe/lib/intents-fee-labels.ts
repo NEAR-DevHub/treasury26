@@ -8,5 +8,7 @@ export function useIntentsFeeLabels(): IntentsFeeLabels {
     return {
         amountTooLowForFee: (prefix, fee, symbol, addMore) =>
             t("amountTooLowForFee", { prefix, fee, symbol, addMore }),
+        insufficientBalanceForFee: (prefix, fee, symbol, shortfall) =>
+            t("insufficientBalanceForFee", { prefix, fee, symbol, shortfall }),
     };
 }

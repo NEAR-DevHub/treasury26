@@ -154,7 +154,8 @@
         "infoBalanced": "A {currentThreshold}-of-{memberCount} threshold provides a good balance between security and operational flexibility."
     },
     "intentsFee": {
-        "amountTooLowForFee": "{prefix}Amount too low for network fee ({fee} {symbol}). Add at least {addMore} {symbol}."
+        "amountTooLowForFee": "{prefix}Amount too low for network fee ({fee} {symbol}). Add at least {addMore} {symbol}.",
+        "insufficientBalanceForFee": "{prefix}Insufficient balance to cover payment and network fee ({fee} {symbol}). You need {shortfall} {symbol} more."
     },
     "metadata": {
         "treasuryTitle": "Dashboard | Trezu",
