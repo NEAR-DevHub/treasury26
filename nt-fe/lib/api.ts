@@ -422,18 +422,13 @@ export async function refreshConfidentialHistory(
 ): Promise<ConfidentialHistoryRefreshStatus | null> {
     if (!accountId) return null;
 
-    try {
-        const url = `${BACKEND_API_BASE}/confidential/history-refresh`;
-        const response = await axios.post<ConfidentialHistoryRefreshStatus>(
-            url,
-            { accountId },
-            { withCredentials: true },
-        );
-        return response.data;
-    } catch (error) {
-        console.error("Error refreshing confidential history", error);
-        throw error;
-    }
+    const url = `${BACKEND_API_BASE}/confidential/history-refresh`;
+    const response = await axios.post<ConfidentialHistoryRefreshStatus>(
+        url,
+        { accountId },
+        { withCredentials: true },
+    );
+    return response.data;
 }
 
 export async function getRecentActivitySenders(

@@ -373,6 +373,16 @@
             "method": "方法",
             "contract": "合约",
             "transaction": "交易"
+        },
+        "refresh": {
+            "ariaLabel": "Refresh confidential history",
+            "refreshing": "Refreshing…",
+            "lastUpdated": "Last updated {time}",
+            "notUpdated": "Not updated yet",
+            "justNow": "now",
+            "moments": "moments",
+            "checking": "Checking refresh status…",
+            "unavailable": "Refresh status unavailable"
         }
     },
     "apiDocs": {

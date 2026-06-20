@@ -145,14 +145,7 @@ pub async fn refresh_dao_jwt(
         ));
     }
 
-    let json_value: serde_json::Value = response.json().await.map_err(|e| {
-        (
-            StatusCode::BAD_GATEWAY,
-            format!("Failed to parse refresh response: {}", e),
-        )
-    })?;
-    println!("json_value: {:?}", json_value);
-    let auth_response: AuthenticateResponse = serde_json::from_value(json_value).map_err(|e| {
+    let auth_response: AuthenticateResponse = response.json().await.map_err(|e| {
         (
             StatusCode::BAD_GATEWAY,
             format!("Failed to parse refresh response: {}", e),

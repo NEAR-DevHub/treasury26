@@ -373,6 +373,16 @@
             "method": "메서드",
             "contract": "컨트랙트",
             "transaction": "트랜잭션"
+        },
+        "refresh": {
+            "ariaLabel": "Refresh confidential history",
+            "refreshing": "Refreshing…",
+            "lastUpdated": "Last updated {time}",
+            "notUpdated": "Not updated yet",
+            "justNow": "now",
+            "moments": "moments",
+            "checking": "Checking refresh status…",
+            "unavailable": "Refresh status unavailable"
         }
     },
     "apiDocs": {

@@ -39,8 +39,11 @@ import {
     useGetActivityLabel,
     useGetActivitySubLabel,
 } from "../utils/history-utils";
-import { useState, useMemo } from "react";
-import type { RecentActivity as RecentActivityType } from "@/lib/api";
+import { useState, useMemo, useCallback } from "react";
+import type {
+    ConfidentialHistoryRefreshStatus,
+    RecentActivity as RecentActivityType,
+} from "@/lib/api";
 
 type GroupedActivity =
     | {
@@ -72,6 +75,37 @@ import { StepperHeader } from "@/components/step-wizard";
 import { ConfidentialState } from "@/components/confidential-state";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { Tooltip } from "@/components/tooltip";
+
+type RefreshControlState =
+    | "ready"
+    | "checking"
+    | "refreshing"
+    | "cooldown"
+    | "unavailable";
+
+function getRefreshControlState({
+    isRefreshing,
+    isStatusFetching,
+    refreshStatus,
+}: {
+    isRefreshing: boolean;
+    isStatusFetching: boolean;
+    refreshStatus: ConfidentialHistoryRefreshStatus | null | undefined;
+}): RefreshControlState {
+    if (isRefreshing) {
+        return "refreshing";
+    }
+
+    if (isStatusFetching) {
+        return "checking";
+    }
+
+    if (!refreshStatus) {
+        return "unavailable";
+    }
+
+    return refreshStatus.canRefresh ? "ready" : "cooldown";
+}
 
 const ITEMS_ON_DASHBOARD = 10;
 const MAX_ITEMS = 100;
@@ -206,23 +240,57 @@ export function RecentActivity() {
     );
     const isHidden = isConfidential && isGuestTreasury;
     const showRefreshButton = isConfidential && !isHidden;
-    const { data: refreshStatus, isLoading: isRefreshStatusLoading } =
-        useConfidentialHistoryRefreshStatus(treasuryId, showRefreshButton);
-    const refreshMutation = useRefreshConfidentialHistory(treasuryId);
-    const isRefreshDisabled =
-        isRefreshStatusLoading ||
-        refreshMutation.isPending ||
-        refreshStatus?.canRefresh === false;
+    const {
+        data: refreshStatus,
+        isFetching: isRefreshStatusFetching,
+        isLoading: isRefreshStatusLoading,
+        refetch: refetchRefreshStatus,
+    } = useConfidentialHistoryRefreshStatus(treasuryId, showRefreshButton);
+    const { isPending: isRefreshing, mutate: refreshHistory } =
+        useRefreshConfidentialHistory(treasuryId);
+    const refreshControlState = getRefreshControlState({
+        isRefreshing,
+        isStatusFetching: isRefreshStatusLoading || isRefreshStatusFetching,
+        refreshStatus,
+    });
+    const isRefreshDisabled = refreshControlState !== "ready";
     const refreshRelativeTime = refreshStatus?.lastUpdatedAt
         ? formatRelativeTime(refreshStatus.lastUpdatedAt, {
-              justNow: "now",
-              moments: "moments",
+              justNow: t("refresh.justNow"),
+              moments: t("refresh.moments"),
               locale,
           })
         : null;
-    const refreshTooltip = refreshRelativeTime
-        ? `Last updated ${refreshRelativeTime}`
-        : "Not updated yet";
+    const refreshTooltip = useMemo(() => {
+        switch (refreshControlState) {
+            case "refreshing":
+                return t("refresh.refreshing");
+            case "checking":
+                return t("refresh.checking");
+            case "unavailable":
+                return t("refresh.unavailable");
+            case "cooldown":
+                return refreshRelativeTime
+                    ? t("refresh.lastUpdated", { time: refreshRelativeTime })
+                    : t("refresh.unavailable");
+            case "ready":
+                return refreshRelativeTime
+                    ? t("refresh.lastUpdated", { time: refreshRelativeTime })
+                    : t("refresh.notUpdated");
+        }
+    }, [refreshControlState, refreshRelativeTime, t]);
+    const handleRefreshHistory = useCallback(async () => {
+        if (refreshControlState !== "ready") {
+            return;
+        }
+
+        const latestStatus = await refetchRefreshStatus();
+        if (latestStatus.data?.canRefresh !== true) {
+            return;
+        }
+
+        refreshHistory();
+    }, [refetchRefreshStatus, refreshControlState, refreshHistory]);
 
     const { data: planDetails } = useSubscription(treasuryId);
 
@@ -573,17 +641,15 @@ export function RecentActivity() {
                                         size="icon"
                                         className="h-9 w-9"
                                         tooltipContent={refreshTooltip}
-                                        aria-label="Refresh confidential history"
+                                        aria-label={t("refresh.ariaLabel")}
                                         disabled={isRefreshDisabled}
-                                        onClick={() =>
-                                            refreshMutation.mutate()
-                                        }
+                                        onClick={handleRefreshHistory}
                                     >
                                         <RefreshCw
                                             className={cn(
                                                 "h-4 w-4",
-                                                refreshMutation.isPending &&
-                                                    "animate-spin",
+                                                isRefreshing &&
+                                                    "animate-spin motion-reduce:animate-none",
                                             )}
                                         />
                                     </Button>

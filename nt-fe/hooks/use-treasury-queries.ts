@@ -396,15 +396,27 @@ export function useRefreshConfidentialHistory(
             }
             return refreshConfidentialHistory(accountId);
         },
-        onSuccess: async () => {
-            await Promise.all([
-                queryClient.invalidateQueries({
-                    queryKey: ["recentActivity", accountId],
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: ["confidentialHistoryRefreshStatus", accountId],
-                }),
-            ]);
+        onSuccess: async (status) => {
+            if (accountId && status) {
+                queryClient.setQueryData(
+                    ["confidentialHistoryRefreshStatus", accountId],
+                    status,
+                );
+            }
+
+            await queryClient.invalidateQueries({
+                queryKey: ["recentActivity", accountId],
+            });
+        },
+        onError: async () => {
+            if (!accountId) {
+                return;
+            }
+
+            await queryClient.refetchQueries({
+                queryKey: ["confidentialHistoryRefreshStatus", accountId],
+                type: "active",
+            });
         },
     });
 }

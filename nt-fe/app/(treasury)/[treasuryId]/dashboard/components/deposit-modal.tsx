@@ -874,7 +874,6 @@ export function DepositModal({
         [form, invalidatePendingAddressRequest],
     );
 
-    console.log({ selectedAsset });
     // Fetch deposit address when both asset and network are selected
     useEffect(() => {
         const fetchAddress = async () => {
