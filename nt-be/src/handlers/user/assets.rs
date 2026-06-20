@@ -23,6 +23,7 @@ use crate::{
         INTENTS_CONTRACT_ID, NEAR_DECIMALS, NEAR_ICON, REF_FINANCE_CONTRACT_ID,
         intents_chains::ChainIcons,
         intents_tokens::{find_token_by_symbol, find_unified_asset_id},
+        near_ft_whitelist::NEAR_FT_WHITELIST,
     },
     handlers::intents::confidential::balances::fetch_confidential_balances,
     handlers::token::{TokenMetadata as TokenMetadataResponse, fetch_tokens_metadata_enriched},
@@ -438,7 +439,7 @@ pub async fn compute_user_assets(
     // Regular treasuries: FT whitelist, public intents, NEAR, lockups, staking, FT lockups.
 
     let intents_balances: Vec<(String, String)>;
-    let ref_tokens_with_balances: Vec<(String, U128)>;
+    let mut ref_tokens_with_balances: Vec<(String, U128)>;
     let near_balance: Option<TokenBalanceResponse>;
     let lockup_balance: Option<LockupBalance>;
     let staking_balance: Option<StakingBalance>;
@@ -515,6 +516,8 @@ pub async fn compute_user_assets(
         });
 
         let balance_map = build_balance_map(&user_balances);
+        let ref_token_ids: HashSet<String> = whitelist_set.iter().cloned().collect();
+
         ref_tokens_with_balances = whitelist_set
             .into_iter()
             .filter_map(|token_id| {
@@ -530,6 +533,18 @@ pub async fn compute_user_assets(
             })
             .collect();
 
+        // Add custom-whitelisted NEAR FT tokens that have balance but aren't in Ref
+        for &contract_id in NEAR_FT_WHITELIST {
+            if ref_token_ids.contains(contract_id) {
+                continue;
+            }
+            if let Some(balance) = balance_map.get(contract_id)
+                && *balance != U128::from(0)
+            {
+                ref_tokens_with_balances.push((contract_id.to_string(), balance.clone()));
+            }
+        }
+
         near_balance = Some(near_bal);
         lockup_balance = lockup_bal;
         staking_balance = staking_bal;
@@ -538,27 +553,41 @@ pub async fn compute_user_assets(
 
     // ── Fetch metadata (shared path) ────────────────────────────────────
 
-    let mut token_ids_to_fetch: Vec<String> = ref_tokens_with_balances
+    // Ref whitelist tokens + intents + lockup + NEAR (no NearBlocks)
+    let mut ref_token_ids: Vec<String> = ref_tokens_with_balances
         .iter()
+        .filter(|(id, _)| !NEAR_FT_WHITELIST.contains(&id.as_str()))
         .map(|(id, _)| id.clone())
         .collect();
-    token_ids_to_fetch.extend(
+    ref_token_ids.extend(
         intents_balances
             .iter()
             .map(|(id, _)| format!("intents.near:{}", id)),
     );
-    token_ids_to_fetch.extend(
+    ref_token_ids.extend(
         ft_lockup_positions
             .iter()
             .map(|p| p.token_account_id.clone()),
     );
-    token_ids_to_fetch.push("near".to_string());
+    ref_token_ids.push("near".to_string());
 
-    let metadata_map = if !token_ids_to_fetch.is_empty() {
-        fetch_tokens_metadata_enriched(state, &token_ids_to_fetch, false).await
+    // Custom whitelist tokens (with NearBlocks fallback)
+    let custom_token_ids: Vec<String> = ref_tokens_with_balances
+        .iter()
+        .filter(|(id, _)| NEAR_FT_WHITELIST.contains(&id.as_str()))
+        .map(|(id, _)| id.clone())
+        .collect();
+
+    let mut metadata_map = if !ref_token_ids.is_empty() {
+        fetch_tokens_metadata_enriched(state, &ref_token_ids, false).await
     } else {
         HashMap::new()
     };
+
+    if !custom_token_ids.is_empty() {
+        let custom_meta = fetch_tokens_metadata_enriched(state, &custom_token_ids, true).await;
+        metadata_map.extend(custom_meta);
+    }
 
     // ── Build SimplifiedToken list ──────────────────────────────────────
 
@@ -567,7 +596,7 @@ pub async fn compute_user_assets(
         TokenMetadataResponse::create_near_metadata(None, None)
     });
 
-    // REF Finance FT tokens (non-confidential only)
+    // FT tokens from Ref whitelist + custom whitelist (non-confidential only)
     let mut all_simplified_tokens: Vec<(SimplifiedToken, U128)> = ref_tokens_with_balances
         .into_iter()
         .filter_map(|(token_id, balance)| {
