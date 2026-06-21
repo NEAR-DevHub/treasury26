@@ -123,7 +123,7 @@ async fn api_filtered_count(pool: &PgPool, account_id: &str) -> i64 {
 #[sqlx::test]
 async fn test_goldsky_webassemblymusic(pool: PgPool) {
     common::load_test_env();
-    let _ = env_logger::try_init();
+    nt_be::observability::init_tracing();
 
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
     let network = common::create_archival_network();
@@ -570,7 +570,7 @@ async fn test_goldsky_webassemblymusic(pool: PgPool) {
 #[sqlx::test]
 async fn test_goldsky_maintenance_webassemblymusic(pool: PgPool) {
     common::load_test_env();
-    let _ = env_logger::try_init();
+    nt_be::observability::init_tracing();
 
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
     let network = common::create_archival_network();

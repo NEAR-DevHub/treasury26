@@ -682,6 +682,7 @@ async fn handle_confidential_add_proposal(
 
 /// Keep the Goldsky cursor moving; history polling and Gold projection run in
 /// the confidential-history scheduler.
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = dao_id))]
 async fn mark_confidential_history_due_for_execution(
     history_state: Option<&AppState>,
     monitored: &std::collections::HashMap<String, bool>,
@@ -718,6 +719,7 @@ async fn mark_confidential_history_due_for_execution(
 ///
 /// Returns the number of outcomes processed (not the number of balance_changes written,
 /// since one outcome can produce multiple events and some may be skipped).
+#[tracing::instrument(level = "info", skip_all, fields(job = "goldsky_enrichment"))]
 pub async fn run_enrichment_cycle(
     goldsky_pool: &PgPool,
     app_pool: &PgPool,

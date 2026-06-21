@@ -362,7 +362,7 @@ pub async fn fetch_metadata_from_counterparties(
     {
         Ok(rows) => rows,
         Err(e) => {
-            log::warn!("Failed to fetch metadata from counterparties: {}", e);
+            tracing::warn!("Failed to fetch metadata from counterparties: {}", e);
             return HashMap::new();
         }
     };
@@ -655,7 +655,7 @@ pub async fn fetch_tokens_with_fallback(
         let chaindefuser_response = match fetch_chaindefuser_tokens(state).await {
             Ok(response) => Some(response),
             Err((status, err)) => {
-                log::warn!(
+                tracing::warn!(
                     "chaindefuser token metadata fetch failed: status={}, error={}",
                     status,
                     err
@@ -772,7 +772,7 @@ pub async fn fetch_tokens_with_fallback(
                     metadata = Some(near_meta);
                 }
                 Err((status, err)) => {
-                    log::warn!(
+                    tracing::warn!(
                         "nearblocks token metadata fetch failed: token_id={}, candidate={}, status={}, error={}",
                         token_id,
                         nearblocks_candidate,
@@ -798,7 +798,7 @@ pub async fn fetch_tokens_with_fallback(
             .cloned()
             .collect::<Vec<_>>()
             .join(", ");
-        log::warn!(
+        tracing::warn!(
             "token metadata unresolved: count={}, sample=[{}]",
             unresolved_tokens.len(),
             sample
@@ -938,7 +938,7 @@ pub async fn search_token_by_symbol(
     {
         Ok(rows) => rows.into_iter().map(|r| r.account_id).collect::<Vec<_>>(),
         Err(e) => {
-            log::warn!(
+            tracing::warn!(
                 "Failed to search counterparties table for {}: {}",
                 symbol,
                 e
@@ -949,7 +949,7 @@ pub async fn search_token_by_symbol(
 
     // If found in database, return immediately (skip NearBlocks API)
     if !db_results.is_empty() {
-        log::debug!(
+        tracing::debug!(
             "Found {} tokens in counterparties for symbol '{}': {:?}",
             db_results.len(),
             symbol,
@@ -959,7 +959,7 @@ pub async fn search_token_by_symbol(
     }
 
     // Step 2: Fallback to NearBlocks API only if not in database
-    log::debug!(
+    tracing::debug!(
         "Symbol '{}' not in counterparties, falling back to NearBlocks API",
         symbol
     );

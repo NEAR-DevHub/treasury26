@@ -13,8 +13,8 @@ where
     F: Future<Output = ()> + Send + 'static,
 {
     tokio::spawn(async move {
-        log::debug!("relay background task '{label}' started");
+        tracing::debug!("relay background task '{label}' started");
         fut.await;
-        log::debug!("relay background task '{label}' finished");
+        tracing::debug!("relay background task '{label}' finished");
     });
 }

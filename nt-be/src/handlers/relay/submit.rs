@@ -36,6 +36,11 @@ use crate::{
 /// Critical steps (parse, authorize, limits, storage, registrations, submit) gate
 /// the response; on success the gas credit, metrics, and confidential auto-submit
 /// are offloaded to the background.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(step = "relay_delegate_action", treasury_id = tracing::field::Empty)
+)]
 pub async fn relay_delegate_action(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
@@ -50,6 +55,7 @@ pub async fn relay_delegate_action(
         proposal_type,
         address_book_payment,
     } = relay_request;
+    tracing::Span::current().record("treasury_id", tracing::field::display(&treasury_id));
 
     // 1. Decode the borsh bytes once; the raw form is dropped here.
     let signed_delegate_action =
@@ -168,6 +174,7 @@ pub async fn relay_delegate_action(
 
 /// Submit the relay transaction and return the execution outcome's debug string,
 /// which `confidential` later mines for MPC signatures.
+#[tracing::instrument(level = "info", skip_all, fields(step = "submit_relay"))]
 async fn submit_relay(
     state: &Arc<AppState>,
     submission: RelaySubmission,
@@ -185,7 +192,7 @@ async fn submit_relay(
     };
 
     result.map_err(|error_message| {
-        log::error!("Relay execution failed: {}", error_message);
+        tracing::error!("Relay execution failed: {}", error_message);
         error_response(StatusCode::INTERNAL_SERVER_ERROR, error_message)
     })
 }

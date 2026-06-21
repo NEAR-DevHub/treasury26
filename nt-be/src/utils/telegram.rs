@@ -48,7 +48,7 @@ impl TelegramClient {
         let (bot, chat_id_str) = match (&self.bot, &self.notification_chat_id) {
             (Some(b), Some(c)) => (b, c),
             _ => {
-                log::warn!(
+                tracing::warn!(
                     "Telegram client not configured. Please set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID. Message ignored: {}",
                     message
                 );
@@ -73,7 +73,7 @@ impl TelegramClient {
         let bot = match &self.bot {
             Some(b) => b,
             None => {
-                log::warn!(
+                tracing::warn!(
                     "Telegram bot not configured (TELEGRAM_BOT_TOKEN not set). Message to chat {} ignored.",
                     chat_id
                 );
@@ -96,7 +96,7 @@ impl TelegramClient {
         let bot = match &self.bot {
             Some(b) => b,
             None => {
-                log::warn!(
+                tracing::warn!(
                     "Telegram bot not configured (TELEGRAM_BOT_TOKEN not set). Message with button to chat {} ignored.",
                     chat_id
                 );
@@ -129,7 +129,7 @@ impl TelegramClient {
         let bot = match &self.bot {
             Some(b) => b,
             None => {
-                log::warn!(
+                tracing::warn!(
                     "Telegram bot not configured (TELEGRAM_BOT_TOKEN not set). Edit message {} in chat {} ignored.",
                     message_id,
                     chat_id
@@ -146,8 +146,8 @@ impl TelegramClient {
             )
             .await
         {
-            log::warn!(
-                "[telegram] Edit message {} in chat {} failed: {}. Falling back to send_message.",
+            tracing::warn!(
+                "Edit message {} in chat {} failed: {}. Falling back to send_message.",
                 message_id,
                 chat_id,
                 edit_err
@@ -168,7 +168,7 @@ impl TelegramClient {
         let bot = match &self.bot {
             Some(b) => b,
             None => {
-                log::warn!(
+                tracing::warn!(
                     "Telegram bot not configured (TELEGRAM_BOT_TOKEN not set). leave_chat {} ignored.",
                     chat_id
                 );

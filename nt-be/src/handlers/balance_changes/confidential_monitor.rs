@@ -109,8 +109,8 @@ async fn load_pending_intents(
         let decimals = match ensure_ft_metadata(pool, network, &storage_id).await {
             Ok(d) => d,
             Err(e) => {
-                log::warn!(
-                    "[confidential] {}: ensure_ft_metadata({}) failed: {}",
+                tracing::warn!(
+                    "{}: ensure_ft_metadata({}) failed: {}",
                     dao_id,
                     storage_id,
                     e
@@ -121,8 +121,8 @@ async fn load_pending_intents(
         let expected = match convert_raw_to_decimal(amount_out_raw, decimals) {
             Ok(a) => a,
             Err(e) => {
-                log::warn!(
-                    "[confidential] {}: convert_raw_to_decimal failed for {}: {}",
+                tracing::warn!(
+                    "{}: convert_raw_to_decimal failed for {}: {}",
                     dao_id,
                     amount_out_raw,
                     e
@@ -270,8 +270,8 @@ pub async fn poll_confidential_balances(
     let current_balances = match fetch_confidential_balances(state, account_id_ref).await {
         Ok(b) => b,
         Err((status, msg)) => {
-            log::warn!(
-                "[confidential] {}: fetch balances failed ({}): {}",
+            tracing::warn!(
+                "{}: fetch balances failed ({}): {}",
                 account_id,
                 status,
                 msg
@@ -288,12 +288,7 @@ pub async fn poll_confidential_balances(
                 current_map.insert(storage_id, (raw_id.clone(), adjusted));
             }
             Err(e) => {
-                log::warn!(
-                    "[confidential] {}: adjust_balance({}): {}",
-                    account_id,
-                    raw_id,
-                    e
-                );
+                tracing::warn!("{}: adjust_balance({}): {}", account_id, raw_id, e);
             }
         }
     }
@@ -311,19 +306,18 @@ pub async fn poll_confidential_balances(
     .await?;
     let known_map: HashMap<String, BigDecimal> = known_tokens.into_iter().collect();
 
-    let pending_intents = match load_pending_intents(&state.db_pool, &state.network, account_id)
-        .await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            log::warn!(
-                "[confidential] {}: load_pending_intents failed: {} — continuing without swap match",
-                account_id,
-                e
-            );
-            Vec::new()
-        }
-    };
+    let pending_intents =
+        match load_pending_intents(&state.db_pool, &state.network, account_id).await {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(
+                    "{}: load_pending_intents failed: {} — continuing without swap match",
+                    account_id,
+                    e
+                );
+                Vec::new()
+            }
+        };
 
     let now = Utc::now();
     let block_timestamp = now.timestamp_nanos_opt().unwrap_or(0);
@@ -335,8 +329,8 @@ pub async fn poll_confidential_balances(
 
         if current_balance <= last_balance {
             if current_balance < last_balance {
-                log::debug!(
-                    "[confidential] {}/{}: ignoring decrease {} → {} (Goldsky owns outgoing)",
+                tracing::debug!(
+                    "{}/{}: ignoring decrease {} → {} (Goldsky owns outgoing)",
                     account_id,
                     storage_token_id,
                     last_balance,
@@ -383,8 +377,8 @@ pub async fn poll_confidential_balances(
         .await?;
         inserted += 1;
 
-        log::info!(
-            "[confidential] {}/{}: {} → {} (Δ{}) {}",
+        tracing::info!(
+            "{}/{}: {} → {} (Δ{}) {}",
             account_id,
             storage_token_id,
             last_balance,
@@ -457,8 +451,8 @@ pub async fn poll_confidential_balances(
             )
             .await
             {
-                log::warn!(
-                    "[confidential] {}: insert_detected_swap for payload_hash={}: {}",
+                tracing::warn!(
+                    "{}: insert_detected_swap for payload_hash={}: {}",
                     account_id,
                     intent.payload_hash,
                     e
@@ -468,11 +462,7 @@ pub async fn poll_confidential_balances(
     }
 
     if inserted > 0 {
-        log::info!(
-            "[confidential] {}: Recorded {} balance changes",
-            account_id,
-            inserted
-        );
+        tracing::info!("{}: Recorded {} balance changes", account_id, inserted);
     }
 
     Ok(inserted)
@@ -551,10 +541,7 @@ pub async fn run_confidential_poll_cycle(
     let block_height = match Chain::block().fetch_from(&state.network).await {
         Ok(b) => b.header.height as i64,
         Err(e) => {
-            log::warn!(
-                "[confidential-poll] could not fetch chain head: {} — using 0",
-                e
-            );
+            tracing::warn!("could not fetch chain head: {} — using 0", e);
             0
         }
     };
@@ -562,14 +549,10 @@ pub async fn run_confidential_poll_cycle(
     for (account_id,) in &accounts {
         match poll_confidential_balances(state, account_id, block_height).await {
             Ok(n) if n > 0 => {
-                log::info!(
-                    "[confidential-poll] {}: recorded {} balance changes",
-                    account_id,
-                    n
-                );
+                tracing::info!("{}: recorded {} balance changes", account_id, n);
             }
             Err(e) => {
-                log::warn!("[confidential-poll] {}: poll failed: {}", account_id, e);
+                tracing::warn!("{}: poll failed: {}", account_id, e);
             }
             _ => {}
         }

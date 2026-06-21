@@ -26,7 +26,7 @@ const SYNC_CHECK_INTERVAL_SECS: u64 = 60;
 /// The list of assets is derived from the balance_changes table - we only sync
 /// prices for tokens that users actually have in their treasuries.
 pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool, provider: P) {
-    log::info!(
+    tracing::info!(
         "Starting background price sync service (check interval: {} seconds)",
         SYNC_CHECK_INTERVAL_SECS
     );
@@ -45,17 +45,17 @@ pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool
         let assets_needing_sync = match get_assets_needing_sync(&pool, &provider, yesterday).await {
             Ok(assets) => assets,
             Err(e) => {
-                log::error!("Failed to check which assets need sync: {}", e);
+                tracing::error!("Failed to check which assets need sync: {}", e);
                 continue;
             }
         };
 
         if assets_needing_sync.is_empty() {
-            log::debug!("All assets have yesterday's prices, no sync needed");
+            tracing::debug!("All assets have yesterday's prices, no sync needed");
             continue;
         }
 
-        log::info!(
+        tracing::info!(
             "Price sync: {} assets need updating",
             assets_needing_sync.len()
         );
@@ -63,10 +63,10 @@ pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool
         for asset_id in assets_needing_sync {
             match sync_asset_prices(&pool, &provider, &asset_id).await {
                 Ok(count) => {
-                    log::info!("Synced {} prices for {}", count, asset_id);
+                    tracing::info!("Synced {} prices for {}", count, asset_id);
                 }
                 Err(e) => {
-                    log::warn!("Failed to sync prices for {}: {}", asset_id, e);
+                    tracing::warn!("Failed to sync prices for {}: {}", asset_id, e);
                 }
             }
 
@@ -114,7 +114,7 @@ async fn get_assets_needing_sync<P: PriceProvider>(
         return Ok(Vec::new());
     }
 
-    log::debug!(
+    tracing::debug!(
         "Found {} unique provider asset IDs from balance_changes",
         provider_asset_ids.len()
     );
@@ -216,18 +216,18 @@ pub async fn sync_all_prices_now<P: PriceProvider + Send + Sync>(
     let far_future = NaiveDate::from_ymd_opt(2099, 12, 31).unwrap();
     let assets = get_assets_needing_sync(pool, provider, far_future).await?;
 
-    log::info!("Running immediate price sync for {} assets", assets.len());
+    tracing::info!("Running immediate price sync for {} assets", assets.len());
 
     let mut success_count = 0;
 
     for asset_id in &assets {
         match sync_asset_prices(pool, provider, asset_id).await {
             Ok(count) => {
-                log::info!("Synced {} prices for {}", count, asset_id);
+                tracing::info!("Synced {} prices for {}", count, asset_id);
                 success_count += 1;
             }
             Err(e) => {
-                log::warn!("Failed to sync prices for {}: {}", asset_id, e);
+                tracing::warn!("Failed to sync prices for {}: {}", asset_id, e);
             }
         }
 

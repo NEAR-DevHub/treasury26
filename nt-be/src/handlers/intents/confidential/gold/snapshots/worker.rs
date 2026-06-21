@@ -22,7 +22,8 @@ const CONFIDENTIAL_BALANCE_SNAPSHOT_WORKERS: usize = 5;
 
 /// Write a snapshot row per non-zero asset plus zero tombstones for any asset
 /// that was present in the prior snapshot but absent now. Transport errors are
-/// logged and swallowed — the next tick retries.
+/// logged and swallowed -- the next tick retries.
+#[tracing::instrument(level = "info", skip_all, fields(dao_id = dao_id))]
 pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) {
     let account_ref = match AccountIdRef::new(dao_id) {
         Ok(account_ref) => account_ref,
@@ -112,6 +113,11 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
 
 /// Dedup window covers activity-triggered snapshots that may have fired
 /// within the same hour as this cron tick.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(job = "confidential_balance_snapshot")
+)]
 pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
     let dao_ids = match load_confidential_history_accounts(&state.db_pool).await {
         Ok(ids) => ids,

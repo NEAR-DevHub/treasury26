@@ -113,6 +113,11 @@ struct ClassifiedTargets {
 ///
 /// Targets are derived from the authoritative on-chain proposal kind, deduplicated,
 /// and registered (sponsor-paid) before the vote executes the transfer.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(treasury_id = %treasury_id, proposal_count = approve_proposal_ids.len())
+)]
 pub async fn register_vote_approvals(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
@@ -142,6 +147,11 @@ pub struct RegistrationOutcome {
 
 /// Fetch a proposal by id and derive its storage-deposit targets. Failures to
 /// read the proposal are logged and yield no targets (the vote still proceeds).
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(treasury_id = %treasury_id, proposal_id = proposal_id)
+)]
 pub(crate) async fn derive_targets_for_proposal(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
@@ -150,8 +160,8 @@ pub(crate) async fn derive_targets_for_proposal(
     let proposal = match fetch_proposal(&state.network, treasury_id, proposal_id).await {
         Ok(proposal) => proposal,
         Err(e) => {
-            log::warn!(
-                "storage_deposit: failed to fetch proposal {} for {}: {}",
+            tracing::warn!(
+                "failed to fetch proposal {} for {}: {}",
                 proposal_id,
                 treasury_id,
                 e
@@ -182,11 +192,7 @@ pub(crate) async fn derive_targets_for_proposal(
                 }
             }
             Err(e) => {
-                log::warn!(
-                    "storage_deposit: failed to fetch bulk list {}: {}",
-                    list_id,
-                    e
-                );
+                tracing::warn!("failed to fetch bulk list {}: {}", list_id, e);
             }
         }
     }
@@ -293,6 +299,11 @@ impl ClassifiedTargets {
 /// the number of `storage_deposit`s actually sent (for `paid_near` accounting) and
 /// the first failure, if any. All registrations run to completion even when one
 /// fails, so `sent` reflects every NEAR actually spent.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(registration_count = registration_targets.len())
+)]
 async fn execute_storage_deposits(
     state: &Arc<AppState>,
     registration_targets: HashSet<Registration>,
@@ -338,11 +349,17 @@ async fn execute_storage_deposits(
 ///
 /// `storage_deposit` with `registration_only` refunds and is a no-op when already
 /// registered, so [`Sponsor::call_idempotent`] retries transient send failures.
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(account_id = %registration.account_id, asset_contract = tracing::field::Empty)
+)]
 async fn register_one(state: &Arc<AppState>, registration: &Registration) -> Result<bool, String> {
     let Registration {
         account_id,
         token_id,
     } = registration;
+    tracing::Span::current().record("asset_contract", tracing::field::display(token_id));
 
     match check_storage_deposit(state, account_id.clone(), token_id.clone()).await {
         Ok(true) => return Ok(false),
@@ -350,8 +367,8 @@ async fn register_one(state: &Arc<AppState>, registration: &Registration) -> Res
         Err(e) => {
             // Couldn't verify — attempt anyway; storage_deposit refunds if
             // the account turns out to be already registered.
-            log::warn!(
-                "storage_deposit: registration check failed for {} on {}: {}",
+            tracing::warn!(
+                "registration check failed for {} on {}: {}",
                 account_id,
                 token_id,
                 e

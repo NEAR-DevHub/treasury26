@@ -60,7 +60,7 @@ pub async fn get_balance_at_block_with_fallback(
 ) -> Result<bigdecimal::BigDecimal, Box<dyn std::error::Error>> {
     for offset in 0..=max_block_retries {
         let current_block = block_height.saturating_sub(offset);
-        log::info!(
+        tracing::info!(
             "Get balance at block {} {} {}",
             account_id,
             token_id,
@@ -77,7 +77,7 @@ pub async fn get_balance_at_block_with_fallback(
         match result {
             Ok(balance) => {
                 if offset > 0 {
-                    log::warn!(
+                    tracing::warn!(
                         "Block {} unavailable for {} {}, used block {} instead (offset: {})",
                         block_height,
                         account_id,
@@ -93,7 +93,7 @@ pub async fn get_balance_at_block_with_fallback(
                 if (err_str.contains("422") || err_str.contains("UnknownBlock"))
                     && offset < max_block_retries
                 {
-                    log::debug!(
+                    tracing::debug!(
                         "Block {} unavailable for {} {}, trying previous block",
                         current_block,
                         account_id,

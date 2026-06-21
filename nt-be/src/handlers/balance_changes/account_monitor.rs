@@ -94,6 +94,11 @@ async fn has_new_intents_activity_since_last_swap(
 /// * `intents_api_key` - Optional Intents Explorer API key for swap detection
 /// * `intents_api_url` - Intents Explorer API base URL
 #[allow(clippy::too_many_arguments)]
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(job = "account_maintenance", up_to_block = up_to_block)
+)]
 pub async fn run_maintenance_cycle(
     app_state: &AppState,
     up_to_block: i64,
@@ -122,13 +127,10 @@ pub async fn run_maintenance_cycle(
     .await
     {
         Ok(count) if count > 0 => {
-            log::info!(
-                "[maintenance] Corrected {} NEAR transfer counterparties",
-                count
-            );
+            tracing::info!("Corrected {} NEAR transfer counterparties", count);
         }
         Err(e) => {
-            log::warn!("[maintenance] Error correcting NEAR counterparties: {}", e);
+            tracing::warn!("Error correcting NEAR counterparties: {}", e);
         }
         _ => {}
     }
@@ -137,13 +139,10 @@ pub async fn run_maintenance_cycle(
         return Ok(());
     }
 
-    log::info!(
-        "[maintenance] Processing {} enabled accounts",
-        accounts.len()
-    );
+    tracing::info!("Processing {} enabled accounts", accounts.len());
 
     for (account_id, original_dirty_at) in &accounts {
-        log::info!("[maintenance] Processing {}", account_id);
+        tracing::info!("Processing {}", account_id);
 
         {
             // Regular treasury: full on-chain pipeline
@@ -160,15 +159,15 @@ pub async fn run_maintenance_cycle(
             .await
             {
                 Ok(count) if count > 0 => {
-                    log::info!(
-                        "[maintenance] {}: Discovered {} new FT tokens via FastNear",
+                    tracing::info!(
+                        "{}: Discovered {} new FT tokens via FastNear",
                         account_id,
                         count
                     );
                 }
                 Err(e) => {
-                    log::warn!(
-                        "[maintenance] {}: Error discovering FT tokens via FastNear: {}",
+                    tracing::warn!(
+                        "{}: Error discovering FT tokens via FastNear: {}",
                         account_id,
                         e
                     );
@@ -186,15 +185,15 @@ pub async fn run_maintenance_cycle(
             .await
             {
                 Ok(count) if count > 0 => {
-                    log::info!(
-                        "[maintenance] {}: Discovered {} new FT tokens from receipts",
+                    tracing::info!(
+                        "{}: Discovered {} new FT tokens from receipts",
                         account_id,
                         count
                     );
                 }
                 Err(e) => {
-                    log::warn!(
-                        "[maintenance] {}: Error discovering FT tokens from receipts: {}",
+                    tracing::warn!(
+                        "{}: Error discovering FT tokens from receipts: {}",
                         account_id,
                         e
                     );
@@ -212,18 +211,10 @@ pub async fn run_maintenance_cycle(
             .await
             {
                 Ok(count) if count > 0 => {
-                    log::info!(
-                        "[maintenance] {}: Discovered {} new intents tokens",
-                        account_id,
-                        count
-                    );
+                    tracing::info!("{}: Discovered {} new intents tokens", account_id, count);
                 }
                 Err(e) => {
-                    log::warn!(
-                        "[maintenance] {}: Error discovering intents tokens: {}",
-                        account_id,
-                        e
-                    );
+                    tracing::warn!("{}: Error discovering intents tokens: {}", account_id, e);
                 }
                 _ => {}
             }
@@ -231,11 +222,7 @@ pub async fn run_maintenance_cycle(
             // 4. Determine effective block floor (creation block ∨ maintenance_block_floor)
             let effective_floor = get_effective_block_floor(&app_state.db_pool, account_id).await?;
             if let Some(block) = effective_floor {
-                log::debug!(
-                    "[maintenance] {}: Effective block floor: {}",
-                    account_id,
-                    block,
-                );
+                tracing::debug!("{}: Effective block floor: {}", account_id, block,);
             }
 
             // 5. Fill gaps for all tokens
@@ -275,8 +262,8 @@ pub async fn run_maintenance_cycle(
                 {
                     Ok(filled) => {
                         if !filled.is_empty() {
-                            log::info!(
-                                "[maintenance] {}/{}: Filled {} gaps",
+                            tracing::info!(
+                                "{}/{}: Filled {} gaps",
                                 account_id,
                                 token_id,
                                 filled.len()
@@ -285,19 +272,14 @@ pub async fn run_maintenance_cycle(
                         }
                     }
                     Err(e) => {
-                        log::error!(
-                            "[maintenance] {}/{}: Error filling gaps: {}",
-                            account_id,
-                            token_id,
-                            e
-                        );
+                        tracing::error!("{}/{}: Error filling gaps: {}", account_id, token_id, e);
                     }
                 }
             }
 
             if total_filled > 0 {
-                log::info!(
-                    "[maintenance] {}: Filled {} total gaps across all tokens",
+                tracing::info!(
+                    "{}: Filled {} total gaps across all tokens",
                     account_id,
                     total_filled
                 );
@@ -308,18 +290,10 @@ pub async fn run_maintenance_cycle(
                 .await
             {
                 Ok(count) if count > 0 => {
-                    log::info!(
-                        "[maintenance] {}: Resolved {} missing tx hashes",
-                        account_id,
-                        count
-                    );
+                    tracing::info!("{}: Resolved {} missing tx hashes", account_id, count);
                 }
                 Err(e) => {
-                    log::warn!(
-                        "[maintenance] {}: Error resolving missing tx hashes: {}",
-                        account_id,
-                        e
-                    );
+                    tracing::warn!("{}: Error resolving missing tx hashes: {}", account_id, e);
                 }
                 _ => {}
             }
@@ -334,18 +308,10 @@ pub async fn run_maintenance_cycle(
             .await
             {
                 Ok(count) if count > 0 => {
-                    log::info!(
-                        "[maintenance] {}: Resolved {} missing action_kind",
-                        account_id,
-                        count
-                    );
+                    tracing::info!("{}: Resolved {} missing action_kind", account_id, count);
                 }
                 Err(e) => {
-                    log::warn!(
-                        "[maintenance] {}: Error resolving missing action_kind: {}",
-                        account_id,
-                        e
-                    );
+                    tracing::warn!("{}: Error resolving missing action_kind: {}", account_id, e);
                 }
                 _ => {}
             }
@@ -367,15 +333,15 @@ pub async fn run_maintenance_cycle(
                             if !swaps.is_empty() {
                                 match store_detected_swaps(&app_state.db_pool, &swaps).await {
                                     Ok(inserted) if inserted > 0 => {
-                                        log::info!(
-                                            "[maintenance] {}: Detected and stored {} new swaps",
+                                        tracing::info!(
+                                            "{}: Detected and stored {} new swaps",
                                             account_id,
                                             inserted
                                         );
                                     }
                                     Err(e) => {
-                                        log::error!(
-                                            "[maintenance] {}: Error storing detected swaps: {}",
+                                        tracing::error!(
+                                            "{}: Error storing detected swaps: {}",
                                             account_id,
                                             e
                                         );
@@ -385,23 +351,19 @@ pub async fn run_maintenance_cycle(
                             }
                         }
                         Err(e) => {
-                            log::error!(
-                                "[maintenance] {}: Error detecting swaps: {}",
-                                account_id,
-                                e
-                            );
+                            tracing::error!("{}: Error detecting swaps: {}", account_id, e);
                         }
                     }
                 }
                 Ok(false) => {
-                    log::debug!(
-                        "[maintenance] {}: Skipping swap detection (no new intents activity)",
+                    tracing::debug!(
+                        "{}: Skipping swap detection (no new intents activity)",
                         account_id
                     );
                 }
                 Err(e) => {
-                    log::warn!(
-                        "[maintenance] {}: Could not check intents activity before swap detection: {}",
+                    tracing::warn!(
+                        "{}: Could not check intents activity before swap detection: {}",
                         account_id,
                         e
                     );
@@ -417,15 +379,15 @@ pub async fn run_maintenance_cycle(
             .await
             {
                 Ok(count) if count > 0 => {
-                    log::info!(
-                        "[maintenance] {}: Classified {} proposal swap deposits",
+                    tracing::info!(
+                        "{}: Classified {} proposal swap deposits",
                         account_id,
                         count
                     );
                 }
                 Err(e) => {
-                    log::warn!(
-                        "[maintenance] {}: Error classifying proposal swap deposits: {}",
+                    tracing::warn!(
+                        "{}: Error classifying proposal swap deposits: {}",
                         account_id,
                         e
                     );
@@ -444,18 +406,14 @@ pub async fn run_maintenance_cycle(
                 .await
                 {
                     Ok(records_created) if records_created > 0 => {
-                        log::info!(
-                            "[maintenance] {}: Created {} staking reward records",
+                        tracing::info!(
+                            "{}: Created {} staking reward records",
                             account_id,
                             records_created
                         );
                     }
                     Err(e) => {
-                        log::warn!(
-                            "[maintenance] {}: Error tracking staking rewards: {}",
-                            account_id,
-                            e
-                        );
+                        tracing::warn!("{}: Error tracking staking rewards: {}", account_id, e);
                     }
                     _ => {}
                 }
@@ -470,11 +428,7 @@ pub async fn run_maintenance_cycle(
         .execute(&app_state.db_pool)
         .await
         {
-            log::error!(
-                "[maintenance] {}: Error updating last_synced_at: {}",
-                account_id,
-                e
-            );
+            tracing::error!("{}: Error updating last_synced_at: {}", account_id, e);
         }
 
         // 11. Conditional clear: only clear dirty_at if it hasn't changed since we started
@@ -489,26 +443,22 @@ pub async fn run_maintenance_cycle(
 
             match result {
                 Ok(r) if r.rows_affected() > 0 => {
-                    log::info!("[maintenance] {} dirty flag cleared", account_id);
+                    tracing::info!("{} dirty flag cleared", account_id);
                 }
                 Ok(_) => {
-                    log::info!(
-                        "[maintenance] {} dirty flag was re-set during processing, leaving for next cycle",
+                    tracing::info!(
+                        "{} dirty flag was re-set during processing, leaving for next cycle",
                         account_id
                     );
                 }
                 Err(e) => {
-                    log::error!(
-                        "[maintenance] {}: Error clearing dirty flag: {}",
-                        account_id,
-                        e
-                    );
+                    tracing::error!("{}: Error clearing dirty flag: {}", account_id, e);
                 }
             }
         }
     }
 
-    log::info!("[maintenance] Cycle complete");
+    tracing::info!("Cycle complete");
     Ok(())
 }
 
@@ -571,12 +521,12 @@ async fn discover_ft_tokens_from_receipts(
         // Try to query FT balance - if it succeeds, it's an FT contract
         match get_ft_balance(pool, network, account_id, &counterparty, up_to_block as u64).await {
             Ok(_balance) => {
-                log::debug!("Counterparty {} is an FT contract", counterparty);
+                tracing::debug!("Counterparty {} is an FT contract", counterparty);
                 discovered_tokens.insert(counterparty);
             }
             Err(_) => {
                 // Not an FT contract, or error querying - skip it
-                log::debug!("Counterparty {} is not an FT contract", counterparty);
+                tracing::debug!("Counterparty {} is not an FT contract", counterparty);
             }
         }
     }
@@ -614,14 +564,14 @@ async fn discover_ft_tokens_from_receipts(
             .await
             {
                 Ok(_) => {
-                    log::info!(
+                    tracing::info!(
                         "Discovered FT token {} for account {}",
                         token_contract,
                         account_id
                     );
                 }
                 Err(e) => {
-                    log::warn!(
+                    tracing::warn!(
                         "Failed to insert snapshot for discovered token {} at block {}: {}",
                         token_contract,
                         up_to_block,
@@ -646,6 +596,11 @@ async fn discover_ft_tokens_from_receipts(
 /// This catches tokens that the counterparty-based discovery misses — for example,
 /// when a treasury receives a direct FT deposit from an account it has never
 /// transacted with in NEAR.
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(account_id = account_id, up_to_block = up_to_block)
+)]
 pub async fn discover_ft_tokens_from_fastnear(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -658,7 +613,7 @@ pub async fn discover_ft_tokens_from_fastnear(
         match fetch_fastnear_ft_tokens(http_client, fastnear_api_key, account_id).await {
             Ok(tokens) => tokens,
             Err(e) => {
-                log::warn!(
+                tracing::warn!(
                     "Failed to fetch FastNear FT tokens for {}: {}",
                     account_id,
                     e
@@ -708,7 +663,7 @@ pub async fn discover_ft_tokens_from_fastnear(
         .await
         {
             Ok(_) => {
-                log::info!(
+                tracing::info!(
                     "Discovered FT token {} for account {} via FastNear",
                     token_contract,
                     account_id
@@ -716,7 +671,7 @@ pub async fn discover_ft_tokens_from_fastnear(
                 seeded_count += 1;
             }
             Err(e) => {
-                log::warn!(
+                tracing::warn!(
                     "Failed to insert snapshot for FastNear-discovered token {} at block {}: {}",
                     token_contract,
                     up_to_block,
@@ -735,6 +690,11 @@ pub async fn discover_ft_tokens_from_fastnear(
 /// 1. Calls mt_tokens_for_owner on intents.near to get all tokens held by the account
 /// 2. For newly discovered intents tokens, seeds an initial balance change record
 /// 3. The next monitoring cycle will automatically fill gaps for these tokens
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(account_id = account_id, up_to_block = up_to_block)
+)]
 pub async fn discover_intents_tokens(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -746,7 +706,7 @@ pub async fn discover_intents_tokens(
         Ok(tokens) => tokens,
         Err(e) => {
             // Not all accounts have intents tokens - this is expected
-            log::debug!("No intents tokens for {}: {}", account_id, e);
+            tracing::debug!("No intents tokens for {}: {}", account_id, e);
             return Ok(0);
         }
     };
@@ -779,8 +739,8 @@ pub async fn discover_intents_tokens(
         return Ok(0);
     }
 
-    log::info!(
-        "[maintenance] {}: Discovered {} new intents tokens",
+    tracing::info!(
+        "{}: Discovered {} new intents tokens",
         account_id,
         new_tokens.len()
     );
@@ -791,7 +751,7 @@ pub async fn discover_intents_tokens(
         match insert_snapshot_record(pool, network, account_id, &token_id, up_to_block as u64).await
         {
             Ok(_) => {
-                log::info!(
+                tracing::info!(
                     "Discovered intents token {} for account {}",
                     token_id,
                     account_id
@@ -799,7 +759,7 @@ pub async fn discover_intents_tokens(
                 seeded_count += 1;
             }
             Err(e) => {
-                log::warn!(
+                tracing::warn!(
                     "Failed to insert snapshot for intents token {} at block {}: {}",
                     token_id,
                     up_to_block,
@@ -819,6 +779,11 @@ pub async fn discover_intents_tokens(
 ///
 /// Respects `maintenance_block_floor` from monitored_accounts as a hard stop
 /// for how far back gap filling scans (merged with any creation_block floor).
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(account_id = account_id, up_to_block = up_to_block)
+)]
 pub async fn fill_account_gaps(
     pool: &PgPool,
     network: &NetworkConfig,
@@ -866,22 +831,12 @@ pub async fn fill_account_gaps(
         {
             Ok(filled) => {
                 if !filled.is_empty() {
-                    log::info!(
-                        "[maintenance] {}/{}: Filled {} gaps",
-                        account_id,
-                        token_id,
-                        filled.len()
-                    );
+                    tracing::info!("{}/{}: Filled {} gaps", account_id, token_id, filled.len());
                     total_filled += filled.len();
                 }
             }
             Err(e) => {
-                log::error!(
-                    "[maintenance] {}/{}: Error filling gaps: {}",
-                    account_id,
-                    token_id,
-                    e
-                );
+                tracing::error!("{}/{}: Error filling gaps: {}", account_id, token_id, e);
             }
         }
     }

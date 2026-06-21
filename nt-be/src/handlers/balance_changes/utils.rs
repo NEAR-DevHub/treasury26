@@ -32,7 +32,7 @@ where
     for attempt in 0..=MAX_TRANSPORT_RETRIES {
         if attempt > 0 {
             let delay_ms = 200 * 2u64.pow(attempt - 1);
-            log::warn!(
+            tracing::warn!(
                 "{}: transport error, retrying in {}ms (attempt {}/{})",
                 label,
                 delay_ms,

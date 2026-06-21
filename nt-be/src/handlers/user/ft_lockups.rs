@@ -76,7 +76,7 @@ fn parse_u128_amount(value: &str) -> u128 {
 pub(crate) async fn fetch_ft_lockup_instance_ids(
     state: &Arc<AppState>,
 ) -> Result<Vec<String>, (StatusCode, String)> {
-    log::info!("[ft-lockup] fetching registry instances");
+    tracing::info!("fetching registry instances");
     let cache_key = CacheKey::new("ft-lockup-instances").build();
     let state_clone = state.clone();
 
@@ -96,7 +96,7 @@ pub(crate) async fn fetch_ft_lockup_instance_ids(
                 .fetch_from(&state_clone.network)
                 .await
                 .map_err(|e| {
-                    log::warn!("[ft-lockup] get_instances failed: {}", e);
+                    tracing::warn!("get_instances failed: {}", e);
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "Failed to fetch FT lockup instances".to_string(),
@@ -108,7 +108,7 @@ pub(crate) async fn fetch_ft_lockup_instance_ids(
                 .into_iter()
                 .map(|(_, instance_id)| instance_id)
                 .collect::<Vec<_>>();
-            log::info!("[ft-lockup] registry instances fetched: {}", ids.len());
+            tracing::info!("registry instances fetched: {}", ids.len());
 
             Ok::<_, (StatusCode, String)>(ids)
         })
@@ -119,7 +119,7 @@ pub(crate) async fn fetch_ft_lockup_instance_accounts(
     state: &Arc<AppState>,
     instance_id: &str,
 ) -> Result<Vec<String>, (StatusCode, String)> {
-    log::info!("[ft-lockup] list_accounts for instance={}", instance_id);
+    tracing::info!("list_accounts for instance={}", instance_id);
     let cache_key = CacheKey::new("ft-lockup-instance-accounts")
         .with(instance_id)
         .build();
@@ -142,8 +142,8 @@ pub(crate) async fn fetch_ft_lockup_instance_accounts(
                 .fetch_from(&state_clone.network)
                 .await
                 .map_err(|e| {
-                    log::warn!(
-                        "[ft-lockup] list_accounts failed for instance={}: {}",
+                    tracing::warn!(
+                        "list_accounts failed for instance={}: {}",
                         instance_id_owned,
                         e
                     );
@@ -158,8 +158,8 @@ pub(crate) async fn fetch_ft_lockup_instance_accounts(
                 .into_iter()
                 .map(|a| a.account_id)
                 .collect::<Vec<_>>();
-            log::info!(
-                "[ft-lockup] list_accounts instance={} accounts={}",
+            tracing::info!(
+                "list_accounts instance={} accounts={}",
                 instance_id_owned,
                 account_ids.len()
             );
@@ -175,8 +175,8 @@ async fn fetch_ft_lockup_dao_instance_index(
     state: &Arc<AppState>,
     instance_ids: &[String],
 ) -> Result<HashMap<String, Vec<String>>, (StatusCode, String)> {
-    log::info!(
-        "[ft-lockup] building dao->instances index from instances={}",
+    tracing::info!(
+        "building dao->instances index from instances={}",
         instance_ids.len()
     );
     let mut instance_ids_key_parts = instance_ids.to_vec();
@@ -198,8 +198,8 @@ async fn fetch_ft_lockup_dao_instance_index(
                     match fetch_ft_lockup_instance_accounts(&state_clone, &instance_id).await {
                         Ok(accounts) => accounts,
                         Err((status, message)) => {
-                            log::warn!(
-                                "[ft-lockup] skipping instance={} during index build: {} ({})",
+                            tracing::warn!(
+                                "skipping instance={} during index build: {} ({})",
                                 instance_id,
                                 message,
                                 status
@@ -214,7 +214,7 @@ async fn fetch_ft_lockup_dao_instance_index(
                         .push(instance_id.clone());
                 }
             }
-            log::info!("[ft-lockup] dao index built entries={}", index.len());
+            tracing::info!("dao index built entries={}", index.len());
 
             Ok::<_, (StatusCode, String)>(index)
         })
@@ -225,7 +225,7 @@ pub(crate) async fn fetch_ft_lockup_contract_metadata(
     state: &Arc<AppState>,
     instance_id: &str,
 ) -> Result<FtLockupContractMetadata, (StatusCode, String)> {
-    log::info!("[ft-lockup] contract_metadata for instance={}", instance_id);
+    tracing::info!("contract_metadata for instance={}", instance_id);
     let cache_key = CacheKey::new("ft-lockup-contract-metadata")
         .with(instance_id)
         .build();
@@ -248,8 +248,8 @@ pub(crate) async fn fetch_ft_lockup_contract_metadata(
                 .fetch_from(&state_clone.network)
                 .await
                 .map_err(|e| {
-                    log::warn!(
-                        "[ft-lockup] contract_metadata failed for instance={}: {}",
+                    tracing::warn!(
+                        "contract_metadata failed for instance={}: {}",
                         instance_id_owned,
                         e
                     );
@@ -269,11 +269,7 @@ pub(crate) async fn fetch_ft_lockup_account_data(
     instance_id: &str,
     account_id: &AccountId,
 ) -> Result<Option<FtLockupAccountData>, (StatusCode, String)> {
-    log::info!(
-        "[ft-lockup] get_account instance={} dao={}",
-        instance_id,
-        account_id
-    );
+    tracing::info!("get_account instance={} dao={}", instance_id, account_id);
     let cache_key = CacheKey::new("ft-lockup-account")
         .with(instance_id)
         .with(account_id)
@@ -306,8 +302,8 @@ pub(crate) async fn fetch_ft_lockup_account_data(
             let account_data_value = match account_data_res {
                 Ok(v) => v.data,
                 Err(e) => {
-                    log::warn!(
-                        "[ft-lockup] get_account failed instance={} dao={}: {}",
+                    tracing::warn!(
+                        "get_account failed instance={} dao={}: {}",
                         instance_id_owned,
                         account_id_owned,
                         e
@@ -317,8 +313,8 @@ pub(crate) async fn fetch_ft_lockup_account_data(
             };
 
             if account_data_value.is_null() || !account_data_value.is_object() {
-                log::info!(
-                    "[ft-lockup] get_account empty instance={} dao={}",
+                tracing::info!(
+                    "get_account empty instance={} dao={}",
                     instance_id_owned,
                     account_id_owned
                 );
@@ -329,8 +325,8 @@ pub(crate) async fn fetch_ft_lockup_account_data(
                 match serde_json::from_value::<FtLockupAccountData>(account_data_value) {
                     Ok(data) => data,
                     Err(e) => {
-                        log::warn!(
-                            "[ft-lockup] get_account parse failed instance={} dao={}: {}",
+                        tracing::warn!(
+                            "get_account parse failed instance={} dao={}: {}",
                             instance_id_owned,
                             account_id_owned,
                             e
@@ -339,8 +335,8 @@ pub(crate) async fn fetch_ft_lockup_account_data(
                     }
                 };
 
-            log::info!(
-                "[ft-lockup] get_account ok instance={} dao={}",
+            tracing::info!(
+                "get_account ok instance={} dao={}",
                 instance_id_owned,
                 account_id_owned
             );
@@ -353,7 +349,7 @@ pub(crate) async fn fetch_ft_lockup_positions(
     state: &Arc<AppState>,
     account_id: &AccountId,
 ) -> Result<Vec<FtLockupPosition>, (StatusCode, String)> {
-    log::info!("[ft-lockup] resolve positions dao={}", account_id);
+    tracing::info!("resolve positions dao={}", account_id);
     let matched_instance_ids = match query_as::<_, (bool, Vec<String>)>(
         r#"
         SELECT
@@ -373,28 +369,28 @@ pub(crate) async fn fetch_ft_lockup_positions(
     .await
     {
         Ok((_, ids)) if !ids.is_empty() => {
-            log::info!(
-                "[ft-lockup] matched instances from db dao={} count={}",
+            tracing::info!(
+                "matched instances from db dao={} count={}",
                 account_id,
                 ids.len()
             );
             ids
         }
         Ok((true, _)) => {
-            log::info!(
-                "[ft-lockup] no db matches for dao={} while schedules table has data; skip reverse-index fallback",
+            tracing::info!(
+                "no db matches for dao={} while schedules table has data; skip reverse-index fallback",
                 account_id
             );
             Vec::new()
         }
         Ok((false, _)) => {
-            log::info!(
-                "[ft-lockup] schedules table empty, fallback to reverse index dao={}",
+            tracing::info!(
+                "schedules table empty, fallback to reverse index dao={}",
                 account_id
             );
             let instance_ids = fetch_ft_lockup_instance_ids(state).await?;
             if instance_ids.is_empty() {
-                log::info!("[ft-lockup] no instances configured");
+                tracing::info!("no instances configured");
                 return Ok(Vec::new());
             }
 
@@ -405,22 +401,22 @@ pub(crate) async fn fetch_ft_lockup_positions(
                 .get(&dao_account_key)
                 .cloned()
                 .unwrap_or_default();
-            log::info!(
-                "[ft-lockup] matched instances from reverse-index dao={} count={}",
+            tracing::info!(
+                "matched instances from reverse-index dao={} count={}",
                 account_id,
                 ids.len()
             );
             ids
         }
         Err(e) => {
-            log::warn!(
-                "[ft-lockup] db lookup failed for dao={}, fallback to reverse index: {}",
+            tracing::warn!(
+                "db lookup failed for dao={}, fallback to reverse index: {}",
                 account_id,
                 e
             );
             let instance_ids = fetch_ft_lockup_instance_ids(state).await?;
             if instance_ids.is_empty() {
-                log::info!("[ft-lockup] no instances configured");
+                tracing::info!("no instances configured");
                 return Ok(Vec::new());
             }
 
@@ -431,8 +427,8 @@ pub(crate) async fn fetch_ft_lockup_positions(
                 .get(&dao_account_key)
                 .cloned()
                 .unwrap_or_default();
-            log::info!(
-                "[ft-lockup] matched instances from reverse-index dao={} count={}",
+            tracing::info!(
+                "matched instances from reverse-index dao={} count={}",
                 account_id,
                 ids.len()
             );
@@ -458,8 +454,8 @@ pub(crate) async fn fetch_ft_lockup_positions(
         let unclaimed_amount = parse_u128_amount(&account_data.unclaimed_amount);
 
         if deposited_amount == 0 || claimed_amount >= deposited_amount {
-            log::info!(
-                "[ft-lockup] skip instance={} dao={} deposited={} claimed={}",
+            tracing::info!(
+                "skip instance={} dao={} deposited={} claimed={}",
                 instance_id,
                 account_id,
                 deposited_amount,
@@ -485,8 +481,8 @@ pub(crate) async fn fetch_ft_lockup_positions(
         });
     }
 
-    log::info!(
-        "[ft-lockup] positions ready dao={} count={}",
+    tracing::info!(
+        "positions ready dao={} count={}",
         account_id,
         positions.len()
     );

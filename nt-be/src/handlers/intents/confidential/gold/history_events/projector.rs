@@ -22,6 +22,7 @@ pub(crate) fn confidential_deposit_corrections_enabled() -> bool {
     )
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(dao_id = dao_id))]
 pub async fn project_confidential_gold_for_dao(
     pool: &PgPool,
     dao_id: &str,
@@ -123,6 +124,11 @@ pub async fn project_confidential_gold_for_dao(
     Ok(stats)
 }
 
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(job = "confidential_gold_projection", worker_limit = worker_limit)
+)]
 pub async fn project_confidential_gold_for_dirty_daos(
     pool: &PgPool,
     worker_limit: usize,

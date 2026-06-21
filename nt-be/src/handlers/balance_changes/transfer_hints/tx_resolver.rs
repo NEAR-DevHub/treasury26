@@ -367,11 +367,7 @@ pub async fn resolve_receipt_block_height(
             && let Some(receipt) = receipts.iter().find(|r| r.receipt_id == parsed_receipt_id)
         {
             let predecessor = receipt.predecessor_id.to_string();
-            log::debug!(
-                "[tx-resolver] receipt {} predecessor_id={}",
-                receipt_id,
-                predecessor
-            );
+            tracing::debug!("receipt {} predecessor_id={}", receipt_id, predecessor);
             info.receipt_predecessor_id = Some(predecessor);
         }
 
@@ -385,11 +381,7 @@ pub async fn resolve_receipt_block_height(
             child_ids.contains(&ro.id) && ro.outcome.executor_id.as_str() != our_executor
         }) {
             let receiver = child.outcome.executor_id.to_string();
-            log::debug!(
-                "[tx-resolver] receipt {} has child receipt on {}",
-                receipt_id,
-                receiver
-            );
+            tracing::debug!("receipt {} has child receipt on {}", receipt_id, receiver);
             info.transfer_receiver_id = Some(receiver);
         }
     }
@@ -436,7 +428,7 @@ pub async fn find_balance_change_blocks(
         Err(_) => {
             // Transaction might have been sent by someone else, try a generic lookup
             // In this case, we'll just return empty and let the caller handle it
-            log::debug!(
+            tracing::debug!(
                 "Could not resolve tx {} with account {} as sender",
                 tx_hash,
                 account_id
@@ -519,7 +511,7 @@ pub async fn resolve_receipt_to_transaction(
 
     let parsed_signer: near_primitives::types::AccountId = signer_id.parse()?;
 
-    log::debug!(
+    tracing::debug!(
         "Resolving receipt {} to transaction via account_changes on {} near block {}",
         receipt_id,
         signer_id,
@@ -627,7 +619,7 @@ async fn find_transaction_on_signer(
         {
             Ok(resp) => resp,
             Err(e) => {
-                log::debug!(
+                tracing::debug!(
                     "account_changes on {} at block {} failed: {}",
                     signer_id,
                     search_block,
@@ -653,7 +645,7 @@ async fn find_transaction_on_signer(
             continue;
         }
 
-        log::debug!(
+        tracing::debug!(
             "Found {} candidate tx hash(es) at block {} on {}: {:?}",
             tx_hashes.len(),
             search_block,
@@ -665,7 +657,7 @@ async fn find_transaction_on_signer(
         for tx_hash in &tx_hashes {
             match has_receipt(client, tx_hash, signer_id, receipt_id).await {
                 Ok(true) => {
-                    log::debug!(
+                    tracing::debug!(
                         "Resolved receipt {} to transaction {} (via account_changes on {} at block {})",
                         receipt_id,
                         tx_hash,
@@ -680,7 +672,7 @@ async fn find_transaction_on_signer(
                 }
                 Ok(false) => continue,
                 Err(e) => {
-                    log::debug!(
+                    tracing::debug!(
                         "Error checking tx {} for receipt {}: {}",
                         tx_hash,
                         receipt_id,

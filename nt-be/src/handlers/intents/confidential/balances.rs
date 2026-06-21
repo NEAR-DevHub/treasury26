@@ -10,6 +10,7 @@ use serde::Deserialize;
 
 use crate::AppState;
 use crate::handlers::intents::confidential::refresh_dao_jwt;
+use crate::observability::sanitize_sensitive_text;
 
 #[derive(Deserialize, Debug)]
 struct BalanceEntry {
@@ -28,6 +29,7 @@ struct BalancesResponse {
 /// Returns `(token_id, available)` pairs where `token_id` is the raw intents
 /// token ID (e.g. `nep141:wrap.near`) and `available` is a base-10 string of
 /// the raw on-chain amount (pre-decimal-adjustment). Zero balances are filtered.
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id))]
 pub async fn fetch_confidential_balances(
     state: &AppState,
     dao_id: &AccountIdRef,
@@ -58,10 +60,16 @@ pub async fn fetch_confidential_balances(
     let status = response.status();
     if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
-        tracing::error!("1Click API returned {} for {}: {}", status, dao_id, body);
+        let sanitized_body = sanitize_sensitive_text(&body);
+        tracing::error!(
+            "1Click API returned {} for {}: {}",
+            status,
+            dao_id,
+            sanitized_body
+        );
         return Err((
             StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
-            format!("1Click API error: {}", body),
+            format!("1Click API error: {}", sanitized_body),
         ));
     }
 

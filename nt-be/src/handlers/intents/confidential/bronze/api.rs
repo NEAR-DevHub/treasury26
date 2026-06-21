@@ -12,6 +12,7 @@ use serde_json::Value;
 use crate::AppState;
 use crate::handlers::intents::confidential::refresh_dao_jwt;
 use crate::handlers::intents::confidential::types::{HistoryApiEvent, HistoryApiItem};
+use crate::observability::sanitize_sensitive_text;
 
 const DEFAULT_HISTORY_BASE_URL: &str = "https://q8v3n6.defuse.org";
 
@@ -67,6 +68,11 @@ fn parse_history_page(body_text: &str) -> Result<HistoryPage, String> {
     })
 }
 
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(account_id = account_id, limit = limit)
+)]
 pub async fn fetch_history_with_token(
     state: &AppState,
     account_id: &str,
@@ -111,10 +117,11 @@ pub async fn fetch_history_with_token(
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
-        tracing::error!("{} API returned {}: {}", account_id, status, body);
+        let sanitized_body = sanitize_sensitive_text(&body);
+        tracing::error!("{} API returned {}: {}", account_id, status, sanitized_body);
         return Err((
             StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
-            format!("history API error ({}): {}", status, body),
+            format!("history API error ({}): {}", status, sanitized_body),
         ));
     }
 
@@ -135,6 +142,7 @@ pub async fn fetch_history_with_token(
     Ok(parsed)
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(account_id = %account_id, limit = limit))]
 pub async fn fetch_history(
     state: &AppState,
     account_id: &AccountIdRef,

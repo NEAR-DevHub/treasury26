@@ -20,6 +20,7 @@ use crate::AppState;
 use crate::constants::INTENTS_CONTRACT_ID;
 use crate::handlers::intents::confidential::prepare_auth::build_auth_proposal;
 use crate::handlers::relay::confidential::{extract_mpc_signature, fetch_mpc_public_key};
+use crate::observability::sanitize_sensitive_json_value;
 
 /// Run the full confidential setup for a newly created treasury.
 ///
@@ -74,7 +75,7 @@ pub async fn setup_confidential_treasury(
         send_progress(tx, "authenticating", "in_progress").await;
     }
 
-    log::info!(
+    tracing::info!(
         "Confidential setup: creating auth proposal for {}",
         treasury_id
     );
@@ -84,7 +85,7 @@ pub async fn setup_confidential_treasury(
     let (proposal_id, vote_result_debug) =
         submit_and_approve_proposal(state, treasury_id, auth_proposal).await?;
 
-    log::info!(
+    tracing::info!(
         "Confidential setup: auth proposal #{} approved for {}",
         proposal_id,
         treasury_id
@@ -108,7 +109,7 @@ pub async fn setup_confidential_treasury(
     )
     .await?;
 
-    log::info!(
+    tracing::info!(
         "Confidential setup: DAO {} authenticated with 1Click",
         treasury_id
     );
@@ -136,7 +137,7 @@ pub async fn setup_confidential_treasury(
     let (policy_proposal_id, _) =
         submit_and_approve_proposal(state, treasury_id, change_policy_proposal).await?;
 
-    log::info!(
+    tracing::info!(
         "Confidential setup: policy proposal #{} approved for {}",
         policy_proposal_id,
         treasury_id
@@ -282,9 +283,10 @@ async fn authenticate_with_1click(
     let resp_body: Value = response.json().await.unwrap_or_default();
 
     if !status.is_success() {
+        let sanitized_body = sanitize_sensitive_json_value(&resp_body);
         return Err((
             StatusCode::BAD_GATEWAY,
-            format!("1Click auth failed ({}): {:?}", status, resp_body),
+            format!("1Click auth failed ({}): {:?}", status, sanitized_body),
         ));
     }
 
@@ -315,7 +317,7 @@ async fn authenticate_with_1click(
         .execute(&state.db_pool)
         .await;
 
-        log::info!(
+        tracing::info!(
             "Stored confidential JWT for DAO {} (expires in {}s)",
             treasury_id,
             expires_in

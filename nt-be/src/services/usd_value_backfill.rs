@@ -39,7 +39,7 @@ struct PendingRecord {
 
 /// Run the background usd_value backfill service
 pub async fn run_usd_value_backfill_service(pool: PgPool, client: DeFiLlamaClient) {
-    log::info!(
+    tracing::info!(
         "Starting usd_value backfill service (interval: {}s)",
         BACKFILL_INTERVAL_SECS
     );
@@ -54,13 +54,13 @@ pub async fn run_usd_value_backfill_service(pool: PgPool, client: DeFiLlamaClien
 
         match backfill_batch(&pool, &client).await {
             Ok(0) => {
-                log::debug!("usd_value backfill: no pending records");
+                tracing::debug!("usd_value backfill: no pending records");
             }
             Ok(count) => {
-                log::info!("usd_value backfill: updated {} records", count);
+                tracing::info!("usd_value backfill: updated {} records", count);
             }
             Err(e) => {
-                log::warn!("usd_value backfill error: {}", e);
+                tracing::warn!("usd_value backfill error: {}", e);
             }
         }
     }
@@ -147,7 +147,7 @@ pub async fn backfill_batch(
             Err(e) => {
                 let msg = e.to_string();
                 let short = if msg.len() > 120 { &msg[..120] } else { &msg };
-                log::warn!("DefiLlama price fetch failed at {}: {}", timestamp, short);
+                tracing::warn!("DefiLlama price fetch failed at {}: {}", timestamp, short);
                 // Back off longer on errors (likely rate limited)
                 tokio::time::sleep(Duration::from_secs(5)).await;
                 continue;

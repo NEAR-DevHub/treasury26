@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::sync::Arc;
 
 use crate::handlers::intents::confidential::types::{ConfidentialQuoteMetadata, as_near_account};
+use crate::observability::sanitize_sensitive_text;
 use crate::{AppState, auth::AuthUser};
 
 /// Request body for generating an intent to sign.
@@ -35,6 +36,11 @@ pub struct GenerateIntentRequest {
 ///
 /// The response contains a standard-specific payload (e.g. NEP-413 for NEAR)
 /// that the wallet or v1.signer must sign before submitting via submit-intent.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(step = "generate_intent", dao_id = tracing::field::Empty)
+)]
 pub async fn generate_intent(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
@@ -56,6 +62,7 @@ pub async fn generate_intent(
                 format!("Invalid signer_id '{}': {}", request.signer_id, e),
             )
         })?;
+    tracing::Span::current().record("dao_id", tracing::field::display(&dao_id));
     auth_user.verify_can_add_proposal(&state, &dao_id).await?;
 
     let quote_meta =
@@ -122,10 +129,11 @@ pub async fn generate_intent(
             .or_else(|| response_body.get("message"))
             .and_then(|v| v.as_str())
             .unwrap_or("Unknown error from 1Click API");
+        let sanitized_error = sanitize_sensitive_text(error_message);
 
         return Err((
             StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
-            error_message.to_string(),
+            sanitized_error,
         ));
     }
 

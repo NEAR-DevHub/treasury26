@@ -211,13 +211,11 @@ fn summarize_proposal_for_logs(proposal: &Value) -> String {
 
 pub fn decode_add_proposal_payload(actions: Option<&Value>) -> AddProposalPayload {
     let Some(actions) = actions else {
-        log::debug!("[notifications][decoder] add_proposal decode: missing actions");
+        tracing::debug!("add_proposal decode: missing actions");
         return AddProposalPayload::default();
     };
     let Some(decoded) = decode_add_proposal_args(actions) else {
-        log::debug!(
-            "[notifications][decoder] add_proposal decode: failed to decode add_proposal args from actions"
-        );
+        tracing::debug!("add_proposal decode: failed to decode add_proposal args from actions");
         return AddProposalPayload::default();
     };
     let args = &decoded.args;
@@ -232,8 +230,8 @@ pub fn decode_add_proposal_payload(actions: Option<&Value>) -> AddProposalPayloa
             .as_object()
             .map(|obj| obj.keys().cloned().collect())
             .unwrap_or_default();
-        log::debug!(
-            "[notifications][decoder] add_proposal decode: decoded args did not contain proposal object; args_keys={:?}, args={}",
+        tracing::debug!(
+            "add_proposal decode: decoded args did not contain proposal object; args_keys={:?}, args={}",
             arg_keys,
             args
         );
@@ -246,8 +244,8 @@ pub fn decode_add_proposal_payload(actions: Option<&Value>) -> AddProposalPayloa
         .map(str::to_owned);
     let proposal_kind = classify_proposal_kind(proposal);
     if proposal_kind.is_none() {
-        log::warn!(
-            "[notifications][decoder] add_proposal kind unresolved: {}",
+        tracing::warn!(
+            "add_proposal kind unresolved: {}",
             summarize_proposal_for_logs(proposal)
         );
     }
@@ -302,8 +300,8 @@ pub fn decode_notification_content(
                 .and_then(|v| v.as_str())
                 .unwrap_or("Unknown");
             if proposal_kind == "Unknown" {
-                log::warn!(
-                    "[notifications][decoder] rendering add_proposal with unknown type for dao={}: payload={}",
+                tracing::warn!(
+                    "rendering add_proposal with unknown type for dao={}: payload={}",
                     dao_id,
                     payload
                 );

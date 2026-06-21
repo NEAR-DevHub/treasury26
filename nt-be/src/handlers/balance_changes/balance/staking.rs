@@ -105,7 +105,7 @@ pub async fn get_staking_balance_at_block(
         match result {
             Ok(data) => {
                 if offset > 0 {
-                    log::warn!(
+                    tracing::warn!(
                         "Block {} not available for staking pool {}, used block {} instead (offset: {})",
                         block_height,
                         staking_pool,
@@ -130,7 +130,7 @@ pub async fn get_staking_balance_at_block(
                     || err_str.contains("doesn't exist")
                 {
                     if offset < max_retries {
-                        log::debug!(
+                        tracing::debug!(
                             "Block {} not available for staking pool {} ({}), trying previous block",
                             current_block,
                             staking_pool,

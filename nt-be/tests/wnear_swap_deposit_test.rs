@@ -137,7 +137,7 @@ async fn query_recent_activity(
 #[sqlx::test]
 async fn test_wnear_swap_deposit_detected_via_enrichment(pool: PgPool) {
     common::load_test_env();
-    let _ = env_logger::try_init();
+    nt_be::observability::init_tracing();
 
     let network = common::create_archival_network();
 
@@ -157,8 +157,8 @@ async fn test_wnear_swap_deposit_detected_via_enrichment(pool: PgPool) {
     assert_eq!(fixture_count.0, 9, "Expected 9 fixture rows loaded");
 
     sqlx::query(
-        "INSERT INTO monitored_accounts (account_id, enabled, dirty_at)
-         VALUES ($1, true, NOW())",
+        "INSERT INTO monitored_accounts (account_id, enabled, dirty_at, plan_type)
+         VALUES ($1, true, NOW(), 'enterprise')",
     )
     .bind(ACCOUNT_ID)
     .execute(&pool)

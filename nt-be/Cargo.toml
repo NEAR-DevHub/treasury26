@@ -35,9 +35,9 @@ sqlx = { version = "0.8", features = [
 ] }
 bigdecimal = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.11", features = ["v4", "serde"] }
-env_logger = "0.11"
-log = "0.4"
-tracing = { version = "0.1", features = ["log"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+sentry = { version = "0.48", features = ["tracing", "tower", "tower-http", "tower-axum-matched-path"] }
 near-jsonrpc-client = "0.20.0"
 near-jsonrpc-primitives = "0.34"
 near-primitives = "0.34.3"

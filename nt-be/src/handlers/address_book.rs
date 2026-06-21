@@ -113,7 +113,7 @@ pub async fn list_address_book(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Failed to list address book for {}: {}", params.dao_id, e);
+        tracing::error!("Failed to list address book for {}: {}", params.dao_id, e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to fetch address book".to_string(),
@@ -156,7 +156,7 @@ pub async fn create_address_book_entries(
     .fetch_optional(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Failed to look up user {}: {}", auth_user.account_id, e);
+        tracing::error!("Failed to look up user {}: {}", auth_user.account_id, e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to look up user".to_string(),
@@ -177,7 +177,7 @@ pub async fn create_address_book_entries(
             .collect::<Vec<_>>(),
     )
     .map_err(|e| {
-        log::error!("Failed to serialize entries: {}", e);
+        tracing::error!("Failed to serialize entries: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to serialize entries".to_string(),
@@ -199,7 +199,7 @@ pub async fn create_address_book_entries(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Failed to create address book entries: {}", e);
+        tracing::error!("Failed to create address book entries: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to create address book entries".to_string(),
@@ -278,7 +278,7 @@ pub async fn export_address_book(
         .fetch_all(&state.db_pool)
         .await
         .map_err(|e| {
-            log::error!("Failed to export address book for {}: {}", params.dao_id, e);
+            tracing::error!("Failed to export address book for {}: {}", params.dao_id, e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to export address book".to_string(),
@@ -299,7 +299,7 @@ pub async fn export_address_book(
         .fetch_all(&state.db_pool)
         .await
         .map_err(|e| {
-            log::error!("Failed to export address book for {}: {}", params.dao_id, e);
+            tracing::error!("Failed to export address book for {}: {}", params.dao_id, e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to export address book".to_string(),
@@ -365,7 +365,7 @@ pub async fn delete_address_book_entries(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Failed to fetch address book entries: {}", e);
+        tracing::error!("Failed to fetch address book entries: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to fetch address book entries".to_string(),
@@ -388,7 +388,7 @@ pub async fn delete_address_book_entries(
 
     let dao_id_str = &rows[0].dao_id;
     let dao_id: AccountId = dao_id_str.parse().map_err(|e| {
-        log::error!("Invalid dao_id in address_book row '{}': {}", dao_id_str, e);
+        tracing::error!("Invalid dao_id in address_book row '{}': {}", dao_id_str, e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Invalid dao_id".to_string(),
@@ -408,7 +408,7 @@ pub async fn delete_address_book_entries(
     .execute(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Failed to delete address book entries: {}", e);
+        tracing::error!("Failed to delete address book entries: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to delete address book entries".to_string(),
