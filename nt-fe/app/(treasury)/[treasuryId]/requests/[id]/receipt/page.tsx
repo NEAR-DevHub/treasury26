@@ -676,6 +676,7 @@ export default function RequestReceiptPage({
     const searchParams = useSearchParams();
     const recipientFilter = searchParams.get("recipient");
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
+    const isHidden = isConfidential && isGuestTreasury;
     const receiptUrl =
         typeof window !== "undefined" ? window.location.href : "";
 
@@ -687,6 +688,7 @@ export default function RequestReceiptPage({
     const { data: proposal, isLoading: isLoadingProposal } = useProposal(
         treasuryId,
         id,
+        !isHidden,
     );
     const proposalId = proposal?.id ?? id;
     useEffect(() => {
@@ -706,13 +708,15 @@ export default function RequestReceiptPage({
     const isSingleReceiptProposal = !isBatchPaymentProposal;
     const submissionTime = proposal?.submission_time ?? cachedSubmissionTime;
     const canLoadPolicy =
-        !!treasuryId && !!submissionTime && isReceiptEligibleProposal;
+        !isHidden &&
+        !!treasuryId &&
+        !!submissionTime &&
+        isReceiptEligibleProposal;
     const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(
         canLoadPolicy ? treasuryId : null,
         submissionTime,
     );
 
-    const isHidden = isConfidential && isGuestTreasury;
     const status =
         proposal && policy ? getProposalStatus(proposal, policy) : undefined;
 
@@ -749,7 +753,7 @@ export default function RequestReceiptPage({
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress,
         undefined,
-        shouldUseSwapExecutionDate,
+        !isHidden && shouldUseSwapExecutionDate,
     );
     const transactionDate = getProposalExecutedDate(swapStatus, transaction);
     const isExchangeProposal = receiptProposalVariant === "exchange";
@@ -774,7 +778,7 @@ export default function RequestReceiptPage({
     } = useQuoteByDepositAddress(
         depositAddress,
         undefined,
-        shouldFetchQuoteByDepositAddress,
+        !isHidden && shouldFetchQuoteByDepositAddress,
     );
     const confidentialQuote = useMemo<SwapQuoteResponse | null>(() => {
         if (!isConfidentialRequestProposal) {
@@ -803,7 +807,7 @@ export default function RequestReceiptPage({
     } = useTokenPriceAtTimestamp(
         sourceTokenId,
         executedAtIso,
-        shouldLoadHistoricalPrices && !!sourceTokenId,
+        !isHidden && shouldLoadHistoricalPrices && !!sourceTokenId,
     );
     const {
         data: destinationHistoricalPrice,
@@ -811,30 +815,34 @@ export default function RequestReceiptPage({
     } = useTokenPriceAtTimestamp(
         destinationTokenId,
         executedAtIso,
-        shouldLoadHistoricalPrices &&
+        !isHidden &&
+            shouldLoadHistoricalPrices &&
             isExchangeProposal &&
             !!destinationTokenId,
     );
 
     const { data: sourceToken } = useToken(
-        isSingleReceiptProposal ? sourceTokenId : null,
+        !isHidden && isSingleReceiptProposal ? sourceTokenId : null,
     );
     const { data: destinationToken } = useToken(
-        isSingleReceiptProposal ? destinationTokenId : null,
+        !isHidden && isSingleReceiptProposal ? destinationTokenId : null,
     );
     const { data: batchPaymentData, isLoading: isLoadingBatchPayment } =
-        useBatchPayment(batchReceiptData?.batchId || null);
+        useBatchPayment(!isHidden ? batchReceiptData?.batchId || null : null);
     const effectiveBatchTokenId =
         batchPaymentData?.tokenId?.toLowerCase() === "native"
             ? "near"
             : (batchReceiptData?.tokenId ??
               batchPaymentData?.tokenId ??
               "near");
-    const { data: batchTokenData } = useToken(effectiveBatchTokenId);
+    const { data: batchTokenData } = useToken(
+        !isHidden ? effectiveBatchTokenId : null,
+    );
     const { data: batchHistoricalPrice } = useTokenPriceAtTimestamp(
         effectiveBatchTokenId,
         executedAtIso,
-        isBatchPaymentProposal &&
+        !isHidden &&
+            isBatchPaymentProposal &&
             isExecutableReceipt &&
             !!effectiveBatchTokenId &&
             !!executedAtIso,
@@ -999,15 +1007,38 @@ export default function RequestReceiptPage({
         );
     }
 
-    if (!isValidReceipt) {
-        redirect(`/${treasuryId}/requests`);
-    }
     const handlePrint = () => {
         if (treasuryId && !isHidden) {
             recordReceiptMetric(treasuryId, "print");
         }
         window.print();
     };
+
+    if (isHidden) {
+        return (
+            <ReceiptPageShell
+                receiptUrl={receiptUrl}
+                showCopyLink={false}
+                onPrint={handlePrint}
+            >
+                <PageCard className="bg-card p-8 rounded-none">
+                    <ConfidentialState
+                        skeleton={
+                            <div className="space-y-3">
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                            </div>
+                        }
+                    />
+                </PageCard>
+            </ReceiptPageShell>
+        );
+    }
+
+    if (!isValidReceipt) {
+        redirect(`/${treasuryId}/requests`);
+    }
 
     if (isBatchPaymentProposal) {
         return (
@@ -1050,66 +1081,52 @@ export default function RequestReceiptPage({
             showCopyLink={!isConfidential}
             onPrint={handlePrint}
         >
-            {isHidden ? (
-                <PageCard className="bg-card p-8 rounded-none">
-                    <ConfidentialState
-                        skeleton={
-                            <div className="space-y-3">
-                                <Skeleton className="h-16 w-full" />
-                                <Skeleton className="h-16 w-full" />
-                                <Skeleton className="h-16 w-full" />
-                            </div>
-                        }
-                    />
-                </PageCard>
-            ) : (
-                <PageCard className="force-light-theme bg-white text-foreground p-8 rounded-none print:bg-white print:shadow-none">
-                    <ReceiptLayout
-                        title={
-                            isExchangeProposal
-                                ? tReceipt("exchangeConfirmation")
-                                : tReceipt("paymentConfirmation")
-                        }
-                        proposalId={proposalId}
-                        receiptDate={{
-                            value: transactionDate,
-                            isLoading: isTransactionDateLoading,
-                        }}
-                    >
-                        {isExchangeProposal ? (
-                            <ExchangeReceiptSections
-                                sourceToken={sourceTokenInfo}
-                                destinationToken={destinationTokenInfo}
-                                rate={{
-                                    value: rateLabel,
-                                    isLoading: isRateLoading,
-                                }}
-                                executedTime={{
-                                    value: executedTimeValue,
-                                    isLoading: isTransactionDateLoading,
-                                }}
-                            />
-                        ) : (
-                            <PaymentReceiptSections
-                                recipientAddress={{
-                                    value: receiverAddress ?? null,
-                                    isLoading: false,
-                                }}
-                                sourceToken={sourceTokenInfo}
-                                destinationToken={destinationTokenInfo}
-                                rate={{
-                                    value: rateLabel,
-                                    isLoading: isRateLoading,
-                                }}
-                                executedTime={{
-                                    value: executedTimeValue,
-                                    isLoading: isTransactionDateLoading,
-                                }}
-                            />
-                        )}
-                    </ReceiptLayout>
-                </PageCard>
-            )}
+            <PageCard className="force-light-theme bg-white text-foreground p-8 rounded-none print:bg-white print:shadow-none">
+                <ReceiptLayout
+                    title={
+                        isExchangeProposal
+                            ? tReceipt("exchangeConfirmation")
+                            : tReceipt("paymentConfirmation")
+                    }
+                    proposalId={proposalId}
+                    receiptDate={{
+                        value: transactionDate,
+                        isLoading: isTransactionDateLoading,
+                    }}
+                >
+                    {isExchangeProposal ? (
+                        <ExchangeReceiptSections
+                            sourceToken={sourceTokenInfo}
+                            destinationToken={destinationTokenInfo}
+                            rate={{
+                                value: rateLabel,
+                                isLoading: isRateLoading,
+                            }}
+                            executedTime={{
+                                value: executedTimeValue,
+                                isLoading: isTransactionDateLoading,
+                            }}
+                        />
+                    ) : (
+                        <PaymentReceiptSections
+                            recipientAddress={{
+                                value: receiverAddress ?? null,
+                                isLoading: false,
+                            }}
+                            sourceToken={sourceTokenInfo}
+                            destinationToken={destinationTokenInfo}
+                            rate={{
+                                value: rateLabel,
+                                isLoading: isRateLoading,
+                            }}
+                            executedTime={{
+                                value: executedTimeValue,
+                                isLoading: isTransactionDateLoading,
+                            }}
+                        />
+                    )}
+                </ReceiptLayout>
+            </PageCard>
         </ReceiptPageShell>
     );
 }
