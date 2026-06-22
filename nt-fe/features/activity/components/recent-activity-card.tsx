@@ -23,11 +23,7 @@ import { EmptyState } from "@/components/empty-state";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
-import {
-    cn,
-    formatActivityAmount,
-    formatSmartAmount,
-} from "@/lib/utils";
+import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
 import {
     useFormatHistoryDuration,
     useGetActivityLabel,
