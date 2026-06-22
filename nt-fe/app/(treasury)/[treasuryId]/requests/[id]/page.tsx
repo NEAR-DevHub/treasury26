@@ -43,8 +43,14 @@ function RequestPageSkeleton() {
 export default function RequestPage({ params }: RequestPageProps) {
     const t = useTranslations("pages.requests");
     const { id } = use(params);
-    const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
+    const {
+        treasuryId,
+        isConfidential,
+        isGuestTreasury,
+        isLoading: isTreasuryLoading,
+    } = useTreasury();
     const isConfidentialGuest = isConfidential && isGuestTreasury;
+    const canReadRequestData = !isTreasuryLoading && !isConfidentialGuest;
     const router = useRouter();
     const cachedSubmissionTime = useCachedProposalSubmissionTime(
         treasuryId,
@@ -53,11 +59,11 @@ export default function RequestPage({ params }: RequestPageProps) {
     const { data: proposal, isLoading: isLoadingProposal } = useProposal(
         treasuryId,
         id,
-        !isConfidentialGuest,
+        canReadRequestData,
     );
     const submissionTime = proposal?.submission_time ?? cachedSubmissionTime;
     const canLoadPolicy =
-        !isConfidentialGuest && !!treasuryId && !!submissionTime;
+        canReadRequestData && !!treasuryId && !!submissionTime;
     const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(
         canLoadPolicy ? treasuryId : null,
         submissionTime,
@@ -90,7 +96,11 @@ export default function RequestPage({ params }: RequestPageProps) {
         );
     }
 
-    if (isLoadingProposal || (canLoadPolicy && isLoadingPolicy)) {
+    if (
+        isTreasuryLoading ||
+        isLoadingProposal ||
+        (canLoadPolicy && isLoadingPolicy)
+    ) {
         return (
             <PageComponentLayout
                 title={t("detailTitle", { id })}

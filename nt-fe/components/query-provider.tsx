@@ -5,28 +5,34 @@ import { useState, useEffect, type ReactNode } from "react";
 import { clearSessionQueries } from "@/lib/session-query-cleanup";
 import { useNearStore } from "@/stores/near-store";
 
-function hasAuthenticatedSession(
+function getAuthenticatedSessionAccount(
     state: ReturnType<typeof useNearStore.getState>,
 ) {
-    return (
+    if (
         state.isAuthenticated &&
         state.hasAcceptedTerms &&
         !!state.walletAccountId
-    );
+    ) {
+        return state.walletAccountId;
+    }
+    return null;
 }
 
 function SessionQueryCleanup({ queryClient }: { queryClient: QueryClient }) {
     useEffect(() => {
-        let hadAuthenticatedSession = hasAuthenticatedSession(
+        let previousSessionAccount = getAuthenticatedSessionAccount(
             useNearStore.getState(),
         );
 
         return useNearStore.subscribe((state) => {
-            const hasSession = hasAuthenticatedSession(state);
-            if (hadAuthenticatedSession && !hasSession) {
+            const sessionAccount = getAuthenticatedSessionAccount(state);
+            if (
+                previousSessionAccount &&
+                previousSessionAccount !== sessionAccount
+            ) {
                 void clearSessionQueries(queryClient);
             }
-            hadAuthenticatedSession = hasSession;
+            previousSessionAccount = sessionAccount;
         });
     }, [queryClient]);
 

@@ -731,11 +731,11 @@ export const useNear = () => {
     const accountId =
         isAuthenticated && hasAcceptedTerms ? walletAccountId : null;
     const disconnectAndClearSession = async () => {
-        const cleanup = clearSessionQueries(queryClient);
+        const disconnectPromise = disconnect();
         try {
-            await disconnect();
+            await clearSessionQueries(queryClient);
         } finally {
-            await cleanup;
+            await disconnectPromise;
         }
     };
 
