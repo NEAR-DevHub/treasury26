@@ -368,6 +368,7 @@
             "type": "Tipo",
             "date": "Fecha",
             "request": "Solicitud",
+            "viewLinkedRequest": "Ver solicitud vinculada",
             "from": "De",
             "to": "A",
             "method": "Método",

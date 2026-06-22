@@ -368,6 +368,7 @@
             "type": "Type",
             "date": "Date",
             "request": "Demande",
+            "viewLinkedRequest": "Voir la demande liée",
             "from": "De",
             "to": "À",
             "method": "Méthode",

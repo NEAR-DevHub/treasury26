@@ -368,6 +368,7 @@
             "type": "Type",
             "date": "Date",
             "request": "Request",
+            "viewLinkedRequest": "View Linked Request",
             "from": "From",
             "to": "To",
             "method": "Method",

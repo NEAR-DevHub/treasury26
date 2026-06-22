@@ -368,6 +368,7 @@
             "type": "タイプ",
             "date": "日付",
             "request": "リクエスト",
+            "viewLinkedRequest": "リンクされたリクエストを表示",
             "from": "送信元",
             "to": "送信先",
             "method": "メソッド",

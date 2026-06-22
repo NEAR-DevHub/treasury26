@@ -368,6 +368,7 @@
             "type": "유형",
             "date": "날짜",
             "request": "요청",
+            "viewLinkedRequest": "연결된 요청 보기",
             "from": "보낸 사람",
             "to": "받는 사람",
             "method": "메서드",

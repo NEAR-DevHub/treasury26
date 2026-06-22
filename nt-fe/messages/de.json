@@ -368,6 +368,7 @@
             "type": "Typ",
             "date": "Datum",
             "request": "Anfrage",
+            "viewLinkedRequest": "Verknüpfte Anfrage anzeigen",
             "from": "Von",
             "to": "An",
             "method": "Methode",
