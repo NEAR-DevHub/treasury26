@@ -375,14 +375,14 @@
             "transaction": "交易"
         },
         "refresh": {
-            "ariaLabel": "Refresh confidential history",
-            "refreshing": "Refreshing…",
-            "lastUpdated": "Last updated {time}",
-            "notUpdated": "Not updated yet",
-            "justNow": "now",
-            "moments": "moments",
-            "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "ariaLabel": "刷新机密历史记录",
+            "refreshing": "正在刷新…",
+            "lastUpdated": "上次更新于 {time}",
+            "notUpdated": "尚未更新",
+            "justNow": "刚刚",
+            "moments": "片刻",
+            "checking": "正在检查刷新状态…",
+            "unavailable": "刷新状态不可用"
         }
     },
     "apiDocs": {

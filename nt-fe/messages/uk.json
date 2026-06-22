@@ -375,14 +375,14 @@
             "transaction": "Транзакція"
         },
         "refresh": {
-            "ariaLabel": "Refresh confidential history",
-            "refreshing": "Refreshing…",
-            "lastUpdated": "Last updated {time}",
-            "notUpdated": "Not updated yet",
-            "justNow": "now",
-            "moments": "moments",
-            "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "ariaLabel": "Оновити конфіденційну історію",
+            "refreshing": "Оновлення…",
+            "lastUpdated": "Востаннє оновлено {time}",
+            "notUpdated": "Ще не оновлено",
+            "justNow": "щойно",
+            "moments": "кілька миттєвостей",
+            "checking": "Перевірка статусу оновлення…",
+            "unavailable": "Статус оновлення недоступний"
         }
     },
     "apiDocs": {

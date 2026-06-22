@@ -375,14 +375,14 @@
             "transaction": "Giao dịch"
         },
         "refresh": {
-            "ariaLabel": "Refresh confidential history",
-            "refreshing": "Refreshing…",
-            "lastUpdated": "Last updated {time}",
-            "notUpdated": "Not updated yet",
-            "justNow": "now",
-            "moments": "moments",
-            "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "ariaLabel": "Làm mới lịch sử bảo mật",
+            "refreshing": "Đang làm mới…",
+            "lastUpdated": "Cập nhật lần cuối {time}",
+            "notUpdated": "Chưa cập nhật",
+            "justNow": "bây giờ",
+            "moments": "khoảnh khắc",
+            "checking": "Đang kiểm tra trạng thái làm mới…",
+            "unavailable": "Không có trạng thái làm mới"
         }
     },
     "apiDocs": {

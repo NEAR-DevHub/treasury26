@@ -375,14 +375,14 @@
             "transaction": "İşlem"
         },
         "refresh": {
-            "ariaLabel": "Refresh confidential history",
-            "refreshing": "Refreshing…",
-            "lastUpdated": "Last updated {time}",
-            "notUpdated": "Not updated yet",
-            "justNow": "now",
-            "moments": "moments",
-            "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "ariaLabel": "Gizli geçmişi yenile",
+            "refreshing": "Yenileniyor…",
+            "lastUpdated": "Son güncelleme {time}",
+            "notUpdated": "Henüz güncellenmedi",
+            "justNow": "şimdi",
+            "moments": "az önce",
+            "checking": "Yenileme durumu kontrol ediliyor…",
+            "unavailable": "Yenileme durumu kullanılamıyor"
         }
     },
     "apiDocs": {

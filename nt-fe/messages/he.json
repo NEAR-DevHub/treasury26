@@ -375,14 +375,14 @@
             "transaction": "עסקה"
         },
         "refresh": {
-            "ariaLabel": "Refresh confidential history",
-            "refreshing": "Refreshing…",
-            "lastUpdated": "Last updated {time}",
-            "notUpdated": "Not updated yet",
-            "justNow": "now",
-            "moments": "moments",
-            "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "ariaLabel": "רענון היסטוריה חסויה",
+            "refreshing": "מרענן…",
+            "lastUpdated": "עודכן לאחרונה {time}",
+            "notUpdated": "עדיין לא עודכן",
+            "justNow": "עכשיו",
+            "moments": "רגעים",
+            "checking": "בודק סטטוס רענון…",
+            "unavailable": "סטטוס הרענון אינו זמין"
         }
     },
     "apiDocs": {

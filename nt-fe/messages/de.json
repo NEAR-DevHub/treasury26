@@ -375,14 +375,14 @@
             "transaction": "Transaktion"
         },
         "refresh": {
-            "ariaLabel": "Refresh confidential history",
-            "refreshing": "Refreshing…",
-            "lastUpdated": "Last updated {time}",
-            "notUpdated": "Not updated yet",
-            "justNow": "now",
-            "moments": "moments",
-            "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "ariaLabel": "Vertraulichen Verlauf aktualisieren",
+            "refreshing": "Wird aktualisiert…",
+            "lastUpdated": "Zuletzt aktualisiert {time}",
+            "notUpdated": "Noch nicht aktualisiert",
+            "justNow": "jetzt",
+            "moments": "Momente",
+            "checking": "Aktualisierungsstatus wird geprüft…",
+            "unavailable": "Aktualisierungsstatus nicht verfügbar"
         }
     },
     "apiDocs": {

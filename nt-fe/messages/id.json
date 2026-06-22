@@ -375,14 +375,14 @@
             "transaction": "Transaksi"
         },
         "refresh": {
-            "ariaLabel": "Refresh confidential history",
-            "refreshing": "Refreshing…",
-            "lastUpdated": "Last updated {time}",
-            "notUpdated": "Not updated yet",
-            "justNow": "now",
-            "moments": "moments",
-            "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "ariaLabel": "Segarkan riwayat rahasia",
+            "refreshing": "Menyegarkan…",
+            "lastUpdated": "Terakhir diperbarui {time}",
+            "notUpdated": "Belum diperbarui",
+            "justNow": "sekarang",
+            "moments": "beberapa saat",
+            "checking": "Memeriksa status penyegaran…",
+            "unavailable": "Status penyegaran tidak tersedia"
         }
     },
     "apiDocs": {

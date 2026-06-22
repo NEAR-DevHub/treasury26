@@ -375,14 +375,14 @@
             "transaction": "트랜잭션"
         },
         "refresh": {
-            "ariaLabel": "Refresh confidential history",
-            "refreshing": "Refreshing…",
-            "lastUpdated": "Last updated {time}",
-            "notUpdated": "Not updated yet",
-            "justNow": "now",
-            "moments": "moments",
-            "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "ariaLabel": "기밀 기록 새로 고침",
+            "refreshing": "새로 고치는 중…",
+            "lastUpdated": "마지막 업데이트: {time}",
+            "notUpdated": "아직 업데이트되지 않음",
+            "justNow": "지금",
+            "moments": "잠시 전",
+            "checking": "새로 고침 상태 확인 중…",
+            "unavailable": "새로 고침 상태를 사용할 수 없음"
         }
     },
     "apiDocs": {

@@ -375,14 +375,14 @@
             "transaction": "トランザクション"
         },
         "refresh": {
-            "ariaLabel": "Refresh confidential history",
-            "refreshing": "Refreshing…",
-            "lastUpdated": "Last updated {time}",
-            "notUpdated": "Not updated yet",
-            "justNow": "now",
-            "moments": "moments",
-            "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "ariaLabel": "機密履歴を更新",
+            "refreshing": "更新中…",
+            "lastUpdated": "最終更新: {time}",
+            "notUpdated": "まだ更新されていません",
+            "justNow": "今",
+            "moments": "しばらく",
+            "checking": "更新ステータスを確認中…",
+            "unavailable": "更新ステータスを利用できません"
         }
     },
     "apiDocs": {
