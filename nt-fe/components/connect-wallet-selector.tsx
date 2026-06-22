@@ -155,6 +155,7 @@ interface ConnectWalletSelectorProps {
     showBackButton?: boolean;
     showOnboardingHints?: boolean;
     showCreateTreasuryCta?: boolean;
+    onCreateTreasuryClick?: () => void;
     onConnectSupported: (walletId?: string) => Promise<void> | void;
 }
 
@@ -188,6 +189,7 @@ export function ConnectWalletSelector({
     showBackButton = true,
     showOnboardingHints = false,
     showCreateTreasuryCta = true,
+    onCreateTreasuryClick,
     onConnectSupported,
 }: ConnectWalletSelectorProps) {
     const router = useRouter();
@@ -700,7 +702,13 @@ export function ConnectWalletSelector({
                         type="button"
                         variant="unstyled"
                         className="h-auto p-0 underline"
-                        onClick={() => router.push("/create")}
+                        onClick={() => {
+                            if (onCreateTreasuryClick) {
+                                onCreateTreasuryClick();
+                                return;
+                            }
+                            router.push("/create");
+                        }}
                     >
                         {t("createOneLabel")}
                     </Button>
