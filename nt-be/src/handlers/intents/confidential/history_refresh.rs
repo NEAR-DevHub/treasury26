@@ -21,7 +21,7 @@ use crate::handlers::intents::confidential::gold::{
     snapshot_confidential_dao_balances,
 };
 
-const REFRESH_COOLDOWN: Duration = Duration::minutes(1);
+const REFRESH_COOLDOWN: Duration = Duration::seconds(10);
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -216,16 +216,16 @@ mod tests {
 
     #[test]
     fn refresh_status_disables_during_cooldown() {
-        let status = build_refresh_status(account(), Some(at(0)), at(30));
+        let status = build_refresh_status(account(), Some(at(0)), at(5));
 
         assert!(!status.can_refresh);
-        assert_eq!(status.cooldown_ends_at, Some(at(60)));
+        assert_eq!(status.cooldown_ends_at, Some(at(10)));
         assert!(ensure_refresh_allowed(&status).is_err());
     }
 
     #[test]
     fn refresh_status_allows_after_cooldown() {
-        let status = build_refresh_status(account(), Some(at(0)), at(60));
+        let status = build_refresh_status(account(), Some(at(0)), at(10));
 
         assert!(status.can_refresh);
         assert_eq!(status.cooldown_ends_at, None);

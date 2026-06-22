@@ -37,6 +37,7 @@ import {
     getDashboardBreakdownItems,
 } from "@/lib/dashboard-balance-view";
 import { formatBalance, formatCurrencyWithSubCent } from "@/lib/utils";
+import { HistoryRefreshButton } from "@/features/activity/components/history-refresh-button";
 import BalanceChart from "./chart";
 
 interface Props {
@@ -717,6 +718,7 @@ export default function BalanceWithGraph({
                             )}
                         </div>
                     )}
+                    <HistoryRefreshButton />
                 </div>
             </div>
 

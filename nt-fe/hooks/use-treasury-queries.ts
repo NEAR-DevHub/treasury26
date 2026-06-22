@@ -404,9 +404,17 @@ export function useRefreshConfidentialHistory(
                 );
             }
 
-            await queryClient.invalidateQueries({
-                queryKey: ["recentActivity", accountId],
-            });
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: ["recentActivity", accountId],
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: ["treasuryAssets", accountId],
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: ["balanceChart", accountId],
+                }),
+            ]);
         },
         onError: async () => {
             if (!accountId) {
