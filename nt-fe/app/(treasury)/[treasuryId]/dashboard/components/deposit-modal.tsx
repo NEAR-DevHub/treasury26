@@ -1299,26 +1299,26 @@ export function DepositModal({
                                             value as "public" | "confidential",
                                         )
                                     }
-                                    className="gap-0"
+                                    className="gap-0 w-full min-w-0"
                                 >
-                                    <TabsList className="px-2 pb-0 border-b border-border">
+                                    <TabsList className="flex w-full min-w-0 overflow-hidden pb-0">
                                         {canSwitchDepositSource && (
                                             <TabsTrigger
                                                 value="public"
-                                                className="text-base font-semibold pb-2"
+                                                className="flex-1 min-w-0 text-sm font-semibold sm:text-base pb-2 gap-1 sm:gap-1.5"
                                             >
-                                                <Globe className="size-5" />
-                                                <span>
+                                                <Globe className="size-4 sm:size-5 shrink-0" />
+                                                <span className="truncate">
                                                     {t("tabs.fromPublic")}
                                                 </span>
                                             </TabsTrigger>
                                         )}
                                         <TabsTrigger
                                             value="confidential"
-                                            className="text-base font-semibold pb-2"
+                                            className="flex-1 min-w-0 text-sm font-semibold sm:text-base pb-2 gap-1 sm:gap-1.5"
                                         >
-                                            <Shield className="size-5 fill-current" />
-                                            <span>
+                                            <Shield className="size-4 sm:size-5 shrink-0 fill-current" />
+                                            <span className="truncate">
                                                 {t("tabs.fromConfidential")}
                                             </span>
                                         </TabsTrigger>
