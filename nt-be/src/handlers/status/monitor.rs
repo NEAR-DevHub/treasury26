@@ -1,0 +1,262 @@
+use std::sync::Arc;
+use std::time::Duration;
+
+use crate::{
+    AppState,
+    handlers::status::{
+        fallbacks::{self, SHOW_FALLBACK_CALLBACK_PREFIX, StatusIncident, admin_page_url},
+        oh_dear::{self, OhDearStatus, SUPPORTED_SERVICES},
+    },
+};
+
+const MONITOR_INTERVAL_SECONDS: u64 = 60;
+
+fn incident_status(status: &OhDearStatus) -> &'static str {
+    match status {
+        OhDearStatus::Warning => "warning",
+        OhDearStatus::Failed | OhDearStatus::Crashed => "failed",
+        OhDearStatus::Ok | OhDearStatus::Skipped => "ok",
+    }
+}
+
+fn format_ops_alert(service: &str, check_name: &str, status: &str, message: &str) -> String {
+    format!(
+        "⚠️ <b>Health check failed</b>: {service}\n\
+         Check: <code>{check_name}</code>\n\
+         Status: <b>{status}</b>\n\
+         {message}\n\n\
+         Click <b>Show fallback</b> to activate the user-facing warning."
+    )
+}
+
+async fn load_active_incident(
+    pool: &sqlx::PgPool,
+    service: &str,
+    check_name: &str,
+) -> Result<Option<StatusIncident>, sqlx::Error> {
+    sqlx::query_as::<_, StatusIncident>(
+        r#"
+        SELECT
+            id, service, check_name, status, first_failed_at, last_failed_at,
+            recovered_at, telegram_message_id, fallback_activated_at, warning_slot_id
+        FROM status_incidents
+        WHERE service = $1 AND check_name = $2 AND recovered_at IS NULL
+        "#,
+    )
+    .bind(service)
+    .bind(check_name)
+    .fetch_optional(pool)
+    .await
+}
+
+async fn open_incident(
+    pool: &sqlx::PgPool,
+    service: &str,
+    check_name: &str,
+    status: &str,
+) -> Result<StatusIncident, sqlx::Error> {
+    sqlx::query_as::<_, StatusIncident>(
+        r#"
+        INSERT INTO status_incidents (service, check_name, status)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (service, check_name) DO UPDATE SET
+            status = EXCLUDED.status,
+            first_failed_at = CASE
+                WHEN status_incidents.recovered_at IS NOT NULL THEN NOW()
+                ELSE status_incidents.first_failed_at
+            END,
+            last_failed_at = NOW(),
+            recovered_at = NULL,
+            telegram_message_id = CASE
+                WHEN status_incidents.recovered_at IS NOT NULL THEN NULL
+                ELSE status_incidents.telegram_message_id
+            END,
+            fallback_activated_at = CASE
+                WHEN status_incidents.recovered_at IS NOT NULL THEN NULL
+                ELSE status_incidents.fallback_activated_at
+            END,
+            warning_slot_id = CASE
+                WHEN status_incidents.recovered_at IS NOT NULL THEN NULL
+                ELSE status_incidents.warning_slot_id
+            END
+        RETURNING
+            id, service, check_name, status, first_failed_at, last_failed_at,
+            recovered_at, telegram_message_id, fallback_activated_at, warning_slot_id
+        "#,
+    )
+    .bind(service)
+    .bind(check_name)
+    .bind(status)
+    .fetch_one(pool)
+    .await
+}
+
+async fn touch_incident(
+    pool: &sqlx::PgPool,
+    incident_id: i32,
+    status: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE status_incidents
+        SET status = $2, last_failed_at = NOW()
+        WHERE id = $1
+        "#,
+    )
+    .bind(incident_id)
+    .bind(status)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+async fn set_incident_telegram_message(
+    pool: &sqlx::PgPool,
+    incident_id: i32,
+    message_id: i32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE status_incidents SET telegram_message_id = $2 WHERE id = $1")
+        .bind(incident_id)
+        .bind(message_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+async fn recover_incident(pool: &sqlx::PgPool, incident_id: i32) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE status_incidents SET recovered_at = NOW() WHERE id = $1")
+        .bind(incident_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+async fn process_service(state: &Arc<AppState>, service: &str) {
+    let Some(check) = oh_dear::run_service_check(state, service).await else {
+        return;
+    };
+
+    let check_name = check.name.as_str();
+    let unhealthy = oh_dear::is_unhealthy_status(&check.status);
+
+    if unhealthy {
+        let status = incident_status(&check.status);
+        let incident = match load_active_incident(&state.db_pool, service, check_name).await {
+            Ok(incident) => incident,
+            Err(e) => {
+                tracing::error!("[status-monitor] Failed to load incident for {service}: {e}");
+                return;
+            }
+        };
+
+        let incident = match incident {
+            Some(existing) => {
+                if let Err(e) = touch_incident(&state.db_pool, existing.id, status).await {
+                    tracing::error!(
+                        "[status-monitor] Failed to update incident {}: {e}",
+                        existing.id
+                    );
+                    return;
+                }
+                existing
+            }
+            None => match open_incident(&state.db_pool, service, check_name, status).await {
+                Ok(incident) => incident,
+                Err(e) => {
+                    tracing::error!("[status-monitor] Failed to open incident for {service}: {e}");
+                    return;
+                }
+            },
+        };
+
+        if incident.telegram_message_id.is_none() {
+            let text = format_ops_alert(service, check_name, status, &check.notification_message);
+            let callback_data = format!("{SHOW_FALLBACK_CALLBACK_PREFIX}{service}");
+            let admin_url = admin_page_url();
+
+            match state
+                .telegram_client
+                .send_ops_alert_with_buttons(&text, &admin_url, &callback_data)
+                .await
+            {
+                Ok(message_id) if message_id > 0 => {
+                    if let Err(e) =
+                        set_incident_telegram_message(&state.db_pool, incident.id, message_id).await
+                    {
+                        tracing::error!(
+                            "[status-monitor] Failed to persist telegram message id for incident {}: {e}",
+                            incident.id
+                        );
+                    }
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    tracing::error!("[status-monitor] Failed to send ops alert for {service}: {e}");
+                }
+            }
+        }
+    } else {
+        let incident = match load_active_incident(&state.db_pool, service, check_name).await {
+            Ok(incident) => incident,
+            Err(e) => {
+                tracing::error!("[status-monitor] Failed to load incident for {service}: {e}");
+                return;
+            }
+        };
+
+        let Some(incident) = incident else {
+            return;
+        };
+
+        if let Err(e) = recover_incident(&state.db_pool, incident.id).await {
+            tracing::error!(
+                "[status-monitor] Failed to recover incident {}: {e}",
+                incident.id
+            );
+            return;
+        }
+
+        match fallbacks::deactivate_fallback(state, service).await {
+            Ok(true) => {
+                tracing::info!("[status-monitor] Recovered {service}; deactivated auto-fallback");
+            }
+            Ok(false) => {
+                tracing::info!("[status-monitor] Recovered {service}");
+            }
+            Err(e) => {
+                tracing::error!(
+                    "[status-monitor] Failed to deactivate fallback for {service}: {e}"
+                );
+            }
+        }
+    }
+}
+
+pub async fn run_monitor_cycle(state: &Arc<AppState>) {
+    for service in SUPPORTED_SERVICES {
+        process_service(state, service).await;
+    }
+}
+
+pub fn run_status_monitor_loop(state: Arc<AppState>) {
+    tokio::spawn(async move {
+        let initial_delay = std::env::var("STATUS_MONITOR_INITIAL_DELAY_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30u64);
+
+        tracing::info!(
+            "Starting status monitor worker ({}s interval, {}s initial delay)",
+            MONITOR_INTERVAL_SECONDS,
+            initial_delay
+        );
+
+        tokio::time::sleep(Duration::from_secs(initial_delay)).await;
+        let mut timer = tokio::time::interval(Duration::from_secs(MONITOR_INTERVAL_SECONDS));
+
+        loop {
+            timer.tick().await;
+            run_monitor_cycle(&state).await;
+        }
+    });
+}

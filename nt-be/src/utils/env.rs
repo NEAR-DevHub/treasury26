@@ -55,6 +55,8 @@ pub struct EnvVars {
     // Telegram bot webhook configuration
     pub telegram_webhook_secret: Option<String>,
     pub frontend_base_url: String,
+    pub admin_username: Option<String>,
+    pub admin_password: Option<String>,
     // Confidential auth token lifetime in days (default: 36500 ≈ 100 years)
     pub confidential_auth_expires_days: i64,
     pub testing_sputnik_dao_ids: HashSet<String>,
@@ -207,6 +209,12 @@ impl Default for EnvVars {
                 .filter(|s| !s.is_empty()),
             frontend_base_url: std::env::var("FRONTEND_BASE_URL")
                 .unwrap_or_else(|_| "http://localhost:3001".to_string()),
+            admin_username: std::env::var("ADMIN_USERNAME")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            admin_password: std::env::var("ADMIN_PASSWORD")
+                .ok()
+                .filter(|s| !s.is_empty()),
             confidential_auth_expires_days: std::env::var("CONFIDENTIAL_AUTH_EXPIRES_DAYS")
                 .ok()
                 .and_then(|s| s.parse().ok())

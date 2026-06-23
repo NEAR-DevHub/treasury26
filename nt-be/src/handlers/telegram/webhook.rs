@@ -4,10 +4,17 @@ use axum::{
     http::{HeaderMap, StatusCode},
 };
 use std::sync::Arc;
-use teloxide::types::{ChatMemberKind, Update, UpdateKind};
-use teloxide::utils::command::parse_command;
+use teloxide::{
+    payloads::AnswerCallbackQuerySetters,
+    prelude::Requester,
+    types::{ChatMemberKind, Update, UpdateKind},
+    utils::command::parse_command,
+};
 
-use crate::AppState;
+use crate::{
+    AppState,
+    handlers::status::fallbacks::{self, parse_show_fallback_callback},
+};
 
 /// Axum handler for incoming Telegram webhook updates.
 ///
@@ -49,6 +56,9 @@ pub async fn handle_telegram_webhook(
                 .is_some_and(|cmd| matches!(cmd, "start" | "connect")) =>
         {
             handle_bot_added(&state, msg.chat.id.0, msg.chat.title()).await;
+        }
+        UpdateKind::CallbackQuery(callback) => {
+            handle_callback_query(&state, callback).await;
         }
         _ => {}
     }
@@ -155,5 +165,89 @@ async fn handle_bot_removed(state: &AppState, chat_id: i64) {
         .await
     {
         tracing::error!("Failed to delete chat {}: {}", chat_id, e);
+    }
+}
+
+async fn handle_callback_query(state: &AppState, callback: teloxide::types::CallbackQuery) {
+    let Some(data) = callback.data.as_deref() else {
+        return;
+    };
+
+    let Some(service) = parse_show_fallback_callback(data) else {
+        return;
+    };
+
+    let Some(message) = callback.message.as_ref() else {
+        return;
+    };
+
+    let chat_id = message.chat().id.0;
+    if !is_ops_chat(state, chat_id) {
+        answer_callback_query(state, callback.id.clone(), Some("Unauthorized")).await;
+        return;
+    }
+
+    let activated_by = callback
+        .from
+        .username
+        .as_deref()
+        .or(Some(callback.from.first_name.as_str()))
+        .unwrap_or("telegram-user");
+
+    match fallbacks::activate_fallback(state, service, activated_by).await {
+        Ok(Some(_)) => {
+            let note = format!("✅ Fallback activated for <b>{service}</b> by {activated_by}.");
+            if let Err(e) = state
+                .telegram_client
+                .edit_message_text(chat_id, message.id().0, &note)
+                .await
+            {
+                tracing::error!(
+                    "[telegram] Failed to edit fallback activation message in chat {chat_id}: {e}"
+                );
+            }
+            answer_callback_query(state, callback.id.clone(), Some("Fallback activated")).await;
+        }
+        Ok(None) => {
+            answer_callback_query(state, callback.id.clone(), Some("Fallback already active"))
+                .await;
+        }
+        Err(e) => {
+            tracing::error!("[telegram] Failed to activate fallback for {service}: {e}");
+            answer_callback_query(
+                state,
+                callback.id.clone(),
+                Some("Failed to activate fallback"),
+            )
+            .await;
+        }
+    }
+}
+
+fn is_ops_chat(state: &AppState, chat_id: i64) -> bool {
+    state
+        .env_vars
+        .telegram_chat_id
+        .as_deref()
+        .and_then(|id| id.parse::<i64>().ok())
+        .is_some_and(|ops_chat_id| ops_chat_id == chat_id)
+}
+
+async fn answer_callback_query(
+    state: &AppState,
+    callback_id: teloxide::types::CallbackQueryId,
+    text: Option<&str>,
+) {
+    let Some(bot) = state.telegram_client.bot() else {
+        return;
+    };
+
+    let mut request = bot.answer_callback_query(callback_id);
+    if let Some(text) = text {
+        request = request.text(text);
+    }
+
+    if let Err(e) = request.await {
+        tracing::warn!("[telegram] Failed to answer callback query: {e}");
     }
 }

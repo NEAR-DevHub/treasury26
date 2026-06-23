@@ -1,23 +1,24 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { useAssets } from "@/hooks/use-assets";
-
-import Assets from "./components/assets";
-import BalanceWithGraph from "./components/balance-with-graph";
-import { PendingRequests } from "@/features/proposals/components/pending-requests";
+import { SlotWarning } from "@/components/slot-warning";
 import { RecentActivity } from "@/features/activity";
 import { OnboardingProgress } from "@/features/onboarding";
+import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { InfoBox } from "@/features/onboarding/components/info-box";
 import {
-    WelcomeTooltip,
     CongratsTooltip,
     NotificationsTooltip,
+    WelcomeTooltip,
 } from "@/features/onboarding/steps/dashboard";
+import { PendingRequests } from "@/features/proposals/components/pending-requests";
+import { useAssets } from "@/hooks/use-assets";
 import { useTreasury } from "@/hooks/use-treasury";
-import { CreateBanner } from "@/features/onboarding/components/create-banner";
+import Assets from "./components/assets";
+import { BalanceWarningModal } from "./components/balance-warning-modal";
+import BalanceWithGraph from "./components/balance-with-graph";
 
 export default function AppPage() {
     const t = useTranslations("pages.dashboard");
@@ -44,6 +45,7 @@ export default function AppPage() {
                         <CreateBanner />
                     </div>
                     <OnboardingProgress onDepositClick={handleDepositOpen} />
+                    <SlotWarning slot="data.balances" />
                     <BalanceWithGraph
                         tokens={tokens}
                         isHidden={isHidden}
@@ -67,6 +69,7 @@ export default function AppPage() {
                     <PendingRequests />
                 </div>
             </div>
+            <BalanceWarningModal />
             <WelcomeTooltip />
             <CongratsTooltip />
             {/* NOTE: comment when notifications feature is released */}

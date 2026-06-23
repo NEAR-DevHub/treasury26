@@ -119,6 +119,45 @@ impl TelegramClient {
         Ok(sent.id.0)
     }
 
+    /// Send an ops-channel alert with "Show fallback" callback and "Open admin" URL buttons.
+    pub async fn send_ops_alert_with_buttons(
+        &self,
+        text: &str,
+        admin_url: &str,
+        callback_data: &str,
+    ) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
+        let (bot, chat_id_str) = match (&self.bot, &self.notification_chat_id) {
+            (Some(b), Some(c)) => (b, c),
+            _ => {
+                tracing::warn!(
+                    "Telegram client not configured. Ops alert ignored: {}",
+                    text
+                );
+                return Ok(0);
+            }
+        };
+
+        let chat_id: i64 = chat_id_str
+            .parse()
+            .map_err(|_| format!("Invalid TELEGRAM_CHAT_ID: {}", chat_id_str))?;
+
+        let parsed_url: Url = admin_url
+            .parse()
+            .map_err(|_| format!("Invalid admin URL: {}", admin_url))?;
+
+        let keyboard = InlineKeyboardMarkup::new([[
+            InlineKeyboardButton::callback("Show fallback", callback_data.to_string()),
+            InlineKeyboardButton::url("Open admin", parsed_url),
+        ]]);
+
+        let sent = bot
+            .send_message(ChatId(chat_id), text)
+            .parse_mode(ParseMode::Html)
+            .reply_markup(keyboard)
+            .await?;
+        Ok(sent.id.0)
+    }
+
     /// Edit an existing message in an arbitrary Telegram chat.
     pub async fn edit_message_text(
         &self,

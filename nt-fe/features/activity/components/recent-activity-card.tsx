@@ -1,6 +1,18 @@
 "use client";
 
+import {
+    ArrowDownToLine,
+    ArrowRight,
+    ArrowRightLeft,
+    ArrowUpToLine,
+    ChevronRight,
+    Clock,
+    Shield,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/button";
+import { EmptyState } from "@/components/empty-state";
 import {
     Card,
     CardContent,
@@ -8,29 +20,17 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-    ArrowDownToLine,
-    ArrowUpToLine,
-    ArrowRightLeft,
-    ArrowRight,
-    Clock,
-    ChevronRight,
-    Shield,
-} from "lucide-react";
-import { EmptyState } from "@/components/empty-state";
-import { useRecentActivity } from "@/hooks/use-treasury-queries";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useRecentActivity } from "@/hooks/use-treasury-queries";
+import type { RecentActivity as RecentActivityType } from "@/lib/api";
 import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
 import {
     useFormatHistoryDuration,
     useGetActivityLabel,
     useGetActivitySubLabel,
 } from "../utils/history-utils";
-import { useState, useMemo } from "react";
-import type { RecentActivity as RecentActivityType } from "@/lib/api";
 
 type GroupedActivity =
     | {
@@ -45,23 +45,25 @@ type GroupedActivity =
           tokenMetadata: RecentActivityType["tokenMetadata"];
           blockTime: string; // Most recent time
       };
+
 import {
-    useReactTable,
-    getCoreRowModel,
-    flexRender,
+    type ColumnDef,
     createColumnHelper,
-    ColumnDef,
+    flexRender,
+    getCoreRowModel,
+    useReactTable,
 } from "@tanstack/react-table";
-import { Table, TableBody, TableCell, TableRow } from "@/components/table";
-import { FormattedDate } from "@/components/formatted-date";
-import { TransactionDetailsModal } from "./transaction-details-modal";
-import { ExportButton } from "@/components/export-button";
 import Link from "next/link";
-import { useMediaQuery } from "@/hooks/use-media-query";
-import { StepperHeader } from "@/components/step-wizard";
 import { ConfidentialState } from "@/components/confidential-state";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { ExportButton } from "@/components/export-button";
+import { FormattedDate } from "@/components/formatted-date";
+import { SlotWarning } from "@/components/slot-warning";
+import { StepperHeader } from "@/components/step-wizard";
+import { Table, TableBody, TableCell, TableRow } from "@/components/table";
 import { Tooltip } from "@/components/tooltip";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { TransactionDetailsModal } from "./transaction-details-modal";
 
 const ITEMS_ON_DASHBOARD = 10;
 const MAX_ITEMS = 100;
@@ -543,6 +545,7 @@ export function RecentActivity() {
                     </div>
                 </CardHeader>
                 <CardContent className="px-2">
+                    <SlotWarning slot="data.activity" className="mx-2 mb-3" />
                     {isHidden ? (
                         <ConfidentialState
                             skeleton={<RecentActivitySkeleton />}

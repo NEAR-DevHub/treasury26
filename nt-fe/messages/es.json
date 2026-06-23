@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "Buscar solicitud por nombre o ID",
         "searchPlaceholderShort": "Buscar por nombre o ID",
-        "errorLoading": "Error al cargar las propuestas. Inténtalo de nuevo.",
         "empty": {
             "title": "Crea tu primera solicitud",
             "description": "Las solicitudes de pagos, intercambios y otras acciones aparecerán aquí cuando se creen.",
@@ -607,6 +606,7 @@
             "actionReject": "rechazar",
             "actionRemove": "eliminar",
             "insufficientBalance": "Las solicitudes <highlight>{ids}</highlight> no se pueden aprobar por saldo insuficiente. Tu aprobación solo se aplicará al resto de solicitudes.",
+            "approveBlockedBulk": "{count, plural, one {# solicitud seleccionada no puede aprobarse ahora — deselecciónala para continuar.} other {# solicitudes seleccionadas no pueden aprobarse ahora — deselecciónalas para continuar.}}",
             "remove": "Eliminar",
             "confirm": "Confirmar"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "Abrir {bot} en Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "En mantenimiento",
-        "maintenanceMessage": "Estamos realizando mantenimiento. Algunas funciones pueden estar temporalmente no disponibles. Vuelve pronto."
-    },
     "creditsQuota": {
         "available": "{count} disponibles",
         "used": "{count} usados",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "Crear solicitud",
-        "noPermission": "No tienes permiso para crear una solicitud"
+        "noPermission": "No tienes permiso para crear una solicitud",
+        "paused": "Pausado temporalmente",
+        "brieflyUnavailable": "Brevemente no disponible"
     },
     "address": {
         "copied": "Dirección copiada al portapapeles"

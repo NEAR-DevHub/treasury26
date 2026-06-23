@@ -63,7 +63,6 @@ function ProposalsList({
     status?: ProposalStatus;
     onSelectionChange?: (count: number) => void;
 }) {
-    const tErrors = useTranslations("requests");
     const { treasuryId, config } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const searchParams = useSearchParams();
@@ -120,7 +119,7 @@ function ProposalsList({
         [searchParams, router, pathname],
     );
 
-    const { data, isLoading, error } = useProposals(treasuryId, filters);
+    const { data, isLoading } = useProposals(treasuryId, filters);
 
     // Prefetch the next page
     useEffect(() => {
@@ -144,14 +143,6 @@ function ProposalsList({
 
     if (isLoading) {
         return <TableSkeleton rows={12} columns={7} />;
-    }
-
-    if (error) {
-        return (
-            <div className="flex items-center justify-center py-8">
-                <p className="text-destructive">{tErrors("errorLoading")}</p>
-            </div>
-        );
     }
 
     return (

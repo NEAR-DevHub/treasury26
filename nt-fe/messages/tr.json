@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "Talebi ada veya kimliğe göre ara",
         "searchPlaceholderShort": "Ad veya kimliğe göre ara",
-        "errorLoading": "Öneriler yüklenirken hata oluştu. Lütfen tekrar deneyin.",
         "empty": {
             "title": "İlk talebinizi oluşturun",
             "description": "Ödeme, takas ve diğer eylemler için talepler oluşturulduktan sonra burada görünecek.",
@@ -607,6 +606,7 @@
             "actionReject": "reddetme",
             "actionRemove": "kaldırma",
             "insufficientBalance": "<highlight>{ids}</highlight> talepleri yetersiz bakiye nedeniyle onaylanamaz. Onayınız yalnızca kalan taleplere uygulanacak.",
+            "approveBlockedBulk": "{count, plural, one {Seçilen # talep şu anda onaylanamaz — devam etmek için seçimini kaldırın.} other {Seçilen # talep şu anda onaylanamaz — devam etmek için seçimlerini kaldırın.}}",
             "remove": "Kaldır",
             "confirm": "Onayla"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "{bot} Telegram'da aç"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Bakım Altında",
-        "maintenanceMessage": "Şu anda bakım gerçekleştiriyoruz. Bazı özellikler geçici olarak kullanılamayabilir. Lütfen kısa süre sonra tekrar kontrol edin."
-    },
     "creditsQuota": {
         "available": "{count} Kullanılabilir",
         "used": "{count} Kullanıldı",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "Talep Oluştur",
-        "noPermission": "Talep oluşturma izniniz yok"
+        "noPermission": "Talep oluşturma izniniz yok",
+        "paused": "Geçici olarak duraklatıldı",
+        "brieflyUnavailable": "Kısa süreliğine kullanılamıyor"
     },
     "address": {
         "copied": "Adres panoya kopyalandı"

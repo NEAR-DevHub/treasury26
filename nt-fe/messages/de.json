@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "Anfrage nach Name oder ID suchen",
         "searchPlaceholderShort": "Nach Name oder ID suchen",
-        "errorLoading": "Fehler beim Laden der Vorschläge. Bitte erneut versuchen.",
         "empty": {
             "title": "Erstellen Sie Ihre erste Anfrage",
             "description": "Anfragen für Zahlungen, Tausche und andere Aktionen erscheinen hier, sobald sie erstellt werden.",
@@ -607,6 +606,7 @@
             "actionReject": "ablehnen",
             "actionRemove": "entfernen",
             "insufficientBalance": "Anfragen <highlight>{ids}</highlight> können wegen unzureichenden Guthabens nicht genehmigt werden. Ihre Genehmigung gilt nur für die verbleibenden Anfragen.",
+            "approveBlockedBulk": "{count, plural, one {# ausgewählte Anfrage kann derzeit nicht genehmigt werden — heben Sie die Auswahl auf, um fortzufahren.} other {# ausgewählte Anfragen können derzeit nicht genehmigt werden — heben Sie die Auswahl auf, um fortzufahren.}}",
             "remove": "Entfernen",
             "confirm": "Bestätigen"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "{bot} in Telegram öffnen"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Wartungsarbeiten",
-        "maintenanceMessage": "Wir führen derzeit Wartungsarbeiten durch. Einige Funktionen sind möglicherweise vorübergehend nicht verfügbar. Bitte schauen Sie bald wieder vorbei."
-    },
     "creditsQuota": {
         "available": "{count} verfügbar",
         "used": "{count} verwendet",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "Anfrage erstellen",
-        "noPermission": "Sie haben keine Berechtigung, eine Anfrage zu erstellen"
+        "noPermission": "Sie haben keine Berechtigung, eine Anfrage zu erstellen",
+        "paused": "Vorübergehend pausiert",
+        "brieflyUnavailable": "Kurzzeitig nicht verfügbar"
     },
     "address": {
         "copied": "Adresse in die Zwischenablage kopiert"

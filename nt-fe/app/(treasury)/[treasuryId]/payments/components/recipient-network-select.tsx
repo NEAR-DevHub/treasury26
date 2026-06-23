@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { Button } from "@/components/button";
 import { InputBlock } from "@/components/input-block";
+import { Tooltip } from "@/components/tooltip";
 import { getNetworkDisplayName } from "@/components/token-display";
 import type { Token } from "@/components/token-input";
 import { NEAR_NETWORK_ID, NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
@@ -50,6 +51,8 @@ interface RecipientNetworkSelectProps {
      * callers can derive blockchain type (for downstream address validation).
      */
     onNetworkChange?: (option: RecipientNetworkOption) => void;
+    warning?: React.ReactNode;
+    warningTooltip?: React.ReactNode;
 }
 
 export type RecipientNetworkRuleOption = RecipientNetworkOption & {
@@ -120,6 +123,8 @@ export function RecipientNetworkSelect({
     isBridgeAssetsLoading = false,
     sectionRules,
     onNetworkChange,
+    warning,
+    warningTooltip,
 }: RecipientNetworkSelectProps) {
     const t = useTranslations("recipientNetworkSelect");
     const tAddressBookTable = useTranslations("addressBookTable");
@@ -269,6 +274,16 @@ export function RecipientNetworkSelect({
                     )}
                     <ChevronDown className="size-5 text-muted-foreground ml-auto" />
                 </Button>
+                {warning && (
+                    <p className="text-general-warning-foreground text-sm inline-flex items-center gap-1">
+                        <span>{warning}</span>
+                        {warningTooltip && (
+                            <Tooltip content={warningTooltip}>
+                                <Info className="size-3 shrink-0" />
+                            </Tooltip>
+                        )}
+                    </p>
+                )}
             </InputBlock>
 
             <SelectModal

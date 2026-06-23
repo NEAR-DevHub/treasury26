@@ -15,7 +15,7 @@ use std::{
 use super::config::OhDearHealthConfig;
 use crate::AppState;
 
-const SUPPORTED_SERVICES: &[&str] = &[
+pub const SUPPORTED_SERVICES: &[&str] = &[
     "backend",
     "exchange",
     "near-intents",
@@ -216,6 +216,24 @@ where
         Ok(payload) => map_ok(payload, duration_ms),
         Err(error) => check.failed_http(error, duration_ms, extra_meta),
     }
+}
+
+pub async fn run_service_check(state: &AppState, service: &str) -> Option<OhDearCheckResult> {
+    let service = StatusService::parse(service)?;
+    Some(match service {
+        StatusService::Backend => check_backend(state).await,
+        StatusService::Exchange => check_exchange(state).await,
+        StatusService::NearIntents => check_near_intents(state).await,
+        StatusService::NearProtocol => check_near_protocol(state).await,
+        StatusService::NearRpc => check_near_rpc(state).await,
+    })
+}
+
+pub fn is_unhealthy_status(status: &OhDearStatus) -> bool {
+    matches!(
+        status,
+        OhDearStatus::Warning | OhDearStatus::Failed | OhDearStatus::Crashed
+    )
 }
 
 pub async fn get_status(

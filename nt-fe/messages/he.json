@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "חיפוש בקשה לפי שם או מזהה",
         "searchPlaceholderShort": "חיפוש לפי שם או מזהה",
-        "errorLoading": "שגיאה בטעינת ההצעות. אנא נסה שוב.",
         "empty": {
             "title": "צור את הבקשה הראשונה שלך",
             "description": "בקשות לתשלומים, החלפות ופעולות אחרות יופיעו כאן לאחר יצירתן.",
@@ -607,6 +606,7 @@
             "actionReject": "לדחות",
             "actionRemove": "להסיר",
             "insufficientBalance": "לא ניתן לאשר את הבקשות <highlight>{ids}</highlight> עקב יתרה לא מספקת. האישור שלך יחול רק על הבקשות הנותרות.",
+            "approveBlockedBulk": "{count, plural, one {לא ניתן לאשר את הבקשה הנבחרת כעת — בטל את הבחירה כדי להמשיך.} other {לא ניתן לאשר # מהבקשות הנבחרות כעת — בטל את הבחירה כדי להמשיך.}}",
             "remove": "הסרה",
             "confirm": "אישור"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "פתחו את {bot} ב-Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "בתחזוקה",
-        "maintenanceMessage": "אנו מבצעים כעת תחזוקה. ייתכן שחלק מהתכונות לא יהיו זמינות באופן זמני. אנא בדוק שוב בקרוב."
-    },
     "creditsQuota": {
         "available": "{count} זמינים",
         "used": "{count} בשימוש",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "צור בקשה",
-        "noPermission": "אין לך הרשאה ליצור בקשה"
+        "noPermission": "אין לך הרשאה ליצור בקשה",
+        "paused": "מושהה זמנית",
+        "brieflyUnavailable": "לא זמין לזמן קצר"
     },
     "address": {
         "copied": "הכתובת הועתקה ללוח"

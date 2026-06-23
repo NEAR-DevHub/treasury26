@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "Buscar solicitação por nome ou ID",
         "searchPlaceholderShort": "Buscar por nome ou ID",
-        "errorLoading": "Erro ao carregar propostas. Por favor, tente novamente.",
         "empty": {
             "title": "Crie sua primeira solicitação",
             "description": "Solicitações de pagamentos, trocas e outras ações aparecerão aqui assim que forem criadas.",
@@ -607,6 +606,7 @@
             "actionReject": "rejeitar",
             "actionRemove": "remover",
             "insufficientBalance": "As solicitações <highlight>{ids}</highlight> não podem ser aprovadas devido a saldo insuficiente. Sua aprovação será aplicada apenas às solicitações restantes.",
+            "approveBlockedBulk": "{count, plural, one {# solicitação selecionada não pode ser aprovada agora — desmarque-a para continuar.} other {# solicitações selecionadas não podem ser aprovadas agora — desmarque-as para continuar.}}",
             "remove": "Remover",
             "confirm": "Confirmar"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "Abrir {bot} no Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Em manutenção",
-        "maintenanceMessage": "Estamos realizando manutenção no momento. Alguns recursos podem ficar temporariamente indisponíveis. Por favor, volte em breve."
-    },
     "creditsQuota": {
         "available": "{count} disponíveis",
         "used": "{count} usados",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "Criar solicitação",
-        "noPermission": "Você não tem permissão para criar uma solicitação"
+        "noPermission": "Você não tem permissão para criar uma solicitação",
+        "paused": "Pausado temporariamente",
+        "brieflyUnavailable": "Brevemente indisponível"
     },
     "address": {
         "copied": "Endereço copiado para a área de transferência"

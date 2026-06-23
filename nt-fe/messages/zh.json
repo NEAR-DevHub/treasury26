@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "按名称或 ID 搜索请求",
         "searchPlaceholderShort": "按名称或 ID 搜索",
-        "errorLoading": "加载提案出错。请再试一次。",
         "empty": {
             "title": "创建您的第一个请求",
             "description": "付款、兑换及其他操作的请求在创建后将显示在此处。",
@@ -607,6 +606,7 @@
             "actionReject": "拒绝",
             "actionRemove": "移除",
             "insufficientBalance": "由于余额不足,请求 <highlight>{ids}</highlight> 无法被批准。您的批准将仅适用于其余请求。",
+            "approveBlockedBulk": "{count, plural, other {所选 # 个请求目前无法批准 — 请取消选择以继续。}}",
             "remove": "移除",
             "confirm": "确认"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "在 Telegram 中打开 {bot}"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "维护中",
-        "maintenanceMessage": "我们正在进行维护。某些功能可能暂时不可用。请稍后再试。"
-    },
     "creditsQuota": {
         "available": "{count} 可用",
         "used": "已用 {count}",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "创建请求",
-        "noPermission": "您没有创建请求的权限"
+        "noPermission": "您没有创建请求的权限",
+        "paused": "暂时暂停",
+        "brieflyUnavailable": "暂时不可用"
     },
     "address": {
         "copied": "地址已复制到剪贴板"

@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { trackEvent } from "@/lib/analytics";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useFormContext } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
@@ -28,13 +29,21 @@ import { Tooltip } from "@/components/tooltip";
 import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WarningAlert } from "@/components/warning-alert";
+import { SlotWarning } from "@/components/slot-warning";
 import {
     PAGE_TOUR_NAMES,
     PAGE_TOUR_STORAGE_KEYS,
     usePageTour,
 } from "@/features/onboarding/steps/page-tours";
+import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
+import {
+    useHasTokenOrNetworkWarning,
+    useSlotBlock,
+} from "@/hooks/use-warnings";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { resolveBridgeScope } from "@/lib/bridge-asset-resolver";
+import { extractInlineWarningCopy } from "@/lib/warning-message";
 import type { IntentsQuoteResponse } from "@/lib/api";
 import { generateIntent } from "@/lib/api";
 import {
@@ -93,6 +102,7 @@ function buildExchangeFormSchema(messages: { amountGreaterThanZero: string }) {
 
 function Step1({ handleNext }: StepProps) {
     const tEx = useTranslations("exchange");
+    const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<
         ExchangeFormValues & { slippageTolerance?: number }
     >();
@@ -101,6 +111,45 @@ function Step1({ handleNext }: StepProps) {
     const sellToken = form.watch("sellToken");
     const receiveToken = form.watch("receiveToken");
     const sellAmount = form.watch("sellAmount");
+    const hasTokenOrNetworkExchangeWarning =
+        useHasTokenOrNetworkWarning("exchange");
+    const { data: bridgeAssets = [] } = useBridgeTokens(
+        hasTokenOrNetworkExchangeWarning,
+    );
+    const exchangeScope = useMemo(
+        () => resolveBridgeScope(bridgeAssets, sellToken?.address),
+        [bridgeAssets, sellToken?.address],
+    );
+    const {
+        warning: sendScopeWarning,
+        blocked: exchangeSlotBlocked,
+        message: sendScopeMessage,
+    } = useSlotBlock(
+        "exchange",
+        exchangeScope.token ?? undefined,
+        exchangeScope.network ?? undefined,
+    );
+    const receiveScope = useMemo(
+        () => resolveBridgeScope(bridgeAssets, receiveToken?.address),
+        [bridgeAssets, receiveToken?.address],
+    );
+    const { warning: receiveScopeWarning, message: receiveScopeMessage } =
+        useSlotBlock(
+            "exchange",
+            receiveScope.token ?? undefined,
+            receiveScope.network ?? undefined,
+        );
+    const sendWarningMessage =
+        sendScopeWarning && (sendScopeWarning.token || sendScopeWarning.network)
+            ? sendScopeMessage
+            : null;
+    const receiveWarningMessage =
+        receiveScopeWarning &&
+        (receiveScopeWarning.token || receiveScopeWarning.network)
+            ? receiveScopeMessage
+            : null;
+    const sendWarningCopy = extractInlineWarningCopy(sendWarningMessage);
+    const receiveWarningCopy = extractInlineWarningCopy(receiveWarningMessage);
 
     const slippageTolerance = form.watch("slippageTolerance") || 0.5;
 
@@ -261,145 +310,161 @@ function Step1({ handleNext }: StepProps) {
     const isDarkTheme = resolvedTheme === "dark";
 
     return (
-        <PageCard className="relative">
-            <div className="flex items-center justify-between gap-2">
-                <StepperHeader
-                    title={
-                        isConfidential ? (
-                            <span className="inline-flex items-center gap-1.5">
-                                <span>{tEx("heading")}</span>
-                                <Tooltip content={tEx("confidentialTooltip")}>
-                                    <span className="inline-flex">
-                                        <Shield className="size-4 fill-foreground" />
-                                    </span>
-                                </Tooltip>
-                            </span>
-                        ) : (
-                            tEx("heading")
-                        )
-                    }
-                />
-                <div className="flex items-center gap-2">
-                    <PendingButton
-                        id="exchange-pending-btn"
-                        types={["Exchange"]}
-                    />
-                    <ExchangeSettingsModal
-                        id="exchange-settings-btn"
-                        slippageTolerance={slippageTolerance}
-                        onSlippageChange={(value) =>
-                            form.setValue("slippageTolerance", value)
+        <>
+            <SlotWarning slot="exchange" />
+            <PageCard className="relative">
+                <div className="flex items-center justify-between gap-2">
+                    <StepperHeader
+                        title={
+                            isConfidential ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span>{tEx("heading")}</span>
+                                    <Tooltip
+                                        content={tEx("confidentialTooltip")}
+                                    >
+                                        <span className="inline-flex">
+                                            <Shield className="size-4 fill-foreground" />
+                                        </span>
+                                    </Tooltip>
+                                </span>
+                            ) : (
+                                tEx("heading")
+                            )
                         }
                     />
+                    <div className="flex items-center gap-2">
+                        <PendingButton
+                            id="exchange-pending-btn"
+                            types={["Exchange"]}
+                        />
+                        <ExchangeSettingsModal
+                            id="exchange-settings-btn"
+                            slippageTolerance={slippageTolerance}
+                            onSlippageChange={(value) =>
+                                form.setValue("slippageTolerance", value)
+                            }
+                        />
+                    </div>
                 </div>
-            </div>
 
-            {/* Sell Token Input */}
-            <div className="relative">
+                {/* Sell Token Input */}
+                <div className="relative">
+                    <TokenInput
+                        title={tEx("sell")}
+                        control={form.control}
+                        amountName="sellAmount"
+                        tokenName="sellToken"
+                        showInsufficientBalance={true}
+                        dynamicFontSize={true}
+                        tokenSelect={{
+                            filterTokens: filterSellTokens,
+                        }}
+                        usdValueOverride={
+                            quoteData?.quote
+                                ? Number(quoteData.quote.amountInUsd) || 0
+                                : null
+                        }
+                        warning={sendWarningCopy.inlineText}
+                        warningTooltip={sendWarningCopy.tooltipText}
+                    />
+                    {/* Swap Arrow */}
+                    <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
+                        <Button
+                            type="button"
+                            variant="unstyled"
+                            className="rounded-full bg-card border p-1.5! z-10 cursor-pointer"
+                            onClick={handleSwapTokens}
+                        >
+                            {isLoadingQuote ? (
+                                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                            ) : (
+                                <ArrowDown className="size-5" />
+                            )}
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Receive Token Input (Read-only) */}
                 <TokenInput
-                    title={tEx("sell")}
+                    title={tEx("receive")}
                     control={form.control}
-                    amountName="sellAmount"
-                    tokenName="sellToken"
-                    showInsufficientBalance={true}
+                    amountName="receiveAmount"
+                    tokenName="receiveToken"
+                    readOnly={true}
+                    loading={isLoadingQuote}
+                    customValue={formattedReceiveAmount}
                     dynamicFontSize={true}
                     tokenSelect={{
-                        filterTokens: filterSellTokens,
+                        filterTokens: filterReceiveTokens,
+                        showPopularAssets: true,
                     }}
                     usdValueOverride={
                         quoteData?.quote
-                            ? Number(quoteData.quote.amountInUsd) || 0
+                            ? Number(quoteData.quote.amountOutUsd) || 0
                             : null
                     }
+                    warning={receiveWarningCopy.inlineText}
+                    warningTooltip={receiveWarningCopy.tooltipText}
                 />
-                {/* Swap Arrow */}
-                <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
-                    <Button
-                        type="button"
-                        variant="unstyled"
-                        className="rounded-full bg-card border p-1.5! z-10 cursor-pointer"
-                        onClick={handleSwapTokens}
-                    >
-                        {isLoadingQuote ? (
-                            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-                        ) : (
-                            <ArrowDown className="size-5" />
-                        )}
-                    </Button>
-                </div>
-            </div>
 
-            {/* Receive Token Input (Read-only) */}
-            <TokenInput
-                title={tEx("receive")}
-                control={form.control}
-                amountName="receiveAmount"
-                tokenName="receiveToken"
-                readOnly={true}
-                loading={isLoadingQuote}
-                customValue={formattedReceiveAmount}
-                dynamicFontSize={true}
-                tokenSelect={{
-                    filterTokens: filterReceiveTokens,
-                    showPopularAssets: true,
-                }}
-                usdValueOverride={
-                    quoteData?.quote
-                        ? Number(quoteData.quote.amountOutUsd) || 0
-                        : null
-                }
-            />
-
-            {/* Rate and Slippage */}
-            {quoteData && quoteData.quote && (
-                <div className="flex flex-col gap-2 text-sm">
-                    <Rate
-                        quote={quoteData.quote}
-                        sellToken={sellToken}
-                        receiveToken={receiveToken}
-                    />
-                    <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">
-                            {tEx("slippageTolerance")}
-                        </span>
-                        <span className="font-medium">
-                            {slippageTolerance}%
-                        </span>
+                {/* Rate and Slippage */}
+                {quoteData && quoteData.quote && (
+                    <div className="flex flex-col gap-2 text-sm">
+                        <Rate
+                            quote={quoteData.quote}
+                            sellToken={sellToken}
+                            receiveToken={receiveToken}
+                        />
+                        <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">
+                                {tEx("slippageTolerance")}
+                            </span>
+                            <span className="font-medium">
+                                {slippageTolerance}%
+                            </span>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            <div className="rounded-lg border bg-card p-0 overflow-hidden">
-                <CreateRequestButton
-                    onClick={handleContinue}
-                    className="w-full h-10 rounded-none"
-                    permissions={[{ kind: "call", action: "AddProposal" }]}
-                    disabled={areSameTokens || !hasValidAmount || !quoteData}
-                    idleMessage={
-                        areSameTokens
-                            ? tEx("disabled.differentTokens")
-                            : !hasValidAmount
-                              ? tEx("disabled.enterAmount")
-                              : tEx("review")
-                    }
-                />
-            </div>
-
-            <div className="flex justify-center items-center gap-2 text-sm text-muted-foreground">
-                <span>{tEx("poweredBy")}</span>
-                <span className="font-semibold flex items-center gap-1">
-                    <img
-                        src={
-                            isDarkTheme
-                                ? "/near-intents-dark.svg"
-                                : "/near-intents-light.svg"
+                <div className="rounded-lg border bg-card p-0 overflow-hidden">
+                    <CreateRequestButton
+                        onClick={handleContinue}
+                        className="w-full h-10 rounded-none"
+                        permissions={[{ kind: "call", action: "AddProposal" }]}
+                        disabled={
+                            areSameTokens ||
+                            !hasValidAmount ||
+                            !quoteData ||
+                            exchangeSlotBlocked
                         }
-                        alt="NEAR Intents"
-                        className="h-3"
+                        idleMessage={
+                            exchangeSlotBlocked
+                                ? tCreate("brieflyUnavailable")
+                                : areSameTokens
+                                  ? tEx("disabled.differentTokens")
+                                  : !hasValidAmount
+                                    ? tEx("disabled.enterAmount")
+                                    : tEx("review")
+                        }
                     />
-                </span>
-            </div>
-        </PageCard>
+                </div>
+
+                <div className="flex justify-center items-center gap-2 text-sm text-muted-foreground">
+                    <span>{tEx("poweredBy")}</span>
+                    <span className="font-semibold flex items-center gap-1">
+                        <img
+                            src={
+                                isDarkTheme
+                                    ? "/near-intents-dark.svg"
+                                    : "/near-intents-light.svg"
+                            }
+                            alt="NEAR Intents"
+                            className="h-3"
+                        />
+                    </span>
+                </div>
+            </PageCard>
+        </>
     );
 }
 
@@ -756,6 +821,24 @@ export default function ExchangePage() {
         form.setValue("sellToken", defaultSellToken);
     }, [defaultSellToken, form]);
 
+    const watchedSellToken = form.watch("sellToken");
+    const hasTokenOrNetworkExchangeWarning =
+        useHasTokenOrNetworkWarning("exchange");
+    const { data: exchangeBridgeAssets = [] } = useBridgeTokens(
+        hasTokenOrNetworkExchangeWarning,
+    );
+    const exchangeScope = useMemo(
+        () =>
+            resolveBridgeScope(exchangeBridgeAssets, watchedSellToken?.address),
+        [exchangeBridgeAssets, watchedSellToken?.address],
+    );
+    const { blocked: exchangeSlotBlocked, message: exchangeSlotMessage } =
+        useSlotBlock(
+            "exchange",
+            exchangeScope.token ?? undefined,
+            exchangeScope.network ?? undefined,
+        );
+
     const onSubmit = async (data: ExchangeFormValues) => {
         const proposalDataFromForm = form.getValues(
             "proposalData" as any,
@@ -763,6 +846,11 @@ export default function ExchangePage() {
 
         if (!proposalDataFromForm || !selectedTreasury) {
             console.error("Missing proposal data or treasury");
+            return;
+        }
+
+        if (exchangeSlotBlocked) {
+            if (exchangeSlotMessage) toast.error(exchangeSlotMessage);
             return;
         }
 

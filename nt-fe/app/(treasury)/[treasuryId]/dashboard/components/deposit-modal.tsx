@@ -22,6 +22,8 @@ import { useForm } from "react-hook-form";
 import QRCode from "react-qr-code";
 import { z } from "zod";
 import { Button } from "@/components/button";
+import { SlotWarning } from "@/components/slot-warning";
+import { useSlotBlock } from "@/hooks/use-warnings";
 import { CopyButton } from "@/components/copy-button";
 import { InputBlock } from "@/components/input-block";
 import { getNetworkDisplayName } from "@/components/token-display";
@@ -384,6 +386,11 @@ export function DepositModal({
 
     const selectedAsset = form.watch("asset");
     const selectedNetwork = form.watch("network");
+    const { blocked: depositBlocked } = useSlotBlock(
+        "deposit",
+        selectedAsset?.id,
+        selectedNetwork?.id,
+    );
     const { data: bridgeAssets = [], isLoading: isLoadingAssets } =
         useBridgeTokens(true, { includeNearNetwork: true });
 
@@ -1124,6 +1131,7 @@ export function DepositModal({
                                         type="button"
                                         onClick={() => setModalType("asset")}
                                         variant="unstyled"
+                                        disabled={depositBlocked}
                                         data-testid="deposit-asset-selector"
                                         className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
                                     >
@@ -1174,6 +1182,7 @@ export function DepositModal({
                                         type="button"
                                         onClick={() => setModalType("network")}
                                         variant="unstyled"
+                                        disabled={depositBlocked}
                                         data-testid="deposit-network-selector"
                                         className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
                                     >
@@ -1659,6 +1668,12 @@ export function DepositModal({
                 </div>
                 <p className="text-sm mt-2 font-semibold">{t("subtitle")}</p>
             </div>
+            <SlotWarning
+                slot="deposit"
+                token={selectedAsset?.id}
+                network={selectedNetwork?.id}
+                className="mb-2"
+            />
             <div>{formContent}</div>
         </PageCard>
     );

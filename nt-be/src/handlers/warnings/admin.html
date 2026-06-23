@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trezu Admin</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2d3142;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --green: #34a853;
+      --amber: #f9ab00;
+      --red: #ea4335;
+      --blue: #4285f4;
+      --accent: #8ab4f8;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    header h1 { margin: 0; font-size: 1.25rem; }
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .tab {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab.active { background: var(--accent); color: #111; border-color: var(--accent); }
+    main { padding: 1.25rem; max-width: 1100px; margin: 0 auto; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .toolbar { margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    button, .btn {
+      background: var(--accent);
+      color: #111;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.secondary, .btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    button.danger { background: var(--red); color: #fff; }
+    .cards { display: grid; gap: 0.75rem; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      background: var(--surface);
+      border-left: 4px solid var(--border);
+    }
+    .card.info { border-left-color: var(--blue); }
+    .card.warning { border-left-color: var(--amber); }
+    .card.critical { border-left-color: var(--red); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+    .card-header h3 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+    .card-header .actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+    .card-header .actions button { padding: 0.25rem 0.6rem; font-size: 0.78rem; }
+    .card-message { margin: 0.5rem 0 0; padding: 0.45rem 0.7rem; background: var(--bg); border-radius: 6px; font-size: 0.88rem; line-height: 1.4; }
+    .card-note { margin: 0.35rem 0 0; font-size: 0.8rem; color: var(--muted); font-style: italic; }
+    .card-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1rem; margin-top: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+    .warnings-bar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); margin-bottom: 0.75rem; }
+    .subtabs { display: flex; gap: 0; }
+    .subtab { background: none; border: none; color: var(--muted); padding: 0.5rem 1rem; cursor: pointer; font-size: 0.9rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .subtab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    .subtab .count { background: var(--border); color: var(--muted); font-size: 0.7rem; padding: 0.1rem 0.45rem; border-radius: 99px; margin-left: 0.3rem; }
+    .subtab.active .count { background: var(--accent); color: #111; }
+    .loading-state { text-align: center; padding: 2rem 0; color: var(--muted); font-size: 0.9rem; }
+    @keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+    .loading-state { animation: pulse 1.5s ease-in-out infinite; }
+    .meta { color: var(--muted); font-size: 0.85rem; }
+    .form {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      background: var(--surface);
+      margin-bottom: 1rem;
+    }
+    .form h3 { margin-top: 0; }
+    label { display: block; margin: 0.75rem 0 0.25rem; font-size: 0.9rem; }
+    select, input[type="datetime-local"], input[type="text"], textarea {
+      width: 100%;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      color-scheme: dark;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    select:disabled { opacity: 0.4; cursor: not-allowed; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .severity-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .toggle { display: flex; align-items: center; gap: 0.5rem; }
+    .form-section { margin: 1.25rem 0; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.02); }
+    .form-section-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 0.5rem; }
+    .hint { color: var(--muted); font-size: 0.8rem; margin: 0.25rem 0 0; }
+    .preview {
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      background: var(--bg);
+      margin-top: 1rem;
+    }
+    .preview-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 0.5rem; }
+    .preview-detail { font-size: 0.88rem; line-height: 1.45; margin: 0 0 0.6rem; color: var(--text); }
+    .preview-meta { font-size: 0.8rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.25rem; padding-top: 0.55rem; border-top: 1px solid var(--border); }
+    .preview-meta b { color: var(--text); font-weight: 600; }
+    .behavior-tag { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 99px; font-size: 0.72rem; font-weight: 600; }
+    .behavior-tag.blocks { background: rgba(234,67,53,0.18); color: #ff8a80; }
+    .behavior-tag.passive { background: rgba(52,168,83,0.18); color: #81c995; }
+    .preview-inline-row { display: flex; align-items: center; gap: 0.35rem; color: var(--amber); }
+    .preview-info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 50%;
+      border: 1px solid currentColor;
+      font-size: 0.65rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .preview-tooltip-note { font-size: 0.82rem; opacity: 0.85; margin-top: 0.25rem !important; }
+    .hidden { display: none !important; }
+    .error { color: var(--red); margin: 0.5rem 0; }
+    .form-error { background: rgba(234,67,53,0.12); border: 1px solid var(--red); border-radius: 8px; padding: 0.65rem 0.85rem; color: var(--red); font-size: 0.88rem; margin-top: 1rem; }
+    .audit-entry { border-bottom: 1px solid var(--border); padding: 0.75rem 0; }
+    .audit-entry:last-child { border-bottom: none; }
+    pre.changes {
+      background: var(--bg);
+      padding: 0.5rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.8rem;
+    }
+    @media (max-width: 700px) {
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header><h1>Trezu Admin</h1></header>
+  <nav class="tabs">
+    <button class="tab active" data-tab="warnings">Warnings</button>
+    <button class="tab" data-tab="audit">Audit Log</button>
+  </nav>
+  <main>
+    <div id="error" class="error hidden"></div>
+
+    <section id="panel-warnings" class="panel active">
+      <div id="warning-form" class="form hidden"></div>
+      <div id="warnings-content">
+        <div class="warnings-bar">
+          <div class="subtabs" id="warning-subtabs">
+            <button class="subtab active" data-filter="live">Live <span class="count" id="count-live">·</span></button>
+            <button class="subtab" data-filter="scheduled">Scheduled <span class="count" id="count-scheduled">·</span></button>
+          </div>
+          <div class="toolbar" style="margin:0">
+            <button id="btn-new-warning">+ Add</button>
+            <button class="secondary" id="btn-refresh-warnings">Refresh</button>
+          </div>
+        </div>
+        <div id="warnings-loading" class="loading-state">Loading warnings…</div>
+        <p id="warnings-empty" class="meta hidden" style="text-align:center;padding:2rem 0">No warnings here yet.</p>
+        <div id="warnings-list" class="cards hidden"></div>
+      </div>
+    </section>
+
+    <section id="panel-audit" class="panel">
+      <div class="toolbar">
+        <button class="secondary" id="btn-refresh-audit">Refresh</button>
+        <button class="secondary" id="btn-audit-prev">Previous</button>
+        <button class="secondary" id="btn-audit-next">Next</button>
+        <span id="audit-page-info" class="meta"></span>
+      </div>
+      <div id="audit-list"></div>
+    </section>
+  </main>
+
+  <script>
+    const SLOT_GROUPS = [
+      { group: 'System', slots: [
+        { value: 'app', label: 'App-wide (entire platform)' },
+        { value: 'login', label: 'Login' },
+        { value: 'treasury-creation', label: 'Treasury creation (waitlist)' },
+      ]},
+      { group: 'Features', slots: [
+        { value: 'payments', label: 'Payments' },
+        { value: 'exchange', label: 'Exchange' },
+        { value: 'deposit', label: 'Deposits' },
+      ]},
+      { group: 'Actions', slots: [
+        { value: 'action.create-proposal', label: 'Creating requests (payments, exchange, members…)' },
+        { value: 'action.vote', label: 'Voting (Approve / Reject)' },
+      ]},
+      { group: 'Data displays', slots: [
+        { value: 'data.balances', label: 'Balances' },
+        { value: 'data.activity', label: 'Transaction history' },
+        { value: 'data.prices', label: 'Price data' },
+      ]},
+    ];
+    const SLOTS = SLOT_GROUPS.flatMap(g => g.slots);
+    let bridgeAssets = [];
+    // Token / network dropdowns store ids as their value (e.g. asset id and the
+    // per-chain nep141 network id), so warnings match proposals by id rather
+    // than display name. These lookups map an id back to its friendly label.
+    let tokenOptions = [];        // [{ id, name }]
+    let allNetworkOptions = [];   // [{ id, name }] de-duped across assets
+    const tokenNameById = {};
+    const networkNameById = {};
+
+    function tokenLabel(id) {
+      return id ? (tokenNameById[id] || id) : '';
+    }
+    function networkLabel(id) {
+      return id ? (networkNameById[id] || id) : '';
+    }
+
+    const SLOTS_WITH_TOKEN_FILTER = new Set([
+      'deposit', 'exchange', 'payments', 'data.balances', 'data.prices',
+    ]);
+
+    // Login is one slot in the form; a specific wallet is stored as the
+    // composite slot `login.wallet.<id>` (the frontend reads these directly).
+    const LOGIN_WALLET_PREFIX = 'login.wallet.';
+    const WALLET_OPTIONS = [
+      { value: 'mynearwallet', label: 'NEAR Wallets (MyNearWallet)' },
+      { value: 'ledger', label: 'Ledger' },
+      { value: 'evm', label: 'EVM Wallets' },
+      { value: 'passkey', label: 'Passkey' },
+      { value: 'meteor', label: 'Meteor' },
+      { value: 'intear', label: 'Intear (HERE)' },
+      { value: 'near-mobile', label: 'NEAR Mobile' },
+      { value: 'near-cli', label: 'NEAR CLI' },
+      { value: 'phantom', label: 'Phantom' },
+    ];
+
+    function slotSupportsWalletFilter(slot) {
+      return slot === 'login' || slot.startsWith(LOGIN_WALLET_PREFIX);
+    }
+
+    // Slots that replace the UI with the waitlist instead of showing a message.
+    // Severity + message don't apply; only scheduling matters.
+    function slotShowsWaitlist(slot) {
+      return slot === 'treasury-creation';
+    }
+
+    // Slots where severity is always critical — hide the picker.
+    function slotForcesCritical(slot) {
+      return slot === 'login' || slot === 'treasury-creation';
+    }
+
+    // Slots whose message is fully auto-generated from templates — hide the
+    // message field and show a note about what the user will see instead.
+    function slotHasAutoMessage(slot) {
+      return slot === 'login' || (slot && slot.startsWith('login.wallet.'));
+    }
+
+    // Split a stored slot into its base ('login') and wallet id (or '').
+    function splitLoginSlot(slot) {
+      if (slot && slot.startsWith(LOGIN_WALLET_PREFIX)) {
+        return { base: 'login', wallet: slot.slice(LOGIN_WALLET_PREFIX.length) };
+      }
+      return { base: slot, wallet: '' };
+    }
+
+    function walletLabel(id) {
+      const found = WALLET_OPTIONS.find(w => w.value === id);
+      return found ? found.label : id;
+    }
+
+    function buildWalletOptions(selected) {
+      let opts = '<option value="">All wallets</option>';
+      WALLET_OPTIONS.forEach(w => {
+        opts += `<option value="${w.value}" ${w.value === selected ? 'selected' : ''}>${w.label}</option>`;
+      });
+      return opts;
+    }
+
+    // Injected at serve time from templates.rs — single source of truth for
+    // scenario messages, login messages, and the status-page link.
+    const TEMPLATE_DATA = "__TEMPLATE_DATA__";
+
+    // Predefined scenarios per slot.
+    const SCENARIOS = {
+      exchange: [
+        { value: 'swaps_paused', label: 'Swaps are paused' },
+        { value: 'cant_process', label: "Can't process requests" },
+        { value: 'scheduled_maintenance', label: 'Scheduled maintenance' },
+      ],
+      payments: [
+        { value: 'payments_paused', label: 'Payments paused' },
+        { value: 'cant_process', label: "Can't process requests" },
+        { value: 'scheduled_maintenance', label: 'Scheduled maintenance' },
+      ],
+      deposit: [
+        { value: 'deposits_paused', label: 'Deposits paused' },
+        { value: 'scheduled_maintenance', label: 'Scheduled maintenance' },
+      ],
+      'action.vote': [{ value: 'requests_blocked', label: 'Requests blocked' }],
+      'action.create-proposal': [{ value: 'requests_blocked', label: 'Requests blocked' }],
+      'data.balances': [{ value: 'balance_unavailable', label: 'Balance unavailable' }],
+      'data.activity': [{ value: 'history_not_loading', label: 'History not loading' }],
+      'data.prices': [{ value: 'prices_delayed', label: 'Prices delayed' }],
+      app: [
+        { value: 'tier1_backend', label: 'Tier 1 · Backend issue' },
+        { value: 'tier2_tx_paused', label: 'Tier 2 · Transactions paused' },
+        { value: 'tier3_down', label: 'Tier 3 · App temporarily down' },
+        { value: 'tier4_investigating', label: 'Tier 4 · Under investigation' },
+      ],
+    };
+
+    // Scenarios that force a severity (the admin can't change it).
+    const SCENARIO_SEVERITY = {
+      tier1_backend: 'warning',
+      tier2_tx_paused: 'critical',
+      tier3_down: 'critical',
+      scheduled_maintenance: 'critical',
+      tier4_investigating: 'critical',
+      requests_blocked: 'critical',
+      swaps_paused: 'critical',
+      payments_paused: 'critical',
+      deposits_paused: 'critical',
+      cant_process: 'critical',
+    };
+
+    // When a scenario fixes the severity, the admin can't change it — hide the picker.
+    function scenarioForcesSeverity(scenario) {
+      return Boolean(scenario && SCENARIO_SEVERITY[scenario]);
+    }
+
+    // The word that replaces {action} per slot, for previewing token/network warnings.
+    const ACTION_BY_SLOT = {
+      payments: 'payment',
+      deposit: 'deposit',
+      exchange: 'swap',
+      'action.vote': 'vote',
+      'data.balances': 'transaction',
+      'data.prices': 'transaction',
+    };
+
+    // Human-readable "where this appears" per slot.
+    const SLOT_PLACEMENT = {
+      app: 'Sidebar banner across the entire platform',
+      login: 'Login screen — banner above wallet list',
+      'treasury-creation': 'Treasury creation flow — replaced by waitlist',
+      deposit: 'Deposit page — above the form',
+      exchange: 'Exchange page — above the form',
+      payments: 'Payments page — above the form',
+      'action.vote': 'Vote modal (Approve / Reject)',
+      'action.create-proposal': 'All "Create request" buttons',
+      'data.balances': 'Dashboard — balances section',
+      'data.activity': 'Dashboard — transaction history',
+      'data.prices': 'Dashboard — price columns',
+    };
+
+    // The specific CTA that a critical warning disables, per slot. Only slots
+    // wired to blocking on the frontend appear here — others are banner-only.
+    const CTA_BY_SLOT = {
+      deposit: 'token and network selectors are disabled',
+      exchange: 'the "Swap" button shows "Briefly Unavailable", and approving pending swap requests is paused (rejecting still works)',
+      payments: 'the "Send payment" button shows "Briefly Unavailable", and approving pending payment requests is paused (rejecting still works)',
+      'action.vote': 'the vote button (Approve / Reject) is disabled',
+      'action.create-proposal': 'every "Create request" button is disabled (payments, exchange, members, settings…)',
+    };
+
+    // Data slots are informational only — they never disable a button.
+    function slotIsDataOnly(slot) {
+      return Boolean(slot && slot.startsWith('data.'));
+    }
+
+    // Whether a critical warning on this slot actually disables a button.
+    function slotBlocksAction(slot) {
+      return slot === 'app' || Boolean(CTA_BY_SLOT[slot]);
+    }
+
+    // Sentence describing what a critical warning blocks for this slot.
+    function blockedCtaText(slot) {
+      if (slot === 'app') {
+        return 'all action buttons across the app are disabled — Send payment, Swap, vote, and every Create request button';
+      }
+      return CTA_BY_SLOT[slot] || '';
+    }
+
+    function scenariosForSlot(slot) {
+      return SCENARIOS[slot] || [];
+    }
+
+    function slotHasScenarios(slot) {
+      return scenariosForSlot(slot).length > 0;
+    }
+
+    function actionWord(slot) {
+      if (!slot) return 'transaction';
+      return ACTION_BY_SLOT[slot] || 'transaction';
+    }
+
+    function subjectFor(token, network) {
+      if (token && network) return `${token} on ${network}`;
+      if (token) return token;
+      if (network) return network;
+      return 'This option';
+    }
+
+    function parseStoredMessage(raw) {
+      if (!raw || !String(raw).trim()) return { primary: '', secondary: '' };
+      const lines = String(raw).split('\n');
+      const headingIdx = lines.findIndex(l => /^(#{1,6})\s+/.test(l.trim()));
+      if (headingIdx >= 0) {
+        const primary = lines[headingIdx].replace(/^#{1,6}\s+/, '').trim();
+        const secondary = lines.slice(headingIdx + 1).join('\n').trim();
+        return { primary, secondary };
+      }
+      return { primary: String(raw).trim(), secondary: '' };
+    }
+
+    function mergeStoredMessage(primary, secondary) {
+      const p = (primary || '').trim();
+      const s = (secondary || '').trim();
+      if (!p) return '';
+      if (!s) return p;
+      return `### ${p}\n${s}`;
+    }
+
+    function messageUsesTooltipMode(slot, token, network) {
+      return slotSupportsTokenFilter(slot) && Boolean((token || '').trim() || (network || '').trim());
+    }
+
+    function updateMessageFieldsVisibility() {
+      const st = currentFormState();
+      const tooltipMode = messageUsesTooltipMode(st.slot, st.token, st.network);
+      const tooltipEl = document.getElementById('message-tooltip-mode');
+      const bannerEl = document.getElementById('message-banner-mode');
+      if (!tooltipEl || !bannerEl) return;
+
+      const wasTooltip = !tooltipEl.classList.contains('hidden');
+      if (wasTooltip !== tooltipMode) {
+        if (tooltipMode) {
+          document.getElementById('f-shown-text').value = document.getElementById('f-heading').value;
+          document.getElementById('f-tooltip-text').value = document.getElementById('f-paragraph').value;
+        } else {
+          document.getElementById('f-heading').value = document.getElementById('f-shown-text').value;
+          document.getElementById('f-paragraph').value = document.getElementById('f-tooltip-text').value;
+        }
+      }
+
+      tooltipEl.classList.toggle('hidden', !tooltipMode);
+      bannerEl.classList.toggle('hidden', tooltipMode);
+    }
+
+    function clearMessageFields() {
+      ['f-shown-text', 'f-tooltip-text', 'f-heading', 'f-paragraph'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    }
+
+    function setMessageFields(raw) {
+      updateMessageFieldsVisibility();
+      const { primary, secondary } = parseStoredMessage(raw || '');
+      const st = currentFormState();
+      if (messageUsesTooltipMode(st.slot, st.token, st.network)) {
+        document.getElementById('f-shown-text').value = primary;
+        document.getElementById('f-tooltip-text').value = secondary;
+      } else {
+        document.getElementById('f-heading').value = primary;
+        document.getElementById('f-paragraph').value = secondary;
+      }
+    }
+
+    function getMessageFromForm() {
+      const st = currentFormState();
+      if (messageUsesTooltipMode(st.slot, st.token, st.network)) {
+        return mergeStoredMessage(
+          document.getElementById('f-shown-text')?.value || '',
+          document.getElementById('f-tooltip-text')?.value || ''
+        );
+      }
+      return mergeStoredMessage(
+        document.getElementById('f-heading')?.value || '',
+        document.getElementById('f-paragraph')?.value || ''
+      );
+    }
+
+    // Mirrors generate_messages() in templates.rs. Returns the user-facing
+    // message string, or null when nothing maps to a template.
+    // Scenario/login messages come from TEMPLATE_DATA (injected from templates.rs).
+    // Token/network messages use simple string interpolation here.
+    function generateMessages(severity, slot, token, network, scenario) {
+      token = (token || '').trim();
+      network = (network || '').trim();
+      scenario = (scenario || '').trim();
+
+      if (token || network) {
+        const subject = subjectFor(tokenLabel(token), networkLabel(network));
+        if (severity === 'critical') {
+          const secondary = token
+            ? 'You can use a different token in the meantime.'
+            : 'You can use a different network in the meantime.';
+          return mergeStoredMessage(`${subject} is paused right now`, secondary);
+        }
+        return mergeStoredMessage(
+          `${subject} is slow right now`,
+          'Your {action} will go through once it recovers, it just may take longer than usual.'
+        );
+      }
+
+      if (slot === 'login') return TEMPLATE_DATA.loginMessages['login'] || null;
+      if (slot && slot.startsWith('login.wallet.')) return TEMPLATE_DATA.loginMessages['login.wallet.*'] || null;
+
+      if (slot && scenario) {
+        return TEMPLATE_DATA.scenarioMessages[`${slot}::${scenario}`] || null;
+      }
+      return null;
+    }
+
+    async function loadBridgeTokens() {
+      try {
+        const res = await fetch('/api/intents/bridge-tokens?includeNearNetwork=true', {
+          credentials: 'omit',
+          headers: { 'Accept': 'application/json' },
+        });
+        if (!res.ok) {
+          console.warn('Bridge tokens returned', res.status);
+          return;
+        }
+        const data = await res.json();
+        bridgeAssets = data.assets || [];
+        const netById = new Map();
+        bridgeAssets.forEach(a => {
+          tokenNameById[a.id] = a.assetName;
+          (a.networks || []).forEach(n => {
+            networkNameById[n.id] = n.name;
+            if (!netById.has(n.id)) netById.set(n.id, { id: n.id, name: n.name });
+          });
+        });
+        tokenOptions = bridgeAssets
+          .map(a => ({ id: a.id, name: a.assetName }))
+          .sort((x, y) => x.name.localeCompare(y.name));
+        allNetworkOptions = [...netById.values()].sort((x, y) => x.name.localeCompare(y.name));
+        console.log(`Loaded ${bridgeAssets.length} assets, ${tokenOptions.length} tokens, ${allNetworkOptions.length} networks`);
+      } catch (e) {
+        console.warn('Failed to load bridge tokens:', e);
+      }
+    }
+
+    function buildTokenOptions(selected) {
+      let opts = '<option value="">All tokens</option>';
+      tokenOptions.forEach(t => { opts += `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${t.name}</option>`; });
+      return opts;
+    }
+
+    function networksForToken(tokenId) {
+      if (!tokenId) return allNetworkOptions;
+      const asset = bridgeAssets.find(a => a.id === tokenId);
+      return asset
+        ? asset.networks.map(n => ({ id: n.id, name: n.name })).sort((x, y) => x.name.localeCompare(y.name))
+        : allNetworkOptions;
+    }
+
+    function buildNetworkOptions(networks, selected) {
+      let opts = '<option value="">All networks</option>';
+      networks.forEach(n => { opts += `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${n.name}</option>`; });
+      return opts;
+    }
+
+    function slotSupportsTokenFilter(slot) {
+      return SLOTS_WITH_TOKEN_FILTER.has(slot);
+    }
+
+    let auditPage = 1;
+    const auditLimit = 25;
+
+    function showFormError(msg) {
+      const el = document.getElementById('form-error');
+      if (el) {
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        showPageError(msg);
+      }
+    }
+
+    function clearFormError() {
+      const el = document.getElementById('form-error');
+      if (el) { el.textContent = ''; el.classList.add('hidden'); }
+    }
+
+    function showPageError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function clearPageError() {
+      const el = document.getElementById('error');
+      el.textContent = '';
+      el.classList.add('hidden');
+    }
+
+    async function api(path, options = {}) {
+      clearPageError();
+      clearFormError();
+      const res = await fetch(path, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+      });
+      if (!res.ok && res.status !== 204) {
+        let msg;
+        try {
+          const json = await res.json();
+          msg = json.error || JSON.stringify(json);
+        } catch {
+          msg = await res.text().catch(() => '') || `Request failed (${res.status})`;
+        }
+        showFormError(msg);
+        throw new Error(msg);
+      }
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    function fmtDate(d) {
+      if (!d) return '—';
+      return new Date(d).toLocaleString('en-GB', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' }) + ' UTC';
+    }
+
+    let activeSubtab = 'live';
+
+    function slotLabel(value) {
+      if (value && value.startsWith(LOGIN_WALLET_PREFIX)) {
+        return `Login › ${walletLabel(value.slice(LOGIN_WALLET_PREFIX.length))}`;
+      }
+      const found = SLOTS.find(s => s.value === (value || ''));
+      return found ? found.label : (value || '—');
+    }
+
+    function renderWarnings(warnings) {
+      document.getElementById('warnings-loading').classList.add('hidden');
+
+      const now = new Date();
+      const isLive = w =>
+        w.isActive ||
+        (w.scheduledStart && new Date(w.scheduledStart) <= now &&
+          (!w.scheduledEnd || new Date(w.scheduledEnd) > now));
+      const live = warnings.filter(isLive);
+      const scheduled = warnings.filter(w => !isLive(w) && w.scheduledStart);
+
+      document.getElementById('count-live').textContent = live.length;
+      document.getElementById('count-scheduled').textContent = scheduled.length;
+
+      const filtered = activeSubtab === 'live' ? live : scheduled;
+
+      const list = document.getElementById('warnings-list');
+      const empty = document.getElementById('warnings-empty');
+
+      if (filtered.length === 0) {
+        list.classList.add('hidden');
+        list.innerHTML = '';
+        empty.textContent = activeSubtab === 'live'
+          ? 'No live warnings. Everything is operational.'
+          : 'No scheduled warnings.';
+        empty.classList.remove('hidden');
+      } else {
+        empty.classList.add('hidden');
+        list.classList.remove('hidden');
+        list.innerHTML = filtered.map(w => {
+          const scope = [slotLabel(w.slot), tokenLabel(w.token), networkLabel(w.network)].filter(Boolean).join(' › ');
+          const scheduleInfo = w.scheduledStart
+            ? `${fmtDate(w.scheduledStart)}${w.scheduledEnd ? ' → ' + fmtDate(w.scheduledEnd) : ''}`
+            : null;
+          return `
+          <article class="card ${w.severity || 'warning'}">
+            <div class="card-header">
+              <h3>${escapeHtml(scope)}</h3>
+              <div class="actions">
+                <button class="secondary" onclick="editWarning(${w.id})">Edit</button>
+                <button class="danger" onclick="deleteWarning(${w.id})">Delete</button>
+              </div>
+            </div>
+            ${w.userMessage ? `<div class="card-message">${escapeHtml(w.userMessage)}</div>` : ''}
+            ${w.internalNote ? `<div class="card-note">${escapeHtml(w.internalNote)}</div>` : ''}
+            <div class="card-footer">
+              ${scheduleInfo ? `<span>${scheduleInfo}</span>` : ''}
+              <span>by ${w.updatedBy || '—'} · ${fmtDate(w.updatedAt)}</span>
+            </div>
+          </article>`;
+        }).join('');
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function toUTCInput(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    }
+
+    function fromUTCInput(value) {
+      if (!value) return null;
+      return value + ':00.000Z';
+    }
+
+    function buildScenarioOptions(slot, selected) {
+      const list = scenariosForSlot(slot);
+      let opts = '<option value="">— None (write a custom message) —</option>';
+      list.forEach(s => { opts += `<option value="${s.value}" ${s.value === selected ? 'selected' : ''}>${s.label}</option>`; });
+      return opts;
+    }
+
+    function buildWarningForm(w = null) {
+      const form = document.getElementById('warning-form');
+      form.classList.remove('hidden');
+      document.getElementById('warnings-content').classList.add('hidden');
+      const { base: slot, wallet } = splitLoginSlot(w?.slot || SLOTS[0].value);
+      const token = w?.token || '';
+      const scenario = w?.scenario || '';
+      const tokenEnabled = slotSupportsTokenFilter(slot);
+      const walletEnabled = slotSupportsWalletFilter(slot);
+      const networks = networksForToken(token);
+      const hasScenarios = slotHasScenarios(slot);
+      const tokenSelected = Boolean(token || w?.network);
+      // Treasury creation always shows the waitlist instead of a message, so
+      // severity / message don't apply — only scheduling matters.
+      const isWaitlist = slotShowsWaitlist(slot);
+      form.innerHTML = `
+        <h3>${w ? 'Edit warning #' + w.id : 'Create warning'}</h3>
+
+        <div class="form-section">
+          <div class="form-section-label">Where to show</div>
+          <label>Slot</label>
+          <select id="f-slot" onchange="onSlotChange()">${SLOT_GROUPS.map(g => `<optgroup label="${g.group}">${g.slots.map(s => `<option value="${s.value}" ${s.value === slot ? 'selected' : ''}>${s.label}</option>`).join('')}</optgroup>`).join('')}</select>
+        </div>
+
+        <div class="form-section ${tokenEnabled ? '' : 'hidden'}" id="token-network-section">
+          <div class="form-section-label">Token / Network</div>
+          <div class="row" id="token-network-row">
+            <div>
+              <label>Token</label>
+              <select id="f-token" onchange="onTokenChange()">
+                ${buildTokenOptions(token)}
+              </select>
+            </div>
+            <div>
+              <label>Network</label>
+              <select id="f-network" onchange="applyTemplate()">${buildNetworkOptions(networks, w?.network || '')}</select>
+            </div>
+          </div>
+          <p class="hint">Leave as "All" to cover everything, or pick a token / network to target just that.</p>
+        </div>
+
+        <div class="form-section ${walletEnabled ? '' : 'hidden'}" id="wallet-section">
+          <div class="form-section-label">Wallet</div>
+          <select id="f-wallet" onchange="applyTemplate()">${buildWalletOptions(wallet)}</select>
+          <p class="hint">Leave as "All wallets" to warn on the whole login screen, or pick one wallet to target just that option.</p>
+        </div>
+
+        <div class="form-section ${hasScenarios && !tokenSelected ? '' : 'hidden'}" id="scenario-section">
+          <div class="form-section-label">Scenario</div>
+          <select id="f-scenario" onchange="applyTemplate()">${buildScenarioOptions(slot, scenario)}</select>
+          <p class="hint">A scenario fills in the standard, pre-approved wording for this slot so messages stay consistent. Pick one, or choose "None" to write your own.</p>
+        </div>
+
+        <div class="form-section ${isWaitlist || slotForcesCritical(slot) || scenarioForcesSeverity(scenario) || slotIsDataOnly(slot) ? 'hidden' : ''}" id="severity-section">
+          <div class="form-section-label">Severity</div>
+          <div class="severity-group">
+            ${['warning','critical'].map(s => `<label><input type="radio" name="severity" value="${s}" onchange="applyTemplate(true)" ${((w?.severity === 'critical') ? 'critical' : 'warning') === s ? 'checked' : ''}> ${s}</label>`).join('')}
+          </div>
+          <ul class="hint" style="margin:0.4rem 0 0;padding-left:1.1rem;line-height:1.5">
+            <li><strong>Warning</strong> — shows the message but users can still continue.</li>
+            <li><strong>Critical</strong> — blocks the action so users can't proceed.</li>
+          </ul>
+        </div>
+
+        <div class="form-section ${isWaitlist ? '' : 'hidden'}" id="waitlist-section">
+          <div class="form-section-label">Treasury creation</div>
+          <p class="hint">While this is live, users won't see the creation form — they'll see the <strong>waitlist</strong> instead. No severity or message is needed; just choose when it's active below.</p>
+        </div>
+
+        <div class="form-section ${slotHasAutoMessage(slot) ? '' : 'hidden'}" id="login-info-section">
+          <div class="form-section-label">Login</div>
+          <p class="hint">The message is filled in automatically. ${wallet
+            ? 'The wallet card shows an <strong>"Offline"</strong> badge with the message as a tooltip.'
+            : 'A warning banner appears above the wallet list.'
+          }</p>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label">When to show</div>
+          <div style="display:flex;gap:1.5rem;margin-bottom:0.5rem">
+            <label class="toggle" style="margin:0;cursor:pointer">
+              <input type="radio" name="timing" value="now" onclick="toggleActiveSchedule()" ${!w?.scheduledStart ? 'checked' : ''}>
+              <strong>Active now</strong>
+            </label>
+            <label class="toggle" style="margin:0;cursor:pointer">
+              <input type="radio" name="timing" value="scheduled" onclick="toggleActiveSchedule()" ${w?.scheduledStart ? 'checked' : ''}>
+              <strong>Scheduled</strong>
+            </label>
+          </div>
+          <div id="schedule-fields" style="${w?.scheduledStart ? '' : 'display:none'}">
+            <div class="row">
+              <div><label>Start (UTC)</label><input type="datetime-local" id="f-start" value="${toUTCInput(w?.scheduledStart)}" oninput="updatePreview()"></div>
+              <div><label>End (UTC)</label><input type="datetime-local" id="f-end" value="${toUTCInput(w?.scheduledEnd)}" oninput="updatePreview()"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section ${isWaitlist || slotHasAutoMessage(slot) ? 'hidden' : ''}" id="message-section">
+          <div class="form-section-label">Message</div>
+
+          <div id="message-tooltip-mode" class="${tokenSelected ? '' : 'hidden'}">
+            <label for="f-shown-text">Shown text</label>
+            <input type="text" id="f-shown-text" placeholder="Short text next to the token or network field" oninput="updatePreview()">
+            <p class="hint">Inline warning shown beside the field.</p>
+            <label for="f-tooltip-text">Tooltip details <span style="font-weight:normal">(optional)</span></label>
+            <textarea id="f-tooltip-text" placeholder="Extra detail shown on hover" style="min-height:60px" oninput="updatePreview()"></textarea>
+            <p class="hint">Only shown when filled in. Supports <code>{action}</code>.</p>
+          </div>
+
+          <div id="message-banner-mode" class="${tokenSelected ? 'hidden' : ''}">
+            <label for="f-heading">Heading <span style="font-weight:normal">(optional)</span></label>
+            <input type="text" id="f-heading" placeholder="Bold heading in the banner" oninput="updatePreview()">
+            <label for="f-paragraph">Message</label>
+            <textarea id="f-paragraph" placeholder="Body text shown below the heading" oninput="updatePreview()"></textarea>
+            <p class="hint">Supports <code>[text](url)</code> links, <code>{action}</code>, and <code>{schedule}</code>. Stored as <code>### heading</code> + body when both parts are set.</p>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label">Internal note</div>
+          <textarea id="f-note" placeholder="Only visible to the team in this admin panel" style="min-height:50px">${w?.internalNote ? escapeHtml(w.internalNote) : ''}</textarea>
+        </div>
+
+        <div class="preview" id="warning-preview"></div>
+
+        <div class="form-section ${slot === 'app' ? '' : 'hidden'}" id="also-block-login-section">
+          <label style="display:flex;align-items:center;gap:0.5rem;margin:0;cursor:pointer">
+            <input type="checkbox" id="f-also-block-login">
+            <span>Also pause login for all wallets</span>
+          </label>
+          <p class="hint">Creates a separate login warning so new users can't sign in while the app is in this state.</p>
+        </div>
+
+        <div id="form-error" class="form-error hidden"></div>
+        <div class="toolbar" style="margin-top:0.75rem">
+          <button onclick="saveWarning(${w ? w.id : 'null'})">Save</button>
+          <button class="secondary" onclick="hideWarningForm()">Cancel</button>
+        </div>
+      `;
+      if (w?.userMessage) setMessageFields(w.userMessage);
+      else updateMessageFieldsVisibility();
+      updatePreview();
+    }
+
+    window.toggleActiveSchedule = function() {
+      const isNow = document.querySelector('input[name="timing"][value="now"]').checked;
+      const fields = document.getElementById('schedule-fields');
+      fields.style.display = isNow ? 'none' : 'block';
+      if (isNow) {
+        document.getElementById('f-start').value = '';
+        document.getElementById('f-end').value = '';
+      }
+      updatePreview();
+    };
+
+    function currentFormState() {
+      return {
+        slot: document.getElementById('f-slot').value,
+        token: document.getElementById('f-token').value,
+        network: document.getElementById('f-network').value,
+        wallet: document.getElementById('f-wallet')?.value || '',
+        scenario: document.getElementById('f-scenario')?.value || '',
+        severity: document.querySelector('input[name="severity"]:checked')?.value || 'warning',
+      };
+    }
+
+    // Re-fill the message field from the matching template, then refresh preview.
+    // Slot / token / network / scenario changes always show our template text
+    // (cleared if none matches). Severity changes pass preserveManual=true so a
+    // hand-written message isn't wiped when there's no template for that combo.
+    window.applyTemplate = function(preserveManual = false) {
+      const st = currentFormState();
+
+      // App scenarios force their severity tier — set it and hide the picker.
+      if (scenarioForcesSeverity(st.scenario)) {
+        const forced = SCENARIO_SEVERITY[st.scenario];
+        const radio = document.querySelector(`input[name="severity"][value="${forced}"]`);
+        if (radio) radio.checked = true;
+        st.severity = forced;
+      }
+      const sevSection = document.getElementById('severity-section');
+      if (sevSection) {
+        sevSection.classList.toggle('hidden', slotForcesCritical(st.slot) || scenarioForcesSeverity(st.scenario) || slotIsDataOnly(st.slot));
+      }
+
+      updateMessageFieldsVisibility();
+      const generated = generateMessages(st.severity, st.slot, st.token, st.network, st.scenario);
+      if (generated) {
+        setMessageFields(generated);
+      } else if (!preserveManual) {
+        clearMessageFields();
+      }
+      updatePreview();
+    };
+
+    window.updatePreview = function() {
+      const el = document.getElementById('warning-preview');
+      if (!el) return;
+      const st = currentFormState();
+
+      // Treasury creation replaces the form with the waitlist — no message to preview.
+      if (slotShowsWaitlist(st.slot)) {
+        el.innerHTML = `
+          <p class="preview-label">Live preview — how users will see it</p>
+          <p class="preview-detail">Users see the <strong>waitlist</strong> instead of the treasury creation form.</p>
+          <div class="preview-meta">
+            <span><b>Where:</b> ${escapeHtml(SLOT_PLACEMENT[st.slot] || 'Treasury creation')}</span>
+            <span><b>Behavior:</b> <span class="behavior-tag blocks">Blocks creation</span> the creation flow is replaced by the waitlist</span>
+          </div>
+        `;
+        return;
+      }
+
+      // For login slots, the message is auto-generated — read it from the template.
+      const rawDetail = slotHasAutoMessage(st.slot)
+        ? (generateMessages('critical', st.slot, '', '', '') || '')
+        : getMessageFromForm();
+      const action = actionWord(st.slot);
+      const tooltipMode = messageUsesTooltipMode(st.slot, st.token, st.network);
+      // Build schedule text from form inputs
+      const isScheduled = !document.querySelector('input[name="timing"][value="now"]').checked;
+      const schedStart = document.getElementById('f-start')?.value || '';
+      const schedEnd = document.getElementById('f-end')?.value || '';
+      let scheduleText = '';
+      if (isScheduled && (schedStart || schedEnd)) {
+        const parts = [];
+        if (schedStart) parts.push('on ' + new Date(schedStart + 'Z').toLocaleString());
+        if (schedEnd) parts.push('until ' + new Date(schedEnd + 'Z').toLocaleString());
+        scheduleText = parts.join(' ');
+      }
+      const hasInlineSchedule = rawDetail && rawDetail.includes('{schedule}');
+      let rendered = (rawDetail || '(no message yet)').replace(/\{action\}/g, action);
+      if (hasInlineSchedule) {
+        rendered = rendered.replace(/\{schedule\}/g, scheduleText || '');
+      }
+      const blocks = st.severity === 'critical';
+      const placement = SLOT_PLACEMENT[st.slot] || 'Selected slot';
+      const walletScope = st.wallet ? walletLabel(st.wallet) : '';
+      const scope = [tokenLabel(st.token), networkLabel(st.network)].filter(Boolean).join(' on ') || walletScope;
+
+      let behavior;
+      const isLogin = st.slot === 'login';
+      if (slotIsDataOnly(st.slot)) {
+        behavior = '<span class="behavior-tag passive">Shown only</span> informational — no button is disabled';
+      } else if (isLogin && st.wallet) {
+        behavior = '<span class="behavior-tag blocks">Blocks login</span> wallet card shows "Offline" badge with this message as tooltip';
+      } else if (isLogin) {
+        behavior = '<span class="behavior-tag blocks">Blocks login</span> banner shown above the wallet list';
+      } else if (blocks && slotBlocksAction(st.slot)) {
+        behavior = `<span class="behavior-tag blocks">Blocks the action</span> ${blockedCtaText(st.slot)}`;
+      } else {
+        behavior = '<span class="behavior-tag passive">Shown only</span> users can still proceed';
+      }
+
+      // Render [text](url) markdown links as <a> tags, escaping the rest.
+      function renderLinks(text) {
+        return escapeHtml(text).replace(
+          /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+          '<a href="$2" target="_blank" rel="noreferrer" style="text-decoration:underline">$1</a>'
+        );
+      }
+
+      // Form-field preview: inline text + optional tooltip icon.
+      if (tooltipMode) {
+        const { primary, secondary } = parseStoredMessage(rendered);
+        const inline = renderLinks(primary || '(no shown text yet)');
+        const tooltipHtml = secondary ? renderLinks(secondary) : '';
+        el.innerHTML = `
+          <p class="preview-label">Live preview — form field (inline + tooltip)</p>
+          <p class="preview-detail preview-inline-row">
+            <span>${inline}</span>
+            ${tooltipHtml ? '<span class="preview-info-icon" title="Tooltip">i</span>' : ''}
+          </p>
+          ${tooltipHtml ? `<p class="preview-detail preview-tooltip-note"><b>Tooltip on hover:</b> ${tooltipHtml}</p>` : ''}
+          <div class="preview-meta">
+            <span><b>Where:</b> ${escapeHtml(placement)}${scope ? ' · ' + escapeHtml(scope) : ''}</span>
+            <span><b>Behavior:</b> ${behavior}</span>
+          </div>
+        `;
+        return;
+      }
+
+      // Banner preview: heading + paragraph.
+      const previewLines = rendered.split('\n');
+      const headingParts = [];
+      const bodyParts = [];
+      for (const line of previewLines) {
+        const hMatch = line.match(/^(#{1,6})\s+(.*)/);
+        if (hMatch) {
+          headingParts.push(hMatch[2]);
+        } else {
+          bodyParts.push(line);
+        }
+      }
+      const previewHeading = headingParts.length > 0 ? renderLinks(headingParts.join(' ')) : null;
+      const previewBody = renderLinks(bodyParts.join(' '));
+
+      // Show schedule as a separate line only when not already inline via {schedule}.
+      let scheduleLine = '';
+      if (!hasInlineSchedule && scheduleText) {
+        scheduleLine = `<span style="display:block;margin-top:4px;font-size:0.8em;opacity:0.8">${scheduleText}</span>`;
+      }
+
+      el.innerHTML = `
+        <p class="preview-label">Live preview — banner (heading + message)</p>
+        <p class="preview-detail">${previewHeading ? `<strong>${previewHeading}</strong><br>` : ''}${previewBody}${scheduleLine}</p>
+        <div class="preview-meta">
+          <span><b>Where:</b> ${escapeHtml(placement)}${scope ? ' · ' + escapeHtml(scope) : ''}</span>
+          <span><b>Behavior:</b> ${behavior}</span>
+        </div>
+      `;
+    };
+
+    window.onSlotChange = function() {
+      // Changing the slot resets the whole form — only the chosen slot is kept.
+      const slot = document.getElementById('f-slot').value;
+      const enabled = slotSupportsTokenFilter(slot);
+      const tokenSel = document.getElementById('f-token');
+      const networkSel = document.getElementById('f-network');
+      const tokenSection = document.getElementById('token-network-section');
+
+      // Show the token/network card only when the slot supports it.
+      tokenSection.classList.toggle('hidden', !enabled);
+
+      // Reset token + network back to "All".
+      tokenSel.innerHTML = buildTokenOptions('');
+      networkSel.innerHTML = buildNetworkOptions(allNetworkOptions, '');
+      tokenSel.value = '';
+      networkSel.value = '';
+
+      // Show + reset the wallet picker only for the login slot.
+      const walletSection = document.getElementById('wallet-section');
+      const walletSel = document.getElementById('f-wallet');
+      if (walletSel) {
+        walletSel.innerHTML = buildWalletOptions('');
+        walletSel.value = '';
+      }
+      if (walletSection) {
+        walletSection.classList.toggle('hidden', !slotSupportsWalletFilter(slot));
+      }
+
+      // Reset scenario for this slot.
+      const scenarioSel = document.getElementById('f-scenario');
+      scenarioSel.innerHTML = buildScenarioOptions(slot, '');
+      updateScenarioVisibility();
+
+      // Treasury creation shows the waitlist — hide severity + message, show the note.
+      const waitlist = slotShowsWaitlist(slot);
+      // Data slots are informational only, so severity doesn't apply there either.
+      document.getElementById('severity-section').classList.toggle('hidden', slotForcesCritical(slot) || slotIsDataOnly(slot));
+      const autoMsg = slotHasAutoMessage(slot);
+      document.getElementById('message-section').classList.toggle('hidden', waitlist || autoMsg);
+      document.getElementById('waitlist-section').classList.toggle('hidden', !waitlist);
+      document.getElementById('login-info-section').classList.toggle('hidden', !autoMsg);
+
+      // "Also pause login" checkbox — only for app-wide.
+      const loginCheckSection = document.getElementById('also-block-login-section');
+      if (loginCheckSection) {
+        loginCheckSection.classList.toggle('hidden', slot !== 'app');
+        const cb = document.getElementById('f-also-block-login');
+        if (cb) cb.checked = false;
+      }
+
+      // Reset severity back to the default.
+      const sevDefault = document.querySelector('input[name="severity"][value="warning"]');
+      if (sevDefault) sevDefault.checked = true;
+
+      // Clear message + internal note.
+      clearMessageFields();
+      document.getElementById('f-note').value = '';
+
+      // Reset timing back to "Active now" and clear any schedule.
+      const nowRadio = document.querySelector('input[name="timing"][value="now"]');
+      if (nowRadio) nowRadio.checked = true;
+      const startEl = document.getElementById('f-start');
+      const endEl = document.getElementById('f-end');
+      if (startEl) startEl.value = '';
+      if (endEl) endEl.value = '';
+      const scheduleFields = document.getElementById('schedule-fields');
+      if (scheduleFields) scheduleFields.style.display = 'none';
+
+      applyTemplate();
+    };
+
+    function updateScenarioVisibility() {
+      const slot = document.getElementById('f-slot').value;
+      const token = document.getElementById('f-token').value;
+      const network = document.getElementById('f-network').value;
+      const section = document.getElementById('scenario-section');
+      const show = slotHasScenarios(slot) && !token && !network;
+      section.classList.toggle('hidden', !show);
+      if (!show) document.getElementById('f-scenario').value = '';
+    }
+
+    window.onTokenChange = function() {
+      const tokenSel = document.getElementById('f-token');
+      const networkSel = document.getElementById('f-network');
+      const currentNetwork = networkSel.value;
+      const networks = networksForToken(tokenSel.value);
+      const stillValid = networks.some(n => n.id === currentNetwork);
+      networkSel.innerHTML = buildNetworkOptions(networks, stillValid ? currentNetwork : '');
+      updateScenarioVisibility();
+      applyTemplate();
+    };
+
+    window.hideWarningForm = function() {
+      document.getElementById('warning-form').classList.add('hidden');
+      document.getElementById('warnings-content').classList.remove('hidden');
+    };
+
+    let warningsCache = [];
+
+    window.editWarning = function(id) {
+      const w = warningsCache.find(x => x.id === id);
+      if (w) buildWarningForm(w);
+    };
+
+    window.saveWarning = async function(id) {
+      clearFormError();
+      const isActive = document.querySelector('input[name="timing"][value="now"]').checked;
+      const scenarioEl = document.getElementById('f-scenario');
+      const scenario = scenarioEl && !scenarioEl.closest('.form-section').classList.contains('hidden')
+        ? (scenarioEl.value || null)
+        : null;
+      // For the login slot, a selected wallet is stored as `login.wallet.<id>`.
+      const baseSlot = document.getElementById('f-slot').value || null;
+      const walletEl = document.getElementById('f-wallet');
+      const walletId = (slotSupportsWalletFilter(baseSlot || '') && walletEl) ? walletEl.value : '';
+      const slot = walletId ? `${LOGIN_WALLET_PREFIX}${walletId}` : baseSlot;
+      const waitlist = slotShowsWaitlist(slot || '');
+      // Login + treasury-creation are always critical; data slots always warning.
+      const severity = slotForcesCritical(slot || '')
+        ? 'critical'
+        : slotIsDataOnly(slot || '')
+          ? 'warning'
+          : document.querySelector('input[name="severity"]:checked').value;
+      const body = {
+        slot,
+        token: document.getElementById('f-token').value || null,
+        network: document.getElementById('f-network').value || null,
+        isActive,
+        severity,
+        userMessage: waitlist ? null : (getMessageFromForm().trim() || null),
+        scenario,
+        internalNote: document.getElementById('f-note').value || null,
+        scheduledStart: fromUTCInput(document.getElementById('f-start').value),
+        scheduledEnd: fromUTCInput(document.getElementById('f-end').value),
+      };
+      try {
+        if (id) {
+          await api(`/internal/api/warnings/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+        } else {
+          await api('/internal/api/warnings', { method: 'POST', body: JSON.stringify(body) });
+        }
+
+        // If "Also pause login" is checked, create a login warning with the
+        // same timing settings.
+        const alsoBlockLogin = document.getElementById('f-also-block-login');
+        if (slot === 'app' && alsoBlockLogin && alsoBlockLogin.checked) {
+          const loginBody = {
+            slot: 'login',
+            isActive,
+            severity: 'critical',
+            internalNote: body.internalNote ? `Auto: ${body.internalNote}` : 'Auto-created with app-wide warning',
+            scheduledStart: body.scheduledStart,
+            scheduledEnd: body.scheduledEnd,
+          };
+          await api('/internal/api/warnings', { method: 'POST', body: JSON.stringify(loginBody) });
+        }
+
+        hideWarningForm();
+        await loadWarnings();
+      } catch (e) {
+        // error already shown by api()
+      }
+    };
+
+    window.deleteWarning = async function(id) {
+      if (!confirm('Delete this warning?')) return;
+      try {
+        await api(`/internal/api/warnings/${id}`, { method: 'DELETE' });
+        await loadWarnings();
+      } catch (e) {
+        showPageError(e.message);
+      }
+    };
+
+    async function loadWarnings() {
+      const loading = document.getElementById('warnings-loading');
+      const list = document.getElementById('warnings-list');
+      const empty = document.getElementById('warnings-empty');
+      loading.classList.remove('hidden');
+      list.classList.add('hidden');
+      empty.classList.add('hidden');
+      warningsCache = await api('/internal/api/warnings');
+      renderWarnings(warningsCache);
+    }
+
+    function renderAudit(data) {
+      const list = document.getElementById('audit-list');
+      document.getElementById('audit-page-info').textContent =
+        `Page ${data.page} · ${data.entries.length} of ${data.total}`;
+      list.innerHTML = data.entries.map(e => `
+        <div class="audit-entry">
+          <div><strong>${escapeHtml(e.action)}</strong> · warning #${e.warningId ?? '—'} · by ${escapeHtml(e.changedBy)}</div>
+          <div class="meta">${fmtDate(e.createdAt)}</div>
+          ${e.changes ? `<pre class="changes">${escapeHtml(JSON.stringify(e.changes, null, 2))}</pre>` : ''}
+        </div>
+      `).join('') || '<p class="meta">No audit entries yet.</p>';
+    }
+
+    async function loadAudit() {
+      const data = await api(`/internal/api/audit-log?page=${auditPage}&limit=${auditLimit}`);
+      renderAudit(data);
+    }
+
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'warnings') loadWarnings();
+        if (btn.dataset.tab === 'audit') loadAudit();
+      });
+    });
+
+    document.querySelectorAll('#warning-subtabs .subtab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#warning-subtabs .subtab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeSubtab = btn.dataset.filter;
+        renderWarnings(warningsCache);
+      });
+    });
+
+    document.getElementById('btn-new-warning').addEventListener('click', () => buildWarningForm());
+    document.getElementById('btn-refresh-warnings').addEventListener('click', loadWarnings);
+    document.getElementById('btn-refresh-audit').addEventListener('click', loadAudit);
+    document.getElementById('btn-audit-prev').addEventListener('click', () => { if (auditPage > 1) { auditPage--; loadAudit(); } });
+    document.getElementById('btn-audit-next').addEventListener('click', () => { auditPage++; loadAudit(); });
+
+    loadBridgeTokens().then(() => loadWarnings());
+  </script>
+</body>
+</html>

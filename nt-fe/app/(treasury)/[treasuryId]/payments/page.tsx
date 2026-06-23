@@ -16,6 +16,7 @@ import { PageCard } from "@/components/card";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { PageComponentLayout } from "@/components/page-component-layout";
+import { SlotWarning } from "@/components/slot-warning";
 import { PendingButton } from "@/components/pending-button";
 import {
     ReviewStep,
@@ -38,6 +39,7 @@ import {
 import { type BridgeAsset, useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useSlotBlock } from "@/hooks/use-warnings";
 import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
 import { generateIntent, getIntentsQuote } from "@/lib/api";
@@ -71,7 +73,11 @@ import {
     formatCurrency,
     formatTokenDisplayAmount,
 } from "@/lib/utils";
-import { findBridgeAssetForToken } from "@/lib/bridge-asset-resolver";
+import {
+    findBridgeAssetForToken,
+    resolveBridgeScope,
+} from "@/lib/bridge-asset-resolver";
+import { extractInlineWarningCopy } from "@/lib/warning-message";
 import {
     computeQuoteNetworkFee,
     isIntentsCrossChainToken,
@@ -142,11 +148,51 @@ function Step1({
     isBridgeAssetsLoading = false,
 }: Step1Props) {
     const tPay = useTranslations("payments");
+    const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<PaymentFormValues>();
     const { treasuryId, isConfidential } = useTreasury();
     const isMobile = useMediaQuery("(max-width: 768px)");
     const address = form.watch("address");
     const amount = form.watch("amount");
+    const watchedToken = form.watch("token");
+    const destinationNetworkId = form.watch("destinationNetwork");
+    const paymentsScope = useMemo(
+        () => resolveBridgeScope(bridgeAssets, watchedToken?.address),
+        [bridgeAssets, watchedToken?.address],
+    );
+    const {
+        warning: sendScopeWarning,
+        blocked: paymentsSlotBlocked,
+        message: sendScopeMessage,
+    } = useSlotBlock(
+        "payments",
+        paymentsScope.token ?? undefined,
+        paymentsScope.network ?? undefined,
+    );
+    const {
+        warning: recipientNetworkScopeWarning,
+        message: recipientNetworkScopeMessage,
+    } = useSlotBlock(
+        "payments",
+        paymentsScope.token ?? undefined,
+        destinationNetworkId || undefined,
+    );
+    const sendWarningMessage =
+        sendScopeWarning && (sendScopeWarning.token || sendScopeWarning.network)
+            ? sendScopeMessage
+            : null;
+    const recipientNetworkWarningMessage =
+        destinationNetworkId &&
+        recipientNetworkScopeWarning &&
+        (recipientNetworkScopeWarning.network ||
+            (recipientNetworkScopeWarning.token &&
+                !recipientNetworkScopeWarning.network))
+            ? recipientNetworkScopeMessage
+            : null;
+    const sendWarningCopy = extractInlineWarningCopy(sendWarningMessage);
+    const recipientNetworkWarningCopy = extractInlineWarningCopy(
+        recipientNetworkWarningMessage,
+    );
 
     const handleSave = async () => {
         // Validate and proceed to next step
@@ -162,93 +208,109 @@ function Step1({
     };
 
     const isFormFilled = !!amount && Number(amount) > 0 && !!address;
-    const saveButtonText = hasRestrictedRecipientError
-        ? tPay("useDifferentAddress")
-        : isFormFilled
-          ? tPay("reviewButton")
-          : tPay("reviewButtonDisabled");
+    const saveButtonText = paymentsSlotBlocked
+        ? tCreate("brieflyUnavailable")
+        : hasRestrictedRecipientError
+          ? tPay("useDifferentAddress")
+          : isFormFilled
+            ? tPay("reviewButton")
+            : tPay("reviewButtonDisabled");
 
     return (
-        <PageCard>
-            <div className="flex justify-between items-center">
-                <StepperHeader
-                    title={
-                        isConfidential ? (
-                            <span className="inline-flex items-center gap-1.5">
-                                <span>{tPay("title")}</span>
-                                <Tooltip content={tPay("confidentialTooltip")}>
-                                    <span className="inline-flex">
-                                        <Shield className="size-4 fill-foreground" />
-                                    </span>
-                                </Tooltip>
-                            </span>
-                        ) : (
-                            tPay("title")
-                        )
-                    }
-                />
-                <div className="flex items-center gap-2">
-                    {isConfidential ? (
-                        <Button
-                            variant="outline"
-                            size={isMobile ? "icon" : "default"}
-                            className="flex items-center gap-2"
-                            id="payments-bulk-btn"
-                            disabled
-                            tooltipContent={tPay("comingSoon")}
-                        >
-                            <ArrowDownToLine className="w-4 h-4" />
-                            <span className="hidden md:block">
-                                {tPay("bulkPayments")}
-                            </span>
-                        </Button>
-                    ) : (
-                        <Link href={`/${treasuryId}/payments/bulk-payment`}>
+        <>
+            <SlotWarning slot="payments" />
+            <PageCard>
+                <div className="flex justify-between items-center">
+                    <StepperHeader
+                        title={
+                            isConfidential ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span>{tPay("title")}</span>
+                                    <Tooltip
+                                        content={tPay("confidentialTooltip")}
+                                    >
+                                        <span className="inline-flex">
+                                            <Shield className="size-4 fill-foreground" />
+                                        </span>
+                                    </Tooltip>
+                                </span>
+                            ) : (
+                                tPay("title")
+                            )
+                        }
+                    />
+                    <div className="flex items-center gap-2">
+                        {isConfidential ? (
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 size={isMobile ? "icon" : "default"}
-                                className="flex items-center gap-2 border-2"
+                                className="flex items-center gap-2"
                                 id="payments-bulk-btn"
-                                onClick={() => {
-                                    trackEvent("bulk-payments-click", {
-                                        source: "payments_page",
-                                        treasury_id: treasuryId ?? "",
-                                    });
-                                }}
+                                disabled
+                                tooltipContent={tPay("comingSoon")}
                             >
                                 <ArrowDownToLine className="w-4 h-4" />
                                 <span className="hidden md:block">
                                     {tPay("bulkPayments")}
                                 </span>
                             </Button>
-                        </Link>
-                    )}
-                    <PendingButton
-                        id="payments-pending-btn"
-                        types={["Payments"]}
-                    />
+                        ) : (
+                            <Link href={`/${treasuryId}/payments/bulk-payment`}>
+                                <Button
+                                    variant="ghost"
+                                    size={isMobile ? "icon" : "default"}
+                                    className="flex items-center gap-2 border-2"
+                                    id="payments-bulk-btn"
+                                    onClick={() => {
+                                        trackEvent("bulk-payments-click", {
+                                            source: "payments_page",
+                                            treasury_id: treasuryId ?? "",
+                                        });
+                                    }}
+                                >
+                                    <ArrowDownToLine className="w-4 h-4" />
+                                    <span className="hidden md:block">
+                                        {tPay("bulkPayments")}
+                                    </span>
+                                </Button>
+                            </Link>
+                        )}
+                        <PendingButton
+                            id="payments-pending-btn"
+                            types={["Payments"]}
+                        />
+                    </div>
                 </div>
-            </div>
 
-            <PaymentFormSection
-                control={form.control}
-                amountName="amount"
-                tokenName="token"
-                recipientName="address"
-                destinationNetworkName="destinationNetwork"
-                destinationNetworkNameFieldName="destinationNetworkName"
-                feeErrorMessage={feeErrorMessage || quoteErrorMessage}
-                showRestrictedRecipientAlert={!!hasRestrictedRecipientError}
-                saveButtonText={saveButtonText}
-                onSave={handleSave}
-                isSubmitting={isFeeLoading}
-                onAmountInput={onAmountInput}
-                onMaxSet={onMaxSet}
-                onAddressBookSelectionChange={onAddressBookSelectionChange}
-                bridgeAssets={bridgeAssets}
-                isBridgeAssetsLoading={isBridgeAssetsLoading}
-            />
-        </PageCard>
+                <PaymentFormSection
+                    control={form.control}
+                    amountName="amount"
+                    tokenName="token"
+                    recipientName="address"
+                    destinationNetworkName="destinationNetwork"
+                    destinationNetworkNameFieldName="destinationNetworkName"
+                    feeErrorMessage={feeErrorMessage || quoteErrorMessage}
+                    showRestrictedRecipientAlert={!!hasRestrictedRecipientError}
+                    saveButtonText={saveButtonText}
+                    slotBlocked={paymentsSlotBlocked}
+                    onSave={handleSave}
+                    isSubmitting={isFeeLoading}
+                    onAmountInput={onAmountInput}
+                    onMaxSet={onMaxSet}
+                    onAddressBookSelectionChange={onAddressBookSelectionChange}
+                    bridgeAssets={bridgeAssets}
+                    isBridgeAssetsLoading={isBridgeAssetsLoading}
+                    sendWarning={sendWarningCopy.inlineText}
+                    sendWarningTooltip={sendWarningCopy.tooltipText}
+                    recipientNetworkWarning={
+                        recipientNetworkWarningCopy.inlineText
+                    }
+                    recipientNetworkWarningTooltip={
+                        recipientNetworkWarningCopy.tooltipText
+                    }
+                />
+            </PageCard>
+        </>
     );
 }
 
@@ -764,6 +826,17 @@ export default function PaymentsPage() {
         name: ["token", "amount", "address", "destinationNetwork"],
     }) as [PaymentFormValues["token"], string, string, string];
 
+    const paymentsScope = useMemo(
+        () => resolveBridgeScope(bridgeAssets, watchedToken?.address),
+        [bridgeAssets, watchedToken?.address],
+    );
+    const { blocked: paymentsSlotBlocked, message: paymentsSlotMessage } =
+        useSlotBlock(
+            "payments",
+            paymentsScope.token ?? undefined,
+            paymentsScope.network ?? undefined,
+        );
+
     const watchedTokenClassification = useMemo(
         () => classifyPaymentToken(watchedToken, watchedDestinationNetwork),
         [watchedToken, watchedDestinationNetwork],
@@ -1032,6 +1105,11 @@ export default function PaymentsPage() {
     // ── Submit ────────────────────────────────────────────────────────────────
 
     const onSubmit = async (data: PaymentFormValues) => {
+        if (paymentsSlotBlocked) {
+            if (paymentsSlotMessage) toast.error(paymentsSlotMessage);
+            return;
+        }
+
         try {
             const proposalBond = policy?.proposal_bond || "0";
             const trimmedAddress = data.address.trim();

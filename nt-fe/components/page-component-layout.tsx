@@ -9,7 +9,7 @@ import { Button } from "@/components/button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Pill } from "@/components/pill";
 import { SignIn } from "@/components/sign-in";
-import { SystemStatusBanner } from "@/components/system-status-banner";
+import { SlotWarning } from "@/components/slot-warning";
 import { isStaging } from "@/constants/features";
 import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
 import { cn } from "@/lib/utils";
@@ -153,7 +153,7 @@ export function PageComponentLayout({
                 )}
             >
                 {!hideSystemStatusBanner && (
-                    <SystemStatusBanner className="lg:hidden mb-3" />
+                    <SlotWarning slot="app" className="lg:hidden mb-3" />
                 )}
                 {children}
             </main>

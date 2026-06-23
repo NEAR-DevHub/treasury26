@@ -17,6 +17,7 @@ import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
+import { SlotWarning } from "@/components/slot-warning";
 import { StepIcon } from "@/components/step-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/components/user";
@@ -41,6 +42,7 @@ import {
     useSwapStatus,
 } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import Big from "@/lib/big";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
@@ -274,6 +276,12 @@ export function ProposalSidebar({
     const status = getProposalStatus(proposal, policy);
     const proposalType = getProposalUIKind(proposal);
     const isUserVoter = !!proposal.votes[accountId ?? ""];
+
+    // Approving payment/exchange proposals is blocked while that feature has a
+    // critical warning. Rejection is never blocked.
+    const approveBlock = useProposalApproveBlock([proposal]);
+    const approveBlocked = approveBlock.anyBlocked;
+    const approveBlockedWarning = approveBlock.blockedWarnings[0] ?? null;
     const isPending = status === "Pending";
     const isExecuted = status === "Executed";
     const isExchangeProposal = proposalType === "Exchange";
@@ -591,6 +599,15 @@ export function ProposalSidebar({
                 />
             )}
 
+            {/* Feature-maintenance warning — approval paused, rejection still works */}
+            {isPending && approveBlocked && approveBlockedWarning?.slot && (
+                <SlotWarning
+                    slot={approveBlockedWarning.slot}
+                    token={approveBlockedWarning.token ?? undefined}
+                    network={approveBlockedWarning.network ?? undefined}
+                />
+            )}
+
             {/* Action Buttons */}
             {isPending && (
                 <div className="flex gap-2">
@@ -629,7 +646,9 @@ export function ProposalSidebar({
                             className="flex gap-1 w-full"
                             onClick={handleApprove}
                             disabled={
-                                isUserVoter || isCheckingVotingDurationImpact
+                                isUserVoter ||
+                                isCheckingVotingDurationImpact ||
+                                approveBlocked
                             }
                             tooltip={isUserVoter ? noVoteMessage : undefined}
                         >

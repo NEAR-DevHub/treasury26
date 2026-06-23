@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { Info } from "lucide-react";
 import { Button } from "./button";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useAssets } from "@/hooks/use-assets";
@@ -10,6 +11,7 @@ import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import TokenSelect, { SelectedTokenData } from "./token-select";
 import { LargeInput } from "./large-input";
 import { InputBlock } from "./input-block";
+import { Tooltip } from "./tooltip";
 import { FormField, FormMessage } from "./ui/form";
 import {
     Control,
@@ -76,6 +78,8 @@ interface TokenInputProps<
     loading?: boolean;
     customValue?: string;
     infoMessage?: string;
+    warning?: React.ReactNode;
+    warningTooltip?: React.ReactNode;
     /**
      * When true, shows "Insufficient balance" error if amount exceeds balance.
      * Default: false
@@ -104,6 +108,8 @@ export function TokenInput<
     loading = false,
     customValue,
     infoMessage,
+    warning,
+    warningTooltip,
     showInsufficientBalance = false,
     dynamicFontSize = false,
     onAmountInput,
@@ -284,18 +290,16 @@ export function TokenInput<
                                 )}
                             />
                         </div>
-                        <p
-                            className={cn(
-                                "text-muted-foreground text-xs invisible truncate",
-                                estimatedUSDValue !== null &&
-                                    estimatedUSDValue > 0 &&
-                                    "visible",
+                        {estimatedUSDValue !== null &&
+                            estimatedUSDValue > 0 && (
+                                <p
+                                    className={
+                                        "text-muted-foreground text-xs truncate"
+                                    }
+                                >
+                                    ≈ ${formatCurrency(estimatedUSDValue)}`
+                                </p>
                             )}
-                        >
-                            {estimatedUSDValue !== null && estimatedUSDValue > 0
-                                ? `≈ ${formatCurrency(estimatedUSDValue)}`
-                                : "Invisible"}
-                        </p>
                         {hasInsufficientBalance && (
                             <p className="text-general-info-foreground text-sm mt-2">
                                 {t("insufficientTokens")}
@@ -303,6 +307,15 @@ export function TokenInput<
                         )}
                         {fieldState.error ? (
                             <FormMessage />
+                        ) : warning ? (
+                            <p className="text-general-warning-foreground text-sm mt-2 inline-flex items-center gap-1">
+                                <span>{warning}</span>
+                                {warningTooltip && (
+                                    <Tooltip content={warningTooltip}>
+                                        <Info className="size-3 shrink-0" />
+                                    </Tooltip>
+                                )}
+                            </p>
                         ) : infoMessage ? (
                             <p className="text-general-info-foreground text-sm mt-2">
                                 {infoMessage}

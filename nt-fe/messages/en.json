@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "Search request by name or ID",
         "searchPlaceholderShort": "Search by name or ID",
-        "errorLoading": "Error loading proposals. Please try again.",
         "empty": {
             "title": "Create your first request",
             "description": "Requests for payments, exchanges, and other actions will appear here once created.",
@@ -607,6 +606,7 @@
             "actionReject": "reject",
             "actionRemove": "remove",
             "insufficientBalance": "Requests <highlight>{ids}</highlight> cannot be approved due to insufficient balance. Your approval will only apply to the remaining requests.",
+            "approveBlockedBulk": "{count, plural, one {# selected request can't be approved right now — unselect it to continue.} other {# selected requests can't be approved right now — unselect them to continue.}}",
             "remove": "Remove",
             "confirm": "Confirm"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "Open {bot} in Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Under Maintenance",
-        "maintenanceMessage": "We're currently performing maintenance. Some features may be temporarily unavailable. Please check back soon."
-    },
     "creditsQuota": {
         "available": "{count} Available",
         "used": "{count} Used",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "Create Request",
-        "noPermission": "You don't have permission to create a request"
+        "noPermission": "You don't have permission to create a request",
+        "paused": "Temporarily paused",
+        "brieflyUnavailable": "Briefly Unavailable"
     },
     "address": {
         "copied": "Address copied to clipboard"

@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "Rechercher une demande par nom ou ID",
         "searchPlaceholderShort": "Rechercher par nom ou ID",
-        "errorLoading": "Erreur lors du chargement des propositions. Veuillez réessayer.",
         "empty": {
             "title": "Créez votre première demande",
             "description": "Les demandes de paiements, d'échanges et autres actions apparaîtront ici une fois créées.",
@@ -607,6 +606,7 @@
             "actionReject": "rejeter",
             "actionRemove": "supprimer",
             "insufficientBalance": "Les demandes <highlight>{ids}</highlight> ne peuvent pas être approuvées en raison d'un solde insuffisant. Votre approbation s'appliquera uniquement aux demandes restantes.",
+            "approveBlockedBulk": "{count, plural, one {# demande sélectionnée ne peut pas être approuvée pour le moment — désélectionnez-la pour continuer.} other {# demandes sélectionnées ne peuvent pas être approuvées pour le moment — désélectionnez-les pour continuer.}}",
             "remove": "Supprimer",
             "confirm": "Confirmer"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "Ouvrir {bot} dans Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "En maintenance",
-        "maintenanceMessage": "Nous effectuons actuellement une maintenance. Certaines fonctionnalités peuvent être temporairement indisponibles. Veuillez revenir bientôt."
-    },
     "creditsQuota": {
         "available": "{count} disponibles",
         "used": "{count} utilisés",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "Créer une demande",
-        "noPermission": "Vous n'avez pas l'autorisation de créer une demande"
+        "noPermission": "Vous n'avez pas l'autorisation de créer une demande",
+        "paused": "Temporairement en pause",
+        "brieflyUnavailable": "Brièvement indisponible"
     },
     "address": {
         "copied": "Adresse copiée dans le presse-papiers"

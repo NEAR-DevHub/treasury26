@@ -4,11 +4,12 @@ import { Coins, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { AssetsTable, AssetsTableSkeleton } from "@/components/assets-table";
 import { PageCard } from "@/components/card";
-import { EmptyState } from "@/components/empty-state";
-import { StepperHeader } from "@/components/step-wizard";
-import { useAggregatedTokens } from "@/hooks/use-assets";
 import { ConfidentialState } from "@/components/confidential-state";
+import { EmptyState } from "@/components/empty-state";
+import { SlotWarning } from "@/components/slot-warning";
+import { StepperHeader } from "@/components/step-wizard";
 import { Tooltip } from "@/components/tooltip";
+import { useAggregatedTokens } from "@/hooks/use-assets";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { TreasuryAsset } from "@/lib/api";
 import { getDashboardBucketVisibility } from "@/lib/dashboard-balance-view";
@@ -78,6 +79,7 @@ export default function Assets({ tokens, state }: Props) {
                     />
                 </div>
             )}
+            <SlotWarning slot="data.prices" />
             {renderContent()}
         </PageCard>
     );

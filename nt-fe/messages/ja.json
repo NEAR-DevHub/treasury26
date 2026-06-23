@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "名前またはIDでリクエストを検索",
         "searchPlaceholderShort": "名前またはIDで検索",
-        "errorLoading": "提案の読み込みに失敗しました。もう一度お試しください。",
         "empty": {
             "title": "最初のリクエストを作成しましょう",
             "description": "支払い、交換などのリクエストは作成されるとここに表示されます。",
@@ -607,6 +606,7 @@
             "actionReject": "却下",
             "actionRemove": "削除",
             "insufficientBalance": "残高不足のため、リクエスト<highlight>{ids}</highlight>は承認できません。承認は残りのリクエストにのみ適用されます。",
+            "approveBlockedBulk": "{count, plural, one {選択した # 件のリクエストは現在承認できません。続行するには選択を解除してください。} other {選択した # 件のリクエストは現在承認できません。続行するには選択を解除してください。}}",
             "remove": "削除",
             "confirm": "確認"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "Telegramで{bot}を開く"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "メンテナンス中",
-        "maintenanceMessage": "現在メンテナンスを実施しています。一部の機能が一時的に利用できない場合があります。しばらくしてから再度ご確認ください。"
-    },
     "creditsQuota": {
         "available": "{count} 利用可能",
         "used": "{count} 使用済み",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "リクエストを作成",
-        "noPermission": "リクエストを作成する権限がありません"
+        "noPermission": "リクエストを作成する権限がありません",
+        "paused": "一時停止中",
+        "brieflyUnavailable": "一時的に利用不可"
     },
     "address": {
         "copied": "アドレスをクリップボードにコピーしました"

@@ -44,6 +44,40 @@ export function findBridgeAssetByTokenAddress(
     );
 }
 
+export interface BridgeScope {
+    /** Bridge asset id (coarse, e.g. "usdc"). Null when unresolved. */
+    token: string | null;
+    /** Per-chain bridge network id (e.g. "nep141:eth.omft.near"). */
+    network: string | null;
+}
+
+/**
+ * Resolve a token address (contract / intents id) to the warning scope ids the
+ * admin form stores: the bridge asset id and the specific network id. Used so
+ * create flows and proposal-approval checks can match token/network-scoped
+ * warnings by id instead of display name.
+ */
+export function resolveBridgeScope(
+    bridgeAssets: BridgeAsset[],
+    tokenAddress?: string | null,
+): BridgeScope {
+    const normalizedAddress = normalizeKey(tokenAddress);
+    if (!normalizedAddress) return { token: null, network: null };
+
+    const asset = findBridgeAssetByTokenAddress(
+        bridgeAssets,
+        normalizedAddress,
+    );
+    if (!asset) return { token: null, network: null };
+
+    const network =
+        asset.networks.find((n) =>
+            networkMatchesAddress(n.id, normalizedAddress),
+        ) ?? null;
+
+    return { token: asset.id, network: network?.id ?? null };
+}
+
 /**
  * Resolve bridge asset for a selected token.
  *

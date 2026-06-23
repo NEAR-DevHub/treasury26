@@ -71,6 +71,12 @@ interface PaymentFormSectionProps<
     hideRecipientNetwork?: boolean;
     bridgeAssets?: BridgeAsset[];
     isBridgeAssetsLoading?: boolean;
+    sendWarning?: React.ReactNode;
+    sendWarningTooltip?: React.ReactNode;
+    recipientNetworkWarning?: React.ReactNode;
+    recipientNetworkWarningTooltip?: React.ReactNode;
+    /** True when payments are blocked by a critical warning (not warning/info). */
+    slotBlocked?: boolean;
 }
 
 export function PaymentFormSection<
@@ -95,6 +101,11 @@ export function PaymentFormSection<
     hideRecipientNetwork = false,
     bridgeAssets = [],
     isBridgeAssetsLoading = false,
+    sendWarning,
+    sendWarningTooltip,
+    recipientNetworkWarning,
+    recipientNetworkWarningTooltip,
+    slotBlocked = false,
 }: PaymentFormSectionProps<TFieldValues, TTokenPath>) {
     const t = useTranslations("paymentFormSection");
     const tRecipientNetwork = useTranslations("recipientNetworkSelect");
@@ -294,6 +305,7 @@ export function PaymentFormSection<
     );
 
     const isSaveDisabled =
+        slotBlocked ||
         !hasValidAmount ||
         !recipient ||
         (hideRecipientNetwork && !isRecipientValid) ||
@@ -329,6 +341,8 @@ export function PaymentFormSection<
                     disabled: tokenLocked,
                     showOnlyOwnedAssets: false,
                 }}
+                warning={sendWarning}
+                warningTooltip={sendWarningTooltip}
                 showInsufficientBalance={
                     !feeErrorMessage || showRestrictedRecipientAlert
                 }
@@ -455,6 +469,8 @@ export function PaymentFormSection<
                             bridgeAssets={bridgeAssets}
                             token={token}
                             isBridgeAssetsLoading={isBridgeAssetsLoading}
+                            warning={recipientNetworkWarning}
+                            warningTooltip={recipientNetworkWarningTooltip}
                         />
                     )}
                 />

@@ -539,7 +539,6 @@
         },
         "searchPlaceholder": "Cari permintaan berdasarkan nama atau ID",
         "searchPlaceholderShort": "Cari berdasarkan nama atau ID",
-        "errorLoading": "Kesalahan saat memuat usulan. Silakan coba lagi.",
         "empty": {
             "title": "Buat permintaan pertama Anda",
             "description": "Permintaan pembayaran, pertukaran, dan tindakan lainnya akan muncul di sini setelah dibuat.",
@@ -607,6 +606,7 @@
             "actionReject": "menolak",
             "actionRemove": "menghapus",
             "insufficientBalance": "Permintaan <highlight>{ids}</highlight> tidak dapat disetujui karena saldo tidak mencukupi. Persetujuan Anda hanya akan berlaku untuk permintaan yang tersisa.",
+            "approveBlockedBulk": "{count, plural, one {# permintaan terpilih tidak dapat disetujui saat ini — batalkan pilihan untuk melanjutkan.} other {# permintaan terpilih tidak dapat disetujui saat ini — batalkan pilihan untuk melanjutkan.}}",
             "remove": "Hapus",
             "confirm": "Konfirmasi"
         },
@@ -1415,10 +1415,6 @@
             "openInTelegram": "Buka {bot} di Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Dalam Pemeliharaan",
-        "maintenanceMessage": "Kami sedang melakukan pemeliharaan. Beberapa fitur mungkin tidak tersedia sementara. Silakan periksa kembali sebentar lagi."
-    },
     "creditsQuota": {
         "available": "{count} Tersedia",
         "used": "{count} Terpakai",
@@ -1961,7 +1957,9 @@
     },
     "createRequestButton": {
         "idle": "Buat Permintaan",
-        "noPermission": "Anda tidak memiliki izin untuk membuat permintaan"
+        "noPermission": "Anda tidak memiliki izin untuk membuat permintaan",
+        "paused": "Dijeda sementara",
+        "brieflyUnavailable": "Sementara tidak tersedia"
     },
     "address": {
         "copied": "Alamat disalin ke papan klip"

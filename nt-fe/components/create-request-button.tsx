@@ -9,6 +9,7 @@ import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useMemo } from "react";
 import { hasPermission } from "@/lib/config-utils";
+import { useSlotBlock } from "@/hooks/use-warnings";
 
 interface PermissionRequirement {
     kind: string;
@@ -42,6 +43,9 @@ export function CreateRequestButton({
     const { treasuryId } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const { data: subscription } = useSubscription(treasuryId);
+    // Proposal creation is paused when the `action.create-proposal` slot (or an
+    // app-wide outage) is critical. This covers every create-request flow.
+    const { blocked: proposalBlocked } = useSlotBlock("action.create-proposal");
 
     const isAuthorized = useMemo(() => {
         if (!permissions || !policy || !accountId) return false;
@@ -67,7 +71,8 @@ export function CreateRequestButton({
         isSubmitting ||
         !isAuthorized ||
         !accountId ||
-        !hasSponsoredTransactions;
+        !hasSponsoredTransactions ||
+        proposalBlocked;
 
     return (
         <>
@@ -82,6 +87,8 @@ export function CreateRequestButton({
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         {loadingMessage ?? idleMessage ?? tCreate("idle")}
                     </>
+                ) : proposalBlocked ? (
+                    tCreate("paused")
                 ) : !accountId ? (
                     tAuth("noWallet")
                 ) : !hasSponsoredTransactions ? (
