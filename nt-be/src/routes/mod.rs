@@ -113,6 +113,14 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::intents::confidential::gold::snapshots::get_confidential_balance_chart),
         )
         .route(
+            "/api/confidential/history-refresh/status",
+            get(handlers::intents::confidential::history_refresh::get_confidential_history_refresh_status),
+        )
+        .route(
+            "/api/confidential/history-refresh",
+            post(handlers::intents::confidential::history_refresh::refresh_confidential_history),
+        )
+        .route(
             "/api/balance-history/export",
             get(handlers::balance_changes::history::export_balance),
         )

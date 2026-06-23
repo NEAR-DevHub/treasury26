@@ -1,4 +1,9 @@
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import {
+    useMutation,
+    useQuery,
+    useQueryClient,
+    keepPreviousData,
+} from "@tanstack/react-query";
 import {
     getUserTreasuries,
     getTreasuryConfig,
@@ -20,7 +25,9 @@ import {
     getRecentActivity,
     getRecentActivityRecipients,
     getRecentActivitySenders,
+    getConfidentialHistoryRefreshStatus,
     getExportHistory,
+    refreshConfidentialHistory,
 } from "@/lib/api";
 import { useTreasury } from "./use-treasury";
 import { useAssets } from "./use-assets";
@@ -352,6 +359,73 @@ export function useRecentActivity(
             ),
         enabled: !!accountId,
         staleTime: 1000 * 5, // 5 seconds (activity changes frequently)
+    });
+}
+
+export function useConfidentialHistoryRefreshStatus(
+    accountId: string | null | undefined,
+    enabled: boolean = true,
+) {
+    return useQuery({
+        queryKey: ["confidentialHistoryRefreshStatus", accountId],
+        queryFn: () =>
+            accountId
+                ? getConfidentialHistoryRefreshStatus(accountId)
+                : Promise.resolve(null),
+        enabled: enabled && !!accountId,
+        staleTime: 1000 * 5,
+        refetchInterval: (query) => {
+            const cooldownEndsAt = query.state.data?.cooldownEndsAt;
+            if (!cooldownEndsAt) return false;
+
+            const remaining = new Date(cooldownEndsAt).getTime() - Date.now();
+            return remaining > 0 ? Math.min(remaining, 1000 * 5) : 1000;
+        },
+    });
+}
+
+export function useRefreshConfidentialHistory(
+    accountId: string | null | undefined,
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async () => {
+            if (!accountId) {
+                throw new Error("Missing account");
+            }
+            return refreshConfidentialHistory(accountId);
+        },
+        onSuccess: async (status) => {
+            if (accountId && status) {
+                queryClient.setQueryData(
+                    ["confidentialHistoryRefreshStatus", accountId],
+                    status,
+                );
+            }
+
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: ["recentActivity", accountId],
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: ["treasuryAssets", accountId],
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: ["balanceChart", accountId],
+                }),
+            ]);
+        },
+        onError: async () => {
+            if (!accountId) {
+                return;
+            }
+
+            await queryClient.refetchQueries({
+                queryKey: ["confidentialHistoryRefreshStatus", accountId],
+                type: "active",
+            });
+        },
     });
 }
 

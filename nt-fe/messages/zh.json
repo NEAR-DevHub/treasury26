@@ -368,11 +368,22 @@
             "type": "类型",
             "date": "日期",
             "request": "请求",
+            "viewLinkedRequest": "查看关联请求",
             "from": "发送方",
             "to": "接收方",
             "method": "方法",
             "contract": "合约",
             "transaction": "交易"
+        },
+        "refresh": {
+            "ariaLabel": "刷新机密历史记录",
+            "refreshing": "正在刷新…",
+            "lastUpdated": "上次更新于 {time}",
+            "notUpdated": "尚未更新",
+            "justNow": "刚刚",
+            "moments": "片刻",
+            "checking": "正在检查刷新状态…",
+            "unavailable": "刷新状态不可用"
         }
     },
     "apiDocs": {

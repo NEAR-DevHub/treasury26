@@ -368,11 +368,22 @@
             "type": "סוג",
             "date": "תאריך",
             "request": "בקשה",
+            "viewLinkedRequest": "צפה בבקשה המקושרת",
             "from": "מאת",
             "to": "אל",
             "method": "שיטה",
             "contract": "חוזה",
             "transaction": "עסקה"
+        },
+        "refresh": {
+            "ariaLabel": "רענון היסטוריה חסויה",
+            "refreshing": "מרענן…",
+            "lastUpdated": "עודכן לאחרונה {time}",
+            "notUpdated": "עדיין לא עודכן",
+            "justNow": "עכשיו",
+            "moments": "רגעים",
+            "checking": "בודק סטטוס רענון…",
+            "unavailable": "סטטוס הרענון אינו זמין"
         }
     },
     "apiDocs": {

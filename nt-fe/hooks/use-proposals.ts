@@ -11,8 +11,29 @@ import {
     getTokenPriceAtTimestamp,
 } from "@/lib/proposals-api";
 import { isTerminalSwapStatus } from "@/features/proposals/utils/receipt-utils";
+import { useTreasury } from "@/hooks/use-treasury";
 import { isAxiosErrorWithStatus } from "@/lib/query-retry";
 import { Policy } from "@/types/policy";
+
+function useCanReadProposalQueries(daoId: string | null | undefined) {
+    const {
+        treasuryId,
+        isConfidential,
+        isGuestTreasury,
+        isLoading,
+        treasuryNotFound,
+    } = useTreasury();
+
+    if (!daoId || daoId !== treasuryId) {
+        return true;
+    }
+
+    if (isLoading || treasuryNotFound) {
+        return false;
+    }
+
+    return !(isConfidential && isGuestTreasury);
+}
 
 /**
  * Query hook to get proposals for a specific DAO with optional filtering
@@ -55,11 +76,12 @@ export function useProposals(
         refetchOnMount?: boolean | "always";
     },
 ) {
+    const canReadProposalQueries = useCanReadProposalQueries(daoId);
     const filtersKey = filters ? JSON.stringify(filters) : null;
     return useQuery({
         queryKey: ["proposals", daoId, filtersKey],
         queryFn: () => getProposals(daoId!, filters),
-        enabled: enabled && !!daoId,
+        enabled: enabled && canReadProposalQueries && !!daoId,
         staleTime: 1000 * 10, // 10 seconds (proposals can change frequently)
         refetchOnMount: options?.refetchOnMount,
         refetchInterval: options?.refetchInterval,
@@ -70,10 +92,11 @@ export function useProposal(
     daoId: string | null | undefined,
     proposalId: string | null | undefined,
 ) {
+    const canReadProposalQueries = useCanReadProposalQueries(daoId);
     return useQuery({
         queryKey: ["proposal", daoId, proposalId],
         queryFn: () => getProposal(daoId!, proposalId!),
-        enabled: !!daoId && !!proposalId,
+        enabled: canReadProposalQueries && !!daoId && !!proposalId,
         staleTime: 1000 * 10, // 10 seconds (proposals can change frequently)
     });
 }
@@ -84,6 +107,7 @@ export function useProposalTransaction(
     policy: Policy | null | undefined,
     enabled: boolean = true,
 ) {
+    const canReadProposalQueries = useCanReadProposalQueries(daoId);
     return useQuery({
         queryKey: [
             "proposal-transaction",
@@ -94,7 +118,12 @@ export function useProposalTransaction(
             policy?.proposal_period,
         ],
         queryFn: () => getProposalTransaction(daoId!, proposal!, policy!),
-        enabled: enabled && !!daoId && !!proposal && !!policy,
+        enabled:
+            enabled &&
+            canReadProposalQueries &&
+            !!daoId &&
+            !!proposal &&
+            !!policy,
         staleTime: 1000 * 60 * 5, // 5 minutes (transaction data is more stable)
         retry: (failureCount, error) => {
             // Don't retry on 404 (not found) errors
