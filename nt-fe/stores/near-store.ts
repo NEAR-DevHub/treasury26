@@ -379,8 +379,14 @@ export const useNearStore = create<NearStore>((set, get) => ({
     disconnect: async () => {
         const { connector } = get();
 
-        // Drop local auth state before any async logout work so protected UI
-        // reacts immediately to wallet disconnect.
+        // Logout from backend first, then drop local auth state.
+        try {
+            await authLogout();
+        } catch (error) {
+            console.error("Logout error:", error);
+        }
+
+        // Reset auth state
         set({
             walletAccountId: null,
             isAuthenticated: false,
@@ -390,13 +396,6 @@ export const useNearStore = create<NearStore>((set, get) => ({
             authError: null,
         });
         posthog.reset();
-
-        // Logout from backend
-        try {
-            await authLogout();
-        } catch (error) {
-            console.error("Logout error:", error);
-        }
 
         // Forget the persisted direct-trigger wallet so the next reload doesn't
         // restore a stale target.
@@ -731,12 +730,9 @@ export const useNear = () => {
     const accountId =
         isAuthenticated && hasAcceptedTerms ? walletAccountId : null;
     const disconnectAndClearSession = async () => {
-        const disconnectPromise = disconnect();
-        try {
-            await clearSessionQueries(queryClient);
-        } finally {
-            await disconnectPromise;
-        }
+        // Logout + reset auth state first, then clear the cached session data.
+        await disconnect();
+        await clearSessionQueries(queryClient);
     };
 
     const createProposal = async (
