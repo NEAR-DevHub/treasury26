@@ -287,9 +287,9 @@ async fn treasury_creation_blocked(state: &AppState) -> bool {
               AND severity = 'critical'
               AND (
                 is_active = true
-                OR (scheduled_start IS NOT NULL AND scheduled_start <= NOW())
+                OR (show_from IS NOT NULL AND show_from <= NOW())
               )
-              AND (scheduled_end IS NULL OR scheduled_end > NOW())
+              AND (ends_at IS NULL OR ends_at > NOW())
         )
         "#,
     )

@@ -10,8 +10,12 @@ CREATE TABLE warning_slots (
     user_message TEXT,
     scenario TEXT,
     internal_note TEXT,
-    scheduled_start TIMESTAMPTZ,
-    scheduled_end TIMESTAMPTZ,
+    show_from TIMESTAMPTZ,
+    starts_at TIMESTAMPTZ,
+    ends_at TIMESTAMPTZ,
+    linked_service TEXT,
+    linked_post_id TEXT,
+    group_id TEXT,
     updated_by TEXT,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -45,8 +49,12 @@ CREATE INDEX idx_warning_slots_active ON warning_slots (is_active)
 WHERE
     is_active = true;
 
-CREATE INDEX idx_warning_slots_scheduled ON warning_slots (scheduled_start)
+CREATE INDEX idx_warning_slots_scheduled ON warning_slots (show_from)
 WHERE
-    scheduled_start IS NOT NULL;
+    show_from IS NOT NULL;
+
+CREATE INDEX idx_warning_slots_group ON warning_slots (group_id)
+WHERE
+    group_id IS NOT NULL;
 
 CREATE INDEX idx_warning_audit_log_created_at ON warning_audit_log (created_at DESC);

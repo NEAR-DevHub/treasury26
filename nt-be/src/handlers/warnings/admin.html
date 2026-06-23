@@ -178,8 +178,8 @@
       <div id="warnings-content">
         <div class="warnings-bar">
           <div class="subtabs" id="warning-subtabs">
-            <button class="subtab active" data-filter="live">Live <span class="count" id="count-live">·</span></button>
-            <button class="subtab" data-filter="scheduled">Scheduled <span class="count" id="count-scheduled">·</span></button>
+            <button class="subtab active" data-filter="live">Active <span class="count" id="count-live">·</span></button>
+            <button class="subtab" data-filter="scheduled">Upcoming <span class="count" id="count-scheduled">·</span></button>
           </div>
           <div class="toolbar" style="margin:0">
             <button id="btn-new-warning">+ Add</button>
@@ -211,9 +211,7 @@
         { value: 'treasury-creation', label: 'Treasury creation (waitlist)' },
       ]},
       { group: 'Features', slots: [
-        { value: 'payments', label: 'Payments' },
-        { value: 'exchange', label: 'Exchange' },
-        { value: 'deposit', label: 'Deposits' },
+        { value: 'features', label: 'Payments, Exchange, Deposits' },
       ]},
       { group: 'Actions', slots: [
         { value: 'action.create-proposal', label: 'Creating requests (payments, exchange, members…)' },
@@ -226,31 +224,39 @@
       ]},
     ];
     const SLOTS = SLOT_GROUPS.flatMap(g => g.slots);
+    const TRANSACTION_SLOT_OPTIONS = [
+      { value: 'payments', label: 'Payments' },
+      { value: 'exchange', label: 'Exchange' },
+      { value: 'deposit', label: 'Deposits' },
+    ];
     let bridgeAssets = [];
-    // Token / network dropdowns store ids as their value (e.g. asset id and the
-    // per-chain nep141 network id), so warnings match proposals by id rather
-    // than display name. These lookups map an id back to its friendly label.
+    // The token dropdown stores the asset id as its value (warnings match
+    // proposals by asset id). The network dropdown stores the chain NAME
+    // (e.g. "sol", "base") because the same chain has a different per-token
+    // network id for every asset, so an id-based match would only ever hit one
+    // token. Matching by name lets a single warning cover the whole chain.
     let tokenOptions = [];        // [{ id, name }]
-    let allNetworkOptions = [];   // [{ id, name }] de-duped across assets
+    let allNetworkOptions = [];   // [{ id, name }] de-duped across assets by name
     const tokenNameById = {};
     const networkNameById = {};
 
     function tokenLabel(id) {
       return id ? (tokenNameById[id] || id) : '';
     }
-    function networkLabel(id) {
-      return id ? (networkNameById[id] || id) : '';
+    // `value` is the chain name; fall back to resolving a legacy network id.
+    function networkLabel(value) {
+      if (!value) return '';
+      return (networkNameById[value] || value).toUpperCase();
     }
 
-    const SLOTS_WITH_TOKEN_FILTER = new Set([
-      'deposit', 'exchange', 'payments', 'data.balances', 'data.prices',
-    ]);
+    // Token/network targeting only applies to the transaction features slot.
+    // (deposit/exchange/payments are edited through the virtual 'features' entry.)
+    const SLOTS_WITH_TOKEN_FILTER = new Set(['features']);
 
     // Login is one slot in the form; a specific wallet is stored as the
     // composite slot `login.wallet.<id>` (the frontend reads these directly).
     const LOGIN_WALLET_PREFIX = 'login.wallet.';
     const WALLET_OPTIONS = [
-      { value: 'mynearwallet', label: 'NEAR Wallets (MyNearWallet)' },
       { value: 'ledger', label: 'Ledger' },
       { value: 'evm', label: 'EVM Wallets' },
       { value: 'passkey', label: 'Passkey' },
@@ -273,7 +279,7 @@
 
     // Slots where severity is always critical — hide the picker.
     function slotForcesCritical(slot) {
-      return slot === 'login' || slot === 'treasury-creation';
+      return slot === 'login' || slot === 'treasury-creation' || (slot && slot.startsWith(LOGIN_WALLET_PREFIX));
     }
 
     // Slots whose message is fully auto-generated from templates — hide the
@@ -309,6 +315,10 @@
 
     // Predefined scenarios per slot.
     const SCENARIOS = {
+      'features': [
+        { value: 'scheduled_maintenance', label: 'Scheduled maintenance' },
+        { value: 'cant_process', label: "Can't process requests" },
+      ],
       exchange: [
         { value: 'swaps_paused', label: 'Swaps are paused' },
         { value: 'cant_process', label: "Can't process requests" },
@@ -367,6 +377,7 @@
 
     // Human-readable "where this appears" per slot.
     const SLOT_PLACEMENT = {
+      'features': 'Payments, Exchange, and Deposit pages — above the form',
       app: 'Sidebar banner across the entire platform',
       login: 'Login screen — banner above wallet list',
       'treasury-creation': 'Treasury creation flow — replaced by waitlist',
@@ -383,6 +394,7 @@
     // The specific CTA that a critical warning disables, per slot. Only slots
     // wired to blocking on the frontend appear here — others are banner-only.
     const CTA_BY_SLOT = {
+      'features': 'Send payment, Swap, and Deposit actions are all disabled',
       deposit: 'token and network selectors are disabled',
       exchange: 'the "Swap" button shows "Briefly Unavailable", and approving pending swap requests is paused (rejecting still works)',
       payments: 'the "Send payment" button shows "Briefly Unavailable", and approving pending payment requests is paused (rejecting still works)',
@@ -552,18 +564,18 @@
         }
         const data = await res.json();
         bridgeAssets = data.assets || [];
-        const netById = new Map();
+        const netByName = new Map();
         bridgeAssets.forEach(a => {
           tokenNameById[a.id] = a.assetName;
           (a.networks || []).forEach(n => {
             networkNameById[n.id] = n.name;
-            if (!netById.has(n.id)) netById.set(n.id, { id: n.id, name: n.name });
+            if (!netByName.has(n.name)) netByName.set(n.name, { id: n.id, name: n.name });
           });
         });
         tokenOptions = bridgeAssets
           .map(a => ({ id: a.id, name: a.assetName }))
           .sort((x, y) => x.name.localeCompare(y.name));
-        allNetworkOptions = [...netById.values()].sort((x, y) => x.name.localeCompare(y.name));
+        allNetworkOptions = [...netByName.values()].sort((x, y) => x.name.localeCompare(y.name));
         console.log(`Loaded ${bridgeAssets.length} assets, ${tokenOptions.length} tokens, ${allNetworkOptions.length} networks`);
       } catch (e) {
         console.warn('Failed to load bridge tokens:', e);
@@ -579,14 +591,17 @@
     function networksForToken(tokenId) {
       if (!tokenId) return allNetworkOptions;
       const asset = bridgeAssets.find(a => a.id === tokenId);
-      return asset
-        ? asset.networks.map(n => ({ id: n.id, name: n.name })).sort((x, y) => x.name.localeCompare(y.name))
-        : allNetworkOptions;
+      if (!asset) return allNetworkOptions;
+      const seen = new Set();
+      return asset.networks
+        .filter(n => { if (seen.has(n.name)) return false; seen.add(n.name); return true; })
+        .map(n => ({ id: n.id, name: n.name }))
+        .sort((x, y) => x.name.localeCompare(y.name));
     }
 
     function buildNetworkOptions(networks, selected) {
       let opts = '<option value="">All networks</option>';
-      networks.forEach(n => { opts += `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${n.name}</option>`; });
+      networks.forEach(n => { opts += `<option value="${n.name}" ${n.name === selected ? 'selected' : ''}>${n.name.toUpperCase()}</option>`; });
       return opts;
     }
 
@@ -662,24 +677,27 @@
         return `Login › ${walletLabel(value.slice(LOGIN_WALLET_PREFIX.length))}`;
       }
       const found = SLOTS.find(s => s.value === (value || ''));
-      return found ? found.label : (value || '—');
+      if (found) return found.label;
+      const txSlot = TRANSACTION_SLOT_OPTIONS.find(s => s.value === value);
+      if (txSlot) return txSlot.label;
+      return value || '—';
     }
 
     function renderWarnings(warnings) {
       document.getElementById('warnings-loading').classList.add('hidden');
 
       const now = new Date();
-      const isLive = w =>
+      const isActive = w =>
         w.isActive ||
-        (w.scheduledStart && new Date(w.scheduledStart) <= now &&
-          (!w.scheduledEnd || new Date(w.scheduledEnd) > now));
-      const live = warnings.filter(isLive);
-      const scheduled = warnings.filter(w => !isLive(w) && w.scheduledStart);
+        (w.showFrom && new Date(w.showFrom) <= now &&
+          (!w.endsAt || new Date(w.endsAt) > now));
+      const live = warnings.filter(isActive);
+      const upcoming = warnings.filter(w => !isActive(w) && w.showFrom && new Date(w.showFrom) > now);
 
       document.getElementById('count-live').textContent = live.length;
-      document.getElementById('count-scheduled').textContent = scheduled.length;
+      document.getElementById('count-scheduled').textContent = upcoming.length;
 
-      const filtered = activeSubtab === 'live' ? live : scheduled;
+      const filtered = activeSubtab === 'live' ? live : upcoming;
 
       const list = document.getElementById('warnings-list');
       const empty = document.getElementById('warnings-empty');
@@ -688,17 +706,24 @@
         list.classList.add('hidden');
         list.innerHTML = '';
         empty.textContent = activeSubtab === 'live'
-          ? 'No live warnings. Everything is operational.'
-          : 'No scheduled warnings.';
+          ? 'No active warnings. Everything is operational.'
+          : 'No upcoming warnings.';
         empty.classList.remove('hidden');
       } else {
         empty.classList.add('hidden');
         list.classList.remove('hidden');
         list.innerHTML = filtered.map(w => {
           const scope = [slotLabel(w.slot), tokenLabel(w.token), networkLabel(w.network)].filter(Boolean).join(' › ');
-          const scheduleInfo = w.scheduledStart
-            ? `${fmtDate(w.scheduledStart)}${w.scheduledEnd ? ' → ' + fmtDate(w.scheduledEnd) : ''}`
+          const scheduleInfo = w.startsAt || w.showFrom
+            ? `${w.showFrom ? 'Shows ' + fmtDate(w.showFrom) : ''}${w.startsAt ? (w.showFrom ? ' · ' : '') + 'Starts ' + fmtDate(w.startsAt) : ''}${w.endsAt ? ' → Ends ' + fmtDate(w.endsAt) : ''}`
             : null;
+          const linkedInfo = w.linkedService
+            ? `<span style="color:var(--accent)">⟵ ${escapeHtml(w.linkedService)}${w.linkedPostId ? ' #' + escapeHtml(w.linkedPostId) : ''}</span>`
+            : '';
+          const groupSize = w.groupId ? warnings.filter(x => x.groupId === w.groupId).length : 0;
+          const groupInfo = groupSize > 1
+            ? `<span title="Editing or deleting affects all ${groupSize} grouped warnings">⛓ grouped (${groupSize})</span>`
+            : '';
           return `
           <article class="card ${w.severity || 'warning'}">
             <div class="card-header">
@@ -712,6 +737,8 @@
             ${w.internalNote ? `<div class="card-note">${escapeHtml(w.internalNote)}</div>` : ''}
             <div class="card-footer">
               ${scheduleInfo ? `<span>${scheduleInfo}</span>` : ''}
+              ${linkedInfo}
+              ${groupInfo}
               <span>by ${w.updatedBy || '—'} · ${fmtDate(w.updatedAt)}</span>
             </div>
           </article>`;
@@ -746,7 +773,15 @@
       const form = document.getElementById('warning-form');
       form.classList.remove('hidden');
       document.getElementById('warnings-content').classList.add('hidden');
-      const { base: slot, wallet } = splitLoginSlot(w?.slot || SLOTS[0].value);
+      const { base: rawSlot, wallet } = splitLoginSlot(w?.slot || SLOTS[0].value);
+      // Map stored transaction slots back to the virtual 'features' entry.
+      const txSlotValues = TRANSACTION_SLOT_OPTIONS.map(s => s.value);
+      const isStoredTxSlot = txSlotValues.includes(rawSlot);
+      const slot = isStoredTxSlot ? 'features' : rawSlot;
+      // When editing a grouped warning, pre-check every feature slot in the group.
+      const groupSlots = (w && w.groupId)
+        ? new Set(warningsCache.filter(x => x.groupId === w.groupId).map(x => x.slot))
+        : new Set([rawSlot]);
       const token = w?.token || '';
       const scenario = w?.scenario || '';
       const tokenEnabled = slotSupportsTokenFilter(slot);
@@ -764,6 +799,14 @@
           <div class="form-section-label">Where to show</div>
           <label>Slot</label>
           <select id="f-slot" onchange="onSlotChange()">${SLOT_GROUPS.map(g => `<optgroup label="${g.group}">${g.slots.map(s => `<option value="${s.value}" ${s.value === slot ? 'selected' : ''}>${s.label}</option>`).join('')}</optgroup>`).join('')}</select>
+        </div>
+
+        <div class="form-section ${slot === 'features' ? '' : 'hidden'}" id="transaction-slots-section">
+          <div class="form-section-label">Which features?</div>
+          <div style="display:flex;gap:1.25rem;flex-wrap:wrap">
+            ${TRANSACTION_SLOT_OPTIONS.map(s => `<label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer"><input type="checkbox" class="f-tx-slot" value="${s.value}" ${isStoredTxSlot ? (groupSlots.has(s.value) ? 'checked' : '') : 'checked'}> ${s.label}</label>`).join('')}
+          </div>
+          <p class="hint">Select which transaction features this warning covers. A separate warning is created for each.</p>
         </div>
 
         <div class="form-section ${tokenEnabled ? '' : 'hidden'}" id="token-network-section">
@@ -820,21 +863,60 @@
         </div>
 
         <div class="form-section">
-          <div class="form-section-label">When to show</div>
+          <div class="form-section-label">Timing</div>
           <div style="display:flex;gap:1.5rem;margin-bottom:0.5rem">
             <label class="toggle" style="margin:0;cursor:pointer">
-              <input type="radio" name="timing" value="now" onclick="toggleActiveSchedule()" ${!w?.scheduledStart ? 'checked' : ''}>
+              <input type="radio" name="timing" value="now" onclick="toggleActiveSchedule()" ${!w?.showFrom && !w?.startsAt ? 'checked' : ''}>
               <strong>Active now</strong>
             </label>
             <label class="toggle" style="margin:0;cursor:pointer">
-              <input type="radio" name="timing" value="scheduled" onclick="toggleActiveSchedule()" ${w?.scheduledStart ? 'checked' : ''}>
+              <input type="radio" name="timing" value="scheduled" onclick="toggleActiveSchedule()" ${w?.showFrom || w?.startsAt ? 'checked' : ''}>
               <strong>Scheduled</strong>
             </label>
           </div>
-          <div id="schedule-fields" style="${w?.scheduledStart ? '' : 'display:none'}">
+          <div id="schedule-fields" style="${w?.showFrom || w?.startsAt ? '' : 'display:none'}">
             <div class="row">
-              <div><label>Start (UTC)</label><input type="datetime-local" id="f-start" value="${toUTCInput(w?.scheduledStart)}" oninput="updatePreview()"></div>
-              <div><label>End (UTC)</label><input type="datetime-local" id="f-end" value="${toUTCInput(w?.scheduledEnd)}" oninput="updatePreview()"></div>
+              <div>
+                <label>Show in UI from (UTC)</label>
+                <input type="datetime-local" id="f-show-from" value="${toUTCInput(w?.showFrom)}" oninput="updatePreview()">
+                <p class="hint">When the warning appears to users. Leave empty to show immediately when activated.</p>
+              </div>
+              <div>
+                <label>Event starts (UTC)</label>
+                <input type="datetime-local" id="f-starts-at" value="${toUTCInput(w?.startsAt)}" oninput="updatePreview()">
+                <p class="hint">When the maintenance/event actually begins.</p>
+              </div>
+            </div>
+            <div class="row" style="margin-top:0.5rem">
+              <div>
+                <label>Event ends (UTC)</label>
+                <input type="datetime-local" id="f-ends-at" value="${toUTCInput(w?.endsAt)}" oninput="updatePreview()">
+                <p class="hint">Auto-closes the warning at this time.</p>
+              </div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section" id="linking-section">
+          <div class="form-section-label">Link to upstream service (optional)</div>
+          <p class="hint" style="margin-top:0">Link this warning to an upstream incident so it auto-closes when the issue resolves.</p>
+          <div class="row">
+            <div>
+              <label>Service</label>
+              <select id="f-linked-service" onchange="onLinkedServiceChange()">
+                <option value="">— None —</option>
+                <option value="near-intents" ${w?.linkedService === 'near-intents' ? 'selected' : ''}>NEAR Intents</option>
+                <option value="near-protocol" ${w?.linkedService === 'near-protocol' ? 'selected' : ''}>NEAR Protocol</option>
+                <option value="near-rpc" ${w?.linkedService === 'near-rpc' ? 'selected' : ''}>NEAR RPC</option>
+              </select>
+            </div>
+            <div>
+              <label>Specific post/incident <span style="font-weight:normal">(optional)</span></label>
+              <select id="f-linked-post" ${!w?.linkedService ? 'disabled' : ''}>
+                <option value="">— Any incident on this service —</option>
+              </select>
+              <p class="hint">Pick a specific incident to close only when that one resolves. Leave blank to auto-close when the service recovers.</p>
             </div>
           </div>
         </div>
@@ -869,7 +951,7 @@
 
         <div class="form-section ${slot === 'app' ? '' : 'hidden'}" id="also-block-login-section">
           <label style="display:flex;align-items:center;gap:0.5rem;margin:0;cursor:pointer">
-            <input type="checkbox" id="f-also-block-login">
+            <input type="checkbox" id="f-also-block-login" ${(slot === 'app' && warningsCache.some(x => x.slot === 'login')) ? 'checked' : ''}>
             <span>Also pause login for all wallets</span>
           </label>
           <p class="hint">Creates a separate login warning so new users can't sign in while the app is in this state.</p>
@@ -884,6 +966,15 @@
       if (w?.userMessage) setMessageFields(w.userMessage);
       else updateMessageFieldsVisibility();
       updatePreview();
+      // Pre-populate linked post dropdown when editing a linked warning.
+      if (w?.linkedService) {
+        onLinkedServiceChange().then(() => {
+          if (w.linkedPostId) {
+            const postSel = document.getElementById('f-linked-post');
+            if (postSel) postSel.value = w.linkedPostId;
+          }
+        });
+      }
     }
 
     window.toggleActiveSchedule = function() {
@@ -891,8 +982,9 @@
       const fields = document.getElementById('schedule-fields');
       fields.style.display = isNow ? 'none' : 'block';
       if (isNow) {
-        document.getElementById('f-start').value = '';
-        document.getElementById('f-end').value = '';
+        document.getElementById('f-show-from').value = '';
+        document.getElementById('f-starts-at').value = '';
+        document.getElementById('f-ends-at').value = '';
       }
       updatePreview();
     };
@@ -963,8 +1055,8 @@
       const tooltipMode = messageUsesTooltipMode(st.slot, st.token, st.network);
       // Build schedule text from form inputs
       const isScheduled = !document.querySelector('input[name="timing"][value="now"]').checked;
-      const schedStart = document.getElementById('f-start')?.value || '';
-      const schedEnd = document.getElementById('f-end')?.value || '';
+      const schedStart = document.getElementById('f-starts-at')?.value || '';
+      const schedEnd = document.getElementById('f-ends-at')?.value || '';
       let scheduleText = '';
       if (isScheduled && (schedStart || schedEnd)) {
         const parts = [];
@@ -1063,6 +1155,10 @@
       const networkSel = document.getElementById('f-network');
       const tokenSection = document.getElementById('token-network-section');
 
+      // Show the transaction slot checkboxes only when 'features' is selected.
+      const txSection = document.getElementById('transaction-slots-section');
+      if (txSection) txSection.classList.toggle('hidden', slot !== 'features');
+
       // Show the token/network card only when the slot supports it.
       tokenSection.classList.toggle('hidden', !enabled);
 
@@ -1116,12 +1212,20 @@
       // Reset timing back to "Active now" and clear any schedule.
       const nowRadio = document.querySelector('input[name="timing"][value="now"]');
       if (nowRadio) nowRadio.checked = true;
-      const startEl = document.getElementById('f-start');
-      const endEl = document.getElementById('f-end');
-      if (startEl) startEl.value = '';
-      if (endEl) endEl.value = '';
+      const showFromEl = document.getElementById('f-show-from');
+      const startsAtEl = document.getElementById('f-starts-at');
+      const endsAtEl = document.getElementById('f-ends-at');
+      if (showFromEl) showFromEl.value = '';
+      if (startsAtEl) startsAtEl.value = '';
+      if (endsAtEl) endsAtEl.value = '';
       const scheduleFields = document.getElementById('schedule-fields');
       if (scheduleFields) scheduleFields.style.display = 'none';
+
+      // Reset linking section.
+      const linkedService = document.getElementById('f-linked-service');
+      const linkedPost = document.getElementById('f-linked-post');
+      if (linkedService) linkedService.value = '';
+      if (linkedPost) { linkedPost.value = ''; linkedPost.disabled = true; }
 
       applyTemplate();
     };
@@ -1141,10 +1245,39 @@
       const networkSel = document.getElementById('f-network');
       const currentNetwork = networkSel.value;
       const networks = networksForToken(tokenSel.value);
-      const stillValid = networks.some(n => n.id === currentNetwork);
+      const stillValid = networks.some(n => n.name === currentNetwork);
       networkSel.innerHTML = buildNetworkOptions(networks, stillValid ? currentNetwork : '');
       updateScenarioVisibility();
       applyTemplate();
+    };
+
+    let statusIncidentsCache = null;
+
+    async function loadStatusIncidents() {
+      if (statusIncidentsCache) return statusIncidentsCache;
+      try {
+        const data = await api('/internal/api/status-incidents');
+        statusIncidentsCache = data;
+        return data;
+      } catch {
+        return { intentsPosts: [], services: [] };
+      }
+    }
+
+    window.onLinkedServiceChange = async function() {
+      const service = document.getElementById('f-linked-service').value;
+      const postSel = document.getElementById('f-linked-post');
+      postSel.innerHTML = '<option value="">— Any incident on this service —</option>';
+      postSel.disabled = !service;
+      if (!service) return;
+
+      if (service === 'near-intents') {
+        const data = await loadStatusIncidents();
+        (data.intentsPosts || []).forEach(p => {
+          const label = p.title + (p.postType ? ` (${p.postType})` : '');
+          postSel.innerHTML += `<option value="${escapeHtml(p.id || '')}">${escapeHtml(label)}</option>`;
+        });
+      }
     };
 
     window.hideWarningForm = function() {
@@ -1187,18 +1320,62 @@
         userMessage: waitlist ? null : (getMessageFromForm().trim() || null),
         scenario,
         internalNote: document.getElementById('f-note').value || null,
-        scheduledStart: fromUTCInput(document.getElementById('f-start').value),
-        scheduledEnd: fromUTCInput(document.getElementById('f-end').value),
+        showFrom: fromUTCInput(document.getElementById('f-show-from').value),
+        startsAt: fromUTCInput(document.getElementById('f-starts-at').value),
+        endsAt: fromUTCInput(document.getElementById('f-ends-at').value),
+        linkedService: document.getElementById('f-linked-service').value || null,
+        linkedPostId: document.getElementById('f-linked-post').value || null,
       };
       try {
-        if (id) {
-          await api(`/internal/api/warnings/${id}`, { method: 'PUT', body: JSON.stringify(body) });
-        } else {
-          await api('/internal/api/warnings', { method: 'POST', body: JSON.stringify(body) });
+        // Virtual slot: expand to selected transaction slots.
+        const slotsToCreate = (slot === 'features')
+          ? [...document.querySelectorAll('.f-tx-slot:checked')].map(el => el.value)
+          : [slot];
+
+        if (slotsToCreate.length === 0) {
+          showFormError('Select at least one transaction feature.');
+          return;
         }
 
-        // If "Also pause login" is checked, create a login warning with the
-        // same timing settings.
+        // Existing group members, when editing a feature warning that belongs to a group.
+        // Grouping only spans the feature slots (the virtual 'features' entry); the
+        // app/login pairing below is handled separately because their messages differ.
+        const editedWarning = id ? warningsCache.find(x => x.id === id) : null;
+        const existingGroupId = editedWarning?.groupId || null;
+        const groupMembers = existingGroupId
+          ? warningsCache.filter(x => x.groupId === existingGroupId)
+          : (editedWarning ? [editedWarning] : []);
+
+        // Editing a warning that is part of a real group applies to every member.
+        if (groupMembers.length > 1 &&
+            !confirm(`This warning is part of a group of ${groupMembers.length} (${groupMembers.map(m => m.slot).join(', ')}). Changes will apply to all of them. Continue?`)) {
+          return;
+        }
+
+        // A shared group id is needed whenever this save touches more than one slot.
+        const groupId = slotsToCreate.length > 1
+          ? (existingGroupId || newGroupId())
+          : null;
+
+        for (const s of slotsToCreate) {
+          const member = groupMembers.find(m => m.slot === s);
+          const payload = JSON.stringify({ ...body, slot: s, groupId });
+          if (member) {
+            await api(`/internal/api/warnings/${member.id}`, { method: 'PUT', body: payload });
+          } else {
+            await api('/internal/api/warnings', { method: 'POST', body: payload });
+          }
+        }
+
+        // Remove group members whose feature slot is no longer selected.
+        for (const m of groupMembers) {
+          if (!slotsToCreate.includes(m.slot)) {
+            await api(`/internal/api/warnings/${m.id}`, { method: 'DELETE' });
+          }
+        }
+
+        // "Also pause login" stays a separate (ungrouped) login warning, since its
+        // message/severity are derived rather than shared with the app warning.
         const alsoBlockLogin = document.getElementById('f-also-block-login');
         if (slot === 'app' && alsoBlockLogin && alsoBlockLogin.checked) {
           const loginBody = {
@@ -1206,10 +1383,16 @@
             isActive,
             severity: 'critical',
             internalNote: body.internalNote ? `Auto: ${body.internalNote}` : 'Auto-created with app-wide warning',
-            scheduledStart: body.scheduledStart,
-            scheduledEnd: body.scheduledEnd,
+            showFrom: body.showFrom,
+            startsAt: body.startsAt,
+            endsAt: body.endsAt,
           };
-          await api('/internal/api/warnings', { method: 'POST', body: JSON.stringify(loginBody) });
+          const existingLogin = warningsCache.find(x => x.slot === 'login');
+          if (existingLogin) {
+            await api(`/internal/api/warnings/${existingLogin.id}`, { method: 'PUT', body: JSON.stringify(loginBody) });
+          } else {
+            await api('/internal/api/warnings', { method: 'POST', body: JSON.stringify(loginBody) });
+          }
         }
 
         hideWarningForm();
@@ -1219,10 +1402,29 @@
       }
     };
 
+    function newGroupId() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+      return 'grp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    }
+
     window.deleteWarning = async function(id) {
-      if (!confirm('Delete this warning?')) return;
+      const target = warningsCache.find(x => x.id === id);
+      const groupMembers = target?.groupId
+        ? warningsCache.filter(x => x.groupId === target.groupId)
+        : [];
+      let idsToDelete = [id];
+      if (groupMembers.length > 1) {
+        if (!confirm(`This warning is part of a group of ${groupMembers.length} (${groupMembers.map(m => m.slot).join(', ')}). Delete all of them?`)) return;
+        idsToDelete = groupMembers.map(m => m.id);
+      } else if (!confirm('Delete this warning?')) {
+        return;
+      }
       try {
-        await api(`/internal/api/warnings/${id}`, { method: 'DELETE' });
+        for (const wid of idsToDelete) {
+          await api(`/internal/api/warnings/${wid}`, { method: 'DELETE' });
+        }
         await loadWarnings();
       } catch (e) {
         showPageError(e.message);

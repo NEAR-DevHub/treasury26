@@ -142,16 +142,17 @@ struct NearStatusMonitor {
 }
 
 #[derive(Debug, Deserialize)]
-struct IntentsStatusResponse {
-    posts: Vec<IntentsStatusPost>,
+pub struct IntentsStatusResponse {
+    pub posts: Vec<IntentsStatusPost>,
 }
 
-#[derive(Debug, Deserialize)]
-struct IntentsStatusPost {
-    title: String,
-    post_type: String,
-    starts_at: Option<i64>,
-    ends_at: Option<i64>,
+#[derive(Debug, Deserialize, Clone)]
+pub struct IntentsStatusPost {
+    pub id: Option<String>,
+    pub title: String,
+    pub post_type: String,
+    pub starts_at: Option<i64>,
+    pub ends_at: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -347,19 +348,31 @@ async fn check_exchange(state: &AppState) -> OhDearCheckResult {
 }
 
 async fn check_near_intents(state: &AppState) -> OhDearCheckResult {
+    let (result, duration_ms) = fetch_intents_response(state).await;
+    match result {
+        Ok(response) => map_near_intents_status(response, duration_ms),
+        Err(error) => NEAR_INTENTS_CHECK.failed_http(error, duration_ms, json!({})),
+    }
+}
+
+/// Build and send the NEAR Intents status request, returning the decoded
+/// response (or a categorized HTTP error) together with the elapsed time.
+/// Shared by the Oh Dear health check and the lightweight `fetch_intents_posts`.
+async fn fetch_intents_response(
+    state: &AppState,
+) -> (Result<IntentsStatusResponse, HealthHttpError>, u128) {
     let config = OhDearHealthConfig::default();
     let request = state
         .http_client
         .get(&state.env_vars.near_intents_status_api_url);
 
-    fetch_json_check::<IntentsStatusResponse, _>(
+    let started = Instant::now();
+    let result = send_json_check::<IntentsStatusResponse>(
         request,
-        &config,
-        NEAR_INTENTS_CHECK,
-        json!({}),
-        map_near_intents_status,
+        Duration::from_secs(config.http_timeout_seconds),
     )
-    .await
+    .await;
+    (result, started.elapsed().as_millis())
 }
 
 async fn check_near_protocol(state: &AppState) -> OhDearCheckResult {
@@ -703,6 +716,15 @@ impl CheckDefinition {
             short_summary: short_summary.to_string(),
             meta,
         }
+    }
+}
+
+/// Fetch the current posts from the NEAR Intents status API.
+/// Used by the monitor for post-level linked warning resolution and by the admin endpoint.
+pub async fn fetch_intents_posts(state: &AppState) -> Result<Vec<IntentsStatusPost>, String> {
+    match fetch_intents_response(state).await.0 {
+        Ok(response) => Ok(response.posts),
+        Err(_) => Err("Failed to fetch NEAR Intents status posts".to_string()),
     }
 }
 

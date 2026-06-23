@@ -74,12 +74,12 @@ function getAlertVariant(
 
 function formatScheduleText(
     formatDate: (date: Date | string | number) => string,
-    scheduledStart: string | null,
-    scheduledEnd: string | null,
+    startsAt: string | null,
+    endsAt: string | null,
 ): string {
     const parts: string[] = [];
-    if (scheduledStart) parts.push(`on ${formatDate(scheduledStart)}`);
-    if (scheduledEnd) parts.push(`until ${formatDate(scheduledEnd)}`);
+    if (startsAt) parts.push(`on ${formatDate(startsAt)}`);
+    if (endsAt) parts.push(`until ${formatDate(endsAt)}`);
     return parts.join(" ");
 }
 
@@ -105,8 +105,8 @@ export function SlotWarning({
     // Replace {schedule} with formatted dates if present in the message.
     const scheduleText = formatScheduleText(
         formatDate,
-        warning.scheduledStart,
-        warning.scheduledEnd,
+        warning.startsAt,
+        warning.endsAt,
     );
     const hasInlineSchedule = message.includes("{schedule}");
     if (hasInlineSchedule) {
@@ -122,7 +122,7 @@ export function SlotWarning({
     const showScheduleLine =
         !hasInlineSchedule &&
         scheduleText &&
-        (warning.scheduledStart || warning.scheduledEnd);
+        (warning.startsAt || warning.endsAt);
 
     return (
         <Alert variant={variant} className={cn(className)}>

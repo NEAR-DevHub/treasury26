@@ -24,6 +24,7 @@ import { z } from "zod";
 import { Button } from "@/components/button";
 import { SlotWarning } from "@/components/slot-warning";
 import { useSlotBlock } from "@/hooks/use-warnings";
+import { extractBannerWarningCopy } from "@/lib/warning-message";
 import { CopyButton } from "@/components/copy-button";
 import { InputBlock } from "@/components/input-block";
 import { getNetworkDisplayName } from "@/components/token-display";
@@ -386,11 +387,27 @@ export function DepositModal({
 
     const selectedAsset = form.watch("asset");
     const selectedNetwork = form.watch("network");
-    const { blocked: depositBlocked } = useSlotBlock(
-        "deposit",
-        selectedAsset?.id,
-        selectedNetwork?.id,
+    const {
+        warning: depositScopeWarning,
+        blocked: depositBlocked,
+        message: depositScopeMessage,
+    } = useSlotBlock("deposit", selectedAsset?.id, selectedNetwork?.name);
+    // Token/network-scoped messages render inside the deposit address section;
+    // slot-wide messages stay in the banner above.
+    const depositScopedMessage =
+        depositScopeWarning &&
+        (depositScopeWarning.token || depositScopeWarning.network)
+            ? depositScopeMessage
+            : null;
+    const depositScopedCopy = extractBannerWarningCopy(depositScopedMessage);
+    // A token/network-scoped pause only blocks that combination — keep the
+    // selectors enabled so the user can switch. Only disable them when the whole
+    // deposit slot is paused or the app is in maintenance.
+    const depositTokenNetworkScoped = Boolean(
+        depositScopeWarning?.token || depositScopeWarning?.network,
     );
+    const depositSelectorsDisabled =
+        depositBlocked && !depositTokenNetworkScoped;
     const { data: bridgeAssets = [], isLoading: isLoadingAssets } =
         useBridgeTokens(true, { includeNearNetwork: true });
 
@@ -881,8 +898,9 @@ export function DepositModal({
         [form, invalidatePendingAddressRequest],
     );
 
-    console.log({ selectedAsset });
-    // Fetch deposit address when both asset and network are selected
+    // Fetch deposit address when both asset and network are selected.
+    // A critical (blocking) warning on this token/network pauses deposits, so we
+    // skip fetching the address entirely and show the paused notice instead.
     useEffect(() => {
         const fetchAddress = async () => {
             if (!selectedNetwork || !selectedAsset) {
@@ -987,7 +1005,7 @@ export function DepositModal({
             }
         };
 
-        if (selectedAsset && selectedNetwork) {
+        if (selectedAsset && selectedNetwork && !depositBlocked) {
             fetchAddress();
         } else {
             invalidatePendingAddressRequest();
@@ -997,6 +1015,7 @@ export function DepositModal({
     }, [
         selectedAsset,
         selectedNetwork,
+        depositBlocked,
         isConfidential,
         selectedBridgeNetwork,
         t,
@@ -1131,7 +1150,7 @@ export function DepositModal({
                                         type="button"
                                         onClick={() => setModalType("asset")}
                                         variant="unstyled"
-                                        disabled={depositBlocked}
+                                        disabled={depositSelectorsDisabled}
                                         data-testid="deposit-asset-selector"
                                         className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
                                     >
@@ -1182,7 +1201,7 @@ export function DepositModal({
                                         type="button"
                                         onClick={() => setModalType("network")}
                                         variant="unstyled"
-                                        disabled={depositBlocked}
+                                        disabled={depositSelectorsDisabled}
                                         data-testid="deposit-network-selector"
                                         className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
                                     >
@@ -1248,14 +1267,34 @@ export function DepositModal({
                                             )}
                                         </div>
                                     </Button>
-                                    <FormMessage />
+                                    {fieldState.error ? <FormMessage /> : null}
                                 </InputBlock>
                             </FormItem>
                         )}
                     />
 
                     {/* Deposit Address Section */}
-                    {showAddressLoading && (
+                    {/* Paused: a critical token/network warning blocks deposits.
+                        Show the notice in place of the address (no fetch). */}
+                    {depositBlocked && selectedAsset && selectedNetwork && (
+                        <div className="mt-6 space-y-3">
+                            <div>
+                                <h3 className="font-semibold mb-1">
+                                    {t("depositAddressHeading")}
+                                </h3>
+                            </div>
+                            <SlotWarning
+                                slot={depositScopeWarning?.slot ?? "deposit"}
+                                token={depositScopeWarning?.token ?? undefined}
+                                network={
+                                    depositScopeWarning?.network ?? undefined
+                                }
+                                action="deposit"
+                            />
+                        </div>
+                    )}
+
+                    {showAddressLoading && !depositBlocked && (
                         <div className="mt-6 space-y-4 animate-pulse">
                             <div>
                                 <div className="h-6 bg-muted rounded w-48 mb-2" />
@@ -1288,234 +1327,268 @@ export function DepositModal({
                         </div>
                     )}
 
-                    {displayDepositInfo && !showAddressLoading && (
-                        <div className="mt-6 space-y-3">
-                            <div>
-                                <h3 className="font-semibold mb-1">
-                                    {t("depositAddressHeading")}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {t("depositAddressSubtitle")}
-                                </p>
-                            </div>
+                    {displayDepositInfo &&
+                        !showAddressLoading &&
+                        !depositBlocked && (
+                            <div className="mt-6 space-y-3">
+                                <div>
+                                    <h3 className="font-semibold mb-1">
+                                        {t("depositAddressHeading")}
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t("depositAddressSubtitle")}
+                                    </p>
+                                </div>
 
-                            {(canSwitchDepositSource ||
-                                isConfidentialNearFallbackOnly) && (
-                                <Tabs
-                                    value={addressSourceTab}
-                                    onValueChange={(value) =>
-                                        setAddressSourceTab(
-                                            value as "public" | "confidential",
-                                        )
-                                    }
-                                    className="gap-0"
-                                >
-                                    <TabsList className="px-2 pb-0 border-b border-border">
-                                        {canSwitchDepositSource && (
-                                            <TabsTrigger
-                                                value="public"
-                                                className="text-base font-semibold pb-2"
-                                            >
-                                                <Globe className="size-5" />
-                                                <span>
-                                                    {t("tabs.fromPublic")}
-                                                </span>
-                                            </TabsTrigger>
-                                        )}
-                                        <TabsTrigger
-                                            value="confidential"
-                                            className="text-base font-semibold pb-2"
-                                        >
-                                            <Shield className="size-5 fill-current" />
-                                            <span>
-                                                {t("tabs.fromConfidential")}
-                                            </span>
-                                        </TabsTrigger>
-                                    </TabsList>
-                                </Tabs>
-                            )}
-                            <div className="relative bg-muted rounded-lg space-y-2 p-1.5">
-                                {showConfidentialDepositWarning && (
-                                    <div className="rounded-md p-2">
-                                        <p className="text-sm text-general-info-foreground">
-                                            {t.rich(
-                                                "depositAddressSubtitleConfidential",
-                                                {
-                                                    semibold: (chunks) => (
-                                                        <span className="font-semibold">
-                                                            {chunks}
-                                                        </span>
-                                                    ),
-                                                },
-                                            )}
-                                        </p>
-                                        <p className="mt-2 text-sm text-general-info-foreground">
-                                            {t(
-                                                "depositAddressSubtitleConfidentialExpiry",
-                                                {
-                                                    expiresIn:
-                                                        singleUseExpiresIn,
-                                                },
-                                            )}
-                                        </p>
-                                    </div>
+                                {/* Non-blocking token/network notice (e.g. slow
+                                network): deposits still work, so show the full
+                                message inline (no tooltip). */}
+                                {depositScopedMessage && (
+                                    <p className="text-general-warning-foreground text-sm">
+                                        {depositScopedCopy.heading} -{" "}
+                                        {depositScopedCopy.body}
+                                    </p>
                                 )}
 
-                                <div
-                                    className={cn(
-                                        "relative flex items-start gap-3 rounded-lg",
-                                        showConfidentialDepositWarning &&
-                                            "bg-card p-2",
+                                {(canSwitchDepositSource ||
+                                    isConfidentialNearFallbackOnly) && (
+                                    <Tabs
+                                        value={addressSourceTab}
+                                        onValueChange={(value) =>
+                                            setAddressSourceTab(
+                                                value as
+                                                    | "public"
+                                                    | "confidential",
+                                            )
+                                        }
+                                        className="gap-0"
+                                    >
+                                        <TabsList className="px-2 pb-0 border-b border-border">
+                                            {canSwitchDepositSource && (
+                                                <TabsTrigger
+                                                    value="public"
+                                                    className="text-base font-semibold pb-2"
+                                                >
+                                                    <Globe className="size-5" />
+                                                    <span>
+                                                        {t("tabs.fromPublic")}
+                                                    </span>
+                                                </TabsTrigger>
+                                            )}
+                                            <TabsTrigger
+                                                value="confidential"
+                                                className="text-base font-semibold pb-2"
+                                            >
+                                                <Shield className="size-5 fill-current" />
+                                                <span>
+                                                    {t("tabs.fromConfidential")}
+                                                </span>
+                                            </TabsTrigger>
+                                        </TabsList>
+                                    </Tabs>
+                                )}
+                                <div className="relative bg-muted rounded-lg space-y-2 p-1.5">
+                                    {showConfidentialDepositWarning && (
+                                        <div className="rounded-md p-2">
+                                            <p className="text-sm text-general-info-foreground">
+                                                {t.rich(
+                                                    "depositAddressSubtitleConfidential",
+                                                    {
+                                                        semibold: (chunks) => (
+                                                            <span className="font-semibold">
+                                                                {chunks}
+                                                            </span>
+                                                        ),
+                                                    },
+                                                )}
+                                            </p>
+                                            <p className="mt-2 text-sm text-general-info-foreground">
+                                                {t(
+                                                    "depositAddressSubtitleConfidentialExpiry",
+                                                    {
+                                                        expiresIn:
+                                                            singleUseExpiresIn,
+                                                    },
+                                                )}
+                                            </p>
+                                        </div>
                                     )}
-                                >
+
                                     <div
                                         className={cn(
-                                            "flex items-start gap-3 w-full",
-                                            shouldBlurConfidentialAddress &&
-                                                "select-none blur-sm",
+                                            "relative flex items-start gap-3 rounded-lg",
+                                            showConfidentialDepositWarning &&
+                                                "bg-card p-2",
                                         )}
                                     >
-                                        {/* QR Code */}
-                                        <div className="shrink-0">
-                                            <div className="size-[88px] rounded-lg flex items-center justify-center">
-                                                <QRCode
-                                                    value={
-                                                        displayDepositInfo.address
-                                                    }
-                                                    size={88}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Address */}
-                                        <div className="flex-1 space-y-2 pt-1">
-                                            <label className="text-sm text-muted-foreground">
-                                                {t("addressLabel")}
-                                            </label>
-                                            <div className="rounded-lg flex justify-between gap-2">
-                                                <code className="font-mono break-all text-xs sm:text-sm">
-                                                    {formatAddress(
-                                                        displayDepositInfo.address,
-                                                    )}
-                                                </code>
-                                                <CopyButton
-                                                    text={
-                                                        displayDepositInfo.address
-                                                    }
-                                                    toastMessage={t(
-                                                        "addressCopied",
-                                                    )}
-                                                    variant="unstyled"
-                                                    size="icon-sm"
-                                                    className="shrink-0"
-                                                    iconClassName="w-5 h-5 text-muted-foreground"
-                                                    disabled={
-                                                        shouldBlurConfidentialAddress
-                                                    }
-                                                />
-                                            </div>
-
-                                            {/* Memo field */}
-                                            {displayDepositInfo.memo && (
-                                                <>
-                                                    <label className="text-sm text-muted-foreground">
-                                                        {t("memoLabel")}
-                                                    </label>
-                                                    <div className="rounded-lg flex justify-between gap-2">
-                                                        <code className="font-mono break-all text-xs sm:text-sm">
-                                                            {
-                                                                displayDepositInfo.memo
-                                                            }
-                                                        </code>
-                                                        <CopyButton
-                                                            text={
-                                                                displayDepositInfo.memo
-                                                            }
-                                                            toastMessage={t(
-                                                                "memoCopied",
-                                                            )}
-                                                            variant="unstyled"
-                                                            size="icon-sm"
-                                                            className="shrink-0"
-                                                            iconClassName="w-5 h-5 text-muted-foreground"
-                                                        />
-                                                    </div>
-                                                </>
+                                        <div
+                                            className={cn(
+                                                "flex items-start gap-3 w-full",
+                                                shouldBlurConfidentialAddress &&
+                                                    "select-none blur-sm",
                                             )}
-                                        </div>
-                                    </div>
-                                    {shouldBlurConfidentialAddress && (
-                                        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                onClick={() =>
-                                                    setHasAcknowledgedSingleUse(
-                                                        true,
-                                                    )
-                                                }
-                                                className="pointer-events-auto h-10 rounded-xl bg-background px-5 text-sm font-medium shadow-md"
-                                            >
-                                                {t("singleUseAcknowledgement")}
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                                        >
+                                            {/* QR Code */}
+                                            <div className="shrink-0">
+                                                <div className="size-[88px] rounded-lg flex items-center justify-center">
+                                                    <QRCode
+                                                        value={
+                                                            displayDepositInfo.address
+                                                        }
+                                                        size={88}
+                                                    />
+                                                </div>
+                                            </div>
 
-                            <div className="space-y-2 mt-4">
-                                <div className="flex gap-2 items-start text-sm text-muted-foreground">
-                                    <CircleCheck className="h-4 w-4 shrink-0 mt-0.5" />
-                                    <span>
-                                        {t.rich("onlyDeposit", {
-                                            symbol:
-                                                selectedNetwork?.symbol ?? "",
-                                            network: onlyDepositNetworkName,
-                                            symbolTag: (chunks) => (
-                                                <span className="text-foreground">
-                                                    {chunks}
-                                                </span>
-                                            ),
-                                            networkTag: (chunks) => (
-                                                <span
-                                                    className={cn(
-                                                        "text-foreground",
-                                                        networkDisplayCaseClass,
-                                                    )}
-                                                >
-                                                    {chunks}
-                                                </span>
-                                            ),
-                                        })}
-                                        {!showConfidentialDepositWarning && (
-                                            <>
-                                                {" "}
-                                                {t(
-                                                    "testTransactionRecommendation",
+                                            {/* Address */}
+                                            <div className="flex-1 space-y-2 pt-1">
+                                                <label className="text-sm text-muted-foreground">
+                                                    {t("addressLabel")}
+                                                </label>
+                                                <div className="rounded-lg flex justify-between gap-2">
+                                                    <code className="font-mono break-all text-xs sm:text-sm">
+                                                        {formatAddress(
+                                                            displayDepositInfo.address,
+                                                        )}
+                                                    </code>
+                                                    <CopyButton
+                                                        text={
+                                                            displayDepositInfo.address
+                                                        }
+                                                        toastMessage={t(
+                                                            "addressCopied",
+                                                        )}
+                                                        variant="unstyled"
+                                                        size="icon-sm"
+                                                        className="shrink-0"
+                                                        iconClassName="w-5 h-5 text-muted-foreground"
+                                                        disabled={
+                                                            shouldBlurConfidentialAddress
+                                                        }
+                                                    />
+                                                </div>
+
+                                                {/* Memo field */}
+                                                {displayDepositInfo.memo && (
+                                                    <>
+                                                        <label className="text-sm text-muted-foreground">
+                                                            {t("memoLabel")}
+                                                        </label>
+                                                        <div className="rounded-lg flex justify-between gap-2">
+                                                            <code className="font-mono break-all text-xs sm:text-sm">
+                                                                {
+                                                                    displayDepositInfo.memo
+                                                                }
+                                                            </code>
+                                                            <CopyButton
+                                                                text={
+                                                                    displayDepositInfo.memo
+                                                                }
+                                                                toastMessage={t(
+                                                                    "memoCopied",
+                                                                )}
+                                                                variant="unstyled"
+                                                                size="icon-sm"
+                                                                className="shrink-0"
+                                                                iconClassName="w-5 h-5 text-muted-foreground"
+                                                            />
+                                                        </div>
+                                                    </>
                                                 )}
-                                            </>
+                                            </div>
+                                        </div>
+                                        {shouldBlurConfidentialAddress && (
+                                            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+                                                <Button
+                                                    type="button"
+                                                    variant="secondary"
+                                                    onClick={() =>
+                                                        setHasAcknowledgedSingleUse(
+                                                            true,
+                                                        )
+                                                    }
+                                                    className="pointer-events-auto h-10 rounded-xl bg-background px-5 text-sm font-medium shadow-md"
+                                                >
+                                                    {t(
+                                                        "singleUseAcknowledgement",
+                                                    )}
+                                                </Button>
+                                            </div>
                                         )}
-                                    </span>
+                                    </div>
                                 </div>
 
-                                {(displayDepositInfo?.minDepositAmount ||
-                                    selectedBridgeNetwork?.minDepositAmount) && (
+                                <div className="space-y-2 mt-4">
                                     <div className="flex gap-2 items-start text-sm text-muted-foreground">
                                         <CircleCheck className="h-4 w-4 shrink-0 mt-0.5" />
                                         <span>
-                                            {t.rich("minimumDeposit", {
-                                                amount: formatBalance(
-                                                    displayDepositInfo?.minDepositAmount ??
-                                                        selectedBridgeNetwork!
-                                                            .minDepositAmount!,
-                                                    selectedBridgeNetwork?.decimals ??
-                                                        0,
-                                                ),
+                                            {t.rich("onlyDeposit", {
                                                 symbol:
                                                     selectedNetwork?.symbol ??
                                                     "",
-                                                amountTag: (chunks) => (
+                                                network: onlyDepositNetworkName,
+                                                symbolTag: (chunks) => (
                                                     <span className="text-foreground">
+                                                        {chunks}
+                                                    </span>
+                                                ),
+                                                networkTag: (chunks) => (
+                                                    <span
+                                                        className={cn(
+                                                            "text-foreground",
+                                                            networkDisplayCaseClass,
+                                                        )}
+                                                    >
+                                                        {chunks}
+                                                    </span>
+                                                ),
+                                            })}
+                                            {!showConfidentialDepositWarning && (
+                                                <>
+                                                    {" "}
+                                                    {t(
+                                                        "testTransactionRecommendation",
+                                                    )}
+                                                </>
+                                            )}
+                                        </span>
+                                    </div>
+
+                                    {(displayDepositInfo?.minDepositAmount ||
+                                        selectedBridgeNetwork?.minDepositAmount) && (
+                                        <div className="flex gap-2 items-start text-sm text-muted-foreground">
+                                            <CircleCheck className="h-4 w-4 shrink-0 mt-0.5" />
+                                            <span>
+                                                {t.rich("minimumDeposit", {
+                                                    amount: formatBalance(
+                                                        displayDepositInfo?.minDepositAmount ??
+                                                            selectedBridgeNetwork!
+                                                                .minDepositAmount!,
+                                                        selectedBridgeNetwork?.decimals ??
+                                                            0,
+                                                    ),
+                                                    symbol:
+                                                        selectedNetwork?.symbol ??
+                                                        "",
+                                                    amountTag: (chunks) => (
+                                                        <span className="text-foreground">
+                                                            {chunks}
+                                                        </span>
+                                                    ),
+                                                })}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Memo warning */}
+                                {displayDepositInfo.memo && (
+                                    <div className="flex gap-2 items-start text-sm bg-destructive/10 text-destructive rounded-lg p-3">
+                                        <TriangleAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                                        <span>
+                                            {t.rich("memoWarning", {
+                                                bold: (chunks) => (
+                                                    <span className="font-semibold">
                                                         {chunks}
                                                     </span>
                                                 ),
@@ -1524,24 +1597,7 @@ export function DepositModal({
                                     </div>
                                 )}
                             </div>
-
-                            {/* Memo warning */}
-                            {displayDepositInfo.memo && (
-                                <div className="flex gap-2 items-start text-sm bg-destructive/10 text-destructive rounded-lg p-3">
-                                    <TriangleAlert className="h-4 w-4 shrink-0 mt-0.5" />
-                                    <span>
-                                        {t.rich("memoWarning", {
-                                            bold: (chunks) => (
-                                                <span className="font-semibold">
-                                                    {chunks}
-                                                </span>
-                                            ),
-                                        })}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        )}
 
                     <SelectModal
                         isOpen={modalType === "asset"}
@@ -1648,6 +1704,11 @@ export function DepositModal({
             networkSections,
             handleNetworkSelect,
             selectedNetworkBalances,
+            depositScopedMessage,
+            depositScopedCopy,
+            depositBlocked,
+            depositSelectorsDisabled,
+            depositScopeWarning,
         ],
     );
 
@@ -1668,12 +1729,7 @@ export function DepositModal({
                 </div>
                 <p className="text-sm mt-2 font-semibold">{t("subtitle")}</p>
             </div>
-            <SlotWarning
-                slot="deposit"
-                token={selectedAsset?.id}
-                network={selectedNetwork?.id}
-                className="mb-2"
-            />
+            <SlotWarning slot="deposit" className="mb-2" />
             <div>{formContent}</div>
         </PageCard>
     );

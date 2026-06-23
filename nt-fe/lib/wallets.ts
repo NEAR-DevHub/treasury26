@@ -24,9 +24,12 @@ export const MANIFEST_WALLET_IDS = {
 export type HotLabsManifestWalletId =
     (typeof MANIFEST_WALLET_IDS)[keyof typeof MANIFEST_WALLET_IDS];
 
-/** Maps wallet-selector ids to warnings admin login slots. */
-export const WALLET_LOGIN_SLOTS: Record<WalletId, string> = {
-    [WALLET_IDS.NEAR]: "login.wallet.mynearwallet",
+/**
+ * Maps wallet-selector ids to warnings admin login slots. The NEAR group is a
+ * container (it opens a modal of NEAR wallet choices), so it has no slot of its
+ * own — only its inner choices and the direct wallets are targetable.
+ */
+export const WALLET_LOGIN_SLOTS: Partial<Record<WalletId, string>> = {
     [WALLET_IDS.LEDGER]: "login.wallet.ledger",
     [WALLET_IDS.EVM]: "login.wallet.evm",
     [WALLET_IDS.PASSKEY]: "login.wallet.passkey",
@@ -148,8 +151,7 @@ export const NEAR_WALLET_CHOICES: WalletOption[] = [
 
 export function getWalletLoginSlot(walletId: string): string {
     return (
-        WALLET_LOGIN_SLOTS[walletId as WalletId] ??
-        WALLET_LOGIN_SLOTS[WALLET_IDS.NEAR]
+        WALLET_LOGIN_SLOTS[walletId as WalletId] ?? `login.wallet.${walletId}`
     );
 }
 

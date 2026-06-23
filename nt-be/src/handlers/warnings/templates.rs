@@ -21,6 +21,17 @@ fn scenario_entries() -> Vec<(&'static str, &'static str, String)> {
     );
 
     vec![
+        // Virtual "features" slot (Payments + Exchange + Deposits). Generic
+        // wording since one warning covers all three actions.
+        (
+            "features",
+            "scheduled_maintenance",
+            merge_warning_message(
+                "Scheduled update",
+                "Payments, swaps, and deposits will be briefly unavailable {schedule}.",
+            ),
+        ),
+        ("features", "cant_process", cant_process.clone()),
         (
             "exchange",
             "swaps_paused",
@@ -194,10 +205,10 @@ pub fn generate_messages(
     }
 
     // Login slots are fully templated — no scenario needed.
-    if let Some(slot) = normalize(slot) {
-        if let Some(msg) = login_messages(slot) {
-            return Some(msg);
-        }
+    if let Some(slot) = normalize(slot)
+        && let Some(msg) = login_messages(slot)
+    {
+        return Some(msg);
     }
 
     if let (Some(slot), Some(scenario)) = (normalize(slot), scenario) {

@@ -1,12 +1,15 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use serde_json::json;
+
 use crate::{
     AppState,
     handlers::status::{
         fallbacks::{self, SHOW_FALLBACK_CALLBACK_PREFIX, StatusIncident, admin_page_url},
         oh_dear::{self, OhDearStatus, SUPPORTED_SERVICES},
     },
+    utils::cache::CacheKey,
 };
 
 const MONITOR_INTERVAL_SECONDS: u64 = 60;
@@ -131,6 +134,153 @@ async fn recover_incident(pool: &sqlx::PgPool, incident_id: i32) -> Result<(), s
     Ok(())
 }
 
+async fn deactivate_linked_warnings(state: &AppState, service: &str) {
+    let result = sqlx::query_scalar::<_, i32>(
+        r#"
+        UPDATE warning_slots
+        SET is_active = false, updated_by = 'system', updated_at = NOW()
+        WHERE linked_service = $1 AND linked_post_id IS NULL AND is_active = true
+        RETURNING id
+        "#,
+    )
+    .bind(service)
+    .fetch_all(&state.db_pool)
+    .await;
+
+    match result {
+        Ok(ids) if !ids.is_empty() => {
+            for id in &ids {
+                let _ = sqlx::query(
+                    r#"
+                    INSERT INTO warning_audit_log (warning_id, action, changed_by, changes)
+                    VALUES ($1, 'deactivated', 'system', $2)
+                    "#,
+                )
+                .bind(id)
+                .bind(json!({
+                    "is_active": false,
+                    "service": service,
+                    "source": "linked_service_recovery",
+                }))
+                .execute(&state.db_pool)
+                .await;
+            }
+            let cache_key = CacheKey::new("public-warnings").build();
+            state.cache.short_term.invalidate(&cache_key).await;
+            tracing::info!(
+                "[status-monitor] Deactivated {} linked warning(s) for {service}",
+                ids.len()
+            );
+        }
+        Ok(_) => {}
+        Err(e) => {
+            tracing::error!(
+                "[status-monitor] Failed to deactivate linked warnings for {service}: {e}"
+            );
+        }
+    }
+}
+
+/// Check if any warnings linked to specific near-intents posts should be auto-closed.
+/// A post is considered resolved if it no longer appears in the API or its `ends_at` has passed.
+pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
+    #[derive(sqlx::FromRow)]
+    struct LinkedWarning {
+        id: i32,
+        linked_post_id: Option<String>,
+    }
+
+    let warnings = match sqlx::query_as::<_, LinkedWarning>(
+        r#"
+        SELECT id, linked_post_id
+        FROM warning_slots
+        WHERE linked_service = 'near-intents'
+          AND linked_post_id IS NOT NULL
+          AND is_active = true
+        "#,
+    )
+    .fetch_all(&state.db_pool)
+    .await
+    {
+        Ok(w) => w,
+        Err(e) => {
+            tracing::error!("[status-monitor] Failed to load linked-post warnings: {e}");
+            return;
+        }
+    };
+
+    if warnings.is_empty() {
+        return;
+    }
+
+    let posts = match oh_dear::fetch_intents_posts(state).await {
+        Ok(posts) => posts,
+        Err(e) => {
+            tracing::error!("[status-monitor] Failed to fetch intents posts for linked check: {e}");
+            return;
+        }
+    };
+
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    let mut deactivated = Vec::new();
+
+    for warning in &warnings {
+        let Some(ref post_id) = warning.linked_post_id else {
+            continue;
+        };
+
+        let post_still_active = posts.iter().any(|post| {
+            post.id.as_deref() == Some(post_id.as_str())
+                && match post.ends_at {
+                    Some(ends) => now_ms < ends,
+                    None => true,
+                }
+        });
+
+        if !post_still_active {
+            if let Err(e) = sqlx::query(
+                "UPDATE warning_slots SET is_active = false, updated_by = 'system', updated_at = NOW() WHERE id = $1",
+            )
+            .bind(warning.id)
+            .execute(&state.db_pool)
+            .await
+            {
+                tracing::error!(
+                    "[status-monitor] Failed to deactivate warning {} for resolved post {post_id}: {e}",
+                    warning.id
+                );
+                continue;
+            }
+
+            let _ = sqlx::query(
+                r#"
+                INSERT INTO warning_audit_log (warning_id, action, changed_by, changes)
+                VALUES ($1, 'deactivated', 'system', $2)
+                "#,
+            )
+            .bind(warning.id)
+            .bind(json!({
+                "is_active": false,
+                "linked_post_id": post_id,
+                "source": "linked_post_resolved",
+            }))
+            .execute(&state.db_pool)
+            .await;
+
+            deactivated.push(warning.id);
+        }
+    }
+
+    if !deactivated.is_empty() {
+        let cache_key = CacheKey::new("public-warnings").build();
+        state.cache.short_term.invalidate(&cache_key).await;
+        tracing::info!(
+            "[status-monitor] Deactivated {} warning(s) for resolved intents posts",
+            deactivated.len()
+        );
+    }
+}
+
 async fn process_service(state: &Arc<AppState>, service: &str) {
     let Some(check) = oh_dear::run_service_check(state, service).await else {
         return;
@@ -216,6 +366,8 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
             return;
         }
 
+        deactivate_linked_warnings(state, service).await;
+
         match fallbacks::deactivate_fallback(state, service).await {
             Ok(true) => {
                 tracing::info!("[status-monitor] Recovered {service}; deactivated auto-fallback");
@@ -236,6 +388,7 @@ pub async fn run_monitor_cycle(state: &Arc<AppState>) {
     for service in SUPPORTED_SERVICES {
         process_service(state, service).await;
     }
+    check_linked_posts_resolved(state).await;
 }
 
 pub fn run_status_monitor_loop(state: Arc<AppState>) {

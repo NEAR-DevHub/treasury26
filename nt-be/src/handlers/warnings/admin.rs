@@ -20,7 +20,7 @@ const BASIC_AUTH_REALM: &str = "Warnings Admin";
 pub struct AdminError {
     status: StatusCode,
     message: String,
-    headers: Option<HeaderMap>,
+    headers: Option<Box<HeaderMap>>,
 }
 
 impl AdminError {
@@ -36,7 +36,7 @@ impl AdminError {
         Self {
             status,
             message: message.into(),
-            headers: Some(headers),
+            headers: Some(Box::new(headers)),
         }
     }
 }
@@ -46,7 +46,7 @@ impl IntoResponse for AdminError {
         let body = json!({ "error": self.message });
         let mut response = (self.status, Json(body)).into_response();
         if let Some(headers) = self.headers {
-            for (key, value) in headers.iter() {
+            for (key, value) in headers.as_ref().iter() {
                 response.headers_mut().insert(key, value.clone());
             }
         }
@@ -128,8 +128,12 @@ pub struct AdminWarning {
     pub user_message: Option<String>,
     pub scenario: Option<String>,
     pub internal_note: Option<String>,
-    pub scheduled_start: Option<DateTime<Utc>>,
-    pub scheduled_end: Option<DateTime<Utc>>,
+    pub show_from: Option<DateTime<Utc>>,
+    pub starts_at: Option<DateTime<Utc>>,
+    pub ends_at: Option<DateTime<Utc>>,
+    pub linked_service: Option<String>,
+    pub linked_post_id: Option<String>,
+    pub group_id: Option<String>,
     pub updated_by: Option<String>,
     pub updated_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
@@ -146,8 +150,12 @@ pub struct CreateWarningRequest {
     pub user_message: Option<String>,
     pub scenario: Option<String>,
     pub internal_note: Option<String>,
-    pub scheduled_start: Option<DateTime<Utc>>,
-    pub scheduled_end: Option<DateTime<Utc>>,
+    pub show_from: Option<DateTime<Utc>>,
+    pub starts_at: Option<DateTime<Utc>>,
+    pub ends_at: Option<DateTime<Utc>>,
+    pub linked_service: Option<String>,
+    pub linked_post_id: Option<String>,
+    pub group_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -161,8 +169,12 @@ pub struct UpdateWarningRequest {
     pub user_message: Option<String>,
     pub scenario: Option<String>,
     pub internal_note: Option<String>,
-    pub scheduled_start: Option<Option<DateTime<Utc>>>,
-    pub scheduled_end: Option<Option<DateTime<Utc>>>,
+    pub show_from: Option<Option<DateTime<Utc>>>,
+    pub starts_at: Option<Option<DateTime<Utc>>>,
+    pub ends_at: Option<Option<DateTime<Utc>>>,
+    pub linked_service: Option<Option<String>>,
+    pub linked_post_id: Option<Option<String>>,
+    pub group_id: Option<Option<String>>,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -250,8 +262,8 @@ async fn insert_audit_log(
 fn determine_update_action(
     old: &AdminWarning,
     new_is_active: bool,
-    scheduled_start: &Option<DateTime<Utc>>,
-    scheduled_end: &Option<DateTime<Utc>>,
+    show_from: &Option<DateTime<Utc>>,
+    ends_at: &Option<DateTime<Utc>>,
 ) -> &'static str {
     if old.is_active != new_is_active {
         return if new_is_active {
@@ -261,7 +273,7 @@ fn determine_update_action(
         };
     }
 
-    if scheduled_start.is_some() || scheduled_end.is_some() {
+    if show_from.is_some() || ends_at.is_some() {
         return "scheduled";
     }
 
@@ -290,8 +302,11 @@ fn build_changes(old: &AdminWarning, new: &AdminWarning) -> Value {
     push_change!(user_message);
     push_change!(scenario);
     push_change!(internal_note);
-    push_change!(scheduled_start);
-    push_change!(scheduled_end);
+    push_change!(show_from);
+    push_change!(starts_at);
+    push_change!(ends_at);
+    push_change!(linked_service);
+    push_change!(linked_post_id);
 
     Value::Object(changes)
 }
@@ -307,7 +322,8 @@ pub async fn list_warnings(
         SELECT
             id, slot, token, network, is_active, severity,
             user_message, scenario, internal_note,
-            scheduled_start, scheduled_end,
+            show_from, starts_at, ends_at,
+            linked_service, linked_post_id, group_id,
             updated_by, updated_at, created_at
         FROM warning_slots
         ORDER BY id
@@ -366,33 +382,47 @@ pub async fn create_warning(
     }
 
     let is_active = body.is_active.unwrap_or(false);
-    if !is_active && body.scheduled_start.is_none() {
+    if !is_active && body.show_from.is_none() {
         return Err(AdminError::new(
             StatusCode::BAD_REQUEST,
-            "Either mark the warning as active or set a scheduled start time.",
+            "Either mark the warning as active or set a show-from time.",
         ));
     }
-    if let (Some(start), Some(end)) = (body.scheduled_start, body.scheduled_end) {
-        if end <= start {
-            return Err(AdminError::new(
-                StatusCode::BAD_REQUEST,
-                "Scheduled end time must be after the start time.",
-            ));
-        }
+    if let (Some(start), Some(end)) = (body.starts_at, body.ends_at)
+        && end <= start
+    {
+        return Err(AdminError::new(
+            StatusCode::BAD_REQUEST,
+            "End time must be after the start time.",
+        ));
     }
+
+    let linked_service = empty_to_none(body.linked_service);
+    if let Some(ref svc) = linked_service
+        && !crate::handlers::status::oh_dear::SUPPORTED_SERVICES.contains(&svc.as_str())
+    {
+        return Err(AdminError::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid linked service.",
+        ));
+    }
+    let linked_post_id = empty_to_none(body.linked_post_id);
+    let group_id = empty_to_none(body.group_id);
 
     let warning = sqlx::query_as::<_, AdminWarning>(
         r#"
         INSERT INTO warning_slots (
             slot, token, network, is_active, severity,
             user_message, scenario, internal_note,
-            scheduled_start, scheduled_end, updated_by
+            show_from, starts_at, ends_at,
+            linked_service, linked_post_id, group_id, updated_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING
             id, slot, token, network, is_active, severity,
             user_message, scenario, internal_note,
-            scheduled_start, scheduled_end,
+            show_from, starts_at, ends_at,
+            linked_service, linked_post_id, group_id,
             updated_by, updated_at, created_at
         "#,
     )
@@ -404,22 +434,26 @@ pub async fn create_warning(
     .bind(&user_message)
     .bind(&scenario)
     .bind(&body.internal_note)
-    .bind(body.scheduled_start)
-    .bind(body.scheduled_end)
+    .bind(body.show_from)
+    .bind(body.starts_at)
+    .bind(body.ends_at)
+    .bind(&linked_service)
+    .bind(&linked_post_id)
+    .bind(&group_id)
     .bind(&admin.username)
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
         tracing::error!("Failed to create warning: {}", e);
-        if let sqlx::Error::Database(db_err) = &e {
-            if db_err.constraint().is_some() {
-                return AdminError::new(StatusCode::CONFLICT, "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.");
-            }
+        if let sqlx::Error::Database(db_err) = &e
+            && db_err.constraint().is_some()
+        {
+            return AdminError::new(StatusCode::CONFLICT, "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.");
         }
         AdminError::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create warning. Please try again.")
     })?;
 
-    let action = if body.scheduled_start.is_some() || body.scheduled_end.is_some() {
+    let action = if body.show_from.is_some() || body.ends_at.is_some() {
         "scheduled"
     } else if is_active {
         "activated"
@@ -441,8 +475,11 @@ pub async fn create_warning(
             "user_message": warning.user_message,
             "scenario": warning.scenario,
             "internal_note": warning.internal_note,
-            "scheduled_start": warning.scheduled_start,
-            "scheduled_end": warning.scheduled_end,
+            "show_from": warning.show_from,
+            "starts_at": warning.starts_at,
+            "ends_at": warning.ends_at,
+            "linked_service": warning.linked_service,
+            "linked_post_id": warning.linked_post_id,
         }),
     )
     .await
@@ -466,7 +503,8 @@ pub async fn update_warning(
         SELECT
             id, slot, token, network, is_active, severity,
             user_message, scenario, internal_note,
-            scheduled_start, scheduled_end,
+            show_from, starts_at, ends_at,
+            linked_service, linked_post_id, group_id,
             updated_by, updated_at, created_at
         FROM warning_slots
         WHERE id = $1
@@ -526,14 +564,39 @@ pub async fn update_warning(
     let internal_note = body
         .internal_note
         .or_else(|| existing.internal_note.clone());
-    let scheduled_start = match body.scheduled_start {
+    let show_from = match body.show_from {
         Some(value) => value,
-        None => existing.scheduled_start,
+        None => existing.show_from,
     };
-    let scheduled_end = match body.scheduled_end {
+    let starts_at = match body.starts_at {
         Some(value) => value,
-        None => existing.scheduled_end,
+        None => existing.starts_at,
     };
+    let ends_at = match body.ends_at {
+        Some(value) => value,
+        None => existing.ends_at,
+    };
+    let linked_service = match body.linked_service {
+        Some(value) => value,
+        None => existing.linked_service.clone(),
+    };
+    let linked_post_id = match body.linked_post_id {
+        Some(value) => value,
+        None => existing.linked_post_id.clone(),
+    };
+    let group_id = match body.group_id {
+        Some(value) => value.filter(|s| !s.trim().is_empty()),
+        None => existing.group_id.clone(),
+    };
+
+    if let Some(ref svc) = linked_service
+        && !crate::handlers::status::oh_dear::SUPPORTED_SERVICES.contains(&svc.as_str())
+    {
+        return Err(AdminError::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid linked service.",
+        ));
+    }
 
     let updated = sqlx::query_as::<_, AdminWarning>(
         r#"
@@ -547,15 +610,20 @@ pub async fn update_warning(
             user_message = $7,
             scenario = $8,
             internal_note = $9,
-            scheduled_start = $10,
-            scheduled_end = $11,
-            updated_by = $12,
+            show_from = $10,
+            starts_at = $11,
+            ends_at = $12,
+            linked_service = $13,
+            linked_post_id = $14,
+            group_id = $15,
+            updated_by = $16,
             updated_at = NOW()
         WHERE id = $1
         RETURNING
             id, slot, token, network, is_active, severity,
             user_message, scenario, internal_note,
-            scheduled_start, scheduled_end,
+            show_from, starts_at, ends_at,
+            linked_service, linked_post_id, group_id,
             updated_by, updated_at, created_at
         "#,
     )
@@ -568,20 +636,24 @@ pub async fn update_warning(
     .bind(&user_message)
     .bind(&scenario)
     .bind(&internal_note)
-    .bind(scheduled_start)
-    .bind(scheduled_end)
+    .bind(show_from)
+    .bind(starts_at)
+    .bind(ends_at)
+    .bind(&linked_service)
+    .bind(&linked_post_id)
+    .bind(&group_id)
     .bind(&admin.username)
     .fetch_one(&state.db_pool)
     .await
     .map_err(|e| {
         tracing::error!("Failed to update warning {}: {}", id, e);
-        if let sqlx::Error::Database(db_err) = &e {
-            if db_err.constraint().is_some() {
-                return AdminError::new(
-                    StatusCode::CONFLICT,
-                    "A warning with the same slot, token, and network combination already exists.",
-                );
-            }
+        if let sqlx::Error::Database(db_err) = &e
+            && db_err.constraint().is_some()
+        {
+            return AdminError::new(
+                StatusCode::CONFLICT,
+                "A warning with the same slot, token, and network combination already exists.",
+            );
         }
         AdminError::new(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -592,8 +664,8 @@ pub async fn update_warning(
     let action = determine_update_action(
         &previous,
         updated.is_active,
-        &updated.scheduled_start,
-        &updated.scheduled_end,
+        &updated.show_from,
+        &updated.ends_at,
     );
     let changes = build_changes(&previous, &updated);
 
@@ -620,7 +692,8 @@ pub async fn delete_warning(
         SELECT
             id, slot, token, network, is_active, severity,
             user_message, scenario, internal_note,
-            scheduled_start, scheduled_end,
+            show_from, starts_at, ends_at,
+            linked_service, linked_post_id, group_id,
             updated_by, updated_at, created_at
         FROM warning_slots
         WHERE id = $1

@@ -42,7 +42,7 @@ import {
     useSwapStatus,
 } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useProposalApproveBlock } from "@/hooks/use-warnings";
+import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
 import Big from "@/lib/big";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
@@ -282,6 +282,9 @@ export function ProposalSidebar({
     const approveBlock = useProposalApproveBlock([proposal]);
     const approveBlocked = approveBlock.anyBlocked;
     const approveBlockedWarning = approveBlock.blockedWarnings[0] ?? null;
+    // Voting itself can be paused (action.vote slot). Unlike the feature-approve
+    // block, this disables BOTH approve and reject.
+    const { blocked: voteSlotBlocked } = useSlotBlock("action.vote");
     const isPending = status === "Pending";
     const isExecuted = status === "Executed";
     const isExchangeProposal = proposalType === "Exchange";
@@ -599,14 +602,20 @@ export function ProposalSidebar({
                 />
             )}
 
+            {/* Voting paused (action.vote) — both approve and reject disabled */}
+            {isPending && voteSlotBlocked && <SlotWarning slot="action.vote" />}
+
             {/* Feature-maintenance warning — approval paused, rejection still works */}
-            {isPending && approveBlocked && approveBlockedWarning?.slot && (
-                <SlotWarning
-                    slot={approveBlockedWarning.slot}
-                    token={approveBlockedWarning.token ?? undefined}
-                    network={approveBlockedWarning.network ?? undefined}
-                />
-            )}
+            {isPending &&
+                !voteSlotBlocked &&
+                approveBlocked &&
+                approveBlockedWarning?.slot && (
+                    <SlotWarning
+                        slot={approveBlockedWarning.slot}
+                        token={approveBlockedWarning.token ?? undefined}
+                        network={approveBlockedWarning.network ?? undefined}
+                    />
+                )}
 
             {/* Action Buttons */}
             {isPending && (
@@ -616,7 +625,7 @@ export function ProposalSidebar({
                         variant="secondary"
                         className="flex gap-1 w-full"
                         onClick={() => onVote("Reject")}
-                        disabled={isUserVoter}
+                        disabled={isUserVoter || voteSlotBlocked}
                         tooltip={isUserVoter ? noVoteMessage : undefined}
                     >
                         <X className="h-4 w-4 mr-2" />
@@ -648,7 +657,8 @@ export function ProposalSidebar({
                             disabled={
                                 isUserVoter ||
                                 isCheckingVotingDurationImpact ||
-                                approveBlocked
+                                approveBlocked ||
+                                voteSlotBlocked
                             }
                             tooltip={isUserVoter ? noVoteMessage : undefined}
                         >

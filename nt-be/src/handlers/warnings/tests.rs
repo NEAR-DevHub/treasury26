@@ -31,12 +31,10 @@ async fn test_public_warnings_returns_only_active_and_scheduled(pool: PgPool) {
     let state = test_state(pool.clone());
     let app = create_routes(state);
 
-    sqlx::query(
-        "UPDATE warning_slots SET is_active = false, scheduled_start = NULL, scheduled_end = NULL",
-    )
-    .execute(&pool)
-    .await
-    .expect("Should reset warnings");
+    sqlx::query("UPDATE warning_slots SET is_active = false, show_from = NULL, ends_at = NULL")
+        .execute(&pool)
+        .await
+        .expect("Should reset warnings");
 
     sqlx::query(
         r#"
@@ -53,8 +51,8 @@ async fn test_public_warnings_returns_only_active_and_scheduled(pool: PgPool) {
         r#"
         UPDATE warning_slots
         SET is_active = false,
-            scheduled_start = NOW() - INTERVAL '1 hour',
-            scheduled_end = NOW() + INTERVAL '1 hour',
+            show_from = NOW() - INTERVAL '1 hour',
+            ends_at = NOW() + INTERVAL '1 hour',
             user_message = 'Exchange maintenance'
         WHERE slot = 'exchange'
         "#,
@@ -67,7 +65,7 @@ async fn test_public_warnings_returns_only_active_and_scheduled(pool: PgPool) {
         r#"
         UPDATE warning_slots
         SET is_active = true,
-            scheduled_end = NOW() - INTERVAL '1 minute',
+            ends_at = NOW() - INTERVAL '1 minute',
             user_message = 'Expired warning'
         WHERE slot = 'deposit'
         "#,

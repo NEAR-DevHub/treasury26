@@ -29,8 +29,9 @@ export interface Warning {
     network: string | null;
     severity: WarningSeverity;
     message: string;
-    scheduledStart: string | null;
-    scheduledEnd: string | null;
+    showFrom: string | null;
+    startsAt: string | null;
+    endsAt: string | null;
 }
 
 /**
@@ -340,7 +341,7 @@ export function useProposalApproveBlock(
             const warning = getWarning(
                 slot,
                 scope.token ?? undefined,
-                scope.network ?? undefined,
+                scope.networkName ?? undefined,
             );
             if (warning?.severity === "critical") {
                 blockedCount += 1;

@@ -179,6 +179,9 @@ export function ConnectWalletSelector({
 
     const isWalletChoiceBlocked = (walletId: WalletOption["id"]) => {
         if (isLoginCritical) return true;
+        // The NEAR group is a container — it opens a modal whose inner choices
+        // carry their own offline state, so the container itself isn't blocked.
+        if (walletId === WALLET_IDS.NEAR) return false;
         const walletWarning = getWarning(getWalletLoginSlot(walletId));
         return walletWarning?.severity === "critical";
     };
@@ -186,8 +189,11 @@ export function ConnectWalletSelector({
     // Per-wallet warning from the admin system. When present, the wallet
     // card shows an "Offline" badge (with the admin message as tooltip)
     // instead of "Recent".
+    // Login wallet warnings are always critical (offline). Only surface those so
+    // the "Offline" badge and the disabled state stay in lockstep.
     const getWalletWarning = (walletId: WalletOption["id"]) => {
-        return getWarning(getWalletLoginSlot(walletId)) ?? null;
+        const warning = getWarning(getWalletLoginSlot(walletId));
+        return warning?.severity === "critical" ? warning : null;
     };
 
     type BadgeInfo = { label: string; tooltip?: string; isOffline?: boolean };
@@ -195,7 +201,9 @@ export function ConnectWalletSelector({
     // Show "Offline" badge only for per-wallet warnings, not when all
     // login is paused (the banner already covers that case).
     const getTopLevelBadge = (wallet: WalletOption): BadgeInfo | null => {
-        if (!isLoginCritical) {
+        // The NEAR group card opens a modal, so its inner choices show their own
+        // "Offline" badges — don't tag the container itself.
+        if (!isLoginCritical && wallet.id !== WALLET_IDS.NEAR) {
             const walletWarning = getWalletWarning(wallet.id);
             if (walletWarning) {
                 return {

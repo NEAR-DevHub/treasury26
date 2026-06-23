@@ -127,7 +127,7 @@ function Step1({ handleNext }: StepProps) {
     } = useSlotBlock(
         "exchange",
         exchangeScope.token ?? undefined,
-        exchangeScope.network ?? undefined,
+        exchangeScope.networkName ?? undefined,
     );
     const receiveScope = useMemo(
         () => resolveBridgeScope(bridgeAssets, receiveToken?.address),
@@ -137,7 +137,7 @@ function Step1({ handleNext }: StepProps) {
         useSlotBlock(
             "exchange",
             receiveScope.token ?? undefined,
-            receiveScope.network ?? undefined,
+            receiveScope.networkName ?? undefined,
         );
     const sendWarningMessage =
         sendScopeWarning && (sendScopeWarning.token || sendScopeWarning.network)
@@ -259,7 +259,12 @@ function Step1({ handleNext }: StepProps) {
         sellAmount: debouncedSellAmount,
         slippageTolerance,
         form,
-        enabled: Boolean(selectedTreasury && hasValidAmount && !areSameTokens),
+        enabled: Boolean(
+            selectedTreasury &&
+                hasValidAmount &&
+                !areSameTokens &&
+                !exchangeSlotBlocked,
+        ),
         isDryRun: true,
         refetchInterval: DRY_QUOTE_REFRESH_INTERVAL,
         isConfidential,
@@ -836,7 +841,7 @@ export default function ExchangePage() {
         useSlotBlock(
             "exchange",
             exchangeScope.token ?? undefined,
-            exchangeScope.network ?? undefined,
+            exchangeScope.networkName ?? undefined,
         );
 
     const onSubmit = async (data: ExchangeFormValues) => {

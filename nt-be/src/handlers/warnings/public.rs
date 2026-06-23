@@ -18,8 +18,9 @@ pub struct PublicWarning {
     pub severity: String,
     #[sqlx(rename = "user_message")]
     pub message: Option<String>,
-    pub scheduled_start: Option<chrono::DateTime<chrono::Utc>>,
-    pub scheduled_end: Option<chrono::DateTime<chrono::Utc>>,
+    pub show_from: Option<chrono::DateTime<chrono::Utc>>,
+    pub starts_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub ends_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(Debug, Serialize)]

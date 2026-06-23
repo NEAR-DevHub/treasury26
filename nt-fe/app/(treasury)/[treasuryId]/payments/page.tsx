@@ -156,6 +156,7 @@ function Step1({
     const amount = form.watch("amount");
     const watchedToken = form.watch("token");
     const destinationNetworkId = form.watch("destinationNetwork");
+    const destinationNetworkName = form.watch("destinationNetworkName");
     const paymentsScope = useMemo(
         () => resolveBridgeScope(bridgeAssets, watchedToken?.address),
         [bridgeAssets, watchedToken?.address],
@@ -167,7 +168,7 @@ function Step1({
     } = useSlotBlock(
         "payments",
         paymentsScope.token ?? undefined,
-        paymentsScope.network ?? undefined,
+        paymentsScope.networkName ?? undefined,
     );
     const {
         warning: recipientNetworkScopeWarning,
@@ -175,7 +176,7 @@ function Step1({
     } = useSlotBlock(
         "payments",
         paymentsScope.token ?? undefined,
-        destinationNetworkId || undefined,
+        destinationNetworkName || undefined,
     );
     const sendWarningMessage =
         sendScopeWarning && (sendScopeWarning.token || sendScopeWarning.network)
@@ -834,7 +835,7 @@ export default function PaymentsPage() {
         useSlotBlock(
             "payments",
             paymentsScope.token ?? undefined,
-            paymentsScope.network ?? undefined,
+            paymentsScope.networkName ?? undefined,
         );
 
     const watchedTokenClassification = useMemo(
@@ -933,6 +934,9 @@ export default function PaymentsPage() {
         amountMode: intentsAmountMode,
         destinationNetwork: watchedDestinationNetwork,
         isPayment: true,
+        // Paused payment (critical warning on token/network or app-wide): don't
+        // fetch the quote.
+        enabled: !paymentsSlotBlocked,
     });
 
     // Keep the quote ref in sync so onSubmit can use it without re-fetching.

@@ -320,6 +320,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::warnings::admin::get_audit_log),
         )
         .route(
+            "/internal/api/status-incidents",
+            get(handlers::status::incidents::get_status_incidents),
+        )
+        .route(
             "/api/oh-dear/status/{service}",
             get(handlers::status::get_status),
         )
