@@ -50,7 +50,6 @@ export default function RequestPage({ params }: RequestPageProps) {
         isLoading: isTreasuryLoading,
     } = useTreasury();
     const isConfidentialGuest = isConfidential && isGuestTreasury;
-    const canReadRequestData = !isTreasuryLoading && !isConfidentialGuest;
     const router = useRouter();
     const cachedSubmissionTime = useCachedProposalSubmissionTime(
         treasuryId,
@@ -59,21 +58,19 @@ export default function RequestPage({ params }: RequestPageProps) {
     const { data: proposal, isLoading: isLoadingProposal } = useProposal(
         treasuryId,
         id,
-        canReadRequestData,
     );
     const submissionTime = proposal?.submission_time ?? cachedSubmissionTime;
-    const canLoadPolicy =
-        canReadRequestData && !!treasuryId && !!submissionTime;
+    const canLoadPolicy = !!submissionTime;
     const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(
-        canLoadPolicy ? treasuryId : null,
+        canLoadPolicy ? treasuryId! : null,
         submissionTime,
     );
 
     useEffect(() => {
-        if (proposal && treasuryId) {
+        if (proposal) {
             trackEvent("request-detail-viewed", {
                 proposal_id: proposal.id,
-                treasury_id: treasuryId,
+                treasury_id: treasuryId!,
             });
         }
     }, [proposal?.id, proposal, treasuryId]);

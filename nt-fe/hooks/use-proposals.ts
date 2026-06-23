@@ -91,13 +91,12 @@ export function useProposals(
 export function useProposal(
     daoId: string | null | undefined,
     proposalId: string | null | undefined,
-    enabled: boolean = true,
 ) {
     const canReadProposalQueries = useCanReadProposalQueries(daoId);
     return useQuery({
         queryKey: ["proposal", daoId, proposalId],
         queryFn: () => getProposal(daoId!, proposalId!),
-        enabled: enabled && canReadProposalQueries && !!daoId && !!proposalId,
+        enabled: canReadProposalQueries && !!daoId && !!proposalId,
         staleTime: 1000 * 10, // 10 seconds (proposals can change frequently)
     });
 }

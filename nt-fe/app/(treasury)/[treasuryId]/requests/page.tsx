@@ -123,11 +123,7 @@ function ProposalsList({
         [searchParams, router, pathname],
     );
 
-    const { data, isLoading, error } = useProposals(
-        treasuryId,
-        filters,
-        !isConfidentialGuest,
-    );
+    const { data, isLoading, error } = useProposals(treasuryId, filters);
 
     // Prefetch the next page
     useEffect(() => {
@@ -244,22 +240,14 @@ export default function RequestsPage() {
     const { accountId } = useNear();
     const { isConfidential, isGuestTreasury } = useTreasury();
     const isConfidentialGuest = isConfidential && isGuestTreasury;
-    const { data: proposals } = useProposals(
-        treasuryId,
-        {
-            statuses: ["InProgress"],
-            ...(accountId && {
-                voter_votes: `${accountId}:No Voted`,
-            }),
-        },
-        !isConfidentialGuest,
-    );
+    const { data: proposals } = useProposals(treasuryId, {
+        statuses: ["InProgress"],
+        ...(accountId && {
+            voter_votes: `${accountId}:No Voted`,
+        }),
+    });
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-    const { data: allProposals } = useProposals(
-        treasuryId,
-        {},
-        !isConfidentialGuest,
-    );
+    const { data: allProposals } = useProposals(treasuryId, {});
     const [searchValue, setSearchValue] = useState(
         searchParams.get("search") || "",
     );

@@ -688,7 +688,6 @@ export default function RequestReceiptPage({
     const { data: proposal, isLoading: isLoadingProposal } = useProposal(
         treasuryId,
         id,
-        !isHidden,
     );
     const proposalId = proposal?.id ?? id;
     useEffect(() => {
@@ -708,10 +707,7 @@ export default function RequestReceiptPage({
     const isSingleReceiptProposal = !isBatchPaymentProposal;
     const submissionTime = proposal?.submission_time ?? cachedSubmissionTime;
     const canLoadPolicy =
-        !isHidden &&
-        !!treasuryId &&
-        !!submissionTime &&
-        isReceiptEligibleProposal;
+        !!treasuryId && !!submissionTime && isReceiptEligibleProposal;
     const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(
         canLoadPolicy ? treasuryId : null,
         submissionTime,
@@ -753,7 +749,7 @@ export default function RequestReceiptPage({
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress,
         undefined,
-        !isHidden && shouldUseSwapExecutionDate,
+        shouldUseSwapExecutionDate,
     );
     const transactionDate = getProposalExecutedDate(swapStatus, transaction);
     const isExchangeProposal = receiptProposalVariant === "exchange";
@@ -778,7 +774,7 @@ export default function RequestReceiptPage({
     } = useQuoteByDepositAddress(
         depositAddress,
         undefined,
-        !isHidden && shouldFetchQuoteByDepositAddress,
+        shouldFetchQuoteByDepositAddress,
     );
     const confidentialQuote = useMemo<SwapQuoteResponse | null>(() => {
         if (!isConfidentialRequestProposal) {
@@ -807,7 +803,7 @@ export default function RequestReceiptPage({
     } = useTokenPriceAtTimestamp(
         sourceTokenId,
         executedAtIso,
-        !isHidden && shouldLoadHistoricalPrices && !!sourceTokenId,
+        shouldLoadHistoricalPrices && !!sourceTokenId,
     );
     const {
         data: destinationHistoricalPrice,
@@ -815,20 +811,19 @@ export default function RequestReceiptPage({
     } = useTokenPriceAtTimestamp(
         destinationTokenId,
         executedAtIso,
-        !isHidden &&
-            shouldLoadHistoricalPrices &&
+        shouldLoadHistoricalPrices &&
             isExchangeProposal &&
             !!destinationTokenId,
     );
 
     const { data: sourceToken } = useToken(
-        !isHidden && isSingleReceiptProposal ? sourceTokenId : null,
+        isSingleReceiptProposal ? sourceTokenId : null,
     );
     const { data: destinationToken } = useToken(
-        !isHidden && isSingleReceiptProposal ? destinationTokenId : null,
+        isSingleReceiptProposal ? destinationTokenId : null,
     );
     const { data: batchPaymentData, isLoading: isLoadingBatchPayment } =
-        useBatchPayment(!isHidden ? batchReceiptData?.batchId || null : null);
+        useBatchPayment(batchReceiptData?.batchId || null);
     const effectiveBatchTokenId =
         batchPaymentData?.tokenId?.toLowerCase() === "native"
             ? "near"
@@ -841,8 +836,7 @@ export default function RequestReceiptPage({
     const { data: batchHistoricalPrice } = useTokenPriceAtTimestamp(
         effectiveBatchTokenId,
         executedAtIso,
-        !isHidden &&
-            isBatchPaymentProposal &&
+        isBatchPaymentProposal &&
             isExecutableReceipt &&
             !!effectiveBatchTokenId &&
             !!executedAtIso,
