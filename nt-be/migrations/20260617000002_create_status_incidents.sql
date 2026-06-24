@@ -8,9 +8,10 @@ CREATE TABLE status_incidents (
     recovered_at TIMESTAMPTZ,
     telegram_message_id INTEGER,
     fallback_activated_at TIMESTAMPTZ,
-    warning_slot_id INTEGER REFERENCES warning_slots(id) ON DELETE SET NULL,
+    warning_slot_id INTEGER REFERENCES warning_slots (id) ON DELETE SET NULL,
     UNIQUE (service, check_name)
 );
 
 CREATE INDEX idx_status_incidents_active ON status_incidents (service)
-    WHERE recovered_at IS NULL;
+WHERE
+    recovered_at IS NULL;

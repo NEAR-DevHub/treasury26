@@ -142,17 +142,24 @@ async fn recover_incident(pool: &sqlx::PgPool, incident_id: i32) -> Result<(), s
     Ok(())
 }
 
-async fn deactivate_linked_warnings(state: &AppState, service: &str) {
+async fn delete_linked_warnings(state: &AppState, service: &str) {
     if fallbacks::fallback_config(service).is_some() {
         return;
     }
 
-    let result = sqlx::query_scalar::<_, i32>(
+    #[derive(sqlx::FromRow)]
+    struct LinkedWarning {
+        id: i32,
+        slot: Option<String>,
+        token: Option<String>,
+        network: Option<String>,
+    }
+
+    let result = sqlx::query_as::<_, LinkedWarning>(
         r#"
-        UPDATE warning_slots
-        SET is_active = false, updated_by = 'system', updated_at = NOW()
+        SELECT id, slot, token, network
+        FROM warning_slots
         WHERE linked_service = $1 AND linked_post_id IS NULL AND is_active = true
-        RETURNING id
         "#,
     )
     .bind(service)
@@ -160,32 +167,37 @@ async fn deactivate_linked_warnings(state: &AppState, service: &str) {
     .await;
 
     match result {
-        Ok(ids) if !ids.is_empty() => {
-            for id in &ids {
-                let _ = db::insert_audit_log(
-                    &state.db_pool,
-                    Some(*id),
-                    "deactivated",
-                    "system",
+        Ok(warnings) if !warnings.is_empty() => {
+            for warning in &warnings {
+                let changes = db::audit_delete_changes(
+                    warning.id,
+                    warning.slot.clone(),
+                    warning.token.clone(),
+                    warning.network.clone(),
                     json!({
-                        "is_active": false,
                         "service": service,
                         "source": "linked_service_recovery",
                     }),
-                )
-                .await;
+                );
+                if let Err(e) =
+                    db::delete_warning_with_audit(&state.db_pool, warning.id, "system", changes)
+                        .await
+                {
+                    tracing::error!(
+                        "[status-monitor] Failed to delete linked warning {} for {service}: {e}",
+                        warning.id
+                    );
+                }
             }
             db::invalidate_warnings_cache(state).await;
             tracing::info!(
-                "[status-monitor] Deactivated {} linked warning(s) for {service}",
-                ids.len()
+                "[status-monitor] Deleted {} linked warning(s) for {service}",
+                warnings.len()
             );
         }
         Ok(_) => {}
         Err(e) => {
-            tracing::error!(
-                "[status-monitor] Failed to deactivate linked warnings for {service}: {e}"
-            );
+            tracing::error!("[status-monitor] Failed to delete linked warnings for {service}: {e}");
         }
     }
 }
@@ -196,12 +208,15 @@ pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
     #[derive(sqlx::FromRow)]
     struct LinkedWarning {
         id: i32,
+        slot: Option<String>,
+        token: Option<String>,
+        network: Option<String>,
         linked_post_id: Option<String>,
     }
 
     let warnings = match sqlx::query_as::<_, LinkedWarning>(
         r#"
-        SELECT id, linked_post_id
+        SELECT id, slot, token, network, linked_post_id
         FROM warning_slots
         WHERE linked_service = 'near-intents'
           AND linked_post_id IS NOT NULL
@@ -231,7 +246,7 @@ pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
     };
 
     let now_ms = chrono::Utc::now().timestamp_millis();
-    let mut deactivated = Vec::new();
+    let mut deleted = Vec::new();
 
     for warning in &warnings {
         let Some(ref post_id) = warning.linked_post_id else {
@@ -247,42 +262,35 @@ pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
         });
 
         if !post_still_active {
-            if let Err(e) = sqlx::query(
-                "UPDATE warning_slots SET is_active = false, updated_by = 'system', updated_at = NOW() WHERE id = $1",
-            )
-            .bind(warning.id)
-            .execute(&state.db_pool)
-            .await
+            let changes = db::audit_delete_changes(
+                warning.id,
+                warning.slot.clone(),
+                warning.token.clone(),
+                warning.network.clone(),
+                json!({
+                    "linked_post_id": post_id,
+                    "source": "linked_post_resolved",
+                }),
+            );
+            if let Err(e) =
+                db::delete_warning_with_audit(&state.db_pool, warning.id, "system", changes).await
             {
                 tracing::error!(
-                    "[status-monitor] Failed to deactivate warning {} for resolved post {post_id}: {e}",
+                    "[status-monitor] Failed to delete warning {} for resolved post {post_id}: {e}",
                     warning.id
                 );
                 continue;
             }
 
-            let _ = db::insert_audit_log(
-                &state.db_pool,
-                Some(warning.id),
-                "deactivated",
-                "system",
-                json!({
-                    "is_active": false,
-                    "linked_post_id": post_id,
-                    "source": "linked_post_resolved",
-                }),
-            )
-            .await;
-
-            deactivated.push(warning.id);
+            deleted.push(warning.id);
         }
     }
 
-    if !deactivated.is_empty() {
+    if !deleted.is_empty() {
         db::invalidate_warnings_cache(state).await;
         tracing::info!(
-            "[status-monitor] Deactivated {} warning(s) for resolved intents posts",
-            deactivated.len()
+            "[status-monitor] Deleted {} warning(s) for resolved intents posts",
+            deleted.len()
         );
     }
 }
@@ -383,12 +391,12 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
             return;
         }
 
-        deactivate_linked_warnings(state, service).await;
+        delete_linked_warnings(state, service).await;
 
-        match fallbacks::deactivate_fallback(state, service).await {
+        match fallbacks::delete_fallback(state, service).await {
             Ok(Some(recovery)) => {
                 tracing::info!(
-                    "[status-monitor] Recovered {service}; deactivated linked fallback warning(s)"
+                    "[status-monitor] Recovered {service}; deleted linked fallback warning(s)"
                 );
                 send_recovery_telegram(state, &recovery).await;
             }
@@ -396,9 +404,7 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
                 tracing::info!("[status-monitor] Recovered {service}");
             }
             Err(e) => {
-                tracing::error!(
-                    "[status-monitor] Failed to deactivate fallback for {service}: {e}"
-                );
+                tracing::error!("[status-monitor] Failed to delete fallback for {service}: {e}");
             }
         }
     }

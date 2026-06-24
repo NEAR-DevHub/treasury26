@@ -1,4 +1,4 @@
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::{AppState, utils::cache::Cache, utils::cache::CacheKey};
 
@@ -32,4 +32,42 @@ pub async fn insert_audit_log(
     .await?;
 
     Ok(())
+}
+
+pub async fn delete_warning_with_audit(
+    pool: &sqlx::PgPool,
+    id: i32,
+    changed_by: &str,
+    changes: Value,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM warning_slots WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await?;
+
+    insert_audit_log(pool, None, "deleted", changed_by, changes).await
+}
+
+pub fn audit_delete_changes(
+    id: i32,
+    slot: Option<String>,
+    token: Option<String>,
+    network: Option<String>,
+    extra: Value,
+) -> Value {
+    let mut changes = match extra {
+        Value::Object(map) => map,
+        _ => serde_json::Map::new(),
+    };
+    changes.insert("id".to_string(), json!(id));
+    if let Some(slot) = slot {
+        changes.insert("slot".to_string(), json!(slot));
+    }
+    if let Some(token) = token {
+        changes.insert("token".to_string(), json!(token));
+    }
+    if let Some(network) = network {
+        changes.insert("network".to_string(), json!(network));
+    }
+    Value::Object(changes)
 }

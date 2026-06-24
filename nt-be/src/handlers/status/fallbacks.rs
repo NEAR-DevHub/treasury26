@@ -162,7 +162,7 @@ pub struct AutoFallbackRecovery {
     pub slots: Vec<RecoveredSlotInfo>,
 }
 
-async fn deactivate_linked_slot_warning(
+async fn delete_linked_slot_warning(
     state: &AppState,
     existing: &WarningSlotRow,
     recovered_service: &str,
@@ -179,34 +179,22 @@ async fn deactivate_linked_slot_warning(
         .map(warning_heading)
         .unwrap_or_default();
 
-    sqlx::query(
-        r#"
-        UPDATE warning_slots
-        SET is_active = false, updated_by = 'system', updated_at = NOW()
-        WHERE id = $1
-        "#,
-    )
-    .bind(existing.id)
-    .execute(&state.db_pool)
-    .await
-    .map_err(|e| format!("failed to deactivate warning slot: {e}"))?;
-
-    db::insert_audit_log(
-        &state.db_pool,
-        Some(existing.id),
-        "deactivated",
-        "system",
+    let changes = db::audit_delete_changes(
+        existing.id,
+        existing.slot.clone(),
+        existing.token.clone(),
+        existing.network.clone(),
         json!({
-            "slot": slot,
-            "is_active": false,
             "service": recovered_service,
             "linked_service": existing.linked_service,
             "linked_post_id": existing.linked_post_id,
             "source": source,
         }),
-    )
-    .await
-    .map_err(|e| format!("failed to write audit log: {e}"))?;
+    );
+
+    db::delete_warning_with_audit(&state.db_pool, existing.id, "system", changes)
+        .await
+        .map_err(|e| format!("failed to delete warning slot: {e}"))?;
 
     Ok(RecoveredSlotInfo {
         slot: slot.to_string(),
@@ -214,7 +202,7 @@ async fn deactivate_linked_slot_warning(
     })
 }
 
-async fn deactivate_auto_fallback_slot(
+async fn delete_auto_fallback_slot(
     state: &AppState,
     slot: &str,
     recovered_service: &str,
@@ -246,7 +234,7 @@ async fn deactivate_auto_fallback_slot(
     }
 
     Ok(Some(
-        deactivate_linked_slot_warning(state, &existing, recovered_service, source).await?,
+        delete_linked_slot_warning(state, &existing, recovered_service, source).await?,
     ))
 }
 
@@ -254,6 +242,8 @@ async fn deactivate_auto_fallback_slot(
 struct WarningSlotRow {
     id: i32,
     slot: Option<String>,
+    token: Option<String>,
+    network: Option<String>,
     is_active: bool,
     severity: String,
     user_message: Option<String>,
@@ -267,7 +257,7 @@ async fn load_unscoped_slot(
 ) -> Result<Option<WarningSlotRow>, sqlx::Error> {
     sqlx::query_as::<_, WarningSlotRow>(
         r#"
-        SELECT id, slot, is_active, severity, user_message, linked_service, linked_post_id
+        SELECT id, slot, token, network, is_active, severity, user_message, linked_service, linked_post_id
         FROM warning_slots
         WHERE slot = $1 AND token IS NULL AND network IS NULL
         "#,
@@ -283,7 +273,7 @@ async fn load_linked_warnings_for_service(
 ) -> Result<Vec<WarningSlotRow>, sqlx::Error> {
     sqlx::query_as::<_, WarningSlotRow>(
         r#"
-        SELECT id, slot, is_active, severity, user_message, linked_service, linked_post_id
+        SELECT id, slot, token, network, is_active, severity, user_message, linked_service, linked_post_id
         FROM warning_slots
         WHERE linked_service = $1
           AND linked_post_id IS NULL
@@ -327,7 +317,7 @@ async fn ensure_unscoped_slot(
             linked_service, linked_post_id, updated_by
         )
         VALUES ($1, true, $2, $3, $4, $5, NULL, $6)
-        RETURNING id, slot, is_active, severity, user_message, linked_service, linked_post_id
+        RETURNING id, slot, token, network, is_active, severity, user_message, linked_service, linked_post_id
         "#,
     )
     .bind(target.slot)
@@ -369,7 +359,7 @@ async fn activate_existing_slot(
             updated_by = $6,
             updated_at = NOW()
         WHERE id = $1
-        RETURNING id, slot, is_active, severity, user_message, linked_service, linked_post_id
+        RETURNING id, slot, token, network, is_active, severity, user_message, linked_service, linked_post_id
         "#,
     )
     .bind(existing.id)
@@ -626,8 +616,8 @@ pub fn format_recovery_message(recovery: &AutoFallbackRecovery) -> String {
     lines.join("\n")
 }
 
-/// Deactivate service-linked fallback warnings after recovery.
-pub async fn deactivate_fallback(
+/// Delete service-linked fallback warnings after recovery.
+pub async fn delete_fallback(
     state: &AppState,
     service: &str,
 ) -> Result<Option<AutoFallbackRecovery>, String> {
@@ -653,9 +643,8 @@ pub async fn deactivate_fallback(
             continue;
         }
 
-        recovered_slots.push(
-            deactivate_linked_slot_warning(state, &warning, service, "status_recovery").await?,
-        );
+        recovered_slots
+            .push(delete_linked_slot_warning(state, &warning, service, "status_recovery").await?);
     }
 
     if recovered_slots.is_empty() {
@@ -687,8 +676,7 @@ pub async fn cleanup_stale_auto_fallbacks(
         }
 
         let Some(recovered) =
-            deactivate_auto_fallback_slot(state, slot, "system", "stale_auto_fallback_cleanup")
-                .await?
+            delete_auto_fallback_slot(state, slot, "system", "stale_auto_fallback_cleanup").await?
         else {
             continue;
         };

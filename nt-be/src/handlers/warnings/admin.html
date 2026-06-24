@@ -252,7 +252,6 @@
           <div class="subtabs" id="warning-subtabs">
             <button class="subtab active" data-filter="live">Active <span class="count" id="count-live">·</span></button>
             <button class="subtab" data-filter="scheduled">Upcoming <span class="count" id="count-scheduled">·</span></button>
-            <button class="subtab" data-filter="inactive">Inactive <span class="count" id="count-inactive">·</span></button>
           </div>
           <div class="toolbar" style="margin:0">
             <button id="btn-new-warning">+ Add</button>
@@ -777,17 +776,11 @@
       const now = new Date();
       const live = warnings.filter(w => warningIsLive(w, now));
       const upcoming = warnings.filter(w => !warningIsLive(w, now) && w.showFrom && new Date(w.showFrom) > now);
-      const inactive = warnings.filter(w => !warningIsLive(w, now) && !(w.showFrom && new Date(w.showFrom) > now));
 
       document.getElementById('count-live').textContent = live.length;
       document.getElementById('count-scheduled').textContent = upcoming.length;
-      document.getElementById('count-inactive').textContent = inactive.length;
 
-      const filtered = activeSubtab === 'live'
-        ? live
-        : activeSubtab === 'scheduled'
-          ? upcoming
-          : inactive;
+      const filtered = activeSubtab === 'live' ? live : upcoming;
 
       const list = document.getElementById('warnings-list');
       const empty = document.getElementById('warnings-empty');
@@ -797,9 +790,7 @@
         list.innerHTML = '';
         empty.textContent = activeSubtab === 'live'
           ? 'No active warnings. Everything is operational.'
-          : activeSubtab === 'scheduled'
-            ? 'No upcoming warnings.'
-            : 'No inactive warnings.';
+          : 'No upcoming warnings.';
         empty.classList.remove('hidden');
       } else {
         empty.classList.add('hidden');
@@ -1647,14 +1638,18 @@
       }
       if (c.source === 'status_recovery') {
         const service = HEALTH_SERVICE_LABELS[c.service] || c.service;
-        return `Deactivated · Auto-recovery${service ? ` · ${service}` : ''}`;
+        return `Deleted · Auto-recovery${service ? ` · ${service}` : ''}`;
       }
       if (c.source === 'linked_service_recovery') {
         const service = HEALTH_SERVICE_LABELS[c.service] || c.service || 'Linked service';
-        return `Deactivated · ${service} recovered`;
+        return `Deleted · ${service} recovered`;
       }
       if (c.source === 'linked_post_resolved') {
-        return 'Deactivated · NEAR Intents post resolved';
+        return 'Deleted · NEAR Intents post resolved';
+      }
+      if (c.source === 'admin_update') {
+        const slot = slotLabel(c.slot);
+        return slot && slot !== '—' ? `Deleted · ${slot}` : 'Deleted';
       }
       if (entry.action === 'deleted') {
         const slot = slotLabel(c.slot);

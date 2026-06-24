@@ -280,22 +280,45 @@ async fn insert_audit_log(
         })
 }
 
+fn warning_is_upcoming(show_from: &Option<DateTime<Utc>>) -> bool {
+    show_from.is_some_and(|sf| sf > Utc::now())
+}
+
+fn warning_is_publicly_visible(
+    is_active: bool,
+    show_from: &Option<DateTime<Utc>>,
+    ends_at: &Option<DateTime<Utc>>,
+) -> bool {
+    let now = Utc::now();
+    if ends_at.is_some_and(|e| e <= now) {
+        return false;
+    }
+    if is_active {
+        return true;
+    }
+    show_from.is_some_and(|sf| sf <= now)
+}
+
+fn warning_should_be_deleted(
+    is_active: bool,
+    show_from: &Option<DateTime<Utc>>,
+    ends_at: &Option<DateTime<Utc>>,
+) -> bool {
+    !warning_is_publicly_visible(is_active, show_from, ends_at) && !warning_is_upcoming(show_from)
+}
+
 fn determine_update_action(
     old: &AdminWarning,
     new_is_active: bool,
     show_from: &Option<DateTime<Utc>>,
     ends_at: &Option<DateTime<Utc>>,
 ) -> &'static str {
-    if old.is_active != new_is_active {
-        return if new_is_active {
-            "activated"
-        } else {
-            "deactivated"
-        };
-    }
-
     if show_from.is_some() || ends_at.is_some() {
         return "scheduled";
+    }
+
+    if old.is_active != new_is_active && new_is_active {
+        return "activated";
     }
 
     "updated"
@@ -528,7 +551,7 @@ pub async fn update_warning(
     headers: HeaderMap,
     Path(id): Path<i32>,
     Json(body): Json<UpdateWarningRequest>,
-) -> Result<Json<AdminWarning>, AdminError> {
+) -> Result<Response, AdminError> {
     let admin = require_admin(&headers, &state)?;
 
     let existing = sqlx::query_as::<_, AdminWarning>(
@@ -595,6 +618,26 @@ pub async fn update_warning(
             StatusCode::BAD_REQUEST,
             "Invalid linked service.",
         ));
+    }
+
+    if warning_should_be_deleted(is_active, &show_from, &ends_at) {
+        let changes = db::audit_delete_changes(
+            existing.id,
+            slot.clone(),
+            token.clone(),
+            network.clone(),
+            json!({ "source": "admin_update" }),
+        );
+        db::delete_warning_with_audit(&state.db_pool, id, &admin.username, changes)
+            .await
+            .map_err(|_| {
+                AdminError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to delete warning.",
+                )
+            })?;
+        db::invalidate_warnings_cache(&state).await;
+        return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
     delete_warnings_with_key(&state.db_pool, Some(id), &slot, &token, &network)
@@ -685,7 +728,7 @@ pub async fn update_warning(
 
     db::invalidate_warnings_cache(&state).await;
 
-    Ok(Json(updated))
+    Ok(Json(updated).into_response())
 }
 
 pub async fn delete_warning(
@@ -716,9 +759,14 @@ pub async fn delete_warning(
         "Warning not found — it may have been deleted already.",
     ))?;
 
-    sqlx::query("DELETE FROM warning_slots WHERE id = $1")
-        .bind(id)
-        .execute(&state.db_pool)
+    let changes = db::audit_delete_changes(
+        existing.id,
+        existing.slot.clone(),
+        existing.token.clone(),
+        existing.network.clone(),
+        json!({}),
+    );
+    db::delete_warning_with_audit(&state.db_pool, id, &admin.username, changes)
         .await
         .map_err(|_| {
             AdminError::new(
@@ -726,21 +774,6 @@ pub async fn delete_warning(
                 "Failed to delete warning. Please try again.",
             )
         })?;
-
-    insert_audit_log(
-        &state.db_pool,
-        None,
-        "deleted",
-        &admin.username,
-        json!({
-            "id": existing.id,
-            "slot": existing.slot,
-            "token": existing.token,
-            "network": existing.network,
-        }),
-    )
-    .await
-    .map_err(|(status, msg)| AdminError::new(status, msg))?;
 
     db::invalidate_warnings_cache(&state).await;
 

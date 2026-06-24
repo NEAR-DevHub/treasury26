@@ -118,7 +118,7 @@ Warnings can be:
 - **Active now** — goes live immediately
 - **Scheduled** — set a start and optional end time (in UTC)
 
-Scheduled warnings activate automatically at the start time and deactivate at the end time. If no end time is set, the warning stays active until you manually delete it.
+Scheduled warnings activate automatically at the start time and are removed from the app at the end time. If no end time is set, the warning stays active until you manually delete it.
 
 When a warning has a schedule, the dates appear in the user-facing message:
 
@@ -159,10 +159,28 @@ If you don't select a token or network, the warning applies to the entire featur
 
 ---
 
+## Incident linking
+
+In the warning form, **Link to upstream service** ties a warning to a live health check so it clears itself when the incident ends:
+
+| Link type | Auto-closes when… |
+| --------- | ----------------- |
+| **Service only** (e.g. NEAR RPC, NEAR Protocol) | The status monitor sees that service healthy again |
+| **Specific NEAR Intents post** | That post disappears from the status API or its scheduled end time passes |
+
+Linked warnings are **deleted automatically** on recovery. The audit log keeps a record (`deleted`, with the slot and link source).
+
+**Telegram “Show fallback” warnings count as linked** — activation sets `linked_service` to the failing check (backend, exchange, near-rpc, etc.), so they are removed the same way when that service recovers.
+
+Only **unlinked** warnings (created in admin with no service link) stay until you delete them manually or set a schedule end time.
+
+**Shared slots:** backend, NEAR Protocol, and NEAR RPC all use the app-wide slot. If more than one of those checks is still failing, the app warning is kept until every related incident has recovered.
+
+---
+
 ## Tips
 
 - **Always check the live preview** before saving — it shows exactly what users will see
-- **Delete old warnings** after an incident is resolved; they don't auto-delete (unless scheduled with an end time)
+- **Link to an active incident** when you can (NEAR Intents, NEAR Protocol, NEAR RPC) so the warning is removed automatically on recovery; otherwise delete old warnings yourself once the incident is over
 - **Use the audit log** tab to see who created/edited/deleted warnings
 - **Scenarios keep messaging consistent** — prefer them over custom messages when possible
-- The seed script (`scripts/seed-warnings.sh`) can bulk-create sample warnings for testing
