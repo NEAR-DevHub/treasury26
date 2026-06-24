@@ -392,26 +392,26 @@
     }
 
     const SLOT_PLACEMENT = {
-      'features': 'Payments, Exchange, and Deposit pages — above the form',
+      'features': 'Payments, Exchange, and Deposit pages — banner above the form',
       app: 'Sidebar banner across the entire platform',
       login: 'Login screen — banner above wallet list',
       'treasury-creation': 'Treasury creation flow — replaced by waitlist',
-      deposit: 'Deposit page — above the form',
-      exchange: 'Exchange page — above the form',
-      payments: 'Payments page — above the form',
-      'action.vote': 'Vote modal (Approve / Reject)',
+      deposit: 'Deposit page — banner above the form',
+      exchange: 'Exchange page — banner above the form',
+      payments: 'Payments page — banner above the form',
+      'action.vote': 'Vote modal and requests/proposal sidebar — banner above vote actions (Approve / Reject)',
       'action.create-proposal': 'All "Create request" buttons',
-      'data.balances': 'Dashboard — balances section',
-      'data.activity': 'Dashboard — transaction history',
+      'data.balances': 'Sidebar on desktop, a one-time dashboard modal',
+      'data.activity': 'Dashboard recent activity — skeleton overlay with centered message',
     };
 
     // The specific CTA that a critical warning disables, per slot. Only slots
     // wired to blocking on the frontend appear here — others are banner-only.
     const CTA_BY_SLOT = {
       'features': 'Send payment, Swap, and Deposit actions are all disabled',
-      deposit: 'token and network selectors are disabled',
-      exchange: 'the "Swap" button shows "Briefly Unavailable", and approving pending swap requests is paused (rejecting still works)',
-      payments: 'the "Send payment" button shows "Briefly Unavailable", and approving pending payment requests is paused (rejecting still works)',
+      deposit: 'Deposit token/network selectors disabled',
+      exchange: '"Briefly Unavailable" on Swap; approval paused (reject still works)',
+      payments: '"Briefly Unavailable" on Send payment; approval paused (reject still works)',
       'action.vote': 'the vote button (Approve / Reject) is disabled',
       'action.create-proposal': 'every "Create request" button is disabled (payments, exchange, members, settings…)',
     };
@@ -440,6 +440,107 @@
 
     function slotHasScenarios(slot) {
       return scenariosForSlot(slot).length > 0;
+    }
+
+    function selectedTransactionSlots() {
+      return [...document.querySelectorAll('.f-tx-slot:checked')].map(el => el.value);
+    }
+
+    function transactionSlotsPlacement(scoped) {
+      const labels = selectedTransactionSlots().map(value => {
+        const opt = TRANSACTION_SLOT_OPTIONS.find(s => s.value === value);
+        return opt?.label || value;
+      });
+      if (labels.length === 0) return 'No transaction features selected';
+
+      const suffix = scoped
+        ? ' — inline on the token field in the form'
+        : ' — banner above the form';
+
+      if (labels.length === TRANSACTION_SLOT_OPTIONS.length) {
+        return `Payments, Exchange, and Deposit pages${suffix}`;
+      }
+      const pageWord = labels.length === 1 ? 'page' : 'pages';
+      return `${labels.join(', ')} ${pageWord}${suffix}`;
+    }
+
+    function featuresBlockedCtaText(scoped) {
+      const selected = selectedTransactionSlots();
+      if (selected.length === 0) return 'select at least one feature above';
+
+      if (scoped) {
+        return 'matching token/network only — inline hint on the field; critical blocks that option (reject still works)';
+      }
+
+      const labels = selected.map(value => {
+        const opt = TRANSACTION_SLOT_OPTIONS.find(s => s.value === value);
+        return opt?.label || value;
+      });
+      return `"Briefly Unavailable" on ${labels.join(', ')}; approval paused (reject still works)`;
+    }
+
+    function formatScopeLabel(token, network, wallet) {
+      const t = tokenLabel(token);
+      const n = networkLabel(network);
+      if (t && n) return `Applies only to ${t} on ${n}`;
+      if (t) return `Applies only to ${t}`;
+      if (n) return `Applies only to ${n} network`;
+      if (wallet) return `Applies only to ${walletLabel(wallet)} wallet`;
+      return '';
+    }
+
+    function previewBehavior(st, blocks) {
+      const scoped = messageUsesTooltipMode(st.slot, st.token, st.network);
+      const isLogin = st.slot === 'login';
+
+      if (slotIsDataOnly(st.slot)) {
+        return '<span class="behavior-tag passive">Shown only</span> informational — nothing is disabled';
+      }
+      if (isLogin && st.wallet) {
+        return '<span class="behavior-tag blocks">Blocks login</span> "Offline" badge on that wallet';
+      }
+      if (isLogin) {
+        return '<span class="behavior-tag blocks">Blocks login</span> banner above the wallet list';
+      }
+      if (st.slot === 'features') {
+        if (!blocks) {
+          return scoped
+            ? '<span class="behavior-tag passive">Shown only</span> inline hint for this token/network — users can still proceed'
+            : '<span class="behavior-tag passive">Shown only</span> banner on selected features — users can still proceed';
+        }
+        return `<span class="behavior-tag blocks">Blocks the action</span> ${featuresBlockedCtaText(scoped)}`;
+      }
+      if (blocks && slotBlocksAction(st.slot)) {
+        const detail = blockedCtaText(st.slot);
+        const suffix = scoped ? ' — matching token/network only' : '';
+        return `<span class="behavior-tag blocks">Blocks the action</span> ${detail}${suffix}`;
+      }
+      if (scoped) {
+        return '<span class="behavior-tag passive">Shown only</span> inline hint for this token/network — users can still proceed';
+      }
+      return '<span class="behavior-tag passive">Shown only</span> users can still proceed';
+    }
+
+    function previewMetaHtml(placement, scopeLabel, behavior) {
+      const scopeLine = scopeLabel
+        ? `<span><b>Scope:</b> ${escapeHtml(scopeLabel)}</span>`
+        : '';
+      return `
+        <div class="preview-meta">
+          <span><b>Where:</b> ${escapeHtml(placement)}</span>
+          ${scopeLine}
+          <span><b>Behavior:</b> ${behavior}</span>
+        </div>
+      `;
+    }
+
+    function placementForSlot(slot, scoped) {
+      if (slot === 'features') return transactionSlotsPlacement(scoped);
+      const base = SLOT_PLACEMENT[slot] || 'Selected slot';
+      if (scoped && slotSupportsTokenFilter(slot)) {
+        return base.replace(' — banner above the form', '') + ' — inline on the token field in the form';
+      }
+      return base;
     }
 
     function actionWord(slot) {
@@ -952,7 +1053,7 @@
         <div class="form-section ${slot === 'features' ? '' : 'hidden'}" id="transaction-slots-section">
           <div class="form-section-label">Which features?</div>
           <div style="display:flex;gap:1.25rem;flex-wrap:wrap">
-            ${TRANSACTION_SLOT_OPTIONS.map(s => `<label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer"><input type="checkbox" class="f-tx-slot" value="${s.value}" ${isStoredTxSlot ? (groupSlots.has(s.value) ? 'checked' : '') : 'checked'}> ${s.label}</label>`).join('')}
+            ${TRANSACTION_SLOT_OPTIONS.map(s => `<label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer"><input type="checkbox" class="f-tx-slot" value="${s.value}" onchange="onTransactionSlotsChange()" ${isStoredTxSlot ? (groupSlots.has(s.value) ? 'checked' : '') : 'checked'}> ${s.label}</label>`).join('')}
           </div>
           <p class="hint">Select which transaction features this warning covers. A separate warning is created for each.</p>
         </div>
@@ -968,7 +1069,7 @@
             </div>
             <div>
               <label>Network</label>
-              <select id="f-network" onchange="applyTemplate()">${buildNetworkOptions(networks, w?.network || '')}</select>
+              <select id="f-network" onchange="onNetworkChange()">${buildNetworkOptions(networks, w?.network || '')}</select>
             </div>
           </div>
           <p class="hint">Leave as "All" to cover everything, or pick a token / network to target just that.</p>
@@ -1211,23 +1312,10 @@
         rendered = rendered.replace(/\{schedule\}/g, scheduleText || '');
       }
       const blocks = st.severity === 'critical';
-      const placement = SLOT_PLACEMENT[st.slot] || 'Selected slot';
-      const walletScope = st.wallet ? walletLabel(st.wallet) : '';
-      const scope = [tokenLabel(st.token), networkLabel(st.network)].filter(Boolean).join(' on ') || walletScope;
-
-      let behavior;
-      const isLogin = st.slot === 'login';
-      if (slotIsDataOnly(st.slot)) {
-        behavior = '<span class="behavior-tag passive">Shown only</span> informational — no button is disabled';
-      } else if (isLogin && st.wallet) {
-        behavior = '<span class="behavior-tag blocks">Blocks login</span> wallet card shows "Offline" badge with this message as tooltip';
-      } else if (isLogin) {
-        behavior = '<span class="behavior-tag blocks">Blocks login</span> banner shown above the wallet list';
-      } else if (blocks && slotBlocksAction(st.slot)) {
-        behavior = `<span class="behavior-tag blocks">Blocks the action</span> ${blockedCtaText(st.slot)}`;
-      } else {
-        behavior = '<span class="behavior-tag passive">Shown only</span> users can still proceed';
-      }
+      const scoped = messageUsesTooltipMode(st.slot, st.token, st.network);
+      const placement = placementForSlot(st.slot, scoped);
+      const scopeLabel = formatScopeLabel(st.token, st.network, st.wallet);
+      const behavior = previewBehavior(st, blocks);
 
       // Render [text](url) markdown links as <a> tags, escaping the rest.
       function renderLinks(text) {
@@ -1249,10 +1337,7 @@
             ${tooltipHtml ? '<span class="preview-info-icon" title="Tooltip">i</span>' : ''}
           </p>
           ${tooltipHtml ? `<p class="preview-detail preview-tooltip-note"><b>Tooltip on hover:</b> ${tooltipHtml}</p>` : ''}
-          <div class="preview-meta">
-            <span><b>Where:</b> ${escapeHtml(placement)}${scope ? ' · ' + escapeHtml(scope) : ''}</span>
-            <span><b>Behavior:</b> ${behavior}</span>
-          </div>
+          ${previewMetaHtml(placement, scopeLabel, behavior)}
         `;
         return;
       }
@@ -1281,10 +1366,7 @@
       el.innerHTML = `
         <p class="preview-label">Live preview — banner (heading + message)</p>
         <p class="preview-detail">${previewHeading ? `<strong>${previewHeading}</strong><br>` : ''}${previewBody}${scheduleLine}</p>
-        <div class="preview-meta">
-          <span><b>Where:</b> ${escapeHtml(placement)}${scope ? ' · ' + escapeHtml(scope) : ''}</span>
-          <span><b>Behavior:</b> ${behavior}</span>
-        </div>
+        ${previewMetaHtml(placement, scopeLabel, behavior)}
       `;
     };
 
@@ -1387,6 +1469,15 @@
       networkSel.value = stillValid ? normalizedNetwork : '';
       updateScenarioVisibility();
       applyTemplate();
+    };
+
+    window.onNetworkChange = function() {
+      updateScenarioVisibility();
+      applyTemplate();
+    };
+
+    window.onTransactionSlotsChange = function() {
+      updatePreview();
     };
 
     let statusIncidentsCache = null;

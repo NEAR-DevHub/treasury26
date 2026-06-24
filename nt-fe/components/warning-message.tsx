@@ -104,6 +104,8 @@ type WarningMessageBaseProps = {
     className?: string;
     headingClassName?: string;
     bodyClassName?: string;
+    /** Banner only — stack icon above text (sidebar). Default: icon beside text. */
+    iconPosition?: "start" | "top";
 };
 
 type WarningMessageFromSlot = WarningMessageBaseProps & {
@@ -266,7 +268,13 @@ export function WarningMessage(props: WarningMessageProps) {
         return null;
     }
 
-    const { variant, className, headingClassName, bodyClassName } = props;
+    const {
+        variant,
+        className,
+        headingClassName,
+        bodyClassName,
+        iconPosition,
+    } = props;
     const {
         message,
         severity,
@@ -316,7 +324,13 @@ export function WarningMessage(props: WarningMessageProps) {
     const Icon = severity === "info" ? Info : AlertTriangle;
 
     return (
-        <Alert variant={alertVariant} className={cn(className)}>
+        <Alert
+            variant={alertVariant}
+            className={cn(
+                iconPosition === "top" && "flex-col! gap-2",
+                className,
+            )}
+        >
             <Icon className="h-4 w-4 shrink-0" />
             <AlertDescription className="block">
                 {heading && (

@@ -357,10 +357,14 @@ export function Sidebar({ onClose }: SidebarProps) {
                         <SlotWarning
                             slot="data.balances"
                             headingClassName="font-medium"
+                            iconPosition="top"
+                            bodyClassName="text-xs"
                         />
                         <SlotWarning
                             slot="app"
                             headingClassName="font-medium"
+                            iconPosition="top"
+                            bodyClassName="text-xs"
                         />
                     </div>
                     <CreateBanner disabled={isReduced} />
