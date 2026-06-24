@@ -153,9 +153,6 @@
         "warningSingleMember": "1/{memberCount} 的阈值意味着任意单个成员均可执行交易。这会降低安全性。",
         "infoBalanced": "{currentThreshold}/{memberCount} 的阈值在安全性与运营灵活性之间取得了良好平衡。"
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}金额过低,无法支付网络手续费({fee} {symbol})。请至少再增加 {addMore} {symbol}。"
-    },
     "metadata": {
         "treasuryTitle": "仪表板 | Trezu",
         "landingTitle": "Trezu | 跨链金库管理",

@@ -153,9 +153,6 @@
         "warningSingleMember": "Ngưỡng 1-trên-{memberCount} có nghĩa là bất kỳ thành viên nào cũng có thể thực thi giao dịch. Điều này làm giảm tính bảo mật.",
         "infoBalanced": "Ngưỡng {currentThreshold}-trên-{memberCount} mang lại sự cân bằng tốt giữa bảo mật và linh hoạt vận hành."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Số tiền quá thấp so với phí mạng ({fee} {symbol}). Hãy thêm ít nhất {addMore} {symbol}."
-    },
     "metadata": {
         "treasuryTitle": "Bảng điều khiển | Trezu",
         "landingTitle": "Trezu | Quản lý ngân quỹ liên chuỗi",

@@ -153,9 +153,6 @@
         "warningSingleMember": "{memberCount}명 중 1명 임계값은 단일 멤버가 트랜잭션을 실행할 수 있음을 의미합니다. 이는 보안을 약화시킵니다.",
         "infoBalanced": "{memberCount}명 중 {currentThreshold}명 임계값은 보안과 운영 유연성 사이에 좋은 균형을 제공합니다."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}금액이 네트워크 수수료({fee} {symbol})에 비해 너무 적습니다. 최소 {addMore} {symbol}을(를) 추가하세요."
-    },
     "metadata": {
         "treasuryTitle": "대시보드 | Trezu",
         "landingTitle": "Trezu | 크로스체인 트레저리 관리",

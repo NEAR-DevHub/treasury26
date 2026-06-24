@@ -153,9 +153,6 @@
         "warningSingleMember": "Поріг 1 з {memberCount} означає, що будь-який учасник може виконувати транзакції. Це знижує безпеку.",
         "infoBalanced": "Поріг {currentThreshold} з {memberCount} забезпечує хороший баланс між безпекою та операційною гнучкістю."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Сума замала для комісії мережі ({fee} {symbol}). Додайте щонайменше {addMore} {symbol}."
-    },
     "metadata": {
         "treasuryTitle": "Огляд | Trezu",
         "landingTitle": "Trezu | Керування скарбницею між блокчейнами",

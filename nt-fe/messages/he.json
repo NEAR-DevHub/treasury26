@@ -153,9 +153,6 @@
         "warningSingleMember": "סף של 1 מתוך {memberCount} משמעו שכל חבר יחיד יכול לבצע עסקאות. זה מפחית את האבטחה.",
         "infoBalanced": "סף של {currentThreshold} מתוך {memberCount} מספק איזון טוב בין אבטחה לגמישות תפעולית."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}הסכום נמוך מדי עבור עמלת רשת ({fee} {symbol}). הוסף לפחות {addMore} {symbol}."
-    },
     "metadata": {
         "treasuryTitle": "לוח בקרה | Trezu",
         "landingTitle": "Trezu | ניהול אוצר חוצה-רשתות",

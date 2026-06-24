@@ -153,9 +153,6 @@
         "warningSingleMember": "Ein Schwellenwert von 1 von {memberCount} bedeutet, dass jedes einzelne Mitglied Transaktionen ausführen kann. Dies verringert die Sicherheit.",
         "infoBalanced": "Ein Schwellenwert von {currentThreshold} von {memberCount} bietet ein gutes Gleichgewicht zwischen Sicherheit und operativer Flexibilität."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Betrag zu niedrig für Netzwerkgebühr ({fee} {symbol}). Fügen Sie mindestens {addMore} {symbol} hinzu."
-    },
     "metadata": {
         "treasuryTitle": "Dashboard | Trezu",
         "landingTitle": "Trezu | Cross-Chain Treasury Management",

@@ -153,9 +153,6 @@
         "warningSingleMember": "Ambang batas 1-dari-{memberCount} berarti satu anggota mana pun dapat mengeksekusi transaksi. Ini mengurangi keamanan.",
         "infoBalanced": "Ambang batas {currentThreshold}-dari-{memberCount} memberikan keseimbangan yang baik antara keamanan dan fleksibilitas operasional."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Jumlah terlalu rendah untuk biaya jaringan ({fee} {symbol}). Tambahkan minimal {addMore} {symbol}."
-    },
     "metadata": {
         "treasuryTitle": "Dasbor | Trezu",
         "landingTitle": "Trezu | Manajemen Treasury Lintas-rantai",

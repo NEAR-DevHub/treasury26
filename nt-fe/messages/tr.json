@@ -153,9 +153,6 @@
         "warningSingleMember": "{memberCount} üyeden 1'lik bir eşik, herhangi bir üyenin tek başına işlem gerçekleştirebileceği anlamına gelir. Bu güvenliği azaltır.",
         "infoBalanced": "{memberCount} üyeden {currentThreshold}'lik bir eşik, güvenlik ile operasyonel esneklik arasında iyi bir denge sağlar."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Miktar ağ ücreti için çok düşük ({fee} {symbol}). En az {addMore} {symbol} ekleyin."
-    },
     "metadata": {
         "treasuryTitle": "Panel | Trezu",
         "landingTitle": "Trezu | Zincirler Arası Hazine Yönetimi",

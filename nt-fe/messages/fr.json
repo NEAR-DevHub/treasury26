@@ -153,9 +153,6 @@
         "warningSingleMember": "Un seuil de 1 sur {memberCount} signifie qu'un seul membre peut exécuter des transactions. Cela réduit la sécurité.",
         "infoBalanced": "Un seuil de {currentThreshold} sur {memberCount} offre un bon équilibre entre sécurité et flexibilité opérationnelle."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Montant trop faible pour les frais de réseau ({fee} {symbol}). Ajoutez au moins {addMore} {symbol}."
-    },
     "metadata": {
         "treasuryTitle": "Tableau de bord | Trezu",
         "landingTitle": "Trezu | Gestion de trésorerie multi-chaînes",

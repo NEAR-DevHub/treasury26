@@ -153,9 +153,6 @@
         "warningSingleMember": "Un umbral de 1 de {memberCount} significa que cualquier miembro puede ejecutar transacciones. Esto reduce la seguridad.",
         "infoBalanced": "Un umbral de {currentThreshold} de {memberCount} ofrece un buen equilibrio entre seguridad y flexibilidad operativa."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}La cantidad es demasiado baja para la tarifa de red ({fee} {symbol}). Añade al menos {addMore} {symbol}."
-    },
     "metadata": {
         "treasuryTitle": "Panel | Trezu",
         "landingTitle": "Trezu | Gestión de tesorería multicadena",

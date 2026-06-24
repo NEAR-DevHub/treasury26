@@ -153,9 +153,6 @@
         "warningSingleMember": "1/{memberCount}のしきい値では、メンバーの誰か一人でもトランザクションを実行できます。これはセキュリティを低下させます。",
         "infoBalanced": "{currentThreshold}/{memberCount}のしきい値は、セキュリティと運用上の柔軟性のバランスが取れています。"
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}金額がネットワーク手数料({fee} {symbol})より低すぎます。少なくとも{addMore} {symbol}追加してください。"
-    },
     "metadata": {
         "treasuryTitle": "ダッシュボード | Trezu",
         "landingTitle": "Trezu | クロスチェーン・トレジャリー管理",
