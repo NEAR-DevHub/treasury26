@@ -250,7 +250,7 @@ pub async fn run_maintenance_cycle(
 
                 match fill_gaps_with_hints(
                     &app_state.db_pool,
-                    &app_state.network,
+                    &app_state.archival_network,
                     account_id,
                     token_id,
                     up_to_block,
@@ -399,7 +399,7 @@ pub async fn run_maintenance_cycle(
             if !app_state.env_vars.disable_staking_rewards {
                 match track_and_fill_staking_rewards(
                     &app_state.db_pool,
-                    &app_state.network,
+                    &app_state.archival_network,
                     account_id,
                     up_to_block,
                 )
