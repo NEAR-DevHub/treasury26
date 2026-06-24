@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { SlotWarning } from "@/components/slot-warning";
 import { RecentActivity } from "@/features/activity";
 import { OnboardingProgress } from "@/features/onboarding";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
@@ -45,7 +44,6 @@ export default function AppPage() {
                         <CreateBanner />
                     </div>
                     <OnboardingProgress onDepositClick={handleDepositOpen} />
-                    <SlotWarning slot="data.balances" />
                     <BalanceWithGraph
                         tokens={tokens}
                         isHidden={isHidden}

@@ -17,7 +17,7 @@ import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
-import { SlotWarning } from "@/components/slot-warning";
+import { SlotWarning } from "@/components/warning-message";
 import { StepIcon } from "@/components/step-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/components/user";

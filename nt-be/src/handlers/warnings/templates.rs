@@ -27,7 +27,6 @@ pub fn action_by_slot() -> std::collections::HashMap<String, String> {
         ("action.vote", "vote"),
         ("action.create-proposal", "proposal"),
         ("data.balances", "transaction"),
-        ("data.prices", "transaction"),
     ]
     .into_iter()
     .map(|(slot, action)| (slot.to_string(), action.to_string()))
@@ -42,9 +41,8 @@ fn scenario_label(scenario: &str) -> String {
         "payments_paused" => "Payments paused".into(),
         "deposits_paused" => "Deposits paused".into(),
         "requests_blocked" => "Requests blocked".into(),
-        "balance_unavailable" => "Balance unavailable".into(),
+        "balance_unavailable" => "Balance temporarily unavailable".into(),
         "history_not_loading" => "History not loading".into(),
-        "prices_delayed" => "Prices delayed".into(),
         "tier1_backend" => "Tier 1 · Backend issue".into(),
         "tier2_tx_paused" => "Tier 2 · Transactions paused".into(),
         "tier3_down" => "Tier 3 · App temporarily down".into(),
@@ -124,8 +122,8 @@ fn scenario_entries() -> Vec<(&'static str, &'static str, String)> {
             "data.balances",
             "balance_unavailable",
             merge_warning_message(
-                "We can't show your balances right now",
-                "Your funds are on-chain and exactly where you left them. You can keep using your treasury.",
+                "Balance temporarily unavailable.",
+                "We can't show your balances right now. Your funds are on-chain and exactly where you left them. You can keep using your treasury.",
             ),
         ),
         (
@@ -135,11 +133,6 @@ fn scenario_entries() -> Vec<(&'static str, &'static str, String)> {
                 "Transaction history isn't loading right now",
                 "This affects what you can see, not your funds or your treasury.",
             ),
-        ),
-        (
-            "data.prices",
-            "prices_delayed",
-            merge_warning_message("Price data may be delayed.", ""),
         ),
         (
             "app",

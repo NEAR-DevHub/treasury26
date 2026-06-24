@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useNextStep } from "nextstepjs";
 import { useEffect, useState } from "react";
-import { SlotWarning } from "@/components/slot-warning";
+import { SlotWarning } from "@/components/warning-message";
 import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { TOUR_NAMES } from "@/features/onboarding/steps/dashboard";
@@ -348,7 +348,16 @@ export function Sidebar({ onClose }: SidebarProps) {
                 </nav>
 
                 <div className="hidden lg:flex flex-col w-full justify-center items-center gap-2">
-                    <div className={cn("w-full px-3.5", isReduced && "hidden")}>
+                    <div
+                        className={cn(
+                            "w-full px-3.5 flex flex-col gap-2",
+                            isReduced && "hidden",
+                        )}
+                    >
+                        <SlotWarning
+                            slot="data.balances"
+                            headingClassName="font-medium"
+                        />
                         <SlotWarning
                             slot="app"
                             headingClassName="font-medium"

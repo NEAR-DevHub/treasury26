@@ -29,21 +29,19 @@ import { Tooltip } from "@/components/tooltip";
 import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WarningAlert } from "@/components/warning-alert";
-import { SlotWarning } from "@/components/slot-warning";
+import { SlotWarning } from "@/components/warning-message";
 import {
     PAGE_TOUR_NAMES,
     PAGE_TOUR_STORAGE_KEYS,
     usePageTour,
 } from "@/features/onboarding/steps/page-tours";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import {
-    useHasTokenOrNetworkWarning,
-    useSlotBlock,
+    useBridgeAssetsForWarnings,
+    useBridgeScopedWarning,
 } from "@/hooks/use-warnings";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { resolveBridgeScope } from "@/lib/bridge-asset-resolver";
-import { extractInlineWarningCopy } from "@/lib/warning-message";
 import type { IntentsQuoteResponse } from "@/lib/api";
 import { generateIntent } from "@/lib/api";
 import {
@@ -100,7 +98,10 @@ function buildExchangeFormSchema(messages: { amountGreaterThanZero: string }) {
     });
 }
 
-function Step1({ handleNext }: StepProps) {
+function Step1({
+    handleNext,
+    bridgeAssets,
+}: StepProps & { bridgeAssets: BridgeAsset[] }) {
     const tEx = useTranslations("exchange");
     const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<
@@ -111,45 +112,13 @@ function Step1({ handleNext }: StepProps) {
     const sellToken = form.watch("sellToken");
     const receiveToken = form.watch("receiveToken");
     const sellAmount = form.watch("sellAmount");
-    const hasTokenOrNetworkExchangeWarning =
-        useHasTokenOrNetworkWarning("exchange");
-    const { data: bridgeAssets = [] } = useBridgeTokens(
-        hasTokenOrNetworkExchangeWarning,
-    );
-    const exchangeScope = useMemo(
-        () => resolveBridgeScope(bridgeAssets, sellToken?.address),
-        [bridgeAssets, sellToken?.address],
-    );
-    const {
-        warning: sendScopeWarning,
-        blocked: exchangeSlotBlocked,
-        message: sendScopeMessage,
-    } = useSlotBlock(
+    const { blocked: exchangeSlotBlocked, scopedMessage: sendWarningMessage } =
+        useBridgeScopedWarning("exchange", bridgeAssets, sellToken?.address);
+    const { scopedMessage: receiveWarningMessage } = useBridgeScopedWarning(
         "exchange",
-        exchangeScope.token ?? undefined,
-        exchangeScope.networkName ?? undefined,
+        bridgeAssets,
+        receiveToken?.address,
     );
-    const receiveScope = useMemo(
-        () => resolveBridgeScope(bridgeAssets, receiveToken?.address),
-        [bridgeAssets, receiveToken?.address],
-    );
-    const { warning: receiveScopeWarning, message: receiveScopeMessage } =
-        useSlotBlock(
-            "exchange",
-            receiveScope.token ?? undefined,
-            receiveScope.networkName ?? undefined,
-        );
-    const sendWarningMessage =
-        sendScopeWarning && (sendScopeWarning.token || sendScopeWarning.network)
-            ? sendScopeMessage
-            : null;
-    const receiveWarningMessage =
-        receiveScopeWarning &&
-        (receiveScopeWarning.token || receiveScopeWarning.network)
-            ? receiveScopeMessage
-            : null;
-    const sendWarningCopy = extractInlineWarningCopy(sendWarningMessage);
-    const receiveWarningCopy = extractInlineWarningCopy(receiveWarningMessage);
 
     const slippageTolerance = form.watch("slippageTolerance") || 0.5;
 
@@ -369,8 +338,7 @@ function Step1({ handleNext }: StepProps) {
                                 ? Number(quoteData.quote.amountInUsd) || 0
                                 : null
                         }
-                        warning={sendWarningCopy.inlineText}
-                        warningTooltip={sendWarningCopy.tooltipText}
+                        warningMessage={sendWarningMessage}
                     />
                     {/* Swap Arrow */}
                     <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
@@ -408,8 +376,7 @@ function Step1({ handleNext }: StepProps) {
                             ? Number(quoteData.quote.amountOutUsd) || 0
                             : null
                     }
-                    warning={receiveWarningCopy.inlineText}
-                    warningTooltip={receiveWarningCopy.tooltipText}
+                    warningMessage={receiveWarningMessage}
                 />
 
                 {/* Rate and Slippage */}
@@ -827,21 +794,12 @@ export default function ExchangePage() {
     }, [defaultSellToken, form]);
 
     const watchedSellToken = form.watch("sellToken");
-    const hasTokenOrNetworkExchangeWarning =
-        useHasTokenOrNetworkWarning("exchange");
-    const { data: exchangeBridgeAssets = [] } = useBridgeTokens(
-        hasTokenOrNetworkExchangeWarning,
-    );
-    const exchangeScope = useMemo(
-        () =>
-            resolveBridgeScope(exchangeBridgeAssets, watchedSellToken?.address),
-        [exchangeBridgeAssets, watchedSellToken?.address],
-    );
+    const { data: bridgeAssets = [] } = useBridgeAssetsForWarnings("exchange");
     const { blocked: exchangeSlotBlocked, message: exchangeSlotMessage } =
-        useSlotBlock(
+        useBridgeScopedWarning(
             "exchange",
-            exchangeScope.token ?? undefined,
-            exchangeScope.networkName ?? undefined,
+            bridgeAssets,
+            watchedSellToken?.address,
         );
 
     const onSubmit = async (data: ExchangeFormValues) => {
@@ -959,6 +917,7 @@ export default function ExchangePage() {
                         steps={[
                             {
                                 component: Step1,
+                                props: { bridgeAssets },
                             },
                             {
                                 component: Step2,

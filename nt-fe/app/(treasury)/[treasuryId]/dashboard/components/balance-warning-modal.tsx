@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import {
     Dialog,
@@ -10,19 +11,31 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/modal";
-import { useWarnings } from "@/hooks/use-warnings";
+import { parseWarningCopy } from "@/components/warning-message";
+import { fillAction, useWarnings } from "@/hooks/use-warnings";
 
 /**
  * Shows a one-time-per-session modal when balances are temporarily
- * unavailable (`data.balances` warning). After dismissal the persistent inline
- * banner on the dashboard keeps the user informed.
+ * unavailable (`data.balances` warning). After dismissal the persistent
+ * banner in the sidebar keeps the user informed.
  */
 export function BalanceWarningModal() {
-    const { getWarning } = useWarnings();
+    const t = useTranslations("proposals.insufficientBalance");
+    const { getWarning, actionBySlot } = useWarnings();
     const warning = getWarning("data.balances");
     const [open, setOpen] = useState(false);
 
     const warningId = warning?.id ?? null;
+    const message = useMemo(() => {
+        if (!warning?.message) {
+            return null;
+        }
+        return fillAction(warning.message, "data.balances", actionBySlot);
+    }, [warning?.message, actionBySlot]);
+    const { heading, body } = useMemo(
+        () => parseWarningCopy(message),
+        [message],
+    );
 
     useEffect(() => {
         if (warningId == null) {
@@ -38,7 +51,7 @@ export function BalanceWarningModal() {
         }
     }, [warningId]);
 
-    if (!warning?.message) return null;
+    if (!message) return null;
 
     const handleClose = () => {
         setOpen(false);
@@ -59,12 +72,12 @@ export function BalanceWarningModal() {
         >
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Balance temporarily unavailable</DialogTitle>
+                    <DialogTitle>{heading}</DialogTitle>
                 </DialogHeader>
-                <DialogDescription>{warning.message}</DialogDescription>
+                {body && <DialogDescription>{body}</DialogDescription>}
                 <DialogFooter>
                     <Button className="w-full" onClick={handleClose}>
-                        Got it
+                        {t("gotIt")}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -9,7 +9,7 @@ import { Button } from "@/components/button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Pill } from "@/components/pill";
 import { SignIn } from "@/components/sign-in";
-import { SlotWarning } from "@/components/slot-warning";
+import { SlotWarning } from "@/components/warning-message";
 import { isStaging } from "@/constants/features";
 import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
 import { cn } from "@/lib/utils";
@@ -153,7 +153,14 @@ export function PageComponentLayout({
                 )}
             >
                 {!hideAppWarningBanner && (
-                    <SlotWarning slot="app" className="lg:hidden mb-3" />
+                    <>
+                        <SlotWarning
+                            slot="data.balances"
+                            className="lg:hidden mb-3"
+                            headingClassName="font-medium"
+                        />
+                        <SlotWarning slot="app" className="lg:hidden mb-3" />
+                    </>
                 )}
                 {children}
             </main>

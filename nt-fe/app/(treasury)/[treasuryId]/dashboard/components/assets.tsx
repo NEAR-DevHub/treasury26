@@ -6,7 +6,6 @@ import { AssetsTable, AssetsTableSkeleton } from "@/components/assets-table";
 import { PageCard } from "@/components/card";
 import { ConfidentialState } from "@/components/confidential-state";
 import { EmptyState } from "@/components/empty-state";
-import { SlotWarning } from "@/components/slot-warning";
 import { StepperHeader } from "@/components/step-wizard";
 import { Tooltip } from "@/components/tooltip";
 import { useAggregatedTokens } from "@/hooks/use-assets";
@@ -79,7 +78,6 @@ export default function Assets({ tokens, state }: Props) {
                     />
                 </div>
             )}
-            <SlotWarning slot="data.prices" />
             {renderContent()}
         </PageCard>
     );

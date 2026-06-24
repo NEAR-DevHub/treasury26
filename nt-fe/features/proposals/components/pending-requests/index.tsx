@@ -6,7 +6,7 @@ import {
 } from "@/components/auth-button";
 import { PageCard } from "@/components/card";
 import { NumberBadge } from "@/components/number-badge";
-import { SlotWarning } from "@/components/slot-warning";
+import { SlotWarning } from "@/components/warning-message";
 import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";

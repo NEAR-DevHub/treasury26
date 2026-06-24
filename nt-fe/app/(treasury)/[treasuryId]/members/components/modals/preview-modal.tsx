@@ -10,6 +10,7 @@ import {
     DialogFooter,
 } from "@/components/modal";
 import { ButtonWithTooltip } from "@/components/button-with-tooltip";
+import { WarningMessage } from "@/components/warning-message";
 import { RoleBadge } from "@/components/role-badge";
 import { sortRolesByOrder } from "@/lib/role-utils";
 import { useSlotBlock } from "@/hooks/use-warnings";
@@ -171,9 +172,12 @@ export function PreviewModal({
                             }
                             tooltipMessage={
                                 validationError ??
-                                (proposalBlocked
-                                    ? (proposalBlockedMessage ?? undefined)
-                                    : undefined)
+                                (proposalBlocked && proposalBlockedMessage ? (
+                                    <WarningMessage
+                                        variant="tooltip"
+                                        message={proposalBlockedMessage}
+                                    />
+                                ) : undefined)
                             }
                         >
                             {isSubmitting

@@ -14,8 +14,11 @@ import {
     getProposalRequiredFunds,
     getProposalUIKind,
 } from "@/features/proposals/utils/proposal-utils";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
-import { resolveBridgeScope } from "@/lib/bridge-asset-resolver";
+import { useBridgeTokens, type BridgeAsset } from "@/hooks/use-bridge-tokens";
+import {
+    resolveBridgeScope,
+    type BridgeScope,
+} from "@/lib/bridge-asset-resolver";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 const WARNINGS_POLL_INTERVAL_MS = 15_000;
@@ -249,6 +252,78 @@ export function useSlotBlock(slot: string, token?: string, network?: string) {
             ? fillAction(effective.message, slot, actionBySlot)
             : null,
     };
+}
+
+/** True when a warning targets a specific token or network (not slot-wide). */
+export function isTokenOrNetworkScopedWarning(
+    warning: Warning | null | undefined,
+): boolean {
+    return Boolean(warning?.token || warning?.network);
+}
+
+/** Inline field copy — null for slot-wide banners, message when token/network scoped. */
+export function scopedFieldMessage(
+    warning: Warning | null | undefined,
+    message: string | null | undefined,
+): string | null {
+    if (!message || !isTokenOrNetworkScopedWarning(warning)) {
+        return null;
+    }
+    return message;
+}
+
+export interface ScopedSlotWarning {
+    warning: Warning | null;
+    blocked: boolean;
+    message: string | null;
+    scopedMessage: string | null;
+}
+
+/** `useSlotBlock` plus a token/network-scoped message for inline field hints. */
+export function useScopedSlotWarning(
+    slot: string,
+    token?: string,
+    network?: string,
+): ScopedSlotWarning {
+    const slotBlock = useSlotBlock(slot, token, network);
+    const scopedMessage = useMemo(
+        () => scopedFieldMessage(slotBlock.warning, slotBlock.message),
+        [slotBlock.warning, slotBlock.message],
+    );
+
+    return { ...slotBlock, scopedMessage };
+}
+
+export interface BridgeScopedWarning extends ScopedSlotWarning {
+    scope: BridgeScope;
+}
+
+/** Resolve bridge scope from a token address, then check slot warnings. */
+export function useBridgeScopedWarning(
+    slot: string,
+    bridgeAssets: BridgeAsset[],
+    tokenAddress?: string | null,
+): BridgeScopedWarning {
+    const scope = useMemo(
+        () => resolveBridgeScope(bridgeAssets, tokenAddress),
+        [bridgeAssets, tokenAddress],
+    );
+    const result = useScopedSlotWarning(
+        slot,
+        scope.token ?? undefined,
+        scope.networkName ?? undefined,
+    );
+
+    return { ...result, scope };
+}
+
+/** Fetch bridge assets only when a token/network-scoped warning is live on `slot`. */
+export function useBridgeAssetsForWarnings(
+    slot: string,
+    options?: { includeNearNetwork?: boolean },
+) {
+    const enabled = useHasTokenOrNetworkWarning(slot);
+    return useBridgeTokens(enabled, options);
 }
 
 /**

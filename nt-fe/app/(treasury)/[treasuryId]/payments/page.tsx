@@ -16,7 +16,7 @@ import { PageCard } from "@/components/card";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { SlotWarning } from "@/components/slot-warning";
+import { SlotWarning } from "@/components/warning-message";
 import { PendingButton } from "@/components/pending-button";
 import {
     ReviewStep,
@@ -39,7 +39,11 @@ import {
 import { type BridgeAsset, useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useSlotBlock } from "@/hooks/use-warnings";
+import {
+    scopedFieldMessage,
+    useBridgeScopedWarning,
+    useScopedSlotWarning,
+} from "@/hooks/use-warnings";
 import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
 import { generateIntent, getIntentsQuote } from "@/lib/api";
@@ -73,11 +77,7 @@ import {
     formatCurrency,
     formatTokenDisplayAmount,
 } from "@/lib/utils";
-import {
-    findBridgeAssetForToken,
-    resolveBridgeScope,
-} from "@/lib/bridge-asset-resolver";
-import { extractInlineWarningCopy } from "@/lib/warning-message";
+import { findBridgeAssetForToken } from "@/lib/bridge-asset-resolver";
 import {
     computeQuoteNetworkFee,
     isIntentsCrossChainToken,
@@ -132,6 +132,9 @@ interface Step1Props extends StepProps {
     onAddressBookSelectionChange?: (isFromAddressBook: boolean) => void;
     bridgeAssets?: BridgeAsset[];
     isBridgeAssetsLoading?: boolean;
+    paymentsSlotBlocked?: boolean;
+    sendWarningMessage?: string | null;
+    recipientNetworkWarningMessage?: string | null;
 }
 
 function Step1({
@@ -146,6 +149,9 @@ function Step1({
     onAddressBookSelectionChange,
     bridgeAssets = [],
     isBridgeAssetsLoading = false,
+    paymentsSlotBlocked = false,
+    sendWarningMessage = null,
+    recipientNetworkWarningMessage = null,
 }: Step1Props) {
     const tPay = useTranslations("payments");
     const tCreate = useTranslations("createRequestButton");
@@ -154,46 +160,6 @@ function Step1({
     const isMobile = useMediaQuery("(max-width: 768px)");
     const address = form.watch("address");
     const amount = form.watch("amount");
-    const watchedToken = form.watch("token");
-    const destinationNetworkId = form.watch("destinationNetwork");
-    const destinationNetworkName = form.watch("destinationNetworkName");
-    const paymentsScope = useMemo(
-        () => resolveBridgeScope(bridgeAssets, watchedToken?.address),
-        [bridgeAssets, watchedToken?.address],
-    );
-    const {
-        warning: sendScopeWarning,
-        blocked: paymentsSlotBlocked,
-        message: sendScopeMessage,
-    } = useSlotBlock(
-        "payments",
-        paymentsScope.token ?? undefined,
-        paymentsScope.networkName ?? undefined,
-    );
-    const {
-        warning: recipientNetworkScopeWarning,
-        message: recipientNetworkScopeMessage,
-    } = useSlotBlock(
-        "payments",
-        paymentsScope.token ?? undefined,
-        destinationNetworkName || undefined,
-    );
-    const sendWarningMessage =
-        sendScopeWarning && (sendScopeWarning.token || sendScopeWarning.network)
-            ? sendScopeMessage
-            : null;
-    const recipientNetworkWarningMessage =
-        destinationNetworkId &&
-        recipientNetworkScopeWarning &&
-        (recipientNetworkScopeWarning.network ||
-            (recipientNetworkScopeWarning.token &&
-                !recipientNetworkScopeWarning.network))
-            ? recipientNetworkScopeMessage
-            : null;
-    const sendWarningCopy = extractInlineWarningCopy(sendWarningMessage);
-    const recipientNetworkWarningCopy = extractInlineWarningCopy(
-        recipientNetworkWarningMessage,
-    );
 
     const handleSave = async () => {
         // Validate and proceed to next step
@@ -301,13 +267,9 @@ function Step1({
                     onAddressBookSelectionChange={onAddressBookSelectionChange}
                     bridgeAssets={bridgeAssets}
                     isBridgeAssetsLoading={isBridgeAssetsLoading}
-                    sendWarning={sendWarningCopy.inlineText}
-                    sendWarningTooltip={sendWarningCopy.tooltipText}
-                    recipientNetworkWarning={
-                        recipientNetworkWarningCopy.inlineText
-                    }
-                    recipientNetworkWarningTooltip={
-                        recipientNetworkWarningCopy.tooltipText
+                    sendWarningMessage={sendWarningMessage}
+                    recipientNetworkWarningMessage={
+                        recipientNetworkWarningMessage
                     }
                 />
             </PageCard>
@@ -822,21 +784,38 @@ export default function PaymentsPage() {
         watchedAmount,
         watchedAddress,
         watchedDestinationNetwork,
+        watchedDestinationNetworkName,
     ] = useWatch({
         control: form.control,
-        name: ["token", "amount", "address", "destinationNetwork"],
-    }) as [PaymentFormValues["token"], string, string, string];
+        name: [
+            "token",
+            "amount",
+            "address",
+            "destinationNetwork",
+            "destinationNetworkName",
+        ],
+    }) as [PaymentFormValues["token"], string, string, string, string];
 
-    const paymentsScope = useMemo(
-        () => resolveBridgeScope(bridgeAssets, watchedToken?.address),
-        [bridgeAssets, watchedToken?.address],
+    const {
+        blocked: paymentsSlotBlocked,
+        message: sendScopeMessage,
+        scopedMessage: sendWarningMessage,
+        scope: paymentsScope,
+    } = useBridgeScopedWarning("payments", bridgeAssets, watchedToken?.address);
+    const {
+        warning: recipientNetworkScopeWarning,
+        message: recipientNetworkScopeMessage,
+    } = useScopedSlotWarning(
+        "payments",
+        paymentsScope.token ?? undefined,
+        watchedDestinationNetworkName || undefined,
     );
-    const { blocked: paymentsSlotBlocked, message: paymentsSlotMessage } =
-        useSlotBlock(
-            "payments",
-            paymentsScope.token ?? undefined,
-            paymentsScope.networkName ?? undefined,
-        );
+    const recipientNetworkWarningMessage = watchedDestinationNetwork
+        ? scopedFieldMessage(
+              recipientNetworkScopeWarning,
+              recipientNetworkScopeMessage,
+          )
+        : null;
 
     const watchedTokenClassification = useMemo(
         () => classifyPaymentToken(watchedToken, watchedDestinationNetwork),
@@ -1110,7 +1089,7 @@ export default function PaymentsPage() {
 
     const onSubmit = async (data: PaymentFormValues) => {
         if (paymentsSlotBlocked) {
-            if (paymentsSlotMessage) toast.error(paymentsSlotMessage);
+            if (sendScopeMessage) toast.error(sendScopeMessage);
             return;
         }
 
@@ -1316,6 +1295,9 @@ export default function PaymentsPage() {
                     bridgeAssets,
                     isBridgeAssetsLoading:
                         isBridgeAssetsLoading || isBridgeAssetsFetching,
+                    paymentsSlotBlocked,
+                    sendWarningMessage,
+                    recipientNetworkWarningMessage,
                 },
             },
             {
@@ -1347,6 +1329,9 @@ export default function PaymentsPage() {
             bridgeAssets,
             isBridgeAssetsLoading,
             isBridgeAssetsFetching,
+            paymentsSlotBlocked,
+            sendWarningMessage,
+            recipientNetworkWarningMessage,
             quoteContextKey,
         ],
     );

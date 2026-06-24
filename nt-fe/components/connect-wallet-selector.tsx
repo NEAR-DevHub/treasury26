@@ -4,7 +4,7 @@ import { Check, Fingerprint, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-import { SlotWarning } from "@/components/slot-warning";
+import { SlotWarning } from "@/components/warning-message";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import {

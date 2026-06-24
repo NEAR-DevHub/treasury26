@@ -38,7 +38,6 @@ A slot is _where_ the warning appears in the app. They're grouped into four cate
 |                   | Voting (Approve / Reject)    | Disables the vote buttons in proposal modals                                |
 | **Data displays** | Balances                     | Banner on the dashboard balances section                                    |
 |                   | Transaction history          | Banner on the recent transactions section                                   |
-|                   | Price data                   | Note on price columns                                                       |
 
 ### Scenarios
 

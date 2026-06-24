@@ -22,9 +22,11 @@ import { useForm } from "react-hook-form";
 import QRCode from "react-qr-code";
 import { z } from "zod";
 import { Button } from "@/components/button";
-import { SlotWarning } from "@/components/slot-warning";
-import { useSlotBlock } from "@/hooks/use-warnings";
-import { extractBannerWarningCopy } from "@/lib/warning-message";
+import { SlotWarning, WarningMessage } from "@/components/warning-message";
+import {
+    isTokenOrNetworkScopedWarning,
+    useScopedSlotWarning,
+} from "@/hooks/use-warnings";
 import { CopyButton } from "@/components/copy-button";
 import { InputBlock } from "@/components/input-block";
 import { getNetworkDisplayName } from "@/components/token-display";
@@ -390,22 +392,17 @@ export function DepositModal({
     const {
         warning: depositScopeWarning,
         blocked: depositBlocked,
-        message: depositScopeMessage,
-    } = useSlotBlock("deposit", selectedAsset?.id, selectedNetwork?.name);
-    // Token/network-scoped messages render inside the deposit address section;
-    // slot-wide messages stay in the banner above.
-    const depositScopedMessage =
-        depositScopeWarning &&
-        (depositScopeWarning.token || depositScopeWarning.network)
-            ? depositScopeMessage
-            : null;
-    const depositScopedCopy = extractBannerWarningCopy(depositScopedMessage);
+        scopedMessage: depositScopedMessage,
+    } = useScopedSlotWarning(
+        "deposit",
+        selectedAsset?.id,
+        selectedNetwork?.name,
+    );
     // A token/network-scoped pause only blocks that combination — keep the
     // selectors enabled so the user can switch. Only disable them when the whole
     // deposit slot is paused or the app is in maintenance.
-    const depositTokenNetworkScoped = Boolean(
-        depositScopeWarning?.token || depositScopeWarning?.network,
-    );
+    const depositTokenNetworkScoped =
+        isTokenOrNetworkScopedWarning(depositScopeWarning);
     const depositSelectorsDisabled =
         depositBlocked && !depositTokenNetworkScoped;
     const { data: bridgeAssets = [], isLoading: isLoadingAssets } =
@@ -1340,14 +1337,12 @@ export function DepositModal({
                                     </p>
                                 </div>
 
-                                {/* Non-blocking token/network notice (e.g. slow
-                                network): deposits still work, so show the full
-                                message inline (no tooltip). */}
                                 {depositScopedMessage && (
-                                    <p className="text-general-warning-foreground text-sm">
-                                        {depositScopedCopy.heading} -{" "}
-                                        {depositScopedCopy.body}
-                                    </p>
+                                    <WarningMessage
+                                        variant="inline"
+                                        message={depositScopedMessage}
+                                        className="text-sm"
+                                    />
                                 )}
 
                                 {(canSwitchDepositSource ||
@@ -1705,7 +1700,6 @@ export function DepositModal({
             handleNetworkSelect,
             selectedNetworkBalances,
             depositScopedMessage,
-            depositScopedCopy,
             depositBlocked,
             depositSelectorsDisabled,
             depositScopeWarning,

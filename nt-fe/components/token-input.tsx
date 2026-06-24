@@ -2,16 +2,15 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Info } from "lucide-react";
 import { Button } from "./button";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useAssets } from "@/hooks/use-assets";
 import { availableBalance } from "@/lib/balance";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import TokenSelect, { SelectedTokenData } from "./token-select";
+import { WarningMessage } from "./warning-message";
 import { LargeInput } from "./large-input";
 import { InputBlock } from "./input-block";
-import { Tooltip } from "./tooltip";
 import { FormField, FormMessage } from "./ui/form";
 import {
     Control,
@@ -78,8 +77,8 @@ interface TokenInputProps<
     loading?: boolean;
     customValue?: string;
     infoMessage?: string;
-    warning?: React.ReactNode;
-    warningTooltip?: React.ReactNode;
+    /** Token/slot warning (`### heading` + body). Renders heading inline, body in tooltip. */
+    warningMessage?: string | null;
     /**
      * When true, shows "Insufficient balance" error if amount exceeds balance.
      * Default: false
@@ -108,8 +107,7 @@ export function TokenInput<
     loading = false,
     customValue,
     infoMessage,
-    warning,
-    warningTooltip,
+    warningMessage,
     showInsufficientBalance = false,
     dynamicFontSize = false,
     onAmountInput,
@@ -307,15 +305,12 @@ export function TokenInput<
                         )}
                         {fieldState.error ? (
                             <FormMessage />
-                        ) : warning ? (
-                            <p className="text-general-warning-foreground text-sm mt-2 inline-flex items-center gap-1">
-                                <span>{warning}</span>
-                                {warningTooltip && (
-                                    <Tooltip content={warningTooltip}>
-                                        <Info className="size-3 shrink-0" />
-                                    </Tooltip>
-                                )}
-                            </p>
+                        ) : warningMessage ? (
+                            <WarningMessage
+                                variant="inline"
+                                message={warningMessage}
+                                className="text-sm mt-2"
+                            />
                         ) : infoMessage ? (
                             <p className="text-general-info-foreground text-sm mt-2">
                                 {infoMessage}
