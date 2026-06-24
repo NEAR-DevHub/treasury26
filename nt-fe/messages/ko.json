@@ -368,11 +368,22 @@
             "type": "유형",
             "date": "날짜",
             "request": "요청",
+            "viewLinkedRequest": "연결된 요청 보기",
             "from": "보낸 사람",
             "to": "받는 사람",
             "method": "메서드",
             "contract": "컨트랙트",
             "transaction": "트랜잭션"
+        },
+        "refresh": {
+            "ariaLabel": "기밀 기록 새로 고침",
+            "refreshing": "새로 고치는 중…",
+            "lastUpdated": "마지막 업데이트: {time}",
+            "notUpdated": "아직 업데이트되지 않음",
+            "justNow": "지금",
+            "moments": "잠시 전",
+            "checking": "새로 고침 상태 확인 중…",
+            "unavailable": "새로 고침 상태를 사용할 수 없음"
         }
     },
     "apiDocs": {

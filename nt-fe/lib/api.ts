@@ -389,6 +389,51 @@ export async function getRecentActivity(
     }
 }
 
+export interface ConfidentialHistoryRefreshStatus {
+    accountId: string;
+    lastUpdatedAt: string | null;
+    canRefresh: boolean;
+    cooldownEndsAt: string | null;
+}
+
+export async function getConfidentialHistoryRefreshStatus(
+    accountId: string,
+): Promise<ConfidentialHistoryRefreshStatus | null> {
+    if (!accountId) return null;
+
+    try {
+        const url = `${BACKEND_API_BASE}/confidential/history-refresh/status`;
+        const response = await axios.get<ConfidentialHistoryRefreshStatus>(
+            url,
+            {
+                params: { accountId },
+                withCredentials: true,
+            },
+        );
+        return response.data;
+    } catch (error) {
+        console.error(
+            "Error getting confidential history refresh status",
+            error,
+        );
+        return null;
+    }
+}
+
+export async function refreshConfidentialHistory(
+    accountId: string,
+): Promise<ConfidentialHistoryRefreshStatus | null> {
+    if (!accountId) return null;
+
+    const url = `${BACKEND_API_BASE}/confidential/history-refresh`;
+    const response = await axios.post<ConfidentialHistoryRefreshStatus>(
+        url,
+        { accountId },
+        { withCredentials: true },
+    );
+    return response.data;
+}
+
 export async function getRecentActivitySenders(
     accountId: string,
     transactionType?: string,

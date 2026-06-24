@@ -368,11 +368,22 @@
             "type": "Tipo",
             "date": "Data",
             "request": "Solicitação",
+            "viewLinkedRequest": "Ver solicitação vinculada",
             "from": "De",
             "to": "Para",
             "method": "Método",
             "contract": "Contrato",
             "transaction": "Transação"
+        },
+        "refresh": {
+            "ariaLabel": "Atualizar histórico confidencial",
+            "refreshing": "Atualizando…",
+            "lastUpdated": "Última atualização {time}",
+            "notUpdated": "Ainda não atualizado",
+            "justNow": "agora",
+            "moments": "instantes",
+            "checking": "Verificando status de atualização…",
+            "unavailable": "Status de atualização indisponível"
         }
     },
     "apiDocs": {

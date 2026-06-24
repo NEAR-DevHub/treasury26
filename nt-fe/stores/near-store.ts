@@ -30,6 +30,7 @@ import {
     type ProposalPermissionKind,
 } from "@/lib/config-utils";
 import type { Proposal, Vote as ProposalVote } from "@/lib/proposals-api";
+import { clearSessionQueries } from "@/lib/session-query-cleanup";
 import {
     estimateProposalStorage,
     estimateVoteStorage,
@@ -270,9 +271,11 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 walletAccountId: null,
                 isAuthenticated: false,
                 hasAcceptedTerms: false,
+                isAuthenticating: false,
                 user: null,
                 authError: null,
             });
+            posthog.reset();
         });
 
         // Login is driven explicitly in `connect()` via NEP-641 `resolveAuth`,
@@ -376,7 +379,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
     disconnect: async () => {
         const { connector } = get();
 
-        // Logout from backend first
+        // Logout from backend first, then drop local auth state.
         try {
             await authLogout();
         } catch (error) {
@@ -385,8 +388,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
         // Reset auth state
         set({
+            walletAccountId: null,
             isAuthenticated: false,
             hasAcceptedTerms: false,
+            isAuthenticating: false,
             user: null,
             authError: null,
         });
@@ -485,6 +490,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 isAuthenticated: false,
                 hasAcceptedTerms: false,
                 user: null,
+                walletAccountId: null,
             });
         }
     },
@@ -723,6 +729,12 @@ export const useNear = () => {
     // accountId is only available when fully authenticated (connected + auth + terms accepted)
     const accountId =
         isAuthenticated && hasAcceptedTerms ? walletAccountId : null;
+    const disconnectAndClearSession = async () => {
+        // Logout + reset auth state first, then clear the cached session data.
+        await disconnect();
+        await clearSessionQueries(queryClient);
+    };
+
     const createProposal = async (
         toastMessage: string,
         params: CreateProposalParams,
@@ -872,7 +884,7 @@ export const useNear = () => {
         authError,
         user,
         connect,
-        disconnect,
+        disconnect: disconnectAndClearSession,
         acceptTerms,
         checkAuth,
         clearError,

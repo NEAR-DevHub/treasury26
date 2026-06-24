@@ -676,6 +676,7 @@ export default function RequestReceiptPage({
     const searchParams = useSearchParams();
     const recipientFilter = searchParams.get("recipient");
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
+    const isHidden = isConfidential && isGuestTreasury;
     const receiptUrl =
         typeof window !== "undefined" ? window.location.href : "";
 
@@ -712,7 +713,6 @@ export default function RequestReceiptPage({
         submissionTime,
     );
 
-    const isHidden = isConfidential && isGuestTreasury;
     const status =
         proposal && policy ? getProposalStatus(proposal, policy) : undefined;
 
@@ -830,7 +830,9 @@ export default function RequestReceiptPage({
             : (batchReceiptData?.tokenId ??
               batchPaymentData?.tokenId ??
               "near");
-    const { data: batchTokenData } = useToken(effectiveBatchTokenId);
+    const { data: batchTokenData } = useToken(
+        !isHidden ? effectiveBatchTokenId : null,
+    );
     const { data: batchHistoricalPrice } = useTokenPriceAtTimestamp(
         effectiveBatchTokenId,
         executedAtIso,
@@ -999,15 +1001,38 @@ export default function RequestReceiptPage({
         );
     }
 
-    if (!isValidReceipt) {
-        redirect(`/${treasuryId}/requests`);
-    }
     const handlePrint = () => {
         if (treasuryId && !isHidden) {
             recordReceiptMetric(treasuryId, "print");
         }
         window.print();
     };
+
+    if (isHidden) {
+        return (
+            <ReceiptPageShell
+                receiptUrl={receiptUrl}
+                showCopyLink={false}
+                onPrint={handlePrint}
+            >
+                <PageCard className="bg-card p-8 rounded-none">
+                    <ConfidentialState
+                        skeleton={
+                            <div className="space-y-3">
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                            </div>
+                        }
+                    />
+                </PageCard>
+            </ReceiptPageShell>
+        );
+    }
+
+    if (!isValidReceipt) {
+        redirect(`/${treasuryId}/requests`);
+    }
 
     if (isBatchPaymentProposal) {
         return (
@@ -1050,66 +1075,52 @@ export default function RequestReceiptPage({
             showCopyLink={!isConfidential}
             onPrint={handlePrint}
         >
-            {isHidden ? (
-                <PageCard className="bg-card p-8 rounded-none">
-                    <ConfidentialState
-                        skeleton={
-                            <div className="space-y-3">
-                                <Skeleton className="h-16 w-full" />
-                                <Skeleton className="h-16 w-full" />
-                                <Skeleton className="h-16 w-full" />
-                            </div>
-                        }
-                    />
-                </PageCard>
-            ) : (
-                <PageCard className="force-light-theme bg-white text-foreground p-8 rounded-none print:bg-white print:shadow-none">
-                    <ReceiptLayout
-                        title={
-                            isExchangeProposal
-                                ? tReceipt("exchangeConfirmation")
-                                : tReceipt("paymentConfirmation")
-                        }
-                        proposalId={proposalId}
-                        receiptDate={{
-                            value: transactionDate,
-                            isLoading: isTransactionDateLoading,
-                        }}
-                    >
-                        {isExchangeProposal ? (
-                            <ExchangeReceiptSections
-                                sourceToken={sourceTokenInfo}
-                                destinationToken={destinationTokenInfo}
-                                rate={{
-                                    value: rateLabel,
-                                    isLoading: isRateLoading,
-                                }}
-                                executedTime={{
-                                    value: executedTimeValue,
-                                    isLoading: isTransactionDateLoading,
-                                }}
-                            />
-                        ) : (
-                            <PaymentReceiptSections
-                                recipientAddress={{
-                                    value: receiverAddress ?? null,
-                                    isLoading: false,
-                                }}
-                                sourceToken={sourceTokenInfo}
-                                destinationToken={destinationTokenInfo}
-                                rate={{
-                                    value: rateLabel,
-                                    isLoading: isRateLoading,
-                                }}
-                                executedTime={{
-                                    value: executedTimeValue,
-                                    isLoading: isTransactionDateLoading,
-                                }}
-                            />
-                        )}
-                    </ReceiptLayout>
-                </PageCard>
-            )}
+            <PageCard className="force-light-theme bg-white text-foreground p-8 rounded-none print:bg-white print:shadow-none">
+                <ReceiptLayout
+                    title={
+                        isExchangeProposal
+                            ? tReceipt("exchangeConfirmation")
+                            : tReceipt("paymentConfirmation")
+                    }
+                    proposalId={proposalId}
+                    receiptDate={{
+                        value: transactionDate,
+                        isLoading: isTransactionDateLoading,
+                    }}
+                >
+                    {isExchangeProposal ? (
+                        <ExchangeReceiptSections
+                            sourceToken={sourceTokenInfo}
+                            destinationToken={destinationTokenInfo}
+                            rate={{
+                                value: rateLabel,
+                                isLoading: isRateLoading,
+                            }}
+                            executedTime={{
+                                value: executedTimeValue,
+                                isLoading: isTransactionDateLoading,
+                            }}
+                        />
+                    ) : (
+                        <PaymentReceiptSections
+                            recipientAddress={{
+                                value: receiverAddress ?? null,
+                                isLoading: false,
+                            }}
+                            sourceToken={sourceTokenInfo}
+                            destinationToken={destinationTokenInfo}
+                            rate={{
+                                value: rateLabel,
+                                isLoading: isRateLoading,
+                            }}
+                            executedTime={{
+                                value: executedTimeValue,
+                                isLoading: isTransactionDateLoading,
+                            }}
+                        />
+                    )}
+                </ReceiptLayout>
+            </PageCard>
         </ReceiptPageShell>
     );
 }
