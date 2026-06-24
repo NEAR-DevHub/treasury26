@@ -368,6 +368,7 @@
             "type": "סוג",
             "date": "תאריך",
             "request": "בקשה",
+            "viewLinkedRequest": "צפה בבקשה המקושרת",
             "from": "מאת",
             "to": "אל",
             "method": "שיטה",

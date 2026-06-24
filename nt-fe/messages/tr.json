@@ -368,6 +368,7 @@
             "type": "Tür",
             "date": "Tarih",
             "request": "Talep",
+            "viewLinkedRequest": "Bağlantılı talebi görüntüle",
             "from": "Kimden",
             "to": "Kime",
             "method": "Metot",

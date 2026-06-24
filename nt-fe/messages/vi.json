@@ -368,6 +368,7 @@
             "type": "Loại",
             "date": "Ngày",
             "request": "Yêu cầu",
+            "viewLinkedRequest": "Xem yêu cầu được liên kết",
             "from": "Từ",
             "to": "Đến",
             "method": "Phương thức",

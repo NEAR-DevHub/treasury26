@@ -368,6 +368,7 @@
             "type": "Tipe",
             "date": "Tanggal",
             "request": "Permintaan",
+            "viewLinkedRequest": "Lihat Permintaan Tertaut",
             "from": "Dari",
             "to": "Ke",
             "method": "Metode",

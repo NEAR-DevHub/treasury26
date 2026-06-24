@@ -6,7 +6,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/modal";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { RecentActivity } from "@/lib/api";
@@ -25,6 +25,7 @@ import { formatActivityAmount, formatSmartAmount } from "@/lib/utils";
 import { TransactionHashCell } from "./transaction-hash-cell";
 import { useTreasury } from "@/hooks/use-treasury";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { Button } from "@/components/button";
 
 interface TransactionDetailsModalProps {
     activity: RecentActivity | null;
@@ -225,23 +226,6 @@ export function TransactionDetailsModal({
                                     />
                                 ),
                             },
-                            ...(activity.proposalId != null
-                                ? [
-                                      {
-                                          label: t("request"),
-                                          value: (
-                                              <Link
-                                                  href={`/${treasuryId}/requests/${activity.proposalId}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="text-primary underline"
-                                              >
-                                                  #{activity.proposalId}
-                                              </Link>
-                                          ),
-                                      } as InfoItem,
-                                  ]
-                                : []),
                             ...(isSwap && activity.swap
                                 ? [
                                       {
@@ -325,6 +309,22 @@ export function TransactionDetailsModal({
                                 : []),
                         ]}
                     />
+                    {activity.proposalId != null ? (
+                        <Button
+                            asChild
+                            variant="secondary"
+                            className="h-12 w-full rounded-[8px] font-medium"
+                        >
+                            <Link
+                                href={`/${treasuryId}/requests/${activity.proposalId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {t("viewLinkedRequest")}
+                                <ArrowRight className="size-4" />
+                            </Link>
+                        </Button>
+                    ) : null}
                 </div>
             </DialogContent>
         </Dialog>

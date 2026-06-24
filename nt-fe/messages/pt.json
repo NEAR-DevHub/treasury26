@@ -368,6 +368,7 @@
             "type": "Tipo",
             "date": "Data",
             "request": "Solicitação",
+            "viewLinkedRequest": "Ver solicitação vinculada",
             "from": "De",
             "to": "Para",
             "method": "Método",

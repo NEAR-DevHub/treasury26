@@ -635,7 +635,7 @@ export default function BalanceWithGraph({
                                                 chartData.data.length === 0))
                                     }
                                 >
-                                    <SelectValue>
+                                    <SelectValue >
                                         {selectedToken === "all" ? (
                                             <div className="flex items-center gap-2">
                                                 <Coins className="size-4" />
