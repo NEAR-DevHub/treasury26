@@ -161,7 +161,6 @@
       border-left-width: 4px;
     }
     .audit-card.activated { border-left-color: var(--green, #34a853); }
-    .audit-card.deactivated { border-left-color: var(--muted); }
     .audit-card.deleted { border-left-color: var(--red); }
     .audit-card.updated { border-left-color: var(--blue); }
     .audit-card.created,
@@ -192,7 +191,6 @@
       border: 1px solid var(--border);
     }
     .audit-card.activated .audit-action-tag { color: #81c995; border-color: rgba(52,168,83,0.35); }
-    .audit-card.deactivated .audit-action-tag { color: var(--muted); }
     .audit-card.deleted .audit-action-tag { color: #ff8a80; border-color: rgba(234,67,53,0.35); }
     .audit-card.updated .audit-action-tag { color: #8ab4f8; border-color: rgba(66,133,244,0.35); }
     .audit-actor { margin-bottom: 0.45rem; }
@@ -1586,7 +1584,6 @@
     const AUDIT_ACTION_LABELS = {
       created: 'Created',
       activated: 'Activated',
-      deactivated: 'Deactivated',
       updated: 'Updated',
       deleted: 'Deleted',
       scheduled: 'Scheduled',
@@ -1597,6 +1594,8 @@
       status_recovery: 'Auto-recovery',
       linked_service_recovery: 'Linked service cleared',
       linked_post_resolved: 'Intents post resolved',
+      upsert_replace: 'Replaced duplicate',
+      expired_schedule: 'Schedule ended',
     };
 
     const HEALTH_SERVICE_LABELS = {
@@ -1650,6 +1649,14 @@
       if (c.source === 'admin_update') {
         const slot = slotLabel(c.slot);
         return slot && slot !== '—' ? `Deleted · ${slot}` : 'Deleted';
+      }
+      if (c.source === 'upsert_replace') {
+        const slot = slotLabel(c.slot);
+        return slot && slot !== '—' ? `Deleted · duplicate · ${slot}` : 'Deleted · duplicate';
+      }
+      if (c.source === 'expired_schedule') {
+        const slot = slotLabel(c.slot);
+        return slot && slot !== '—' ? `Deleted · schedule ended · ${slot}` : 'Deleted · schedule ended';
       }
       if (entry.action === 'deleted') {
         const slot = slotLabel(c.slot);
@@ -1715,7 +1722,7 @@
 
     function auditActionClass(entry) {
       const action = entry.action || 'updated';
-      if (['created', 'activated', 'deactivated', 'deleted', 'updated', 'scheduled'].includes(action)) {
+      if (['created', 'activated', 'deleted', 'updated', 'scheduled'].includes(action)) {
         return action;
       }
       return 'updated';

@@ -58,7 +58,13 @@ pub async fn get_status_incidents(
     )
     .fetch_all(&state.db_pool)
     .await
-    .unwrap_or_default();
+    .map_err(|e| {
+        tracing::error!("[status-incidents] Failed to load active incidents: {e}");
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": "Failed to load status incidents." })),
+        )
+    })?;
 
     let services: Vec<ServiceStatus> = SUPPORTED_SERVICES
         .iter()

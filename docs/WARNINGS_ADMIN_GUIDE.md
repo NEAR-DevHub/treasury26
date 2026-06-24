@@ -4,6 +4,8 @@ The warnings admin panel lets you display status messages, pause features, and m
 
 **URL:** `https://<backend>/internal/warnings` (protected by Basic Auth)
 
+**Team access:** set `ADMIN_USERS=alice:secret1,bob:secret2` (password may contain colons). Each login is recorded in the audit log as `changedBy`.
+
 ---
 
 ## Quick start
@@ -169,6 +171,8 @@ In the warning form, **Link to upstream service** ties a warning to a live healt
 | **Specific NEAR Intents post** | That post disappears from the status API or its scheduled end time passes |
 
 Linked warnings are **deleted automatically** on recovery. The audit log keeps a record (`deleted`, with the slot and link source).
+
+Scheduled warnings with an **end time** are also deleted automatically once that time passes.
 
 **Telegram “Show fallback” warnings count as linked** — activation sets `linked_service` to the failing check (backend, exchange, near-rpc, etc.), so they are removed the same way when that service recovers.
 

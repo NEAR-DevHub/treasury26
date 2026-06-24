@@ -34,7 +34,6 @@ CREATE TABLE warning_audit_log (
         action IN (
             'created',
             'activated',
-            'deactivated',
             'updated',
             'deleted',
             'scheduled'
@@ -56,5 +55,10 @@ WHERE
 CREATE INDEX idx_warning_slots_group ON warning_slots (group_id)
 WHERE
     group_id IS NOT NULL;
+
+CREATE INDEX idx_warning_slots_linked_service_active ON warning_slots (linked_service)
+WHERE
+    linked_service IS NOT NULL
+    AND is_active = true;
 
 CREATE INDEX idx_warning_audit_log_created_at ON warning_audit_log (created_at DESC);

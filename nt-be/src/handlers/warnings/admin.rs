@@ -15,10 +15,22 @@ use std::sync::Arc;
 
 use crate::{
     AppState,
-    handlers::warnings::{db, templates},
+    handlers::warnings::{
+        db::{self, AuditAction},
+        templates,
+    },
+    utils::admin_auth,
 };
 
 const BASIC_AUTH_REALM: &str = "Warnings Admin";
+
+const ADMIN_WARNING_COLUMNS: &str = r#"
+    id, slot, token, network, is_active, severity,
+    user_message, scenario, internal_note,
+    show_from, starts_at, ends_at,
+    linked_service, linked_post_id, group_id,
+    updated_by, updated_at, created_at
+"#;
 
 pub struct AdminError {
     status: StatusCode,
@@ -93,30 +105,27 @@ pub fn require_admin(headers: &HeaderMap, state: &AppState) -> Result<AdminUser,
         ));
     };
 
-    let Some((configured_username, configured_password)) = state
-        .env_vars
-        .admin_username
-        .as_deref()
-        .zip(state.env_vars.admin_password.as_deref())
-    else {
+    if state.env_vars.admin_users.is_empty() {
         return Err(AdminError::with_headers(
             StatusCode::UNAUTHORIZED,
             "Admin access is not configured.",
             unauthorized_headers,
         ));
-    };
+    }
 
-    if username == configured_username && password == configured_password {
-        Ok(AdminUser {
-            username: username.to_string(),
-        })
-    } else {
-        Err(AdminError::with_headers(
+    let Some(configured_username) =
+        admin_auth::authenticate_admin(&state.env_vars.admin_users, username, password)
+    else {
+        return Err(AdminError::with_headers(
             StatusCode::UNAUTHORIZED,
             "Incorrect username or password.",
             unauthorized_headers,
-        ))
-    }
+        ));
+    };
+
+    Ok(AdminUser {
+        username: configured_username,
+    })
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow, Clone)]
@@ -144,7 +153,7 @@ pub struct AdminWarning {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateWarningRequest {
+pub struct WarningRequest {
     pub slot: Option<String>,
     pub token: Option<String>,
     pub network: Option<String>,
@@ -153,27 +162,7 @@ pub struct CreateWarningRequest {
     pub user_message: Option<String>,
     pub scenario: Option<String>,
     pub internal_note: Option<String>,
-    /// ISO-8601 timestamp, or empty string when unset.
-    pub show_from: Option<String>,
-    pub starts_at: Option<String>,
-    pub ends_at: Option<String>,
-    pub linked_service: Option<String>,
-    pub linked_post_id: Option<String>,
-    pub group_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateWarningRequest {
-    pub slot: Option<String>,
-    pub token: Option<String>,
-    pub network: Option<String>,
-    pub is_active: Option<bool>,
-    pub severity: Option<String>,
-    pub user_message: Option<String>,
-    pub scenario: Option<String>,
-    pub internal_note: Option<String>,
-    /// ISO-8601 timestamp, or empty string to clear.
+    /// ISO-8601 timestamp, or empty string when unset / cleared.
     pub show_from: Option<String>,
     pub starts_at: Option<String>,
     pub ends_at: Option<String>,
@@ -237,39 +226,14 @@ fn validate_severity(severity: &str) -> Result<(), (StatusCode, String)> {
     }
 }
 
-async fn delete_warnings_with_key(
-    pool: &sqlx::PgPool,
-    except_id: Option<i32>,
-    slot: &Option<String>,
-    token: &Option<String>,
-    network: &Option<String>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        r#"
-        DELETE FROM warning_slots
-        WHERE ($1::int IS NULL OR id != $1)
-          AND COALESCE(slot, '') = COALESCE($2, '')
-          AND COALESCE(token, '') = COALESCE($3, '')
-          AND COALESCE(network, '') = COALESCE($4, '')
-        "#,
-    )
-    .bind(except_id)
-    .bind(slot)
-    .bind(token)
-    .bind(network)
-    .execute(pool)
-    .await?;
-    Ok(())
-}
-
-async fn insert_audit_log(
-    pool: &sqlx::PgPool,
+async fn insert_audit_log_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     warning_id: Option<i32>,
-    action: &str,
+    action: AuditAction,
     changed_by: &str,
     changes: Value,
 ) -> Result<(), (StatusCode, String)> {
-    db::insert_audit_log(pool, warning_id, action, changed_by, changes)
+    db::insert_audit_log(&mut **tx, warning_id, action, changed_by, changes)
         .await
         .map_err(|e| {
             tracing::error!("Failed to insert audit log: {}", e);
@@ -312,16 +276,16 @@ fn determine_update_action(
     new_is_active: bool,
     show_from: &Option<DateTime<Utc>>,
     ends_at: &Option<DateTime<Utc>>,
-) -> &'static str {
+) -> AuditAction {
     if show_from.is_some() || ends_at.is_some() {
-        return "scheduled";
+        return AuditAction::Scheduled;
     }
 
     if old.is_active != new_is_active && new_is_active {
-        return "activated";
+        return AuditAction::Activated;
     }
 
-    "updated"
+    AuditAction::Updated
 }
 
 fn build_changes(old: &AdminWarning, new: &AdminWarning) -> Value {
@@ -361,18 +325,9 @@ pub async fn list_warnings(
 ) -> Result<Json<Vec<AdminWarning>>, AdminError> {
     let _admin = require_admin(&headers, &state)?;
 
-    let warnings = sqlx::query_as::<_, AdminWarning>(
-        r#"
-        SELECT
-            id, slot, token, network, is_active, severity,
-            user_message, scenario, internal_note,
-            show_from, starts_at, ends_at,
-            linked_service, linked_post_id, group_id,
-            updated_by, updated_at, created_at
-        FROM warning_slots
-        ORDER BY id
-        "#,
-    )
+    let warnings = sqlx::query_as::<_, AdminWarning>(&format!(
+        "SELECT {ADMIN_WARNING_COLUMNS} FROM warning_slots ORDER BY id"
+    ))
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
@@ -389,7 +344,7 @@ pub async fn list_warnings(
 pub async fn create_warning(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Json(body): Json<CreateWarningRequest>,
+    Json(body): Json<WarningRequest>,
 ) -> Result<Json<AdminWarning>, AdminError> {
     let admin = require_admin(&headers, &state)?;
 
@@ -456,16 +411,31 @@ pub async fn create_warning(
     let linked_post_id = empty_to_none(body.linked_post_id);
     let group_id = empty_to_none(body.group_id);
 
-    delete_warnings_with_key(&state.db_pool, None, &slot, &token, &network)
-        .await
-        .map_err(|_| {
-            AdminError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to create warning.",
-            )
-        })?;
+    let mut tx = state.db_pool.begin().await.map_err(|_| {
+        AdminError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to create warning.",
+        )
+    })?;
 
-    let warning = sqlx::query_as::<_, AdminWarning>(
+    db::delete_conflicting_warnings_with_audit(
+        &mut tx,
+        None,
+        &slot,
+        &token,
+        &network,
+        &admin.username,
+        "upsert_replace",
+    )
+    .await
+    .map_err(|_| {
+        AdminError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to create warning.",
+        )
+    })?;
+
+    let warning = sqlx::query_as::<_, AdminWarning>(&format!(
         r#"
         INSERT INTO warning_slots (
             slot, token, network, is_active, severity,
@@ -474,14 +444,9 @@ pub async fn create_warning(
             linked_service, linked_post_id, group_id, updated_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-        RETURNING
-            id, slot, token, network, is_active, severity,
-            user_message, scenario, internal_note,
-            show_from, starts_at, ends_at,
-            linked_service, linked_post_id, group_id,
-            updated_by, updated_at, created_at
-        "#,
-    )
+        RETURNING {ADMIN_WARNING_COLUMNS}
+        "#
+    ))
     .bind(&slot)
     .bind(&token)
     .bind(&network)
@@ -497,7 +462,7 @@ pub async fn create_warning(
     .bind(&linked_post_id)
     .bind(&group_id)
     .bind(&admin.username)
-    .fetch_one(&state.db_pool)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| {
         tracing::error!("Failed to create warning: {}", e);
@@ -510,15 +475,15 @@ pub async fn create_warning(
     })?;
 
     let action = if show_from.is_some() || ends_at.is_some() {
-        "scheduled"
+        AuditAction::Scheduled
     } else if is_active {
-        "activated"
+        AuditAction::Activated
     } else {
-        "created"
+        AuditAction::Created
     };
 
-    insert_audit_log(
-        &state.db_pool,
+    insert_audit_log_in_tx(
+        &mut tx,
         Some(warning.id),
         action,
         &admin.username,
@@ -541,6 +506,13 @@ pub async fn create_warning(
     .await
     .map_err(|(status, msg)| AdminError::new(status, msg))?;
 
+    tx.commit().await.map_err(|_| {
+        AdminError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to create warning.",
+        )
+    })?;
+
     db::invalidate_warnings_cache(&state).await;
 
     Ok(Json(warning))
@@ -550,22 +522,13 @@ pub async fn update_warning(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Path(id): Path<i32>,
-    Json(body): Json<UpdateWarningRequest>,
+    Json(body): Json<WarningRequest>,
 ) -> Result<Response, AdminError> {
     let admin = require_admin(&headers, &state)?;
 
-    let existing = sqlx::query_as::<_, AdminWarning>(
-        r#"
-        SELECT
-            id, slot, token, network, is_active, severity,
-            user_message, scenario, internal_note,
-            show_from, starts_at, ends_at,
-            linked_service, linked_post_id, group_id,
-            updated_by, updated_at, created_at
-        FROM warning_slots
-        WHERE id = $1
-        "#,
-    )
+    let existing = sqlx::query_as::<_, AdminWarning>(&format!(
+        "SELECT {ADMIN_WARNING_COLUMNS} FROM warning_slots WHERE id = $1"
+    ))
     .bind(id)
     .fetch_optional(&state.db_pool)
     .await
@@ -640,16 +603,31 @@ pub async fn update_warning(
         return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
-    delete_warnings_with_key(&state.db_pool, Some(id), &slot, &token, &network)
-        .await
-        .map_err(|_| {
-            AdminError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to update warning.",
-            )
-        })?;
+    let mut tx = state.db_pool.begin().await.map_err(|_| {
+        AdminError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to update warning.",
+        )
+    })?;
 
-    let updated = sqlx::query_as::<_, AdminWarning>(
+    db::delete_conflicting_warnings_with_audit(
+        &mut tx,
+        Some(id),
+        &slot,
+        &token,
+        &network,
+        &admin.username,
+        "upsert_replace",
+    )
+    .await
+    .map_err(|_| {
+        AdminError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to update warning.",
+        )
+    })?;
+
+    let updated = sqlx::query_as::<_, AdminWarning>(&format!(
         r#"
         UPDATE warning_slots
         SET
@@ -670,14 +648,9 @@ pub async fn update_warning(
             updated_by = $16,
             updated_at = NOW()
         WHERE id = $1
-        RETURNING
-            id, slot, token, network, is_active, severity,
-            user_message, scenario, internal_note,
-            show_from, starts_at, ends_at,
-            linked_service, linked_post_id, group_id,
-            updated_by, updated_at, created_at
-        "#,
-    )
+        RETURNING {ADMIN_WARNING_COLUMNS}
+        "#
+    ))
     .bind(id)
     .bind(&slot)
     .bind(&token)
@@ -694,7 +667,7 @@ pub async fn update_warning(
     .bind(&linked_post_id)
     .bind(&group_id)
     .bind(&admin.username)
-    .fetch_one(&state.db_pool)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| {
         tracing::error!("Failed to update warning {}: {}", id, e);
@@ -721,10 +694,17 @@ pub async fn update_warning(
     let changes = build_changes(&previous, &updated);
 
     if !changes.as_object().is_some_and(|m| m.is_empty()) {
-        insert_audit_log(&state.db_pool, Some(id), action, &admin.username, changes)
+        insert_audit_log_in_tx(&mut tx, Some(id), action, &admin.username, changes)
             .await
             .map_err(|(status, msg)| AdminError::new(status, msg))?;
     }
+
+    tx.commit().await.map_err(|_| {
+        AdminError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to update warning.",
+        )
+    })?;
 
     db::invalidate_warnings_cache(&state).await;
 
@@ -738,18 +718,9 @@ pub async fn delete_warning(
 ) -> Result<StatusCode, AdminError> {
     let admin = require_admin(&headers, &state)?;
 
-    let existing = sqlx::query_as::<_, AdminWarning>(
-        r#"
-        SELECT
-            id, slot, token, network, is_active, severity,
-            user_message, scenario, internal_note,
-            show_from, starts_at, ends_at,
-            linked_service, linked_post_id, group_id,
-            updated_by, updated_at, created_at
-        FROM warning_slots
-        WHERE id = $1
-        "#,
-    )
+    let existing = sqlx::query_as::<_, AdminWarning>(&format!(
+        "SELECT {ADMIN_WARNING_COLUMNS} FROM warning_slots WHERE id = $1"
+    ))
     .bind(id)
     .fetch_optional(&state.db_pool)
     .await

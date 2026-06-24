@@ -4,7 +4,10 @@ use sqlx::PgPool;
 
 use crate::{
     AppState,
-    handlers::warnings::{db, templates},
+    handlers::warnings::{
+        db::{self, AuditAction},
+        templates,
+    },
 };
 
 pub const SHOW_FALLBACK_CALLBACK_PREFIX: &str = "show_fallback:";
@@ -251,8 +254,8 @@ struct WarningSlotRow {
     linked_post_id: Option<String>,
 }
 
-async fn load_unscoped_slot(
-    pool: &PgPool,
+async fn load_unscoped_slot<'c, E: sqlx::PgExecutor<'c>>(
+    executor: E,
     slot: &str,
 ) -> Result<Option<WarningSlotRow>, sqlx::Error> {
     sqlx::query_as::<_, WarningSlotRow>(
@@ -263,7 +266,7 @@ async fn load_unscoped_slot(
         "#,
     )
     .bind(slot)
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await
 }
 
@@ -287,20 +290,20 @@ async fn load_linked_warnings_for_service(
     .await
 }
 
-async fn ensure_unscoped_slot(
-    pool: &PgPool,
+async fn ensure_unscoped_slot_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     target: &FallbackTarget,
     service: &str,
     activated_by: &str,
 ) -> Result<WarningSlotRow, String> {
     let user_message = target.message();
 
-    if let Some(existing) = load_unscoped_slot(pool, target.slot)
+    if let Some(existing) = load_unscoped_slot(&mut **tx, target.slot)
         .await
         .map_err(|e| format!("failed to load warning slot: {e}"))?
     {
-        return activate_existing_slot(
-            pool,
+        return activate_existing_slot_in_tx(
+            tx,
             existing,
             target,
             service,
@@ -326,13 +329,13 @@ async fn ensure_unscoped_slot(
     .bind(target.scenario)
     .bind(service)
     .bind(activated_by)
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await
     .map_err(|e| format!("failed to create warning slot: {e}"))
 }
 
-async fn activate_existing_slot(
-    pool: &PgPool,
+async fn activate_existing_slot_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     existing: WarningSlotRow,
     target: &FallbackTarget,
     service: &str,
@@ -368,7 +371,7 @@ async fn activate_existing_slot(
     .bind(target.scenario)
     .bind(service)
     .bind(activated_by)
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await
     .map_err(|e| format!("failed to activate warning slot: {e}"))
 }
@@ -384,8 +387,14 @@ pub async fn activate_fallback(
     let mut first_warning_id = None;
     let mut already_active = true;
 
+    let mut tx = state
+        .db_pool
+        .begin()
+        .await
+        .map_err(|e| format!("failed to start fallback transaction: {e}"))?;
+
     for target in config.targets {
-        let existing = load_unscoped_slot(&state.db_pool, target.slot)
+        let existing = load_unscoped_slot(&mut *tx, target.slot)
             .await
             .map_err(|e| format!("failed to load warning slot: {e}"))?;
 
@@ -398,16 +407,16 @@ pub async fn activate_fallback(
             already_active = false;
         }
 
-        let updated = ensure_unscoped_slot(&state.db_pool, target, service, activated_by).await?;
+        let updated = ensure_unscoped_slot_in_tx(&mut tx, target, service, activated_by).await?;
 
         if first_warning_id.is_none() {
             first_warning_id = Some(updated.id);
         }
 
         db::insert_audit_log(
-            &state.db_pool,
+            &mut *tx,
             Some(updated.id),
-            "activated",
+            AuditAction::Activated,
             activated_by,
             json!({
                 "slot": target.slot,
@@ -425,6 +434,7 @@ pub async fn activate_fallback(
     }
 
     if already_active {
+        tx.rollback().await.ok();
         return Ok(None);
     }
 
@@ -438,10 +448,14 @@ pub async fn activate_fallback(
         )
         .bind(service)
         .bind(warning_id)
-        .execute(&state.db_pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| format!("failed to update status incident: {e}"))?;
     }
+
+    tx.commit()
+        .await
+        .map_err(|e| format!("failed to commit fallback activation: {e}"))?;
 
     db::invalidate_warnings_cache(state).await;
 

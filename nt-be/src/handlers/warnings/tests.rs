@@ -18,6 +18,19 @@ fn basic_auth_header(username: &str, password: &str) -> String {
     format!("Basic {encoded}")
 }
 
+fn primary_admin_auth(state: &AppState) -> String {
+    let admin = state
+        .env_vars
+        .admin_users
+        .first()
+        .expect("At least one admin user should be configured in tests");
+    basic_auth_header(&admin.username, &admin.password)
+}
+
+fn field_is_cleared(value: Option<&Value>) -> bool {
+    value.is_none_or(|v| v.is_null())
+}
+
 async fn response_json(response: axum::response::Response) -> Value {
     let body = to_bytes(response.into_body(), usize::MAX)
         .await
@@ -31,48 +44,47 @@ async fn test_public_warnings_returns_only_active_and_scheduled(pool: PgPool) {
     let state = test_state(pool.clone());
     let app = create_routes(state);
 
-    sqlx::query("UPDATE warning_slots SET is_active = false, show_from = NULL, ends_at = NULL")
+    sqlx::query("DELETE FROM warning_slots")
         .execute(&pool)
         .await
-        .expect("Should reset warnings");
+        .expect("Should clear warnings");
 
     sqlx::query(
         r#"
-        UPDATE warning_slots
-        SET is_active = true, user_message = 'App is degraded'
-        WHERE slot = 'app'
+        INSERT INTO warning_slots (slot, is_active, severity, user_message)
+        VALUES ('app', true, 'warning', 'App is degraded')
         "#,
     )
     .execute(&pool)
     .await
-    .expect("Should activate app warning");
+    .expect("Should insert active app warning");
 
     sqlx::query(
         r#"
-        UPDATE warning_slots
-        SET is_active = false,
-            show_from = NOW() - INTERVAL '1 hour',
-            ends_at = NOW() + INTERVAL '1 hour',
-            user_message = 'Exchange maintenance'
-        WHERE slot = 'exchange'
+        INSERT INTO warning_slots (slot, is_active, severity, user_message, show_from, ends_at)
+        VALUES (
+            'exchange',
+            false,
+            'warning',
+            'Exchange maintenance',
+            NOW() - INTERVAL '1 hour',
+            NOW() + INTERVAL '1 hour'
+        )
         "#,
     )
     .execute(&pool)
     .await
-    .expect("Should schedule exchange warning");
+    .expect("Should insert scheduled exchange warning");
 
     sqlx::query(
         r#"
-        UPDATE warning_slots
-        SET is_active = true,
-            ends_at = NOW() - INTERVAL '1 minute',
-            user_message = 'Expired warning'
-        WHERE slot = 'deposit'
+        INSERT INTO warning_slots (slot, is_active, severity, user_message, ends_at)
+        VALUES ('deposit', true, 'critical', 'Expired warning', NOW() - INTERVAL '1 minute')
         "#,
     )
     .execute(&pool)
     .await
-    .expect("Should expire deposit warning");
+    .expect("Should insert expired deposit warning");
 
     let response = app
         .oneshot(
@@ -137,18 +149,7 @@ async fn test_admin_endpoints_require_basic_auth(pool: PgPool) {
 async fn test_admin_warning_crud_and_audit_log(pool: PgPool) {
     let state = test_state(pool.clone());
     let app = create_routes(state.clone());
-    let auth = basic_auth_header(
-        state
-            .env_vars
-            .admin_username
-            .as_deref()
-            .expect("ADMIN_USERNAME"),
-        state
-            .env_vars
-            .admin_password
-            .as_deref()
-            .expect("ADMIN_PASSWORD"),
-    );
+    let auth = primary_admin_auth(&state);
 
     let create_response = app
         .clone()
@@ -244,18 +245,7 @@ async fn test_admin_warning_crud_and_audit_log(pool: PgPool) {
 async fn test_admin_update_clears_nullable_fields(pool: PgPool) {
     let state = test_state(pool.clone());
     let app = create_routes(state.clone());
-    let auth = basic_auth_header(
-        state
-            .env_vars
-            .admin_username
-            .as_deref()
-            .expect("ADMIN_USERNAME"),
-        state
-            .env_vars
-            .admin_password
-            .as_deref()
-            .expect("ADMIN_PASSWORD"),
-    );
+    let auth = primary_admin_auth(&state);
 
     let create_response = app
         .clone()
@@ -318,8 +308,71 @@ async fn test_admin_update_clears_nullable_fields(pool: PgPool) {
 
     assert_eq!(update_response.status(), StatusCode::OK);
     let updated = response_json(update_response).await;
-    assert!(updated.get("linkedService").is_none());
-    assert!(updated.get("linkedPostId").is_none());
-    assert!(updated.get("scenario").is_none());
-    assert!(updated.get("internalNote").is_none());
+    assert!(field_is_cleared(updated.get("linkedService")));
+    assert!(field_is_cleared(updated.get("linkedPostId")));
+    assert!(field_is_cleared(updated.get("scenario")));
+    assert!(field_is_cleared(updated.get("internalNote")));
+}
+
+#[sqlx::test]
+async fn test_multiple_admin_users_are_recorded_in_audit_log(pool: PgPool) {
+    let state = test_state(pool.clone());
+    let app = create_routes(state.clone());
+
+    let second_admin = state
+        .env_vars
+        .admin_users
+        .get(1)
+        .expect("Second admin user should be configured in .env.test");
+
+    let auth = basic_auth_header(&second_admin.username, &second_admin.password);
+
+    let create_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/internal/api/warnings")
+                .header(header::AUTHORIZATION, &auth)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "slot": "payments",
+                        "isActive": true,
+                        "severity": "warning",
+                        "userMessage": "Created by second admin"
+                    })
+                    .to_string(),
+                ))
+                .expect("Should build create request"),
+        )
+        .await
+        .expect("Create request should complete");
+
+    assert_eq!(create_response.status(), StatusCode::OK);
+
+    let audit_response = app
+        .oneshot(
+            Request::builder()
+                .uri("/internal/api/audit-log?limit=5")
+                .header(header::AUTHORIZATION, &auth)
+                .body(Body::empty())
+                .expect("Should build audit request"),
+        )
+        .await
+        .expect("Audit request should complete");
+
+    assert_eq!(audit_response.status(), StatusCode::OK);
+    let audit = response_json(audit_response).await;
+    let entries = audit
+        .get("entries")
+        .and_then(Value::as_array)
+        .expect("Audit response should include entries");
+
+    assert!(
+        entries.iter().any(|entry| {
+            entry.get("changedBy").and_then(Value::as_str) == Some(second_admin.username.as_str())
+        }),
+        "Audit log should record the authenticated admin username"
+    );
 }

@@ -410,6 +410,63 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
     }
 }
 
+async fn delete_expired_warnings(state: &AppState) {
+    #[derive(sqlx::FromRow)]
+    struct ExpiredWarning {
+        id: i32,
+        slot: Option<String>,
+        token: Option<String>,
+        network: Option<String>,
+    }
+
+    let warnings = match sqlx::query_as::<_, ExpiredWarning>(
+        r#"
+        SELECT id, slot, token, network
+        FROM warning_slots
+        WHERE ends_at IS NOT NULL AND ends_at <= NOW()
+        "#,
+    )
+    .fetch_all(&state.db_pool)
+    .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("[status-monitor] Failed to load expired warnings: {e}");
+            return;
+        }
+    };
+
+    if warnings.is_empty() {
+        return;
+    }
+
+    let mut deleted = 0usize;
+    for warning in warnings {
+        let changes = db::audit_delete_changes(
+            warning.id,
+            warning.slot.clone(),
+            warning.token.clone(),
+            warning.network.clone(),
+            json!({ "source": "expired_schedule" }),
+        );
+        if let Err(e) =
+            db::delete_warning_with_audit(&state.db_pool, warning.id, "system", changes).await
+        {
+            tracing::error!(
+                "[status-monitor] Failed to delete expired warning {}: {e}",
+                warning.id
+            );
+            continue;
+        }
+        deleted += 1;
+    }
+
+    if deleted > 0 {
+        db::invalidate_warnings_cache(state).await;
+        tracing::info!("[status-monitor] Deleted {deleted} expired scheduled warning(s)");
+    }
+}
+
 async fn send_recovery_telegram(state: &Arc<AppState>, recovery: &fallbacks::AutoFallbackRecovery) {
     let text = fallbacks::format_recovery_message(recovery);
     if let Err(e) = state.telegram_client.send_ops_alert_html(&text).await {
@@ -418,10 +475,16 @@ async fn send_recovery_telegram(state: &Arc<AppState>, recovery: &fallbacks::Aut
 }
 
 pub async fn run_monitor_cycle(state: &Arc<AppState>) {
-    for service in SUPPORTED_SERVICES {
-        process_service(state, service).await;
-    }
+    futures::future::join_all(SUPPORTED_SERVICES.iter().map(|&service| {
+        let state = Arc::clone(state);
+        async move {
+            process_service(&state, service).await;
+        }
+    }))
+    .await;
+
     check_linked_posts_resolved(state).await;
+    delete_expired_warnings(state).await;
 
     match fallbacks::cleanup_stale_auto_fallbacks(state).await {
         Ok(recoveries) => {
