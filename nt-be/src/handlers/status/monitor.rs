@@ -23,12 +23,18 @@ fn incident_status(status: &OhDearStatus) -> &'static str {
 }
 
 fn format_ops_alert(service: &str, check_name: &str, status: &str, message: &str) -> String {
+    let action = if fallbacks::supports_fallback_button(service) {
+        "Click <b>Show fallback</b> to activate the user-facing warning."
+    } else {
+        "Create the warning manually in admin."
+    };
+
     format!(
         "⚠️ <b>Health check failed</b>: {service}\n\
          Check: <code>{check_name}</code>\n\
          Status: <b>{status}</b>\n\
          {message}\n\n\
-         Click <b>Show fallback</b> to activate the user-facing warning."
+         {action}"
     )
 }
 
@@ -135,6 +141,10 @@ async fn recover_incident(pool: &sqlx::PgPool, incident_id: i32) -> Result<(), s
 }
 
 async fn deactivate_linked_warnings(state: &AppState, service: &str) {
+    if fallbacks::fallback_config(service).is_some() {
+        return;
+    }
+
     let result = sqlx::query_scalar::<_, i32>(
         r#"
         UPDATE warning_slots
@@ -282,7 +292,8 @@ pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
 }
 
 async fn process_service(state: &Arc<AppState>, service: &str) {
-    let Some(check) = oh_dear::run_service_check(state, service).await else {
+    let check = oh_dear::run_service_check(state, service).await;
+    let Some(check) = check else {
         return;
     };
 
@@ -321,15 +332,19 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
 
         if incident.telegram_message_id.is_none() {
             let text = format_ops_alert(service, check_name, status, &check.notification_message);
-            let callback_data = format!("{SHOW_FALLBACK_CALLBACK_PREFIX}{service}");
+            let callback_data = fallbacks::supports_fallback_button(service)
+                .then(|| format!("{SHOW_FALLBACK_CALLBACK_PREFIX}{service}"));
             let admin_url = admin_page_url();
 
             match state
                 .telegram_client
-                .send_ops_alert_with_buttons(&text, &admin_url, &callback_data)
+                .send_ops_alert_with_buttons(&text, &admin_url, callback_data.as_deref())
                 .await
             {
                 Ok(message_id) if message_id > 0 => {
+                    tracing::info!(
+                        "[status-monitor] Sent ops alert for {service} (telegram message {message_id})"
+                    );
                     if let Err(e) =
                         set_incident_telegram_message(&state.db_pool, incident.id, message_id).await
                     {
@@ -369,10 +384,13 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
         deactivate_linked_warnings(state, service).await;
 
         match fallbacks::deactivate_fallback(state, service).await {
-            Ok(true) => {
-                tracing::info!("[status-monitor] Recovered {service}; deactivated auto-fallback");
+            Ok(Some(recovery)) => {
+                tracing::info!(
+                    "[status-monitor] Recovered {service}; deactivated linked fallback warning(s)"
+                );
+                send_recovery_telegram(state, &recovery).await;
             }
-            Ok(false) => {
+            Ok(None) => {
                 tracing::info!("[status-monitor] Recovered {service}");
             }
             Err(e) => {
@@ -384,11 +402,32 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
     }
 }
 
+async fn send_recovery_telegram(state: &Arc<AppState>, recovery: &fallbacks::AutoFallbackRecovery) {
+    let text = fallbacks::format_recovery_message(recovery);
+    if let Err(e) = state.telegram_client.send_ops_alert_html(&text).await {
+        tracing::error!("[status-monitor] Failed to send recovery ops alert: {e}");
+    }
+}
+
 pub async fn run_monitor_cycle(state: &Arc<AppState>) {
     for service in SUPPORTED_SERVICES {
         process_service(state, service).await;
     }
     check_linked_posts_resolved(state).await;
+
+    match fallbacks::cleanup_stale_auto_fallbacks(state).await {
+        Ok(recoveries) => {
+            for recovery in recoveries {
+                tracing::info!(
+                    "[status-monitor] Cleared stale auto-linked fallback warning(s) for slot"
+                );
+                send_recovery_telegram(state, &recovery).await;
+            }
+        }
+        Err(e) => {
+            tracing::error!("[status-monitor] Failed stale auto-fallback cleanup: {e}");
+        }
+    }
 }
 
 pub fn run_status_monitor_loop(state: Arc<AppState>) {
@@ -401,7 +440,7 @@ pub fn run_status_monitor_loop(state: Arc<AppState>) {
         tracing::info!(
             "Starting status monitor worker ({}s interval, {}s initial delay)",
             MONITOR_INTERVAL_SECONDS,
-            initial_delay
+            initial_delay,
         );
 
         tokio::time::sleep(Duration::from_secs(initial_delay)).await;

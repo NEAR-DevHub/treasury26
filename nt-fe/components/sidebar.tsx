@@ -348,11 +348,12 @@ export function Sidebar({ onClose }: SidebarProps) {
                 </nav>
 
                 <div className="hidden lg:flex flex-col w-full justify-center items-center gap-2">
-                    <SlotWarning
-                        slot="app"
-                        headingClassName="font-medium"
-                        className={cn("px-3.5", isReduced && "hidden")}
-                    />
+                    <div className={cn("w-full px-3.5", isReduced && "hidden")}>
+                        <SlotWarning
+                            slot="app"
+                            headingClassName="font-medium"
+                        />
+                    </div>
                     <CreateBanner disabled={isReduced} />
                     <div className={cn(!isReduced && "px-3.5 w-full flex")}>
                         <ConfidentialBanner

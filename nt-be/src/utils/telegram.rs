@@ -1,6 +1,6 @@
 use teloxide::{
     Bot,
-    payloads::SendMessageSetters,
+    payloads::{EditMessageTextSetters, SendMessageSetters},
     requests::Requester,
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode},
 };
@@ -35,6 +35,32 @@ impl TelegramClient {
     /// Expose the inner teloxide Bot, if configured.
     pub fn bot(&self) -> Option<&Bot> {
         self.bot.as_ref()
+    }
+
+    /// Send a plain-text notification to the configured internal alerts channel (HTML).
+    pub async fn send_ops_alert_html(
+        &self,
+        text: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let (bot, chat_id_str) = match (&self.bot, &self.notification_chat_id) {
+            (Some(b), Some(c)) => (b, c),
+            _ => {
+                tracing::warn!(
+                    "Telegram client not configured. Ops alert ignored: {}",
+                    text
+                );
+                return Ok(());
+            }
+        };
+
+        let chat_id: i64 = chat_id_str
+            .parse()
+            .map_err(|_| format!("Invalid TELEGRAM_CHAT_ID: {}", chat_id_str))?;
+
+        bot.send_message(ChatId(chat_id), text)
+            .parse_mode(ParseMode::Html)
+            .await?;
+        Ok(())
     }
 
     /// Send a plain-text notification to the configured internal alerts channel.
@@ -119,12 +145,12 @@ impl TelegramClient {
         Ok(sent.id.0)
     }
 
-    /// Send an ops-channel alert with "Show fallback" callback and "Open admin" URL buttons.
+    /// Send an ops-channel alert with optional "Show fallback" callback and "Open admin" URL buttons.
     pub async fn send_ops_alert_with_buttons(
         &self,
         text: &str,
         admin_url: &str,
-        callback_data: &str,
+        callback_data: Option<&str>,
     ) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
         let (bot, chat_id_str) = match (&self.bot, &self.notification_chat_id) {
             (Some(b), Some(c)) => (b, c),
@@ -145,10 +171,15 @@ impl TelegramClient {
             .parse()
             .map_err(|_| format!("Invalid admin URL: {}", admin_url))?;
 
-        let keyboard = InlineKeyboardMarkup::new([[
-            InlineKeyboardButton::callback("Show fallback", callback_data.to_string()),
-            InlineKeyboardButton::url("Open admin", parsed_url),
-        ]]);
+        let keyboard = match callback_data {
+            Some(callback_data) => InlineKeyboardMarkup::new([[
+                InlineKeyboardButton::callback("Show fallback", callback_data.to_string()),
+                InlineKeyboardButton::url("Open admin", parsed_url),
+            ]]),
+            None => {
+                InlineKeyboardMarkup::new([[InlineKeyboardButton::url("Open admin", parsed_url)]])
+            }
+        };
 
         let sent = bot
             .send_message(ChatId(chat_id), text)
@@ -183,6 +214,7 @@ impl TelegramClient {
                 teloxide::types::MessageId(message_id),
                 text,
             )
+            .parse_mode(ParseMode::Html)
             .await
         {
             tracing::warn!(
@@ -191,7 +223,9 @@ impl TelegramClient {
                 chat_id,
                 edit_err
             );
-            bot.send_message(ChatId(chat_id), text).await?;
+            bot.send_message(ChatId(chat_id), text)
+                .parse_mode(ParseMode::Html)
+                .await?;
         }
 
         Ok(())
