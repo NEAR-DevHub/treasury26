@@ -195,8 +195,9 @@ async fn handle_callback_query(state: &AppState, callback: teloxide::types::Call
         .unwrap_or("telegram-user");
 
     match fallbacks::activate_fallback(state, service, activated_by).await {
-        Ok(Some(_)) => {
-            let note = fallbacks::format_activation_message(service, activated_by, false);
+        Ok(warning_id) => {
+            let already_active = warning_id.is_none();
+            let note = fallbacks::format_activation_message(service, activated_by, already_active);
             if let Err(e) = state
                 .telegram_client
                 .edit_message_text(chat_id, message.id().0, &note)
@@ -206,20 +207,12 @@ async fn handle_callback_query(state: &AppState, callback: teloxide::types::Call
                     "[telegram] Failed to edit fallback activation message in chat {chat_id}: {e}"
                 );
             }
-            answer_callback_query(state, callback.id.clone(), Some("Fallback activated")).await;
-        }
-        Ok(None) => {
-            let note = fallbacks::format_activation_message(service, activated_by, true);
-            if let Err(e) = state
-                .telegram_client
-                .edit_message_text(chat_id, message.id().0, &note)
-                .await
-            {
-                tracing::error!(
-                    "[telegram] Failed to edit fallback activation message in chat {chat_id}: {e}"
-                );
-            }
-            answer_callback_query(state, callback.id.clone(), Some("Warning already active")).await;
+            let callback_text = if already_active {
+                "Warning already active"
+            } else {
+                "Fallback activated"
+            };
+            answer_callback_query(state, callback.id.clone(), Some(callback_text)).await;
         }
         Err(e) => {
             tracing::error!("[telegram] Failed to activate fallback for {service}: {e}");

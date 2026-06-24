@@ -34,35 +34,20 @@ export interface Warning {
     endsAt: string | null;
 }
 
-/**
- * The word that replaces the {action} placeholder per slot/page context.
- * Mirrors ACTION_BY_SLOT in the backend admin form.
- */
-const ACTION_BY_SLOT: Record<string, string> = {
-    payments: "payment",
-    deposit: "deposit",
-    exchange: "swap",
-    "action.vote": "vote",
-    "action.create-proposal": "proposal",
-};
-
-export function getActionWord(slot: string | null | undefined): string {
-    if (!slot) return "transaction";
-    return ACTION_BY_SLOT[slot] ?? "transaction";
-}
-
-/** Replace the {action} placeholder in a templated message. */
+/** Replace the `{action}` placeholder in a templated message. */
 export function fillAction(
     message: string,
     slotOrAction: string | null | undefined,
+    actionBySlot: Record<string, string>,
 ): string {
     const action =
-        ACTION_BY_SLOT[slotOrAction ?? ""] ?? slotOrAction ?? "transaction";
+        actionBySlot[slotOrAction ?? ""] ?? slotOrAction ?? "transaction";
     return message.replace(/\{action\}/g, action);
 }
 
 interface WarningsApiResponse {
     warnings: Warning[];
+    actionBySlot: Record<string, string>;
 }
 
 const SEVERITY_RANK: Record<WarningSeverity, number> = {
@@ -141,22 +126,24 @@ function pickBestWarning(warnings: Warning[]): Warning | null {
     });
 }
 
-async function fetchWarnings(): Promise<Warning[]> {
-    const { data } = await axios.get<WarningsApiResponse | Warning[]>(
+async function fetchWarnings(): Promise<{
+    warnings: Warning[];
+    actionBySlot: Record<string, string>;
+}> {
+    const { data } = await axios.get<WarningsApiResponse>(
         `${BACKEND_API_BASE}/warnings`,
         { timeout: 10_000 },
     );
 
-    if (Array.isArray(data)) {
-        return data;
-    }
-
-    return data.warnings ?? [];
+    return {
+        warnings: data.warnings ?? [],
+        actionBySlot: data.actionBySlot ?? {},
+    };
 }
 
 interface WarningsContextValue {
     warnings: Warning[];
-    backendDown: boolean;
+    actionBySlot: Record<string, string>;
     isLoading: boolean;
     getWarning: (
         slot: string,
@@ -169,7 +156,7 @@ interface WarningsContextValue {
 const WarningsContext = createContext<WarningsContextValue | null>(null);
 
 export function WarningsProvider({ children }: { children: ReactNode }) {
-    const { data, isError, isLoading } = useQuery({
+    const { data, isLoading } = useQuery({
         queryKey: ["warnings"],
         queryFn: fetchWarnings,
         refetchInterval: WARNINGS_POLL_INTERVAL_MS,
@@ -177,8 +164,8 @@ export function WarningsProvider({ children }: { children: ReactNode }) {
         retry: false,
     });
 
-    const warnings = data ?? [];
-    const backendDown = isError;
+    const warnings = data?.warnings ?? [];
+    const actionBySlot = data?.actionBySlot ?? {};
 
     const getWarning = useCallback(
         (slot: string, token?: string, network?: string): Warning | null => {
@@ -199,12 +186,12 @@ export function WarningsProvider({ children }: { children: ReactNode }) {
     const value = useMemo(
         () => ({
             warnings,
-            backendDown,
+            actionBySlot,
             isLoading,
             getWarning,
             hasWarning,
         }),
-        [warnings, backendDown, isLoading, getWarning, hasWarning],
+        [warnings, actionBySlot, isLoading, getWarning, hasWarning],
     );
 
     return (
@@ -241,7 +228,7 @@ const TX_ACTION_SLOTS = new Set([
  * Returns the matched warning plus a ready-to-use short label.
  */
 export function useSlotBlock(slot: string, token?: string, network?: string) {
-    const { getWarning } = useWarnings();
+    const { getWarning, actionBySlot } = useWarnings();
     const warning = getWarning(slot, token, network);
 
     const appWarning = TX_ACTION_SLOTS.has(slot) ? getWarning("app") : null;
@@ -259,7 +246,7 @@ export function useSlotBlock(slot: string, token?: string, network?: string) {
         warning: effective,
         blocked,
         message: effective?.message
-            ? fillAction(effective.message, slot)
+            ? fillAction(effective.message, slot, actionBySlot)
             : null,
     };
 }

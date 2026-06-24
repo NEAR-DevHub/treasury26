@@ -21,7 +21,7 @@ interface PageComponentLayoutProps {
     backButton?: boolean | string;
     hideLogin?: boolean;
     hideCollapseButton?: boolean;
-    hideSystemStatusBanner?: boolean;
+    hideAppWarningBanner?: boolean;
     transparentHeader?: boolean;
     hideHeaderBottomBorder?: boolean;
     logo?: ReactNode;
@@ -35,7 +35,7 @@ export function PageComponentLayout({
     backButton,
     hideCollapseButton,
     hideLogin,
-    hideSystemStatusBanner,
+    hideAppWarningBanner,
     transparentHeader = false,
     hideHeaderBottomBorder = false,
     logo,
@@ -152,7 +152,7 @@ export function PageComponentLayout({
                     mainClassName,
                 )}
             >
-                {!hideSystemStatusBanner && (
+                {!hideAppWarningBanner && (
                     <SlotWarning slot="app" className="lg:hidden mb-3" />
                 )}
                 {children}

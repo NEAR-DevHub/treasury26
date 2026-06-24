@@ -7,9 +7,51 @@
 //!      predefined `scenario` chosen by the admin.
 //!
 //! Generated messages may contain a literal `{action}` placeholder that the
-//! frontend fills in per page (e.g. "payment", "deposit", "swap").
+//! frontend fills in per page (e.g. "payment", "deposit", "exchange").
 
 const STATUS_PAGE_LINK: &str = "[Status page](https://status.trezu.org/)";
+
+const TOKEN_NETWORK_CRITICAL_SECONDARY_TOKEN: &str =
+    "You can use a different token in the meantime.";
+const TOKEN_NETWORK_CRITICAL_SECONDARY_NETWORK: &str =
+    "You can use a different network in the meantime.";
+const TOKEN_NETWORK_WARNING_BODY: &str =
+    "Your {action} will go through once it recovers, it just may take longer than usual.";
+
+/// Action words substituted for `{action}` per slot (admin preview + public API).
+pub fn action_by_slot() -> std::collections::HashMap<String, String> {
+    [
+        ("payments", "payment"),
+        ("deposit", "deposit"),
+        ("exchange", "exchange"),
+        ("action.vote", "vote"),
+        ("action.create-proposal", "proposal"),
+        ("data.balances", "transaction"),
+        ("data.prices", "transaction"),
+    ]
+    .into_iter()
+    .map(|(slot, action)| (slot.to_string(), action.to_string()))
+    .collect()
+}
+
+fn scenario_label(scenario: &str) -> String {
+    match scenario {
+        "scheduled_maintenance" => "Scheduled maintenance".into(),
+        "cant_process" => "Can't process requests".into(),
+        "swaps_paused" => "Swaps are paused".into(),
+        "payments_paused" => "Payments paused".into(),
+        "deposits_paused" => "Deposits paused".into(),
+        "requests_blocked" => "Requests blocked".into(),
+        "balance_unavailable" => "Balance unavailable".into(),
+        "history_not_loading" => "History not loading".into(),
+        "prices_delayed" => "Prices delayed".into(),
+        "tier1_backend" => "Tier 1 · Backend issue".into(),
+        "tier2_tx_paused" => "Tier 2 · Transactions paused".into(),
+        "tier3_down" => "Tier 3 · App temporarily down".into(),
+        "tier4_investigating" => "Tier 4 · Under investigation".into(),
+        _ => scenario.to_string(),
+    }
+}
 
 /// All scenario-based message templates as (slot, scenario, message) tuples.
 /// Single source of truth — used by `scenario_messages()` at runtime and
@@ -176,10 +218,55 @@ pub fn template_data_json() -> String {
         login.insert(key.into(), serde_json::Value::String(msg));
     }
 
+    let mut scenarios_by_slot = serde_json::Map::new();
+    for (slot, scenario, _) in scenario_entries() {
+        let entry = scenarios_by_slot
+            .entry(slot.to_string())
+            .or_insert_with(|| serde_json::Value::Array(vec![]));
+        if let Some(arr) = entry.as_array_mut() {
+            let already_listed = arr.iter().any(|item| {
+                item.get("value")
+                    .and_then(|v| v.as_str())
+                    .is_some_and(|v| v == scenario)
+            });
+            if !already_listed {
+                arr.push(serde_json::json!({
+                    "value": scenario,
+                    "label": scenario_label(scenario),
+                }));
+            }
+        }
+    }
+
+    let mut scenario_severity_map = serde_json::Map::new();
+    for (_, scenario, _) in scenario_entries() {
+        if let Some(severity) = scenario_severity(scenario) {
+            scenario_severity_map.insert(
+                scenario.to_string(),
+                serde_json::Value::String(severity.to_string()),
+            );
+        }
+    }
+
+    let action_by_slot: serde_json::Map<String, serde_json::Value> = action_by_slot()
+        .into_iter()
+        .map(|(slot, action)| (slot, serde_json::Value::String(action)))
+        .collect();
+
     let data = serde_json::json!({
         "statusPageLink": STATUS_PAGE_LINK,
         "scenarioMessages": scenarios,
         "loginMessages": login,
+        "scenariosBySlot": scenarios_by_slot,
+        "scenarioSeverity": scenario_severity_map,
+        "actionBySlot": action_by_slot,
+        "tokenNetwork": {
+            "criticalPrimary": "{subject} is paused right now",
+            "warningPrimary": "{subject} is slow right now",
+            "criticalSecondaryToken": TOKEN_NETWORK_CRITICAL_SECONDARY_TOKEN,
+            "criticalSecondaryNetwork": TOKEN_NETWORK_CRITICAL_SECONDARY_NETWORK,
+            "warningBody": TOKEN_NETWORK_WARNING_BODY,
+        },
     });
 
     serde_json::to_string(&data).unwrap()
@@ -248,9 +335,9 @@ fn token_network_messages(severity: &str, token: Option<&str>, network: Option<&
 
     if severity == "critical" {
         let secondary = if token.is_some() {
-            "You can use a different token in the meantime."
+            TOKEN_NETWORK_CRITICAL_SECONDARY_TOKEN
         } else {
-            "You can use a different network in the meantime."
+            TOKEN_NETWORK_CRITICAL_SECONDARY_NETWORK
         };
         return merge_warning_message(&format!("{subject} is paused right now"), secondary);
     }
@@ -258,7 +345,7 @@ fn token_network_messages(severity: &str, token: Option<&str>, network: Option<&
     // warning / info -- slow / degraded, does not block.
     merge_warning_message(
         &format!("{subject} is slow right now"),
-        "Your {action} will go through once it recovers, it just may take longer than usual.",
+        TOKEN_NETWORK_WARNING_BODY,
     )
 }
 

@@ -13,7 +13,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::sync::Arc;
 
-use crate::{AppState, handlers::warnings::templates, utils::cache::CacheKey};
+use crate::{
+    AppState,
+    handlers::warnings::{db, templates},
+};
 
 const BASIC_AUTH_REALM: &str = "Warnings Admin";
 
@@ -150,9 +153,10 @@ pub struct CreateWarningRequest {
     pub user_message: Option<String>,
     pub scenario: Option<String>,
     pub internal_note: Option<String>,
-    pub show_from: Option<DateTime<Utc>>,
-    pub starts_at: Option<DateTime<Utc>>,
-    pub ends_at: Option<DateTime<Utc>>,
+    /// ISO-8601 timestamp, or empty string when unset.
+    pub show_from: Option<String>,
+    pub starts_at: Option<String>,
+    pub ends_at: Option<String>,
     pub linked_service: Option<String>,
     pub linked_post_id: Option<String>,
     pub group_id: Option<String>,
@@ -169,12 +173,13 @@ pub struct UpdateWarningRequest {
     pub user_message: Option<String>,
     pub scenario: Option<String>,
     pub internal_note: Option<String>,
-    pub show_from: Option<Option<DateTime<Utc>>>,
-    pub starts_at: Option<Option<DateTime<Utc>>>,
-    pub ends_at: Option<Option<DateTime<Utc>>>,
-    pub linked_service: Option<Option<String>>,
-    pub linked_post_id: Option<Option<String>>,
-    pub group_id: Option<Option<String>>,
+    /// ISO-8601 timestamp, or empty string to clear.
+    pub show_from: Option<String>,
+    pub starts_at: Option<String>,
+    pub ends_at: Option<String>,
+    pub linked_service: Option<String>,
+    pub linked_post_id: Option<String>,
+    pub group_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -214,6 +219,14 @@ fn empty_to_none(value: Option<String>) -> Option<String> {
     })
 }
 
+fn parse_optional_utc(value: Option<String>) -> Option<DateTime<Utc>> {
+    empty_to_none(value).and_then(|s| {
+        chrono::DateTime::parse_from_rfc3339(&s)
+            .ok()
+            .map(|dt| dt.with_timezone(&Utc))
+    })
+}
+
 fn validate_severity(severity: &str) -> Result<(), (StatusCode, String)> {
     match severity {
         "info" | "warning" | "critical" => Ok(()),
@@ -224,9 +237,29 @@ fn validate_severity(severity: &str) -> Result<(), (StatusCode, String)> {
     }
 }
 
-async fn invalidate_warnings_cache(state: &AppState) {
-    let cache_key = CacheKey::new("public-warnings").build();
-    state.cache.short_term.invalidate(&cache_key).await;
+async fn delete_warnings_with_key(
+    pool: &sqlx::PgPool,
+    except_id: Option<i32>,
+    slot: &Option<String>,
+    token: &Option<String>,
+    network: &Option<String>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        DELETE FROM warning_slots
+        WHERE ($1::int IS NULL OR id != $1)
+          AND COALESCE(slot, '') = COALESCE($2, '')
+          AND COALESCE(token, '') = COALESCE($3, '')
+          AND COALESCE(network, '') = COALESCE($4, '')
+        "#,
+    )
+    .bind(except_id)
+    .bind(slot)
+    .bind(token)
+    .bind(network)
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 async fn insert_audit_log(
@@ -236,27 +269,15 @@ async fn insert_audit_log(
     changed_by: &str,
     changes: Value,
 ) -> Result<(), (StatusCode, String)> {
-    sqlx::query(
-        r#"
-        INSERT INTO warning_audit_log (warning_id, action, changed_by, changes)
-        VALUES ($1, $2, $3, $4)
-        "#,
-    )
-    .bind(warning_id)
-    .bind(action)
-    .bind(changed_by)
-    .bind(changes)
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to insert audit log: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to write audit log: {}", e),
-        )
-    })?;
-
-    Ok(())
+    db::insert_audit_log(pool, warning_id, action, changed_by, changes)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to insert audit log: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to write audit log: {}", e),
+            )
+        })
 }
 
 fn determine_update_action(
@@ -382,13 +403,16 @@ pub async fn create_warning(
     }
 
     let is_active = body.is_active.unwrap_or(false);
-    if !is_active && body.show_from.is_none() {
+    let show_from = parse_optional_utc(body.show_from);
+    let starts_at = parse_optional_utc(body.starts_at);
+    let ends_at = parse_optional_utc(body.ends_at);
+    if !is_active && show_from.is_none() {
         return Err(AdminError::new(
             StatusCode::BAD_REQUEST,
             "Either mark the warning as active or set a show-from time.",
         ));
     }
-    if let (Some(start), Some(end)) = (body.starts_at, body.ends_at)
+    if let (Some(start), Some(end)) = (starts_at, ends_at)
         && end <= start
     {
         return Err(AdminError::new(
@@ -408,6 +432,15 @@ pub async fn create_warning(
     }
     let linked_post_id = empty_to_none(body.linked_post_id);
     let group_id = empty_to_none(body.group_id);
+
+    delete_warnings_with_key(&state.db_pool, None, &slot, &token, &network)
+        .await
+        .map_err(|_| {
+            AdminError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to create warning.",
+            )
+        })?;
 
     let warning = sqlx::query_as::<_, AdminWarning>(
         r#"
@@ -433,10 +466,10 @@ pub async fn create_warning(
     .bind(&severity)
     .bind(&user_message)
     .bind(&scenario)
-    .bind(&body.internal_note)
-    .bind(body.show_from)
-    .bind(body.starts_at)
-    .bind(body.ends_at)
+    .bind(empty_to_none(body.internal_note))
+    .bind(show_from)
+    .bind(starts_at)
+    .bind(ends_at)
     .bind(&linked_service)
     .bind(&linked_post_id)
     .bind(&group_id)
@@ -453,7 +486,7 @@ pub async fn create_warning(
         AdminError::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create warning. Please try again.")
     })?;
 
-    let action = if body.show_from.is_some() || body.ends_at.is_some() {
+    let action = if show_from.is_some() || ends_at.is_some() {
         "scheduled"
     } else if is_active {
         "activated"
@@ -485,7 +518,7 @@ pub async fn create_warning(
     .await
     .map_err(|(status, msg)| AdminError::new(status, msg))?;
 
-    invalidate_warnings_cache(&state).await;
+    db::invalidate_warnings_cache(&state).await;
 
     Ok(Json(warning))
 }
@@ -525,23 +558,11 @@ pub async fn update_warning(
         validate_severity(severity).map_err(|(status, msg)| AdminError::new(status, msg))?;
     }
 
-    let slot = body
-        .slot
-        .map(|s| empty_to_none(Some(s)))
-        .unwrap_or(existing.slot);
-    let token = body
-        .token
-        .map(|s| empty_to_none(Some(s)))
-        .unwrap_or(existing.token);
-    let network = body
-        .network
-        .map(|s| empty_to_none(Some(s)))
-        .unwrap_or(existing.network);
+    let slot = empty_to_none(body.slot).or(existing.slot.clone());
+    let token = empty_to_none(body.token);
+    let network = empty_to_none(body.network);
     let is_active = body.is_active.unwrap_or(existing.is_active);
-    let scenario = match body.scenario {
-        Some(value) => empty_to_none(Some(value)),
-        None => existing.scenario.clone(),
-    };
+    let scenario = empty_to_none(body.scenario);
     let mut severity = body.severity.unwrap_or(existing.severity);
     if let Some(implied) = scenario.as_deref().and_then(templates::scenario_severity) {
         severity = implied.to_string();
@@ -555,39 +576,17 @@ pub async fn update_warning(
         scenario.as_deref(),
     );
 
-    let user_message = match body.user_message {
-        Some(value) => empty_to_none(Some(value)),
-        None => existing.user_message.clone(),
+    let user_message = empty_to_none(body.user_message).or(generated);
+    let internal_note = empty_to_none(body.internal_note);
+    let show_from = parse_optional_utc(body.show_from);
+    let starts_at = parse_optional_utc(body.starts_at);
+    let ends_at = parse_optional_utc(body.ends_at);
+    let linked_service = empty_to_none(body.linked_service);
+    let mut linked_post_id = empty_to_none(body.linked_post_id);
+    if linked_service.is_none() {
+        linked_post_id = None;
     }
-    .or_else(|| generated.clone());
-
-    let internal_note = body
-        .internal_note
-        .or_else(|| existing.internal_note.clone());
-    let show_from = match body.show_from {
-        Some(value) => value,
-        None => existing.show_from,
-    };
-    let starts_at = match body.starts_at {
-        Some(value) => value,
-        None => existing.starts_at,
-    };
-    let ends_at = match body.ends_at {
-        Some(value) => value,
-        None => existing.ends_at,
-    };
-    let linked_service = match body.linked_service {
-        Some(value) => value,
-        None => existing.linked_service.clone(),
-    };
-    let linked_post_id = match body.linked_post_id {
-        Some(value) => value,
-        None => existing.linked_post_id.clone(),
-    };
-    let group_id = match body.group_id {
-        Some(value) => value.filter(|s| !s.trim().is_empty()),
-        None => existing.group_id.clone(),
-    };
+    let group_id = empty_to_none(body.group_id);
 
     if let Some(ref svc) = linked_service
         && !crate::handlers::status::oh_dear::SUPPORTED_SERVICES.contains(&svc.as_str())
@@ -597,6 +596,15 @@ pub async fn update_warning(
             "Invalid linked service.",
         ));
     }
+
+    delete_warnings_with_key(&state.db_pool, Some(id), &slot, &token, &network)
+        .await
+        .map_err(|_| {
+            AdminError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to update warning.",
+            )
+        })?;
 
     let updated = sqlx::query_as::<_, AdminWarning>(
         r#"
@@ -675,7 +683,7 @@ pub async fn update_warning(
             .map_err(|(status, msg)| AdminError::new(status, msg))?;
     }
 
-    invalidate_warnings_cache(&state).await;
+    db::invalidate_warnings_cache(&state).await;
 
     Ok(Json(updated))
 }
@@ -734,7 +742,7 @@ pub async fn delete_warning(
     .await
     .map_err(|(status, msg)| AdminError::new(status, msg))?;
 
-    invalidate_warnings_cache(&state).await;
+    db::invalidate_warnings_cache(&state).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

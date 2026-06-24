@@ -146,7 +146,7 @@ pub struct IntentsStatusResponse {
     pub posts: Vec<IntentsStatusPost>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct IntentsStatusPost {
     pub id: Option<String>,
     pub title: String,

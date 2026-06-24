@@ -252,6 +252,7 @@
           <div class="subtabs" id="warning-subtabs">
             <button class="subtab active" data-filter="live">Active <span class="count" id="count-live">·</span></button>
             <button class="subtab" data-filter="scheduled">Upcoming <span class="count" id="count-scheduled">·</span></button>
+            <button class="subtab" data-filter="inactive">Inactive <span class="count" id="count-inactive">·</span></button>
           </div>
           <div class="toolbar" style="margin:0">
             <button id="btn-new-warning">+ Add</button>
@@ -311,6 +312,7 @@
     let allNetworkOptions = [];   // [{ id, name }] de-duped across assets by name
     const tokenNameById = {};
     const networkNameById = {};
+    let bridgeTokensPromise = null;
 
     function tokenLabel(id) {
       return id ? (tokenNameById[id] || id) : '';
@@ -382,72 +384,17 @@
     }
 
     // Injected at serve time from templates.rs — single source of truth for
-    // scenario messages, login messages, and the status-page link.
+    // scenario messages, login messages, scenario metadata, and token/network templates.
     const TEMPLATE_DATA = "__TEMPLATE_DATA__";
 
-    // Predefined scenarios per slot.
-    const SCENARIOS = {
-      'features': [
-        { value: 'scheduled_maintenance', label: 'Scheduled maintenance' },
-        { value: 'cant_process', label: "Can't process requests" },
-      ],
-      exchange: [
-        { value: 'swaps_paused', label: 'Swaps are paused' },
-        { value: 'cant_process', label: "Can't process requests" },
-        { value: 'scheduled_maintenance', label: 'Scheduled maintenance' },
-      ],
-      payments: [
-        { value: 'payments_paused', label: 'Payments paused' },
-        { value: 'cant_process', label: "Can't process requests" },
-        { value: 'scheduled_maintenance', label: 'Scheduled maintenance' },
-      ],
-      deposit: [
-        { value: 'deposits_paused', label: 'Deposits paused' },
-        { value: 'scheduled_maintenance', label: 'Scheduled maintenance' },
-      ],
-      'action.vote': [{ value: 'requests_blocked', label: 'Requests blocked' }],
-      'action.create-proposal': [{ value: 'requests_blocked', label: 'Requests blocked' }],
-      'data.balances': [{ value: 'balance_unavailable', label: 'Balance unavailable' }],
-      'data.activity': [{ value: 'history_not_loading', label: 'History not loading' }],
-      'data.prices': [{ value: 'prices_delayed', label: 'Prices delayed' }],
-      app: [
-        { value: 'tier1_backend', label: 'Tier 1 · Backend issue' },
-        { value: 'tier2_tx_paused', label: 'Tier 2 · Transactions paused' },
-        { value: 'tier3_down', label: 'Tier 3 · App temporarily down' },
-        { value: 'tier4_investigating', label: 'Tier 4 · Under investigation' },
-      ],
-    };
-
-    // Scenarios that force a severity (the admin can't change it).
-    const SCENARIO_SEVERITY = {
-      tier1_backend: 'warning',
-      tier2_tx_paused: 'critical',
-      tier3_down: 'critical',
-      scheduled_maintenance: 'critical',
-      tier4_investigating: 'critical',
-      requests_blocked: 'critical',
-      swaps_paused: 'critical',
-      payments_paused: 'critical',
-      deposits_paused: 'critical',
-      cant_process: 'critical',
-    };
-
+    const SCENARIOS = TEMPLATE_DATA.scenariosBySlot;
+    const SCENARIO_SEVERITY = TEMPLATE_DATA.scenarioSeverity;
+    const ACTION_BY_SLOT = TEMPLATE_DATA.actionBySlot;
     // When a scenario fixes the severity, the admin can't change it — hide the picker.
     function scenarioForcesSeverity(scenario) {
       return Boolean(scenario && SCENARIO_SEVERITY[scenario]);
     }
 
-    // The word that replaces {action} per slot, for previewing token/network warnings.
-    const ACTION_BY_SLOT = {
-      payments: 'payment',
-      deposit: 'deposit',
-      exchange: 'swap',
-      'action.vote': 'vote',
-      'data.balances': 'transaction',
-      'data.prices': 'transaction',
-    };
-
-    // Human-readable "where this appears" per slot.
     const SLOT_PLACEMENT = {
       'features': 'Payments, Exchange, and Deposit pages — above the form',
       app: 'Sidebar banner across the entire platform',
@@ -594,8 +541,6 @@
 
     // Mirrors generate_messages() in templates.rs. Returns the user-facing
     // message string, or null when nothing maps to a template.
-    // Scenario/login messages come from TEMPLATE_DATA (injected from templates.rs).
-    // Token/network messages use simple string interpolation here.
     function generateMessages(severity, slot, token, network, scenario) {
       token = (token || '').trim();
       network = (network || '').trim();
@@ -603,15 +548,19 @@
 
       if (token || network) {
         const subject = subjectFor(tokenLabel(token), networkLabel(network));
+        const tpl = TEMPLATE_DATA.tokenNetwork;
         if (severity === 'critical') {
           const secondary = token
-            ? 'You can use a different token in the meantime.'
-            : 'You can use a different network in the meantime.';
-          return mergeStoredMessage(`${subject} is paused right now`, secondary);
+            ? tpl.criticalSecondaryToken
+            : tpl.criticalSecondaryNetwork;
+          return mergeStoredMessage(
+            tpl.criticalPrimary.replace('{subject}', subject),
+            secondary
+          );
         }
         return mergeStoredMessage(
-          `${subject} is slow right now`,
-          'Your {action} will go through once it recovers, it just may take longer than usual.'
+          tpl.warningPrimary.replace('{subject}', subject),
+          tpl.warningBody
         );
       }
 
@@ -625,38 +574,66 @@
     }
 
     async function loadBridgeTokens() {
-      try {
-        const res = await fetch('/api/intents/bridge-tokens?includeNearNetwork=true', {
-          credentials: 'omit',
-          headers: { 'Accept': 'application/json' },
-        });
-        if (!res.ok) {
-          console.warn('Bridge tokens returned', res.status);
-          return;
-        }
-        const data = await res.json();
-        bridgeAssets = data.assets || [];
-        const netByName = new Map();
-        bridgeAssets.forEach(a => {
-          tokenNameById[a.id] = a.assetName;
-          (a.networks || []).forEach(n => {
-            networkNameById[n.id] = n.name;
-            if (!netByName.has(n.name)) netByName.set(n.name, { id: n.id, name: n.name });
+      if (bridgeAssets.length > 0) return;
+      if (bridgeTokensPromise) return bridgeTokensPromise;
+
+      bridgeTokensPromise = (async () => {
+        try {
+          const res = await fetch('/api/intents/bridge-tokens?includeNearNetwork=true', {
+            credentials: 'omit',
+            headers: { 'Accept': 'application/json' },
           });
-        });
-        tokenOptions = bridgeAssets
-          .map(a => ({ id: a.id, name: a.assetName }))
-          .sort((x, y) => x.name.localeCompare(y.name));
-        allNetworkOptions = [...netByName.values()].sort((x, y) => x.name.localeCompare(y.name));
-        console.log(`Loaded ${bridgeAssets.length} assets, ${tokenOptions.length} tokens, ${allNetworkOptions.length} networks`);
-      } catch (e) {
-        console.warn('Failed to load bridge tokens:', e);
+          if (!res.ok) {
+            console.warn('Bridge tokens returned', res.status);
+            return;
+          }
+          const data = await res.json();
+          bridgeAssets = data.assets || [];
+          const netByName = new Map();
+          bridgeAssets.forEach(a => {
+            tokenNameById[a.id] = a.assetName;
+            (a.networks || []).forEach(n => {
+              networkNameById[n.id] = n.name;
+              if (!netByName.has(n.name)) netByName.set(n.name, { id: n.id, name: n.name });
+            });
+          });
+          tokenOptions = bridgeAssets
+            .map(a => ({ id: a.id, name: a.assetName }))
+            .sort((x, y) => x.name.localeCompare(y.name));
+          allNetworkOptions = [...netByName.values()].sort((x, y) => x.name.localeCompare(y.name));
+        } catch (e) {
+          console.warn('Failed to load bridge tokens:', e);
+        }
+      })();
+
+      return bridgeTokensPromise;
+    }
+
+    // Resolve a stored network value (name or legacy per-token network id) to
+    // the chain name used as the dropdown value.
+    function normalizeNetworkValue(storedValue, networks) {
+      if (!storedValue) return '';
+      const trimmed = storedValue.trim();
+      const byName = networks.find(n => n.name.toLowerCase() === trimmed.toLowerCase());
+      if (byName) return byName.name;
+      const mappedName = networkNameById[trimmed];
+      if (mappedName) {
+        const match = networks.find(n => n.name === mappedName);
+        if (match) return match.name;
       }
+      return trimmed;
     }
 
     function buildTokenOptions(selected) {
       let opts = '<option value="">All tokens</option>';
-      tokenOptions.forEach(t => { opts += `<option value="${t.id}" ${t.id === selected ? 'selected' : ''}>${t.name}</option>`; });
+      let found = !selected;
+      tokenOptions.forEach(t => {
+        if (t.id === selected) found = true;
+        opts += `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`;
+      });
+      if (selected && !found) {
+        opts += `<option value="${escapeHtml(selected)}">${escapeHtml(tokenLabel(selected) || selected)}</option>`;
+      }
       return opts;
     }
 
@@ -672,9 +649,32 @@
     }
 
     function buildNetworkOptions(networks, selected) {
+      const normalized = normalizeNetworkValue(selected, networks);
       let opts = '<option value="">All networks</option>';
-      networks.forEach(n => { opts += `<option value="${n.name}" ${n.name === selected ? 'selected' : ''}>${n.name.toUpperCase()}</option>`; });
+      let found = !normalized;
+      networks.forEach(n => {
+        if (n.name === normalized) found = true;
+        opts += `<option value="${escapeHtml(n.name)}">${escapeHtml(n.name.toUpperCase())}</option>`;
+      });
+      if (normalized && !found) {
+        opts += `<option value="${escapeHtml(normalized)}">${escapeHtml(networkLabel(normalized))}</option>`;
+      }
       return opts;
+    }
+
+    function syncTokenNetworkSelects(token, network) {
+      const tokenSel = document.getElementById('f-token');
+      const networkSel = document.getElementById('f-network');
+      if (!tokenSel || !networkSel) return;
+
+      const tokenValue = token || '';
+      tokenSel.innerHTML = buildTokenOptions(tokenValue);
+      tokenSel.value = tokenValue;
+
+      const networks = networksForToken(tokenSel.value);
+      const networkValue = normalizeNetworkValue(network || '', networks);
+      networkSel.innerHTML = buildNetworkOptions(networks, networkValue);
+      networkSel.value = networkValue;
     }
 
     function slotSupportsTokenFilter(slot) {
@@ -755,21 +755,39 @@
       return value || '—';
     }
 
+    function warningIsLive(w, now = new Date()) {
+      return w.isActive ||
+        (w.showFrom && new Date(w.showFrom) <= now &&
+          (!w.endsAt || new Date(w.endsAt) > now));
+    }
+
+    function findExistingWarning(slot, token, network) {
+      const t = token || '';
+      const n = network || '';
+      return warningsCache.find(w =>
+        (w.slot || '') === (slot || '') &&
+        (w.token || '') === t &&
+        (w.network || '') === n
+      );
+    }
+
     function renderWarnings(warnings) {
       document.getElementById('warnings-loading').classList.add('hidden');
 
       const now = new Date();
-      const isActive = w =>
-        w.isActive ||
-        (w.showFrom && new Date(w.showFrom) <= now &&
-          (!w.endsAt || new Date(w.endsAt) > now));
-      const live = warnings.filter(isActive);
-      const upcoming = warnings.filter(w => !isActive(w) && w.showFrom && new Date(w.showFrom) > now);
+      const live = warnings.filter(w => warningIsLive(w, now));
+      const upcoming = warnings.filter(w => !warningIsLive(w, now) && w.showFrom && new Date(w.showFrom) > now);
+      const inactive = warnings.filter(w => !warningIsLive(w, now) && !(w.showFrom && new Date(w.showFrom) > now));
 
       document.getElementById('count-live').textContent = live.length;
       document.getElementById('count-scheduled').textContent = upcoming.length;
+      document.getElementById('count-inactive').textContent = inactive.length;
 
-      const filtered = activeSubtab === 'live' ? live : upcoming;
+      const filtered = activeSubtab === 'live'
+        ? live
+        : activeSubtab === 'scheduled'
+          ? upcoming
+          : inactive;
 
       const list = document.getElementById('warnings-list');
       const empty = document.getElementById('warnings-empty');
@@ -779,7 +797,9 @@
         list.innerHTML = '';
         empty.textContent = activeSubtab === 'live'
           ? 'No active warnings. Everything is operational.'
-          : 'No upcoming warnings.';
+          : activeSubtab === 'scheduled'
+            ? 'No upcoming warnings.'
+            : 'No inactive warnings.';
         empty.classList.remove('hidden');
       } else {
         empty.classList.add('hidden');
@@ -830,8 +850,77 @@
     }
 
     function fromUTCInput(value) {
-      if (!value) return null;
+      if (!value) return '';
       return value + ':00.000Z';
+    }
+
+    function formFieldValue(id) {
+      return document.getElementById(id)?.value ?? '';
+    }
+
+    function optionalUtcField(id) {
+      const value = formFieldValue(id);
+      return value ? fromUTCInput(value) : '';
+    }
+
+    function buildSaveBody() {
+      const isActive = document.querySelector('input[name="timing"][value="now"]').checked;
+      const scenarioEl = document.getElementById('f-scenario');
+      const baseSlot = formFieldValue('f-slot') || null;
+      const walletEl = document.getElementById('f-wallet');
+      const walletId = (slotSupportsWalletFilter(baseSlot || '') && walletEl) ? walletEl.value : '';
+      const slot = walletId ? `${LOGIN_WALLET_PREFIX}${walletId}` : baseSlot;
+      const waitlist = slotShowsWaitlist(slot || '');
+      const severity = slotForcesCritical(slot || '')
+        ? 'critical'
+        : slotIsDataOnly(slot || '')
+          ? 'warning'
+          : document.querySelector('input[name="severity"]:checked').value;
+
+      return {
+        slot,
+        token: formFieldValue('f-token'),
+        network: formFieldValue('f-network'),
+        isActive,
+        severity,
+        userMessage: waitlist ? '' : getMessageFromForm().trim(),
+        scenario: scenarioEl && !scenarioEl.closest('.form-section').classList.contains('hidden')
+          ? scenarioEl.value
+          : '',
+        internalNote: formFieldValue('f-note'),
+        showFrom: optionalUtcField('f-show-from'),
+        startsAt: optionalUtcField('f-starts-at'),
+        endsAt: optionalUtcField('f-ends-at'),
+        linkedService: formFieldValue('f-linked-service'),
+        linkedPostId: formFieldValue('f-linked-post'),
+      };
+    }
+
+    async function syncLinkedServiceSelects(linkedService, linkedPostId) {
+      const serviceSel = document.getElementById('f-linked-service');
+      const postSel = document.getElementById('f-linked-post');
+      if (!serviceSel || !postSel) return;
+
+      serviceSel.value = linkedService || '';
+      postSel.innerHTML = '<option value="">— Any incident on this service —</option>';
+      postSel.disabled = !serviceSel.value;
+
+      if (!serviceSel.value) {
+        postSel.value = '';
+        return;
+      }
+
+      await onLinkedServiceChange();
+
+      if (!linkedPostId) {
+        postSel.value = '';
+        return;
+      }
+
+      if (![...postSel.options].some(o => o.value === linkedPostId)) {
+        postSel.innerHTML += `<option value="${escapeHtml(linkedPostId)}">${escapeHtml(linkedPostId)}</option>`;
+      }
+      postSel.value = linkedPostId;
     }
 
     function buildScenarioOptions(slot, selected) {
@@ -841,7 +930,7 @@
       return opts;
     }
 
-    function buildWarningForm(w = null) {
+    async function buildWarningForm(w = null) {
       const form = document.getElementById('warning-form');
       form.classList.remove('hidden');
       document.getElementById('warnings-content').classList.add('hidden');
@@ -1035,18 +1124,11 @@
           <button class="secondary" onclick="hideWarningForm()">Cancel</button>
         </div>
       `;
+      syncTokenNetworkSelects(token, w?.network || '');
       if (w?.userMessage) setMessageFields(w.userMessage);
       else updateMessageFieldsVisibility();
+      await syncLinkedServiceSelects(w?.linkedService || '', w?.linkedPostId || '');
       updatePreview();
-      // Pre-populate linked post dropdown when editing a linked warning.
-      if (w?.linkedService) {
-        onLinkedServiceChange().then(() => {
-          if (w.linkedPostId) {
-            const postSel = document.getElementById('f-linked-post');
-            if (postSel) postSel.value = w.linkedPostId;
-          }
-        });
-      }
     }
 
     window.toggleActiveSchedule = function() {
@@ -1223,8 +1305,6 @@
       // Changing the slot resets the whole form — only the chosen slot is kept.
       const slot = document.getElementById('f-slot').value;
       const enabled = slotSupportsTokenFilter(slot);
-      const tokenSel = document.getElementById('f-token');
-      const networkSel = document.getElementById('f-network');
       const tokenSection = document.getElementById('token-network-section');
 
       // Show the transaction slot checkboxes only when 'features' is selected.
@@ -1235,10 +1315,7 @@
       tokenSection.classList.toggle('hidden', !enabled);
 
       // Reset token + network back to "All".
-      tokenSel.innerHTML = buildTokenOptions('');
-      networkSel.innerHTML = buildNetworkOptions(allNetworkOptions, '');
-      tokenSel.value = '';
-      networkSel.value = '';
+      syncTokenNetworkSelects('', '');
 
       // Show + reset the wallet picker only for the login slot.
       const walletSection = document.getElementById('wallet-section');
@@ -1317,8 +1394,10 @@
       const networkSel = document.getElementById('f-network');
       const currentNetwork = networkSel.value;
       const networks = networksForToken(tokenSel.value);
-      const stillValid = networks.some(n => n.name === currentNetwork);
-      networkSel.innerHTML = buildNetworkOptions(networks, stillValid ? currentNetwork : '');
+      const normalizedNetwork = normalizeNetworkValue(currentNetwork, networks);
+      const stillValid = !normalizedNetwork || networks.some(n => n.name === normalizedNetwork);
+      networkSel.innerHTML = buildNetworkOptions(networks, stillValid ? normalizedNetwork : '');
+      networkSel.value = stillValid ? normalizedNetwork : '';
       updateScenarioVisibility();
       applyTemplate();
     };
@@ -1339,9 +1418,13 @@
     window.onLinkedServiceChange = async function() {
       const service = document.getElementById('f-linked-service').value;
       const postSel = document.getElementById('f-linked-post');
+      const previousPost = postSel.value;
       postSel.innerHTML = '<option value="">— Any incident on this service —</option>';
       postSel.disabled = !service;
-      if (!service) return;
+      if (!service) {
+        postSel.value = '';
+        return;
+      }
 
       if (service === 'near-intents') {
         const data = await loadStatusIncidents();
@@ -1349,6 +1432,10 @@
           const label = p.title + (p.postType ? ` (${p.postType})` : '');
           postSel.innerHTML += `<option value="${escapeHtml(p.id || '')}">${escapeHtml(label)}</option>`;
         });
+      }
+
+      if (previousPost && [...postSel.options].some(o => o.value === previousPost)) {
+        postSel.value = previousPost;
       }
     };
 
@@ -1359,45 +1446,18 @@
 
     let warningsCache = [];
 
-    window.editWarning = function(id) {
+    window.editWarning = async function(id) {
       const w = warningsCache.find(x => x.id === id);
-      if (w) buildWarningForm(w);
+      if (!w) return;
+      await loadBridgeTokens();
+      await buildWarningForm(w);
     };
 
     window.saveWarning = async function(id) {
       clearFormError();
-      const isActive = document.querySelector('input[name="timing"][value="now"]').checked;
-      const scenarioEl = document.getElementById('f-scenario');
-      const scenario = scenarioEl && !scenarioEl.closest('.form-section').classList.contains('hidden')
-        ? (scenarioEl.value || null)
-        : null;
-      // For the login slot, a selected wallet is stored as `login.wallet.<id>`.
-      const baseSlot = document.getElementById('f-slot').value || null;
-      const walletEl = document.getElementById('f-wallet');
-      const walletId = (slotSupportsWalletFilter(baseSlot || '') && walletEl) ? walletEl.value : '';
-      const slot = walletId ? `${LOGIN_WALLET_PREFIX}${walletId}` : baseSlot;
-      const waitlist = slotShowsWaitlist(slot || '');
-      // Login + treasury-creation are always critical; data slots always warning.
-      const severity = slotForcesCritical(slot || '')
-        ? 'critical'
-        : slotIsDataOnly(slot || '')
-          ? 'warning'
-          : document.querySelector('input[name="severity"]:checked').value;
-      const body = {
-        slot,
-        token: document.getElementById('f-token').value || null,
-        network: document.getElementById('f-network').value || null,
-        isActive,
-        severity,
-        userMessage: waitlist ? null : (getMessageFromForm().trim() || null),
-        scenario,
-        internalNote: document.getElementById('f-note').value || null,
-        showFrom: fromUTCInput(document.getElementById('f-show-from').value),
-        startsAt: fromUTCInput(document.getElementById('f-starts-at').value),
-        endsAt: fromUTCInput(document.getElementById('f-ends-at').value),
-        linkedService: document.getElementById('f-linked-service').value || null,
-        linkedPostId: document.getElementById('f-linked-post').value || null,
-      };
+      const body = buildSaveBody();
+      const slot = body.slot;
+      const editId = (id != null && id !== 'null') ? Number(id) : null;
       try {
         // Virtual slot: expand to selected transaction slots.
         const slotsToCreate = (slot === 'features')
@@ -1412,7 +1472,7 @@
         // Existing group members, when editing a feature warning that belongs to a group.
         // Grouping only spans the feature slots (the virtual 'features' entry); the
         // app/login pairing below is handled separately because their messages differ.
-        const editedWarning = id ? warningsCache.find(x => x.id === id) : null;
+        const editedWarning = editId ? warningsCache.find(x => x.id === editId) : null;
         const existingGroupId = editedWarning?.groupId || null;
         const groupMembers = existingGroupId
           ? warningsCache.filter(x => x.groupId === existingGroupId)
@@ -1430,12 +1490,21 @@
           : null;
 
         for (const s of slotsToCreate) {
+          const payload = { ...body, slot: s, groupId: groupId || '' };
           const member = groupMembers.find(m => m.slot === s);
-          const payload = JSON.stringify({ ...body, slot: s, groupId });
-          if (member) {
-            await api(`/internal/api/warnings/${member.id}`, { method: 'PUT', body: payload });
+          let targetId = member?.id;
+          // Editing a single warning always updates that row, even if slot lookup fails
+          // (e.g. virtual 'features' form vs stored transaction slot).
+          if (!targetId && editId && slotsToCreate.length === 1) {
+            targetId = editId;
+          }
+          if (!targetId) {
+            targetId = findExistingWarning(s, payload.token, payload.network)?.id;
+          }
+          if (targetId) {
+            await api(`/internal/api/warnings/${targetId}`, { method: 'PUT', body: JSON.stringify(payload) });
           } else {
-            await api('/internal/api/warnings', { method: 'POST', body: payload });
+            await api('/internal/api/warnings', { method: 'POST', body: JSON.stringify(payload) });
           }
         }
 
@@ -1452,7 +1521,7 @@
         if (slot === 'app' && alsoBlockLogin && alsoBlockLogin.checked) {
           const loginBody = {
             slot: 'login',
-            isActive,
+            isActive: body.isActive,
             severity: 'critical',
             internalNote: body.internalNote ? `Auto: ${body.internalNote}` : 'Auto-created with app-wide warning',
             showFrom: body.showFrom,
@@ -1727,7 +1796,10 @@
       });
     });
 
-    document.getElementById('btn-new-warning').addEventListener('click', () => buildWarningForm());
+    document.getElementById('btn-new-warning').addEventListener('click', async () => {
+      await loadBridgeTokens();
+      await buildWarningForm();
+    });
     document.getElementById('btn-refresh-warnings').addEventListener('click', loadWarnings);
     document.getElementById('btn-refresh-audit').addEventListener('click', loadAudit);
     document.getElementById('btn-audit-prev').addEventListener('click', () => { if (auditPage > 1) { auditPage--; loadAudit(); } });

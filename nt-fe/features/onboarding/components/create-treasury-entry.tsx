@@ -785,7 +785,7 @@ export function TreasuryOnboardingPage({
                     description={t("headerDescription")}
                     backButton={returnTo || false}
                     hideCollapseButton
-                    hideSystemStatusBanner
+                    hideAppWarningBanner
                     transparentHeader
                     hideHeaderBottomBorder
                     logo={headerLogo}
@@ -807,7 +807,7 @@ export function TreasuryOnboardingPage({
             backButton={returnTo || false}
             hideCollapseButton
             hideLogin
-            hideSystemStatusBanner
+            hideAppWarningBanner
             transparentHeader
             hideHeaderBottomBorder
             logo={headerLogo}

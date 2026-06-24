@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod admin_page;
+pub mod db;
 pub mod public;
 pub mod templates;
 

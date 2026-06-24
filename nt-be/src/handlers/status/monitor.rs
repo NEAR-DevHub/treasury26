@@ -6,10 +6,12 @@ use serde_json::json;
 use crate::{
     AppState,
     handlers::status::{
-        fallbacks::{self, SHOW_FALLBACK_CALLBACK_PREFIX, StatusIncident, admin_page_url},
+        fallbacks::{
+            self, SHOW_FALLBACK_CALLBACK_PREFIX, StatusIncident, admin_page_url, oh_dear_status_url,
+        },
         oh_dear::{self, OhDearStatus, SUPPORTED_SERVICES},
     },
-    utils::cache::CacheKey,
+    handlers::warnings::db,
 };
 
 const MONITOR_INTERVAL_SECONDS: u64 = 60;
@@ -24,9 +26,9 @@ fn incident_status(status: &OhDearStatus) -> &'static str {
 
 fn format_ops_alert(service: &str, check_name: &str, status: &str, message: &str) -> String {
     let action = if fallbacks::supports_fallback_button(service) {
-        "Click <b>Show fallback</b> to activate the user-facing warning."
+        "Use <b>Show fallback</b> or <b>Open admin</b>. Tap <b>View check</b> for the full Oh Dear response."
     } else {
-        "Create the warning manually in admin."
+        "Create the warning in admin. Tap <b>View check</b> for the full Oh Dear response."
     };
 
     format!(
@@ -160,23 +162,20 @@ async fn deactivate_linked_warnings(state: &AppState, service: &str) {
     match result {
         Ok(ids) if !ids.is_empty() => {
             for id in &ids {
-                let _ = sqlx::query(
-                    r#"
-                    INSERT INTO warning_audit_log (warning_id, action, changed_by, changes)
-                    VALUES ($1, 'deactivated', 'system', $2)
-                    "#,
+                let _ = db::insert_audit_log(
+                    &state.db_pool,
+                    Some(*id),
+                    "deactivated",
+                    "system",
+                    json!({
+                        "is_active": false,
+                        "service": service,
+                        "source": "linked_service_recovery",
+                    }),
                 )
-                .bind(id)
-                .bind(json!({
-                    "is_active": false,
-                    "service": service,
-                    "source": "linked_service_recovery",
-                }))
-                .execute(&state.db_pool)
                 .await;
             }
-            let cache_key = CacheKey::new("public-warnings").build();
-            state.cache.short_term.invalidate(&cache_key).await;
+            db::invalidate_warnings_cache(state).await;
             tracing::info!(
                 "[status-monitor] Deactivated {} linked warning(s) for {service}",
                 ids.len()
@@ -262,19 +261,17 @@ pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
                 continue;
             }
 
-            let _ = sqlx::query(
-                r#"
-                INSERT INTO warning_audit_log (warning_id, action, changed_by, changes)
-                VALUES ($1, 'deactivated', 'system', $2)
-                "#,
+            let _ = db::insert_audit_log(
+                &state.db_pool,
+                Some(warning.id),
+                "deactivated",
+                "system",
+                json!({
+                    "is_active": false,
+                    "linked_post_id": post_id,
+                    "source": "linked_post_resolved",
+                }),
             )
-            .bind(warning.id)
-            .bind(json!({
-                "is_active": false,
-                "linked_post_id": post_id,
-                "source": "linked_post_resolved",
-            }))
-            .execute(&state.db_pool)
             .await;
 
             deactivated.push(warning.id);
@@ -282,8 +279,7 @@ pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
     }
 
     if !deactivated.is_empty() {
-        let cache_key = CacheKey::new("public-warnings").build();
-        state.cache.short_term.invalidate(&cache_key).await;
+        db::invalidate_warnings_cache(state).await;
         tracing::info!(
             "[status-monitor] Deactivated {} warning(s) for resolved intents posts",
             deactivated.len()
@@ -335,10 +331,16 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
             let callback_data = fallbacks::supports_fallback_button(service)
                 .then(|| format!("{SHOW_FALLBACK_CALLBACK_PREFIX}{service}"));
             let admin_url = admin_page_url();
+            let check_url = oh_dear_status_url(service);
 
             match state
                 .telegram_client
-                .send_ops_alert_with_buttons(&text, &admin_url, callback_data.as_deref())
+                .send_ops_alert_with_buttons(
+                    &text,
+                    &admin_url,
+                    Some(&check_url),
+                    callback_data.as_deref(),
+                )
                 .await
             {
                 Ok(message_id) if message_id > 0 => {
@@ -418,8 +420,12 @@ pub async fn run_monitor_cycle(state: &Arc<AppState>) {
     match fallbacks::cleanup_stale_auto_fallbacks(state).await {
         Ok(recoveries) => {
             for recovery in recoveries {
+                let slot = match &recovery.trigger {
+                    fallbacks::RecoveryTrigger::StaleCleanup { slot } => slot.as_str(),
+                    fallbacks::RecoveryTrigger::Service { service } => service.as_str(),
+                };
                 tracing::info!(
-                    "[status-monitor] Cleared stale auto-linked fallback warning(s) for slot"
+                    "[status-monitor] Cleared stale auto-linked fallback warning(s) for {slot}"
                 );
                 send_recovery_telegram(state, &recovery).await;
             }

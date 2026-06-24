@@ -1,10 +1,11 @@
 use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::{
     AppState,
-    handlers::warnings::ACTIVE_WARNINGS_SQL,
+    handlers::warnings::{ACTIVE_WARNINGS_SQL, templates},
     utils::cache::{CacheKey, CacheTier},
 };
 
@@ -27,6 +28,7 @@ pub struct PublicWarning {
 #[serde(rename_all = "camelCase")]
 pub struct PublicWarningsResponse {
     pub warnings: Vec<PublicWarning>,
+    pub action_by_slot: HashMap<String, String>,
 }
 
 pub async fn get_warnings(
@@ -51,5 +53,8 @@ pub async fn get_warnings(
         })
         .await?;
 
-    Ok(Json(PublicWarningsResponse { warnings }))
+    Ok(Json(PublicWarningsResponse {
+        warnings,
+        action_by_slot: templates::action_by_slot(),
+    }))
 }

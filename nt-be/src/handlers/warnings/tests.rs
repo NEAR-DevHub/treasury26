@@ -239,3 +239,87 @@ async fn test_admin_warning_crud_and_audit_log(pool: PgPool) {
 
     assert_eq!(delete_response.status(), StatusCode::NO_CONTENT);
 }
+
+#[sqlx::test]
+async fn test_admin_update_clears_nullable_fields(pool: PgPool) {
+    let state = test_state(pool.clone());
+    let app = create_routes(state.clone());
+    let auth = basic_auth_header(
+        state
+            .env_vars
+            .admin_username
+            .as_deref()
+            .expect("ADMIN_USERNAME"),
+        state
+            .env_vars
+            .admin_password
+            .as_deref()
+            .expect("ADMIN_PASSWORD"),
+    );
+
+    let create_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/internal/api/warnings")
+                .header(header::AUTHORIZATION, &auth)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "slot": "app",
+                        "isActive": true,
+                        "severity": "warning",
+                        "userMessage": "Temporary issue",
+                        "linkedService": "near-rpc",
+                        "linkedPostId": "post-123",
+                        "scenario": "tier1_backend",
+                        "internalNote": "ops note",
+                    })
+                    .to_string(),
+                ))
+                .expect("Should build create request"),
+        )
+        .await
+        .expect("Create request should complete");
+
+    assert_eq!(create_response.status(), StatusCode::OK);
+    let created = response_json(create_response).await;
+    let warning_id = created
+        .get("id")
+        .and_then(Value::as_i64)
+        .expect("Created warning should have id");
+
+    let update_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/internal/api/warnings/{warning_id}"))
+                .header(header::AUTHORIZATION, &auth)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "slot": "app",
+                        "isActive": true,
+                        "severity": "warning",
+                        "userMessage": "Temporary issue",
+                        "linkedService": "",
+                        "linkedPostId": "",
+                        "scenario": "",
+                        "internalNote": "",
+                    })
+                    .to_string(),
+                ))
+                .expect("Should build update request"),
+        )
+        .await
+        .expect("Update request should complete");
+
+    assert_eq!(update_response.status(), StatusCode::OK);
+    let updated = response_json(update_response).await;
+    assert!(updated.get("linkedService").is_none());
+    assert!(updated.get("linkedPostId").is_none());
+    assert!(updated.get("scenario").is_none());
+    assert!(updated.get("internalNote").is_none());
+}

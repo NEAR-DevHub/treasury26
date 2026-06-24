@@ -145,11 +145,13 @@ impl TelegramClient {
         Ok(sent.id.0)
     }
 
-    /// Send an ops-channel alert with optional "Show fallback" callback and "Open admin" URL buttons.
+    /// Send an ops-channel alert with optional "Show fallback" callback,
+    /// "Open admin", and "View check" URL buttons.
     pub async fn send_ops_alert_with_buttons(
         &self,
         text: &str,
         admin_url: &str,
+        check_url: Option<&str>,
         callback_data: Option<&str>,
     ) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
         let (bot, chat_id_str) = match (&self.bot, &self.notification_chat_id) {
@@ -167,19 +169,31 @@ impl TelegramClient {
             .parse()
             .map_err(|_| format!("Invalid TELEGRAM_CHAT_ID: {}", chat_id_str))?;
 
-        let parsed_url: Url = admin_url
+        let parsed_admin_url: Url = admin_url
             .parse()
             .map_err(|_| format!("Invalid admin URL: {}", admin_url))?;
 
-        let keyboard = match callback_data {
-            Some(callback_data) => InlineKeyboardMarkup::new([[
+        let admin_button = InlineKeyboardButton::url("Open admin", parsed_admin_url);
+
+        let mut rows = match callback_data {
+            Some(callback_data) => vec![vec![
                 InlineKeyboardButton::callback("Show fallback", callback_data.to_string()),
-                InlineKeyboardButton::url("Open admin", parsed_url),
-            ]]),
-            None => {
-                InlineKeyboardMarkup::new([[InlineKeyboardButton::url("Open admin", parsed_url)]])
-            }
+                admin_button,
+            ]],
+            None => vec![vec![admin_button]],
         };
+
+        if let Some(check_url) = check_url {
+            let parsed_check_url: Url = check_url
+                .parse()
+                .map_err(|_| format!("Invalid check URL: {}", check_url))?;
+            rows.push(vec![InlineKeyboardButton::url(
+                "View check",
+                parsed_check_url,
+            )]);
+        }
+
+        let keyboard = InlineKeyboardMarkup::new(rows);
 
         let sent = bot
             .send_message(ChatId(chat_id), text)

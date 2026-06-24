@@ -4,8 +4,7 @@ use sqlx::PgPool;
 
 use crate::{
     AppState,
-    handlers::warnings::templates,
-    utils::cache::{Cache, CacheKey},
+    handlers::warnings::{db, templates},
 };
 
 pub const SHOW_FALLBACK_CALLBACK_PREFIX: &str = "show_fallback:";
@@ -35,7 +34,7 @@ pub struct FallbackConfig {
     pub targets: &'static [FallbackTarget],
 }
 
-const BACKEND_FALLBACK: FallbackConfig = FallbackConfig {
+const APP_TIER3_DOWN_FALLBACK: FallbackConfig = FallbackConfig {
     targets: &[FallbackTarget {
         slot: "app",
         severity: "critical",
@@ -63,14 +62,6 @@ const EXCHANGE_FALLBACK: FallbackConfig = FallbackConfig {
     ],
 };
 
-const NEAR_PROTOCOL_FALLBACK: FallbackConfig = FallbackConfig {
-    targets: &[FallbackTarget {
-        slot: "app",
-        severity: "critical",
-        scenario: "tier3_down",
-    }],
-};
-
 const NEAR_RPC_FALLBACK: FallbackConfig = FallbackConfig {
     targets: &[FallbackTarget {
         slot: "app",
@@ -80,9 +71,9 @@ const NEAR_RPC_FALLBACK: FallbackConfig = FallbackConfig {
 };
 
 const FALLBACK_CONFIGS: &[(&str, FallbackConfig)] = &[
-    ("backend", BACKEND_FALLBACK),
+    ("backend", APP_TIER3_DOWN_FALLBACK),
     ("exchange", EXCHANGE_FALLBACK),
-    ("near-protocol", NEAR_PROTOCOL_FALLBACK),
+    ("near-protocol", APP_TIER3_DOWN_FALLBACK),
     ("near-rpc", NEAR_RPC_FALLBACK),
 ];
 
@@ -200,7 +191,7 @@ async fn deactivate_linked_slot_warning(
     .await
     .map_err(|e| format!("failed to deactivate warning slot: {e}"))?;
 
-    insert_audit_log(
+    db::insert_audit_log(
         &state.db_pool,
         Some(existing.id),
         "deactivated",
@@ -257,34 +248,6 @@ async fn deactivate_auto_fallback_slot(
     Ok(Some(
         deactivate_linked_slot_warning(state, &existing, recovered_service, source).await?,
     ))
-}
-
-async fn invalidate_warnings_cache(cache: &Cache) {
-    let cache_key = CacheKey::new("public-warnings").build();
-    cache.short_term.invalidate(&cache_key).await;
-}
-
-async fn insert_audit_log(
-    pool: &PgPool,
-    warning_id: Option<i32>,
-    action: &str,
-    changed_by: &str,
-    changes: serde_json::Value,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        r#"
-        INSERT INTO warning_audit_log (warning_id, action, changed_by, changes)
-        VALUES ($1, $2, $3, $4)
-        "#,
-    )
-    .bind(warning_id)
-    .bind(action)
-    .bind(changed_by)
-    .bind(changes)
-    .execute(pool)
-    .await?;
-
-    Ok(())
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -451,7 +414,7 @@ pub async fn activate_fallback(
             first_warning_id = Some(updated.id);
         }
 
-        insert_audit_log(
+        db::insert_audit_log(
             &state.db_pool,
             Some(updated.id),
             "activated",
@@ -490,7 +453,7 @@ pub async fn activate_fallback(
         .map_err(|e| format!("failed to update status incident: {e}"))?;
     }
 
-    invalidate_warnings_cache(&state.cache).await;
+    db::invalidate_warnings_cache(state).await;
 
     Ok(first_warning_id)
 }
@@ -624,7 +587,7 @@ pub fn format_recovery_message(recovery: &AutoFallbackRecovery) -> String {
             "✅ <b>User warning removed</b>",
             format!(
                 "Health check recovered: <b>{}</b> · <code>{}</code>",
-                escape_html(&service_label(service)),
+                escape_html(service_label(service)),
                 health_check_name(service)
             ),
         ),
@@ -699,7 +662,7 @@ pub async fn deactivate_fallback(
         return Ok(None);
     }
 
-    invalidate_warnings_cache(&state.cache).await;
+    db::invalidate_warnings_cache(state).await;
 
     Ok(Some(AutoFallbackRecovery {
         trigger: RecoveryTrigger::Service {
@@ -739,16 +702,23 @@ pub async fn cleanup_stale_auto_fallbacks(
     }
 
     if !recoveries.is_empty() {
-        invalidate_warnings_cache(&state.cache).await;
+        db::invalidate_warnings_cache(state).await;
     }
 
     Ok(recoveries)
 }
 
-pub fn admin_page_url() -> String {
+pub fn backend_base_url() -> String {
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
     std::env::var("BACKEND_BASE_URL").unwrap_or_else(|_| format!("http://127.0.0.1:{port}"))
-        + "/internal/warnings"
+}
+
+pub fn admin_page_url() -> String {
+    backend_base_url() + "/internal/warnings"
+}
+
+pub fn oh_dear_status_url(service: &str) -> String {
+    format!("{}/api/oh-dear/status/{}", backend_base_url(), service)
 }
 
 #[derive(Debug, sqlx::FromRow)]

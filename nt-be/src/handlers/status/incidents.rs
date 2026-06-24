@@ -6,17 +6,7 @@ use std::sync::Arc;
 
 use crate::{AppState, handlers::warnings::admin::require_admin};
 
-use super::oh_dear::{self, SUPPORTED_SERVICES};
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IntentsPost {
-    pub id: Option<String>,
-    pub title: String,
-    pub post_type: String,
-    pub starts_at: Option<i64>,
-    pub ends_at: Option<i64>,
-}
+use super::oh_dear::{self, IntentsStatusPost, SUPPORTED_SERVICES};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,7 +19,7 @@ pub struct ServiceStatus {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StatusIncidentsResponse {
-    pub intents_posts: Vec<IntentsPost>,
+    pub intents_posts: Vec<IntentsStatusPost>,
     pub services: Vec<ServiceStatus>,
 }
 
@@ -45,17 +35,11 @@ pub async fn get_status_incidents(
     })?;
 
     let intents_posts = match oh_dear::fetch_intents_posts(&state).await {
-        Ok(posts) => posts
-            .into_iter()
-            .map(|p| IntentsPost {
-                id: p.id,
-                title: p.title,
-                post_type: p.post_type,
-                starts_at: p.starts_at,
-                ends_at: p.ends_at,
-            })
-            .collect(),
-        Err(_) => vec![],
+        Ok(posts) => posts,
+        Err(e) => {
+            tracing::warn!("[status-incidents] Failed to fetch intents posts: {e}");
+            vec![]
+        }
     };
 
     #[derive(sqlx::FromRow)]

@@ -92,7 +92,7 @@ export function SlotWarning({
     headingClassName,
     bodyClassName,
 }: SlotWarningProps) {
-    const { getWarning } = useWarnings();
+    const { getWarning, actionBySlot } = useWarnings();
     const formatDate = useFormatDate();
     const warning = getWarning(slot, token, network);
 
@@ -100,7 +100,11 @@ export function SlotWarning({
         return null;
     }
 
-    let message = fillAction(warning.message, action ?? warning.slot ?? slot);
+    let message = fillAction(
+        warning.message,
+        action ?? warning.slot ?? slot,
+        actionBySlot,
+    );
 
     // Replace {schedule} with formatted dates if present in the message.
     const scheduleText = formatScheduleText(
