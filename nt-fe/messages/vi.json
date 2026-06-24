@@ -1091,6 +1091,7 @@
         },
         "recipients": "Người nhận",
         "insufficientTokens": "Không đủ token. Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
+        "insufficientTokensForFee": "Không đủ token để trang trả phí mạng ({fee} {symbol}). Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
         "removeRecipient": "Xóa người nhận",
         "removeRecipientConfirm": "Bạn có chắc muốn xóa khoản thanh toán cho <strong>{recipient}</strong> không? Hành động này không thể hoàn tác.",
         "remove": "Xóa",
@@ -1957,6 +1958,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "Không đủ token. Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
+        "insufficientTokensForFee": "Không đủ token để trang trả phí mạng ({fee} {symbol}). Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
         "balance": "Số dư: {amount} {symbol}"
     },
     "createRequestButton": {

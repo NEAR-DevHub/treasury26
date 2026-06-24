@@ -11,6 +11,7 @@ import { StepProps, ReviewStep } from "@/components/step-wizard";
 import { WarningAlert } from "@/components/warning-alert";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import Big from "@/lib/big";
+import { getPaymentBalanceWarning } from "@/lib/intents-fee";
 import {
     Dialog,
     DialogContent,
@@ -139,9 +140,9 @@ export function ReviewPaymentsStep({
         ? Big(networkFeePerRecipient).mul(paymentData.length)
         : null;
 
-    // Calculate total USD value and check insufficient balance
+    // Calculate total USD value and check insufficient balance (amount + fees)
     let totalUSDValue = Big(0);
-    let hasInsufficientBalance = false;
+    let balanceWarning = null;
 
     if (balance) {
         try {
@@ -152,7 +153,13 @@ export function ReviewPaymentsStep({
             );
             const balanceFormattedBig = Big(balanceFormattedString);
 
-            hasInsufficientBalance = Big(totalAmount).gt(balanceFormattedBig);
+            balanceWarning = getPaymentBalanceWarning({
+                amount: totalAmount.toString(),
+                balance: balanceFormattedBig,
+                networkFee: totalNetworkFee ?? undefined,
+                decimals: selectedToken.decimals,
+                symbol: selectedToken.symbol,
+            });
 
             // Calculate USD value only if price is available
             if (selectedTokenData?.price && balanceFormattedBig.gt(0)) {
@@ -181,9 +188,14 @@ export function ReviewPaymentsStep({
                             count: paymentData.length,
                         })}
                     </p>
-                    {hasInsufficientBalance && (
+                    {balanceWarning && (
                         <p className="text-general-info-foreground text-sm mt-2 font-normal">
-                            {tBulk("insufficientTokens")}
+                            {balanceWarning.type === "fee_not_covered"
+                                ? tBulk("insufficientTokensForFee", {
+                                      fee: balanceWarning.formattedFee ?? "",
+                                      symbol: balanceWarning.symbol ?? "",
+                                  })
+                                : tBulk("insufficientTokens")}
                         </p>
                     )}
                 </AmountSummary>

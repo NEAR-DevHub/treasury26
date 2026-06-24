@@ -1091,6 +1091,7 @@
         },
         "recipients": "收款人",
         "insufficientTokens": "代币不足。您可以提交请求,并在批准前充值。",
+        "insufficientTokensForFee": "代币不足以支付网络手续费({fee} {symbol})。您可以提交请求,并在批准前充值。",
         "removeRecipient": "移除收款人",
         "removeRecipientConfirm": "您确定要移除给 <strong>{recipient}</strong> 的付款吗?此操作无法撤销。",
         "remove": "移除",
@@ -1957,6 +1958,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "代币不足。您可以提交请求,并在批准前充值。",
+        "insufficientTokensForFee": "代币不足以支付网络手续费({fee} {symbol})。您可以提交请求,并在批准前充值。",
         "balance": "余额:{amount} {symbol}"
     },
     "createRequestButton": {

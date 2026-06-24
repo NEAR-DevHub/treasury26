@@ -21,6 +21,7 @@ import {
 } from "react-hook-form";
 import z from "zod";
 import Big from "@/lib/big";
+import { getPaymentBalanceWarning } from "@/lib/intents-fee";
 
 export const tokenSchema = z.object({
     address: z.string(),
@@ -81,6 +82,8 @@ interface TokenInputProps<
      * Default: false
      */
     showInsufficientBalance?: boolean;
+    /** Network fee in token units; treasury must cover amount + fee. */
+    networkFee?: string | null;
     /**
      * When true, font size will dynamically adjust based on input length to prevent overflow.
      * Default: false
@@ -105,6 +108,7 @@ export function TokenInput<
     customValue,
     infoMessage,
     showInsufficientBalance = false,
+    networkFee = null,
     dynamicFontSize = false,
     onAmountInput,
     onMaxSet,
@@ -140,17 +144,38 @@ export function TokenInput<
     const tokenPrice = matchedAsset?.price ?? token?.price;
     const tokenDecimals = matchedAsset?.decimals ?? token?.decimals;
 
-    const hasInsufficientBalance = useMemo(() => {
-        if (!showInsufficientBalance) return false;
+    const balanceWarning = useMemo(() => {
+        if (!showInsufficientBalance) return null;
         if (!tokenBalance || !amount || isNaN(amount) || amount <= 0) {
-            return false;
+            return null;
         }
 
         const decimals = tokenDecimals || 24;
-        const amountInSmallestUnits = Big(amount).mul(Big(10).pow(decimals));
+        const balance = Big(tokenBalance).div(Big(10).pow(decimals));
+        let fee: Big | undefined;
+        if (networkFee) {
+            try {
+                fee = Big(networkFee);
+            } catch {
+                fee = undefined;
+            }
+        }
 
-        return amountInSmallestUnits.gt(tokenBalance);
-    }, [showInsufficientBalance, tokenBalance, amount, tokenDecimals]);
+        return getPaymentBalanceWarning({
+            amount: String(amount),
+            balance,
+            networkFee: fee,
+            decimals,
+            symbol: token.symbol,
+        });
+    }, [
+        showInsufficientBalance,
+        tokenBalance,
+        amount,
+        tokenDecimals,
+        networkFee,
+        token.symbol,
+    ]);
 
     const estimatedUSDValue = useMemo(() => {
         if (usdValueOverride !== undefined && usdValueOverride !== null) {
@@ -296,9 +321,15 @@ export function TokenInput<
                                 ? `≈ ${formatCurrency(estimatedUSDValue)}`
                                 : "Invisible"}
                         </p>
-                        {hasInsufficientBalance && (
+                        {balanceWarning && (
                             <p className="text-general-info-foreground text-sm mt-2">
-                                {t("insufficientTokens")}
+                                {balanceWarning.type === "fee_not_covered"
+                                    ? t("insufficientTokensForFee", {
+                                          fee:
+                                              balanceWarning.formattedFee ?? "",
+                                          symbol: balanceWarning.symbol ?? "",
+                                      })
+                                    : t("insufficientTokens")}
                             </p>
                         )}
                         {fieldState.error ? (
@@ -307,7 +338,7 @@ export function TokenInput<
                             <p className="text-general-info-foreground text-sm mt-2">
                                 {infoMessage}
                             </p>
-                        ) : !hasInsufficientBalance ? (
+                        ) : !balanceWarning ? (
                             <p className="text-muted-foreground text-xs invisible">
                                 Invisible
                             </p>

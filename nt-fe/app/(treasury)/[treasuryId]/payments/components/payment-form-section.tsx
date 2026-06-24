@@ -49,6 +49,7 @@ interface PaymentFormSectionProps<
 
     tokenLocked?: boolean;
     feeErrorMessage?: string | null;
+    networkFee?: string | null;
     showRestrictedRecipientAlert?: boolean;
 
     saveButtonText: string;
@@ -83,6 +84,7 @@ export function PaymentFormSection<
     recipientName,
     tokenLocked = false,
     feeErrorMessage = null,
+    networkFee = null,
     showRestrictedRecipientAlert = false,
     saveButtonText,
     onSave,
@@ -329,9 +331,8 @@ export function PaymentFormSection<
                     disabled: tokenLocked,
                     showOnlyOwnedAssets: false,
                 }}
-                showInsufficientBalance={
-                    !feeErrorMessage || showRestrictedRecipientAlert
-                }
+                showInsufficientBalance={!showRestrictedRecipientAlert}
+                networkFee={networkFee}
             />
 
             <InputBlock

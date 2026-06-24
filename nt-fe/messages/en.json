@@ -154,8 +154,7 @@
         "infoBalanced": "A {currentThreshold}-of-{memberCount} threshold provides a good balance between security and operational flexibility."
     },
     "intentsFee": {
-        "amountTooLowForFee": "{prefix}Amount too low for network fee ({fee} {symbol}). Add at least {addMore} {symbol}.",
-        "insufficientBalanceForFee": "{prefix}Insufficient balance to cover payment and network fee ({fee} {symbol}). You need {shortfall} {symbol} more."
+        "amountTooLowForFee": "{prefix}Amount too low for network fee ({fee} {symbol}). Add at least {addMore} {symbol}."
     },
     "metadata": {
         "treasuryTitle": "Dashboard | Trezu",
@@ -1092,6 +1091,7 @@
         },
         "recipients": "Recipients",
         "insufficientTokens": "Insufficient tokens. You can submit the request and top up before approval.",
+        "insufficientTokensForFee": "Insufficient tokens to cover the network fee ({fee} {symbol}). You can submit the request and top up before approval.",
         "removeRecipient": "Remove Recipient",
         "removeRecipientConfirm": "Are you sure you want to remove the payment to <strong>{recipient}</strong>? This action cannot be undone.",
         "remove": "Remove",
@@ -1958,6 +1958,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "Insufficient tokens. You can submit the request and top up before approval.",
+        "insufficientTokensForFee": "Insufficient tokens to cover the network fee ({fee} {symbol}). You can submit the request and top up before approval.",
         "balance": "Balance: {amount} {symbol}"
     },
     "createRequestButton": {

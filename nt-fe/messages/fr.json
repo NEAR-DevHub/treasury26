@@ -1091,6 +1091,7 @@
         },
         "recipients": "Destinataires",
         "insufficientTokens": "Tokens insuffisants. Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
+        "insufficientTokensForFee": "Tokens insuffisants pour couvrir les frais de réseau ({fee} {symbol}). Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
         "removeRecipient": "Supprimer le destinataire",
         "removeRecipientConfirm": "Êtes-vous sûr de vouloir supprimer le paiement à <strong>{recipient}</strong> ? Cette action ne peut pas être annulée.",
         "remove": "Supprimer",
@@ -1957,6 +1958,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "Tokens insuffisants. Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
+        "insufficientTokensForFee": "Tokens insuffisants pour couvrir les frais de réseau ({fee} {symbol}). Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
         "balance": "Solde : {amount} {symbol}"
     },
     "createRequestButton": {

@@ -264,8 +264,7 @@ export function useIntentsQuote({
         retry: false,
     });
 
-    const hasError =
-        hasQueryError || missingRequiredDecimalsForQuote;
+    const hasError = hasQueryError || missingRequiredDecimalsForQuote;
 
     const errorMessage = useMemo(() => {
         if (missingRequiredDecimalsForQuote) {
@@ -397,8 +396,6 @@ export function useIntentsQuote({
             amountMode,
             destinationNetwork,
             requiresDestinationSelectionForPayment,
-            hasLowAmountQuote,
-            lowAmountQuoteDetails,
             requestAmountDecimals,
             captureMissingDestinationDecimals,
             t,

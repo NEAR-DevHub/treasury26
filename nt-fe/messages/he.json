@@ -1091,6 +1091,7 @@
         },
         "recipients": "נמענים",
         "insufficientTokens": "טוקנים לא מספקים. ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
+        "insufficientTokensForFee": "אין מספיק טוקנים לכיסוי עמלת הרשת ({fee} {symbol}). ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
         "removeRecipient": "הסר נמען",
         "removeRecipientConfirm": "האם אתה בטוח שברצונך להסיר את התשלום ל-<strong>{recipient}</strong>? לא ניתן לבטל פעולה זו.",
         "remove": "הסרה",
@@ -1957,6 +1958,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "טוקנים לא מספקים. ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
+        "insufficientTokensForFee": "אין מספיק טוקנים לכיסוי עמלת הרשת ({fee} {symbol}). ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
         "balance": "יתרה: {amount} {symbol}"
     },
     "createRequestButton": {

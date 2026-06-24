@@ -13,9 +13,6 @@ import { buildEditPaymentSchema } from "../schemas";
 import type { SelectedTokenData } from "@/components/token-select";
 import { needsStorageDepositCheck } from "../utils";
 import { getBatchStorageDepositIsRegistered } from "@/lib/api";
-import Big from "@/lib/big";
-import { getNetworkFeeCoverageErrorMessage } from "@/lib/intents-fee";
-import { useIntentsFeeLabels } from "@/lib/intents-fee-labels";
 
 interface EditPaymentStepProps extends StepProps {
     payment: BulkPaymentData;
@@ -39,7 +36,6 @@ export function EditPaymentStep({
     onCancel,
 }: EditPaymentStepProps) {
     const tValidation = useTranslations("paymentForm.validation");
-    const intentsFeeLabels = useIntentsFeeLabels();
     const editPaymentSchema = useMemo(
         () =>
             buildEditPaymentSchema({
@@ -60,20 +56,6 @@ export function EditPaymentStep({
             token: selectedToken,
         },
     });
-    const watchedAmount = form.watch("amount");
-    const feeErrorMessage =
-        networkFeePerRecipient && watchedAmount && Number(watchedAmount) > 0
-            ? getNetworkFeeCoverageErrorMessage(
-                  {
-                      amount: watchedAmount,
-                      networkFee: Big(networkFeePerRecipient),
-                      decimals: selectedToken.decimals,
-                      symbol: selectedToken.symbol,
-                  },
-                  intentsFeeLabels,
-              )
-            : null;
-
     const handleSave = async () => {
         const isValid = await form.trigger();
         if (!isValid) return;
@@ -118,7 +100,7 @@ export function EditPaymentStep({
                     tokenName="token"
                     recipientName="recipient"
                     tokenLocked={true}
-                    feeErrorMessage={feeErrorMessage}
+                    networkFee={networkFeePerRecipient}
                     saveButtonText={tBulk("saveChanges")}
                     onSave={handleSave}
                     hideRecipientNetwork
