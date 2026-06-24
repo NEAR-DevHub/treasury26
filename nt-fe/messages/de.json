@@ -382,7 +382,8 @@
             "justNow": "jetzt",
             "moments": "Momente",
             "checking": "Aktualisierungsstatus wird geprüft…",
-            "unavailable": "Aktualisierungsstatus nicht verfügbar"
+            "unavailable": "Aktualisierungsstatus nicht verfügbar",
+            "updateTreasuryData": "Treasury-Daten aktualisieren"
         }
     },
     "apiDocs": {

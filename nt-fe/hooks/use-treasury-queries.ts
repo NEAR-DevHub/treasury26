@@ -4,6 +4,7 @@ import {
     useQueryClient,
     keepPreviousData,
 } from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
 import {
     getUserTreasuries,
     getTreasuryConfig,
@@ -427,6 +428,84 @@ export function useRefreshConfidentialHistory(
             });
         },
     });
+}
+
+/**
+ * Frontend-only "refresh" for public (non-confidential) treasuries.
+ *
+ * Public treasuries have no backend drain to trigger — refreshing just
+ * invalidates and refetches the already-existing queries (recent activity,
+ * assets, balance chart). To keep parity with the confidential button we apply
+ * a dummy client-side cooldown so the control can't be hammered.
+ */
+const PUBLIC_HISTORY_REFRESH_COOLDOWN_MS = 10 * 1000;
+
+export interface PublicHistoryRefresh {
+    isRefreshing: boolean;
+    canRefresh: boolean;
+    lastUpdatedAt: string | null;
+    refresh: () => void;
+}
+
+export function usePublicHistoryRefresh(
+    accountId: string | null | undefined,
+    enabled: boolean = true,
+): PublicHistoryRefresh {
+    const queryClient = useQueryClient();
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+    const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null);
+    const [now, setNow] = useState<number>(() => Date.now());
+
+    // Tick once a second while cooling down so `canRefresh` re-evaluates and the
+    // button re-enables when the cooldown expires.
+    useEffect(() => {
+        if (cooldownEndsAt === null) {
+            return;
+        }
+
+        const interval = setInterval(() => {
+            const current = Date.now();
+            setNow(current);
+            if (current >= cooldownEndsAt) {
+                setCooldownEndsAt(null);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [cooldownEndsAt]);
+
+    const isCoolingDown = cooldownEndsAt !== null && now < cooldownEndsAt;
+
+    const refresh = useCallback(() => {
+        if (!enabled || !accountId || isRefreshing || isCoolingDown) {
+            return;
+        }
+
+        setIsRefreshing(true);
+        void Promise.all([
+            queryClient.invalidateQueries({
+                queryKey: ["recentActivity", accountId],
+            }),
+            queryClient.invalidateQueries({
+                queryKey: ["treasuryAssets", accountId],
+            }),
+            queryClient.invalidateQueries({
+                queryKey: ["balanceChart", accountId],
+            }),
+        ]).finally(() => {
+            setIsRefreshing(false);
+            setLastUpdatedAt(new Date().toISOString());
+            setCooldownEndsAt(Date.now() + PUBLIC_HISTORY_REFRESH_COOLDOWN_MS);
+        });
+    }, [accountId, enabled, isRefreshing, isCoolingDown, queryClient]);
+
+    return {
+        isRefreshing,
+        canRefresh: enabled && !!accountId && !isRefreshing && !isCoolingDown,
+        lastUpdatedAt,
+        refresh,
+    };
 }
 
 export function useRecentActivitySenders(

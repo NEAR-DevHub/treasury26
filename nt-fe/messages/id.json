@@ -382,7 +382,8 @@
             "justNow": "sekarang",
             "moments": "beberapa saat",
             "checking": "Memeriksa status penyegaran…",
-            "unavailable": "Status penyegaran tidak tersedia"
+            "unavailable": "Status penyegaran tidak tersedia",
+            "updateTreasuryData": "Perbarui data treasury"
         }
     },
     "apiDocs": {

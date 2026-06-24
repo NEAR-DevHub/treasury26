@@ -382,7 +382,8 @@
             "justNow": "今",
             "moments": "しばらく",
             "checking": "更新ステータスを確認中…",
-            "unavailable": "更新ステータスを利用できません"
+            "unavailable": "更新ステータスを利用できません",
+            "updateTreasuryData": "トレジャリーのデータを更新"
         }
     },
     "apiDocs": {

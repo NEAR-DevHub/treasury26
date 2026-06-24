@@ -382,7 +382,8 @@
             "justNow": "now",
             "moments": "moments",
             "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "unavailable": "Refresh status unavailable",
+            "updateTreasuryData": "Update treasury data"
         }
     },
     "apiDocs": {

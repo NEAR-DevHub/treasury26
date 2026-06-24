@@ -382,7 +382,8 @@
             "justNow": "şimdi",
             "moments": "az önce",
             "checking": "Yenileme durumu kontrol ediliyor…",
-            "unavailable": "Yenileme durumu kullanılamıyor"
+            "unavailable": "Yenileme durumu kullanılamıyor",
+            "updateTreasuryData": "Hazine verilerini güncelle"
         }
     },
     "apiDocs": {

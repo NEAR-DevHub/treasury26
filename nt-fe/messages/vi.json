@@ -382,7 +382,8 @@
             "justNow": "bây giờ",
             "moments": "khoảnh khắc",
             "checking": "Đang kiểm tra trạng thái làm mới…",
-            "unavailable": "Không có trạng thái làm mới"
+            "unavailable": "Không có trạng thái làm mới",
+            "updateTreasuryData": "Cập nhật dữ liệu kho bạc"
         }
     },
     "apiDocs": {

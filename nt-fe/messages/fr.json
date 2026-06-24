@@ -382,7 +382,8 @@
             "justNow": "maintenant",
             "moments": "quelques instants",
             "checking": "Vérification de l'état d'actualisation…",
-            "unavailable": "État d'actualisation indisponible"
+            "unavailable": "État d'actualisation indisponible",
+            "updateTreasuryData": "Actualiser les données de trésorerie"
         }
     },
     "apiDocs": {

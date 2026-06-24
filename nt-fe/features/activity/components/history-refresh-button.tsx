@@ -7,6 +7,7 @@ import { Button } from "@/components/button";
 import { useTreasury } from "@/hooks/use-treasury";
 import {
     useConfidentialHistoryRefreshStatus,
+    usePublicHistoryRefresh,
     useRefreshConfidentialHistory,
 } from "@/hooks/use-treasury-queries";
 import type { ConfidentialHistoryRefreshStatus } from "@/lib/api";
@@ -44,43 +45,78 @@ function getRefreshControlState({
 }
 
 /**
- * Refresh button for confidential treasuries. Triggers a confidential history
- * drain on the backend (which also re-snapshots balances), then invalidates the
- * assets, balance chart, and recent activity queries so balance, assets, and
- * recent transactions refresh together. Renders nothing for non-confidential
- * (or hidden guest) treasuries. Reuses the shared "last updated" tooltip.
+ * Refresh button for treasury history, shown for both confidential and public
+ * treasuries (hidden only on guest views of a confidential treasury).
+ *
+ * Confidential: triggers a backend history drain (which also re-snapshots
+ * balances), gated by a backend-provided cooldown.
+ * Public: there is no backend drain, so it just invalidates and refetches the
+ * existing assets, balance chart, and recent activity queries, gated by a
+ * frontend-only dummy cooldown.
+ *
+ * In both modes the tooltip shows "Last updated now" right after a refresh and
+ * otherwise prompts the user to update the treasury data.
  */
 export function HistoryRefreshButton({ className }: { className?: string }) {
     const t = useTranslations("activity");
     const locale = useLocale();
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
 
-    const isHidden = isConfidential && isGuestTreasury;
-    const showRefreshButton = isConfidential && !isHidden;
+    // Guests of a confidential treasury can't trigger a backend drain, so the
+    // refresh button is hidden from them entirely. It shows for confidential
+    // members and for any public treasury (members or guests).
+    const isConfidentialGuest = isConfidential && isGuestTreasury;
+    const showRefreshButton = !isConfidentialGuest;
 
+    // Confidential: backend-driven refresh + cooldown status.
     const {
         data: refreshStatus,
         isFetching: isRefreshStatusFetching,
         isLoading: isRefreshStatusLoading,
         refetch: refetchRefreshStatus,
-    } = useConfidentialHistoryRefreshStatus(treasuryId, showRefreshButton);
-    const { isPending: isRefreshing, mutate: refreshHistory } =
+    } = useConfidentialHistoryRefreshStatus(
+        treasuryId,
+        showRefreshButton && isConfidential,
+    );
+    const { isPending: isConfidentialRefreshing, mutate: refreshHistory } =
         useRefreshConfidentialHistory(treasuryId);
 
-    const refreshControlState = getRefreshControlState({
-        isRefreshing,
-        isStatusFetching: isRefreshStatusLoading || isRefreshStatusFetching,
-        refreshStatus,
-    });
+    // Public: frontend-only cache refetch with a dummy cooldown.
+    const publicRefresh = usePublicHistoryRefresh(
+        treasuryId,
+        showRefreshButton && !isConfidential,
+    );
+
+    const refreshControlState: RefreshControlState = isConfidential
+        ? getRefreshControlState({
+              isRefreshing: isConfidentialRefreshing,
+              isStatusFetching:
+                  isRefreshStatusLoading || isRefreshStatusFetching,
+              refreshStatus,
+          })
+        : publicRefresh.isRefreshing
+          ? "refreshing"
+          : publicRefresh.canRefresh
+            ? "ready"
+            : "cooldown";
+
+    const isRefreshing = isConfidential
+        ? isConfidentialRefreshing
+        : publicRefresh.isRefreshing;
+    const lastUpdatedAt = isConfidential
+        ? refreshStatus?.lastUpdatedAt
+        : publicRefresh.lastUpdatedAt;
     const isRefreshDisabled = refreshControlState !== "ready";
 
-    const refreshRelativeTime = refreshStatus?.lastUpdatedAt
-        ? formatRelativeTime(refreshStatus.lastUpdatedAt, {
-              justNow: t("refresh.justNow"),
+    const justNowLabel = t("refresh.justNow");
+    const refreshRelativeTime = lastUpdatedAt
+        ? formatRelativeTime(lastUpdatedAt, {
+              justNow: justNowLabel,
               moments: t("refresh.moments"),
               locale,
           })
         : null;
+    const isJustNow = refreshRelativeTime === justNowLabel;
 
     const refreshTooltip = useMemo(() => {
         switch (refreshControlState) {
@@ -88,21 +124,22 @@ export function HistoryRefreshButton({ className }: { className?: string }) {
                 return t("refresh.refreshing");
             case "checking":
                 return t("refresh.checking");
-            case "unavailable":
-                return t("refresh.unavailable");
-            case "cooldown":
-                return refreshRelativeTime
+            // ready / cooldown / unavailable: keep "Last updated now" right
+            // after a refresh, otherwise prompt to update the treasury data.
+            default:
+                return isJustNow && refreshRelativeTime
                     ? t("refresh.lastUpdated", { time: refreshRelativeTime })
-                    : t("refresh.unavailable");
-            case "ready":
-                return refreshRelativeTime
-                    ? t("refresh.lastUpdated", { time: refreshRelativeTime })
-                    : t("refresh.notUpdated");
+                    : t("refresh.updateTreasuryData");
         }
-    }, [refreshControlState, refreshRelativeTime, t]);
+    }, [refreshControlState, isJustNow, refreshRelativeTime, t]);
 
     const handleRefreshHistory = useCallback(async () => {
         if (refreshControlState !== "ready") {
+            return;
+        }
+
+        if (!isConfidential) {
+            publicRefresh.refresh();
             return;
         }
 
@@ -112,7 +149,13 @@ export function HistoryRefreshButton({ className }: { className?: string }) {
         }
 
         refreshHistory();
-    }, [refetchRefreshStatus, refreshControlState, refreshHistory]);
+    }, [
+        refreshControlState,
+        isConfidential,
+        publicRefresh,
+        refetchRefreshStatus,
+        refreshHistory,
+    ]);
 
     if (!showRefreshButton) {
         return null;
@@ -124,7 +167,6 @@ export function HistoryRefreshButton({ className }: { className?: string }) {
             size="icon"
             className={cn("h-9 w-9", className)}
             tooltipContent={refreshTooltip}
-            aria-label={t("refresh.ariaLabel")}
             disabled={isRefreshDisabled}
             onClick={handleRefreshHistory}
         >

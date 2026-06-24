@@ -382,7 +382,8 @@
             "justNow": "עכשיו",
             "moments": "רגעים",
             "checking": "בודק סטטוס רענון…",
-            "unavailable": "סטטוס הרענון אינו זמין"
+            "unavailable": "סטטוס הרענון אינו זמין",
+            "updateTreasuryData": "עדכון נתוני האוצר"
         }
     },
     "apiDocs": {

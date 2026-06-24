@@ -382,7 +382,8 @@
             "justNow": "刚刚",
             "moments": "片刻",
             "checking": "正在检查刷新状态…",
-            "unavailable": "刷新状态不可用"
+            "unavailable": "刷新状态不可用",
+            "updateTreasuryData": "更新金库数据"
         }
     },
     "apiDocs": {
