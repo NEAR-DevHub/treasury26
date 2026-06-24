@@ -246,7 +246,7 @@ pub async fn create_treasury_stream(
 
     tokio::spawn(async move {
         if let Err(evt) = run_creation(state, payload, tx.clone()).await {
-            log::error!(
+            tracing::error!(
                 "Treasury creation failed: step={}, status={}, message={}",
                 evt.step,
                 evt.status,
@@ -282,7 +282,7 @@ async fn run_creation(
     if state.env_vars.disable_treasury_creation {
         let message = format!("Treasury creation disabled. Treasury: {treasury} is not created.");
         if let Err(e) = state.telegram_client.send_message(&message).await {
-            log::warn!("Failed to send Telegram notification: {}", e);
+            tracing::warn!("Failed to send Telegram notification: {}", e);
         }
         return Err(ProgressEvent {
             step: "error",
@@ -311,7 +311,7 @@ async fn run_creation(
     };
 
     let args = prepare_args(&payload, &creation_policy).map_err(|e| {
-        log::error!("Error preparing args: {}", e);
+        tracing::error!("Error preparing args: {}", e);
         ProgressEvent {
             step: "error",
             status: "error",
@@ -329,7 +329,7 @@ async fn run_creation(
         .send_to(&state.network)
         .await
         .map_err(|e| {
-            log::error!("Error creating treasury: {}", e);
+            tracing::error!("Error creating treasury: {}", e);
             ProgressEvent {
                 step: "error",
                 status: "error",
@@ -339,7 +339,7 @@ async fn run_creation(
         })?
         .into_result()
         .map_err(|e| {
-            log::error!("Error creating treasury: {}", e);
+            tracing::error!("Error creating treasury: {}", e);
             ProgressEvent {
                 step: "error",
                 status: "error",
@@ -353,7 +353,7 @@ async fn run_creation(
     if let Err(e) =
         register_or_refresh_monitored_account(&state.db_pool, &treasury, is_confidential).await
     {
-        log::warn!("Failed to add treasury to monitored accounts: {:?}", e);
+        tracing::warn!("Failed to add treasury to monitored accounts: {:?}", e);
     }
 
     let creation_cost: BigDecimal = TREASURY_CREATE_DEPOSIT.as_yoctonear().into();
@@ -371,7 +371,7 @@ async fn run_creation(
     .execute(&state.db_pool)
     .await
     {
-        log::warn!(
+        tracing::warn!(
             "Failed to update paid_near for {}: {}",
             treasury.as_str(),
             e
@@ -401,7 +401,7 @@ async fn run_creation(
         match mark_testing_if_needed(&state.db_pool, treasury.as_str(), should_mark).await {
             Ok(value) => value,
             Err(e) => {
-                log::warn!(
+                tracing::warn!(
                     "Failed to update testing flag for treasury {}: {}",
                     treasury.as_str(),
                     e
@@ -421,8 +421,8 @@ async fn run_creation(
     .await
     {
         Ok(true) => {}
-        Ok(false) => log::warn!("DAO {} registered but sync timed out", treasury),
-        Err(e) => log::warn!("Failed to register new DAO in cache: {}", e),
+        Ok(false) => tracing::warn!("DAO {} registered but sync timed out", treasury),
+        Err(e) => tracing::warn!("Failed to register new DAO in cache: {}", e),
     }
 
     let balance_after = Tokens::account(state.signer_id.clone())
@@ -430,7 +430,7 @@ async fn run_creation(
         .fetch_from(&state.network)
         .await
         .map_err(|e| {
-            log::error!("Error fetching near balance: {}", e);
+            tracing::error!("Error fetching near balance: {}", e);
             ProgressEvent {
                 step: "error",
                 status: "error",
@@ -446,7 +446,7 @@ async fn run_creation(
         &balance_after.total.to_string(),
     );
     if let Err(e) = state.telegram_client.send_message(&message).await {
-        log::warn!("Failed to send Telegram notification: {}", e);
+        tracing::warn!("Failed to send Telegram notification: {}", e);
     }
 
     send_progress(&tx, "finalizing", "completed").await;

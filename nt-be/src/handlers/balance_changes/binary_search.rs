@@ -72,7 +72,10 @@ pub async fn find_balance_change_block(
                     let err_str = e.to_string();
                     if err_str.contains("UnknownBlock") || err_str.contains("422") {
                         // Block was never produced (skipped block height) — skip it
-                        log::debug!("Block {} not available during binary search, skipping", mid);
+                        tracing::debug!(
+                            "Block {} not available during binary search, skipping",
+                            mid
+                        );
                         left = mid + 1;
                         continue;
                     }

@@ -154,7 +154,7 @@ impl PriceProvider for CoinGeckoClient {
             self.base_url, asset_id, date_str
         );
 
-        log::debug!("Fetching price from CoinGecko: {} for {}", asset_id, date);
+        tracing::debug!("Fetching price from CoinGecko: {} for {}", asset_id, date);
 
         let response = self
             .http_client
@@ -171,13 +171,13 @@ impl PriceProvider for CoinGeckoClient {
         let status = response.status();
 
         if status == reqwest::StatusCode::NOT_FOUND {
-            log::debug!("CoinGecko: Asset {} not found", asset_id);
+            tracing::debug!("CoinGecko: Asset {} not found", asset_id);
             return Ok(None);
         }
 
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            log::warn!(
+            tracing::warn!(
                 "CoinGecko API error for {}: {} - {}",
                 asset_id,
                 status,
@@ -194,9 +194,9 @@ impl PriceProvider for CoinGeckoClient {
             .and_then(|cp| cp.usd);
 
         if let Some(p) = price {
-            log::debug!("CoinGecko: {} price on {} = ${}", asset_id, date, p);
+            tracing::debug!("CoinGecko: {} price on {} = ${}", asset_id, date, p);
         } else {
-            log::debug!(
+            tracing::debug!(
                 "CoinGecko: No price data for {} on {} (market_data missing)",
                 asset_id,
                 date
@@ -221,7 +221,7 @@ impl PriceProvider for CoinGeckoClient {
             now.timestamp()
         );
 
-        log::info!(
+        tracing::info!(
             "Fetching all historical prices from CoinGecko for {} ({} days)",
             asset_id,
             HISTORICAL_DAYS
@@ -238,13 +238,13 @@ impl PriceProvider for CoinGeckoClient {
         let status = response.status();
 
         if status == reqwest::StatusCode::NOT_FOUND {
-            log::debug!("CoinGecko: Asset {} not found", asset_id);
+            tracing::debug!("CoinGecko: Asset {} not found", asset_id);
             return Ok(HashMap::new());
         }
 
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            log::warn!(
+            tracing::warn!(
                 "CoinGecko API error fetching history for {}: {} - {}",
                 asset_id,
                 status,
@@ -267,7 +267,7 @@ impl PriceProvider for CoinGeckoClient {
             }
         }
 
-        log::info!(
+        tracing::info!(
             "CoinGecko: Fetched {} daily prices for {}",
             daily_prices.len(),
             asset_id

@@ -34,6 +34,7 @@ pub fn spawn_confidential_gold_reconciliation_worker(pool: PgPool) {
     });
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(job = "confidential_gold_reconciliation", phase = phase))]
 async fn run_reconciliation_pass(pool: &PgPool, phase: &str) {
     match mark_backfilled_confidential_daos_gold_dirty(pool).await {
         Ok(rows) => tracing::info!(
@@ -73,6 +74,7 @@ async fn run_reconciliation_pass(pool: &PgPool, phase: &str) {
     }
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(phase = phase, step = step))]
 async fn project_dirty_daos(pool: &PgPool, phase: &str, step: &str) {
     match project_confidential_gold_for_dirty_daos(pool, CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS)
         .await

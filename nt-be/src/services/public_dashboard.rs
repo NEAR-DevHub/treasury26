@@ -510,6 +510,11 @@ pub async fn load_latest_public_dashboard_snapshot(
     }))
 }
 
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(job = "public_dashboard_refresh", snapshot_date = %snapshot_date)
+)]
 async fn refresh_public_dashboard_snapshot_for_date(
     state: &Arc<AppState>,
     snapshot_date: NaiveDate,
@@ -518,13 +523,13 @@ async fn refresh_public_dashboard_snapshot_for_date(
     let trezu_set = load_trezu_dao_set(&state.db_pool)
         .await
         .unwrap_or_else(|err| {
-            log::warn!("[public-dashboard] Failed to load Trezu DAO set: {}", err);
+            tracing::warn!("Failed to load Trezu DAO set: {}", err);
             HashSet::new()
         });
 
     let total_daos = dao_ids.len();
-    log::info!(
-        "[public-dashboard] Starting refresh for {} DAOs (concurrency={})",
+    tracing::info!(
+        "Starting refresh for {} DAOs (concurrency={})",
         total_daos,
         REFRESH_CONCURRENCY
     );
@@ -540,11 +545,7 @@ async fn refresh_public_dashboard_snapshot_for_date(
             }
             Err(err) => {
                 failed_dao_count += 1;
-                log::warn!(
-                    "[public-dashboard] Skipping invalid DAO {}: {}",
-                    dao_id,
-                    err
-                );
+                tracing::warn!("Skipping invalid DAO {}: {}", dao_id, err);
             }
         }
     }
@@ -587,8 +588,8 @@ async fn refresh_public_dashboard_snapshot_for_date(
             }
             Ok((account_id, _is_trezu, Err((status, message)))) => {
                 failed_dao_count += 1;
-                log::warn!(
-                    "[public-dashboard] Failed to compute assets for {} ({}): {}",
+                tracing::warn!(
+                    "Failed to compute assets for {} ({}): {}",
                     account_id,
                     status,
                     message
@@ -596,13 +597,13 @@ async fn refresh_public_dashboard_snapshot_for_date(
             }
             Err(join_err) => {
                 failed_dao_count += 1;
-                log::warn!("[public-dashboard] Task panicked: {}", join_err);
+                tracing::warn!("Task panicked: {}", join_err);
             }
         }
 
         if completed.is_multiple_of(REFRESH_LOG_INTERVAL) || completed == total_daos {
-            log::info!(
-                "[public-dashboard] Progress: {}/{} DAOs processed ({} ok, {} failed)",
+            tracing::info!(
+                "Progress: {}/{} DAOs processed ({} ok, {} failed)",
                 completed,
                 total_daos,
                 successful_dao_count,
@@ -659,6 +660,7 @@ async fn snapshot_exists_this_week(pool: &PgPool) -> Result<bool, sqlx::Error> {
     Ok(exists)
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(job = "public_dashboard_refresh"))]
 async fn ensure_this_week_public_dashboard_snapshot(
     state: &Arc<AppState>,
 ) -> Result<Option<RefreshSummary>, Box<dyn std::error::Error + Send + Sync>> {
@@ -672,8 +674,9 @@ async fn ensure_this_week_public_dashboard_snapshot(
         .map(Some)
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(job = "public_dashboard_refresh"))]
 pub async fn run_public_dashboard_refresh_service(state: Arc<AppState>) {
-    log::info!(
+    tracing::info!(
         "Starting public dashboard refresh service (startup check + weekly Monday UTC midnight schedule)"
     );
 
@@ -681,8 +684,8 @@ pub async fn run_public_dashboard_refresh_service(state: Arc<AppState>) {
 
     match ensure_this_week_public_dashboard_snapshot(&state).await {
         Ok(Some(summary)) => {
-            log::info!(
-                "[public-dashboard] Startup refresh stored snapshot for {} ({} DAOs, {} Trezu, {} failures, {} balance rows)",
+            tracing::info!(
+                "Startup refresh stored snapshot for {} ({} DAOs, {} Trezu, {} failures, {} balance rows)",
                 summary.snapshot_date,
                 summary.dao_count,
                 summary.trezu_dao_count,
@@ -691,12 +694,10 @@ pub async fn run_public_dashboard_refresh_service(state: Arc<AppState>) {
             );
         }
         Ok(None) => {
-            log::info!(
-                "[public-dashboard] Startup refresh skipped, this week's snapshot already exists"
-            );
+            tracing::info!("Startup refresh skipped, this week's snapshot already exists");
         }
         Err(err) => {
-            log::error!("[public-dashboard] Startup refresh failed: {}", err);
+            tracing::error!("Startup refresh failed: {}", err);
         }
     }
 
@@ -705,8 +706,8 @@ pub async fn run_public_dashboard_refresh_service(state: Arc<AppState>) {
         let sleep_for = duration_until_next_monday_utc_midnight(now);
         let wake_at = now + chrono::Duration::from_std(sleep_for).unwrap_or_default();
 
-        log::info!(
-            "[public-dashboard] Next refresh scheduled at {} UTC",
+        tracing::info!(
+            "Next refresh scheduled at {} UTC",
             wake_at.format("%Y-%m-%d %H:%M:%S")
         );
 
@@ -715,8 +716,8 @@ pub async fn run_public_dashboard_refresh_service(state: Arc<AppState>) {
         let snapshot_date = Utc::now().date_naive();
         match refresh_public_dashboard_snapshot_for_date(&state, snapshot_date).await {
             Ok(summary) => {
-                log::info!(
-                    "[public-dashboard] Weekly snapshot stored for {} ({} DAOs, {} Trezu, {} failures, {} balance rows)",
+                tracing::info!(
+                    "Weekly snapshot stored for {} ({} DAOs, {} Trezu, {} failures, {} balance rows)",
                     summary.snapshot_date,
                     summary.dao_count,
                     summary.trezu_dao_count,
@@ -725,7 +726,7 @@ pub async fn run_public_dashboard_refresh_service(state: Arc<AppState>) {
                 );
             }
             Err(err) => {
-                log::error!("[public-dashboard] Weekly refresh failed: {}", err);
+                tracing::error!("Weekly refresh failed: {}", err);
             }
         }
     }

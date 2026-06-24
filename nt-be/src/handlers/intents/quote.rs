@@ -70,7 +70,7 @@ pub async fn send_oneclick_request(
     }
 
     let response = req.json(body).send().await.map_err(|e| {
-        log::error!("Error calling 1click API at {}: {}", url, e);
+        tracing::error!("Error calling 1click API at {}: {}", url, e);
         (
             StatusCode::BAD_GATEWAY,
             format!("Failed to call 1click API: {}", e),

@@ -46,7 +46,7 @@ fn apply_spend(
     };
     background::spawn(label, async move {
         let total_spend = sponsored_spend.total();
-        log::debug!(
+        tracing::debug!(
             "relay spend for {} (consume_credit={}): proposal_storage={} deposits={} registrations={} total={}",
             treasury_id,
             consume_credit,
@@ -75,14 +75,14 @@ fn apply_spend(
         .await;
 
         match result {
-            Ok(Some((new_credits,))) => log::info!(
+            Ok(Some((new_credits,))) => tracing::info!(
                 "Recorded relay spend for treasury {} (consume_credit={}). Credits: {}",
                 treasury_id,
                 consume_credit,
                 new_credits
             ),
-            Ok(None) => log::warn!("Treasury {} not found for relay spend", treasury_id),
-            Err(e) => log::error!("Failed to record relay spend for {}: {}", treasury_id, e),
+            Ok(None) => tracing::warn!("Treasury {} not found for relay spend", treasury_id),
+            Err(e) => tracing::error!("Failed to record relay spend for {}: {}", treasury_id, e),
         }
     });
 }

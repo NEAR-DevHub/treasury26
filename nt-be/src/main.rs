@@ -1,7 +1,10 @@
 use axum::{
     Router,
+    body::Body,
+    http::Request,
     http::{HeaderValue, Method, header},
 };
+use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
@@ -18,13 +21,7 @@ fn main() {
 async fn async_main() {
     dotenvy::dotenv().ok();
 
-    // Initialize logging
-    if std::env::var("RUST_LOG").is_err() {
-        unsafe {
-            std::env::set_var("RUST_LOG", "info");
-        }
-    }
-    env_logger::init();
+    let _observability_guard = nt_be::observability::init_observability();
 
     // Initialize application state
     let state = Arc::new(
@@ -52,7 +49,7 @@ async fn async_main() {
                 .unwrap_or(30u64);
             let interval = Duration::from_secs(interval_secs);
 
-            log::info!(
+            tracing::info!(
                 "Starting account maintenance worker ({}s interval, {}s initial delay)",
                 interval_secs,
                 initial_delay_secs
@@ -70,7 +67,7 @@ async fn async_main() {
                 let up_to_block = match Chain::block().fetch_from(&state_clone.network).await {
                     Ok(block) => block.header.height as i64,
                     Err(e) => {
-                        log::error!("[maintenance] Failed to get current block height: {}", e);
+                        tracing::error!("Failed to get current block height: {}", e);
                         continue;
                     }
                 };
@@ -78,7 +75,7 @@ async fn async_main() {
                 match run_maintenance_cycle(&state_clone, up_to_block).await {
                     Ok(()) => {}
                     Err(e) => {
-                        log::error!("[maintenance] Cycle failed: {}", e);
+                        tracing::error!("Cycle failed: {}", e);
                     }
                 }
             }
@@ -158,7 +155,7 @@ async fn async_main() {
     {
         let state_clone = state.clone();
         tokio::spawn(async move {
-            log::info!("Starting bulk payment payout worker (5 second poll interval)");
+            tracing::info!("Starting bulk payment payout worker (5 second poll interval)");
 
             // Wait a bit before first run to let server fully start
             tokio::time::sleep(Duration::from_secs(15)).await;
@@ -176,11 +173,11 @@ async fn async_main() {
                 {
                     Ok(processed) => {
                         if processed > 0 {
-                            log::info!("Processed {} payment batches", processed);
+                            tracing::info!("Processed {} payment batches", processed);
                         }
                     }
                     Err(e) => {
-                        log::error!("Payout worker error: {}", e);
+                        tracing::error!("Payout worker error: {}", e);
                     }
                 }
             }
@@ -242,7 +239,7 @@ async fn async_main() {
             nt_be::services::run_ft_lockup_schedule_refresh_service(state_clone).await;
         });
     } else {
-        log::info!("FT lockup scheduler disabled (DISABLE_FT_LOCKUP_SCHEDULER=true)");
+        tracing::info!("FT lockup scheduler disabled (DISABLE_FT_LOCKUP_SCHEDULER=true)");
     }
 
     // Configure CORS - must specify exact origins, methods, and headers when using credentials
@@ -287,14 +284,16 @@ async fn async_main() {
                 )
                 .with_state(state)
                 .layer(open_cors),
-        );
+        )
+        .layer(SentryHttpLayer::new().enable_transaction())
+        .layer(NewSentryLayer::<Request<Body>>::new_from_top());
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
     let addr = format!("0.0.0.0:{}", port);
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
 
-    println!("Server running on {}", addr);
+    tracing::info!(addr = %addr, "server running");
 
     axum::serve(listener, app).await.unwrap();
 }

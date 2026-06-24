@@ -128,7 +128,7 @@ pub async fn calculate_monthly_outbound_volume(
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
-        log::error!("Failed to fetch outbound amounts: {}", e);
+        tracing::error!("Failed to fetch outbound amounts: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to fetch outbound amounts: {}", e),
@@ -146,7 +146,7 @@ pub async fn calculate_monthly_outbound_volume(
     let tokens_metadata = fetch_tokens_metadata(state, &token_ids)
         .await
         .map_err(|e| {
-            log::error!("Failed to fetch token metadata for volume calc: {:?}", e);
+            tracing::error!("Failed to fetch token metadata for volume calc: {:?}", e);
             e
         })?;
 
@@ -176,7 +176,7 @@ pub async fn calculate_monthly_outbound_volume(
         {
             meta.price.unwrap_or(0.0)
         } else {
-            log::warn!(
+            tracing::warn!(
                 "No metadata found for token {}, skipping in volume calc",
                 outbound.token_id
             );

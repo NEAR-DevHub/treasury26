@@ -315,11 +315,11 @@ impl AppStateBuilder {
                 .await
             {
                 Ok(pool) => {
-                    log::info!("Connected to Goldsky sink database");
+                    tracing::info!("Connected to Goldsky sink database");
                     Some(pool)
                 }
                 Err(e) => {
-                    log::warn!(
+                    tracing::warn!(
                         "Failed to connect to Goldsky sink database: {} — enrichment worker disabled",
                         e
                     );
@@ -385,23 +385,23 @@ impl AppState {
         let env_vars = EnvVars::default();
 
         // Database connection
-        log::info!("Connecting to database...");
+        tracing::info!("Connecting to database...");
         let db_pool = sqlx::postgres::PgPoolOptions::new()
             .max_connections(20)
             .acquire_timeout(Duration::from_secs(3))
             .connect(&env_vars.database_url)
             .await?;
 
-        log::info!("Running database migrations...");
+        tracing::info!("Running database migrations...");
         sqlx::migrate!("./migrations").run(&db_pool).await?;
 
-        log::info!("Database connection established successfully");
+        tracing::info!("Database connection established successfully");
 
         let http_client = reqwest::Client::new();
 
         // Initialize price service with DeFiLlama provider (free, no API key required)
         let base_url = &env_vars.defillama_api_base_url;
-        log::info!(
+        tracing::info!(
             "Initializing DeFiLlama price provider with base URL: {}",
             base_url
         );
@@ -482,7 +482,7 @@ impl AppState {
                 })?;
 
                 if let Some(record) = db_result {
-                    log::info!(
+                    tracing::info!(
                         "Found block {} in database for timestamp {}",
                         record.block_height,
                         date
@@ -490,7 +490,7 @@ impl AppState {
                     return Ok::<u64, (StatusCode, String)>(record.block_height as u64);
                 }
 
-                log::info!(
+                tracing::info!(
                     "Block not found in database for timestamp {}, using binary search via RPC",
                     date
                 );
@@ -506,7 +506,7 @@ impl AppState {
                         )
                     })?;
 
-                log::info!(
+                tracing::info!(
                     "Found block {} via binary search for timestamp {}, caching result",
                     block_height,
                     date
@@ -559,7 +559,7 @@ impl AppState {
             .into());
         }
 
-        log::info!(
+        tracing::info!(
             "Binary searching for block with timestamp {} in range [{}, {}]",
             timestamp_ns,
             left,
@@ -579,7 +579,7 @@ impl AppState {
 
             let mid_timestamp: i64 = mid_block.header.timestamp as i64;
 
-            log::debug!(
+            tracing::debug!(
                 "Checking block {} with timestamp {} (target: {})",
                 mid,
                 mid_timestamp,
@@ -598,7 +598,7 @@ impl AppState {
                 right = mid - 1;
             } else {
                 // Exact match found
-                log::info!(
+                tracing::info!(
                     "Found exact match at block {} for timestamp {}",
                     mid,
                     timestamp_ns
@@ -608,7 +608,7 @@ impl AppState {
         }
 
         // Return the first block with timestamp >= target
-        log::info!(
+        tracing::info!(
             "Binary search completed. Closest block: {} for timestamp {}",
             result,
             timestamp_ns

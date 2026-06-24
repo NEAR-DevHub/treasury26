@@ -4,11 +4,13 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
 use crate::AppState;
+use crate::observability::sanitize_sensitive_text;
 
 pub mod balances;
 pub mod bronze;
 pub mod generate_intent;
 pub mod gold;
+pub mod history_refresh;
 pub mod prepare_auth;
 pub mod types;
 
@@ -55,6 +57,7 @@ pub struct AuthenticateResult {
 
 /// Refresh the JWT access token for a DAO using its stored refresh token.
 /// Called internally before making authenticated API calls.
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id))]
 pub async fn refresh_dao_jwt(
     state: &AppState,
     dao_id: &AccountIdRef,
@@ -131,27 +134,21 @@ pub async fn refresh_dao_jwt(
     let status = response.status();
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_default();
+        let sanitized_error = sanitize_sensitive_text(&error_text);
         tracing::error!(
             "JWT refresh failed for DAO {} ({}): {}",
             dao_id,
             status,
-            error_text
+            sanitized_error
         );
 
         return Err((
             StatusCode::UNAUTHORIZED,
-            format!("JWT refresh failed for DAO {}: {}", dao_id, error_text),
+            format!("JWT refresh failed for DAO {}: {}", dao_id, sanitized_error),
         ));
     }
 
-    let json_value: serde_json::Value = response.json().await.map_err(|e| {
-        (
-            StatusCode::BAD_GATEWAY,
-            format!("Failed to parse refresh response: {}", e),
-        )
-    })?;
-    println!("json_value: {:?}", json_value);
-    let auth_response: AuthenticateResponse = serde_json::from_value(json_value).map_err(|e| {
+    let auth_response: AuthenticateResponse = response.json().await.map_err(|e| {
         (
             StatusCode::BAD_GATEWAY,
             format!("Failed to parse refresh response: {}", e),

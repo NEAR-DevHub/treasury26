@@ -39,6 +39,7 @@ pub struct AuthPayload {
 }
 
 /// Fetch the current salt from the intents.near contract.
+#[tracing::instrument(level = "debug", skip_all, fields(step = "salt_fetch"))]
 pub(crate) async fn fetch_salt(state: &Arc<AppState>) -> Result<[u8; 4], String> {
     let result = near_api::Contract(INTENTS_CONTRACT_ID.into())
         .call_function("current_salt", ())
@@ -75,6 +76,7 @@ pub(crate) fn build_nonce(salt: &[u8; 4], deadline: &chrono::DateTime<chrono::Ut
 /// Returns `(proposal, auth_payload_json)` — the proposal is ready to pass to
 /// `add_proposal`, and the auth payload is used later when authenticating with
 /// the 1Click API.
+#[tracing::instrument(level = "info", skip_all, fields(dao_id = %dao_id))]
 pub(crate) async fn build_auth_proposal(
     state: &Arc<AppState>,
     dao_id: &str,

@@ -146,7 +146,7 @@ pub async fn find_block_with_hints_tracked(
 
     // Check if hints are available for this token type
     if !hint_service.supports_token(token_id) {
-        log::debug!(
+        tracing::debug!(
             "No hint providers support token {} - using binary search",
             token_id
         );
@@ -175,7 +175,7 @@ pub async fn find_block_with_hints_tracked(
         .await;
 
     if hints.is_empty() {
-        log::debug!(
+        tracing::debug!(
             "No hints found for {}/{} in blocks {}-{} - using binary search",
             account_id,
             token_id,
@@ -201,7 +201,7 @@ pub async fn find_block_with_hints_tracked(
         .map_err(|e| e.to_string().into());
     }
 
-    log::info!(
+    tracing::info!(
         "Got {} hints for {}/{} in blocks {}-{}, resolving exact blocks",
         hints.len(),
         account_id,
@@ -235,7 +235,7 @@ pub async fn find_block_with_hints_tracked(
             {
                 Ok(b) => b,
                 Err(e) => {
-                    log::warn!(
+                    tracing::warn!(
                         "Failed to verify hint at block {}: {} - trying tx_status",
                         hint.block_height,
                         e
@@ -246,7 +246,7 @@ pub async fn find_block_with_hints_tracked(
             };
 
             if &balance_at_hint == expected_balance {
-                log::info!(
+                tracing::info!(
                     "Hint verified via FastNear balance data: block {} for {}/{}",
                     hint.block_height,
                     account_id,
@@ -262,7 +262,7 @@ pub async fn find_block_with_hints_tracked(
 
         // Strategy 2: Use tx_status to find exact block from transaction hash
         if let Some(tx_hash) = &hint.transaction_hash {
-            log::debug!(
+            tracing::debug!(
                 "Using tx_status to resolve transaction {} for {}/{}",
                 tx_hash,
                 account_id,
@@ -275,7 +275,7 @@ pub async fn find_block_with_hints_tracked(
                 match tx_resolver::find_balance_change_blocks(network, tx_hash, account_id).await {
                     Ok(blocks) => blocks,
                     Err(e) => {
-                        log::warn!(
+                        tracing::warn!(
                             "Failed to resolve tx {}: {} - trying direct verification",
                             tx_hash,
                             e
@@ -285,7 +285,7 @@ pub async fn find_block_with_hints_tracked(
                 };
 
             if !resolved_blocks.is_empty() {
-                log::debug!(
+                tracing::debug!(
                     "tx_status resolved {} blocks for tx {}: {:?}",
                     resolved_blocks.len(),
                     tx_hash,
@@ -300,7 +300,7 @@ pub async fn find_block_with_hints_tracked(
 
                     // Skip if we've already checked this block
                     if already_checked.contains(&block_height) {
-                        log::debug!(
+                        tracing::debug!(
                             "Skipping already-checked block {} in tx_status resolution",
                             block_height
                         );
@@ -320,7 +320,7 @@ pub async fn find_block_with_hints_tracked(
                     {
                         Ok(b) => b,
                         Err(e) => {
-                            log::warn!(
+                            tracing::warn!(
                                 "Failed to verify balance at resolved block {}: {}",
                                 block_height,
                                 e
@@ -330,7 +330,7 @@ pub async fn find_block_with_hints_tracked(
                     };
 
                     if &balance_at_block == expected_balance {
-                        log::info!(
+                        tracing::info!(
                             "tx_status resolved exact block {} for {}/{} (tx: {})",
                             block_height,
                             account_id,
@@ -350,7 +350,7 @@ pub async fn find_block_with_hints_tracked(
         // Strategy 3: Direct verification at hint block (original logic)
         // Skip if we've already checked this block in Strategy 1 or 2
         if already_checked.contains(&hint.block_height) {
-            log::debug!(
+            tracing::debug!(
                 "Skipping already-checked hint block {} in Strategy 3",
                 hint.block_height
             );
@@ -370,7 +370,7 @@ pub async fn find_block_with_hints_tracked(
         {
             Ok(b) => b,
             Err(e) => {
-                log::warn!(
+                tracing::warn!(
                     "Failed to verify hint at block {}: {} - trying next hint",
                     hint.block_height,
                     e
@@ -386,7 +386,7 @@ pub async fn find_block_with_hints_tracked(
                 // Only check if we haven't already checked this block
                 if already_checked.contains(&prev_block) {
                     // Already checked this block, assume it's valid
-                    log::debug!(
+                    tracing::debug!(
                         "Skipping already-checked prev block {} - accepting hint",
                         prev_block
                     );
@@ -409,7 +409,7 @@ pub async fn find_block_with_hints_tracked(
                 {
                     Ok(b) => b,
                     Err(e) => {
-                        log::warn!(
+                        tracing::warn!(
                             "Failed to check balance before hint block {}: {} - accepting hint",
                             hint.block_height,
                             e
@@ -423,7 +423,7 @@ pub async fn find_block_with_hints_tracked(
                 };
 
                 if &balance_before != expected_balance {
-                    log::info!(
+                    tracing::info!(
                         "Hint verified: balance changed at block {} for {}/{}",
                         hint.block_height,
                         account_id,
@@ -446,7 +446,7 @@ pub async fn find_block_with_hints_tracked(
     }
 
     // No valid hints found, fall back to binary search
-    log::info!(
+    tracing::info!(
         "No valid hints resolved for {}/{} - falling back to binary search",
         account_id,
         token_id
@@ -605,7 +605,7 @@ pub async fn fill_gap_with_hints(
         Err(e) if e.to_string().contains("No receipt found") => {
             // Balance changed but no receipts found on this account
             // This happens for intents tokens where receipts execute on intents.near
-            log::warn!(
+            tracing::warn!(
                 "No receipts found at block {} for {}/{} - checking for hint data",
                 block_height,
                 gap.account_id,
@@ -616,7 +616,7 @@ pub async fn fill_gap_with_hints(
             if let Some(ref hint) = hint
                 && hint.counterparty.is_some()
             {
-                log::info!(
+                tracing::info!(
                     "Using hint counterparty {} for {}/{} at block {}",
                     hint.counterparty.as_ref().unwrap(),
                     gap.account_id,
@@ -645,7 +645,7 @@ pub async fn fill_gap_with_hints(
             .await
             {
                 Ok(Some(snapshot)) => {
-                    log::info!(
+                    tracing::info!(
                         "Inserted SNAPSHOT at block {} for {}/{} (balance existed but didn't change)",
                         block_height,
                         gap.account_id,
@@ -656,7 +656,7 @@ pub async fn fill_gap_with_hints(
                 Ok(None) | Err(_) => {
                     // SNAPSHOT insertion failed because balance actually changed
                     // Insert a record with UNKNOWN counterparty instead
-                    log::warn!(
+                    tracing::warn!(
                         "Balance changed at block {} for {}/{} but no receipts or hint counterparty found - inserting UNKNOWN counterparty record",
                         block_height,
                         gap.account_id,
@@ -737,7 +737,7 @@ pub async fn fill_gaps_with_hints(
     creation_block: Option<i64>,
     neardata: Option<&NeardataClient>,
 ) -> Result<Vec<FilledGap>, GapFillerError> {
-    log::info!(
+    tracing::info!(
         "Starting gap detection for {}/{} up to block {} (hints: {})",
         account_id,
         token_id,
@@ -761,7 +761,7 @@ pub async fn fill_gaps_with_hints(
     let mut filled = Vec::new();
 
     if existing_count.0 == 0 {
-        log::info!(
+        tracing::info!(
             "No existing records for {}/{}, seeding initial balance",
             account_id,
             token_id
@@ -820,9 +820,9 @@ pub async fn fill_gaps_with_hints(
     let gaps = gap_detector::find_gaps(pool, account_id, token_id, up_to_block).await?;
 
     if gaps.is_empty() {
-        log::info!("No gaps between records for {}/{}", account_id, token_id);
+        tracing::info!("No gaps between records for {}/{}", account_id, token_id);
     } else {
-        log::info!(
+        tracing::info!(
             "Found {} gaps for {}/{} up to block {}",
             gaps.len(),
             account_id,
@@ -833,7 +833,7 @@ pub async fn fill_gaps_with_hints(
         for gap in &gaps {
             let filled_gap =
                 fill_gap_with_hints(pool, network, gap, hint_service, neardata).await?;
-            log::info!(
+            tracing::info!(
                 "Filled gap at block {} for {}/{}",
                 filled_gap.block_height,
                 account_id,
@@ -885,7 +885,7 @@ pub async fn seed_initial_balance(
     .await?;
 
     if existing_count.0 > 0 {
-        log::info!(
+        tracing::info!(
             "Records already exist for {}/{}, skipping seed",
             account_id,
             token_id
@@ -905,7 +905,7 @@ pub async fn seed_initial_balance(
     .await
     .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
-    log::info!(
+    tracing::info!(
         "Current balance for {}/{} at block {}: {}",
         account_id,
         token_id,
@@ -915,7 +915,7 @@ pub async fn seed_initial_balance(
 
     // If balance is 0, nothing to seed
     if current_balance == 0 {
-        log::info!("Balance is 0, nothing to seed");
+        tracing::info!("Balance is 0, nothing to seed");
         return Ok(None);
     }
 
@@ -927,7 +927,7 @@ pub async fn seed_initial_balance(
     if let Some(creation) = creation_block {
         let creation = creation as u64;
         if creation > start_block {
-            log::info!(
+            tracing::info!(
                 "Clamping seed lookback from block {} to creation block {} for {}/{}",
                 start_block,
                 creation,
@@ -938,7 +938,7 @@ pub async fn seed_initial_balance(
         }
     }
 
-    log::info!(
+    tracing::info!(
         "Searching for balance change from block {} to {}",
         start_block,
         current_block
@@ -960,7 +960,7 @@ pub async fn seed_initial_balance(
     let block_height = match change_block {
         Some(block) => block,
         None => {
-            log::info!(
+            tracing::info!(
                 "Balance {} existed before block {}, cannot find origin in search range",
                 current_balance,
                 start_block
@@ -969,7 +969,7 @@ pub async fn seed_initial_balance(
         }
     };
 
-    log::info!(
+    tracing::info!(
         "Found balance change at block {} for {}/{}",
         block_height,
         account_id,
@@ -980,7 +980,7 @@ pub async fn seed_initial_balance(
     // value at the beginning of our search range. In this case, we should insert a SNAPSHOT
     // record rather than trying to find a transaction (which may not exist at this block).
     if block_height == start_block {
-        log::info!(
+        tracing::info!(
             "Balance existed before search range, inserting SNAPSHOT at lookback boundary {}",
             start_block
         );
@@ -993,7 +993,7 @@ pub async fn seed_initial_balance(
             .await?;
 
     if let Some(filled_gap) = &result {
-        log::info!(
+        tracing::info!(
             "Seeded initial balance record at block {} for {}/{}: {} -> {}",
             filled_gap.block_height,
             account_id,
@@ -1052,7 +1052,7 @@ async fn fill_gap_to_present(
 
     // If balance hasn't changed, no gap
     if current_balance == latest.balance_after {
-        log::info!(
+        tracing::info!(
             "No gap to present: balance unchanged at {} for {}/{}",
             current_balance,
             account_id,
@@ -1061,7 +1061,7 @@ async fn fill_gap_to_present(
         return Ok(None);
     }
 
-    log::info!(
+    tracing::info!(
         "Gap to present detected: {} -> {} for {}/{}, searching blocks {}-{}",
         latest.balance_after,
         current_balance,
@@ -1107,7 +1107,7 @@ async fn fill_gap_to_present(
     };
 
     let Some(hint_result) = hint_result else {
-        log::warn!(
+        tracing::warn!(
             "Could not find balance change block for gap to present: {}/{} [{}-{}]",
             account_id,
             token_id,
@@ -1130,7 +1130,7 @@ async fn fill_gap_to_present(
             if let Some(ref hint) = hint_result.hint
                 && hint.counterparty.is_some()
             {
-                log::info!(
+                tracing::info!(
                     "Using hint counterparty for gap to present at block {} for {}/{}",
                     block_height,
                     account_id,
@@ -1209,7 +1209,7 @@ async fn fill_gap_to_past(
         earliest.counterparty == "SNAPSHOT" && earliest.balance_before == "0";
 
     if !has_obvious_gap && !should_check_history {
-        log::info!(
+        tracing::info!(
             "No gap to past: earliest record at block {} starts from 0 for {}/{} (not a SNAPSHOT)",
             earliest.block_height,
             account_id,
@@ -1223,7 +1223,7 @@ async fn fill_gap_to_past(
     if let Some(creation) = creation_block
         && earliest.block_height <= creation
     {
-        log::info!(
+        tracing::info!(
             "No gap to past: earliest record at block {} is at/before account creation block {} for {}/{}",
             earliest.block_height,
             creation,
@@ -1241,7 +1241,7 @@ async fn fill_gap_to_past(
     if let Some(creation) = creation_block {
         let creation = creation as u64;
         if creation > start_block {
-            log::info!(
+            tracing::info!(
                 "Clamping gap-to-past lookback from block {} to creation block {} for {}/{}",
                 start_block,
                 creation,
@@ -1254,7 +1254,7 @@ async fn fill_gap_to_past(
 
     // If the clamped start_block is at or past the earliest record, nothing to search
     if start_block >= earliest.block_height as u64 {
-        log::info!(
+        tracing::info!(
             "No gap to past: search range empty (start {} >= earliest {}) for {}/{}",
             start_block,
             earliest.block_height,
@@ -1270,7 +1270,7 @@ async fn fill_gap_to_past(
         {
             Ok(balance) => balance,
             Err(e) => {
-                log::warn!(
+                tracing::warn!(
                     "Could not query balance at block {} for {}/{}: {} - skipping gap to past",
                     start_block,
                     account_id,
@@ -1286,7 +1286,7 @@ async fn fill_gap_to_past(
     // This prevents repeated expensive lookback searches on subsequent runs
     let target_balance = balance_at_start.clone();
 
-    log::info!(
+    tracing::info!(
         "Gap to past detected: balance was {} at block {} but earliest record is at block {} with balance_before={} for {}/{}",
         balance_at_start,
         start_block,
@@ -1296,7 +1296,7 @@ async fn fill_gap_to_past(
         token_id
     );
 
-    log::info!(
+    tracing::info!(
         "Searching for gap to past for {}/{}: target balance '{}' at lookback boundary block {}",
         account_id,
         token_id,
@@ -1319,7 +1319,7 @@ async fn fill_gap_to_past(
     {
         Ok(block) => block,
         Err(e) => {
-            log::warn!(
+            tracing::warn!(
                 "Error searching for gap to past for {}/{}: {} - will retry on next call",
                 account_id,
                 token_id,
@@ -1330,7 +1330,7 @@ async fn fill_gap_to_past(
     };
 
     let Some(block_height) = change_block else {
-        log::info!(
+        tracing::info!(
             "Balance {} existed before block {} - cannot find origin within lookback window for {}/{}. Inserting SNAPSHOT at boundary.",
             target_balance,
             start_block,
@@ -1342,7 +1342,7 @@ async fn fill_gap_to_past(
         // This prevents repeated searches in future runs
         match insert_snapshot_record(pool, network, account_id, token_id, start_block).await {
             Ok(Some(snapshot)) => {
-                log::info!(
+                tracing::info!(
                     "Inserted SNAPSHOT at lookback boundary block {} for {}/{} with balance {}",
                     start_block,
                     account_id,
@@ -1352,14 +1352,14 @@ async fn fill_gap_to_past(
                 return Ok(Some(snapshot));
             }
             Ok(None) => {
-                log::warn!(
+                tracing::warn!(
                     "Could not insert SNAPSHOT at block {} - balance may have changed",
                     start_block
                 );
                 return Ok(None);
             }
             Err(e) => {
-                log::error!("Error inserting SNAPSHOT at block {}: {}", start_block, e);
+                tracing::error!("Error inserting SNAPSHOT at block {}: {}", start_block, e);
                 return Ok(None);
             }
         }
@@ -1372,7 +1372,7 @@ async fn fill_gap_to_past(
     {
         Ok(result) => Ok(result),
         Err(e) if e.to_string().contains("No receipt found") => {
-            log::info!(
+            tracing::info!(
                 "No receipts found at block {} - balance existed before search range. Inserting SNAPSHOT at lookback boundary.",
                 block_height
             );
@@ -1413,7 +1413,7 @@ pub async fn insert_snapshot_record(
 
     // Verify this is actually a snapshot (no balance change)
     if amount != 0 {
-        log::warn!(
+        tracing::warn!(
             "Block {} has balance change {} -> {} (amount: {}), not inserting as SNAPSHOT",
             block_height,
             balance_before,
@@ -1458,7 +1458,7 @@ pub async fn insert_snapshot_record(
     .execute(pool)
     .await?;
 
-    log::info!(
+    tracing::info!(
         "Inserted SNAPSHOT at block {} for {}/{}: {} -> {} (lookback boundary)",
         block_height,
         account_id,
@@ -1504,7 +1504,7 @@ pub async fn insert_unknown_counterparty_record(
         .await
         .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
-    log::info!(
+    tracing::info!(
         "Inserting UNKNOWN counterparty record at block {} for {}/{}: {} -> {} (amount: {})",
         block_height,
         account_id,
@@ -1545,7 +1545,7 @@ pub async fn insert_unknown_counterparty_record(
     .execute(pool)
     .await?;
 
-    log::warn!(
+    tracing::warn!(
         "Inserted UNKNOWN counterparty record at block {} for {}/{} - counterparty should be resolved later",
         block_height,
         account_id,
@@ -1604,7 +1604,7 @@ pub async fn insert_balance_change_with_hint(
         .map(|r| vec![r.clone()])
         .unwrap_or_default();
 
-    log::info!(
+    tracing::info!(
         "Inserting balance change with hint data at block {} for {}/{}: {} -> {} (counterparty: {}, tx: {:?})",
         block_height,
         account_id,
@@ -1645,7 +1645,7 @@ pub async fn insert_balance_change_with_hint(
     .execute(pool)
     .await?;
 
-    log::info!(
+    tracing::info!(
         "Inserted balance change from hint at block {} for {}/{} with counterparty {}",
         block_height,
         account_id,
@@ -1719,7 +1719,7 @@ async fn resolve_ft_counterparty_from_token_contract(
         }
     }
 
-    log::debug!(
+    tracing::debug!(
         "FT counterparty resolution: {} data changes on {} at block {}, {} unique receipts",
         changes_response.changes.len(),
         token_id,
@@ -1754,7 +1754,7 @@ async fn resolve_ft_counterparty_from_token_contract(
         {
             Ok(r) => r,
             Err(e) => {
-                log::warn!("Failed to fetch receipt {}: {} - skipping", receipt_hash, e);
+                tracing::warn!("Failed to fetch receipt {}: {} - skipping", receipt_hash, e);
                 continue;
             }
         };
@@ -1802,7 +1802,7 @@ async fn resolve_ft_counterparty_from_token_contract(
 
                     if transfer_receiver == account_id {
                         // Incoming transfer: someone sent FT to our account
-                        log::info!(
+                        tracing::info!(
                             "Resolved FT counterparty: {} sent {} to {} at block {}",
                             predecessor,
                             token_id,
@@ -1817,7 +1817,7 @@ async fn resolve_ft_counterparty_from_token_contract(
                         ));
                     } else if predecessor == account_id {
                         // Outgoing transfer: our account sent FT to someone
-                        log::info!(
+                        tracing::info!(
                             "Resolved FT counterparty: {} sent {} to {} at block {}",
                             account_id,
                             token_id,
@@ -1906,7 +1906,7 @@ pub async fn resolve_missing_tx_hashes(
                         break;
                     }
                     Err(e) => {
-                        log::debug!("Could not resolve receipt {} to tx: {}", receipt_id, e);
+                        tracing::debug!("Could not resolve receipt {} to tx: {}", receipt_id, e);
                     }
                 }
             }
@@ -1952,7 +1952,7 @@ pub async fn resolve_missing_tx_hashes(
                     }
                 }
                 Err(e) => {
-                    log::debug!(
+                    tracing::debug!(
                         "Failed to query account_changes on intents.near at block {}: {}",
                         block_height,
                         e
@@ -1983,7 +1983,7 @@ pub async fn resolve_missing_tx_hashes(
             .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
             resolved += 1;
-            log::info!(
+            tracing::info!(
                 "Resolved tx hash for {}/{} at block {}: {:?}",
                 account_id,
                 token_id,
@@ -2053,7 +2053,7 @@ pub async fn resolve_missing_action_kind(
             match block_info::get_block_data(network, account_id, block_height).await {
                 Ok(block_data) => extract_action_from_receipts(&block_data.receipts),
                 Err(e) => {
-                    log::debug!(
+                    tracing::debug!(
                         "Could not fetch block data for action_kind at block {}: {}",
                         block_height,
                         e
@@ -2080,7 +2080,7 @@ pub async fn resolve_missing_action_kind(
             .map_err(|e| -> GapFillerError { e.to_string().into() })?;
 
             resolved += 1;
-            log::info!(
+            tracing::info!(
                 "Resolved action_kind for {}/{} at block {}: {}/{}",
                 account_id,
                 token_id,
@@ -2188,7 +2188,7 @@ pub async fn insert_balance_change_record(
         if let Some(nd) = neardata {
             match nd.fetch_account_block_data(block_height, account_id).await {
                 Ok(data) => {
-                    log::debug!(
+                    tracing::debug!(
                         "Neardata resolved block {} for {}: {} receipts, {} execution_outcomes, {} transactions",
                         block_height,
                         account_id,
@@ -2199,7 +2199,7 @@ pub async fn insert_balance_change_record(
                     Some(data)
                 }
                 Err(e) => {
-                    log::warn!(
+                    tracing::warn!(
                         "Neardata failed for block {}: {} — falling back to RPC",
                         block_height,
                         e
@@ -2290,7 +2290,7 @@ pub async fn insert_balance_change_record(
                             }
                         }
                         Err(e) => {
-                            log::warn!(
+                            tracing::warn!(
                                 "tx_status failed for {} at block {}: {} — counterparty unknown",
                                 tx_hash,
                                 block_height,
@@ -2305,7 +2305,7 @@ pub async fn insert_balance_change_record(
                 (tx_signer, tx_receiver, counterparty, None, None)
             } else {
                 // No receipts and no execution outcomes
-                log::warn!(
+                tracing::warn!(
                     "Neardata block {} has no receipts or execution outcomes for {}",
                     block_height,
                     account_id,
@@ -2402,12 +2402,12 @@ pub async fn insert_balance_change_record(
                                 }
                             }
                         } else {
-                            log::warn!("Transaction response has no final_execution_outcome");
+                            tracing::warn!("Transaction response has no final_execution_outcome");
                             (None, None, String::new())
                         }
                     }
                     Err(e) => {
-                        log::warn!(
+                        tracing::warn!(
                             "Failed to query transaction {}: {} - will try receipts",
                             tx_hash,
                             e
@@ -2475,7 +2475,7 @@ pub async fn insert_balance_change_record(
                 .await?;
                 (s, r, c, rids, None, None)
             } else if token_id.starts_with("intents.near:") {
-                log::debug!(
+                tracing::debug!(
                     "Intents token {} at block {} — counterparty will be resolved by swap detector",
                     token_id,
                     block_height
@@ -2497,7 +2497,7 @@ pub async fn insert_balance_change_record(
                     .await
                 {
                     Ok(result) => {
-                        log::info!(
+                        tracing::info!(
                             "Resolved receipt {} → tx {}",
                             receipt_id,
                             result.transaction_hash,
@@ -2506,7 +2506,7 @@ pub async fn insert_balance_change_record(
                         break;
                     }
                     Err(e) => {
-                        log::debug!(
+                        tracing::debug!(
                             "Could not resolve receipt {} to transaction: {}",
                             receipt_id,
                             e
@@ -2546,7 +2546,7 @@ pub async fn insert_balance_change_record(
                         }
                     }
                 }
-                log::debug!(
+                tracing::debug!(
                     "Intents token at block {}: found {} candidate tx hash(es) from account_changes on intents.near",
                     block_height,
                     candidates.len()
@@ -2567,14 +2567,14 @@ pub async fn insert_balance_change_record(
                                 let mentions_account =
                                     tx_outcome_logs_mention_account(&tx_response, account_id);
                                 if mentions_account {
-                                    log::debug!(
+                                    tracing::debug!(
                                         "Intents tx {} confirmed relevant to {} (found in receipt logs)",
                                         candidate,
                                         account_id
                                     );
                                     transaction_hashes.push(candidate.clone());
                                 } else {
-                                    log::debug!(
+                                    tracing::debug!(
                                         "Intents tx {} filtered out — no mention of {} in receipt logs",
                                         candidate,
                                         account_id
@@ -2582,7 +2582,7 @@ pub async fn insert_balance_change_record(
                                 }
                             }
                             Err(e) => {
-                                log::warn!(
+                                tracing::warn!(
                                     "Failed to query transaction {} for intents filtering: {} — including as candidate",
                                     candidate,
                                     e
@@ -2595,7 +2595,7 @@ pub async fn insert_balance_change_record(
                 }
             }
             Err(e) => {
-                log::warn!(
+                tracing::warn!(
                     "Failed to query account_changes on intents.near at block {}: {}",
                     block_height,
                     e
@@ -2638,7 +2638,7 @@ pub async fn insert_balance_change_record(
     .execute(pool)
     .await?;
 
-    log::info!(
+    tracing::info!(
         "Inserted balance change at block {} for {}/{}: {} -> {} (tx_hashes: {:?}, receipts: {}, action: {}/{})",
         block_height,
         account_id,

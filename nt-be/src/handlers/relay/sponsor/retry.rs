@@ -32,7 +32,7 @@ where
         match operation().await {
             Ok(value) => return Ok(value),
             Err(e) if attempt < policy.max_attempts => {
-                log::warn!(
+                tracing::warn!(
                     "{label} attempt {attempt}/{} failed: {e}",
                     policy.max_attempts
                 );

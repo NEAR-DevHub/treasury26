@@ -156,6 +156,7 @@ pub struct HistoryCycleResult {
     pub accounts: Vec<HistoryCycleAccountResult>,
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(account_id = %account_id, limit = limit))]
 pub async fn poll_confidential_history_once(
     state: &AppState,
     account_id: &AccountIdRef,
@@ -262,6 +263,7 @@ fn collect_successful_deposit_candidates(
         .collect()
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(account_id = %account_id, limit = limit))]
 async fn poll_and_record_history(
     state: &AppState,
     account_id: &AccountIdRef,
@@ -287,6 +289,7 @@ async fn poll_and_record_history(
 
 /// `pages_fetched = 0` signals the no-op path (cursor already marked
 /// `backfill_done`); `1` means one 1Click page was actually fetched.
+#[tracing::instrument(level = "debug", skip_all, fields(account_id = %account_id, limit = limit))]
 async fn backfill_one_page(
     state: &AppState,
     account_id: &AccountIdRef,
@@ -379,6 +382,7 @@ async fn backfill_one_page(
     })
 }
 
+#[tracing::instrument(level = "info", skip_all, fields(account_id = %account_id, limit = limit))]
 pub async fn backfill_confidential_history(
     state: &AppState,
     account_id: &AccountIdRef,
@@ -418,6 +422,7 @@ pub async fn backfill_confidential_history(
 /// Latest-page poll + full backfill drain for one DAO. Used by the immediate
 /// refresh path; the scheduler uses `tick_confidential_history_scheduler`
 /// which only advances one backfill page per due DAO.
+#[tracing::instrument(level = "info", skip_all, fields(account_id = %account_id, limit = limit))]
 pub async fn run_account_history_full_drain(
     state: &AppState,
     account_id: &AccountIdRef,
@@ -435,6 +440,7 @@ pub async fn run_account_history_full_drain(
 
 /// Marks the DAO as active, drains its history, then projects Gold. Used
 /// after v1.signer submits and after goldsky observes a settled swap.
+#[tracing::instrument(level = "info", skip_all, fields(account_id = account_id))]
 pub async fn trigger_confidential_history_refresh(state: &AppState, account_id: &str) {
     let account_ref = match AccountIdRef::new(account_id) {
         Ok(account_ref) => account_ref,
@@ -576,6 +582,11 @@ fn aggregate_history_account_results(
 /// One periodic scheduler tick: poll the due DAOs (capped by
 /// `CONFIDENTIAL_HISTORY_DUE_ACCOUNT_LIMIT`), advance at most one backfill page
 /// per DAO, then project Gold for every dirty DAO.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(job = "confidential_history", limit = limit)
+)]
 pub async fn tick_confidential_history_scheduler(
     state: &AppState,
     limit: u32,

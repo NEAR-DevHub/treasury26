@@ -32,6 +32,7 @@ struct PendingNotification {
 /// Read undelivered `dao_notifications` for Telegram-connected DAOs and send messages.
 ///
 /// Returns the number of notifications successfully sent.
+#[tracing::instrument(level = "info", skip_all, fields(job = "telegram_dispatch"))]
 pub async fn run_telegram_dispatch_cycle(
     state: &Arc<AppState>,
     telegram_client: &TelegramClient,
@@ -113,8 +114,8 @@ pub async fn run_telegram_dispatch_cycle(
                 .await;
 
                 if let Err(e) = result {
-                    log::warn!(
-                        "[telegram-dispatch] Failed to record delivery for notification {}: {}",
+                    tracing::warn!(
+                        "Failed to record delivery for notification {}: {}",
                         notif.id,
                         e
                     );
@@ -123,8 +124,8 @@ pub async fn run_telegram_dispatch_cycle(
                 }
             }
             Err(e) => {
-                log::warn!(
-                    "[telegram-dispatch] Failed to send notification {} to chat {}: {}",
+                tracing::warn!(
+                    "Failed to send notification {} to chat {}: {}",
                     notif.id,
                     notif.chat_id,
                     e

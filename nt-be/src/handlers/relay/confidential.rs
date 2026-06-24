@@ -14,6 +14,7 @@ use crate::{
         types::normalize_quote_metadata_accounts,
     },
     handlers::relay::{effects::background, parse::ProposalKind},
+    observability::sanitize_sensitive_json_value,
     utils::cache::CacheKey,
 };
 use base64::Engine;
@@ -52,6 +53,7 @@ pub fn compute_nep413_hash(payload: &Value) -> Option<String> {
 }
 
 /// Fetch the Ed25519 derived public key for a DAO's path from v1.signer.
+#[tracing::instrument(level = "debug", skip_all, fields(dao_id = dao_id))]
 pub(crate) async fn fetch_mpc_public_key(
     state: &Arc<AppState>,
     dao_id: &str,
@@ -91,10 +93,18 @@ pub struct PendingIntentInput<'a> {
 }
 
 /// Store a pending intent for later auto-submission.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(dao_id = tracing::field::Empty, hash = tracing::field::Empty)
+)]
 pub async fn store_pending_intent(
     pool: &PgPool,
     input: PendingIntentInput<'_>,
 ) -> Result<(), String> {
+    tracing::Span::current().record("dao_id", tracing::field::display(input.dao_id));
+    tracing::Span::current().record("hash", tracing::field::display(input.payload_hash));
+
     let quote_metadata = input
         .quote_metadata
         .map(|v| normalize_quote_metadata_accounts(v.clone()));
@@ -134,7 +144,7 @@ pub async fn store_pending_intent(
     .await
     .map_err(|e| format!("Failed to store pending intent: {}", e))?;
 
-    log::info!(
+    tracing::info!(
         "Stored pending confidential intent for {} (hash={})",
         input.dao_id,
         input.payload_hash
@@ -204,12 +214,19 @@ pub fn extract_v1_signer_hash_from_kind(kind: &Value) -> Option<String> {
 /// Spawn a background auto-submit for each confidential intent referenced by an
 /// approving vote relay. Each task matches its payload hash to a pending intent
 /// and, if the MPC signature is in the execution result, submits it to 1Click.
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(treasury_id = treasury_id, intent_count = tracing::field::Empty)
+)]
 pub fn spawn_auto_submit_intents(
     state: &Arc<AppState>,
     treasury_id: &str,
     payload_hashes: Vec<String>,
     result_debug: &str,
 ) {
+    tracing::Span::current().record("intent_count", payload_hashes.len());
+
     for payload_hash in payload_hashes {
         let state = state.clone();
         let treasury_id = treasury_id.to_owned();
@@ -225,17 +242,24 @@ pub fn spawn_auto_submit_intents(
 /// This is called in a background task after a successful vote relay.
 /// It uses the payload hash extracted from the delegate action to find the
 /// matching pending intent.
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(treasury_id = treasury_id, hash = tracing::field::Empty)
+)]
 pub async fn try_auto_submit_intent(
     state: &Arc<AppState>,
     treasury_id: &str,
     payload_hash: &str,
     result_debug: &str,
 ) {
+    tracing::Span::current().record("hash", tracing::field::display(payload_hash));
+
     // Extract MPC signature from execution result
     let sig_bytes = match extract_mpc_signature(result_debug) {
         Some(bytes) => bytes,
         None => {
-            log::warn!(
+            tracing::warn!(
                 "No MPC signature found in vote result for {} (hash={})",
                 treasury_id,
                 payload_hash
@@ -245,7 +269,7 @@ pub async fn try_auto_submit_intent(
     };
 
     let sig_b58 = format!("ed25519:{}", bs58::encode(&sig_bytes).into_string());
-    log::info!(
+    tracing::info!(
         "Extracted MPC signature for {} (hash={}) — looking for pending intent",
         treasury_id,
         payload_hash
@@ -267,7 +291,7 @@ pub async fn try_auto_submit_intent(
     let (intent_payload, _correlation_id, intent_type) = match pending {
         Ok(Some(row)) => row,
         Ok(None) => {
-            log::warn!(
+            tracing::warn!(
                 "MPC signature found but no pending intent for {} (hash={})",
                 treasury_id,
                 payload_hash
@@ -275,7 +299,7 @@ pub async fn try_auto_submit_intent(
             return;
         }
         Err(e) => {
-            log::error!(
+            tracing::error!(
                 "DB error looking up pending intent for {} (hash={}): {}",
                 treasury_id,
                 payload_hash,
@@ -289,7 +313,7 @@ pub async fn try_auto_submit_intent(
     let mpc_public_key = match fetch_mpc_public_key(state, treasury_id).await {
         Ok(key) => key,
         Err(e) => {
-            log::error!(
+            tracing::error!(
                 "Failed to fetch MPC public key for {}: {:?}",
                 treasury_id,
                 e
@@ -298,7 +322,7 @@ pub async fn try_auto_submit_intent(
         }
     };
 
-    log::info!(
+    tracing::info!(
         "Auto-submitting {} for {} (hash={}, mpc_key={})",
         intent_type,
         treasury_id,
@@ -351,14 +375,15 @@ pub async fn try_auto_submit_intent(
         Ok(resp) => {
             let status = resp.status();
             let resp_body: Value = resp.json().await.unwrap_or_default();
+            let sanitized_resp_body = sanitize_sensitive_json_value(&resp_body);
 
             if status.is_success() {
-                log::info!(
+                tracing::info!(
                     "Successfully submitted {} for {} (hash={}): {:?}",
                     intent_type,
                     treasury_id,
                     payload_hash,
-                    resp_body
+                    sanitized_resp_body
                 );
 
                 // For auth: store the JWT tokens in monitored_accounts
@@ -390,7 +415,7 @@ pub async fn try_auto_submit_intent(
                     .execute(&state.db_pool)
                     .await;
 
-                    log::info!(
+                    tracing::info!(
                         "Stored confidential JWT for DAO {} (expires in {}s)",
                         treasury_id,
                         expires_in
@@ -399,7 +424,7 @@ pub async fn try_auto_submit_intent(
 
                 let update_result = sqlx::query!(
                     "UPDATE confidential_intents SET status = 'submitted', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
-                    &resp_body,
+                    &sanitized_resp_body,
                     treasury_id,
                     payload_hash,
                 )
@@ -411,7 +436,7 @@ pub async fn try_auto_submit_intent(
                         .await
                     {
                         Ok(Some(history_event_id)) => {
-                            log::info!(
+                            tracing::info!(
                                 "Linked submitted confidential intent for {} (hash={}) to history_event_id={}",
                                 treasury_id,
                                 payload_hash,
@@ -420,7 +445,7 @@ pub async fn try_auto_submit_intent(
                         }
                         Ok(None) => {}
                         Err(e) => {
-                            log::warn!(
+                            tracing::warn!(
                                 "Failed to link submitted confidential intent for {} (hash={}): {}",
                                 treasury_id,
                                 payload_hash,
@@ -440,7 +465,7 @@ pub async fn try_auto_submit_intent(
                         refresh_gold_metadata_for_intent(&state.db_pool, treasury_id, payload_hash)
                             .await
                     {
-                        log::warn!(
+                        tracing::warn!(
                             "Failed to refresh confidential gold metadata for {} (hash={}): {}",
                             treasury_id,
                             payload_hash,
@@ -449,17 +474,17 @@ pub async fn try_auto_submit_intent(
                     }
                 }
             } else {
-                log::error!(
+                tracing::error!(
                     "1Click {} failed ({}) for {} (hash={}): {:?}",
                     intent_type,
                     status,
                     treasury_id,
                     payload_hash,
-                    resp_body
+                    sanitized_resp_body
                 );
                 let _ = sqlx::query!(
                     "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
-                    &resp_body,
+                    &sanitized_resp_body,
                     treasury_id,
                     payload_hash,
                 )
@@ -468,7 +493,7 @@ pub async fn try_auto_submit_intent(
             }
         }
         Err(e) => {
-            log::error!(
+            tracing::error!(
                 "Failed to call 1Click {} for {} (hash={}): {}",
                 intent_type,
                 treasury_id,

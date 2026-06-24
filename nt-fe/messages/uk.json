@@ -368,11 +368,22 @@
             "type": "Тип",
             "date": "Дата",
             "request": "Запит",
+            "viewLinkedRequest": "Переглянути пов'язаний запит",
             "from": "Від",
             "to": "До",
             "method": "Метод",
             "contract": "Контракт",
             "transaction": "Транзакція"
+        },
+        "refresh": {
+            "ariaLabel": "Оновити конфіденційну історію",
+            "refreshing": "Оновлення…",
+            "lastUpdated": "Востаннє оновлено {time}",
+            "notUpdated": "Ще не оновлено",
+            "justNow": "щойно",
+            "moments": "кілька миттєвостей",
+            "checking": "Перевірка статусу оновлення…",
+            "unavailable": "Статус оновлення недоступний"
         }
     },
     "apiDocs": {

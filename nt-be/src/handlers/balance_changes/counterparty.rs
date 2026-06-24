@@ -133,7 +133,7 @@ pub async fn ensure_ft_metadata(
             };
             upsert_ft_counterparty(pool, token_contract, &metadata).await?;
 
-            log::info!(
+            tracing::info!(
                 "Discovered intents token from registry: {} ({}) with {} decimals",
                 metadata.name,
                 metadata.symbol,
@@ -144,7 +144,7 @@ pub async fn ensure_ft_metadata(
         }
 
         // Token not in registry - log warning and return error
-        log::warn!("Intents token not found in registry: {}", token_contract);
+        tracing::warn!("Intents token not found in registry: {}", token_contract);
         return Err(format!("Intents token not found in registry: {}", token_contract).into());
     }
 
@@ -154,7 +154,7 @@ pub async fn ensure_ft_metadata(
     let decimals = metadata.decimals;
     upsert_ft_counterparty(pool, token_contract, &metadata).await?;
 
-    log::info!(
+    tracing::info!(
         "Discovered FT token: {} ({}) with {} decimals (contract: {})",
         metadata.name,
         metadata.symbol,
@@ -225,7 +225,7 @@ pub async fn ensure_nep245_token_decimals(
     };
     upsert_ft_counterparty(pool, token_id, &ft_metadata).await?;
 
-    log::info!(
+    tracing::info!(
         "Discovered NEP-245 token: {} with {} decimals (contract: {}, token: {})",
         metadata.name,
         decimals,

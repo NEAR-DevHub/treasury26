@@ -48,9 +48,7 @@ async fn get_cursor(
         .flatten();
 
     let seed = latest.unwrap_or(0);
-    log::info!(
-        "[notifications] No cursor for {consumer_name}, seeding from latest {seed_table} id={seed}"
-    );
+    tracing::info!("No cursor for {consumer_name}, seeding from latest {seed_table} id={seed}");
     update_cursor(pool, consumer_name, seed).await?;
     Ok(seed)
 }
@@ -95,6 +93,11 @@ struct BalanceChangeRow {
     transaction_hashes: Vec<String>,
 }
 
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(job = "notification_detection", step = "balance_changes")
+)]
 async fn detect_balance_change_events(
     pool: &PgPool,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
@@ -294,6 +297,11 @@ struct DetectedSwapRow {
     received_amount: Option<bigdecimal::BigDecimal>,
 }
 
+#[tracing::instrument(
+    level = "debug",
+    skip_all,
+    fields(job = "notification_detection", step = "swaps")
+)]
 async fn detect_swap_events(
     pool: &PgPool,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
@@ -349,8 +357,8 @@ async fn detect_swap_events(
         let received = match &row.received_amount {
             Some(v) => v.to_string(),
             None => {
-                log::warn!(
-                    "[notifications] detected_swap id={} has fulfillment but NULL received_amount; skipping",
+                tracing::warn!(
+                    "detected_swap id={} has fulfillment but NULL received_amount; skipping",
                     row.id
                 );
                 continue;
@@ -416,6 +424,7 @@ async fn detect_swap_events(
 /// to `dao_notifications`. Zero RPC calls — reads from the app DB only.
 ///
 /// Returns the total number of new notification rows inserted.
+#[tracing::instrument(level = "info", skip_all, fields(job = "notification_detection"))]
 pub async fn run_detection_cycle(
     pool: &PgPool,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {

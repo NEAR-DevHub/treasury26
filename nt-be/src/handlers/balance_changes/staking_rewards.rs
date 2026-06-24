@@ -113,7 +113,7 @@ pub async fn discover_staking_pools(
         .collect();
 
     if !staking_pools.is_empty() {
-        log::info!(
+        tracing::info!(
             "Discovered {} staking pools for {}: {:?}",
             staking_pools.len(),
             account_id,
@@ -187,7 +187,7 @@ pub async fn insert_staking_snapshot(
         match get_staking_balance_at_block(network, account_id, staking_pool, block_height).await {
             Ok(b) => b,
             Err(e) => {
-                log::debug!(
+                tracing::debug!(
                     "Could not query staking balance for {}/{} at block {}: {}",
                     account_id,
                     staking_pool,
@@ -200,7 +200,7 @@ pub async fn insert_staking_snapshot(
 
     // Skip if balance is zero
     if balance == 0 {
-        log::debug!(
+        tracing::debug!(
             "Staking balance is 0 for {}/{} at block {}, skipping",
             account_id,
             staking_pool,
@@ -265,7 +265,7 @@ pub async fn insert_staking_snapshot(
     .execute(pool)
     .await?;
 
-    log::info!(
+    tracing::info!(
         "Inserted staking snapshot for {}/{} at block {} (epoch {}): {} -> {} (change: {})",
         account_id,
         staking_pool,
@@ -332,7 +332,7 @@ pub async fn track_staking_rewards(
         let first_tx_epoch = match first_staking_tx {
             Some((first_block,)) => block_to_epoch(first_block as u64),
             None => {
-                log::debug!(
+                tracing::debug!(
                     "No staking transactions found for {}/{}",
                     account_id,
                     staking_pool
@@ -366,7 +366,7 @@ pub async fn track_staking_rewards(
             .collect();
 
         if missing_epochs.is_empty() {
-            log::debug!(
+            tracing::debug!(
                 "All epochs covered for {}/{} ({} to {})",
                 account_id,
                 staking_pool,
@@ -385,7 +385,7 @@ pub async fn track_staking_rewards(
             .take(MAX_EPOCHS_PER_CYCLE)
             .collect();
 
-        log::info!(
+        tracing::info!(
             "Filling {} missing staking epochs for {}/{} (epochs: {:?})",
             epochs_to_fill.len(),
             account_id,
@@ -401,7 +401,7 @@ pub async fn track_staking_rewards(
             {
                 Ok(Some(_)) => {
                     snapshots_created += 1;
-                    log::info!(
+                    tracing::info!(
                         "Created staking snapshot for {}/{} at epoch {} (block {})",
                         account_id,
                         staking_pool,
@@ -410,7 +410,7 @@ pub async fn track_staking_rewards(
                     );
                 }
                 Ok(None) => {
-                    log::debug!(
+                    tracing::debug!(
                         "No staking balance for {}/{} at epoch {}",
                         account_id,
                         staking_pool,
@@ -418,7 +418,7 @@ pub async fn track_staking_rewards(
                     );
                 }
                 Err(e) => {
-                    log::warn!(
+                    tracing::warn!(
                         "Failed to create staking snapshot for {}/{} at epoch {}: {}",
                         account_id,
                         staking_pool,
@@ -478,7 +478,7 @@ pub async fn backfill_staking_snapshots(
         .await?;
 
         if existing.is_some() {
-            log::debug!(
+            tracing::debug!(
                 "Snapshot already exists for {}/{} at epoch {}",
                 account_id,
                 staking_pool,
@@ -493,7 +493,7 @@ pub async fn backfill_staking_snapshots(
             }
             Ok(None) => {
                 // Zero balance at this epoch - likely account hadn't staked yet
-                log::debug!(
+                tracing::debug!(
                     "No staking balance for {}/{} at epoch {}",
                     account_id,
                     staking_pool,
@@ -502,7 +502,7 @@ pub async fn backfill_staking_snapshots(
             }
             Err(e) => {
                 // Log error but continue with other epochs
-                log::warn!(
+                tracing::warn!(
                     "Failed to backfill epoch {} for {}/{}: {}",
                     epoch,
                     account_id,
@@ -514,7 +514,7 @@ pub async fn backfill_staking_snapshots(
     }
 
     if snapshots_created > 0 {
-        log::info!(
+        tracing::info!(
             "Backfilled {} staking snapshots for {}/{} (epochs {}-{})",
             snapshots_created,
             account_id,
@@ -634,7 +634,7 @@ pub async fn fill_staking_gap(
     network: &NetworkConfig,
     gap: &StakingGap,
 ) -> Result<Option<i64>, Box<dyn std::error::Error>> {
-    log::info!(
+    tracing::info!(
         "Filling staking gap for {}/{} between blocks {} and {} (balance: {} -> {})",
         gap.account_id,
         gap.staking_pool,
@@ -676,7 +676,7 @@ pub async fn fill_staking_gap(
     let block_height = match change_block {
         Some(block) => block,
         None => {
-            log::warn!(
+            tracing::warn!(
                 "Could not find staking balance change block for gap: {} {} [{}-{}]",
                 gap.account_id,
                 gap.staking_pool,
@@ -836,7 +836,7 @@ pub async fn insert_staking_reward(
     .execute(pool)
     .await?;
 
-    log::info!(
+    tracing::info!(
         "Inserted staking reward for {}/{} at block {}: {} -> {} (reward: {})",
         account_id,
         staking_pool,
@@ -873,11 +873,11 @@ pub async fn fill_staking_gaps(
     let gaps = find_staking_gaps(pool, account_id, staking_pool, up_to_block).await?;
 
     if gaps.is_empty() {
-        log::debug!("No staking gaps found for {}/{}", account_id, staking_pool);
+        tracing::debug!("No staking gaps found for {}/{}", account_id, staking_pool);
         return Ok(0);
     }
 
-    log::info!(
+    tracing::info!(
         "Found {} staking gaps for {}/{} up to block {}",
         gaps.len(),
         account_id,
@@ -889,7 +889,7 @@ pub async fn fill_staking_gaps(
     for gap in &gaps {
         match fill_staking_gap(pool, network, gap).await {
             Ok(Some(block)) => {
-                log::info!(
+                tracing::info!(
                     "Filled staking gap at block {} for {}/{}",
                     block,
                     account_id,
@@ -898,7 +898,7 @@ pub async fn fill_staking_gaps(
                 filled_count += 1;
             }
             Ok(None) => {
-                log::warn!(
+                tracing::warn!(
                     "Could not fill staking gap for {}/{} [{}-{}]",
                     account_id,
                     staking_pool,
@@ -907,7 +907,7 @@ pub async fn fill_staking_gaps(
                 );
             }
             Err(e) => {
-                log::error!(
+                tracing::error!(
                     "Error filling staking gap for {}/{} [{}-{}]: {}",
                     account_id,
                     staking_pool,
@@ -955,7 +955,7 @@ pub async fn track_and_fill_staking_rewards(
                 gaps_filled += count;
             }
             Err(e) => {
-                log::error!(
+                tracing::error!(
                     "Error filling staking gaps for {}/{}: {}",
                     account_id,
                     staking_pool,

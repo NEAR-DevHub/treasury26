@@ -168,7 +168,7 @@ pub async fn submit_list(
     let account_plan = get_account_plan_info(&state.db_pool, request.dao_contract_id.as_str())
         .await
         .map_err(|e| {
-            log::error!(
+            tracing::error!(
                 "Failed to fetch account plan info for {}: {}",
                 request.dao_contract_id,
                 e
@@ -199,14 +199,14 @@ pub async fn submit_list(
                     }),
                 ));
             }
-            log::info!(
+            tracing::info!(
                 "Treasury {} has {} batch payment credits available",
                 request.dao_contract_id,
                 plan.batch_payment_credits
             );
         }
         None => {
-            log::warn!(
+            tracing::warn!(
                 "Treasury {} not found in monitored accounts. Proceeding without credit check.",
                 request.dao_contract_id
             );
@@ -259,7 +259,7 @@ pub async fn submit_list(
             match result.into_result() {
                 Ok(_) => {
                     // Step 5: Decrement credits using shared subscription function
-                    log::info!(
+                    tracing::info!(
                         "Bulk payment submitted successfully for treasury {}. Decrementing credits...",
                         request.dao_contract_id
                     );
@@ -279,20 +279,20 @@ pub async fn submit_list(
 
                     match db_result {
                         Ok(Some((new_credits,))) => {
-                            log::info!(
+                            tracing::info!(
                                 "Successfully decremented credits for treasury {}. New balance: {}",
                                 request.dao_contract_id,
                                 new_credits
                             );
                         }
                         Ok(None) => {
-                            log::warn!(
+                            tracing::warn!(
                                 "Treasury {} not found in monitored_accounts, credits not decremented",
                                 request.dao_contract_id
                             );
                         }
                         Err(e) => {
-                            log::error!(
+                            tracing::error!(
                                 "Failed to decrement batch payment credits for {}: {}",
                                 request.dao_contract_id,
                                 e
@@ -306,7 +306,7 @@ pub async fn submit_list(
                     if let Err(e) =
                         super::worker::add_pending_list(&state.db_pool, &request.list_id).await
                     {
-                        log::error!(
+                        tracing::error!(
                             "Failed to add list {} to payout worker queue: {}",
                             request.list_id,
                             e
@@ -328,7 +328,7 @@ pub async fn submit_list(
                     }))
                 }
                 Err(e) => {
-                    log::error!("Contract execution failed: {:?}", e);
+                    tracing::error!("Contract execution failed: {:?}", e);
                     Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(SubmitListResponse {
@@ -341,7 +341,7 @@ pub async fn submit_list(
             }
         }
         Err(e) => {
-            log::error!("Failed to submit list to contract: {:?}", e);
+            tracing::error!("Failed to submit list to contract: {:?}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(SubmitListResponse {

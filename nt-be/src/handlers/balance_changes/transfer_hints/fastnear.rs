@@ -181,7 +181,7 @@ impl TransferHintProvider for FastNearProvider {
         // Sort by block height (should already be sorted, but ensure)
         all_hints.sort_by_key(|h| h.block_height);
 
-        log::debug!(
+        tracing::debug!(
             "FastNear returned {} hints for {}/{} in blocks {}-{}",
             all_hints.len(),
             account_id,

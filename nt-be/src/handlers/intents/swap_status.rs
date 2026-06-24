@@ -102,7 +102,7 @@ pub async fn fetch_swap_status_response(
     }
 
     let response = request.send().await.map_err(|e| {
-        log::error!("Error fetching 1Click status: {}", e);
+        tracing::error!("Error fetching 1Click status: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to fetch 1Click status: {}", e),
@@ -112,7 +112,7 @@ pub async fn fetch_swap_status_response(
     let status_code = response.status();
     if !status_code.is_success() {
         let error_text = response.text().await.unwrap_or_default();
-        log::error!("1Click API error ({}): {}", status_code, error_text);
+        tracing::error!("1Click API error ({}): {}", status_code, error_text);
         return Err((
             StatusCode::from_u16(status_code.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
             format!("1Click API error: {}", error_text),
@@ -123,7 +123,7 @@ pub async fn fetch_swap_status_response(
         .json::<FullSwapStatusResponse>()
         .await
         .map_err(|e| {
-            log::error!("Error parsing 1Click status response: {}", e);
+            tracing::error!("Error parsing 1Click status response: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to parse 1Click status response: {}", e),

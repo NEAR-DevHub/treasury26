@@ -120,7 +120,7 @@ impl TransferHintService {
             .collect();
 
         if supporting_providers.is_empty() {
-            log::debug!(
+            tracing::debug!(
                 "No providers support token {} for account {}",
                 token_id,
                 account_id
@@ -138,7 +138,7 @@ impl TransferHintService {
                     .await
                 {
                     Ok(hints) => {
-                        log::debug!(
+                        tracing::debug!(
                             "Provider {} returned {} hints for {}/{}",
                             provider.name(),
                             hints.len(),
@@ -148,7 +148,7 @@ impl TransferHintService {
                         hints
                     }
                     Err(e) => {
-                        log::warn!(
+                        tracing::warn!(
                             "Provider {} failed for {}/{}: {}",
                             provider.name(),
                             account_id,

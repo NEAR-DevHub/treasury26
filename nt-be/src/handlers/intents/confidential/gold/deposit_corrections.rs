@@ -111,6 +111,11 @@ impl ConfidentialDepositCorrector {
     /// as the real quantity. Within a poll batch the earliest same-token
     /// deposit takes the full delta and any siblings take 0 (merge rule).
     /// Best-effort — callers log and continue on error.
+    #[tracing::instrument(
+        level = "info",
+        skip_all,
+        fields(account_id = %account_id, inserted_count = inserted.len())
+    )]
     pub(crate) async fn correct_new_deposits(
         state: &AppState,
         account_id: &AccountIdRef,
@@ -149,12 +154,9 @@ impl ConfidentialDepositCorrector {
                 Ok(value) => {
                     live_raw.insert(asset, value);
                 }
-                Err(e) => tracing::warn!(
-                    "[deposit-correction] {} unparseable live balance '{}': {}",
-                    account_id,
-                    raw,
-                    e
-                ),
+                Err(e) => {
+                    tracing::warn!("{} unparseable live balance '{}': {}", account_id, raw, e)
+                }
             }
         }
 
@@ -165,19 +167,11 @@ impl ConfidentialDepositCorrector {
             deposits.sort_by_key(|d| (d.created_at_external, d.history_event_id));
 
             let Some(scale) = token_scale(&asset) else {
-                tracing::warn!(
-                    "[deposit-correction] {} unknown defuse asset {}, skipping",
-                    account_id,
-                    asset
-                );
+                tracing::warn!("{} unknown defuse asset {}, skipping", account_id, asset);
                 continue;
             };
             let Some(raw_live) = live_raw.get(&asset) else {
-                tracing::warn!(
-                    "[deposit-correction] {} no live balance for {}, skipping",
-                    account_id,
-                    asset
-                );
+                tracing::warn!("{} no live balance for {}, skipping", account_id, asset);
                 continue;
             };
 
@@ -188,7 +182,7 @@ impl ConfidentialDepositCorrector {
             let delta = &live_net - &previous;
             if delta <= BigDecimal::zero() {
                 tracing::warn!(
-                    "[deposit-correction] {} {} non-positive delta {} (live {} prev {}), skipping",
+                    "{} {} non-positive delta {} (live {} prev {}), skipping",
                     account_id,
                     asset,
                     delta,
@@ -234,6 +228,7 @@ impl ConfidentialDepositCorrector {
     /// Backfill path: pair this DAO's external gold deposits with the poller's
     /// deposit legs (per asset, time-ordered) and record the legs' real
     /// amounts. Returns the number of corrections written.
+    #[tracing::instrument(level = "info", skip_all, fields(dao_id = dao_id))]
     pub(crate) async fn reconcile_dao(pool: &PgPool, dao_id: &str) -> Result<usize, sqlx::Error> {
         let gold_deposits = load_confidential_gold_deposits(pool, dao_id).await?;
         if gold_deposits.is_empty() {
@@ -261,7 +256,7 @@ impl ConfidentialDepositCorrector {
         for (asset, deposits) in gold_by_asset {
             let Some(scale) = token_scale(&asset) else {
                 tracing::warn!(
-                    "[deposit-correction] {} unknown defuse asset {}, skipping backfill",
+                    "{} unknown defuse asset {}, skipping backfill",
                     dao_id,
                     asset
                 );
@@ -306,6 +301,11 @@ impl ConfidentialDepositCorrector {
 
     /// Run the backfill for every enabled confidential DAO whose bronze history
     /// backfill is complete. Best-effort per DAO.
+    #[tracing::instrument(
+        level = "info",
+        skip_all,
+        fields(job = "confidential_deposit_correction")
+    )]
     pub(crate) async fn reconcile_backfilled_daos(pool: &PgPool) -> Result<usize, sqlx::Error> {
         let dao_ids: Vec<String> = sqlx::query_scalar(
             r#"
@@ -326,7 +326,7 @@ impl ConfidentialDepositCorrector {
             match Self::reconcile_dao(pool, &dao_id).await {
                 Ok(written) => total += written,
                 Err(e) => {
-                    tracing::error!("[deposit-correction] backfill failed for {}: {}", dao_id, e)
+                    tracing::error!("backfill failed for {}: {}", dao_id, e)
                 }
             }
         }

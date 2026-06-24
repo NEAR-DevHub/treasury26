@@ -48,7 +48,7 @@ pub async fn get_storage_credits(
             error: None,
         })),
         Err(e) => {
-            log::error!("Failed to get storage credits for {}: {}", account_id, e);
+            tracing::error!("Failed to get storage credits for {}: {}", account_id, e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(StorageCreditsResponse {

@@ -72,7 +72,7 @@ async fn handle_bot_added(state: &AppState, chat_id: i64, chat_title: Option<&st
     .await;
 
     if let Err(e) = upsert_result {
-        log::error!("[telegram] Failed to upsert chat {}: {}", chat_id, e);
+        tracing::error!("Failed to upsert chat {}: {}", chat_id, e);
         return;
     }
 
@@ -87,11 +87,7 @@ async fn handle_bot_added(state: &AppState, chat_id: i64, chat_title: Option<&st
     let token = match token_result {
         Ok(t) => t,
         Err(e) => {
-            log::error!(
-                "[telegram] Failed to create connect token for chat {}: {}",
-                chat_id,
-                e
-            );
+            tracing::error!("Failed to create connect token for chat {}: {}", chat_id, e);
             return;
         }
     };
@@ -131,11 +127,7 @@ async fn handle_bot_added(state: &AppState, chat_id: i64, chat_title: Option<&st
     {
         Ok(message_id) => message_id,
         Err(e) => {
-            log::error!(
-                "[telegram] Failed to send connect message to chat {}: {}",
-                chat_id,
-                e
-            );
+            tracing::error!("Failed to send connect message to chat {}: {}", chat_id, e);
             return;
         }
     };
@@ -148,8 +140,8 @@ async fn handle_bot_added(state: &AppState, chat_id: i64, chat_title: Option<&st
     .execute(&state.db_pool)
     .await
     {
-        log::warn!(
-            "[telegram] Failed to persist connect message_id for chat {}: {}",
+        tracing::warn!(
+            "Failed to persist connect message_id for chat {}: {}",
             chat_id,
             e
         );
@@ -162,6 +154,6 @@ async fn handle_bot_removed(state: &AppState, chat_id: i64) {
         .execute(&state.db_pool)
         .await
     {
-        log::error!("[telegram] Failed to delete chat {}: {}", chat_id, e);
+        tracing::error!("Failed to delete chat {}: {}", chat_id, e);
     }
 }

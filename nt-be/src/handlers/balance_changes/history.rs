@@ -666,7 +666,7 @@ async fn enrich_snapshots_with_prices<P: crate::services::PriceProvider>(
         {
             Ok(p) => p,
             Err(e) => {
-                log::warn!("Failed to fetch prices for {}: {}", token_id, e);
+                tracing::warn!("Failed to fetch prices for {}: {}", token_id, e);
                 continue;
             }
         };
@@ -1020,7 +1020,7 @@ async fn validate_export_date_range(
 ) -> Result<(), (StatusCode, String)> {
     // Get account plan info
     let account_plan = get_account_plan_info(pool, account_id).await.map_err(|e| {
-        log::error!("Failed to fetch account plan info: {}", e);
+        tracing::error!("Failed to fetch account plan info: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to check subscription status: {}", e),
@@ -1517,7 +1517,7 @@ pub async fn get_recent_activity(
     let account_plan = get_account_plan_info(&state.db_pool, params.account_id.as_str())
         .await
         .map_err(|e| {
-            log::error!("Failed to fetch account plan info: {}", e);
+            tracing::error!("Failed to fetch account plan info: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({ "error": format!("Failed to check subscription status: {}", e) })),
@@ -1558,7 +1558,7 @@ pub async fn get_recent_activity(
                 }
             }
             Err(e) => {
-                log::error!("Failed to search token by symbol '{}': {:?}", symbol, e);
+                tracing::error!("Failed to search token by symbol '{}': {:?}", symbol, e);
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(
@@ -1581,7 +1581,7 @@ pub async fn get_recent_activity(
                 }
             }
             Err(e) => {
-                log::error!("Failed to search token by symbol '{}': {:?}", symbol, e);
+                tracing::error!("Failed to search token by symbol '{}': {:?}", symbol, e);
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(
@@ -1703,7 +1703,7 @@ pub async fn get_recent_activity(
     let mut enriched_changes = get_balance_changes_internal(&state, &balance_query)
         .await
         .map_err(|e| {
-            log::error!("Failed to fetch recent activity: {}", e);
+            tracing::error!("Failed to fetch recent activity: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -1913,23 +1913,15 @@ pub async fn get_recent_activity(
                     }
                 })
                 .or_else(|| {
-                    change.swap.as_ref().map(|s| {
-                        let sent_token_metadata = s
-                            .sent_token_id
-                            .as_ref()
-                            .map(|id| resolve_swap_metadata(id, &metadata_map));
-                        let received_token_metadata =
-                            resolve_swap_metadata(&s.received_token_id, &metadata_map);
-                        SwapInfo {
-                            sent_token_id: s.sent_token_id.clone(),
-                            sent_amount: s.sent_amount.clone(),
-                            sent_token_metadata,
-                            received_token_id: s.received_token_id.clone(),
-                            received_amount: s.received_amount.clone(),
-                            received_token_metadata,
-                            solver_transaction_hash: s.solver_transaction_hash.clone(),
-                            swap_role: "fulfillment".to_string(),
-                        }
+                    change.swap.as_ref().map(|s| SwapInfo {
+                        sent_token_id: s.sent_token_id.clone(),
+                        sent_amount: s.sent_amount.clone(),
+                        sent_token_metadata: s.sent_token_metadata.clone(),
+                        received_token_id: s.received_token_id.clone(),
+                        received_amount: s.received_amount.clone(),
+                        received_token_metadata: s.received_token_metadata.clone(),
+                        solver_transaction_hash: s.solver_transaction_hash.clone(),
+                        swap_role: "fulfillment".to_string(),
                     })
                 });
 
@@ -2024,7 +2016,7 @@ pub async fn get_recent_activity_senders(
         sqlx::query_scalar::<sqlx::Postgres, String>(&query).bind(params.account_id.as_str());
 
     let options = options_query.fetch_all(&state.db_pool).await.map_err(|e| {
-        log::error!("Failed to fetch recent activity senders: {}", e);
+        tracing::error!("Failed to fetch recent activity senders: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
@@ -2090,7 +2082,7 @@ pub async fn get_recent_activity_recipients(
         sqlx::query_scalar::<sqlx::Postgres, String>(&query).bind(params.account_id.as_str());
 
     let options = options_query.fetch_all(&state.db_pool).await.map_err(|e| {
-        log::error!("Failed to fetch recent activity recipients: {}", e);
+        tracing::error!("Failed to fetch recent activity recipients: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({

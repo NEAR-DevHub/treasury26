@@ -23,7 +23,7 @@ const STALE_THRESHOLD_HOURS: i64 = 24;
 /// This function runs in a loop, processing dirty DAOs immediately
 /// and stale DAOs periodically.
 pub async fn run_dao_policy_sync_service(pool: PgPool, network: NetworkConfig) {
-    log::info!(
+    tracing::info!(
         "Starting DAO policy sync service (interval: {} seconds)",
         POLICY_SYNC_INTERVAL_SECS
     );
@@ -39,9 +39,9 @@ pub async fn run_dao_policy_sync_service(pool: PgPool, network: NetworkConfig) {
 
         // Process dirty DAOs first (high priority)
         match process_dirty_daos(&pool, &network).await {
-            Ok(count) if count > 0 => log::info!("Processed {} dirty DAOs", count),
+            Ok(count) if count > 0 => tracing::info!("Processed {} dirty DAOs", count),
             Ok(_) => {}
-            Err(e) => log::error!("Error processing dirty DAOs: {}", e),
+            Err(e) => tracing::error!("Error processing dirty DAOs: {}", e),
         }
 
         // Process stale DAOs (low priority, periodic refresh)
@@ -50,9 +50,9 @@ pub async fn run_dao_policy_sync_service(pool: PgPool, network: NetworkConfig) {
         if stale_counter >= 60 {
             stale_counter = 0;
             match process_stale_daos(&pool, &network).await {
-                Ok(count) if count > 0 => log::info!("Refreshed {} stale DAOs", count),
+                Ok(count) if count > 0 => tracing::info!("Refreshed {} stale DAOs", count),
                 Ok(_) => {}
-                Err(e) => log::error!("Error processing stale DAOs: {}", e),
+                Err(e) => tracing::error!("Error processing stale DAOs: {}", e),
             }
         }
     }
@@ -85,14 +85,14 @@ async fn process_dirty_daos(
                 let error_str = e.to_string();
                 // Check if this is a permanent error (incompatible contract)
                 if is_permanent_error(&error_str) {
-                    log::warn!(
+                    tracing::warn!(
                         "DAO {} has incompatible contract, marking as failed: {}",
                         dao_id,
                         e
                     );
                     mark_dao_sync_failed(pool, &dao_id).await;
                 } else {
-                    log::warn!("Failed to sync DAO {}: {}", dao_id, e);
+                    tracing::warn!("Failed to sync DAO {}: {}", dao_id, e);
                 }
             }
         }
@@ -133,14 +133,14 @@ async fn process_stale_daos(
             Err(e) => {
                 let error_str = e.to_string();
                 if is_permanent_error(&error_str) {
-                    log::warn!(
+                    tracing::warn!(
                         "DAO {} has incompatible contract, marking as failed: {}",
                         dao_id,
                         e
                     );
                     mark_dao_sync_failed(pool, &dao_id).await;
                 } else {
-                    log::warn!("Failed to refresh DAO {}: {}", dao_id, e);
+                    tracing::warn!("Failed to refresh DAO {}: {}", dao_id, e);
                 }
             }
         }
@@ -172,7 +172,7 @@ async fn mark_dao_sync_failed(pool: &PgPool, dao_id: &str) {
     .execute(pool)
     .await
     {
-        log::error!("Failed to mark DAO {} as sync_failed: {}", dao_id, e);
+        tracing::error!("Failed to mark DAO {} as sync_failed: {}", dao_id, e);
     }
 }
 
@@ -197,7 +197,7 @@ async fn sync_dao_members(
     // Extract unique members from roles (no duplicates)
     let members = extract_members_from_policy(&policy);
 
-    log::debug!("DAO {}: extracted {} unique members", dao_id, members.len());
+    tracing::debug!("DAO {}: extracted {} unique members", dao_id, members.len());
 
     // Transaction: reconcile policy members without deleting user-saved rows
     let mut tx = pool.begin().await?;

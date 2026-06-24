@@ -21,6 +21,8 @@ services:
         sync: false
       - key: RUST_LOG
         value: info
+      - key: LOG_FORMAT
+        value: json
       - key: PORT
         value: 10000
       - key: JWT_SECRET
@@ -102,6 +104,8 @@ services:
         sync: false
       - key: RUST_LOG
         value: info
+      - key: LOG_FORMAT
+        value: json
       - key: PORT
         value: 10000
       - key: JWT_SECRET

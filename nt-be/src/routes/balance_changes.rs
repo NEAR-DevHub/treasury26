@@ -387,7 +387,7 @@ pub async fn get_balance_changes_internal(
                     all_prices.insert(token_id, prices);
                 }
                 Err(e) => {
-                    log::warn!("Failed to fetch prices for {}: {}", token_id, e);
+                    tracing::warn!("Failed to fetch prices for {}: {}", token_id, e);
                 }
             }
         }
@@ -425,7 +425,7 @@ pub async fn get_balance_changes(
     let enriched_changes = get_balance_changes_internal(&state, &params)
         .await
         .map_err(|e| {
-            log::error!("Failed to fetch balance changes: {}", e);
+            tracing::error!("Failed to fetch balance changes: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -472,7 +472,7 @@ pub async fn fill_gaps(
         match get_current_block_height(&state.network).await {
             Ok(height) => height as i64,
             Err(e) => {
-                log::error!("Failed to get current block height: {}", e);
+                tracing::error!("Failed to get current block height: {}", e);
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(serde_json::json!({
@@ -484,7 +484,7 @@ pub async fn fill_gaps(
         }
     };
 
-    log::info!(
+    tracing::info!(
         "fill_gaps request: account={}, token={}, up_to_block={}",
         params.account_id,
         params.token_id,
@@ -507,7 +507,7 @@ pub async fn fill_gaps(
             up_to_block,
         })),
         Err(e) => {
-            log::error!("Failed to fill gaps: {}", e);
+            tracing::error!("Failed to fill gaps: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -555,7 +555,7 @@ pub async fn get_completeness(
     {
         Ok(response) => Ok(Json(response)),
         Err(e) => {
-            log::error!("Failed to check completeness: {}", e);
+            tracing::error!("Failed to check completeness: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({

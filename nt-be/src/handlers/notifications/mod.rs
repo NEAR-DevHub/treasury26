@@ -36,11 +36,13 @@ pub fn run_notification_loop(
                     ),
                 );
                 if let Err(e) = det_result {
-                    log::error!("[notifications] Detection failed: {}", e);
+                    tracing::error!("Detection failed: {}", e);
                 }
                 match disp_result {
-                    Ok(n) if n > 0 => log::info!("[telegram-dispatch] Sent {} notifications", n),
-                    Err(e) => log::error!("[telegram-dispatch] Dispatch failed: {}", e),
+                    Ok(n) if n > 0 => {
+                        tracing::info!("Sent {} notifications", n)
+                    }
+                    Err(e) => tracing::error!("Dispatch failed: {}", e),
                     _ => {}
                 }
             }
