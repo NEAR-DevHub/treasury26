@@ -222,7 +222,7 @@ export function getExplorerAddressUrl(
             if (chainLower === "base") {
                 return `https://basescan.org/address/${address}`;
             }
-            if (chainLower === "avalanche") {
+            if (chainLower === "avalanche" || chainLower === "avax") {
                 return `https://snowtrace.io/address/${address}`;
             }
             if (chainLower === "gnosis") {
