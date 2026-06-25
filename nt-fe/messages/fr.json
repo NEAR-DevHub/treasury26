@@ -153,9 +153,6 @@
         "warningSingleMember": "Un seuil de 1 sur {memberCount} signifie qu'un seul membre peut exécuter des transactions. Cela réduit la sécurité.",
         "infoBalanced": "Un seuil de {currentThreshold} sur {memberCount} offre un bon équilibre entre sécurité et flexibilité opérationnelle."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Montant trop faible pour les frais de réseau ({fee} {symbol}). Ajoutez au moins {addMore} {symbol}."
-    },
     "metadata": {
         "treasuryTitle": "Tableau de bord | Trezu",
         "landingTitle": "Trezu | Gestion de trésorerie multi-chaînes",
@@ -383,7 +380,8 @@
             "justNow": "maintenant",
             "moments": "quelques instants",
             "checking": "Vérification de l'état d'actualisation…",
-            "unavailable": "État d'actualisation indisponible"
+            "unavailable": "État d'actualisation indisponible",
+            "updateTreasuryData": "Actualiser les données de trésorerie"
         }
     },
     "apiDocs": {
@@ -1102,6 +1100,7 @@
         },
         "recipients": "Destinataires",
         "insufficientTokens": "Tokens insuffisants. Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
+        "insufficientTokensForFee": "Tokens insuffisants pour couvrir les frais de réseau ({fee} {symbol}). Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
         "removeRecipient": "Supprimer le destinataire",
         "removeRecipientConfirm": "Êtes-vous sûr de vouloir supprimer le paiement à <strong>{recipient}</strong> ? Cette action ne peut pas être annulée.",
         "remove": "Supprimer",
@@ -1964,6 +1963,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "Tokens insuffisants. Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
+        "insufficientTokensForFee": "Tokens insuffisants pour couvrir les frais de réseau ({fee} {symbol}). Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
         "balance": "Solde : {amount} {symbol}"
     },
     "createRequestButton": {

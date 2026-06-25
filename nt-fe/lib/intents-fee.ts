@@ -9,21 +9,14 @@ const intentsSdk = new IntentsSDK({
     referral: "",
 });
 
-export interface IntentsFeeLabels {
-    amountTooLowForFee: (
-        prefix: string,
-        fee: string,
-        symbol: string,
-        addMore: string,
-    ) => string;
-}
+export type PaymentBalanceWarningType =
+    | "amount_exceeds_balance"
+    | "fee_not_covered";
 
-export interface NetworkFeeCoverageResult {
-    isCovered: boolean;
-    enteredAmount: Big;
-    networkFee: Big;
-    minimumTotal: Big;
-    addMore: Big;
+export interface PaymentBalanceWarning {
+    type: PaymentBalanceWarningType;
+    formattedFee?: string;
+    symbol?: string;
 }
 
 export function isIntentsToken(token: { address?: string | null }): boolean {
@@ -142,25 +135,6 @@ export async function estimateIntentsNetworkFee(args: {
     };
 }
 
-export function evaluateNetworkFeeCoverage(args: {
-    amount: string;
-    networkFee: Big;
-    decimals: number;
-}): NetworkFeeCoverageResult {
-    const enteredAmount = Big(args.amount);
-    const minimumTotal = args.networkFee;
-    const addMoreRaw = minimumTotal.minus(enteredAmount);
-    const addMore = addMoreRaw.gt(0) ? addMoreRaw : Big(0);
-
-    return {
-        isCovered: enteredAmount.gte(args.networkFee),
-        enteredAmount,
-        networkFee: args.networkFee,
-        minimumTotal,
-        addMore,
-    };
-}
-
 function formatFeeAmountForMessage(value: Big, decimals: number): string {
     const displayDecimals = Math.max(0, Math.min(decimals, 8));
     const smallestDisplayUnit = Big(1).div(Big(10).pow(displayDecimals));
@@ -177,35 +151,44 @@ function formatFeeAmountForMessage(value: Big, decimals: number): string {
     return "0";
 }
 
-export function getNetworkFeeCoverageErrorMessage(
-    args: {
-        amount: string;
-        networkFee: Big;
-        decimals: number;
-        symbol: string;
-        prefix?: string;
-    },
-    labels: IntentsFeeLabels,
-): string | null {
-    const feeCoverage = evaluateNetworkFeeCoverage({
-        amount: args.amount,
-        networkFee: args.networkFee,
-        decimals: args.decimals,
-    });
-    if (feeCoverage.isCovered) {
+/** Non-blocking balance warning for payments (amount + fee vs treasury balance). */
+export function getPaymentBalanceWarning(args: {
+    amount: string;
+    balance: Big;
+    networkFee?: Big;
+    decimals: number;
+    symbol: string;
+}): PaymentBalanceWarning | null {
+    let enteredAmount: Big;
+    try {
+        enteredAmount = Big(args.amount);
+    } catch {
         return null;
     }
 
-    const rowPrefix = args.prefix ?? "";
-    const fee = formatFeeAmountForMessage(
-        feeCoverage.networkFee,
-        args.decimals,
-    );
-    const addMore = formatFeeAmountForMessage(
-        feeCoverage.addMore,
-        args.decimals,
-    );
-    return labels.amountTooLowForFee(rowPrefix, fee, args.symbol, addMore);
+    if (!enteredAmount.gt(0)) {
+        return null;
+    }
+
+    if (enteredAmount.gt(args.balance)) {
+        return { type: "amount_exceeds_balance" };
+    }
+
+    if (args.networkFee?.gt(0)) {
+        const totalRequired = enteredAmount.plus(args.networkFee);
+        if (totalRequired.gt(args.balance)) {
+            return {
+                type: "fee_not_covered",
+                formattedFee: formatFeeAmountForMessage(
+                    args.networkFee,
+                    args.decimals,
+                ),
+                symbol: args.symbol,
+            };
+        }
+    }
+
+    return null;
 }
 
 export function sumNetworkFees(underlyingFees: unknown): bigint {

@@ -90,7 +90,9 @@ pub async fn get_balance_at_block_with_fallback(
             }
             Err(e) => {
                 let err_str = e.to_string();
-                if (err_str.contains("422") || err_str.contains("UnknownBlock"))
+                if (err_str.contains("422")
+                    || err_str.contains("UnknownBlock")
+                    || err_str.contains("GarbageCollectedBlock"))
                     && offset < max_block_retries
                 {
                     tracing::debug!(

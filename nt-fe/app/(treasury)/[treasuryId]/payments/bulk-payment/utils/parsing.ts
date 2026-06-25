@@ -17,12 +17,9 @@ import {
 } from "@/lib/address-validation";
 import {
     estimateIntentsNetworkFee,
-    getNetworkFeeCoverageErrorMessage,
     isIntentsCrossChainToken,
-    IntentsFeeLabels,
 } from "@/lib/intents-fee";
 import type { BulkPaymentData } from "../schemas";
-import type { TreasuryAsset } from "@/lib/api";
 import Big from "@/lib/big";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
@@ -63,7 +60,6 @@ export interface BulkParsingLabels {
     nearValidationError: (errorCode: NearValidationErrorCode) => string;
     feeEstimationFailed: string;
     feeEstimationFailedRow: (row: number, recipient: string) => string;
-    intentsFee: IntentsFeeLabels;
 }
 
 /**
@@ -757,7 +753,7 @@ export async function validateAccountsAndStorage(
 }
 
 /**
- * Validate that each payment amount is greater than the estimated network fee.
+ * Estimate network fee per recipient for cross-chain intents bulk payments.
  * Uses one validated recipient as representative (same destination chain).
  */
 export async function validateIntentsFeeCoverage(
@@ -771,10 +767,7 @@ export async function validateIntentsFeeCoverage(
     },
     labels: Pick<
         BulkParsingLabels,
-        | "feeEstimationFailed"
-        | "feeEstimationFailedRow"
-        | "intentsFee"
-        | "rowPrefixOnly"
+        "feeEstimationFailed" | "feeEstimationFailedRow"
     >,
 ): Promise<{ payments: BulkPaymentData[]; networkFee: string | null }> {
     if (!isIntentsCrossChainToken(selectedToken)) {
@@ -801,35 +794,7 @@ export async function validateIntentsFeeCoverage(
         });
 
         return {
-            payments: payments.map((payment) => {
-                if (payment.validationError) {
-                    return payment;
-                }
-
-                const rowPrefix =
-                    payment.row && payment.row > 0
-                        ? labels.rowPrefixOnly(payment.row)
-                        : "";
-                const feeErrorMessage = getNetworkFeeCoverageErrorMessage(
-                    {
-                        amount: payment.amount,
-                        networkFee,
-                        decimals: selectedToken.decimals,
-                        symbol: selectedToken.symbol,
-                        prefix: rowPrefix,
-                    },
-                    labels.intentsFee,
-                );
-
-                if (!feeErrorMessage) {
-                    return payment;
-                }
-
-                return {
-                    ...payment,
-                    validationError: feeErrorMessage,
-                };
-            }),
+            payments,
             networkFee: networkFee.toString(),
         };
     } catch {

@@ -153,9 +153,6 @@
         "warningSingleMember": "Um limite de 1 de {memberCount} significa que qualquer membro pode executar transações. Isso reduz a segurança.",
         "infoBalanced": "Um limite de {currentThreshold} de {memberCount} oferece um bom equilíbrio entre segurança e flexibilidade operacional."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Valor muito baixo para a taxa de rede ({fee} {symbol}). Adicione pelo menos {addMore} {symbol}."
-    },
     "metadata": {
         "treasuryTitle": "Painel | Trezu",
         "landingTitle": "Trezu | Gestão de tesouraria multichain",
@@ -383,7 +380,8 @@
             "justNow": "agora",
             "moments": "instantes",
             "checking": "Verificando status de atualização…",
-            "unavailable": "Status de atualização indisponível"
+            "unavailable": "Status de atualização indisponível",
+            "updateTreasuryData": "Atualizar dados da tesouraria"
         }
     },
     "apiDocs": {
@@ -1102,6 +1100,7 @@
         },
         "recipients": "Destinatários",
         "insufficientTokens": "Tokens insuficientes. Você pode enviar a solicitação e completar o saldo antes da aprovação.",
+        "insufficientTokensForFee": "Tokens insuficientes para cobrir a taxa de rede ({fee} {symbol}). Você pode enviar a solicitação e completar o saldo antes da aprovação.",
         "removeRecipient": "Remover destinatário",
         "removeRecipientConfirm": "Tem certeza de que deseja remover o pagamento para <strong>{recipient}</strong>? Esta ação não pode ser desfeita.",
         "remove": "Remover",
@@ -1964,6 +1963,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "Tokens insuficientes. Você pode enviar a solicitação e completar o saldo antes da aprovação.",
+        "insufficientTokensForFee": "Tokens insuficientes para cobrir a taxa de rede ({fee} {symbol}). Você pode enviar a solicitação e completar o saldo antes da aprovação.",
         "balance": "Saldo: {amount} {symbol}"
     },
     "createRequestButton": {

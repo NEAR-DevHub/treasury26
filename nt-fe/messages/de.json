@@ -153,9 +153,6 @@
         "warningSingleMember": "Ein Schwellenwert von 1 von {memberCount} bedeutet, dass jedes einzelne Mitglied Transaktionen ausführen kann. Dies verringert die Sicherheit.",
         "infoBalanced": "Ein Schwellenwert von {currentThreshold} von {memberCount} bietet ein gutes Gleichgewicht zwischen Sicherheit und operativer Flexibilität."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Betrag zu niedrig für Netzwerkgebühr ({fee} {symbol}). Fügen Sie mindestens {addMore} {symbol} hinzu."
-    },
     "metadata": {
         "treasuryTitle": "Dashboard | Trezu",
         "landingTitle": "Trezu | Cross-Chain Treasury Management",
@@ -383,7 +380,8 @@
             "justNow": "jetzt",
             "moments": "Momente",
             "checking": "Aktualisierungsstatus wird geprüft…",
-            "unavailable": "Aktualisierungsstatus nicht verfügbar"
+            "unavailable": "Aktualisierungsstatus nicht verfügbar",
+            "updateTreasuryData": "Treasury-Daten aktualisieren"
         }
     },
     "apiDocs": {
@@ -1102,6 +1100,7 @@
         },
         "recipients": "Empfänger",
         "insufficientTokens": "Unzureichende Token. Sie können die Anfrage einreichen und vor der Genehmigung aufladen.",
+        "insufficientTokensForFee": "Unzureichende Token, um die Netzwerkgebühr ({fee} {symbol}) zu decken. Sie können die Anfrage einreichen und vor der Genehmigung aufladen.",
         "removeRecipient": "Empfänger entfernen",
         "removeRecipientConfirm": "Möchten Sie die Zahlung an <strong>{recipient}</strong> wirklich entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
         "remove": "Entfernen",
@@ -1964,6 +1963,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "Unzureichende Token. Sie können die Anfrage einreichen und vor der Genehmigung aufladen.",
+        "insufficientTokensForFee": "Unzureichende Token, um die Netzwerkgebühr ({fee} {symbol}) zu decken. Sie können die Anfrage einreichen und vor der Genehmigung aufladen.",
         "balance": "Guthaben: {amount} {symbol}"
     },
     "createRequestButton": {

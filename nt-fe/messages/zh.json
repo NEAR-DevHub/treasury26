@@ -153,9 +153,6 @@
         "warningSingleMember": "1/{memberCount} 的阈值意味着任意单个成员均可执行交易。这会降低安全性。",
         "infoBalanced": "{currentThreshold}/{memberCount} 的阈值在安全性与运营灵活性之间取得了良好平衡。"
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}金额过低,无法支付网络手续费({fee} {symbol})。请至少再增加 {addMore} {symbol}。"
-    },
     "metadata": {
         "treasuryTitle": "仪表板 | Trezu",
         "landingTitle": "Trezu | 跨链金库管理",
@@ -383,7 +380,8 @@
             "justNow": "刚刚",
             "moments": "片刻",
             "checking": "正在检查刷新状态…",
-            "unavailable": "刷新状态不可用"
+            "unavailable": "刷新状态不可用",
+            "updateTreasuryData": "更新金库数据"
         }
     },
     "apiDocs": {
@@ -1102,6 +1100,7 @@
         },
         "recipients": "收款人",
         "insufficientTokens": "代币不足。您可以提交请求,并在批准前充值。",
+        "insufficientTokensForFee": "代币不足以支付网络手续费({fee} {symbol})。您可以提交请求,并在批准前充值。",
         "removeRecipient": "移除收款人",
         "removeRecipientConfirm": "您确定要移除给 <strong>{recipient}</strong> 的付款吗?此操作无法撤销。",
         "remove": "移除",
@@ -1964,6 +1963,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "代币不足。您可以提交请求,并在批准前充值。",
+        "insufficientTokensForFee": "代币不足以支付网络手续费({fee} {symbol})。您可以提交请求,并在批准前充值。",
         "balance": "余额:{amount} {symbol}"
     },
     "createRequestButton": {

@@ -70,7 +70,10 @@ pub async fn find_balance_change_block(
                 Ok(b) => b,
                 Err(e) => {
                     let err_str = e.to_string();
-                    if err_str.contains("UnknownBlock") || err_str.contains("422") {
+                    if err_str.contains("UnknownBlock")
+                        || err_str.contains("422")
+                        || err_str.contains("GarbageCollectedBlock")
+                    {
                         // Block was never produced (skipped block height) — skip it
                         tracing::debug!(
                             "Block {} not available during binary search, skipping",

@@ -66,7 +66,6 @@ import { Address } from "@/components/address";
 import {
     useIntentsQuote,
     buildIntentsQuoteRequest,
-    type IntentsAmountMode,
 } from "@/hooks/use-intents-quote";
 import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
 import { parseTokenQueryParam } from "@/lib/token-query-param";
@@ -80,7 +79,6 @@ import {
 import { findBridgeAssetForToken } from "@/lib/bridge-asset-resolver";
 import {
     computeQuoteNetworkFee,
-    isIntentsCrossChainToken,
     isIntentsToken,
     isNearChainFtToken,
     isNearChainNativeToken,
@@ -123,12 +121,11 @@ function buildPaymentFormSchema(messages: {
 
 interface Step1Props extends StepProps {
     feeErrorMessage?: string | null;
+    networkFee?: string | null;
     isFeeLoading?: boolean;
     quoteErrorMessage?: string | null;
     hasRestrictedRecipientError?: boolean;
     ensureQuoteBeforeReview?: () => Promise<boolean>;
-    onAmountInput?: () => void;
-    onMaxSet?: (maxAmount: string) => void;
     onAddressBookSelectionChange?: (isFromAddressBook: boolean) => void;
     bridgeAssets?: BridgeAsset[];
     isBridgeAssetsLoading?: boolean;
@@ -140,12 +137,11 @@ interface Step1Props extends StepProps {
 function Step1({
     handleNext,
     feeErrorMessage,
+    networkFee,
     isFeeLoading,
     quoteErrorMessage,
     hasRestrictedRecipientError,
     ensureQuoteBeforeReview,
-    onAmountInput,
-    onMaxSet,
     onAddressBookSelectionChange,
     bridgeAssets = [],
     isBridgeAssetsLoading = false,
@@ -262,8 +258,6 @@ function Step1({
                     slotBlocked={paymentsSlotBlocked}
                     onSave={handleSave}
                     isSubmitting={isFeeLoading}
-                    onAmountInput={onAmountInput}
-                    onMaxSet={onMaxSet}
                     onAddressBookSelectionChange={onAddressBookSelectionChange}
                     bridgeAssets={bridgeAssets}
                     isBridgeAssetsLoading={isBridgeAssetsLoading}
@@ -511,17 +505,12 @@ type PaymentTokenClassification = {
 // Some routes have mixed token decimals across networks (e.g. 18 vs 24), so
 // we resolve decimals from the selected destination network to avoid
 // under/over-scaling the quote request amount.
-function getDestinationAmountDecimalsForExactOutput(
+function getDestinationAmountDecimals(
     token: Token,
     destinationNetwork: string | undefined,
-    amountMode: IntentsAmountMode,
     bridgeAssets: BridgeAsset[],
 ): number | undefined {
-    if (
-        amountMode !== "recipient" ||
-        !destinationNetwork ||
-        isNearComNetwork(destinationNetwork)
-    ) {
+    if (!destinationNetwork || isNearComNetwork(destinationNetwork)) {
         return token.decimals;
     }
 
@@ -664,14 +653,12 @@ function buildQuoteContextKey(params: {
     amount: string;
     address: string;
     destinationNetwork?: string;
-    amountMode: IntentsAmountMode;
 }) {
     return [
         params.tokenAddress,
         params.amount.trim(),
         params.address.trim().toLowerCase(),
         params.destinationNetwork ?? "",
-        params.amountMode,
     ].join("|");
 }
 
@@ -703,9 +690,6 @@ export default function PaymentsPage() {
     const autoSelectedTokenKeyRef = useRef<string | null>(null);
     // Cached quote + context key — avoids re-fetching while preventing stale reuse.
     const cachedQuoteRef = useRef<CachedQuote | null>(null);
-    // "recipient" for typed amount (exact output), "total" for MAX (exact input).
-    const [intentsAmountMode, setIntentsAmountMode] =
-        useState<IntentsAmountMode>("recipient");
     const [isAddressBookRecipientSelected, setIsAddressBookRecipientSelected] =
         useState(false);
 
@@ -862,32 +846,23 @@ export default function PaymentsPage() {
                 amount: watchedAmount ?? "",
                 address: watchedAddress ?? "",
                 destinationNetwork: watchedDestinationNetwork,
-                amountMode: intentsAmountMode,
             }),
         [
             quoteToken.address,
             watchedAmount,
             watchedAddress,
             watchedDestinationNetwork,
-            intentsAmountMode,
         ],
     );
 
-    const isCrossChainIntentsToken = isIntentsCrossChainToken(watchedToken);
     const destinationAmountDecimals = useMemo(
         () =>
-            getDestinationAmountDecimalsForExactOutput(
+            getDestinationAmountDecimals(
                 quoteToken,
                 watchedDestinationNetwork,
-                intentsAmountMode,
                 bridgeAssets,
             ),
-        [
-            bridgeAssets,
-            intentsAmountMode,
-            quoteToken,
-            watchedDestinationNetwork,
-        ],
+        [bridgeAssets, quoteToken, watchedDestinationNetwork],
     );
 
     // ── Live quote (drives step-1 fee preview & step-2 review) ───────────────
@@ -910,13 +885,18 @@ export default function PaymentsPage() {
         address: watchedAddress,
         isConfidential,
         proposalPeriod: policy?.proposal_period,
-        amountMode: intentsAmountMode,
         destinationNetwork: watchedDestinationNetwork,
         isPayment: true,
         // Paused payment (critical warning on token/network or app-wide): don't
         // fetch the quote.
         enabled: !paymentsSlotBlocked,
     });
+
+    const paymentNetworkFee = useMemo(() => {
+        if (!liveQuote?.quote) return null;
+        const fee = computeQuoteNetworkFee(liveQuote.quote);
+        return fee ? fee.replaceAll(",", "") : null;
+    }, [liveQuote]);
 
     // Keep the quote ref in sync so onSubmit can use it without re-fetching.
     useEffect(() => {
@@ -934,7 +914,6 @@ export default function PaymentsPage() {
         watchedAmount,
         watchedAddress,
         watchedDestinationNetwork,
-        intentsAmountMode,
     ]);
 
     // Clear stale quote-related manual errors as soon as the user changes any
@@ -950,7 +929,6 @@ export default function PaymentsPage() {
         watchedAmount,
         watchedAddress,
         watchedDestinationNetwork,
-        intentsAmountMode,
     ]);
 
     const isQuoteBusy =
@@ -994,7 +972,6 @@ export default function PaymentsPage() {
             amount: formValues.amount ?? "",
             address: formValues.address ?? "",
             destinationNetwork: formValues.destinationNetwork,
-            amountMode: intentsAmountMode,
         });
         const result = await ensureBeforeReview({
             token: quoteToken,
@@ -1022,7 +999,7 @@ export default function PaymentsPage() {
             }
         }
         return false;
-    }, [ensureBeforeReview, form, quoteToken, intentsAmountMode]);
+    }, [ensureBeforeReview, form, quoteToken]);
 
     // ── Effects ───────────────────────────────────────────────────────────────
 
@@ -1056,12 +1033,6 @@ export default function PaymentsPage() {
             shouldValidate: true,
         });
     }, [defaultAddress, watchedDestinationNetwork, form]);
-
-    useEffect(() => {
-        if (!isCrossChainIntentsToken) {
-            setIntentsAmountMode("recipient");
-        }
-    }, [isCrossChainIntentsToken]);
 
     useEffect(() => {
         if (!compatibleDefaultToken || tokenParam) {
@@ -1129,13 +1100,11 @@ export default function PaymentsPage() {
             let proposalKind: FunctionCallKind | TransferKind;
 
             if (shouldUseIntents) {
-                const quoteAmountDecimals =
-                    getDestinationAmountDecimalsForExactOutput(
-                        tokenClassification.tokenForIntentsQuote,
-                        data.destinationNetwork,
-                        intentsAmountMode,
-                        bridgeAssets,
-                    );
+                const quoteAmountDecimals = getDestinationAmountDecimals(
+                    tokenClassification.tokenForIntentsQuote,
+                    data.destinationNetwork,
+                    bridgeAssets,
+                );
                 if (quoteAmountDecimals === undefined) {
                     throw new Error(tPay("failed1ClickQuote"));
                 }
@@ -1151,7 +1120,6 @@ export default function PaymentsPage() {
                     amount: data.amount ?? "",
                     address: trimmedAddress,
                     destinationNetwork: data.destinationNetwork,
-                    amountMode: intentsAmountMode,
                 });
                 const cachedQuote =
                     cachedQuoteRef.current?.key === submitQuoteKey
@@ -1167,7 +1135,7 @@ export default function PaymentsPage() {
                             quoteAmount,
                             isConfidential,
                             policy?.proposal_period,
-                            intentsAmountMode,
+                            undefined,
                             data.destinationNetwork,
                             true, // isPayment
                         ),
@@ -1270,6 +1238,7 @@ export default function PaymentsPage() {
             {
                 component: Step1,
                 props: {
+                    networkFee: paymentNetworkFee,
                     isFeeLoading: isQuoteBusy,
                     quoteErrorMessage:
                         isViaIntents && hasLiveQuoteError
@@ -1280,16 +1249,6 @@ export default function PaymentsPage() {
                         hasLiveQuoteError &&
                         hasInvalidRecipientAddressError,
                     ensureQuoteBeforeReview,
-                    onAmountInput: () => {
-                        if (isCrossChainIntentsToken) {
-                            setIntentsAmountMode("recipient");
-                        }
-                    },
-                    onMaxSet: () => {
-                        if (isCrossChainIntentsToken) {
-                            setIntentsAmountMode("total");
-                        }
-                    },
                     onAddressBookSelectionChange:
                         setIsAddressBookRecipientSelected,
                     bridgeAssets,
@@ -1322,7 +1281,7 @@ export default function PaymentsPage() {
             liveQuoteErrorMessage,
             hasInvalidRecipientAddressError,
             ensureQuoteBeforeReview,
-            isCrossChainIntentsToken,
+            paymentNetworkFee,
             liveQuote,
             isLoadingLiveQuote,
             isFetchingLiveQuote,

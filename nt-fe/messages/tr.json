@@ -153,9 +153,6 @@
         "warningSingleMember": "{memberCount} üyeden 1'lik bir eşik, herhangi bir üyenin tek başına işlem gerçekleştirebileceği anlamına gelir. Bu güvenliği azaltır.",
         "infoBalanced": "{memberCount} üyeden {currentThreshold}'lik bir eşik, güvenlik ile operasyonel esneklik arasında iyi bir denge sağlar."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Miktar ağ ücreti için çok düşük ({fee} {symbol}). En az {addMore} {symbol} ekleyin."
-    },
     "metadata": {
         "treasuryTitle": "Panel | Trezu",
         "landingTitle": "Trezu | Zincirler Arası Hazine Yönetimi",
@@ -383,7 +380,8 @@
             "justNow": "şimdi",
             "moments": "az önce",
             "checking": "Yenileme durumu kontrol ediliyor…",
-            "unavailable": "Yenileme durumu kullanılamıyor"
+            "unavailable": "Yenileme durumu kullanılamıyor",
+            "updateTreasuryData": "Hazine verilerini güncelle"
         }
     },
     "apiDocs": {
@@ -1102,6 +1100,7 @@
         },
         "recipients": "Alıcılar",
         "insufficientTokens": "Yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
+        "insufficientTokensForFee": "Ağ ücretini ({fee} {symbol}) karşılamak için yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
         "removeRecipient": "Alıcıyı Kaldır",
         "removeRecipientConfirm": "<strong>{recipient}</strong> kişisine yapılan ödemeyi kaldırmak istediğinizden emin misiniz? Bu işlem geri alınamaz.",
         "remove": "Kaldır",
@@ -1964,6 +1963,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "Yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
+        "insufficientTokensForFee": "Ağ ücretini ({fee} {symbol}) karşılamak için yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
         "balance": "Bakiye: {amount} {symbol}"
     },
     "createRequestButton": {

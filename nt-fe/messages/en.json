@@ -153,9 +153,6 @@
         "warningSingleMember": "A 1-of-{memberCount} threshold means any single member can execute transactions. This reduces security.",
         "infoBalanced": "A {currentThreshold}-of-{memberCount} threshold provides a good balance between security and operational flexibility."
     },
-    "intentsFee": {
-        "amountTooLowForFee": "{prefix}Amount too low for network fee ({fee} {symbol}). Add at least {addMore} {symbol}."
-    },
     "metadata": {
         "treasuryTitle": "Dashboard | Trezu",
         "landingTitle": "Trezu | Cross-chain Treasury Management",
@@ -383,7 +380,8 @@
             "justNow": "now",
             "moments": "moments",
             "checking": "Checking refresh status…",
-            "unavailable": "Refresh status unavailable"
+            "unavailable": "Refresh status unavailable",
+            "updateTreasuryData": "Update treasury data"
         }
     },
     "apiDocs": {
@@ -1102,6 +1100,7 @@
         },
         "recipients": "Recipients",
         "insufficientTokens": "Insufficient tokens. You can submit the request and top up before approval.",
+        "insufficientTokensForFee": "Insufficient tokens to cover the network fee ({fee} {symbol}). You can submit the request and top up before approval.",
         "removeRecipient": "Remove Recipient",
         "removeRecipientConfirm": "Are you sure you want to remove the payment to <strong>{recipient}</strong>? This action cannot be undone.",
         "remove": "Remove",
@@ -1964,6 +1963,7 @@
     "tokenInput": {
         "max": "MAX",
         "insufficientTokens": "Insufficient tokens. You can submit the request and top up before approval.",
+        "insufficientTokensForFee": "Insufficient tokens to cover the network fee ({fee} {symbol}). You can submit the request and top up before approval.",
         "balance": "Balance: {amount} {symbol}"
     },
     "createRequestButton": {

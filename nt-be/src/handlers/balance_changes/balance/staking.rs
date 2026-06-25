@@ -126,6 +126,7 @@ pub async fn get_staking_balance_at_block(
                 // Check for various error conditions
                 if err_str.contains("422")
                     || err_str.contains("UnknownBlock")
+                    || err_str.contains("GarbageCollectedBlock")
                     || err_str.contains("MethodNotFound")
                     || err_str.contains("doesn't exist")
                 {
