@@ -219,43 +219,6 @@ impl<P: PriceProvider> PriceLookupService<P> {
         Ok(result)
     }
 
-    /// Get the latest cached USD price for one token.
-    ///
-    /// This is cache-only. It does not call the upstream provider; the
-    /// background price sync service is responsible for keeping this warm.
-    pub async fn get_latest_cached_price(
-        &self,
-        token_id: &str,
-    ) -> Result<Option<f64>, Box<dyn std::error::Error + Send + Sync>> {
-        let provider = match &self.provider {
-            Some(p) => p,
-            None => return Ok(None),
-        };
-
-        let Some(unified_id) = token_id_to_unified_asset_id(token_id) else {
-            return Ok(None);
-        };
-
-        let Some(provider_asset_id) = provider.translate_asset_id(&unified_id) else {
-            return Ok(None);
-        };
-
-        let cached = sqlx::query_scalar::<_, BigDecimal>(
-            r#"
-            SELECT price_usd
-            FROM historical_prices
-            WHERE asset_id = $1
-            ORDER BY price_date DESC, fetched_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(provider_asset_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(cached.and_then(|price_usd| bigdecimal_to_f64(&price_usd)))
-    }
-
     /// Get cached price from database
     async fn get_cached_price(
         &self,

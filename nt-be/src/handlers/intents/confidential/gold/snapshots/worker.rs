@@ -51,6 +51,22 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
 
     let defuse_map = get_defuse_tokens_map();
     let snapshot_at = Utc::now();
+    let live_balances: Vec<(String, String)> = live_balances.into_iter().collect();
+    let live_assets: Vec<String> = live_balances
+        .iter()
+        .map(|(asset, _)| asset.clone())
+        .collect();
+    let latest_prices = match state
+        .price_service
+        .get_cached_tokens_latest_price(&live_assets)
+        .await
+    {
+        Ok(prices) => prices,
+        Err(e) => {
+            tracing::warn!("{} batch snapshot price lookup failed: {}", dao_id, e);
+            std::collections::HashMap::new()
+        }
+    };
     let mut rows: Vec<SnapshotRow> = Vec::with_capacity(live_balances.len());
     let mut seen_assets = std::collections::HashSet::with_capacity(live_balances.len());
 
@@ -77,8 +93,8 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
             acc * BigDecimal::from(10u32)
         });
         let balance = &raw_balance / &scale;
-        let price_usd = match state.price_service.get_latest_cached_price(&asset).await {
-            Ok(Some(price)) => {
+        let price_usd = match latest_prices.get(&asset).copied() {
+            Some(price) => {
                 tracing::debug!(
                     "{} {} resolved cached snapshot price: {}",
                     dao_id,
@@ -87,12 +103,8 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
                 );
                 BigDecimal::from_f64(price)
             }
-            Ok(None) => {
+            None => {
                 tracing::debug!("{} {} no snapshot USD price available", dao_id, asset);
-                None
-            }
-            Err(e) => {
-                tracing::warn!("{} {} snapshot price lookup failed: {}", dao_id, asset, e);
                 None
             }
         };

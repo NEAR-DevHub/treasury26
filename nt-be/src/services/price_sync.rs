@@ -24,7 +24,7 @@ const CURRENT_PRICE_BATCH_SIZE: usize = 50;
 
 /// Run the background price sync service
 ///
-/// This function runs in a loop, refreshing current prices every five minutes
+/// This function runs in a loop, refreshing current prices every 60 seconds
 /// and backfilling historical daily prices for assets that need them.
 ///
 /// The list of assets is derived from public and confidential treasury data.
