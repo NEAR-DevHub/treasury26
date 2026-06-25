@@ -241,6 +241,65 @@ impl DeFiLlamaClient {
         Ok(prices)
     }
 
+    /// Fetch current USD prices for multiple assets.
+    ///
+    /// Uses the DeFiLlama `/prices/current/{coins}` endpoint with comma-separated
+    /// asset IDs so the cache warmer can update many tokens with one request.
+    pub async fn get_current_prices_batch(
+        &self,
+        asset_ids: &[String],
+    ) -> Result<HashMap<String, f64>, Box<dyn std::error::Error + Send + Sync>> {
+        if asset_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let coins_param = asset_ids.join(",");
+        let url = format!("{}/prices/current/{}", self.base_url, coins_param);
+
+        tracing::debug!(
+            "Fetching current prices from DeFiLlama for {} assets",
+            asset_ids.len()
+        );
+
+        let response = self
+            .http_client
+            .get(&url)
+            .header("accept", "application/json")
+            .send()
+            .await?;
+
+        let status = response.status();
+
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Ok(HashMap::new());
+        }
+
+        if !status.is_success() {
+            tracing::warn!(
+                "DeFiLlama API error for current price batch ({} assets): {}",
+                asset_ids.len(),
+                status,
+            );
+            return Err(format!("DeFiLlama API error: {}", status).into());
+        }
+
+        let data: PricesResponse = response.json().await?;
+
+        let prices: HashMap<String, f64> = data
+            .coins
+            .into_iter()
+            .map(|(id, coin)| (id, coin.price))
+            .collect();
+
+        tracing::debug!(
+            "DeFiLlama: Got {} current prices for {} requested assets",
+            prices.len(),
+            asset_ids.len()
+        );
+
+        Ok(prices)
+    }
+
     /// Convert a symbol to DeFiLlama asset ID
     ///
     /// For known symbols, returns the coingecko:{id} format.
@@ -326,6 +385,13 @@ impl PriceProvider for DeFiLlamaClient {
         }
 
         Ok(price)
+    }
+
+    async fn get_current_prices(
+        &self,
+        asset_ids: &[String],
+    ) -> Result<HashMap<String, f64>, Box<dyn std::error::Error + Send + Sync>> {
+        self.get_current_prices_batch(asset_ids).await
     }
 
     async fn get_all_historical_prices(
