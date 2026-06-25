@@ -17,7 +17,7 @@ use super::price_provider::PriceProvider;
 use bigdecimal::BigDecimal;
 
 /// Interval between current price cache refreshes.
-const SYNC_CHECK_INTERVAL_SECS: u64 = 300;
+const SYNC_CHECK_INTERVAL_SECS: u64 = 60;
 
 /// Maximum number of provider asset IDs to request in one current-price call.
 const CURRENT_PRICE_BATCH_SIZE: usize = 50;
