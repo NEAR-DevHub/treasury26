@@ -37,8 +37,7 @@ const ADDRESS_PATTERNS: Record<BlockchainType, RegExp | null> = {
     tron: /^T[1-9A-HJ-NP-Za-km-z]{33}$/,
     ton: /^[UE][Qq][a-zA-Z0-9_-]{46}$/,
     // 1click /v0/quote accepts t1/t3/tex1/u1; rejects standalone zs1 and zc Sprout.
-    zcash:
-        /^(t1|t3|tm1|tm3)[a-km-zA-HJ-NP-Z1-9]{33}$|^(tex1|textest1)[ac-hj-np-z02-9]{38}$|^u1[ac-hj-np-z02-9]{100,250}$/i,
+    zcash: /^(t1|t3|tm1|tm3)[a-km-zA-HJ-NP-Z1-9]{33}$|^(tex1|textest1)[ac-hj-np-z02-9]{38}$|^u1[ac-hj-np-z02-9]{100,250}$/i,
     dogecoin: /^[DA][a-km-zA-HJ-NP-Z1-9]{33}$/,
     xrp: /^r[1-9A-HJ-NP-Za-km-z]{25,34}$/,
     stellar: /^G[A-Z2-7]{55}$/,
