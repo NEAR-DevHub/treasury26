@@ -240,7 +240,7 @@ impl<P: PriceProvider> PriceLookupService<P> {
             return Ok(None);
         };
 
-        let cached = sqlx::query!(
+        let cached = sqlx::query_scalar::<_, BigDecimal>(
             r#"
             SELECT price_usd
             FROM historical_prices
@@ -248,12 +248,12 @@ impl<P: PriceProvider> PriceLookupService<P> {
             ORDER BY price_date DESC, fetched_at DESC
             LIMIT 1
             "#,
-            provider_asset_id,
         )
+        .bind(provider_asset_id)
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(cached.and_then(|row| bigdecimal_to_f64(&row.price_usd)))
+        Ok(cached.and_then(|price_usd| bigdecimal_to_f64(&price_usd)))
     }
 
     /// Get cached price from database
