@@ -8,6 +8,7 @@ pub mod lookup;
 pub mod notifications;
 pub mod proposals;
 pub mod proxy;
+pub mod public_history;
 pub mod public_dashboard;
 pub mod relay;
 pub mod status;

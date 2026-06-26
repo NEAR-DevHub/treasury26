@@ -58,12 +58,26 @@ pub struct QuoteByDepositAddressResponse {
     pub amount_in_usd: Option<String>,
     #[serde(rename = "amountOutUsd")]
     pub amount_out_usd: Option<String>,
+    #[serde(rename = "amountIn")]
+    pub amount_in: Option<String>,
+    #[serde(rename = "amountOut")]
+    pub amount_out: Option<String>,
+    #[serde(rename = "intentHashes")]
+    pub intent_hashes: Option<Vec<String>>,
+    #[serde(rename = "nearTxHashes")]
+    pub near_tx_hashes: Option<Vec<String>>,
+    #[serde(rename = "originChainTxHashes")]
+    pub origin_chain_tx_hashes: Option<Vec<String>>,
+    #[serde(rename = "destinationChainTxHashes")]
+    pub destination_chain_tx_hashes: Option<Vec<String>>,
 }
 
 pub type QuoteData = QuoteByDepositAddressResponse;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct FullSwapStatusResponse {
+    #[serde(rename = "correlationId")]
+    pub correlation_id: Option<String>,
     pub status: SwapStatus,
     #[serde(rename = "updatedAt")]
     pub updated_at: String,
