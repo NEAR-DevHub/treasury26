@@ -157,7 +157,10 @@ interface NearStore {
     init: (options?: {
         targetWalletId?: string;
     }) => Promise<NearConnector | undefined>;
-    connect: (walletId?: string) => Promise<void>;
+    connect: (
+        walletId?: string,
+        onboardingPage?: "/" | "/create",
+    ) => Promise<void>;
     disconnect: () => Promise<void>;
 
     // Auth actions
@@ -289,7 +292,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         return newConnector;
     },
 
-    connect: async (walletId?: string) => {
+    connect: async (walletId?: string, onboardingPage?: "/" | "/create") => {
         const { init } = get();
         const newConnector = await init({ targetWalletId: walletId });
         if (!newConnector) {
@@ -364,6 +367,12 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 source: "resolve-auth",
                 account_id: loginResponse.accountId,
             });
+            if (onboardingPage) {
+                trackEvent("onboarding_login_completed", {
+                    page: onboardingPage,
+                    account_id: loginResponse.accountId,
+                });
+            }
         } catch (error) {
             console.error("Authentication failed:", error);
             set({
