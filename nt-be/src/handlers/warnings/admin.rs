@@ -22,11 +22,11 @@ use crate::{
     utils::admin_auth,
 };
 
-const BASIC_AUTH_REALM: &str = "Warnings Admin";
+const BASIC_AUTH_REALM: &str = "Trezu Status Manager";
 
 const ADMIN_WARNING_COLUMNS: &str = r#"
-    id, slot, token, network, is_active, severity,
-    user_message, scenario, internal_note,
+    id, slot, token, network, is_active, response, severity,
+    user_message, situation, internal_note,
     show_from, starts_at, ends_at,
     linked_service, linked_post_id, group_id,
     updated_by, updated_at, created_at
@@ -136,9 +136,10 @@ pub struct AdminWarning {
     pub token: Option<String>,
     pub network: Option<String>,
     pub is_active: bool,
+    pub response: String,
     pub severity: String,
     pub user_message: Option<String>,
-    pub scenario: Option<String>,
+    pub situation: Option<String>,
     pub internal_note: Option<String>,
     pub show_from: Option<DateTime<Utc>>,
     pub starts_at: Option<DateTime<Utc>>,
@@ -158,9 +159,10 @@ pub struct WarningRequest {
     pub token: Option<String>,
     pub network: Option<String>,
     pub is_active: Option<bool>,
+    pub response: Option<String>,
     pub severity: Option<String>,
     pub user_message: Option<String>,
-    pub scenario: Option<String>,
+    pub situation: Option<String>,
     pub internal_note: Option<String>,
     /// ISO-8601 timestamp, or empty string when unset / cleared.
     pub show_from: Option<String>,
@@ -216,12 +218,22 @@ fn parse_optional_utc(value: Option<String>) -> Option<DateTime<Utc>> {
     })
 }
 
-fn validate_severity(severity: &str) -> Result<(), (StatusCode, String)> {
-    match severity {
-        "info" | "warning" | "critical" => Ok(()),
+fn validate_response(response: &str) -> Result<(), (StatusCode, String)> {
+    match response {
+        "notice" | "paused" => Ok(()),
         _ => Err((
             StatusCode::BAD_REQUEST,
-            "severity must be one of: info, warning, critical".to_string(),
+            "response must be one of: notice, paused".to_string(),
+        )),
+    }
+}
+
+fn validate_severity(severity: &str) -> Result<(), (StatusCode, String)> {
+    match severity {
+        "low" | "high" | "critical" => Ok(()),
+        _ => Err((
+            StatusCode::BAD_REQUEST,
+            "severity must be one of: low, high, critical".to_string(),
         )),
     }
 }
@@ -306,9 +318,10 @@ fn build_changes(old: &AdminWarning, new: &AdminWarning) -> Value {
     push_change!(token);
     push_change!(network);
     push_change!(is_active);
+    push_change!(response);
     push_change!(severity);
     push_change!(user_message);
-    push_change!(scenario);
+    push_change!(situation);
     push_change!(internal_note);
     push_change!(show_from);
     push_change!(starts_at);
@@ -348,32 +361,49 @@ pub async fn create_warning(
 ) -> Result<Json<AdminWarning>, AdminError> {
     let admin = require_admin(&headers, &state)?;
 
-    let mut severity = body.severity.unwrap_or_else(|| "warning".to_string());
+    let mut response = body.response.unwrap_or_else(|| "notice".to_string());
+    let mut severity = body.severity.unwrap_or_else(|| "high".to_string());
+    validate_response(&response).map_err(|(status, msg)| AdminError::new(status, msg))?;
     validate_severity(&severity).map_err(|(status, msg)| AdminError::new(status, msg))?;
 
     let slot = empty_to_none(body.slot);
     let token = empty_to_none(body.token);
     let network = empty_to_none(body.network);
-    let scenario = empty_to_none(body.scenario);
+    let situation = empty_to_none(body.situation);
 
-    // App-level scenarios imply their own severity tier.
-    if let Some(implied) = scenario.as_deref().and_then(templates::scenario_severity) {
+    if let Some(implied) = situation.as_deref().and_then(templates::situation_response) {
+        response = implied.to_string();
+    }
+    if let Some(implied) = situation.as_deref().and_then(templates::situation_severity) {
         severity = implied.to_string();
+    }
+    if slot.as_deref() == Some("login")
+        || slot
+            .as_deref()
+            .is_some_and(|s| s.starts_with("login.wallet."))
+        || slot.as_deref() == Some("treasury-creation")
+    {
+        response = "paused".to_string();
     }
 
     let generated = templates::generate_messages(
+        &response,
         &severity,
         slot.as_deref(),
         token.as_deref(),
         network.as_deref(),
-        scenario.as_deref(),
+        situation.as_deref(),
     );
 
     let user_message = empty_to_none(body.user_message).or_else(|| generated.clone());
     let user_message = user_message.unwrap_or_default();
-    // The treasury-creation slot replaces the form with the waitlist, so it has
-    // no user-facing message — skip the requirement for it.
-    if user_message.trim().is_empty() && slot.as_deref() != Some("treasury-creation") {
+    // Treasury-creation replaces the form with the waitlist; login messages are
+    // auto-generated from the catalog — skip the requirement for both.
+    let skip_message_check = matches!(slot.as_deref(), Some("treasury-creation") | Some("login"))
+        || slot
+            .as_deref()
+            .is_some_and(|s| s.starts_with("login.wallet."));
+    if user_message.trim().is_empty() && !skip_message_check {
         return Err(AdminError::new(
             StatusCode::BAD_REQUEST,
             "User-facing message is required.",
@@ -438,12 +468,12 @@ pub async fn create_warning(
     let warning = sqlx::query_as::<_, AdminWarning>(&format!(
         r#"
         INSERT INTO warning_slots (
-            slot, token, network, is_active, severity,
-            user_message, scenario, internal_note,
+            slot, token, network, is_active, response, severity,
+            user_message, situation, internal_note,
             show_from, starts_at, ends_at,
             linked_service, linked_post_id, group_id, updated_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING {ADMIN_WARNING_COLUMNS}
         "#
     ))
@@ -451,9 +481,10 @@ pub async fn create_warning(
     .bind(&token)
     .bind(&network)
     .bind(is_active)
+    .bind(&response)
     .bind(&severity)
     .bind(&user_message)
-    .bind(&scenario)
+    .bind(&situation)
     .bind(empty_to_none(body.internal_note))
     .bind(show_from)
     .bind(starts_at)
@@ -492,9 +523,10 @@ pub async fn create_warning(
             "token": warning.token,
             "network": warning.network,
             "is_active": warning.is_active,
+            "response": warning.response,
             "severity": warning.severity,
             "user_message": warning.user_message,
-            "scenario": warning.scenario,
+            "situation": warning.situation,
             "internal_note": warning.internal_note,
             "show_from": warning.show_from,
             "starts_at": warning.starts_at,
@@ -540,6 +572,9 @@ pub async fn update_warning(
 
     let previous = existing.clone();
 
+    if let Some(ref response) = body.response {
+        validate_response(response).map_err(|(status, msg)| AdminError::new(status, msg))?;
+    }
     if let Some(ref severity) = body.severity {
         validate_severity(severity).map_err(|(status, msg)| AdminError::new(status, msg))?;
     }
@@ -548,18 +583,31 @@ pub async fn update_warning(
     let token = empty_to_none(body.token);
     let network = empty_to_none(body.network);
     let is_active = body.is_active.unwrap_or(existing.is_active);
-    let scenario = empty_to_none(body.scenario);
+    let situation = empty_to_none(body.situation);
+    let mut response = body.response.unwrap_or(existing.response);
     let mut severity = body.severity.unwrap_or(existing.severity);
-    if let Some(implied) = scenario.as_deref().and_then(templates::scenario_severity) {
+    if let Some(implied) = situation.as_deref().and_then(templates::situation_response) {
+        response = implied.to_string();
+    }
+    if let Some(implied) = situation.as_deref().and_then(templates::situation_severity) {
         severity = implied.to_string();
+    }
+    if slot.as_deref() == Some("login")
+        || slot
+            .as_deref()
+            .is_some_and(|s| s.starts_with("login.wallet."))
+        || slot.as_deref() == Some("treasury-creation")
+    {
+        response = "paused".to_string();
     }
 
     let generated = templates::generate_messages(
+        &response,
         &severity,
         slot.as_deref(),
         token.as_deref(),
         network.as_deref(),
-        scenario.as_deref(),
+        situation.as_deref(),
     );
 
     let user_message = empty_to_none(body.user_message).or(generated);
@@ -635,17 +683,18 @@ pub async fn update_warning(
             token = $3,
             network = $4,
             is_active = $5,
-            severity = $6,
-            user_message = $7,
-            scenario = $8,
-            internal_note = $9,
-            show_from = $10,
-            starts_at = $11,
-            ends_at = $12,
-            linked_service = $13,
-            linked_post_id = $14,
-            group_id = $15,
-            updated_by = $16,
+            response = $6,
+            severity = $7,
+            user_message = $8,
+            situation = $9,
+            internal_note = $10,
+            show_from = $11,
+            starts_at = $12,
+            ends_at = $13,
+            linked_service = $14,
+            linked_post_id = $15,
+            group_id = $16,
+            updated_by = $17,
             updated_at = NOW()
         WHERE id = $1
         RETURNING {ADMIN_WARNING_COLUMNS}
@@ -656,9 +705,10 @@ pub async fn update_warning(
     .bind(&token)
     .bind(&network)
     .bind(is_active)
+    .bind(&response)
     .bind(&severity)
     .bind(&user_message)
-    .bind(&scenario)
+    .bind(&situation)
     .bind(&internal_note)
     .bind(show_from)
     .bind(starts_at)

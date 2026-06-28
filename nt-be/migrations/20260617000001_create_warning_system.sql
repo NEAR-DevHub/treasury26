@@ -4,11 +4,14 @@ CREATE TABLE warning_slots (
     token TEXT,
     network TEXT,
     is_active BOOLEAN NOT NULL DEFAULT false,
-    severity TEXT NOT NULL DEFAULT 'warning' CHECK (
-        severity IN ('info', 'warning', 'critical')
+    response TEXT NOT NULL DEFAULT 'notice' CHECK (
+        response IN ('notice', 'paused')
+    ),
+    severity TEXT NOT NULL DEFAULT 'high' CHECK (
+        severity IN ('low', 'high', 'critical')
     ),
     user_message TEXT,
-    scenario TEXT,
+    situation TEXT,
     internal_note TEXT,
     show_from TIMESTAMPTZ,
     starts_at TIMESTAMPTZ,

@@ -44,6 +44,7 @@ import {
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
 import Big from "@/lib/big";
+import { stripMessageForTooltip } from "@/lib/warnings";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
 import { cn, nanosToMs } from "@/lib/utils";
@@ -284,7 +285,8 @@ export function ProposalSidebar({
     const approveBlockedWarning = approveBlock.blockedWarnings[0] ?? null;
     // Voting itself can be paused (action.vote slot). Unlike the feature-approve
     // block, this disables BOTH approve and reject.
-    const { blocked: voteSlotBlocked } = useSlotBlock("action.vote");
+    const { blocked: voteSlotBlocked, message: voteSlotMessage } =
+        useSlotBlock("action.vote");
     const isPending = status === "Pending";
     const isExecuted = status === "Executed";
     const isExchangeProposal = proposalType === "Exchange";
@@ -626,7 +628,13 @@ export function ProposalSidebar({
                         className="flex gap-1 w-full"
                         onClick={() => onVote("Reject")}
                         disabled={isUserVoter || voteSlotBlocked}
-                        tooltip={isUserVoter ? noVoteMessage : undefined}
+                        tooltip={
+                            voteSlotBlocked
+                                ? stripMessageForTooltip(voteSlotMessage)
+                                : isUserVoter
+                                  ? noVoteMessage
+                                  : undefined
+                        }
                     >
                         <X className="h-4 w-4 mr-2" />
                         {t("reject")}
@@ -660,7 +668,13 @@ export function ProposalSidebar({
                                 approveBlocked ||
                                 voteSlotBlocked
                             }
-                            tooltip={isUserVoter ? noVoteMessage : undefined}
+                            tooltip={
+                                voteSlotBlocked
+                                    ? stripMessageForTooltip(voteSlotMessage)
+                                    : isUserVoter
+                                      ? noVoteMessage
+                                      : undefined
+                            }
                         >
                             {isCheckingVotingDurationImpact ? (
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

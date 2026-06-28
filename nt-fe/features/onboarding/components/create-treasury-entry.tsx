@@ -145,7 +145,7 @@ export function TreasuryOnboardingPage({
     const { getWarning, isLoading: isLoadingWarnings } = useWarnings();
     const treasuryCreationWarning = getWarning("treasury-creation");
     const isTreasuryCreationBlocked =
-        treasuryCreationWarning?.severity === "critical";
+        treasuryCreationWarning?.response === "paused";
     const {
         accountId,
         connect,

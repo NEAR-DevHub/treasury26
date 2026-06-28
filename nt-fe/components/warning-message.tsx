@@ -5,11 +5,9 @@ import { useMemo, type ReactNode } from "react";
 import { Alert, AlertDescription } from "@/components/alert";
 import { useFormatDate } from "@/components/formatted-date";
 import { Tooltip } from "@/components/tooltip";
-import {
-    fillAction,
-    useWarnings,
-    type WarningSeverity,
-} from "@/hooks/use-warnings";
+import { useWarningMessage } from "@/hooks/use-warnings";
+import { useWarnings, type WarningSeverity } from "@/hooks/use-warnings";
+import { formatWarningScheduleText } from "@/lib/warnings";
 import { cn } from "@/lib/utils";
 
 const MARKDOWN_HEADING_PATTERN = /^#{1,6}\s+/;
@@ -137,16 +135,9 @@ export type WarningMessageProps =
     | WarningMessageFromText;
 
 function getAlertVariant(
-    severity: WarningSeverity,
+    _severity: WarningSeverity,
 ): "default" | "info" | "warning" | "destructive" {
-    switch (severity) {
-        case "critical":
-        case "warning":
-            return "warning";
-        case "info":
-        default:
-            return "info";
-    }
+    return "warning";
 }
 
 function formatScheduleText(
@@ -154,54 +145,40 @@ function formatScheduleText(
     startsAt: string | null,
     endsAt: string | null,
 ): string {
-    const parts: string[] = [];
-    if (startsAt) parts.push(`on ${formatDate(startsAt)}`);
-    if (endsAt) parts.push(`until ${formatDate(endsAt)}`);
-    return parts.join(" ");
+    return formatWarningScheduleText(formatDate, startsAt, endsAt);
 }
 
 function useResolvedWarning(props: WarningMessageProps) {
-    const { getWarning, actionBySlot } = useWarnings();
+    const { getWarning } = useWarnings();
     const formatDate = useFormatDate();
     const slot = "slot" in props ? props.slot : undefined;
     const token = "slot" in props ? props.token : undefined;
     const network = "slot" in props ? props.network : undefined;
-    const action = "slot" in props ? props.action : undefined;
     const messageProp = "slot" in props ? undefined : props.message;
     const severityProp = "slot" in props ? undefined : props.severity;
-    const startsAtProp = "slot" in props ? undefined : props.startsAt;
-    const endsAtProp = "slot" in props ? undefined : props.endsAt;
+
+    const warning = slot ? getWarning(slot, token, network) : null;
+    const resolvedFromSlot = useWarningMessage(warning, slot ?? "");
 
     return useMemo(() => {
         if (slot) {
-            const warning = getWarning(slot, token, network);
-            if (!warning?.message) {
+            if (!resolvedFromSlot) {
                 return null;
             }
 
-            let message = fillAction(
-                warning.message,
-                action ?? warning.slot ?? slot,
-                actionBySlot,
-            );
-
+            const message = resolvedFromSlot;
             const scheduleText = formatScheduleText(
                 formatDate,
-                warning.startsAt,
-                warning.endsAt,
+                warning?.startsAt ?? null,
+                warning?.endsAt ?? null,
             );
-            const hasInlineSchedule = message.includes("{schedule}");
-            if (hasInlineSchedule) {
-                message = message.replace(/\{schedule\}/g, scheduleText || "");
-            }
+            const normalizedMessage = message.includes("{schedule}")
+                ? message.replace(/\{schedule\}/g, scheduleText || "")
+                : message;
 
             return {
-                message,
-                severity: warning.severity,
-                startsAt: warning.startsAt,
-                endsAt: warning.endsAt,
-                hasInlineSchedule,
-                scheduleText,
+                message: normalizedMessage,
+                severity: (warning?.severity ?? "high") as WarningSeverity,
             };
         }
 
@@ -212,27 +189,14 @@ function useResolvedWarning(props: WarningMessageProps) {
 
         return {
             message,
-            severity: severityProp ?? "warning",
-            startsAt: startsAtProp ?? null,
-            endsAt: endsAtProp ?? null,
-            hasInlineSchedule: false,
-            scheduleText: formatScheduleText(
-                formatDate,
-                startsAtProp ?? null,
-                endsAtProp ?? null,
-            ),
+            severity: (severityProp ?? "high") as WarningSeverity,
         };
     }, [
         slot,
-        token,
-        network,
-        action,
+        resolvedFromSlot,
+        warning,
         messageProp,
         severityProp,
-        startsAtProp,
-        endsAtProp,
-        getWarning,
-        actionBySlot,
         formatDate,
     ]);
 }
@@ -275,14 +239,7 @@ export function WarningMessage(props: WarningMessageProps) {
         bodyClassName,
         iconPosition,
     } = props;
-    const {
-        message,
-        severity,
-        startsAt,
-        endsAt,
-        hasInlineSchedule,
-        scheduleText,
-    } = resolved;
+    const { message, severity } = resolved;
 
     if (variant === "tooltip") {
         return <TooltipContent message={message} />;
@@ -318,10 +275,8 @@ export function WarningMessage(props: WarningMessageProps) {
         return null;
     }
 
-    const showScheduleLine =
-        !hasInlineSchedule && scheduleText && (startsAt || endsAt);
     const alertVariant = getAlertVariant(severity);
-    const Icon = severity === "info" ? Info : AlertTriangle;
+    const Icon = AlertTriangle;
 
     return (
         <Alert
@@ -345,11 +300,6 @@ export function WarningMessage(props: WarningMessageProps) {
                         {renderWithLinks(body)}
                     </span>
                 ) : null}
-                {showScheduleLine && (
-                    <span className="block mt-1 text-xs opacity-80">
-                        {scheduleText}
-                    </span>
-                )}
             </AlertDescription>
         </Alert>
     );

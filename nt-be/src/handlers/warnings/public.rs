@@ -17,6 +17,8 @@ pub struct PublicWarning {
     pub token: Option<String>,
     pub network: Option<String>,
     pub severity: String,
+    pub response: String,
+    pub situation: Option<String>,
     #[sqlx(rename = "user_message")]
     pub message: Option<String>,
     pub show_from: Option<chrono::DateTime<chrono::Utc>>,

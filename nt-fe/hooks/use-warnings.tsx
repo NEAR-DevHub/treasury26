@@ -9,6 +9,8 @@ import {
     useContext,
     useMemo,
 } from "react";
+import { useTranslations, useMessages } from "next-intl";
+import { useFormatDate } from "@/components/formatted-date";
 import type { Proposal } from "@/lib/proposals-api";
 import {
     getProposalRequiredFunds,
@@ -19,19 +21,28 @@ import {
     resolveBridgeScope,
     type BridgeScope,
 } from "@/lib/bridge-asset-resolver";
+import {
+    actionKeyForSlot,
+    resolveWarningMessage,
+    WARNING_STATUS_PAGE_LINK,
+    type WarningSituationOverrides,
+} from "@/lib/warnings";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 const WARNINGS_POLL_INTERVAL_MS = 15_000;
 
-export type WarningSeverity = "info" | "warning" | "critical";
+export type WarningResponse = "notice" | "paused";
+export type WarningSeverity = "low" | "high" | "critical";
 
 export interface Warning {
     id: number;
     slot: string | null;
     token: string | null;
     network: string | null;
+    response: WarningResponse;
     severity: WarningSeverity;
-    message: string;
+    situation: string | null;
+    message: string | null;
     showFrom: string | null;
     startsAt: string | null;
     endsAt: string | null;
@@ -54,8 +65,8 @@ interface WarningsApiResponse {
 }
 
 const SEVERITY_RANK: Record<WarningSeverity, number> = {
-    info: 0,
-    warning: 1,
+    low: 0,
+    high: 1,
     critical: 2,
 };
 
@@ -212,8 +223,95 @@ export function useWarnings(): WarningsContextValue {
     return context;
 }
 
+// ─── Warning message hooks ────────────────────────────────────────────────────
+
+function readSituationOverrides(
+    messages: Record<string, unknown> | undefined,
+): WarningSituationOverrides | undefined {
+    const warnings = messages?.warnings;
+    if (!warnings || typeof warnings !== "object") return undefined;
+    return (warnings as { situations?: WarningSituationOverrides }).situations;
+}
+
+export function useResolveWarningMessage(): (
+    warning: Warning | null | undefined,
+    slot: string,
+) => string | null {
+    const messages = useMessages();
+    const formatDate = useFormatDate();
+    const t = useTranslations("warnings");
+
+    const getAction = useCallback(
+        (effectiveSlot: string) => {
+            const key = actionKeyForSlot(effectiveSlot);
+            switch (key) {
+                case "payment":
+                    return t("actions.payment");
+                case "deposit":
+                    return t("actions.deposit");
+                case "exchange":
+                    return t("actions.exchange");
+                case "vote":
+                    return t("actions.vote");
+                case "proposal":
+                    return t("actions.proposal");
+                default:
+                    return t("actions.transaction");
+            }
+        },
+        [t],
+    );
+
+    const statusPageLink = t.has("statusPageLink")
+        ? t("statusPageLink")
+        : WARNING_STATUS_PAGE_LINK;
+    const situationOverrides = readSituationOverrides(messages);
+    const scheduleLabels = {
+        on: t("schedule.on"),
+        until: t("schedule.until"),
+    };
+
+    return useCallback(
+        (warning: Warning | null | undefined, slot: string) => {
+            if (!warning) return null;
+            return resolveWarningMessage(warning, {
+                slot,
+                formatDate,
+                getAction,
+                statusPageLink,
+                situationOverrides,
+                scheduleLabels,
+            });
+        },
+        [
+            formatDate,
+            getAction,
+            statusPageLink,
+            situationOverrides,
+            scheduleLabels,
+        ],
+    );
+}
+
+export function useWarningMessage(
+    warning: Warning | null | undefined,
+    slot: string,
+): string | null {
+    const resolveMessage = useResolveWarningMessage();
+    return useMemo(
+        () => resolveMessage(warning, slot),
+        [resolveMessage, warning, slot],
+    );
+}
+
+export function useWarningOfflineBadgeLabel(): string {
+    return useTranslations("warnings")("offlineBadge");
+}
+
+// ─── Slot-block hooks ─────────────────────────────────────────────────────────
+
 /**
- * Transaction-action slots that get blocked by an app-level critical warning
+ * Transaction-action slots that get blocked by an app-level paused warning
  * (Tier 2+ "transactions paused" / "app down" / "under investigation").
  */
 const TX_ACTION_SLOTS = new Set([
@@ -225,32 +323,33 @@ const TX_ACTION_SLOTS = new Set([
 ]);
 
 /**
- * Resolve whether a slot's action should be blocked. A `critical` warning
- * blocks the action (disable / relabel the CTA); `warning`/`info` only show a
- * message. An app-level critical warning blocks all transaction actions.
+ * Resolve whether a slot's action should be blocked. A `paused` response
+ * blocks the action (disable / relabel the CTA); `notice` only shows a
+ * message. An app-level paused warning blocks all transaction actions.
  * Returns the matched warning plus a ready-to-use short label.
  */
 export function useSlotBlock(slot: string, token?: string, network?: string) {
-    const { getWarning, actionBySlot } = useWarnings();
+    const { getWarning } = useWarnings();
     const warning = getWarning(slot, token, network);
 
     const appWarning = TX_ACTION_SLOTS.has(slot) ? getWarning("app") : null;
-    const appBlocks = appWarning?.severity === "critical";
+    const appBlocks = appWarning?.response === "paused";
 
-    const blocked = warning?.severity === "critical" || appBlocks;
+    const blocked = warning?.response === "paused" || appBlocks;
     const effective =
-        warning?.severity === "critical"
+        warning?.response === "paused"
             ? warning
             : appBlocks
               ? appWarning
               : warning;
 
+    const effectiveSlot = effective?.slot ?? slot;
+    const message = useWarningMessage(effective, effectiveSlot);
+
     return {
         warning: effective,
         blocked,
-        message: effective?.message
-            ? fillAction(effective.message, slot, actionBySlot)
-            : null,
+        message,
     };
 }
 
@@ -360,13 +459,13 @@ export interface ProposalApproveBlock {
     anyBlocked: boolean;
     /** Number of proposals blocked from approval. */
     blockedCount: number;
-    /** Unique critical warnings (with their messages) causing the block. */
+    /** Unique paused warnings (with their messages) causing the block. */
     blockedWarnings: Warning[];
 }
 
 /**
  * Determine whether approving the given proposals is blocked because their
- * feature (payments / exchange) currently has a critical warning. Rejection is
+ * feature (payments / exchange) currently has a paused warning. Rejection is
  * never blocked, so callers should only apply this for the "Approve" action.
  */
 export function useProposalApproveBlock(
@@ -405,7 +504,7 @@ export function useProposalApproveBlock(
                 scope.token ?? undefined,
                 scope.networkName ?? undefined,
             );
-            if (warning?.severity === "critical") {
+            if (warning?.response === "paused") {
                 blockedCount += 1;
                 warningsById.set(warning.id, warning);
             }

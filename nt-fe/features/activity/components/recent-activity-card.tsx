@@ -64,7 +64,8 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/table";
 import { Tooltip } from "@/components/tooltip";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { fillAction, useWarnings } from "@/hooks/use-warnings";
+import { useWarningMessage } from "@/hooks/use-warnings";
+import { useWarnings } from "@/hooks/use-warnings";
 import { TransactionDetailsModal } from "./transaction-details-modal";
 
 const ITEMS_ON_DASHBOARD = 10;
@@ -226,18 +227,12 @@ export function RecentActivity() {
     );
     const isMobile = useMediaQuery("(max-width: 640px)");
     const isHidden = isConfidential && isGuestTreasury;
-    const { getWarning, actionBySlot } = useWarnings();
+    const { getWarning } = useWarnings();
     const activityWarning = getWarning("data.activity");
-    const activityWarningMessage = useMemo(() => {
-        if (!activityWarning?.message) {
-            return null;
-        }
-        return fillAction(
-            activityWarning.message,
-            "data.activity",
-            actionBySlot,
-        );
-    }, [activityWarning?.message, actionBySlot]);
+    const activityWarningMessage = useWarningMessage(
+        activityWarning,
+        "data.activity",
+    );
     const activityWarningCopy = useMemo(
         () => parseWarningCopy(activityWarningMessage),
         [activityWarningMessage],

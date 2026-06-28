@@ -13,7 +13,7 @@ use teloxide::{
 
 use crate::{
     AppState,
-    handlers::status::fallbacks::{self, parse_show_fallback_callback},
+    handlers::status::fallbacks::{self, parse_post_to_app_callback},
 };
 
 /// Axum handler for incoming Telegram webhook updates.
@@ -173,7 +173,7 @@ async fn handle_callback_query(state: &AppState, callback: teloxide::types::Call
         return;
     };
 
-    let Some(service) = parse_show_fallback_callback(data) else {
+    let Some(service) = parse_post_to_app_callback(data) else {
         return;
     };
 
@@ -198,19 +198,15 @@ async fn handle_callback_query(state: &AppState, callback: teloxide::types::Call
         Ok(warning_id) => {
             let already_active = warning_id.is_none();
             let note = fallbacks::format_activation_message(service, activated_by, already_active);
-            if let Err(e) = state
-                .telegram_client
-                .edit_message_text(chat_id, message.id().0, &note)
-                .await
-            {
+            if let Err(e) = state.telegram_client.send_ops_alert_html(&note).await {
                 tracing::error!(
-                    "[telegram] Failed to edit fallback activation message in chat {chat_id}: {e}"
+                    "[telegram] Failed to send post-to-app confirmation in chat {chat_id}: {e}"
                 );
             }
             let callback_text = if already_active {
                 "Warning already active"
             } else {
-                "Fallback activated"
+                "Posted to app"
             };
             answer_callback_query(state, callback.id.clone(), Some(callback_text)).await;
         }

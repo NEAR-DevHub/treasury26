@@ -10,8 +10,10 @@ pub const ACTIVE_WARNINGS_SQL: &str = r#"
         slot,
         token,
         network,
+        response,
         severity,
         user_message,
+        situation,
         show_from,
         starts_at,
         ends_at

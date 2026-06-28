@@ -1,189 +1,152 @@
-# Warnings Admin Panel Guide
+# Trezu Incident Messaging Guide
 
-The warnings admin panel lets you display status messages, pause features, and manage the waitlist — all without deploying code.
+When something in Trezu breaks — a network stalls, a service goes down, a token can't be deposited — use this to pick what to show users, where, and how to post it.
 
-**URL:** `https://<backend>/internal/warnings` (protected by Basic Auth)
+**Status Manager URL:** `https://<backend>/internal/warnings` (Basic Auth)
 
-**Team access:** set `ADMIN_USERS=alice:secret1,bob:secret2` (password may contain colons). Each login is recorded in the audit log as `changedBy`.
+**Catalog:** [`shared/status-situations.json`](../shared/status-situations.json) — single source of truth for copy, response, severity, and placements.
+
+---
+
+## Three parts work together
+
+| Part | What it is |
+| ---- | ---------- |
+| **In-app messages** | The warning a user sees while using Trezu — what most of this doc is about |
+| **Status page** | Public log of active incidents; hosted separately so it stays up even if Trezu is down |
+| **Status Manager** | Internal tool to post, edit, and clear a message — any Trezu engineer can use it |
+
+---
+
+## Classifying an incident
+
+Answer two questions about any incident.
+
+**1. What does the app do? (Response)**
+- **Notice** — show a message, but everything still works. The user can act.
+- **Paused** — the affected action is turned off. The user can't do it right now.
+
+**2. How much danger are the funds in? (Severity)**
+- **Low** — funds safe, nothing unavailable (just slower or cosmetic).
+- **High** — funds safe, but something is genuinely unavailable.
+- **Critical** — funds may be at risk, or we don't yet know they're safe. This case only: legal writes the message.
+
+The two answers point you to a situation row below.
+
+**Guidelines:**
+- Match the message to the situation. A small issue gets a small, quiet message where the problem is; only a whole-app problem gets a site-wide banner.
+- Acknowledge the issue, stay calm. Always tell users something's wrong — never pretend everything's fine — but keep the tone plain and factual, never dramatic.
+- Keep the cause vague. Say "an issue." Never name a cause we haven't confirmed (not "a breach," not "an RPC failure").
+- Be precise about money. When funds are fine, say they're "on-chain and in your control" (a fact). Never say "safe" (a promise).
+- If funds might truly be at risk, stop. Say nothing about funds, and bring in product and legal before posting anything.
+- Anyone can post Low or High — no sign-off needed. Critical needs product/legal (Ori, US / Vlad, Europe — 24/7 between us).
+- Use the standard wording. Each message below is pre-approved. In Status Manager, pick the matching Situation to auto-fill it — only write custom copy for a genuine edge case.
 
 ---
 
 ## Quick start
 
-1. Open the admin panel and sign in
-2. Click **+ Add** to create a new warning
-3. Pick a **slot** (where the warning appears)
-4. Choose a **scenario** (pre-written message) or write your own
-5. Set it to **Active now** or **Schedule for later**
-6. Check the **Live preview** at the bottom of the form
-7. Hit **Save**
+1. Open **Trezu Status Manager**
+2. Click **+ Add**
+3. Pick a **Situation** (row from the table below)
+4. Pick **Where it appears** (and scope: token, network, wallet, features…)
+5. Review the auto-filled **message**
+6. Set **Active now** or **Schedule**
+7. **Save**
 
 ---
 
-## Concepts
+## Situations
 
-### Slots
+| # | Situation | Message | Where | Response | Severity | Notes |
+|---|-----------|---------|-------|----------|----------|-------|
+| 1 | **Scheduled maintenance** — planned, known ahead | `### Scheduled update · [what] will be briefly unavailable [schedule].` | Affected flow + dashboard note; whole-app also on status page + social | Notice | Low | [what]: "Payments" / "Swaps" / "Deposits" / "Some features" / "Trezu" (whole-app adds "Your funds are on-chain and in your control.") See Scheduling ↓ |
+| 2 | **Provider maintenance** — upstream scheduled window | `### Scheduled provider maintenance · [what] may be briefly unavailable [schedule]. Your funds are on-chain and in your control.` | Affected flow | Notice | Low | Use when downtime is from an upstream provider (e.g. NEAR Intents). Pick affected feature(s) — one warning per page |
+| 3 | **Network or token slow** — still works, just slower | `### [subject] is slow right now · Your [action] will go through once it recovers, it just may take longer than usual.` | In the flow, when that token or network is selected | Notice | Low | [action] = deposit / payment / transaction, to match the flow. Pick token, network, or both — subject composes automatically |
+| 4 | **Token or network paused** — one token, one network, or both | Depends on what you pick — see Token / network paused ↓ | In the flow, when that token or network is selected | Paused | High | Covers all three scope variants in one row |
+| 5 | **Feature pages down** — payments / exchange / deposit | `### [Feature] is temporarily paused. · We're working on it.` | Top of the affected page(s) | Paused | High | Select **Several features** and check whichever pages are down — one warning per page. Does not claim other features are working (in case multiple are down) |
+| 6 | **Everything halted** — Intents fully down, nothing can move | `### Transactions are paused right now · A network provider is recovering. Your funds are on-chain and in your control. Updates: [status page]` | Top banner, all pages | Paused | High | Use when all transfers are down, not just one network |
+| 7 | **Balances not showing** — display issue, money untouched | `### Balance temporarily unavailable. · We can't show your balances right now. Your funds are on-chain and exactly where you left them. You can keep using your treasury.` | Pop-up once → dashboard balance area + sidebar | Notice | High | — |
+| 8 | **History not loading** — display issue | `### Transaction history isn't loading right now · This affects what you can see, not your funds or your treasury.` | Recent Transactions + Requests history | Notice | High | — |
+| 9 | **Requests won't process** — can't create or send | `### Can't process new requests for a few minutes – a temporary network issue. · Your funds are unaffected, try again shortly.` | Create request buttons + Approve modal | Paused | High | Always creates two warnings: create-request buttons and the Approve modal |
+| 10 | **Approvals paused** — pending requests can't be approved | `Approving requests is paused right now while a network provider recovers. · You can still reject pending requests, and approvals will work again once it's back.` | All Approve buttons (vote modal) | Paused | High | Rejection is never blocked — only approval pauses. Say so, so approvers aren't stuck |
+| 11 | **Wallet login unavailable** — a wallet provider is down | All wallets: `### Signing in isn't available right now. Your funds are on-chain and untouched – you can sign in again once it's back.` · One wallet: `### Signing in with [wallet] isn't available right now. ...` | Login screen — all wallets banner, or Offline badge on one wallet | Paused | High | No "where" picker — choose All wallets or one wallet. Shows before sign-in, so don't reference a specific treasury |
+| 12 | **Backend down** — data won't load | `### We're having a temporary issue · Some data may not load. Your funds are on-chain and unaffected – try again shortly.` | Automatic banner across the app | Notice | High | Auto-triggered by health checks — never auto-posted to Telegram |
+| 13 | **Whole app down** — Trezu won't load at all | `### Trezu is temporarily down. · Your funds are on-chain and in your control. Updates: [status page]` | Status page + social + landing (outside the app) | Paused | High | Never auto-posted; lives outside the app so it stays visible when Trezu is down |
+| 14 | **Treasury creation unavailable** — show waitlist | `Creating new treasuries is invite-only for now. Join the waitlist and we'll let you know when it opens up.` | Replaces the create-treasury form | Paused | Low | Graceful fallback — welcoming, not apologetic. No funds language (no treasury exists yet) |
+| 15 | **Funds may be at risk** — STOP | No pre-written message — escalate to product + legal. Holding line only: `### We've paused Trezu while we investigate an issue. · We recommend not making any transactions until we confirm everything's clear. Updates: [status page]` | Full-screen block, all pages | Paused | Critical | Never auto-posted — product + legal write the live message |
 
-A slot is _where_ the warning appears in the app. They're grouped into four categories:
-
-| Group             | Slot                         | What it does                                                                |
-| ----------------- | ---------------------------- | --------------------------------------------------------------------------- |
-| **System**        | App-wide (entire platform)   | Banner in the sidebar — every page sees it                                  |
-|                   | Login (all wallets)          | Banner on the login screen; can target a specific wallet                    |
-|                   | Treasury creation (waitlist) | Replaces the create-treasury form with a waitlist                           |
-| **Features**      | Payments                     | Banner on the payments page                                                 |
-|                   | Exchange (Swaps)             | Banner on the exchange page                                                 |
-|                   | Deposits                     | Banner on the deposit page                                                  |
-| **Actions**       | Creating requests            | Disables every "Create request" button (payments, swaps, members, settings) |
-|                   | Voting (Approve / Reject)    | Disables the vote buttons in proposal modals                                |
-| **Data displays** | Balances                     | Banner on the dashboard balances section                                    |
-|                   | Transaction history          | Banner on the recent transactions section                                   |
-
-### Scenarios
-
-A scenario is a pre-approved message template. When you pick one, the message field fills automatically. You can still edit the text before saving.
-
-**Feature scenarios** (Payments, Exchange, Deposits):
-
-| Scenario                       | What happens                                                                                                                     |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| Swaps/Payments/Deposits paused | Always critical — disables the feature button, shows "Briefly Unavailable", and pauses approval of pending requests of that type |
-| Can't process requests         | Same as above — temporary network issue wording                                                                                  |
-| Scheduled maintenance          | Always critical — disables the feature button, shows "Briefly Unavailable"                                                       |
-
-> Every feature scenario is **critical**, so the severity picker is hidden when you pick one. To show an informational banner that doesn't block anything, leave the scenario blank and write a custom message with severity set to _warning_.
-
-**App-wide tiers** (escalating severity):
-
-| Tier                          | Severity | Meaning                                             |
-| ----------------------------- | -------- | --------------------------------------------------- |
-| Tier 1 · Backend issue        | Warning  | Some data may not load, but everything still works  |
-| Tier 2 · Transactions paused  | Critical | Users can browse but can't send transactions        |
-| Tier 3 · App temporarily down | Critical | The app is down; funds are safe on-chain            |
-| Tier 4 · Under investigation  | Critical | Active incident; recommends not making transactions |
-
-### Severity
-
-| Level        | What users see                                           |
-| ------------ | -------------------------------------------------------- |
-| **Warning**  | Yellow banner with the message — users can still proceed |
-| **Critical** | Yellow banner + the relevant button is disabled          |
-
-Some scenarios force the severity automatically (you won't see the severity picker):
-
-- All app-wide tiers
-- Scheduled maintenance
-- Voting / Creating requests blocked
-
-### Login warnings
-
-Login warnings work differently:
-
-- **All wallets**: Shows a banner above the wallet list on the login screen
-- **Specific wallet**: Shows an "Offline" badge on that wallet card with a tooltip message
-- Messages are auto-generated — you don't need to write them
-
-If you check **"Also pause login for all wallets"** on an app-wide warning, a login warning is created automatically alongside it.
+**Recovery:** A message clears when you delete or expire it — there's no "all better" message in the app. The history lives on the status page.
 
 ---
 
-## Message formatting
+## Token / network paused (Row 4)
 
-Messages support a lightweight markdown syntax:
+One situation covers all three scoping variants:
 
-| Syntax                       | Result                                                                                        |
-| ---------------------------- | --------------------------------------------------------------------------------------------- |
-| `# Heading` or `### Heading` | Bold heading line (any heading level works)                                                   |
-| `[Status page](https://...)` | Clickable link that opens in a new tab                                                        |
-| `{action}`                   | Replaced with the page's action word (payment, deposit, swap…)                                |
-| `{schedule}`                 | Replaced with the warning's scheduled dates (e.g. "on Jun 25, 3:00 PM until Jun 26, 5:00 PM") |
-
-**Example message:**
-
-```
-### Scheduled update
-Exchange will be briefly unavailable {schedule}.
-```
-
-Renders as:
-
-> **Scheduled update**
-> Exchange will be briefly unavailable on Jun 25, 2026 3:00 PM until Jun 26, 2026 5:00 PM.
+| What you pick in the form | Heading | Body |
+| ------------------------- | ------- | ---- |
+| Token only | "{token} is paused right now" | "Other tokens work as normal." |
+| Network only | "{network} is paused right now" | "You can use a different network in the meantime." |
+| Token **and** network | "{token} on {network} is paused right now" | "Other tokens work as normal." |
 
 ---
 
-## Scheduling
+## Scheduled maintenance
 
-Warnings can be:
+How far ahead to announce depends first on whether it pauses anything, then on how long. A Notice needs little warning; a Paused window needs real lead time, since a treasury team may need to schedule around it.
 
-- **Active now** — goes live immediately
-- **Scheduled** — set a start and optional end time (in UTC)
+| Maintenance | Announce | Reminder |
+| ----------- | -------- | -------- |
+| Notice, any length | Day-of, in-app | — |
+| Paused, under ~15 min | A few hours ahead | — |
+| Paused, 15 min – 1 hr | 24 hours ahead | — |
+| Paused, 1 hr+, or whole-app | 48–72 hours ahead | Again day-of |
 
-Scheduled warnings activate automatically at the start time and are removed from the app at the end time. If no end time is set, the warning stays active until you manually delete it.
+- Always give an end time, and pad it. Announce a window slightly longer than you expect — back early builds trust, running over destroys it. (Status Manager supports a scheduled end + auto-clear.)
+- Pick a low-usage window. Global treasuries mean no truly quiet hour, which is a reason to give more notice. Avoid weekday business hours where you can.
+- For long or whole-app windows, post on the status page so users can subscribe — the day-of reminder is what lands.
 
-When a warning has a schedule, the dates appear in the user-facing message:
+Use the **Provider maintenance** situation (Row 2) when the downtime is from an upstream provider — it uses different wording ("may be briefly unavailable") that signals the cause is external.
 
-- If the message contains `{schedule}`, the dates are inserted inline
-- Otherwise, a small "from … until …" line appears below the message
+### Relaying a provider maintenance
 
----
+When a provider we rely on (e.g. NEAR Intents) announces maintenance, the window is theirs — we just relay it promptly.
 
-## Token / Network scoping
+1. Check it affects our users — does it hit a capability, token, or network they use? If not, internal note only.
+2. Select **Provider maintenance** as the situation, pick the affected feature(s), and set their start/end time.
+3. Frame it as upstream — "a network provider," never name or blame them.
+4. Link it to the incident so it auto-clears when their maintenance ends.
 
-For feature slots (Payments, Exchange, Deposits, Balances, Prices), you can optionally scope a warning to a specific token or network:
-
-- **Token only**: "USDC is slow right now…"
-- **Network only**: "Cardano is paused right now…"
-- **Both**: "ADA on Cardano is paused right now…"
-
-If you don't select a token or network, the warning applies to the entire feature.
-
----
-
-## What "critical" actually blocks
-
-| Slot                    | What gets disabled                                                                                      |
-| ----------------------- | ------------------------------------------------------------------------------------------------------- |
-| Payments                | "Send payment" button shows "Briefly Unavailable", and **approving** pending payment requests is paused |
-| Exchange                | "Swap" button shows "Briefly Unavailable", and **approving** pending swap requests is paused            |
-| Deposits                | Token and network selectors are disabled                                                                |
-| Creating requests       | Every "Create request" button across the app                                                            |
-| Voting                  | Approve / Reject buttons in proposal modals                                                             |
-| Login (all wallets)     | All wallet buttons are disabled                                                                         |
-| Login (specific wallet) | That wallet's button is disabled, shows "Offline" badge                                                 |
-| App-wide (Tier 2+)      | All action buttons across the app                                                                       |
-| Data displays           | Nothing — these are informational only                                                                  |
-
-> **Rejection is never blocked.** When Payments or Exchange has a critical warning, members can still **reject** pending requests of that type — only approval is paused. In a bulk action, the confirm button is disabled until every selected request can be approved, so unselect the blocked ones to continue. The note shown to the member is the actual warning message you wrote for that slot.
-
-> **Token / network scoping.** If you scope a Payments or Exchange warning to a specific token and/or network, only requests that use that token/network have approval paused — every other request can still be approved normally. Leave token and network as "All" to pause approval for the whole feature.
+Message: `### Scheduled provider maintenance · [capability] may be briefly unavailable [schedule]. Your funds are on-chain and in your control.`
 
 ---
 
-## Incident linking
+## Special cases
 
-In the warning form, **Link to upstream service** ties a warning to a live health check so it clears itself when the incident ends:
-
-| Link type | Auto-closes when… |
-| --------- | ----------------- |
-| **Service only** (e.g. NEAR RPC, NEAR Protocol) | The status monitor sees that service healthy again |
-| **Specific NEAR Intents post** | That post disappears from the status API or its scheduled end time passes |
-
-Linked warnings are **deleted automatically** on recovery. The audit log keeps a record (`deleted`, with the slot and link source).
-
-Scheduled warnings with an **end time** are also deleted automatically once that time passes.
-
-**Telegram “Show fallback” warnings count as linked** — activation sets `linked_service` to the failing check (backend, exchange, near-rpc, etc.), so they are removed the same way when that service recovers.
-
-Only **unlinked** warnings (created in admin with no service link) stay until you delete them manually or set a schedule end time.
-
-**Shared slots:** backend, NEAR Protocol, and NEAR RPC all use the app-wide slot. If more than one of those checks is still failing, the app warning is kept until every related incident has recovered.
+| Situation | App behaviour |
+| --------- | ------------- |
+| **Treasury creation unavailable** | Shows existing waitlist UI (frontend copy unchanged) |
+| **Wallet login unavailable** | Existing Offline badge / login banner (frontend unchanged) |
+| **Funds at risk** | Edit message with legal before posting; never auto-posted |
 
 ---
 
-## Tips
+## Telegram ops
 
-- **Always check the live preview** before saving — it shows exactly what users will see
-- **Link to an active incident** when you can (NEAR Intents, NEAR Protocol, NEAR RPC) so the warning is removed automatically on recovery; otherwise delete old warnings yourself once the incident is over
-- **Use the audit log** tab to see who created/edited/deleted warnings
-- **Scenarios keep messaging consistent** — prefer them over custom messages when possible
+Health-check alerts include **Post to app**. Tapping it activates the configured fallback situation. Auto-fallback services:
+
+| Service | Fallback situation |
+| ------- | ----------------- |
+| `backend` | Backend down (row 11) |
+| `exchange` | Feature pages down — Exchange (row 4) |
+| `near-rpc` | Transactions halted (row 5) |
+| `near-protocol` | Whole app down (row 12) |
+
+NEAR Intents has **no** auto-fallback — post manually. Their updates aren't structured enough to classify automatically.
+
+---
+
+## Testing locally
+
+`STATUS_MONITOR_MOCK_FAILURES=backend` (or `exchange`, `near-rpc`) simulates failures for the Telegram flow.

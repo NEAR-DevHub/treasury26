@@ -145,7 +145,7 @@ impl TelegramClient {
         Ok(sent.id.0)
     }
 
-    /// Send an ops-channel alert with optional "Show fallback" callback,
+    /// Send an ops-channel alert with optional "Post to app" callback,
     /// "Open admin", and "View check" URL buttons.
     pub async fn send_ops_alert_with_buttons(
         &self,
@@ -177,7 +177,7 @@ impl TelegramClient {
 
         let mut rows = match callback_data {
             Some(callback_data) => vec![vec![
-                InlineKeyboardButton::callback("Show fallback", callback_data.to_string()),
+                InlineKeyboardButton::callback("Post to app", callback_data.to_string()),
                 admin_button,
             ]],
             None => vec![vec![admin_button]],

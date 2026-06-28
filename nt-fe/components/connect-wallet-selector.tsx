@@ -15,6 +15,10 @@ import {
 } from "@/components/modal";
 import { StepperHeader } from "@/components/step-wizard";
 import { Pill } from "@/components/pill";
+import {
+    useWarningOfflineBadgeLabel,
+    useResolveWarningMessage,
+} from "@/hooks/use-warnings";
 import { useWarnings } from "@/hooks/use-warnings";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -114,6 +118,8 @@ export function ConnectWalletSelector({
     const router = useRouter();
     const t = useTranslations("createTreasury");
     const { getWarning } = useWarnings();
+    const resolveWarningMessage = useResolveWarningMessage();
+    const offlineBadgeLabel = useWarningOfflineBadgeLabel();
     const { accountId, authError } = useNear();
     const [unsupportedWallet, setUnsupportedWallet] =
         useState<WalletOption | null>(null);
@@ -175,25 +181,25 @@ export function ConnectWalletSelector({
         setPendingRecentWalletId(null);
     }, [pendingRecentWalletId, authError]);
 
-    const isLoginCritical = getWarning("login")?.severity === "critical";
+    const isLoginPaused = getWarning("login")?.response === "paused";
 
     const isWalletChoiceBlocked = (walletId: WalletOption["id"]) => {
-        if (isLoginCritical) return true;
+        if (isLoginPaused) return true;
         // The NEAR group is a container — it opens a modal whose inner choices
         // carry their own offline state, so the container itself isn't blocked.
         if (walletId === WALLET_IDS.NEAR) return false;
         const walletWarning = getWarning(getWalletLoginSlot(walletId));
-        return walletWarning?.severity === "critical";
+        return walletWarning?.response === "paused";
     };
 
     // Per-wallet warning from the admin system. When present, the wallet
     // card shows an "Offline" badge (with the admin message as tooltip)
     // instead of "Recent".
-    // Login wallet warnings are always critical (offline). Only surface those so
+    // Login wallet warnings are always paused (offline). Only surface those so
     // the "Offline" badge and the disabled state stay in lockstep.
     const getWalletWarning = (walletId: WalletOption["id"]) => {
         const warning = getWarning(getWalletLoginSlot(walletId));
-        return warning?.severity === "critical" ? warning : null;
+        return warning?.response === "paused" ? warning : null;
     };
 
     type BadgeInfo = { label: string; tooltip?: string; isOffline?: boolean };
@@ -203,12 +209,14 @@ export function ConnectWalletSelector({
     const getTopLevelBadge = (wallet: WalletOption): BadgeInfo | null => {
         // The NEAR group card opens a modal, so its inner choices show their own
         // "Offline" badges — don't tag the container itself.
-        if (!isLoginCritical && wallet.id !== WALLET_IDS.NEAR) {
+        if (!isLoginPaused && wallet.id !== WALLET_IDS.NEAR) {
             const walletWarning = getWalletWarning(wallet.id);
             if (walletWarning) {
+                const slot = getWalletLoginSlot(wallet.id);
                 return {
-                    label: "Offline",
-                    tooltip: walletWarning.message ?? undefined,
+                    label: offlineBadgeLabel,
+                    tooltip:
+                        resolveWarningMessage(walletWarning, slot) ?? undefined,
                     isOffline: true,
                 };
             }
@@ -224,12 +232,14 @@ export function ConnectWalletSelector({
     };
 
     const getModalBadge = (wallet: WalletOption): BadgeInfo | null => {
-        if (!isLoginCritical) {
+        if (!isLoginPaused) {
             const walletWarning = getWalletWarning(wallet.id);
             if (walletWarning) {
+                const slot = getWalletLoginSlot(wallet.id);
                 return {
-                    label: "Offline",
-                    tooltip: walletWarning.message ?? undefined,
+                    label: offlineBadgeLabel,
+                    tooltip:
+                        resolveWarningMessage(walletWarning, slot) ?? undefined,
                     isOffline: true,
                 };
             }

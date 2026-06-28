@@ -12,7 +12,8 @@ import {
     DialogTitle,
 } from "@/components/modal";
 import { parseWarningCopy } from "@/components/warning-message";
-import { fillAction, useWarnings } from "@/hooks/use-warnings";
+import { useWarningMessage } from "@/hooks/use-warnings";
+import { useWarnings } from "@/hooks/use-warnings";
 
 /**
  * Shows a one-time-per-session modal when balances are temporarily
@@ -21,17 +22,12 @@ import { fillAction, useWarnings } from "@/hooks/use-warnings";
  */
 export function BalanceWarningModal() {
     const t = useTranslations("proposals.insufficientBalance");
-    const { getWarning, actionBySlot } = useWarnings();
+    const { getWarning } = useWarnings();
     const warning = getWarning("data.balances");
+    const message = useWarningMessage(warning, "data.balances");
     const [open, setOpen] = useState(false);
 
     const warningId = warning?.id ?? null;
-    const message = useMemo(() => {
-        if (!warning?.message) {
-            return null;
-        }
-        return fillAction(warning.message, "data.balances", actionBySlot);
-    }, [warning?.message, actionBySlot]);
     const { heading, body } = useMemo(
         () => parseWarningCopy(message),
         [message],

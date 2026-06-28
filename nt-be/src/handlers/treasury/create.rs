@@ -272,7 +272,7 @@ pub async fn create_treasury_stream(
 }
 
 /// Treasury creation is blocked if either the env kill-switch is set, or an
-/// active `critical` `treasury-creation` warning slot is live (so the team can
+/// active `paused` `treasury-creation` warning slot is live (so the team can
 /// pause creation from the admin panel without a redeploy).
 async fn treasury_creation_blocked(state: &AppState) -> bool {
     if state.env_vars.disable_treasury_creation {
@@ -284,7 +284,7 @@ async fn treasury_creation_blocked(state: &AppState) -> bool {
         SELECT EXISTS (
             SELECT 1 FROM warning_slots
             WHERE slot = 'treasury-creation'
-              AND severity = 'critical'
+              AND response = 'paused'
               AND (
                 is_active = true
                 OR (show_from IS NOT NULL AND show_from <= NOW())

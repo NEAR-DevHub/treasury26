@@ -7,7 +7,7 @@ use crate::{
     AppState,
     handlers::status::{
         fallbacks::{
-            self, SHOW_FALLBACK_CALLBACK_PREFIX, StatusIncident, admin_page_url, oh_dear_status_url,
+            self, POST_TO_APP_CALLBACK_PREFIX, StatusIncident, admin_page_url, oh_dear_status_url,
         },
         oh_dear::{self, OhDearStatus, SUPPORTED_SERVICES},
     },
@@ -26,17 +26,21 @@ fn incident_status(status: &OhDearStatus) -> &'static str {
 
 fn format_ops_alert(service: &str, check_name: &str, status: &str, message: &str) -> String {
     let action = if fallbacks::supports_fallback_button(service) {
-        "Use <b>Show fallback</b> or <b>Open admin</b>. Tap <b>View check</b> for the full Oh Dear response."
+        "Use <b>Post to app</b> or <b>Open admin</b>. Tap <b>View check</b> for the full Oh Dear response."
     } else {
         "Create the warning in admin. Tap <b>View check</b> for the full Oh Dear response."
     };
+
+    let preview = fallbacks::format_fallback_preview_summary(service)
+        .map(|summary| format!("\n\n{summary}"))
+        .unwrap_or_default();
 
     format!(
         "⚠️ <b>Health check failed</b>: {service}\n\
          Check: <code>{check_name}</code>\n\
          Status: <b>{status}</b>\n\
          {message}\n\n\
-         {action}"
+         {action}{preview}"
     )
 }
 
@@ -337,7 +341,7 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
         if incident.telegram_message_id.is_none() {
             let text = format_ops_alert(service, check_name, status, &check.notification_message);
             let callback_data = fallbacks::supports_fallback_button(service)
-                .then(|| format!("{SHOW_FALLBACK_CALLBACK_PREFIX}{service}"));
+                .then(|| format!("{POST_TO_APP_CALLBACK_PREFIX}{service}"));
             let admin_url = admin_page_url();
             let check_url = oh_dear_status_url(service);
 

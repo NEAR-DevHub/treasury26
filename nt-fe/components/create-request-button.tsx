@@ -10,6 +10,8 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { useMemo } from "react";
 import { hasPermission } from "@/lib/config-utils";
 import { useSlotBlock } from "@/hooks/use-warnings";
+import { stripMessageForTooltip } from "@/lib/warnings";
+import { Tooltip } from "@/components/tooltip";
 
 interface PermissionRequirement {
     kind: string;
@@ -45,7 +47,9 @@ export function CreateRequestButton({
     const { data: subscription } = useSubscription(treasuryId);
     // Proposal creation is paused when the `action.create-proposal` slot (or an
     // app-wide outage) is critical. This covers every create-request flow.
-    const { blocked: proposalBlocked } = useSlotBlock("action.create-proposal");
+    const { blocked: proposalBlocked, message: blockedMessage } = useSlotBlock(
+        "action.create-proposal",
+    );
 
     const isAuthorized = useMemo(() => {
         if (!permissions || !policy || !accountId) return false;
@@ -74,31 +78,42 @@ export function CreateRequestButton({
         !hasSponsoredTransactions ||
         proposalBlocked;
 
-    return (
-        <>
-            <Button
-                type={type}
-                onClick={onClick}
-                className={className}
-                disabled={isDisabled}
-            >
-                {isSubmitting ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {loadingMessage ?? idleMessage ?? tCreate("idle")}
-                    </>
-                ) : proposalBlocked ? (
-                    tCreate("paused")
-                ) : !accountId ? (
-                    tAuth("noWallet")
-                ) : !hasSponsoredTransactions ? (
-                    tAuth("noSponsoredTransactions")
-                ) : !isAuthorized ? (
-                    tCreate("noPermission")
-                ) : (
-                    (idleMessage ?? tCreate("idle"))
-                )}
-            </Button>
-        </>
+    const button = (
+        <Button
+            type={type}
+            onClick={onClick}
+            className={className}
+            disabled={isDisabled}
+        >
+            {isSubmitting ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {loadingMessage ?? idleMessage ?? tCreate("idle")}
+                </>
+            ) : proposalBlocked ? (
+                tCreate("paused")
+            ) : !accountId ? (
+                tAuth("noWallet")
+            ) : !hasSponsoredTransactions ? (
+                tAuth("noSponsoredTransactions")
+            ) : !isAuthorized ? (
+                tCreate("noPermission")
+            ) : (
+                (idleMessage ?? tCreate("idle"))
+            )}
+        </Button>
     );
+
+    if (proposalBlocked && blockedMessage) {
+        return (
+            <Tooltip
+                content={stripMessageForTooltip(blockedMessage)}
+                side="top"
+            >
+                <span className="inline-block w-full">{button}</span>
+            </Tooltip>
+        );
+    }
+
+    return button;
 }

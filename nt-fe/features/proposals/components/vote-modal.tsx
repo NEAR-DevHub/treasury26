@@ -11,9 +11,11 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/modal";
+import { Tooltip } from "@/components/tooltip";
 import { SlotWarning } from "@/components/warning-message";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
+import { stripMessageForTooltip } from "@/lib/warnings";
 import type { Proposal } from "@/lib/proposals-api";
 import { useNear } from "@/stores/near-store";
 
@@ -138,23 +140,37 @@ export function VoteModal({
                     />
                 )}
                 <DialogFooter>
-                    <Button
-                        className="w-full"
-                        variant={vote === "Remove" ? "destructive" : "default"}
-                        onClick={handleVote}
-                        disabled={
-                            isSubmitting || voteSlotBlocked || approveBlocked
-                        }
+                    <Tooltip
+                        content={stripMessageForTooltip(voteSlotMessage)}
+                        disabled={!voteSlotBlocked || !voteSlotMessage}
+                        side="top"
                     >
-                        {voteSlotBlocked || approveBlocked
-                            ? tCreate("brieflyUnavailable")
-                            : vote === "Remove"
-                              ? t("remove")
-                              : t("confirm")}
-                        {isSubmitting && (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        )}
-                    </Button>
+                        <span className="inline-block w-full">
+                            <Button
+                                className="w-full"
+                                variant={
+                                    vote === "Remove"
+                                        ? "destructive"
+                                        : "default"
+                                }
+                                onClick={handleVote}
+                                disabled={
+                                    isSubmitting ||
+                                    voteSlotBlocked ||
+                                    approveBlocked
+                                }
+                            >
+                                {voteSlotBlocked || approveBlocked
+                                    ? tCreate("brieflyUnavailable")
+                                    : vote === "Remove"
+                                      ? t("remove")
+                                      : t("confirm")}
+                                {isSubmitting && (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                )}
+                            </Button>
+                        </span>
+                    </Tooltip>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

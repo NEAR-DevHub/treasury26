@@ -51,8 +51,8 @@ async fn test_public_warnings_returns_only_active_and_scheduled(pool: PgPool) {
 
     sqlx::query(
         r#"
-        INSERT INTO warning_slots (slot, is_active, severity, user_message)
-        VALUES ('app', true, 'warning', 'App is degraded')
+        INSERT INTO warning_slots (slot, is_active, response, severity, user_message)
+        VALUES ('app', true, 'notice', 'high', 'App is degraded')
         "#,
     )
     .execute(&pool)
@@ -61,11 +61,12 @@ async fn test_public_warnings_returns_only_active_and_scheduled(pool: PgPool) {
 
     sqlx::query(
         r#"
-        INSERT INTO warning_slots (slot, is_active, severity, user_message, show_from, ends_at)
+        INSERT INTO warning_slots (slot, is_active, response, severity, user_message, show_from, ends_at)
         VALUES (
             'exchange',
             false,
-            'warning',
+            'notice',
+            'high',
             'Exchange maintenance',
             NOW() - INTERVAL '1 hour',
             NOW() + INTERVAL '1 hour'
@@ -78,8 +79,8 @@ async fn test_public_warnings_returns_only_active_and_scheduled(pool: PgPool) {
 
     sqlx::query(
         r#"
-        INSERT INTO warning_slots (slot, is_active, severity, user_message, ends_at)
-        VALUES ('deposit', true, 'critical', 'Expired warning', NOW() - INTERVAL '1 minute')
+        INSERT INTO warning_slots (slot, is_active, response, severity, user_message, ends_at)
+        VALUES ('deposit', true, 'paused', 'high', 'Expired warning', NOW() - INTERVAL '1 minute')
         "#,
     )
     .execute(&pool)
@@ -163,7 +164,8 @@ async fn test_admin_warning_crud_and_audit_log(pool: PgPool) {
                     json!({
                         "slot": "payments",
                         "isActive": true,
-                        "severity": "critical",
+                        "response": "paused",
+                        "severity": "high",
                         "userMessage": "Payments unavailable"
                     })
                     .to_string(),
@@ -259,11 +261,12 @@ async fn test_admin_update_clears_nullable_fields(pool: PgPool) {
                     json!({
                         "slot": "app",
                         "isActive": true,
-                        "severity": "warning",
+                        "response": "notice",
+                        "severity": "high",
                         "userMessage": "Temporary issue",
                         "linkedService": "near-rpc",
                         "linkedPostId": "post-123",
-                        "scenario": "tier1_backend",
+                        "situation": "backend_down",
                         "internalNote": "ops note",
                     })
                     .to_string(),
@@ -292,11 +295,12 @@ async fn test_admin_update_clears_nullable_fields(pool: PgPool) {
                     json!({
                         "slot": "app",
                         "isActive": true,
-                        "severity": "warning",
+                        "response": "notice",
+                        "severity": "high",
                         "userMessage": "Temporary issue",
                         "linkedService": "",
                         "linkedPostId": "",
-                        "scenario": "",
+                        "situation": "",
                         "internalNote": "",
                     })
                     .to_string(),
@@ -310,7 +314,7 @@ async fn test_admin_update_clears_nullable_fields(pool: PgPool) {
     let updated = response_json(update_response).await;
     assert!(field_is_cleared(updated.get("linkedService")));
     assert!(field_is_cleared(updated.get("linkedPostId")));
-    assert!(field_is_cleared(updated.get("scenario")));
+    assert!(field_is_cleared(updated.get("situation")));
     assert!(field_is_cleared(updated.get("internalNote")));
 }
 
@@ -339,7 +343,8 @@ async fn test_multiple_admin_users_are_recorded_in_audit_log(pool: PgPool) {
                     json!({
                         "slot": "payments",
                         "isActive": true,
-                        "severity": "warning",
+                        "response": "notice",
+                        "severity": "high",
                         "userMessage": "Created by second admin"
                     })
                     .to_string(),
