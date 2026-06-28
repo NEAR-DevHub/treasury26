@@ -313,7 +313,14 @@ export function TokenInput<
                                 )}
                             />
                         </div>
-                        <p className="text-muted-foreground text-xs truncate">
+                        <p
+                            className={cn(
+                                "text-muted-foreground text-xs invisible truncate",
+                                estimatedUSDValue !== null &&
+                                    estimatedUSDValue > 0 &&
+                                    "visible",
+                            )}
+                        >
                             {estimatedUSDValue !== null && estimatedUSDValue > 0
                                 ? `≈ ${formatCurrency(estimatedUSDValue)}`
                                 : "Invisible"}

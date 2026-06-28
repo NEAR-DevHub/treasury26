@@ -820,7 +820,11 @@ mod tests {
         let exchange = fallback_config("exchange").expect("exchange config");
         assert_eq!(exchange.targets.len(), 1);
         assert_eq!(exchange.targets[0].slot, "exchange");
-        assert!(exchange.targets[0].message().contains("Swaps are paused"));
+        assert!(
+            exchange.targets[0]
+                .message()
+                .contains("Exchange is temporarily paused")
+        );
 
         let near_rpc = fallback_config("near-rpc").expect("near-rpc config");
         assert_eq!(near_rpc.targets[0].slot, "app");
@@ -865,7 +869,7 @@ mod tests {
         assert!(message.contains("Posted to app"));
         assert!(message.contains("Exchange quotes"));
         assert!(message.contains("exchange.quote"));
-        assert!(message.contains("Swaps are paused"));
+        assert!(message.contains("Exchange is temporarily paused"));
         assert!(message.contains("Response: Paused"));
         assert!(message.contains("Severity: High"));
         assert!(message.contains("Megha_Goel"));
