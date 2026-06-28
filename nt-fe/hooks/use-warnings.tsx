@@ -305,7 +305,8 @@ export function useWarningMessage(
 }
 
 export function useWarningOfflineBadgeLabel(): string {
-    return useTranslations("warnings")("offlineBadge");
+    const t = useTranslations("warnings");
+    return t("offlineBadge");
 }
 
 // ─── Slot-block hooks ─────────────────────────────────────────────────────────

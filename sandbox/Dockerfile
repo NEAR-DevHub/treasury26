@@ -62,6 +62,7 @@ COPY nt-be/src ./src
 COPY nt-be/migrations ./migrations
 COPY nt-be/.sqlx ./.sqlx
 COPY nt-be/data ./data
+COPY shared/ ./shared/
 
 ENV SQLX_OFFLINE=true
 RUN cargo build --release

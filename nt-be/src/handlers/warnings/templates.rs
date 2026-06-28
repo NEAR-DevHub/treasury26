@@ -43,10 +43,10 @@ fn placement_template(situation: &Situation, slot: &str) -> Option<String> {
     } else {
         slot
     };
-    if let Some(by) = &situation.by_placement {
-        if let Some(msg) = by.get(key) {
-            return Some(msg.clone());
-        }
+    if let Some(by) = &situation.by_placement
+        && let Some(msg) = by.get(key)
+    {
+        return Some(msg.clone());
     }
     situation.message.clone()
 }
@@ -74,29 +74,32 @@ fn action_for_slot(slot: &str) -> &'static str {
     }
 }
 
+/// Values substituted into a catalog message template.
+#[derive(Default)]
+pub struct TemplateValues<'a> {
+    pub slot: Option<&'a str>,
+    pub token: Option<&'a str>,
+    pub network: Option<&'a str>,
+    pub wallet: Option<&'a str>,
+    pub schedule: Option<&'a str>,
+    pub request_type: Option<&'a str>,
+    pub capability: Option<&'a str>,
+}
+
 /// Substitute placeholders in a catalog message template.
-pub fn fill_message_template(
-    template: &str,
-    slot: Option<&str>,
-    token: Option<&str>,
-    network: Option<&str>,
-    wallet: Option<&str>,
-    schedule: Option<&str>,
-    request_type: Option<&str>,
-    capability: Option<&str>,
-) -> String {
-    let subj = subject(token, network);
-    let action = slot.map(action_for_slot).unwrap_or("transaction");
+pub fn fill_message_template(template: &str, v: &TemplateValues<'_>) -> String {
+    let subj = subject(v.token, v.network);
+    let action = v.slot.map(action_for_slot).unwrap_or("transaction");
     template
         .replace("{statusPageLink}", &CATALOG.status_page_link)
         .replace("{subject}", &subj)
-        .replace("{token}", &token.unwrap_or("").to_uppercase())
-        .replace("{network}", &network.unwrap_or("").to_uppercase())
-        .replace("{wallet}", wallet.unwrap_or(""))
+        .replace("{token}", &v.token.unwrap_or("").to_uppercase())
+        .replace("{network}", &v.network.unwrap_or("").to_uppercase())
+        .replace("{wallet}", v.wallet.unwrap_or(""))
         .replace("{action}", action)
-        .replace("{schedule}", schedule.unwrap_or(""))
-        .replace("{requestType}", request_type.unwrap_or(""))
-        .replace("{capability}", capability.unwrap_or(""))
+        .replace("{schedule}", v.schedule.unwrap_or(""))
+        .replace("{requestType}", v.request_type.unwrap_or(""))
+        .replace("{capability}", v.capability.unwrap_or(""))
 }
 
 /// Full catalog JSON for the admin UI.
@@ -160,13 +163,13 @@ pub fn generate_messages(
 
     Some(fill_message_template(
         &template,
-        Some(slot),
-        normalize(token),
-        normalize(network),
-        wallet.as_deref(),
-        None,
-        None,
-        None,
+        &TemplateValues {
+            slot: Some(slot),
+            token: normalize(token),
+            network: normalize(network),
+            wallet: wallet.as_deref(),
+            ..Default::default()
+        },
     ))
 }
 

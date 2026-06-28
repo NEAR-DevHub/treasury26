@@ -489,7 +489,7 @@ fn service_label(service: &str) -> &'static str {
     }
 }
 
-fn health_check_name(service: &str) -> &'static str {
+pub fn health_check_name(service: &str) -> &'static str {
     match service {
         "backend" => "backend.database",
         "exchange" => "exchange.quote",
