@@ -100,9 +100,7 @@ export function walletFromLoginSlot(slot: string | null | undefined): string {
     return slot.slice("login.wallet.".length).replace(/-/g, " ");
 }
 
-export function formatWarningToken(
-    token: string | null | undefined,
-): string {
+export function formatWarningToken(token: string | null | undefined): string {
     return token?.trim().toUpperCase() ?? "";
 }
 
