@@ -20,7 +20,10 @@ pub struct EnvVars {
     pub disable_ft_lockup_scheduler: bool,
     pub monitor_interval_seconds: u64,
     pub telegram_bot_token: Option<String>,
+    /// General notifications channel (user creation, treasury creation, etc.)
     pub telegram_chat_id: Option<String>,
+    /// Dedicated ops / monitoring channel for status-monitor alerts.
+    pub telegram_ops_chat_id: Option<String>,
     pub coingecko_api_key: Option<String>,
     pub coingecko_api_base_url: String, // Override for testing
     pub defillama_api_base_url: String, // DeFiLlama API base URL (override for testing)
@@ -135,6 +138,9 @@ impl Default for EnvVars {
                 .ok()
                 .filter(|s| !s.is_empty()),
             telegram_chat_id: std::env::var("TELEGRAM_CHAT_ID")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            telegram_ops_chat_id: std::env::var("TELEGRAM_OPS_CHAT_ID")
                 .ok()
                 .filter(|s| !s.is_empty()),
             nearblocks_api_key: std::env::var("NEARBLOCKS_API_KEY")

@@ -227,12 +227,16 @@ async fn handle_callback_query(state: &AppState, callback: teloxide::types::Call
 }
 
 fn is_ops_chat(state: &AppState, chat_id: i64) -> bool {
-    state
+    let parse = |s: &str| s.parse::<i64>().ok();
+    // Accept callbacks from the dedicated ops channel; fall back to the general
+    // channel so existing setups without TELEGRAM_OPS_CHAT_ID keep working.
+    let ops = state
         .env_vars
-        .telegram_chat_id
+        .telegram_ops_chat_id
         .as_deref()
-        .and_then(|id| id.parse::<i64>().ok())
-        .is_some_and(|ops_chat_id| ops_chat_id == chat_id)
+        .and_then(parse);
+    let general = state.env_vars.telegram_chat_id.as_deref().and_then(parse);
+    ops.or(general).is_some_and(|id| id == chat_id)
 }
 
 async fn answer_callback_query(

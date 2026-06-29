@@ -17,18 +17,27 @@ use url::Url;
 #[derive(Clone, Default, Debug)]
 pub struct TelegramClient {
     pub(crate) bot: Option<Bot>,
+    /// General notifications channel (`TELEGRAM_CHAT_ID`).
     notification_chat_id: Option<String>,
+    /// Dedicated ops / monitoring channel (`TELEGRAM_OPS_CHAT_ID`).
+    ops_chat_id: Option<String>,
 }
 
 impl TelegramClient {
     /// Create a new TelegramClient.
     ///
-    /// - `bot_token`: the Telegram Bot API token (from `TELEGRAM_BOT_TOKEN`)
-    /// - `chat_id`: the internal alerts channel chat ID (from `TELEGRAM_CHAT_ID`)
-    pub fn new(bot_token: Option<String>, chat_id: Option<String>) -> Self {
+    /// - `bot_token`: the Telegram Bot API token (`TELEGRAM_BOT_TOKEN`)
+    /// - `chat_id`: general notifications channel (`TELEGRAM_CHAT_ID`)
+    /// - `ops_chat_id`: status-monitor ops channel (`TELEGRAM_OPS_CHAT_ID`)
+    pub fn new(
+        bot_token: Option<String>,
+        chat_id: Option<String>,
+        ops_chat_id: Option<String>,
+    ) -> Self {
         Self {
             bot: bot_token.filter(|s| !s.is_empty()).map(Bot::new),
             notification_chat_id: chat_id,
+            ops_chat_id,
         }
     }
 
@@ -37,16 +46,16 @@ impl TelegramClient {
         self.bot.as_ref()
     }
 
-    /// Send a plain-text notification to the configured internal alerts channel (HTML).
+    /// Send a plain-text notification to the ops monitoring channel (HTML).
     pub async fn send_ops_alert_html(
         &self,
         text: &str,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let (bot, chat_id_str) = match (&self.bot, &self.notification_chat_id) {
+        let (bot, chat_id_str) = match (&self.bot, &self.ops_chat_id) {
             (Some(b), Some(c)) => (b, c),
             _ => {
                 tracing::warn!(
-                    "Telegram client not configured. Ops alert ignored: {}",
+                    "Ops channel not configured (TELEGRAM_OPS_CHAT_ID). Alert ignored: {}",
                     text
                 );
                 return Ok(());
@@ -55,7 +64,7 @@ impl TelegramClient {
 
         let chat_id: i64 = chat_id_str
             .parse()
-            .map_err(|_| format!("Invalid TELEGRAM_CHAT_ID: {}", chat_id_str))?;
+            .map_err(|_| format!("Invalid TELEGRAM_OPS_CHAT_ID: {}", chat_id_str))?;
 
         bot.send_message(ChatId(chat_id), text)
             .parse_mode(ParseMode::Html)
@@ -154,11 +163,11 @@ impl TelegramClient {
         check_url: Option<&str>,
         callback_data: Option<&str>,
     ) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
-        let (bot, chat_id_str) = match (&self.bot, &self.notification_chat_id) {
+        let (bot, chat_id_str) = match (&self.bot, &self.ops_chat_id) {
             (Some(b), Some(c)) => (b, c),
             _ => {
                 tracing::warn!(
-                    "Telegram client not configured. Ops alert ignored: {}",
+                    "Ops channel not configured (TELEGRAM_OPS_CHAT_ID). Alert ignored: {}",
                     text
                 );
                 return Ok(0);
@@ -167,7 +176,7 @@ impl TelegramClient {
 
         let chat_id: i64 = chat_id_str
             .parse()
-            .map_err(|_| format!("Invalid TELEGRAM_CHAT_ID: {}", chat_id_str))?;
+            .map_err(|_| format!("Invalid TELEGRAM_OPS_CHAT_ID: {}", chat_id_str))?;
 
         let parsed_admin_url: Url = admin_url
             .parse()

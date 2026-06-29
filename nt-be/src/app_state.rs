@@ -412,6 +412,7 @@ impl AppState {
         let telegram_client = TelegramClient::new(
             env_vars.telegram_bot_token.clone(),
             env_vars.telegram_chat_id.clone(),
+            env_vars.telegram_ops_chat_id.clone(),
         );
 
         // Use the builder pattern internally for consistency
