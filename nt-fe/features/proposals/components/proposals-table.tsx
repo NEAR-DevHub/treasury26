@@ -117,6 +117,7 @@ function ProposalTimelineDate({
         depositAddress || null,
         undefined,
         shouldUseSwapDate,
+        treasuryId,
     );
 
     if (!isProposalExecuted) {

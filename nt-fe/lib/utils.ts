@@ -378,6 +378,28 @@ export function formatGas(gas: string): string {
     return `${formatBalance(gas, 12, 2)}`;
 }
 
+const NEAR_INTENTS_EXPLORER_BASE = "https://explorer.near-intents.org";
+
+/**
+ * Build the NEAR Intents explorer URL for a deposit address.
+ *
+ * Confidential treasuries use the privacy-preserving `/mask/{depositAddress}`
+ * route; public treasuries use the standard `/transactions/{depositAddress}`
+ * route.
+ *
+ * @param depositAddress - The 1Click deposit address for the swap.
+ * @param isConfidential - Whether the proposal/treasury is confidential.
+ * @returns The explorer URL, or null when no deposit address is available.
+ */
+export function getIntentsExplorerUrl(
+    depositAddress: string | null | undefined,
+    isConfidential: boolean,
+): string | null {
+    if (!depositAddress) return null;
+    const path = isConfidential ? "mask" : "transactions";
+    return `${NEAR_INTENTS_EXPLORER_BASE}/${path}/${depositAddress}`;
+}
+
 /**
  * Convert a decimal token amount to raw/base units using token decimals.
  * Returns 0 for empty/invalid/non-positive inputs.

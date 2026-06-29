@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use crate::{
     AppState,
+    handlers::balance_changes::confidential_list::is_confidential_dao,
     utils::cache::{CacheKey, CacheTier},
 };
 
@@ -19,6 +20,10 @@ pub struct SwapStatusQuery {
     pub deposit_address: String,
     #[serde(rename = "depositMemo")]
     pub deposit_memo: Option<String>,
+    /// Treasury account id. Confidential treasuries read status from bronze;
+    /// others fall through to 1Click `/v0/status`.
+    #[serde(rename = "daoId")]
+    pub dao_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -138,26 +143,97 @@ pub fn extract_quote_data(full_response: &FullSwapStatusResponse) -> Option<Quot
         .and_then(|quote_response| quote_response.quote.clone())
 }
 
+/// Map a bronze history `status` string onto [`SwapStatus`]; unknown values
+/// fall back to `Processing`.
+fn map_history_status(raw: &str) -> SwapStatus {
+    match raw.trim().to_ascii_uppercase().as_str() {
+        "SUCCESS" => SwapStatus::Success,
+        "REFUNDED" => SwapStatus::Refunded,
+        "FAILED" => SwapStatus::Failed,
+        "PENDING_DEPOSIT" => SwapStatus::PendingDeposit,
+        "INCOMPLETE_DEPOSIT" => SwapStatus::IncompleteDeposit,
+        "KNOWN_DEPOSIT_TX" => SwapStatus::KnownDepositTx,
+        _ => SwapStatus::Processing,
+    }
+}
+
+/// Read confidential swap status from bronze. `None` means not yet ingested
+/// (callers surface a 404).
+pub async fn fetch_confidential_swap_status(
+    pool: &sqlx::PgPool,
+    dao_id: &str,
+    deposit_address: &str,
+) -> Result<Option<SimplifiedSwapStatusResponse>, (StatusCode, String)> {
+    let row = sqlx::query_as::<_, (String, chrono::DateTime<chrono::Utc>)>(
+        r#"
+        SELECT status, created_at_external
+        FROM bronze_confidential_history_events
+        WHERE account_id = $1
+          AND deposit_address = $2
+        ORDER BY created_at_external DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(dao_id)
+    .bind(deposit_address)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("confidential swap status query failed: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to load confidential swap status: {}", e),
+        )
+    })?;
+
+    Ok(row.map(
+        |(status, created_at_external)| SimplifiedSwapStatusResponse {
+            status: map_history_status(&status),
+            updated_at: created_at_external.to_rfc3339(),
+        },
+    ))
+}
+
 pub async fn get_swap_status(
     State(state): State<Arc<AppState>>,
     Query(query): Query<SwapStatusQuery>,
 ) -> Result<Json<SimplifiedSwapStatusResponse>, (StatusCode, String)> {
     let deposit_address = query.deposit_address;
     let deposit_memo = query.deposit_memo;
+    let dao_id = query.dao_id;
 
-    // Create cache key based on deposit address
     let cache_key = CacheKey::new("swap-status")
         .with(&deposit_address)
         .with(deposit_memo.clone().unwrap_or_default())
+        .with(dao_id.clone().unwrap_or_default())
         .build();
 
     let http_client = state.http_client.clone();
     let oneclick_jwt_token = state.env_vars.oneclick_jwt_token.clone();
     let oneclick_api_url = state.env_vars.oneclick_api_url.clone();
+    let db_pool = state.db_pool.clone();
 
     let result = state
         .cache
         .cached(CacheTier::ShortTerm, cache_key, async move {
+            if let Some(dao_id) = dao_id.as_deref() {
+                let is_confidential = is_confidential_dao(&db_pool, dao_id).await.map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to check confidential treasury: {}", e),
+                    )
+                })?;
+
+                if is_confidential {
+                    return fetch_confidential_swap_status(&db_pool, dao_id, &deposit_address)
+                        .await?
+                        .ok_or((
+                            StatusCode::NOT_FOUND,
+                            "confidential swap status not yet available".to_string(),
+                        ));
+                }
+            }
+
             let full_response = fetch_swap_status_response(
                 &http_client,
                 &oneclick_api_url,

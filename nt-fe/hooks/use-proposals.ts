@@ -142,16 +142,25 @@ export function useProposalTransaction(
  * @param depositAddress - The deposit address from the swap quote
  * @param depositMemo - Optional deposit memo if included in quote
  * @param enabled - Whether the query should be enabled (default: true if depositAddress exists)
+ * @param daoId - Treasury/DAO id. The backend uses it to decide the status
+ *   source: confidential treasuries read from our bronze history table, others
+ *   use 1Click `/v0/status`.
  *
  */
 export function useSwapStatus(
     depositAddress: string | null | undefined,
     depositMemo?: string | null,
     enabled: boolean = true,
+    daoId?: string | null,
 ) {
     return useQuery({
-        queryKey: ["swap-status", depositAddress, depositMemo],
-        queryFn: () => getSwapStatus(depositAddress!, depositMemo || undefined),
+        queryKey: ["swap-status", depositAddress, depositMemo, daoId],
+        queryFn: () =>
+            getSwapStatus(
+                depositAddress!,
+                depositMemo || undefined,
+                daoId || undefined,
+            ),
         enabled: enabled && !!depositAddress,
         staleTime: 1000 * 60, // 1 minute
         refetchInterval: (query) => {

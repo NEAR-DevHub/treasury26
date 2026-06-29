@@ -750,6 +750,7 @@ export default function RequestReceiptPage({
         depositAddress,
         undefined,
         shouldUseSwapExecutionDate,
+        treasuryId,
     );
     const transactionDate = getProposalExecutedDate(swapStatus, transaction);
     const isExchangeProposal = receiptProposalVariant === "exchange";
