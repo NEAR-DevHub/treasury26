@@ -6,12 +6,14 @@
     "login.wallet.*": "Login – one wallet (Offline badge)",
     "treasury-creation": "Create-treasury form (waitlist)",
     "features": "Payments, Exchange & Deposits",
-    "actions": "Create request buttons + Approve modal",
+    "actions": "Create request buttons + Approve/Reject/Remove",
     "payments": "Payments",
     "exchange": "Exchange",
     "deposit": "Deposits",
     "action.create-proposal": "Create request buttons",
-    "action.vote": "Approve modal",
+    "action.approve": "Approve buttons (vote modal + sidebar)",
+    "action.reject": "Reject buttons (vote modal + sidebar)",
+    "action.remove": "Remove buttons (vote modal + sidebar)",
     "data.balances": "Dashboard balances + sidebar",
     "data.activity": "Transaction history"
   },
@@ -127,7 +129,7 @@
       "label": "Requests won't process – can't create or send",
       "response": "paused",
       "severity": "high",
-      "where": "Create request buttons and Approve modal",
+      "where": "Create request buttons and Approve / Reject / Remove",
       "placements": ["actions"],
       "message": "Can't process new requests for a few minutes – a temporary network issue. Your funds are unaffected, try again shortly."
     },
@@ -137,8 +139,8 @@
       "label": "Approvals paused – pending requests can't be approved",
       "response": "paused",
       "severity": "high",
-      "where": "All Approve buttons (vote modal)",
-      "placements": ["action.vote"],
+      "where": "All Approve buttons (vote modal + sidebar)",
+      "placements": ["action.approve"],
       "message": "Approving requests is paused right now while a network provider recovers.\n You can still reject pending requests, and approvals will work again once it's back."
     },
     {

@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { useTranslations } from "next-intl";
 import {
     createContext,
     type ReactNode,
@@ -9,23 +10,28 @@ import {
     useContext,
     useMemo,
 } from "react";
-import { useTranslations, useMessages } from "next-intl";
 import { useFormatDate } from "@/components/formatted-date";
-import type { Proposal } from "@/lib/proposals-api";
 import {
     getProposalRequiredFunds,
     getProposalUIKind,
 } from "@/features/proposals/utils/proposal-utils";
-import { useBridgeTokens, type BridgeAsset } from "@/hooks/use-bridge-tokens";
+import { type BridgeAsset, useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import {
-    resolveBridgeScope,
     type BridgeScope,
+    resolveBridgeScope,
 } from "@/lib/bridge-asset-resolver";
+import type { Proposal } from "@/lib/proposals-api";
 import {
     actionKeyForSlot,
-    resolveWarningMessage,
+    fillStoredWarningMessage,
+    formatWarningNetwork,
+    formatWarningScheduleText,
+    formatWarningToken,
+    situationHidesUserMessage,
+    situationMessageKey,
+    situationUsesCustomCopy,
     WARNING_STATUS_PAGE_LINK,
-    type WarningSituationOverrides,
+    walletFromLoginSlot,
 } from "@/lib/warnings";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
@@ -225,21 +231,13 @@ export function useWarnings(): WarningsContextValue {
 
 // ─── Warning message hooks ────────────────────────────────────────────────────
 
-function readSituationOverrides(
-    messages: Record<string, unknown> | undefined,
-): WarningSituationOverrides | undefined {
-    const warnings = messages?.warnings;
-    if (!warnings || typeof warnings !== "object") return undefined;
-    return (warnings as { situations?: WarningSituationOverrides }).situations;
-}
-
 export function useResolveWarningMessage(): (
     warning: Warning | null | undefined,
     slot: string,
 ) => string | null {
-    const messages = useMessages();
     const formatDate = useFormatDate();
     const t = useTranslations("warnings");
+    const tSituations = useTranslations("warnings.situations");
 
     const getAction = useCallback(
         (effectiveSlot: string) => {
@@ -251,8 +249,12 @@ export function useResolveWarningMessage(): (
                     return t("actions.deposit");
                 case "exchange":
                     return t("actions.exchange");
-                case "vote":
-                    return t("actions.vote");
+                case "approve":
+                    return t("actions.approve");
+                case "reject":
+                    return t("actions.reject");
+                case "remove":
+                    return t("actions.remove");
                 case "proposal":
                     return t("actions.proposal");
                 default:
@@ -262,32 +264,81 @@ export function useResolveWarningMessage(): (
         [t],
     );
 
+    // Subject ("X on Y") goes through i18n so translators control word order.
+    const buildSubject = useCallback(
+        (token: string | null, network: string | null) => {
+            const tk = formatWarningToken(token);
+            const nw = formatWarningNetwork(network);
+            if (tk && nw) {
+                return t("subject.tokenOnNetwork", { token: tk, network: nw });
+            }
+            return tk || nw || "";
+        },
+        [t],
+    );
+
     const statusPageLink = t.has("statusPageLink")
         ? t("statusPageLink")
         : WARNING_STATUS_PAGE_LINK;
-    const situationOverrides = readSituationOverrides(messages);
-    const scheduleLabels = {
-        on: t("schedule.on"),
-        until: t("schedule.until"),
-    };
+    const scheduleLabels = useMemo(
+        () => ({ on: t("schedule.on"), until: t("schedule.until") }),
+        [t],
+    );
 
     return useCallback(
         (warning: Warning | null | undefined, slot: string) => {
             if (!warning) return null;
-            return resolveWarningMessage(warning, {
-                slot,
+
+            const situationId = warning.situation?.trim();
+            const effectiveSlot = warning.slot ?? slot;
+
+            if (situationId && situationHidesUserMessage(situationId)) {
+                return null;
+            }
+            if (situationId && situationUsesCustomCopy(situationId)) {
+                return warning.message?.trim() || null;
+            }
+
+            const schedule = formatWarningScheduleText(
                 formatDate,
-                getAction,
-                statusPageLink,
-                situationOverrides,
+                warning.startsAt,
+                warning.endsAt,
                 scheduleLabels,
+            );
+
+            if (situationId) {
+                const messageKey = situationMessageKey(
+                    situationId,
+                    effectiveSlot,
+                    { token: warning.token, network: warning.network },
+                );
+                if (messageKey && tSituations.has(messageKey)) {
+                    return tSituations(messageKey, {
+                        subject: buildSubject(warning.token, warning.network),
+                        token: formatWarningToken(warning.token),
+                        network: formatWarningNetwork(warning.network),
+                        wallet: walletFromLoginSlot(warning.slot),
+                        action: getAction(effectiveSlot),
+                        schedule,
+                        statusPageLink,
+                    });
+                }
+            }
+
+            const stored = warning.message?.trim();
+            if (!stored) return null;
+            return fillStoredWarningMessage(stored, {
+                action: getAction(effectiveSlot),
+                schedule,
+                statusPageLink,
             });
         },
         [
             formatDate,
+            tSituations,
             getAction,
+            buildSubject,
             statusPageLink,
-            situationOverrides,
             scheduleLabels,
         ],
     );
@@ -319,7 +370,9 @@ const TX_ACTION_SLOTS = new Set([
     "payments",
     "exchange",
     "deposit",
-    "action.vote",
+    "action.approve",
+    "action.reject",
+    "action.remove",
     "action.create-proposal",
 ]);
 

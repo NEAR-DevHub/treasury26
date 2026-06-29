@@ -2197,9 +2197,14 @@
             "payment": "결제",
             "deposit": "입금",
             "exchange": "스왑",
-            "vote": "투표",
+            "approve": "승인",
+            "reject": "거부",
+            "remove": "삭제",
             "proposal": "제안",
             "transaction": "거래"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network}의 {token}"
         },
         "situations": {
             "scheduled_maintenance": {

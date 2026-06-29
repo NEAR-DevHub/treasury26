@@ -2197,9 +2197,14 @@
             "payment": "платіж",
             "deposit": "депозит",
             "exchange": "обмін",
-            "vote": "голос",
+            "approve": "схвалення",
+            "reject": "відхилення",
+            "remove": "видалення",
             "proposal": "пропозиція",
             "transaction": "транзакція"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} у мережі {network}"
         },
         "situations": {
             "scheduled_maintenance": {

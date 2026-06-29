@@ -2197,9 +2197,14 @@
             "payment": "ödeme",
             "deposit": "para yatırma",
             "exchange": "takas",
-            "vote": "oylama",
+            "approve": "onay",
+            "reject": "ret",
+            "remove": "kaldırma",
             "proposal": "teklif",
             "transaction": "işlem"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network} ağındaki {token}"
         },
         "situations": {
             "scheduled_maintenance": {

@@ -2197,9 +2197,14 @@
             "payment": "thanh toán",
             "deposit": "nạp tiền",
             "exchange": "hoán đổi",
-            "vote": "bỏ phiếu",
+            "approve": "phê duyệt",
+            "reject": "từ chối",
+            "remove": "xóa",
             "proposal": "đề xuất",
             "transaction": "giao dịch"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} trên {network}"
         },
         "situations": {
             "scheduled_maintenance": {

@@ -2197,9 +2197,14 @@
             "payment": "支付",
             "deposit": "充值",
             "exchange": "兑换",
-            "vote": "投票",
+            "approve": "批准",
+            "reject": "拒绝",
+            "remove": "移除",
             "proposal": "提案",
             "transaction": "交易"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network} 上的 {token}"
         },
         "situations": {
             "scheduled_maintenance": {

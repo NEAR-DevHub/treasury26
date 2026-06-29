@@ -1,5 +1,4 @@
 import catalog from "@/lib/generated/status-situations.json";
-import type { Warning } from "@/hooks/use-warnings";
 
 // ─── Catalog ─────────────────────────────────────────────────────────────────
 
@@ -28,44 +27,6 @@ export function getCatalogSituation(
     return situations.find((s) => s.id === situationId);
 }
 
-function normalizeMessageNewlines(text: string): string {
-    return text.replace(/\\n/g, "\n");
-}
-
-export function getCatalogTemplate(
-    situationId: string,
-    slot: string,
-    scope?: { token?: string | null; network?: string | null },
-): string | null {
-    const situation = getCatalogSituation(situationId);
-    if (!situation) return null;
-
-    if (situation.messagesByScope && scope) {
-        const hasToken = Boolean(scope.token?.trim());
-        const hasNetwork = Boolean(scope.network?.trim());
-        if (hasToken && hasNetwork) {
-            const t = situation.messagesByScope["token+network"];
-            if (t) return normalizeMessageNewlines(t);
-        }
-        if (hasToken && !hasNetwork) {
-            const t = situation.messagesByScope.token;
-            return t ? normalizeMessageNewlines(t) : null;
-        }
-        if (hasNetwork && !hasToken) {
-            const t = situation.messagesByScope.network;
-            return t ? normalizeMessageNewlines(t) : null;
-        }
-    }
-
-    const placementKey = placementKeyForSlot(slot);
-    const fromPlacement = situation.byPlacement?.[placementKey];
-    if (fromPlacement) return normalizeMessageNewlines(fromPlacement);
-
-    return situation.message
-        ? normalizeMessageNewlines(situation.message)
-        : null;
-}
-
 export function situationUsesCustomCopy(situationId: string): boolean {
     return getCatalogSituation(situationId)?.customCopy === true;
 }
@@ -84,8 +45,12 @@ export function actionKeyForSlot(slot: string): string {
             return "deposit";
         case "exchange":
             return "exchange";
-        case "action.vote":
-            return "vote";
+        case "action.approve":
+            return "approve";
+        case "action.reject":
+            return "reject";
+        case "action.remove":
+            return "remove";
         case "action.create-proposal":
             return "proposal";
         case "data.balances":
@@ -112,18 +77,6 @@ export function formatWarningNetwork(
     return n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
 }
 
-export function warningSubject(
-    token: string | null | undefined,
-    network: string | null | undefined,
-): string {
-    const t = formatWarningToken(token);
-    const n = formatWarningNetwork(network);
-    if (t && n) return `${t} on ${n}`;
-    if (t) return t;
-    if (n) return n;
-    return "";
-}
-
 export function formatWarningScheduleText(
     formatDate: (date: Date | string | number) => string,
     startsAt: string | null | undefined,
@@ -134,34 +87,6 @@ export function formatWarningScheduleText(
     if (startsAt) parts.push(`${labels.on} ${formatDate(startsAt)}`);
     if (endsAt) parts.push(`${labels.until} ${formatDate(endsAt)}`);
     return parts.join(" ");
-}
-
-export function fillWarningTemplate(
-    template: string,
-    values: Record<string, string>,
-): string {
-    return template.replace(/\{([a-zA-Z]+)\}/g, (match, key: string) => {
-        return values[key] ?? match;
-    });
-}
-
-export function hasUnfilledWarningPlaceholders(text: string): boolean {
-    return /\{[a-zA-Z]+\}/.test(text);
-}
-
-const ADMIN_FILLED_PLACEHOLDERS = new Set(["requestType", "capability"]);
-
-export function templateNeedsStoredMessageFallback(
-    template: string,
-    values: Record<string, string>,
-): boolean {
-    for (const match of template.matchAll(/\{([a-zA-Z]+)\}/g)) {
-        const key = match[1];
-        if (ADMIN_FILLED_PLACEHOLDERS.has(key) && !values[key]?.trim()) {
-            return true;
-        }
-    }
-    return false;
 }
 
 /** Strip markdown headers, links and status-page lines for plain-text tooltips. */
@@ -177,7 +102,7 @@ export function stripMessageForTooltip(
         .trim();
 }
 
-// ─── Resolver ─────────────────────────────────────────────────────────────────
+// ─── Message-key resolution ────────────────────────────────────────────────
 
 // i18n keys can't contain dots, so "login.wallet.*" is stored as "loginWallet"
 const I18N_KEY_MAP: Record<string, string> = {
@@ -188,115 +113,56 @@ function i18nPlacementKey(key: string): string {
     return I18N_KEY_MAP[key] ?? key;
 }
 
-export type WarningSituationOverrides = Record<
-    string,
-    Record<string, string> | undefined
->;
-
-export type ResolveWarningMessageOptions = {
-    slot: string;
-    formatDate: (date: Date | string | number) => string;
-    getAction: (slot: string) => string;
-    statusPageLink: string;
-    situationOverrides?: WarningSituationOverrides;
-    scheduleLabels: { on: string; until: string };
-};
-
-function pickSituationTemplate(
+/**
+ * Resolves the i18n message path (relative to the `warnings.situations`
+ * namespace) for a warning, e.g. `network_paused.token+network` or
+ * `scheduled_maintenance.app`. The catalog only decides *which* key applies;
+ * the translated copy lives in the messages files and is rendered by next-intl.
+ */
+export function situationMessageKey(
     situationId: string,
     slot: string,
-    situationOverrides?: WarningSituationOverrides,
     scope?: { token?: string | null; network?: string | null },
 ): string | null {
-    const overrideSituation = situationOverrides?.[situationId];
-    if (overrideSituation) {
-        const hasToken = Boolean(scope?.token?.trim());
-        const hasNetwork = Boolean(scope?.network?.trim());
-        if (hasToken && hasNetwork && overrideSituation["token+network"]) {
-            return overrideSituation["token+network"];
+    const situation = getCatalogSituation(situationId);
+    if (!situation) return null;
+
+    if (situation.messagesByScope && scope) {
+        const hasToken = Boolean(scope.token?.trim());
+        const hasNetwork = Boolean(scope.network?.trim());
+        const byScope = situation.messagesByScope;
+        if (hasToken && hasNetwork && byScope["token+network"]) {
+            return `${situationId}.token+network`;
         }
-        if (hasToken && !hasNetwork && overrideSituation.token) {
-            return overrideSituation.token;
+        if (hasToken && !hasNetwork && byScope.token) {
+            return `${situationId}.token`;
         }
-        if (hasNetwork && !hasToken && overrideSituation.network) {
-            return overrideSituation.network;
+        if (hasNetwork && !hasToken && byScope.network) {
+            return `${situationId}.network`;
         }
-        const placementKey = i18nPlacementKey(placementKeyForSlot(slot));
-        const override =
-            overrideSituation[placementKey] ?? overrideSituation.default;
-        if (override) return override;
     }
-    return getCatalogTemplate(situationId, slot, scope);
+
+    const placementCatalogKey = placementKeyForSlot(slot);
+    if (situation.byPlacement?.[placementCatalogKey]) {
+        return `${situationId}.${i18nPlacementKey(placementCatalogKey)}`;
+    }
+    if (situation.message) {
+        return `${situationId}.default`;
+    }
+    return null;
 }
 
-function fillStoredMessageFallback(
+/**
+ * Fills the runtime placeholders of an admin-authored stored message. Stored
+ * messages are free text (not i18n keys), so they can't go through next-intl —
+ * this only substitutes the few values ops can reference.
+ */
+export function fillStoredWarningMessage(
     message: string,
-    effectiveSlot: string,
-    warning: Warning,
-    options: ResolveWarningMessageOptions,
+    values: { action: string; schedule: string; statusPageLink: string },
 ): string {
-    const scheduleText = formatWarningScheduleText(
-        options.formatDate,
-        warning.startsAt,
-        warning.endsAt,
-        options.scheduleLabels,
-    );
-    let filled = message.replace(
-        /\{action\}/g,
-        options.getAction(effectiveSlot),
-    );
-    filled = filled.replace(/\{statusPageLink\}/g, options.statusPageLink);
-    if (filled.includes("{schedule}")) {
-        filled = filled.replace(/\{schedule\}/g, scheduleText);
-    }
-    return filled;
-}
-
-export function resolveWarningMessage(
-    warning: Warning,
-    options: ResolveWarningMessageOptions,
-): string | null {
-    const situationId = warning.situation?.trim();
-    const effectiveSlot = warning.slot ?? options.slot;
-
-    if (situationId && situationHidesUserMessage(situationId)) return null;
-    if (situationId && situationUsesCustomCopy(situationId)) {
-        return warning.message?.trim() || null;
-    }
-
-    if (situationId) {
-        const template = pickSituationTemplate(
-            situationId,
-            effectiveSlot,
-            options.situationOverrides,
-            { token: warning.token, network: warning.network },
-        );
-        if (template) {
-            const scheduleText = formatWarningScheduleText(
-                options.formatDate,
-                warning.startsAt,
-                warning.endsAt,
-                options.scheduleLabels,
-            );
-            const values = {
-                subject: warningSubject(warning.token, warning.network),
-                token: formatWarningToken(warning.token),
-                network: formatWarningNetwork(warning.network),
-                wallet: walletFromLoginSlot(warning.slot),
-                action: options.getAction(effectiveSlot),
-                schedule: scheduleText,
-                statusPageLink: options.statusPageLink,
-                requestType: "",
-                capability: "",
-            };
-            if (!templateNeedsStoredMessageFallback(template, values)) {
-                const filled = fillWarningTemplate(template, values);
-                if (!hasUnfilledWarningPlaceholders(filled)) return filled;
-            }
-        }
-    }
-
-    const stored = warning.message?.trim();
-    if (!stored) return null;
-    return fillStoredMessageFallback(stored, effectiveSlot, warning, options);
+    return message
+        .replace(/\{action\}/g, values.action)
+        .replace(/\{statusPageLink\}/g, values.statusPageLink)
+        .replace(/\{schedule\}/g, values.schedule);
 }

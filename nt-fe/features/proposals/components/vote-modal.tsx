@@ -15,8 +15,8 @@ import { Tooltip } from "@/components/tooltip";
 import { SlotWarning } from "@/components/warning-message";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
-import { stripMessageForTooltip } from "@/lib/warnings";
 import type { Proposal } from "@/lib/proposals-api";
+import { stripMessageForTooltip } from "@/lib/warnings";
 import { useNear } from "@/stores/near-store";
 
 interface VoteModalProps {
@@ -40,8 +40,19 @@ export function VoteModal({
     const tCreate = useTranslations("createRequestButton");
     const { treasuryId } = useTreasury();
     const { voteProposals } = useNear();
-    const { blocked: voteSlotBlocked, message: voteSlotMessage } =
-        useSlotBlock("action.vote");
+    // Each vote action has its own slot, so ops can pause approving without
+    // touching reject/remove (and vice-versa). Approve → action.approve, etc.
+    const voteSlot = `action.${vote.toLowerCase()}`;
+    const {
+        blocked: voteSlotBlocked,
+        message: voteSlotMessage,
+        warning: voteWarning,
+    } = useSlotBlock(voteSlot);
+    // The slot warning is already shown inline via <SlotWarning>, so the button
+    // tooltip is only the fallback for an app-wide block (nothing visible in the
+    // modal explains why the button is disabled).
+    const voteBlockIsAppLevel =
+        voteSlotBlocked && voteWarning?.slot !== voteSlot;
     const approveBlock = useProposalApproveBlock(proposals);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -101,7 +112,7 @@ export function VoteModal({
                         ? t("bulkBody", { action })
                         : t("singleBody", { action })}
                 </DialogDescription>
-                <SlotWarning slot="action.vote" />
+                <SlotWarning slot={voteSlot} />
                 {approveBlocked && (
                     <div className="flex flex-col gap-2">
                         {isBulk && (
@@ -142,7 +153,7 @@ export function VoteModal({
                 <DialogFooter>
                     <Tooltip
                         content={stripMessageForTooltip(voteSlotMessage)}
-                        disabled={!voteSlotBlocked || !voteSlotMessage}
+                        disabled={!voteBlockIsAppLevel || !voteSlotMessage}
                         side="top"
                     >
                         <span className="inline-block w-full">

@@ -17,11 +17,12 @@ import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoAlert } from "@/components/info-alert";
-import { SlotWarning } from "@/components/warning-message";
 import { StepIcon } from "@/components/step-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/components/user";
+import { SlotWarning } from "@/components/warning-message";
 import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
+import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import {
     EXCHANGE_EXPIRY_MS,
     getProposalStatus,
@@ -30,7 +31,6 @@ import {
     isShortExpiryExchangeProposal,
     type UIProposalStatus,
 } from "@/features/proposals/utils/proposal-utils";
-import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import {
     extractReceiptProposalData,
     getProposalExecutedDate,
@@ -44,10 +44,10 @@ import {
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
 import Big from "@/lib/big";
-import { stripMessageForTooltip } from "@/lib/warnings";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
 import { cn, nanosToMs } from "@/lib/utils";
+import { stripMessageForTooltip } from "@/lib/warnings";
 import { useNear } from "@/stores/near-store";
 import type { Policy } from "@/types/policy";
 import { NotEnoughBalance } from "../../not-enough-balance";
@@ -283,10 +283,24 @@ export function ProposalSidebar({
     const approveBlock = useProposalApproveBlock([proposal]);
     const approveBlocked = approveBlock.anyBlocked;
     const approveBlockedWarning = approveBlock.blockedWarnings[0] ?? null;
-    // Voting itself can be paused (action.vote slot). Unlike the feature-approve
-    // block, this disables BOTH approve and reject.
-    const { blocked: voteSlotBlocked, message: voteSlotMessage } =
-        useSlotBlock("action.vote");
+    // Approve and reject are independent slots, so ops can pause approving while
+    // rejection keeps working (approvals_paused) — or pause everything.
+    const approveSlot = useSlotBlock("action.approve");
+    const rejectSlot = useSlotBlock("action.reject");
+    // One banner covers the vote actions: the approve copy already explains
+    // rejection still works, so it takes precedence; reject is the fallback.
+    const voteBannerSlot = approveSlot.blocked
+        ? "action.approve"
+        : rejectSlot.blocked
+          ? "action.reject"
+          : null;
+    // A slot warning is shown inline via <SlotWarning>, so a button tooltip is
+    // only the fallback for an app-wide block (nothing in the sidebar explains
+    // why the button is disabled).
+    const approveBlockIsAppLevel =
+        approveSlot.blocked && approveSlot.warning?.slot !== "action.approve";
+    const rejectBlockIsAppLevel =
+        rejectSlot.blocked && rejectSlot.warning?.slot !== "action.reject";
     const isPending = status === "Pending";
     const isExecuted = status === "Executed";
     const isExchangeProposal = proposalType === "Exchange";
@@ -604,12 +618,14 @@ export function ProposalSidebar({
                 />
             )}
 
-            {/* Voting paused (action.vote) — both approve and reject disabled */}
-            {isPending && voteSlotBlocked && <SlotWarning slot="action.vote" />}
+            {/* Vote action paused (approve / reject) — single banner */}
+            {isPending && voteBannerSlot && (
+                <SlotWarning slot={voteBannerSlot} />
+            )}
 
             {/* Feature-maintenance warning — approval paused, rejection still works */}
             {isPending &&
-                !voteSlotBlocked &&
+                !voteBannerSlot &&
                 approveBlocked &&
                 approveBlockedWarning?.slot && (
                     <SlotWarning
@@ -627,10 +643,10 @@ export function ProposalSidebar({
                         variant="secondary"
                         className="flex gap-1 w-full"
                         onClick={() => onVote("Reject")}
-                        disabled={isUserVoter || voteSlotBlocked}
+                        disabled={isUserVoter || rejectSlot.blocked}
                         tooltip={
-                            voteSlotBlocked
-                                ? stripMessageForTooltip(voteSlotMessage)
+                            rejectBlockIsAppLevel
+                                ? stripMessageForTooltip(rejectSlot.message)
                                 : isUserVoter
                                   ? noVoteMessage
                                   : undefined
@@ -666,11 +682,13 @@ export function ProposalSidebar({
                                 isUserVoter ||
                                 isCheckingVotingDurationImpact ||
                                 approveBlocked ||
-                                voteSlotBlocked
+                                approveSlot.blocked
                             }
                             tooltip={
-                                voteSlotBlocked
-                                    ? stripMessageForTooltip(voteSlotMessage)
+                                approveBlockIsAppLevel
+                                    ? stripMessageForTooltip(
+                                          approveSlot.message,
+                                      )
                                     : isUserVoter
                                       ? noVoteMessage
                                       : undefined

@@ -2197,9 +2197,14 @@
             "payment": "paiement",
             "deposit": "dépôt",
             "exchange": "échange",
-            "vote": "vote",
+            "approve": "approbation",
+            "reject": "rejet",
+            "remove": "suppression",
             "proposal": "proposition",
             "transaction": "transaction"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} sur {network}"
         },
         "situations": {
             "scheduled_maintenance": {

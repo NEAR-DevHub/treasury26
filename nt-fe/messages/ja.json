@@ -2197,9 +2197,14 @@
             "payment": "支払い",
             "deposit": "入金",
             "exchange": "スワップ",
-            "vote": "投票",
+            "approve": "承認",
+            "reject": "却下",
+            "remove": "削除",
             "proposal": "提案",
             "transaction": "取引"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network} 上の {token}"
         },
         "situations": {
             "scheduled_maintenance": {

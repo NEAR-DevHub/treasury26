@@ -313,18 +313,12 @@ export function TokenInput<
                                 )}
                             />
                         </div>
-                        <p
-                            className={cn(
-                                "text-muted-foreground text-xs invisible truncate",
-                                estimatedUSDValue !== null &&
-                                    estimatedUSDValue > 0 &&
-                                    "visible",
+                        {estimatedUSDValue !== null &&
+                            estimatedUSDValue > 0 && (
+                                <p className="text-muted-foreground text-xs truncate">
+                                    {`≈ ${formatCurrency(estimatedUSDValue)}`}
+                                </p>
                             )}
-                        >
-                            {estimatedUSDValue !== null && estimatedUSDValue > 0
-                                ? `≈ ${formatCurrency(estimatedUSDValue)}`
-                                : "Invisible"}
-                        </p>
                         {balanceWarning && (
                             <p className="text-general-info-foreground text-sm mt-2">
                                 {balanceWarning.type === "fee_not_covered"

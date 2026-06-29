@@ -2197,9 +2197,14 @@
             "payment": "pembayaran",
             "deposit": "setoran",
             "exchange": "penukaran",
-            "vote": "pemungutan suara",
+            "approve": "persetujuan",
+            "reject": "penolakan",
+            "remove": "penghapusan",
             "proposal": "usulan",
             "transaction": "transaksi"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} di {network}"
         },
         "situations": {
             "scheduled_maintenance": {

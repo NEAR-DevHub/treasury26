@@ -2197,9 +2197,14 @@
             "payment": "תשלום",
             "deposit": "הפקדה",
             "exchange": "המרה",
-            "vote": "הצבעה",
+            "approve": "אישור",
+            "reject": "דחייה",
+            "remove": "הסרה",
             "proposal": "הצעה",
             "transaction": "עסקה"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} ב-{network}"
         },
         "situations": {
             "scheduled_maintenance": {

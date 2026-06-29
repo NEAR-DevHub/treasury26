@@ -2,14 +2,17 @@
 
 import { AlertTriangle, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Alert, AlertDescription } from "@/components/alert";
 import { useFormatDate } from "@/components/formatted-date";
 import { Tooltip } from "@/components/tooltip";
-import { useWarningMessage } from "@/hooks/use-warnings";
-import { useWarnings, type WarningSeverity } from "@/hooks/use-warnings";
-import { formatWarningScheduleText } from "@/lib/warnings";
+import {
+    useWarningMessage,
+    useWarnings,
+    type WarningSeverity,
+} from "@/hooks/use-warnings";
 import { cn } from "@/lib/utils";
+import { formatWarningScheduleText } from "@/lib/warnings";
 
 const MARKDOWN_HEADING_PATTERN = /^#{1,6}\s+/;
 
