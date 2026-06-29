@@ -5,7 +5,7 @@ services:
     runtime: rust
     plan: standard
     rootDir: nt-be
-    branch: release-1.19.0
+    branch: release-1.20.0
     buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be && cargo build --release --example mark_testing_daos
     startCommand: ./target/release/nt-be
     domains:
@@ -43,7 +43,7 @@ services:
     runtime: node
     plan: starter
     rootDir: nt-fe
-    branch: release-1.19.0
+    branch: release-1.20.0
     buildCommand: bun install && node ./node_modules/geoip-lite/scripts/updatedb.js license_key=$MAXMIND_LICENSE_KEY && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
     startCommand: node .next/standalone/server.js
     domains:
