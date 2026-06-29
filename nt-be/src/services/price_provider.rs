@@ -43,6 +43,19 @@ pub trait PriceProvider: Send + Sync {
         date: NaiveDate,
     ) -> Result<Option<f64>, Box<dyn std::error::Error + Send + Sync>>;
 
+    /// Fetches current USD prices for multiple assets in one provider call.
+    ///
+    /// Providers that do not support batch current prices can use the default
+    /// empty implementation. The background cache warmer uses this to keep
+    /// today's `historical_prices` rows fresh without doing live lookups on
+    /// request/snapshot paths.
+    async fn get_current_prices(
+        &self,
+        _asset_ids: &[String],
+    ) -> Result<HashMap<String, f64>, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(HashMap::new())
+    }
+
     /// Fetches all available historical prices for an asset
     ///
     /// This method fetches the complete price history for an asset, which is more

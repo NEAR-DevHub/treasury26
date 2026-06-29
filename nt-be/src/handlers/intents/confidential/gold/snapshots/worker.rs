@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration as StdDuration;
 
-use bigdecimal::{BigDecimal, Zero};
+use bigdecimal::{BigDecimal, FromPrimitive, Zero};
 use chrono::{Duration, Utc};
 use futures::{StreamExt, stream};
 use near_account_id::AccountIdRef;
@@ -51,6 +51,22 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
 
     let defuse_map = get_defuse_tokens_map();
     let snapshot_at = Utc::now();
+    let live_balances: Vec<(String, String)> = live_balances.into_iter().collect();
+    let live_assets: Vec<String> = live_balances
+        .iter()
+        .map(|(asset, _)| asset.clone())
+        .collect();
+    let latest_prices = match state
+        .price_service
+        .get_cached_tokens_latest_price(&live_assets)
+        .await
+    {
+        Ok(prices) => prices,
+        Err(e) => {
+            tracing::warn!("{} batch snapshot price lookup failed: {}", dao_id, e);
+            std::collections::HashMap::new()
+        }
+    };
     let mut rows: Vec<SnapshotRow> = Vec::with_capacity(live_balances.len());
     let mut seen_assets = std::collections::HashSet::with_capacity(live_balances.len());
 
@@ -77,12 +93,30 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
             acc * BigDecimal::from(10u32)
         });
         let balance = &raw_balance / &scale;
+        let price_usd = match latest_prices.get(&asset).copied() {
+            Some(price) => {
+                tracing::debug!(
+                    "{} {} resolved cached snapshot price: {}",
+                    dao_id,
+                    asset,
+                    price
+                );
+                BigDecimal::from_f64(price)
+            }
+            None => {
+                tracing::debug!("{} {} no snapshot USD price available", dao_id, asset);
+                None
+            }
+        };
+        let value_usd = price_usd.as_ref().map(|price| &balance * price);
 
         seen_assets.insert(asset.clone());
         rows.push(SnapshotRow {
             asset,
             raw_balance,
             balance,
+            price_usd,
+            value_usd,
         });
     }
 
@@ -97,6 +131,8 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
             asset: prior_asset,
             raw_balance: BigDecimal::zero(),
             balance: BigDecimal::zero(),
+            price_usd: None,
+            value_usd: Some(BigDecimal::zero()),
         });
     }
 
