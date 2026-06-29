@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, type ReactNode } from "react";
 import { Alert, AlertDescription } from "@/components/alert";
 import { useFormatDate } from "@/components/formatted-date";
@@ -140,17 +141,14 @@ function getAlertVariant(
     return "warning";
 }
 
-function formatScheduleText(
-    formatDate: (date: Date | string | number) => string,
-    startsAt: string | null,
-    endsAt: string | null,
-): string {
-    return formatWarningScheduleText(formatDate, startsAt, endsAt);
-}
-
 function useResolvedWarning(props: WarningMessageProps) {
     const { getWarning } = useWarnings();
     const formatDate = useFormatDate();
+    const t = useTranslations("warnings");
+    const scheduleLabels = useMemo(
+        () => ({ on: t("schedule.on"), until: t("schedule.until") }),
+        [t],
+    );
     const slot = "slot" in props ? props.slot : undefined;
     const token = "slot" in props ? props.token : undefined;
     const network = "slot" in props ? props.network : undefined;
@@ -167,10 +165,11 @@ function useResolvedWarning(props: WarningMessageProps) {
             }
 
             const message = resolvedFromSlot;
-            const scheduleText = formatScheduleText(
+            const scheduleText = formatWarningScheduleText(
                 formatDate,
                 warning?.startsAt ?? null,
                 warning?.endsAt ?? null,
+                scheduleLabels,
             );
             const normalizedMessage = message.includes("{schedule}")
                 ? message.replace(/\{schedule\}/g, scheduleText || "")
@@ -198,6 +197,7 @@ function useResolvedWarning(props: WarningMessageProps) {
         messageProp,
         severityProp,
         formatDate,
+        scheduleLabels,
     ]);
 }
 

@@ -100,12 +100,26 @@ export function walletFromLoginSlot(slot: string | null | undefined): string {
     return slot.slice("login.wallet.".length).replace(/-/g, " ");
 }
 
+export function formatWarningToken(
+    token: string | null | undefined,
+): string {
+    return token?.trim().toUpperCase() ?? "";
+}
+
+export function formatWarningNetwork(
+    network: string | null | undefined,
+): string {
+    const n = network?.trim();
+    if (!n) return "";
+    return n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
+}
+
 export function warningSubject(
     token: string | null | undefined,
     network: string | null | undefined,
 ): string {
-    const t = token?.trim().toUpperCase();
-    const n = network?.trim().toUpperCase();
+    const t = formatWarningToken(token);
+    const n = formatWarningNetwork(network);
     if (t && n) return `${t} on ${n}`;
     if (t) return t;
     if (n) return n;
@@ -116,7 +130,7 @@ export function formatWarningScheduleText(
     formatDate: (date: Date | string | number) => string,
     startsAt: string | null | undefined,
     endsAt: string | null | undefined,
-    labels: { on: string; until: string } = { on: "on", until: "until" },
+    labels: { on: string; until: string },
 ): string {
     const parts: string[] = [];
     if (startsAt) parts.push(`${labels.on} ${formatDate(startsAt)}`);
@@ -187,7 +201,7 @@ export type ResolveWarningMessageOptions = {
     getAction: (slot: string) => string;
     statusPageLink: string;
     situationOverrides?: WarningSituationOverrides;
-    scheduleLabels?: { on: string; until: string };
+    scheduleLabels: { on: string; until: string };
 };
 
 function pickSituationTemplate(
@@ -268,8 +282,8 @@ export function resolveWarningMessage(
             );
             const values = {
                 subject: warningSubject(warning.token, warning.network),
-                token: warning.token?.trim().toUpperCase() ?? "",
-                network: warning.network?.trim().toUpperCase() ?? "",
+                token: formatWarningToken(warning.token),
+                network: formatWarningNetwork(warning.network),
                 wallet: walletFromLoginSlot(warning.slot),
                 action: options.getAction(effectiveSlot),
                 schedule: scheduleText,
