@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE proposal_templates\n        SET name        = COALESCE($3, name),\n            description = COALESCE($4, description),\n            manifest    = COALESCE($5, manifest),\n            enabled     = COALESCE($6, enabled),\n            pinned      = COALESCE($7, pinned)\n        WHERE dao_id = $1 AND id = $2\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e648a256a6492374d9c39511c1ecc63a03f5d653bd018e8a2d90b2951c09081c"
+}

@@ -854,7 +854,8 @@
             "general": "Allgemein",
             "voting": "Abstimmung",
             "preferences": "Präferenzen",
-            "integrations": "Integrationen"
+            "integrations": "Integrationen",
+            "developer": "Entwickler"
         },
         "general": {
             "validation": {
@@ -1914,7 +1915,8 @@
         "guestSaveIntro": "Sie sind Gast dieser Treasury. Sie können nur die Daten einsehen.",
         "guestSaveAction": "Sie können diese Gast-Treasury in Ihrer Treasury-Liste speichern.",
         "newFeatureRich": "Neu! 🎉 Staken Sie Ihre Assets mit Earn und verdienen Sie Belohnungen. Lassen Sie Ihr Kapital muehelos fuer sich arbeiten.",
-        "newFeatureCta": "Ausprobieren"
+        "newFeatureCta": "Ausprobieren",
+        "requestTemplates": "Benutzerdefinierte Anträge sind bereit. Öffnen Sie sie hier, um Ihren ersten Antragstyp zu erstellen."
     },
     "statusDate": {
         "expires": "Läuft ab",
@@ -2265,6 +2267,152 @@
                 "deposit": "### Geplante Anbieterwartung\nEinzahlungen sind möglicherweise {schedule} kurzzeitig nicht verfügbar. Ihr Guthaben ist On-Chain und unter Ihrer Kontrolle.",
                 "features": "### Geplante Anbieterwartung\nEinige Funktionen sind möglicherweise {schedule} kurzzeitig nicht verfügbar. Ihr Guthaben ist On-Chain und unter Ihrer Kontrolle."
             }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "Antragsvorlagen",
+        "pageDescription": "Erstellen Sie wiederverwendbare Vorlagen für benutzerdefinierte Antragstypen.",
+        "loading": "Wird geladen…",
+        "back": "Zurück",
+        "howItWorks": "So funktioniert es",
+        "toastDeleted": "Vorlage gelöscht",
+        "errDelete": "Vorlage konnte nicht gelöscht werden",
+        "deleteDialog": {
+            "title": "Vorlage löschen",
+            "body": "<b>{name}</b> löschen? Mitglieder können daraus keine Anträge mehr einreichen. Dies kann nicht rückgängig gemacht werden.",
+            "confirm": "Löschen",
+            "deleting": "Wird gelöscht…"
+        },
+        "editor": {
+            "nameLabel": "Name",
+            "namePlaceholder": "Begrüßung festlegen",
+            "nameRequired": "Name ist erforderlich",
+            "tabVisual": "Visuell",
+            "tabCode": "Code",
+            "manifestLabel": "Manifest (JSON)",
+            "invalidJsonToast": "Beheben Sie das ungültige JSON, bevor Sie zum visuellen Builder wechseln"
+        },
+        "index": {
+            "emptyTitle": "Erstellen Sie Ihre erste Vorlage",
+            "emptyDescription": "Erstellen Sie eine Vorlage für Anträge, die Sie häufig stellen. Ihr Team verwendet sie mit einem Klick wieder.",
+            "createTemplate": "Vorlage erstellen",
+            "heading": "Vorlagen",
+            "addNew": "Neu hinzufügen",
+            "createRequest": "Antrag erstellen",
+            "actions": "Vorlagenaktionen",
+            "edit": "Bearbeiten",
+            "pin": "An die Seitenleiste anheften",
+            "unpin": "Vorlage lösen",
+            "delete": "Löschen",
+            "errPin": "Anheften konnte nicht aktualisiert werden"
+        },
+        "create": {
+            "title": "Neue Vorlage",
+            "submit": "Vorlage erstellen",
+            "submitting": "Wird erstellt…",
+            "toastCreated": "Vorlage erstellt",
+            "errCreate": "Vorlage konnte nicht erstellt werden"
+        },
+        "edit": {
+            "title": "Vorlage bearbeiten",
+            "submit": "Änderungen speichern",
+            "deleteButton": "Vorlage löschen",
+            "toastSaved": "Vorlage gespeichert",
+            "errSave": "Vorlage konnte nicht gespeichert werden",
+            "notFound": "Vorlage nicht gefunden."
+        },
+        "fill": {
+            "noTemplate": "Keine Vorlage für „{slug}“ gefunden.",
+            "invalidManifest": "Das Manifest dieser Vorlage ist ungültig:",
+            "proposalFiled": "Antrag eingereicht"
+        },
+        "developer": {
+            "title": "Benutzerdefinierte Anträge",
+            "description": "Erstellen Sie Ihre eigenen Antragstypen, wenn Sie mehr als Zahlungen und Tausch benötigen. Fügen Sie die benötigten Felder hinzu, und Ihre Mitglieder können sie wie jeden anderen Antrag einreichen.",
+            "enable": "Aktivieren",
+            "disable": "Deaktivieren",
+            "errUpdate": "Die Einstellung konnte nicht aktualisiert werden"
+        },
+        "visual": {
+            "detailsTitle": "Details",
+            "idLabel": "ID (slug)",
+            "titleLabel": "Titel",
+            "descriptionLabel": "Beschreibung (optional)",
+            "summaryLabel": "Zusammenfassung (optional, unterstützt '{{'fields'}}')",
+            "onChainCallTitle": "On-Chain-Aufruf",
+            "onChainCallDescription": "Der feste FunctionCall, den diese Vorlage einreicht.",
+            "receiverLabel": "Empfänger (Contract)",
+            "methodLabel": "Methode",
+            "depositLabel": "Deposit (yoctoNEAR)",
+            "gasLabel": "Gas",
+            "argumentsTitle": "Argumente",
+            "argumentsDescription": "Die an den Contract gesendeten Argumente. Jedes ist statisch (ein fester Wert) oder eine Mitgliedereingabe (dynamisch) — bei Letzterer erscheint die Konfiguration der Eingabe direkt darunter.",
+            "otherInputsTitle": "Weitere Eingaben",
+            "otherInputsDescription": "Eingaben, die nur innerhalb eines zusammengesetzten Werts verwendet werden (kein direktes Mitgliedereingabe-Argument), sowie alle manuell hinzugefügten. Die meisten Vorlagen haben keine."
+        },
+        "fields": {
+            "addField": "Feld hinzufügen",
+            "inputHeading": "Eingabe {number}",
+            "remove": "Entfernen",
+            "nameLabel": "Name",
+            "unused": "Nicht verwendet — kein Argument nutzt '{{'{name}'}}'; Mitglieder füllen es aus, aber es wird nicht gesendet.",
+            "label": "Bezeichnung",
+            "typeLabel": "Typ",
+            "required": "Erforderlich",
+            "optionsLabel": "Optionen (eine pro Zeile)",
+            "advancedOptions": "Erweiterte Optionen",
+            "helpLabel": "Hilfe (optional)",
+            "helpPlaceholder": "Wird unter der Eingabe angezeigt",
+            "minLabel": "Min (optional)",
+            "maxLabel": "Max (optional)",
+            "patternLabel": "Muster (regex, optional)",
+            "defaultLabel": "Standard (optional)"
+        },
+        "fieldTypes": {
+            "account": "NEAR-Konto",
+            "token": "Token",
+            "uint": "Ganze Zahl",
+            "amount": "Token-Betrag",
+            "number": "Zahl",
+            "text": "Text",
+            "select": "Dropdown",
+            "bool": "Umschalter",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "Argument hinzufügen",
+            "argumentHeading": "Argument {number}",
+            "remove": "Entfernen",
+            "argumentNameLabel": "Argumentname",
+            "argumentNamePlaceholder": "argument",
+            "typeLabel": "Typ",
+            "modeStatic": "Statisch",
+            "modeMemberInput": "Mitgliedereingabe",
+            "valueTypeLabel": "Werttyp",
+            "valueLabel": "Wert",
+            "stringValuePlaceholder": "Text oder '{{field}}'",
+            "insertField": "+ Feld",
+            "keyPlaceholder": "Schlüssel",
+            "addKey": "Schlüssel hinzufügen",
+            "addItem": "Element hinzufügen"
+        },
+        "form": {
+            "selectPlaceholder": "Wählen Sie eine Option",
+            "fileProposal": "Antrag einreichen"
+        },
+        "collapsePinned": "Angeheftete Vorlagen einklappen",
+        "expandPinned": "Angeheftete Vorlagen ausklappen",
+        "validation": {
+            "required": "{label} ist erforderlich",
+            "account": "{label} muss ein gültiges NEAR-Konto sein",
+            "wholeNumber": "{label} muss eine ganze Zahl sein",
+            "number": "{label} muss eine Zahl sein",
+            "select": "{label}: Bitte eine aufgeführte Option auswählen",
+            "json": "{label} muss gültiges JSON sein",
+            "invalid": "{label} ist ungültig",
+            "pattern": "{label} entspricht nicht dem erforderlichen Muster",
+            "min": "{label} muss mindestens {min} sein",
+            "max": "{label} darf höchstens {max} sein"
         }
     }
 }

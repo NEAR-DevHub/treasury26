@@ -19,16 +19,23 @@ pub struct GetTreasuryPolicyQuery {
     pub at_before: Option<U64>,
 }
 
+/// Cache key for a treasury's `get_policy` result. Shared with the test seeding helper
+/// (`utils::test_utils::seed_treasury_policy`) so a key-scheme change can't silently desync the
+/// seed from the fetch and leak into RPC calls.
+pub(crate) fn treasury_policy_cache_key(treasury_id: &AccountIdRef, at_before: u64) -> String {
+    CacheKey::new("treasury-policy")
+        .with(treasury_id)
+        .with(at_before)
+        .build()
+}
+
 pub async fn fetch_treasury_policy_cached(
     state: &Arc<AppState>,
     treasury_id: &AccountIdRef,
     at_before: Option<u64>,
 ) -> Result<serde_json::Value, (StatusCode, String)> {
     let at_before = at_before.unwrap_or(0);
-    let cache_key = CacheKey::new("treasury-policy")
-        .with(treasury_id)
-        .with(at_before)
-        .build();
+    let cache_key = treasury_policy_cache_key(treasury_id, at_before);
 
     let network = if at_before > 0 {
         &state.archival_network

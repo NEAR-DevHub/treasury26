@@ -1,11 +1,9 @@
 "use client";
 
-import { useNextStep } from "nextstepjs";
-import type { Tour } from "nextstepjs";
 import { useTranslations } from "next-intl";
-import { useEffect, useCallback, useRef } from "react";
-import { useTreasury } from "@/hooks/use-treasury";
-import { useResponsiveSidebar } from "@/stores/sidebar-store";
+import type { Tour } from "nextstepjs";
+import { useNextStep } from "nextstepjs";
+import { useCallback, useEffect, useRef } from "react";
 import {
     EARN_ANNOUNCEMENT_TOUR_NAME,
     FEATURE_DEFINITIONS,
@@ -13,6 +11,8 @@ import {
     useFeatureAnnouncementQueueSlot,
     useFeatureAnnouncementsUnlocked,
 } from "@/features/onboarding/feature-announcement-queue";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useResponsiveSidebar } from "@/stores/sidebar-store";
 
 type PageTourKey =
     | "paymentsBulk"
@@ -20,7 +20,8 @@ type PageTourKey =
     | "exchangeSettings"
     | "membersPending"
     | "guestSaveIntro"
-    | "guestSaveAction";
+    | "guestSaveAction"
+    | "requestTemplates";
 
 function PageTourContent({ k }: { k: PageTourKey }) {
     const t = useTranslations("pageTours");
@@ -40,7 +41,12 @@ export const PAGE_TOUR_NAMES = {
     MEMBERS_PENDING: "members-pending",
     GUEST_SAVE: "guest-save",
     EARN_ANNOUNCEMENT: EARN_ANNOUNCEMENT_TOUR_NAME,
+    REQUEST_TEMPLATES: "request-templates",
 } as const;
+
+// Fired right after a DAO enables Custom Requests in Settings → Developer, to point at the
+// newly revealed sidebar section.
+export const REQUEST_TEMPLATES_TOUR_NAME = PAGE_TOUR_NAMES.REQUEST_TEMPLATES;
 
 // Local storage keys
 export const PAGE_TOUR_STORAGE_KEYS = {
@@ -49,6 +55,7 @@ export const PAGE_TOUR_STORAGE_KEYS = {
     EXCHANGE_SETTINGS_SHOWN: "exchange-settings-tour-shown",
     MEMBERS_PENDING_SHOWN: "members-pending-tour-shown",
     GUEST_SAVE_SHOWN: "guest-save-tour-shown",
+    REQUEST_TEMPLATES_SHOWN: "request-templates-tour-shown",
 } as const;
 
 // Selector IDs
@@ -59,6 +66,7 @@ export const PAGE_TOUR_SELECTORS = {
     MEMBERS_PENDING_BTN: "#members-pending-btn",
     GUEST_BADGE: "#guest-badge",
     GUEST_SAVE_BTN: "#guest-save-btn",
+    REQUEST_TEMPLATES_NAV: "#request-templates-nav",
 } as const;
 
 export const EARN_ANNOUNCEMENT = {
@@ -171,6 +179,18 @@ export const NEW_FEATURE_TOUR: Tour = {
             ...defaultStepProps,
             content: EARN_ANNOUNCEMENT.content,
             selector: EARN_ANNOUNCEMENT.selector,
+            side: "right",
+        },
+    ],
+};
+
+export const REQUEST_TEMPLATES_TOUR: Tour = {
+    tour: PAGE_TOUR_NAMES.REQUEST_TEMPLATES,
+    steps: [
+        {
+            ...defaultStepProps,
+            content: <PageTourContent k="requestTemplates" />,
+            selector: PAGE_TOUR_SELECTORS.REQUEST_TEMPLATES_NAV,
             side: "right",
         },
     ],

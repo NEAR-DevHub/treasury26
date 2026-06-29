@@ -9,6 +9,9 @@ use crate::AppState;
 use crate::utils::cache::Cache;
 
 #[cfg(test)]
+use near_account_id::AccountIdRef;
+
+#[cfg(test)]
 use near_api::{NetworkConfig, RPCEndpoint, Signer};
 
 #[cfg(test)]
@@ -138,4 +141,176 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         goldsky_pool: None,
         neardata_client: None,
     }
+}
+
+/// A minimal SputnikDAO policy granting `account_id` the given `<kind>:<action>` permissions via a
+/// group role — enough for `AuthUser::verify_can_perform_action` to evaluate.
+#[cfg(test)]
+pub fn policy_granting(account_id: &str, permissions: &[&str]) -> serde_json::Value {
+    serde_json::json!({
+        "roles": [{
+            "name": "test-role",
+            "kind": { "Group": [account_id] },
+            "permissions": permissions,
+        }],
+    })
+}
+
+/// Seed the treasury-policy cache so policy-gated handlers (`verify_can_perform_action`) can be
+/// unit-tested without an RPC `get_policy` call. Uses the same `treasury_policy_cache_key` the fetch
+/// path builds, so the seeded key can't desync from the lookup; the seeded policy is then served
+/// from cache and the RPC closure never runs.
+#[cfg(test)]
+pub async fn seed_treasury_policy(
+    state: &AppState,
+    dao_id: &AccountIdRef,
+    policy: serde_json::Value,
+) {
+    let key = crate::handlers::treasury::policy::treasury_policy_cache_key(dao_id, 0);
+    state.cache.short_term.insert(key, policy).await;
+}
+
+// --- Treasury handler-test scaffolding ----------------------------------------------------------
+// Shared by the policy-gated handler tests (`proposal_templates`, `custom_requests`): an `AppState`
+// wrapper, the DAO/user seeding, an auth cookie, and a one-shot request helper. Hoisted here once a
+// third copy appeared, so a new handler test imports these instead of re-rolling the same recipe.
+
+#[cfg(test)]
+pub const DAO_ID: &str = "test-dao.sputnik-dao.near";
+#[cfg(test)]
+pub const USER_ACCOUNT_ID: &str = "member.near";
+
+#[cfg(test)]
+pub fn test_state(pool: sqlx::PgPool) -> std::sync::Arc<AppState> {
+    std::sync::Arc::new(build_test_state(pool))
+}
+
+/// Seed `account_id` as a policy member of `dao_id` — enough for the membership-gated reads.
+#[cfg(test)]
+pub async fn seed_policy_member(pool: &sqlx::PgPool, dao_id: &str, account_id: &str) {
+    sqlx::query!(
+        "INSERT INTO monitored_accounts (account_id) VALUES ($1) ON CONFLICT (account_id) DO NOTHING",
+        dao_id,
+    )
+    .execute(pool)
+    .await
+    .expect("seed monitored account");
+
+    sqlx::query!(
+        "INSERT INTO daos (dao_id) VALUES ($1) ON CONFLICT (dao_id) DO NOTHING",
+        dao_id,
+    )
+    .execute(pool)
+    .await
+    .expect("seed dao");
+
+    sqlx::query!(
+        r#"
+        INSERT INTO dao_members (dao_id, account_id, is_policy_member, is_saved, is_hidden)
+        VALUES ($1, $2, true, false, false)
+        ON CONFLICT (dao_id, account_id) DO UPDATE SET is_policy_member = true
+        "#,
+        dao_id,
+        account_id,
+    )
+    .execute(pool)
+    .await
+    .expect("seed policy member");
+}
+
+/// Seed a policy member who also holds the on-chain `ChangePolicy` permission — i.e. someone
+/// allowed to author templates / flip the custom-requests flag.
+#[cfg(test)]
+pub async fn seed_change_policy_member(
+    state: &std::sync::Arc<AppState>,
+    pool: &sqlx::PgPool,
+    dao_id: &str,
+    account_id: &str,
+) {
+    seed_policy_member(pool, dao_id, account_id).await;
+    let dao: near_api::AccountId = dao_id.parse().expect("valid dao id");
+    seed_treasury_policy(
+        state,
+        &dao,
+        policy_granting(account_id, &["*:ChangePolicy"]),
+    )
+    .await;
+}
+
+/// Create a user + session for `account_id` and return its auth `cookie` header value.
+#[cfg(test)]
+pub async fn issue_auth_cookie(
+    pool: &sqlx::PgPool,
+    state: &std::sync::Arc<AppState>,
+    account_id: &str,
+) -> String {
+    use crate::auth::{create_jwt, middleware::AUTH_COOKIE_NAME};
+
+    let user_id: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO users (account_id) VALUES ($1) ON CONFLICT (account_id) DO UPDATE SET updated_at = NOW() RETURNING id",
+    )
+    .bind(account_id)
+    .fetch_one(pool)
+    .await
+    .expect("create test user");
+
+    let jwt = create_jwt(
+        account_id,
+        state.env_vars.jwt_secret.as_bytes(),
+        state.env_vars.jwt_expiry_hours,
+    )
+    .expect("create JWT");
+
+    sqlx::query!(
+        "INSERT INTO user_sessions (user_id, token_hash, expires_at) VALUES ($1, $2, $3)",
+        user_id,
+        jwt.token_hash,
+        jwt.expires_at,
+    )
+    .execute(pool)
+    .await
+    .expect("create session");
+
+    format!("{AUTH_COOKIE_NAME}={}", jwt.token)
+}
+
+#[cfg(test)]
+pub async fn response_text(response: axum::response::Response) -> String {
+    use axum::body::to_bytes;
+    String::from_utf8(
+        to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("read body")
+            .to_vec(),
+    )
+    .expect("utf-8 body")
+}
+
+/// Send one request through the router and return `(status, body text)`.
+#[cfg(test)]
+pub async fn send(
+    app: axum::Router,
+    method: &str,
+    uri: String,
+    cookie: &str,
+    body: Option<serde_json::Value>,
+) -> (axum::http::StatusCode, String) {
+    use axum::body::Body;
+    use axum::http::Request;
+    use tower::ServiceExt;
+
+    let mut builder = Request::builder()
+        .method(method)
+        .uri(uri)
+        .header("cookie", cookie);
+    let body = match body {
+        Some(v) => {
+            builder = builder.header("content-type", "application/json");
+            Body::from(v.to_string())
+        }
+        None => Body::empty(),
+    };
+    let resp = app.oneshot(builder.body(body).unwrap()).await.unwrap();
+    let status = resp.status();
+    (status, response_text(resp).await)
 }

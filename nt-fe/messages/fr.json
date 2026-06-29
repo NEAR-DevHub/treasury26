@@ -854,7 +854,8 @@
             "general": "Général",
             "voting": "Vote",
             "preferences": "Préférences",
-            "integrations": "Intégrations"
+            "integrations": "Intégrations",
+            "developer": "Développeur"
         },
         "general": {
             "validation": {
@@ -1914,7 +1915,8 @@
         "guestSaveIntro": "Vous êtes un invité de cette trésorerie. Vous ne pouvez consulter que les données.",
         "guestSaveAction": "Vous pouvez enregistrer cette trésorerie invitée dans votre liste de trésoreries.",
         "newFeatureRich": "Nouveau ! 🎉 Enregistrez les adresses fréquemment utilisées pour des paiements plus rapides et sans erreur. Vos contacts restent privés et visibles uniquement par votre équipe.",
-        "newFeatureCta": "Essayer"
+        "newFeatureCta": "Essayer",
+        "requestTemplates": "Les demandes personnalisées sont prêtes. Ouvrez-les ici pour créer votre premier type de demande."
     },
     "statusDate": {
         "expires": "Expire",
@@ -2265,6 +2267,152 @@
                 "deposit": "### Maintenance programmée du fournisseur\nLes dépôts peuvent être brièvement indisponibles {schedule}. Vos fonds sont on-chain et sous votre contrôle.",
                 "features": "### Maintenance programmée du fournisseur\nCertaines fonctionnalités peuvent être brièvement indisponibles {schedule}. Vos fonds sont on-chain et sous votre contrôle."
             }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "Modèles de demande",
+        "pageDescription": "Créez des modèles réutilisables pour des types de demande personnalisés.",
+        "loading": "Chargement…",
+        "back": "Retour",
+        "howItWorks": "Comment ça marche",
+        "toastDeleted": "Modèle supprimé",
+        "errDelete": "Échec de la suppression du modèle",
+        "deleteDialog": {
+            "title": "Supprimer le modèle",
+            "body": "Supprimer <b>{name}</b> ? Les membres ne pourront plus déposer de propositions à partir de ce modèle. Cette action est irréversible.",
+            "confirm": "Supprimer",
+            "deleting": "Suppression…"
+        },
+        "editor": {
+            "nameLabel": "Nom",
+            "namePlaceholder": "Définir le message d'accueil",
+            "nameRequired": "Le nom est obligatoire",
+            "tabVisual": "Visuel",
+            "tabCode": "Code",
+            "manifestLabel": "Manifeste (JSON)",
+            "invalidJsonToast": "Corrigez le JSON invalide avant de passer au constructeur visuel"
+        },
+        "index": {
+            "emptyTitle": "Créez votre premier modèle",
+            "emptyDescription": "Créez un modèle pour les demandes que vous envoyez souvent. Votre équipe le réutilise en un clic.",
+            "createTemplate": "Créer un modèle",
+            "heading": "Modèles",
+            "addNew": "Ajouter",
+            "createRequest": "Créer une demande",
+            "actions": "Actions du modèle",
+            "edit": "Modifier",
+            "pin": "Épingler à la barre latérale",
+            "unpin": "Désépingler le modèle",
+            "delete": "Supprimer",
+            "errPin": "Impossible de mettre à jour l'épinglage"
+        },
+        "create": {
+            "title": "Nouveau modèle",
+            "submit": "Créer un modèle",
+            "submitting": "Création…",
+            "toastCreated": "Modèle créé",
+            "errCreate": "Échec de la création du modèle"
+        },
+        "edit": {
+            "title": "Modifier le modèle",
+            "submit": "Enregistrer les modifications",
+            "deleteButton": "Supprimer le modèle",
+            "toastSaved": "Modèle enregistré",
+            "errSave": "Échec de l'enregistrement du modèle",
+            "notFound": "Modèle introuvable."
+        },
+        "fill": {
+            "noTemplate": "Aucun modèle trouvé pour « {slug} ».",
+            "invalidManifest": "Le manifeste de ce modèle est invalide :",
+            "proposalFiled": "Demande déposée"
+        },
+        "developer": {
+            "title": "Demandes personnalisées",
+            "description": "Créez vos propres types de demande lorsque vous avez besoin de plus que des paiements et des échanges. Ajoutez les champs dont vous avez besoin et vos membres peuvent les soumettre comme n'importe quelle autre demande.",
+            "enable": "Activer",
+            "disable": "Désactiver",
+            "errUpdate": "Impossible de mettre à jour le paramètre"
+        },
+        "visual": {
+            "detailsTitle": "Détails",
+            "idLabel": "ID (slug)",
+            "titleLabel": "Titre",
+            "descriptionLabel": "Description (facultatif)",
+            "summaryLabel": "Résumé (facultatif, prend en charge les '{{'fields'}}')",
+            "onChainCallTitle": "Appel on-chain",
+            "onChainCallDescription": "Le FunctionCall fixe que ce modèle dépose.",
+            "receiverLabel": "Destinataire (contrat)",
+            "methodLabel": "Méthode",
+            "depositLabel": "Dépôt (yoctoNEAR)",
+            "gasLabel": "Gas",
+            "argumentsTitle": "Arguments",
+            "argumentsDescription": "Les arguments envoyés au contrat. Chacun est Statique (une valeur fixe) ou une Saisie membre (dynamique) — pour cette dernière, la configuration de la saisie apparaît en ligne.",
+            "otherInputsTitle": "Autres saisies",
+            "otherInputsDescription": "Saisies utilisées uniquement à l'intérieur d'une valeur composée (et non comme argument de saisie membre direct), ainsi que celles que vous ajoutez manuellement. La plupart des modèles n'en ont aucune."
+        },
+        "fields": {
+            "addField": "Ajouter un champ",
+            "inputHeading": "Saisie {number}",
+            "remove": "Supprimer",
+            "nameLabel": "Nom",
+            "unused": "Inutilisé — aucun argument n''utilise '{{'{name}'}}' ; les membres le remplissent mais il n''est pas envoyé.",
+            "label": "Libellé",
+            "typeLabel": "Type",
+            "required": "Obligatoire",
+            "optionsLabel": "Options (une par ligne)",
+            "advancedOptions": "Options avancées",
+            "helpLabel": "Aide (facultatif)",
+            "helpPlaceholder": "Affiché sous la saisie",
+            "minLabel": "Min (facultatif)",
+            "maxLabel": "Max (facultatif)",
+            "patternLabel": "Motif (regex, facultatif)",
+            "defaultLabel": "Valeur par défaut (facultatif)"
+        },
+        "fieldTypes": {
+            "account": "Compte NEAR",
+            "token": "Token",
+            "uint": "Nombre entier",
+            "amount": "Montant de token",
+            "number": "Nombre",
+            "text": "Texte",
+            "select": "Liste déroulante",
+            "bool": "Bascule",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "Ajouter un argument",
+            "argumentHeading": "Argument {number}",
+            "remove": "Supprimer",
+            "argumentNameLabel": "Nom de l'argument",
+            "argumentNamePlaceholder": "argument",
+            "typeLabel": "Type",
+            "modeStatic": "Statique",
+            "modeMemberInput": "Saisie membre",
+            "valueTypeLabel": "Type de valeur",
+            "valueLabel": "Valeur",
+            "stringValuePlaceholder": "texte ou '{{field}}'",
+            "insertField": "+ champ",
+            "keyPlaceholder": "clé",
+            "addKey": "Ajouter une clé",
+            "addItem": "Ajouter un élément"
+        },
+        "form": {
+            "selectPlaceholder": "Choisissez une option",
+            "fileProposal": "Déposer la proposition"
+        },
+        "collapsePinned": "Réduire les modèles épinglés",
+        "expandPinned": "Développer les modèles épinglés",
+        "validation": {
+            "required": "{label} est obligatoire",
+            "account": "{label} doit être un compte NEAR valide",
+            "wholeNumber": "{label} doit être un nombre entier",
+            "number": "{label} doit être un nombre",
+            "select": "{label} : choisissez une option proposée",
+            "json": "{label} doit être un JSON valide",
+            "invalid": "{label} n''est pas valide",
+            "pattern": "{label} ne correspond pas au format requis",
+            "min": "{label} doit être au minimum {min}",
+            "max": "{label} doit être au maximum {max}"
         }
     }
 }

@@ -854,7 +854,8 @@
             "general": "Geral",
             "voting": "Votação",
             "preferences": "Preferências",
-            "integrations": "Integrações"
+            "integrations": "Integrações",
+            "developer": "Desenvolvedor"
         },
         "general": {
             "validation": {
@@ -1914,7 +1915,8 @@
         "guestSaveIntro": "Você é um convidado desta tesouraria. Você só pode ver os dados.",
         "guestSaveAction": "Você pode salvar esta tesouraria de convidado na sua lista de tesourarias.",
         "newFeatureRich": "Novo! 🎉 Salve endereços usados com frequência para pagamentos mais rápidos e sem erros. Seus contatos permanecem privados e visíveis apenas para sua equipe.",
-        "newFeatureCta": "Experimente"
+        "newFeatureCta": "Experimente",
+        "requestTemplates": "As Solicitações personalizadas estão prontas. Abra-as aqui para criar seu primeiro tipo de solicitação."
     },
     "statusDate": {
         "expires": "Expira",
@@ -2265,6 +2267,152 @@
                 "deposit": "### Manutenção programada do provedor\nOs depósitos podem ficar brevemente indisponíveis {schedule}. Seus fundos estão on-chain e sob seu controle.",
                 "features": "### Manutenção programada do provedor\nAlguns recursos podem ficar brevemente indisponíveis {schedule}. Seus fundos estão on-chain e sob seu controle."
             }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "Modelos de solicitação",
+        "pageDescription": "Crie modelos reutilizáveis para tipos de solicitação personalizados.",
+        "loading": "Carregando…",
+        "back": "Voltar",
+        "howItWorks": "Como funciona",
+        "toastDeleted": "Modelo excluído",
+        "errDelete": "Falha ao excluir o modelo",
+        "deleteDialog": {
+            "title": "Excluir modelo",
+            "body": "Excluir <b>{name}</b>? Os membros não poderão mais registrar propostas a partir dele. Esta ação não pode ser desfeita.",
+            "confirm": "Excluir",
+            "deleting": "Excluindo…"
+        },
+        "editor": {
+            "nameLabel": "Nome",
+            "namePlaceholder": "Definir saudação",
+            "nameRequired": "O nome é obrigatório",
+            "tabVisual": "Visual",
+            "tabCode": "Código",
+            "manifestLabel": "Manifesto (JSON)",
+            "invalidJsonToast": "Corrija o JSON inválido antes de alternar para o construtor visual"
+        },
+        "index": {
+            "emptyTitle": "Crie seu primeiro modelo",
+            "emptyDescription": "Crie um modelo para as solicitações que você envia com frequência. Sua equipe o reutiliza com um clique.",
+            "createTemplate": "Criar modelo",
+            "heading": "Modelos",
+            "addNew": "Adicionar novo",
+            "createRequest": "Criar solicitação",
+            "actions": "Ações do modelo",
+            "edit": "Editar",
+            "pin": "Fixar na barra lateral",
+            "unpin": "Desafixar modelo",
+            "delete": "Excluir",
+            "errPin": "Não foi possível atualizar a fixação"
+        },
+        "create": {
+            "title": "Novo modelo",
+            "submit": "Criar modelo",
+            "submitting": "Criando…",
+            "toastCreated": "Modelo criado",
+            "errCreate": "Falha ao criar o modelo"
+        },
+        "edit": {
+            "title": "Editar modelo",
+            "submit": "Salvar alterações",
+            "deleteButton": "Excluir modelo",
+            "toastSaved": "Modelo salvo",
+            "errSave": "Falha ao salvar o modelo",
+            "notFound": "Modelo não encontrado."
+        },
+        "fill": {
+            "noTemplate": "Nenhum modelo encontrado para “{slug}”.",
+            "invalidManifest": "O manifesto deste modelo é inválido:",
+            "proposalFiled": "Solicitação registrada"
+        },
+        "developer": {
+            "title": "Solicitações personalizadas",
+            "description": "Crie seus próprios tipos de solicitação quando precisar de mais do que pagamentos e trocas. Adicione os campos de que você precisa e seus membros poderão enviá-los como qualquer outra solicitação.",
+            "enable": "Ativar",
+            "disable": "Desativar",
+            "errUpdate": "Não foi possível atualizar a configuração"
+        },
+        "visual": {
+            "detailsTitle": "Detalhes",
+            "idLabel": "ID (slug)",
+            "titleLabel": "Título",
+            "descriptionLabel": "Descrição (opcional)",
+            "summaryLabel": "Resumo (opcional, suporta '{{'fields'}}')",
+            "onChainCallTitle": "Chamada on-chain",
+            "onChainCallDescription": "A FunctionCall fixa que este modelo registra.",
+            "receiverLabel": "Destinatário (contrato)",
+            "methodLabel": "Método",
+            "depositLabel": "Deposit (yoctoNEAR)",
+            "gasLabel": "Gas",
+            "argumentsTitle": "Argumentos",
+            "argumentsDescription": "Os argumentos enviados ao contrato. Cada um é Estático (um valor fixo) ou uma entrada de membro (dinâmico) — para este último, a configuração da entrada aparece em linha.",
+            "otherInputsTitle": "Outras entradas",
+            "otherInputsDescription": "Entradas usadas apenas dentro de um valor composto (não como argumento direto de entrada de membro), além de quaisquer que você adicione manualmente. A maioria dos modelos não tem nenhuma."
+        },
+        "fields": {
+            "addField": "Adicionar campo",
+            "inputHeading": "Entrada {number}",
+            "remove": "Remover",
+            "nameLabel": "Nome",
+            "unused": "Não utilizado — nenhum argumento usa '{{'{name}'}}'; os membros o preenchem, mas ele não é enviado.",
+            "label": "Rótulo",
+            "typeLabel": "Tipo",
+            "required": "Obrigatório",
+            "optionsLabel": "Opções (uma por linha)",
+            "advancedOptions": "Opções avançadas",
+            "helpLabel": "Ajuda (opcional)",
+            "helpPlaceholder": "Exibido abaixo da entrada",
+            "minLabel": "Mín. (opcional)",
+            "maxLabel": "Máx. (opcional)",
+            "patternLabel": "Padrão (regex, opcional)",
+            "defaultLabel": "Padrão (opcional)"
+        },
+        "fieldTypes": {
+            "account": "Conta NEAR",
+            "token": "Token",
+            "uint": "Número inteiro",
+            "amount": "Quantidade de Token",
+            "number": "Número",
+            "text": "Texto",
+            "select": "Lista suspensa",
+            "bool": "Alternância",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "Adicionar argumento",
+            "argumentHeading": "Argumento {number}",
+            "remove": "Remover",
+            "argumentNameLabel": "Nome do argumento",
+            "argumentNamePlaceholder": "argumento",
+            "typeLabel": "Tipo",
+            "modeStatic": "Estático",
+            "modeMemberInput": "Entrada de membro",
+            "valueTypeLabel": "Tipo de valor",
+            "valueLabel": "Valor",
+            "stringValuePlaceholder": "texto ou '{{field}}'",
+            "insertField": "+ campo",
+            "keyPlaceholder": "chave",
+            "addKey": "Adicionar chave",
+            "addItem": "Adicionar item"
+        },
+        "form": {
+            "selectPlaceholder": "Escolha uma opção",
+            "fileProposal": "Registrar proposta"
+        },
+        "collapsePinned": "Recolher modelos fixados",
+        "expandPinned": "Expandir modelos fixados",
+        "validation": {
+            "required": "{label} é obrigatório",
+            "account": "{label} deve ser uma conta NEAR válida",
+            "wholeNumber": "{label} deve ser um número inteiro",
+            "number": "{label} deve ser um número",
+            "select": "{label}: escolha uma opção da lista",
+            "json": "{label} deve ser um JSON válido",
+            "invalid": "{label} é inválido",
+            "pattern": "{label} não corresponde ao padrão exigido",
+            "min": "{label} deve ser no mínimo {min}",
+            "max": "{label} deve ser no máximo {max}"
         }
     }
 }

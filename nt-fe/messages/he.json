@@ -854,7 +854,8 @@
             "general": "כללי",
             "voting": "הצבעה",
             "preferences": "העדפות",
-            "integrations": "אינטגרציות"
+            "integrations": "אינטגרציות",
+            "developer": "מפתח"
         },
         "general": {
             "validation": {
@@ -1914,7 +1915,8 @@
         "guestSaveIntro": "אתה אורח של אוצר זה. אתה יכול לראות רק את הנתונים.",
         "guestSaveAction": "ניתן לשמור את האוצר האורח הזה לרשימת האוצרות שלך.",
         "newFeatureRich": "חדש! 🎉 שמור כתובות בשימוש תדיר לתשלומים מהירים יותר וללא שגיאות. אנשי הקשר שלך נשארים פרטיים וגלויים רק לצוות שלך.",
-        "newFeatureCta": "נסה זאת"
+        "newFeatureCta": "נסה זאת",
+        "requestTemplates": "בקשות מותאמות אישית מוכנות. פתחו אותן כאן כדי לבנות את סוג הבקשה הראשון שלכם."
     },
     "statusDate": {
         "expires": "פג תוקף",
@@ -2265,6 +2267,152 @@
                 "deposit": "### תחזוקת ספק מתוכננת\nהפקדות עשויות להיות לא זמינות לזמן קצר {schedule}. הכספים שלכם נמצאים on-chain ותחת שליטתכם.",
                 "features": "### תחזוקת ספק מתוכננת\nחלק מהתכונות עשויות להיות לא זמינות לזמן קצר {schedule}. הכספים שלכם נמצאים on-chain ותחת שליטתכם."
             }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "תבניות בקשה",
+        "pageDescription": "בנו תבניות לשימוש חוזר עבור סוגי בקשות מותאמים אישית.",
+        "loading": "טוען…",
+        "back": "חזרה",
+        "howItWorks": "איך זה עובד",
+        "toastDeleted": "התבנית נמחקה",
+        "errDelete": "מחיקת התבנית נכשלה",
+        "deleteDialog": {
+            "title": "מחיקת תבנית",
+            "body": "למחוק את <b>{name}</b>? חברים לא יוכלו עוד להגיש הצעות באמצעותה. לא ניתן לבטל פעולה זו.",
+            "confirm": "מחק",
+            "deleting": "מוחק…"
+        },
+        "editor": {
+            "nameLabel": "שם",
+            "namePlaceholder": "הגדרת ברכה",
+            "nameRequired": "שם הוא שדה חובה",
+            "tabVisual": "חזותי",
+            "tabCode": "קוד",
+            "manifestLabel": "מניפסט (JSON)",
+            "invalidJsonToast": "תקנו את ה-JSON השגוי לפני המעבר לבונה החזותי"
+        },
+        "index": {
+            "emptyTitle": "צרו את התבנית הראשונה שלכם",
+            "emptyDescription": "צרו תבנית עבור בקשות שאתם שולחים לעיתים קרובות. הצוות שלכם ישתמש בה שוב בלחיצה אחת.",
+            "createTemplate": "צור תבנית",
+            "heading": "תבניות",
+            "addNew": "הוסף חדש",
+            "createRequest": "צור בקשה",
+            "actions": "פעולות תבנית",
+            "edit": "ערוך",
+            "pin": "הצמד לסרגל הצד",
+            "unpin": "בטל הצמדת תבנית",
+            "delete": "מחק",
+            "errPin": "לא ניתן היה לעדכן את ההצמדה"
+        },
+        "create": {
+            "title": "תבנית חדשה",
+            "submit": "צור תבנית",
+            "submitting": "יוצר…",
+            "toastCreated": "התבנית נוצרה",
+            "errCreate": "יצירת התבנית נכשלה"
+        },
+        "edit": {
+            "title": "עריכת תבנית",
+            "submit": "שמור שינויים",
+            "deleteButton": "מחק תבנית",
+            "toastSaved": "התבנית נשמרה",
+            "errSave": "שמירת התבנית נכשלה",
+            "notFound": "התבנית לא נמצאה."
+        },
+        "fill": {
+            "noTemplate": "לא נמצאה תבנית עבור ״{slug}״.",
+            "invalidManifest": "המניפסט של תבנית זו אינו תקין:",
+            "proposalFiled": "הבקשה הוגשה"
+        },
+        "developer": {
+            "title": "בקשות מותאמות אישית",
+            "description": "בנו סוגי בקשות משלכם כשאתם זקוקים ליותר מתשלומים והחלפה. הוסיפו את השדות שאתם צריכים והחברים שלכם יוכלו להגיש אותם כמו כל בקשה אחרת.",
+            "enable": "הפעל",
+            "disable": "השבת",
+            "errUpdate": "לא ניתן היה לעדכן את ההגדרה"
+        },
+        "visual": {
+            "detailsTitle": "פרטים",
+            "idLabel": "מזהה (slug)",
+            "titleLabel": "כותרת",
+            "descriptionLabel": "תיאור (אופציונלי)",
+            "summaryLabel": "סיכום (אופציונלי, תומך ב-'{{'fields'}}')",
+            "onChainCallTitle": "קריאה על השרשרת",
+            "onChainCallDescription": "ה-FunctionCall הקבועה שתבנית זו מגישה.",
+            "receiverLabel": "מקבל (חוזה)",
+            "methodLabel": "מתודה",
+            "depositLabel": "פיקדון (yoctoNEAR)",
+            "gasLabel": "דלק",
+            "argumentsTitle": "ארגומנטים",
+            "argumentsDescription": "הארגומנטים הנשלחים לחוזה. כל אחד הוא סטטי (ערך קבוע) או קלט חבר (דינמי) — עבור האחרון, תצורת הקלט מופיעה בתוך השורה.",
+            "otherInputsTitle": "קלטים נוספים",
+            "otherInputsDescription": "קלטים המשמשים רק בתוך ערך מורכב (לא ארגומנט קלט-חבר ישיר), בתוספת כל אלה שתוסיפו באופן ידני. לרוב התבניות אין כאלה."
+        },
+        "fields": {
+            "addField": "הוסף שדה",
+            "inputHeading": "קלט {number}",
+            "remove": "הסר",
+            "nameLabel": "שם",
+            "unused": "לא בשימוש — אף ארגומנט אינו משתמש ב-'{{'{name}'}}'; חברים ממלאים אותו אך הוא אינו נשלח.",
+            "label": "תווית",
+            "typeLabel": "סוג",
+            "required": "חובה",
+            "optionsLabel": "אפשרויות (אחת בכל שורה)",
+            "advancedOptions": "אפשרויות מתקדמות",
+            "helpLabel": "עזרה (אופציונלי)",
+            "helpPlaceholder": "מוצג מתחת לקלט",
+            "minLabel": "מינימום (אופציונלי)",
+            "maxLabel": "מקסימום (אופציונלי)",
+            "patternLabel": "תבנית (regex, אופציונלי)",
+            "defaultLabel": "ברירת מחדל (אופציונלי)"
+        },
+        "fieldTypes": {
+            "account": "חשבון NEAR",
+            "token": "טוקן",
+            "uint": "מספר שלם",
+            "amount": "כמות טוקנים",
+            "number": "מספר",
+            "text": "טקסט",
+            "select": "תפריט נפתח",
+            "bool": "מתג",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "הוסף ארגומנט",
+            "argumentHeading": "ארגומנט {number}",
+            "remove": "הסר",
+            "argumentNameLabel": "שם הארגומנט",
+            "argumentNamePlaceholder": "ארגומנט",
+            "typeLabel": "סוג",
+            "modeStatic": "סטטי",
+            "modeMemberInput": "קלט חבר",
+            "valueTypeLabel": "סוג ערך",
+            "valueLabel": "ערך",
+            "stringValuePlaceholder": "טקסט או '{{field}}'",
+            "insertField": "+ שדה",
+            "keyPlaceholder": "מפתח",
+            "addKey": "הוסף מפתח",
+            "addItem": "הוסף פריט"
+        },
+        "form": {
+            "selectPlaceholder": "בחרו אפשרות",
+            "fileProposal": "הגש הצעה"
+        },
+        "collapsePinned": "כווץ תבניות מוצמדות",
+        "expandPinned": "הרחב תבניות מוצמדות",
+        "validation": {
+            "required": "חובה למלא את השדה {label}",
+            "account": "{label} חייב להיות חשבון NEAR תקין",
+            "wholeNumber": "{label} חייב להיות מספר שלם",
+            "number": "{label} חייב להיות מספר",
+            "select": "{label}: יש לבחור אחת מהאפשרויות ברשימה",
+            "json": "{label} חייב להיות JSON תקין",
+            "invalid": "{label} אינו תקין",
+            "pattern": "{label} אינו תואם לתבנית הנדרשת",
+            "min": "{label} חייב להיות לפחות {min}",
+            "max": "{label} חייב להיות לכל היותר {max}"
         }
     }
 }

@@ -854,7 +854,8 @@
             "general": "Umum",
             "voting": "Pemungutan Suara",
             "preferences": "Preferensi",
-            "integrations": "Integrasi"
+            "integrations": "Integrasi",
+            "developer": "Pengembang"
         },
         "general": {
             "validation": {
@@ -1914,7 +1915,8 @@
         "guestSaveIntro": "Anda adalah tamu treasury ini. Anda hanya dapat melihat data.",
         "guestSaveAction": "Anda dapat menyimpan treasury tamu ini ke daftar treasury Anda.",
         "newFeatureRich": "Baru! 🎉 Simpan alamat yang sering digunakan untuk pembayaran lebih cepat dan bebas kesalahan. Kontak Anda tetap pribadi dan hanya terlihat oleh tim Anda.",
-        "newFeatureCta": "Coba Sekarang"
+        "newFeatureCta": "Coba Sekarang",
+        "requestTemplates": "Permintaan Khusus sudah siap. Buka di sini untuk membangun jenis permintaan pertama Anda."
     },
     "statusDate": {
         "expires": "Kedaluwarsa",
@@ -2265,6 +2267,152 @@
                 "deposit": "### Pemeliharaan penyedia terjadwal\nSetoran mungkin tidak tersedia sebentar {schedule}. Dana Anda berada di on-chain dan dalam kendali Anda.",
                 "features": "### Pemeliharaan penyedia terjadwal\nBeberapa fitur mungkin tidak tersedia sebentar {schedule}. Dana Anda berada di on-chain dan dalam kendali Anda."
             }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "Templat Permintaan",
+        "pageDescription": "Buat templat yang dapat digunakan kembali untuk jenis permintaan khusus.",
+        "loading": "Memuat…",
+        "back": "Kembali",
+        "howItWorks": "Cara Kerja",
+        "toastDeleted": "Templat dihapus",
+        "errDelete": "Gagal menghapus templat",
+        "deleteDialog": {
+            "title": "Hapus templat",
+            "body": "Hapus <b>{name}</b>? Anggota tidak akan dapat lagi mengajukan proposal darinya. Tindakan ini tidak dapat dibatalkan.",
+            "confirm": "Hapus",
+            "deleting": "Menghapus…"
+        },
+        "editor": {
+            "nameLabel": "Nama",
+            "namePlaceholder": "Atur Sapaan",
+            "nameRequired": "Nama wajib diisi",
+            "tabVisual": "Visual",
+            "tabCode": "Kode",
+            "manifestLabel": "Manifest (JSON)",
+            "invalidJsonToast": "Perbaiki JSON yang tidak valid sebelum beralih ke pembangun visual"
+        },
+        "index": {
+            "emptyTitle": "Buat templat pertama Anda",
+            "emptyDescription": "Buat templat untuk permintaan yang sering Anda kirim. Tim Anda menggunakannya kembali dalam satu klik.",
+            "createTemplate": "Buat Templat",
+            "heading": "Templat",
+            "addNew": "Tambah Baru",
+            "createRequest": "Buat Permintaan",
+            "actions": "Tindakan templat",
+            "edit": "Sunting",
+            "pin": "Sematkan ke Bilah Samping",
+            "unpin": "Lepas Sematan Templat",
+            "delete": "Hapus",
+            "errPin": "Tidak dapat memperbarui sematan"
+        },
+        "create": {
+            "title": "Templat Baru",
+            "submit": "Buat Templat",
+            "submitting": "Membuat…",
+            "toastCreated": "Templat dibuat",
+            "errCreate": "Gagal membuat templat"
+        },
+        "edit": {
+            "title": "Sunting Templat",
+            "submit": "Simpan Perubahan",
+            "deleteButton": "Hapus Templat",
+            "toastSaved": "Templat disimpan",
+            "errSave": "Gagal menyimpan templat",
+            "notFound": "Templat tidak ditemukan."
+        },
+        "fill": {
+            "noTemplate": "Tidak ada templat yang ditemukan untuk “{slug}”.",
+            "invalidManifest": "Manifest templat ini tidak valid:",
+            "proposalFiled": "Permintaan diajukan"
+        },
+        "developer": {
+            "title": "Permintaan Khusus",
+            "description": "Bangun jenis permintaan Anda sendiri saat Anda membutuhkan lebih dari pembayaran dan pertukaran. Tambahkan kolom yang Anda perlukan dan anggota Anda dapat mengirimkannya seperti permintaan lainnya.",
+            "enable": "Aktifkan",
+            "disable": "Nonaktifkan",
+            "errUpdate": "Tidak dapat memperbarui pengaturan"
+        },
+        "visual": {
+            "detailsTitle": "Detail",
+            "idLabel": "ID (slug)",
+            "titleLabel": "Judul",
+            "descriptionLabel": "Deskripsi (opsional)",
+            "summaryLabel": "Ringkasan (opsional, mendukung '{{'fields'}}')",
+            "onChainCallTitle": "Panggilan on-chain",
+            "onChainCallDescription": "FunctionCall tetap yang diajukan templat ini.",
+            "receiverLabel": "Penerima (kontrak)",
+            "methodLabel": "Metode",
+            "depositLabel": "Deposit (yoctoNEAR)",
+            "gasLabel": "Gas",
+            "argumentsTitle": "Argumen",
+            "argumentsDescription": "Argumen yang dikirim ke kontrak. Masing-masing bersifat Statis (nilai tetap) atau input Anggota (dinamis) — untuk yang terakhir, konfigurasi input muncul secara inline.",
+            "otherInputsTitle": "Input lainnya",
+            "otherInputsDescription": "Input yang hanya digunakan di dalam nilai gabungan (bukan argumen input-anggota langsung), ditambah yang Anda tambahkan secara manual. Sebagian besar templat tidak memilikinya."
+        },
+        "fields": {
+            "addField": "Tambah Kolom",
+            "inputHeading": "Input {number}",
+            "remove": "Hapus",
+            "nameLabel": "Nama",
+            "unused": "Tidak digunakan — tidak ada argumen yang memakai '{{'{name}'}}'; anggota mengisinya tetapi tidak dikirim.",
+            "label": "Label",
+            "typeLabel": "Tipe",
+            "required": "Wajib",
+            "optionsLabel": "Opsi (satu per baris)",
+            "advancedOptions": "Opsi lanjutan",
+            "helpLabel": "Bantuan (opsional)",
+            "helpPlaceholder": "Ditampilkan di bawah input",
+            "minLabel": "Min (opsional)",
+            "maxLabel": "Maks (opsional)",
+            "patternLabel": "Pola (regex, opsional)",
+            "defaultLabel": "Default (opsional)"
+        },
+        "fieldTypes": {
+            "account": "Akun NEAR",
+            "token": "Token",
+            "uint": "Bilangan bulat",
+            "amount": "Jumlah token",
+            "number": "Angka",
+            "text": "Teks",
+            "select": "Dropdown",
+            "bool": "Sakelar",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "Tambah Argumen",
+            "argumentHeading": "Argumen {number}",
+            "remove": "Hapus",
+            "argumentNameLabel": "Nama argumen",
+            "argumentNamePlaceholder": "argument",
+            "typeLabel": "Tipe",
+            "modeStatic": "Statis",
+            "modeMemberInput": "Input anggota",
+            "valueTypeLabel": "Tipe nilai",
+            "valueLabel": "Nilai",
+            "stringValuePlaceholder": "teks atau '{{field}}'",
+            "insertField": "+ kolom",
+            "keyPlaceholder": "kunci",
+            "addKey": "Tambah Kunci",
+            "addItem": "Tambah Item"
+        },
+        "form": {
+            "selectPlaceholder": "Pilih opsi",
+            "fileProposal": "Ajukan Proposal"
+        },
+        "collapsePinned": "Ciutkan templat yang disematkan",
+        "expandPinned": "Bentangkan templat yang disematkan",
+        "validation": {
+            "required": "{label} wajib diisi",
+            "account": "{label} harus berupa akun NEAR yang valid",
+            "wholeNumber": "{label} harus berupa bilangan bulat",
+            "number": "{label} harus berupa angka",
+            "select": "{label}: pilih salah satu opsi yang tersedia",
+            "json": "{label} harus berupa JSON yang valid",
+            "invalid": "{label} tidak valid",
+            "pattern": "{label} tidak sesuai dengan pola yang diperlukan",
+            "min": "{label} minimal harus {min}",
+            "max": "{label} maksimal harus {max}"
         }
     }
 }

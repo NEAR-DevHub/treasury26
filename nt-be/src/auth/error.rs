@@ -48,9 +48,13 @@ impl From<near_account_id::ParseAccountError> for AuthError {
     }
 }
 
-impl IntoResponse for AuthError {
-    fn into_response(self) -> Response {
-        let (status, message) = match &self {
+impl AuthError {
+    /// HTTP status + client-safe message for this error — the single source of truth shared by
+    /// `IntoResponse` and handlers that propagate it as `(StatusCode, String)`. DB/internal
+    /// failures map to 500 (without leaking detail); auth/permission errors keep their 4xx code.
+    /// Prefer this over collapsing every variant into a fixed status with `.map_err(|_| ...)`.
+    pub fn status_and_message(&self) -> (StatusCode, String) {
+        match self {
             AuthError::InvalidSignature(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::InvalidPublicKey(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             AuthError::InvalidNonce(_) => (StatusCode::BAD_REQUEST, self.to_string()),
@@ -69,12 +73,14 @@ impl IntoResponse for AuthError {
                 "Internal error".to_string(),
             ),
             AuthError::NotDaoMember => (StatusCode::FORBIDDEN, self.to_string()),
-        };
+        }
+    }
+}
 
-        let body = Json(json!({
-            "error": message
-        }));
-
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        let (status, message) = self.status_and_message();
+        let body = Json(json!({ "error": message }));
         (status, body).into_response()
     }
 }

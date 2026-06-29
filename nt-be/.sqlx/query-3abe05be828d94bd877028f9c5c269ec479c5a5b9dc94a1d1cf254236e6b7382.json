@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE monitored_accounts SET custom_requests_enabled = $2 WHERE account_id = $1 RETURNING custom_requests_enabled",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "custom_requests_enabled",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3abe05be828d94bd877028f9c5c269ec479c5a5b9dc94a1d1cf254236e6b7382"
+}

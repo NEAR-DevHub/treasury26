@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT ab.id, ab.dao_id, ab.name, ab.networks, ab.address, ab.note, ab.created_at,\n                   u.account_id AS created_by_wallet\n            FROM address_book ab\n            LEFT JOIN users u ON u.id = ab.created_by\n            WHERE ab.dao_id = $1\n            ORDER BY ab.created_at DESC\n            ",
+  "query": "\n            SELECT ab.id, ab.dao_id, ab.name, ab.networks, ab.address, ab.note, ab.created_at,\n                   u.account_id AS \"created_by_wallet?\"\n            FROM address_book ab\n            LEFT JOIN users u ON u.id = ab.created_by\n            WHERE ab.dao_id = $1 AND ab.id = ANY($2)\n            ORDER BY ab.created_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -40,13 +40,14 @@
       },
       {
         "ordinal": 7,
-        "name": "created_by_wallet",
+        "name": "created_by_wallet?",
         "type_info": "Varchar"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "UuidArray"
       ]
     },
     "nullable": [
@@ -60,5 +61,5 @@
       false
     ]
   },
-  "hash": "39da8bb2bd0d75abfd751e39665edf7a8ed3acf2d2f5345c32e37d097d8cdc84"
+  "hash": "5f205588489df021222df4247d494a6ad21c0216728876d457954378fcaca1a3"
 }

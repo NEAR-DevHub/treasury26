@@ -854,7 +854,8 @@
             "general": "General",
             "voting": "Voting",
             "preferences": "Preferences",
-            "integrations": "Integrations"
+            "integrations": "Integrations",
+            "developer": "Developer"
         },
         "general": {
             "validation": {
@@ -1914,7 +1915,8 @@
         "guestSaveIntro": "You are a guest of this treasury. You can only view the data.",
         "guestSaveAction": "You can save this guest treasury to your treasuries list.",
         "newFeatureRich": "New! 🎉 Stake your assets with Earn and start earning rewards. Put your funds to work effortlessly.",
-        "newFeatureCta": "Try It"
+        "newFeatureCta": "Try It",
+        "requestTemplates": "Your Custom Requests section is ready. Open it here to build your first request type."
     },
     "statusDate": {
         "expires": "Expires",
@@ -2265,6 +2267,152 @@
             "funds_at_risk": {
                 "default": "### We've paused Trezu while we investigate an issue.\nWe recommend not making any transactions until we confirm everything's clear. Updates: {statusPageLink}"
             }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "Request Templates",
+        "pageDescription": "Build reusable templates for custom request types.",
+        "loading": "Loading…",
+        "back": "Back",
+        "howItWorks": "How It Works",
+        "toastDeleted": "Template deleted",
+        "errDelete": "Failed to delete template",
+        "deleteDialog": {
+            "title": "Delete template",
+            "body": "Delete <b>{name}</b>? Members will no longer be able to file proposals from it. This cannot be undone.",
+            "confirm": "Delete",
+            "deleting": "Deleting…"
+        },
+        "editor": {
+            "nameLabel": "Name",
+            "namePlaceholder": "Set Greeting",
+            "nameRequired": "Name is required",
+            "tabVisual": "Visual",
+            "tabCode": "Code",
+            "manifestLabel": "Manifest (JSON)",
+            "invalidJsonToast": "Fix the invalid JSON before switching to the visual builder"
+        },
+        "index": {
+            "emptyTitle": "Create your first template",
+            "emptyDescription": "Make a template for requests you send often. Your team reuses it in one click.",
+            "createTemplate": "Create Template",
+            "heading": "Templates",
+            "addNew": "Add New",
+            "createRequest": "Create Request",
+            "actions": "Template actions",
+            "edit": "Edit",
+            "pin": "Pin to the Sidebar",
+            "unpin": "Unpin Template",
+            "delete": "Delete",
+            "errPin": "Could not update pin"
+        },
+        "create": {
+            "title": "New Template",
+            "submit": "Create Template",
+            "submitting": "Creating…",
+            "toastCreated": "Template created",
+            "errCreate": "Failed to create template"
+        },
+        "edit": {
+            "title": "Edit Template",
+            "submit": "Save Changes",
+            "deleteButton": "Delete Template",
+            "toastSaved": "Template saved",
+            "errSave": "Failed to save template",
+            "notFound": "Template not found."
+        },
+        "fill": {
+            "noTemplate": "No template found for “{slug}”.",
+            "invalidManifest": "This template’s manifest is invalid:",
+            "proposalFiled": "Request filed"
+        },
+        "developer": {
+            "title": "Custom Requests",
+            "description": "Build your own request types when you need more than payments and exchange. Add the fields you need and your members can submit them like any other request.",
+            "enable": "Enable",
+            "disable": "Disable",
+            "errUpdate": "Could not update the setting"
+        },
+        "visual": {
+            "detailsTitle": "Details",
+            "idLabel": "ID (slug)",
+            "titleLabel": "Title",
+            "descriptionLabel": "Description (optional)",
+            "summaryLabel": "Summary (optional, supports '{{'fields'}}')",
+            "onChainCallTitle": "On-chain call",
+            "onChainCallDescription": "The fixed FunctionCall this template files.",
+            "receiverLabel": "Receiver (contract)",
+            "methodLabel": "Method",
+            "depositLabel": "Deposit (yoctoNEAR)",
+            "gasLabel": "Gas",
+            "argumentsTitle": "Arguments",
+            "argumentsDescription": "The arguments sent to the contract. Each is Static (a fixed value) or a Member input (dynamic) — for the latter, the input's config appears inline.",
+            "otherInputsTitle": "Other inputs",
+            "otherInputsDescription": "Inputs used only inside a composed value (not a direct member-input argument), plus any you add manually. Most templates have none."
+        },
+        "fields": {
+            "addField": "Add Field",
+            "inputHeading": "Input {number}",
+            "remove": "Remove",
+            "nameLabel": "Name",
+            "unused": "Unused — no argument uses '{{'{name}'}}'; members fill it but it isn''t sent.",
+            "label": "Label",
+            "typeLabel": "Type",
+            "required": "Required",
+            "optionsLabel": "Options (one per line)",
+            "advancedOptions": "Advanced options",
+            "helpLabel": "Help (optional)",
+            "helpPlaceholder": "Shown under the input",
+            "minLabel": "Min (optional)",
+            "maxLabel": "Max (optional)",
+            "patternLabel": "Pattern (regex, optional)",
+            "defaultLabel": "Default (optional)"
+        },
+        "fieldTypes": {
+            "account": "NEAR account",
+            "token": "Token",
+            "uint": "Whole number",
+            "amount": "Token amount",
+            "number": "Number",
+            "text": "Text",
+            "select": "Dropdown",
+            "bool": "Toggle",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "Add Argument",
+            "argumentHeading": "Argument {number}",
+            "remove": "Remove",
+            "argumentNameLabel": "Argument name",
+            "argumentNamePlaceholder": "argument",
+            "typeLabel": "Type",
+            "modeStatic": "Static",
+            "modeMemberInput": "Member input",
+            "valueTypeLabel": "Value type",
+            "valueLabel": "Value",
+            "stringValuePlaceholder": "text or '{{field}}'",
+            "insertField": "+ field",
+            "keyPlaceholder": "key",
+            "addKey": "Add Key",
+            "addItem": "Add Item"
+        },
+        "form": {
+            "selectPlaceholder": "Choose an option",
+            "fileProposal": "File Proposal"
+        },
+        "collapsePinned": "Collapse pinned templates",
+        "expandPinned": "Expand pinned templates",
+        "validation": {
+            "required": "{label} is required",
+            "account": "{label} must be a valid NEAR account",
+            "wholeNumber": "{label} must be a whole number",
+            "number": "{label} must be a number",
+            "select": "{label}: choose a listed option",
+            "json": "{label} must be valid JSON",
+            "invalid": "{label} is invalid",
+            "pattern": "{label} does not match the required pattern",
+            "min": "{label} must be at least {min}",
+            "max": "{label} must be at most {max}"
         }
     }
 }
