@@ -1366,7 +1366,7 @@
               ${scheduleInfo ? `<span>${scheduleInfo}</span>` : ''}
               ${linkedInfo}
               ${groupInfo}
-              <span>by ${w.updatedBy || '—'} · ${fmtDate(w.updatedAt)}</span>
+              <span>by ${escapeHtml(w.updatedBy || '—')} · ${fmtDate(w.updatedAt)}</span>
             </div>
           </article>`;
         }).join('');

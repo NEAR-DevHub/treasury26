@@ -295,7 +295,10 @@ async fn treasury_creation_blocked(state: &AppState) -> bool {
     )
     .fetch_one(&state.db_pool)
     .await
-    .unwrap_or(false)
+    .unwrap_or_else(|e| {
+        tracing::error!("Failed to check treasury-creation pause warning: {}", e);
+        false
+    })
 }
 
 async fn run_creation(

@@ -476,9 +476,12 @@ export function useProposalApproveBlock(
     // Bridge tokens are only needed to resolve a proposal's token to the asset /
     // network ids a scoped warning is stored against. Skip that fetch entirely
     // unless a token/network-scoped payments/exchange warning is actually live.
-    const hasTokenOrNetworkFeatureWarning =
-        useHasTokenOrNetworkWarning("payments") ||
+    const hasPaymentsTokenOrNetworkWarning =
+        useHasTokenOrNetworkWarning("payments");
+    const hasExchangeTokenOrNetworkWarning =
         useHasTokenOrNetworkWarning("exchange");
+    const hasTokenOrNetworkFeatureWarning =
+        hasPaymentsTokenOrNetworkWarning || hasExchangeTokenOrNetworkWarning;
     const { data: bridgeAssets = [] } = useBridgeTokens(
         hasTokenOrNetworkFeatureWarning,
         { includeNearNetwork: true },

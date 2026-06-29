@@ -34,7 +34,7 @@ pub fn parse_admin_users(admin_users: Option<&str>) -> Vec<AdminCredential> {
     users
 }
 
-fn constant_time_eq(left: &str, right: &str) -> bool {
+pub fn constant_time_eq(left: &str, right: &str) -> bool {
     if left.len() != right.len() {
         return false;
     }
@@ -50,12 +50,17 @@ pub fn authenticate_admin(
     username: &str,
     password: &str,
 ) -> Option<String> {
+    // Evaluate every entry (no early return) so duplicate usernames are all
+    // considered and we don't leak via timing which username exists.
+    let mut matched = None;
     for cred in users {
-        if constant_time_eq(&cred.username, username) {
-            return constant_time_eq(&cred.password, password).then(|| cred.username.clone());
+        let username_ok = constant_time_eq(&cred.username, username);
+        let password_ok = constant_time_eq(&cred.password, password);
+        if username_ok && password_ok {
+            matched = Some(cred.username.clone());
         }
     }
-    None
+    matched
 }
 
 #[cfg(test)]

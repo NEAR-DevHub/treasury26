@@ -9,6 +9,7 @@ use crate::{
         fallbacks::{
             self, POST_TO_APP_CALLBACK_PREFIX, StatusIncident, admin_page_url, oh_dear_status_url,
         },
+        notifications,
         oh_dear::{self, OhDearStatus, SUPPORTED_SERVICES},
     },
     handlers::warnings::db,
@@ -22,26 +23,6 @@ fn incident_status(status: &OhDearStatus) -> &'static str {
         OhDearStatus::Failed | OhDearStatus::Crashed => "failed",
         OhDearStatus::Ok | OhDearStatus::Skipped => "ok",
     }
-}
-
-fn format_ops_alert(service: &str, check_name: &str, status: &str, message: &str) -> String {
-    let action = if fallbacks::supports_fallback_button(service) {
-        "Use <b>Post to app</b> or <b>Open admin</b>. Tap <b>View check</b> for the full Oh Dear response."
-    } else {
-        "Create the warning in admin. Tap <b>View check</b> for the full Oh Dear response."
-    };
-
-    let preview = fallbacks::format_fallback_preview_summary(service)
-        .map(|summary| format!("\n\n{summary}"))
-        .unwrap_or_default();
-
-    format!(
-        "⚠️ <b>Health check failed</b>: {service}\n\
-         Check: <code>{check_name}</code>\n\
-         Status: <b>{status}</b>\n\
-         {message}\n\n\
-         {action}{preview}"
-    )
 }
 
 async fn load_active_incident(
@@ -157,11 +138,18 @@ async fn delete_linked_warnings(state: &AppState, service: &str) {
         slot: Option<String>,
         token: Option<String>,
         network: Option<String>,
+        response: String,
+        severity: String,
+        user_message: Option<String>,
+        show_from: Option<chrono::DateTime<chrono::Utc>>,
+        starts_at: Option<chrono::DateTime<chrono::Utc>>,
+        ends_at: Option<chrono::DateTime<chrono::Utc>>,
     }
 
     let result = sqlx::query_as::<_, LinkedWarning>(
         r#"
-        SELECT id, slot, token, network
+        SELECT id, slot, token, network, response, severity, user_message,
+               show_from, starts_at, ends_at
         FROM warning_slots
         WHERE linked_service = $1 AND linked_post_id IS NULL AND is_active = true
         "#,
@@ -191,7 +179,32 @@ async fn delete_linked_warnings(state: &AppState, service: &str) {
                         "[status-monitor] Failed to delete linked warning {} for {service}: {e}",
                         warning.id
                     );
+                    continue;
                 }
+
+                notifications::notify_warning_event(
+                    state,
+                    notifications::WarningEvent {
+                        action: notifications::WarningEventAction::Removed,
+                        source: notifications::MessageTrigger::automatic(format!(
+                            "{service} health check recovered"
+                        )),
+                        preview: notifications::WarningPreview::from_message(
+                            warning.slot.as_deref(),
+                            &warning.response,
+                            &warning.severity,
+                            warning.user_message.as_deref(),
+                        ),
+                        token: warning.token.clone(),
+                        network: warning.network.clone(),
+                        schedule: notifications::WarningSchedule {
+                            show_from: warning.show_from,
+                            starts_at: warning.starts_at,
+                            ends_at: warning.ends_at,
+                        },
+                    },
+                )
+                .await;
             }
             db::invalidate_warnings_cache(state).await;
             tracing::info!(
@@ -216,11 +229,18 @@ pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
         token: Option<String>,
         network: Option<String>,
         linked_post_id: Option<String>,
+        response: String,
+        severity: String,
+        user_message: Option<String>,
+        show_from: Option<chrono::DateTime<chrono::Utc>>,
+        starts_at: Option<chrono::DateTime<chrono::Utc>>,
+        ends_at: Option<chrono::DateTime<chrono::Utc>>,
     }
 
     let warnings = match sqlx::query_as::<_, LinkedWarning>(
         r#"
-        SELECT id, slot, token, network, linked_post_id
+        SELECT id, slot, token, network, linked_post_id, response, severity,
+               user_message, show_from, starts_at, ends_at
         FROM warning_slots
         WHERE linked_service = 'near-intents'
           AND linked_post_id IS NOT NULL
@@ -286,6 +306,30 @@ pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
                 continue;
             }
 
+            notifications::notify_warning_event(
+                state,
+                notifications::WarningEvent {
+                    action: notifications::WarningEventAction::Removed,
+                    source: notifications::MessageTrigger::automatic(format!(
+                        "NEAR Intents status post resolved (#{post_id})"
+                    )),
+                    preview: notifications::WarningPreview::from_message(
+                        warning.slot.as_deref(),
+                        &warning.response,
+                        &warning.severity,
+                        warning.user_message.as_deref(),
+                    ),
+                    token: warning.token.clone(),
+                    network: warning.network.clone(),
+                    schedule: notifications::WarningSchedule {
+                        show_from: warning.show_from,
+                        starts_at: warning.starts_at,
+                        ends_at: warning.ends_at,
+                    },
+                },
+            )
+            .await;
+
             deleted.push(warning.id);
         }
     }
@@ -339,7 +383,12 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
         };
 
         if incident.telegram_message_id.is_none() {
-            let text = format_ops_alert(service, check_name, status, &check.notification_message);
+            let text = notifications::format_health_check_alert(
+                service,
+                check_name,
+                status,
+                &check.notification_message,
+            );
             let callback_data = fallbacks::supports_fallback_button(service)
                 .then(|| format!("{POST_TO_APP_CALLBACK_PREFIX}{service}"));
             let admin_url = admin_page_url();
@@ -421,11 +470,18 @@ async fn delete_expired_warnings(state: &AppState) {
         slot: Option<String>,
         token: Option<String>,
         network: Option<String>,
+        response: String,
+        severity: String,
+        user_message: Option<String>,
+        show_from: Option<chrono::DateTime<chrono::Utc>>,
+        starts_at: Option<chrono::DateTime<chrono::Utc>>,
+        ends_at: Option<chrono::DateTime<chrono::Utc>>,
     }
 
     let warnings = match sqlx::query_as::<_, ExpiredWarning>(
         r#"
-        SELECT id, slot, token, network
+        SELECT id, slot, token, network, response, severity, user_message,
+               show_from, starts_at, ends_at
         FROM warning_slots
         WHERE ends_at IS NOT NULL AND ends_at <= NOW()
         "#,
@@ -462,6 +518,29 @@ async fn delete_expired_warnings(state: &AppState) {
             );
             continue;
         }
+
+        notifications::notify_warning_event(
+            state,
+            notifications::WarningEvent {
+                action: notifications::WarningEventAction::Removed,
+                source: notifications::MessageTrigger::automatic("scheduled end time reached"),
+                preview: notifications::WarningPreview::from_message(
+                    warning.slot.as_deref(),
+                    &warning.response,
+                    &warning.severity,
+                    warning.user_message.as_deref(),
+                ),
+                token: warning.token.clone(),
+                network: warning.network.clone(),
+                schedule: notifications::WarningSchedule {
+                    show_from: warning.show_from,
+                    starts_at: warning.starts_at,
+                    ends_at: warning.ends_at,
+                },
+            },
+        )
+        .await;
+
         deleted += 1;
     }
 
@@ -472,7 +551,7 @@ async fn delete_expired_warnings(state: &AppState) {
 }
 
 async fn send_recovery_telegram(state: &Arc<AppState>, recovery: &fallbacks::AutoFallbackRecovery) {
-    let text = fallbacks::format_recovery_message(recovery);
+    let text = notifications::format_recovery_message(recovery);
     if let Err(e) = state.telegram_client.send_ops_alert_html(&text).await {
         tracing::error!("[status-monitor] Failed to send recovery ops alert: {e}");
     }

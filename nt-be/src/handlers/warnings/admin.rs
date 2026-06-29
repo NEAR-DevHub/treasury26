@@ -15,6 +15,9 @@ use std::sync::Arc;
 
 use crate::{
     AppState,
+    handlers::status::notifications::{
+        self, MessageTrigger, WarningEvent, WarningEventAction, WarningPreview, WarningSchedule,
+    },
     handlers::warnings::{
         db::{self, AuditAction},
         templates,
@@ -328,6 +331,7 @@ fn build_changes(old: &AdminWarning, new: &AdminWarning) -> Value {
     push_change!(ends_at);
     push_change!(linked_service);
     push_change!(linked_post_id);
+    push_change!(group_id);
 
     Value::Object(changes)
 }
@@ -533,6 +537,7 @@ pub async fn create_warning(
             "ends_at": warning.ends_at,
             "linked_service": warning.linked_service,
             "linked_post_id": warning.linked_post_id,
+            "group_id": warning.group_id,
         }),
     )
     .await
@@ -546,6 +551,28 @@ pub async fn create_warning(
     })?;
 
     db::invalidate_warnings_cache(&state).await;
+
+    notifications::notify_warning_event(
+        &state,
+        WarningEvent {
+            action: notifications::event_action_from_audit(action),
+            source: MessageTrigger::manual(admin.username.clone()),
+            preview: WarningPreview::from_message(
+                warning.slot.as_deref(),
+                &warning.response,
+                &warning.severity,
+                warning.user_message.as_deref(),
+            ),
+            token: warning.token.clone(),
+            network: warning.network.clone(),
+            schedule: WarningSchedule {
+                show_from: warning.show_from,
+                starts_at: warning.starts_at,
+                ends_at: warning.ends_at,
+            },
+        },
+    )
+    .await;
 
     Ok(Json(warning))
 }
@@ -648,6 +675,25 @@ pub async fn update_warning(
                 )
             })?;
         db::invalidate_warnings_cache(&state).await;
+
+        notifications::notify_warning_event(
+            &state,
+            WarningEvent {
+                action: WarningEventAction::Removed,
+                source: MessageTrigger::manual(admin.username.clone()),
+                preview: WarningPreview::from_message(
+                    slot.as_deref(),
+                    &response,
+                    &severity,
+                    user_message.as_deref(),
+                ),
+                token: token.clone(),
+                network: network.clone(),
+                schedule: WarningSchedule::default(),
+            },
+        )
+        .await;
+
         return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
@@ -742,8 +788,9 @@ pub async fn update_warning(
         &updated.ends_at,
     );
     let changes = build_changes(&previous, &updated);
+    let has_changes = !changes.as_object().is_some_and(|m| m.is_empty());
 
-    if !changes.as_object().is_some_and(|m| m.is_empty()) {
+    if has_changes {
         insert_audit_log_in_tx(&mut tx, Some(id), action, &admin.username, changes)
             .await
             .map_err(|(status, msg)| AdminError::new(status, msg))?;
@@ -757,6 +804,31 @@ pub async fn update_warning(
     })?;
 
     db::invalidate_warnings_cache(&state).await;
+
+    // Only alert when the edit actually changed something.
+    if has_changes {
+        notifications::notify_warning_event(
+            &state,
+            WarningEvent {
+                action: notifications::event_action_from_audit(action),
+                source: MessageTrigger::manual(admin.username.clone()),
+                preview: WarningPreview::from_message(
+                    updated.slot.as_deref(),
+                    &updated.response,
+                    &updated.severity,
+                    updated.user_message.as_deref(),
+                ),
+                token: updated.token.clone(),
+                network: updated.network.clone(),
+                schedule: WarningSchedule {
+                    show_from: updated.show_from,
+                    starts_at: updated.starts_at,
+                    ends_at: updated.ends_at,
+                },
+            },
+        )
+        .await;
+    }
 
     Ok(Json(updated).into_response())
 }
@@ -797,6 +869,28 @@ pub async fn delete_warning(
         })?;
 
     db::invalidate_warnings_cache(&state).await;
+
+    notifications::notify_warning_event(
+        &state,
+        WarningEvent {
+            action: WarningEventAction::Removed,
+            source: MessageTrigger::manual(admin.username.clone()),
+            preview: WarningPreview::from_message(
+                existing.slot.as_deref(),
+                &existing.response,
+                &existing.severity,
+                existing.user_message.as_deref(),
+            ),
+            token: existing.token.clone(),
+            network: existing.network.clone(),
+            schedule: WarningSchedule {
+                show_from: existing.show_from,
+                starts_at: existing.starts_at,
+                ends_at: existing.ends_at,
+            },
+        },
+    )
+    .await;
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -13,7 +13,10 @@ use teloxide::{
 
 use crate::{
     AppState,
-    handlers::status::fallbacks::{self, parse_post_to_app_callback},
+    handlers::status::{
+        fallbacks::{self, parse_post_to_app_callback},
+        notifications,
+    },
 };
 
 /// Axum handler for incoming Telegram webhook updates.
@@ -32,7 +35,7 @@ pub async fn handle_telegram_webhook(
         .and_then(|v| v.to_str().ok());
 
     match (expected, received) {
-        (Some(e), Some(r)) if e == r => {}
+        (Some(e), Some(r)) if crate::utils::admin_auth::constant_time_eq(e, r) => {}
         (None, _) => {} // No secret configured — allow all (dev mode)
         _ => return StatusCode::UNAUTHORIZED,
     }
@@ -197,7 +200,8 @@ async fn handle_callback_query(state: &AppState, callback: teloxide::types::Call
     match fallbacks::activate_fallback(state, service, activated_by).await {
         Ok(warning_id) => {
             let already_active = warning_id.is_none();
-            let note = fallbacks::format_activation_message(service, activated_by, already_active);
+            let note =
+                notifications::format_activation_message(service, activated_by, already_active);
             if let Err(e) = state.telegram_client.send_ops_alert_html(&note).await {
                 tracing::error!(
                     "[telegram] Failed to send post-to-app confirmation in chat {chat_id}: {e}"
