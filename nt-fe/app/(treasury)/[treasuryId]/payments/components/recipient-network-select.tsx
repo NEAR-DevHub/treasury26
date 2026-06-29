@@ -62,6 +62,9 @@ function isAddressCompatibleWithNetwork(
 ): boolean {
     if (!address) return true;
     const blockchain = getBlockchainType(networkName);
+    if (blockchain === "unknown") {
+        return false;
+    }
     if (blockchain === NEAR_NETWORK_ID) {
         // NEAR full check is async; sync format check is enough for sectioning.
         return isValidNearAddressFormat(address);

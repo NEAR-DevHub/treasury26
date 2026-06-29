@@ -169,6 +169,7 @@ export function TreasuryOnboardingPage({
     const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
     const [showWaitlist, setShowWaitlist] = useState(false);
     const pendingAutoCreateRef = useRef(false);
+    const hasTrackedOnboardingEntry = useRef(false);
     const waitlistCardClassName =
         "mx-auto h-[516px] w-full max-w-[600px] items-center justify-center gap-5 overflow-hidden rounded-xl border border-border bg-card p-4";
     const waitlistSubtextClassName =
@@ -201,6 +202,34 @@ export function TreasuryOnboardingPage({
         pathname,
         preferredTreasuryId,
         router,
+        shouldKeepUserOnCreatePage,
+    ]);
+
+    useEffect(() => {
+        if (isInitializing || isLoading || hasTrackedOnboardingEntry.current) {
+            return;
+        }
+
+        hasTrackedOnboardingEntry.current = true;
+
+        if (!shouldKeepUserOnCreatePage && accountId && preferredTreasuryId) {
+            trackEvent("onboarding_existing_treasury_redirect", {
+                entry_page: pathname,
+                treasury_id: preferredTreasuryId,
+            });
+            return;
+        }
+
+        trackEvent("onboarding_landed", {
+            page: pathname,
+            is_authenticated: !!accountId,
+        });
+    }, [
+        accountId,
+        isInitializing,
+        isLoading,
+        pathname,
+        preferredTreasuryId,
         shouldKeepUserOnCreatePage,
     ]);
 
@@ -363,11 +392,9 @@ export function TreasuryOnboardingPage({
                     );
                     setCreatedTreasuryId(treasuryId);
                     trackEvent("treasury-created", {
-                        source: "/",
                         treasury_id: treasuryId,
                     });
                     trackEvent("onboarding-completed", {
-                        source: "/",
                         treasury_id: treasuryId,
                     });
                     queryClient.invalidateQueries({
@@ -637,7 +664,7 @@ export function TreasuryOnboardingPage({
                 }
                 onConnectSupported={async (walletId?: string) => {
                     if (authError) clearError();
-                    await connect(walletId);
+                    await connect(walletId, isCreateRoute ? "/create" : "/");
                 }}
             />
         </div>
