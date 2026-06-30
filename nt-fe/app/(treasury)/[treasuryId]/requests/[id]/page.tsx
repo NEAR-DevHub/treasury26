@@ -91,9 +91,7 @@ export default function RequestPage({ params }: RequestPageProps) {
                 <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full">
                     <PageCard className="w-full">
                         <ConfidentialState
-                            skeleton={
-                                <Skeleton className="h-[300px] w-full" />
-                            }
+                            skeleton={<Skeleton className="h-[300px] w-full" />}
                         />
                     </PageCard>
                     <div className="w-full">
