@@ -1,6 +1,6 @@
 use teloxide::{
     Bot,
-    payloads::SendMessageSetters,
+    payloads::{EditMessageTextSetters, SendMessageSetters},
     requests::Requester,
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode},
 };
@@ -17,24 +17,59 @@ use url::Url;
 #[derive(Clone, Default, Debug)]
 pub struct TelegramClient {
     pub(crate) bot: Option<Bot>,
+    /// General notifications channel (`TELEGRAM_CHAT_ID`).
     notification_chat_id: Option<String>,
+    /// Dedicated ops / monitoring channel (`TELEGRAM_OPS_CHAT_ID`).
+    ops_chat_id: Option<String>,
 }
 
 impl TelegramClient {
     /// Create a new TelegramClient.
     ///
-    /// - `bot_token`: the Telegram Bot API token (from `TELEGRAM_BOT_TOKEN`)
-    /// - `chat_id`: the internal alerts channel chat ID (from `TELEGRAM_CHAT_ID`)
-    pub fn new(bot_token: Option<String>, chat_id: Option<String>) -> Self {
+    /// - `bot_token`: the Telegram Bot API token (`TELEGRAM_BOT_TOKEN`)
+    /// - `chat_id`: general notifications channel (`TELEGRAM_CHAT_ID`)
+    /// - `ops_chat_id`: status-monitor ops channel (`TELEGRAM_OPS_CHAT_ID`)
+    pub fn new(
+        bot_token: Option<String>,
+        chat_id: Option<String>,
+        ops_chat_id: Option<String>,
+    ) -> Self {
         Self {
             bot: bot_token.filter(|s| !s.is_empty()).map(Bot::new),
             notification_chat_id: chat_id,
+            ops_chat_id,
         }
     }
 
     /// Expose the inner teloxide Bot, if configured.
     pub fn bot(&self) -> Option<&Bot> {
         self.bot.as_ref()
+    }
+
+    /// Send a plain-text notification to the ops monitoring channel (HTML).
+    pub async fn send_ops_alert_html(
+        &self,
+        text: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let (bot, chat_id_str) = match (&self.bot, &self.ops_chat_id) {
+            (Some(b), Some(c)) => (b, c),
+            _ => {
+                tracing::warn!(
+                    "Ops channel not configured (TELEGRAM_OPS_CHAT_ID). Alert ignored: {}",
+                    text
+                );
+                return Ok(());
+            }
+        };
+
+        let chat_id: i64 = chat_id_str
+            .parse()
+            .map_err(|_| format!("Invalid TELEGRAM_OPS_CHAT_ID: {}", chat_id_str))?;
+
+        bot.send_message(ChatId(chat_id), text)
+            .parse_mode(ParseMode::Html)
+            .await?;
+        Ok(())
     }
 
     /// Send a plain-text notification to the configured internal alerts channel.
@@ -119,6 +154,64 @@ impl TelegramClient {
         Ok(sent.id.0)
     }
 
+    /// Send an ops-channel alert with optional "Post to app" callback,
+    /// "Open admin", and "View check" URL buttons.
+    pub async fn send_ops_alert_with_buttons(
+        &self,
+        text: &str,
+        admin_url: &str,
+        check_url: Option<&str>,
+        callback_data: Option<&str>,
+    ) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
+        let (bot, chat_id_str) = match (&self.bot, &self.ops_chat_id) {
+            (Some(b), Some(c)) => (b, c),
+            _ => {
+                tracing::warn!(
+                    "Ops channel not configured (TELEGRAM_OPS_CHAT_ID). Alert ignored: {}",
+                    text
+                );
+                return Ok(0);
+            }
+        };
+
+        let chat_id: i64 = chat_id_str
+            .parse()
+            .map_err(|_| format!("Invalid TELEGRAM_OPS_CHAT_ID: {}", chat_id_str))?;
+
+        let parsed_admin_url: Url = admin_url
+            .parse()
+            .map_err(|_| format!("Invalid admin URL: {}", admin_url))?;
+
+        let admin_button = InlineKeyboardButton::url("Open admin", parsed_admin_url);
+
+        let mut rows = match callback_data {
+            Some(callback_data) => vec![vec![
+                InlineKeyboardButton::callback("Post to app", callback_data.to_string()),
+                admin_button,
+            ]],
+            None => vec![vec![admin_button]],
+        };
+
+        if let Some(check_url) = check_url {
+            let parsed_check_url: Url = check_url
+                .parse()
+                .map_err(|_| format!("Invalid check URL: {}", check_url))?;
+            rows.push(vec![InlineKeyboardButton::url(
+                "View check",
+                parsed_check_url,
+            )]);
+        }
+
+        let keyboard = InlineKeyboardMarkup::new(rows);
+
+        let sent = bot
+            .send_message(ChatId(chat_id), text)
+            .parse_mode(ParseMode::Html)
+            .reply_markup(keyboard)
+            .await?;
+        Ok(sent.id.0)
+    }
+
     /// Edit an existing message in an arbitrary Telegram chat.
     pub async fn edit_message_text(
         &self,
@@ -144,6 +237,7 @@ impl TelegramClient {
                 teloxide::types::MessageId(message_id),
                 text,
             )
+            .parse_mode(ParseMode::Html)
             .await
         {
             tracing::warn!(
@@ -152,7 +246,9 @@ impl TelegramClient {
                 chat_id,
                 edit_err
             );
-            bot.send_message(ChatId(chat_id), text).await?;
+            bot.send_message(ChatId(chat_id), text)
+                .parse_mode(ParseMode::Html)
+                .await?;
         }
 
         Ok(())

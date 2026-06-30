@@ -271,6 +271,36 @@ pub async fn create_treasury_stream(
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
+/// Treasury creation is blocked if either the env kill-switch is set, or an
+/// active `paused` `treasury-creation` warning slot is live (so the team can
+/// pause creation from the admin panel without a redeploy).
+async fn treasury_creation_blocked(state: &AppState) -> bool {
+    if state.env_vars.disable_treasury_creation {
+        return true;
+    }
+
+    sqlx::query_scalar::<_, bool>(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM warning_slots
+            WHERE slot = 'treasury-creation'
+              AND response = 'paused'
+              AND (
+                is_active = true
+                OR (show_from IS NOT NULL AND show_from <= NOW())
+              )
+              AND (ends_at IS NULL OR ends_at > NOW())
+        )
+        "#,
+    )
+    .fetch_one(&state.db_pool)
+    .await
+    .unwrap_or_else(|e| {
+        tracing::error!("Failed to check treasury-creation pause warning: {}", e);
+        false
+    })
+}
+
 async fn run_creation(
     state: Arc<AppState>,
     payload: CreateTreasuryRequest,
@@ -279,7 +309,7 @@ async fn run_creation(
     let treasury = payload.account_id.clone();
     let is_confidential = payload.is_confidential;
 
-    if state.env_vars.disable_treasury_creation {
+    if treasury_creation_blocked(&state).await {
         let message = format!("Treasury creation disabled. Treasury: {treasury} is not created.");
         if let Err(e) = state.telegram_client.send_message(&message).await {
             tracing::warn!("Failed to send Telegram notification: {}", e);

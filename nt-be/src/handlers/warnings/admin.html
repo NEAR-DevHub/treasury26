@@ -1,0 +1,2562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trezu Status Manager</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2d3142;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --green: #34a853;
+      --amber: #f9ab00;
+      --red: #ea4335;
+      --blue: #4285f4;
+      --accent: #8ab4f8;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    header h1 { margin: 0; font-size: 1.25rem; }
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .tab {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab.active { background: var(--accent); color: #111; border-color: var(--accent); }
+    main { padding: 1.25rem; max-width: 1100px; margin: 0 auto; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .toolbar { margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    button, .btn {
+      background: var(--accent);
+      color: #111;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.secondary, .btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    button.danger { background: var(--red); color: #fff; }
+    .cards { display: grid; gap: 0.75rem; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      background: var(--surface);
+      border-left: 4px solid var(--border);
+    }
+    .card.paused { border-left-color: var(--red); }
+    .card.notice { border-left-color: var(--amber); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+    .card-header h3 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+    .card-header .actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+    .card-header .actions button { padding: 0.25rem 0.6rem; font-size: 0.78rem; }
+    .card-message { margin: 0.5rem 0 0; padding: 0.45rem 0.7rem; background: var(--bg); border-radius: 6px; font-size: 0.88rem; line-height: 1.4; }
+    .card-note { margin: 0.35rem 0 0; font-size: 0.8rem; color: var(--muted); font-style: italic; }
+    .card-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1rem; margin-top: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+    .warnings-bar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); margin-bottom: 0.75rem; }
+    .subtabs { display: flex; gap: 0; }
+    .subtab { background: none; border: none; color: var(--muted); padding: 0.5rem 1rem; cursor: pointer; font-size: 0.9rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .subtab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    .subtab .count { background: var(--border); color: var(--muted); font-size: 0.7rem; padding: 0.1rem 0.45rem; border-radius: 99px; margin-left: 0.3rem; }
+    .subtab.active .count { background: var(--accent); color: #111; }
+    .loading-state { text-align: center; padding: 2rem 0; color: var(--muted); font-size: 0.9rem; }
+    @keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+    .loading-state { animation: pulse 1.5s ease-in-out infinite; }
+    .meta { color: var(--muted); font-size: 0.85rem; }
+    .form {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      background: var(--surface);
+      margin-bottom: 1rem;
+    }
+    .form h3 { margin-top: 0; }
+    .form-back { margin-bottom: 0.65rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; font-weight: 500; }
+    label { display: block; margin: 0.75rem 0 0.25rem; font-size: 0.9rem; }
+    select, input[type="datetime-local"], input[type="text"], textarea {
+      width: 100%;
+      padding: 0.5rem 0.65rem;
+      min-height: 2.375rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      color-scheme: dark;
+      line-height: 1.25;
+    }
+    select {
+      padding-right: 2rem;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%239aa0a6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.65rem center;
+      cursor: pointer;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    select:disabled { opacity: 0.4; cursor: not-allowed; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    @keyframes btn-spin { to { transform: rotate(360deg); } }
+    .btn-spinner {
+      display: inline-block;
+      width: 0.85em;
+      height: 0.85em;
+      margin-right: 0.45em;
+      vertical-align: -0.1em;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: btn-spin 0.6s linear infinite;
+    }
+    select.placement-static-select:disabled {
+      cursor: default;
+      color: var(--text);
+    }
+    .search-select { position: relative; }
+    .search-select-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      position: relative;
+      padding: 0.5rem 2rem 0.5rem 0.65rem;
+      min-height: 2.375rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      font-weight: inherit;
+      line-height: 1.25;
+      appearance: none;
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .search-select-trigger:hover { border-color: var(--accent); }
+    .search-select-trigger:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .search-select-trigger:disabled:hover { border-color: var(--border); }
+    .search-select-trigger[aria-expanded="true"] {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .search-select-value {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .search-select-chevron {
+      position: absolute;
+      right: 0.65rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0.75rem;
+      height: 0.75rem;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%239aa0a6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+    }
+    .search-select-chevron::after { content: none; }
+    .search-select-panel {
+      position: absolute;
+      z-index: 30;
+      top: calc(100% + 2px);
+      left: 0;
+      right: 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+    .search-select-search {
+      width: 100%;
+      box-sizing: border-box;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      padding: 0.5rem 0.65rem;
+      min-height: 2.375rem;
+      background: var(--bg);
+      color: var(--text);
+      font-weight: inherit;
+      line-height: 1.25;
+    }
+    .search-select-search:focus { outline: none; box-shadow: inset 0 0 0 1px var(--accent); }
+    .search-select-list {
+      list-style: none;
+      margin: 0;
+      padding: 0.125rem 0;
+      max-height: 15rem;
+      overflow-y: auto;
+    }
+    .search-select-option {
+      padding: 0.3125rem 0.65rem;
+      cursor: pointer;
+      font-weight: inherit;
+      line-height: 1.25;
+    }
+    .search-select-option:hover,
+    .search-select-option.selected { background: rgba(138, 180, 248, 0.12); }
+    .search-select-option.nav-active { background: rgba(138, 180, 248, 0.22); outline: 1px solid rgba(138, 180, 248, 0.35); }
+    input[data-locked="post"] { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(138,180,248,0.25); }
+    .search-select-empty {
+      padding: 0.65rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      list-style: none;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .severity-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .toggle { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin: 0; }
+    .flex-row { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+    .timing-row { display: flex; gap: 1.5rem; margin-bottom: 0.5rem; }
+    .check-label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+    .form-section { margin: 1.25rem 0; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.02); }
+    .form-section-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 0.5rem; }
+    .hint { color: var(--muted); font-size: 0.8rem; margin: 0.25rem 0 0; }
+    .preview {
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      background: var(--bg);
+      margin-top: 1rem;
+    }
+    .preview-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 0.5rem; }
+    .preview-detail { font-size: 0.88rem; line-height: 1.45; margin: 0 0 0.6rem; color: var(--text); }
+    .preview-meta { font-size: 0.8rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.25rem; padding-top: 0.55rem; border-top: 1px solid var(--border); }
+    .preview-meta b { color: var(--text); font-weight: 600; }
+    .behavior-tag { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 99px; font-size: 0.72rem; font-weight: 600; }
+    .behavior-tag.blocks { background: rgba(234,67,53,0.18); color: #ff8a80; }
+    .behavior-tag.passive { background: rgba(52,168,83,0.18); color: #81c995; }
+    .preview-inline-row { display: flex; align-items: center; gap: 0.35rem; color: var(--amber); }
+    .preview-info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 50%;
+      border: 1px solid currentColor;
+      font-size: 0.65rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .preview-tooltip-note { font-size: 0.82rem; opacity: 0.85; margin-top: 0.25rem !important; }
+    .hidden { display: none !important; }
+    .error { color: var(--red); margin: 0.5rem 0; }
+    .form-error { background: rgba(234,67,53,0.12); border: 1px solid var(--red); border-radius: 8px; padding: 0.65rem 0.85rem; color: var(--red); font-size: 0.88rem; margin-top: 1rem; }
+    .audit-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .audit-card {
+      margin: 0;
+      border-left-width: 4px;
+    }
+    .audit-card.activated { border-left-color: var(--green, #34a853); }
+    .audit-card.deleted { border-left-color: var(--red); }
+    .audit-card.updated { border-left-color: var(--blue); }
+    .audit-card.created,
+    .audit-card.scheduled { border-left-color: var(--amber); }
+    .audit-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.35rem;
+    }
+    .audit-card-header h3 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    .audit-action-tag {
+      flex-shrink: 0;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.15rem 0.45rem;
+      border-radius: 99px;
+      background: var(--bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .audit-card.activated .audit-action-tag { color: #81c995; border-color: rgba(52,168,83,0.35); }
+    .audit-card.deleted .audit-action-tag { color: #ff8a80; border-color: rgba(234,67,53,0.35); }
+    .audit-card.updated .audit-action-tag { color: #8ab4f8; border-color: rgba(66,133,244,0.35); }
+    .audit-actor { margin-bottom: 0.45rem; }
+    .audit-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0.35rem 0 0.5rem;
+      padding: 0.55rem 0.65rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .audit-meta b { color: var(--text); font-weight: 600; }
+    .audit-card-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.35rem;
+    }
+    .audit-edit-btn { font-size: 0.78rem; padding: 0.25rem 0.55rem; }
+    .audit-raw { margin-top: 0.15rem; width: 100%; }
+    .audit-raw summary {
+      cursor: pointer;
+      font-size: 0.78rem;
+      color: var(--muted);
+      user-select: none;
+    }
+    pre.changes {
+      background: var(--bg);
+      padding: 0.5rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.8rem;
+    }
+    @media (max-width: 700px) {
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header><h1>Trezu Status Manager</h1></header>
+  <nav class="tabs">
+    <button class="tab active" data-tab="warnings">Warnings</button>
+    <button class="tab" data-tab="audit">Audit Log</button>
+  </nav>
+  <main>
+    <div id="error" class="error hidden"></div>
+
+    <section id="panel-warnings" class="panel active">
+      <div id="warning-form-shell" class="hidden">
+        <button type="button" class="secondary form-back" data-action="hide-form">← Back to list</button>
+        <div id="warning-form" class="form"></div>
+      </div>
+      <div id="warnings-content">
+        <div class="warnings-bar">
+          <div class="subtabs" id="warning-subtabs">
+            <button class="subtab active" data-filter="live">Active <span class="count" id="count-live">·</span></button>
+            <button class="subtab" data-filter="scheduled">Upcoming <span class="count" id="count-scheduled">·</span></button>
+          </div>
+          <div class="toolbar" style="margin:0">
+            <button id="btn-new-warning">+ Add</button>
+            <button class="secondary" id="btn-refresh-warnings">Refresh</button>
+          </div>
+        </div>
+        <div id="warnings-loading" class="loading-state">Loading warnings…</div>
+        <p id="warnings-empty" class="meta hidden" style="text-align:center;padding:2rem 0">No warnings here yet.</p>
+        <div id="warnings-list" class="cards hidden"></div>
+      </div>
+    </section>
+
+    <section id="panel-audit" class="panel">
+      <div class="toolbar">
+        <button class="secondary" id="btn-refresh-audit">Refresh</button>
+        <button class="secondary" id="btn-audit-prev">Previous</button>
+        <button class="secondary" id="btn-audit-next">Next</button>
+        <span id="audit-page-info" class="meta"></span>
+      </div>
+      <div id="audit-list" class="audit-list"></div>
+    </section>
+  </main>
+
+  <script>
+    // ─── STATIC CONFIGURATION ─────────────────────────────────────────────────
+    const SLOT_GROUPS = [
+      { group: 'System', slots: [
+        { value: 'app', label: 'App-wide (entire platform)' },
+        { value: 'login', label: 'Login' },
+        { value: 'treasury-creation', label: 'Treasury creation (waitlist)' },
+      ]},
+      { group: 'Features', slots: [
+        { value: 'features', label: 'Payments, Exchange, Deposits' },
+      ]},
+      { group: 'Actions', slots: [
+        { value: 'action.create-proposal', label: 'Creating requests (payments, exchange, members…)' },
+        { value: 'action.approve', label: 'Approving requests' },
+        { value: 'action.reject', label: 'Rejecting requests' },
+        { value: 'action.remove', label: 'Removing requests' },
+      ]},
+      { group: 'Data displays', slots: [
+        { value: 'data.balances', label: 'Balances' },
+        { value: 'data.activity', label: 'Transaction history' },
+      ]},
+    ];
+    const SLOTS = SLOT_GROUPS.flatMap(g => g.slots);
+    const TRANSACTION_SLOT_OPTIONS = [
+      { value: 'payments', label: 'Payments' },
+      { value: 'exchange', label: 'Exchange' },
+      { value: 'deposit', label: 'Deposits' },
+    ];
+    const ACTION_SLOT_VALUES = ['action.create-proposal', 'action.approve', 'action.reject', 'action.remove'];
+
+    // ─── RUNTIME STATE ────────────────────────────────────────────────────────
+    let bridgeAssets = [];
+    // The token dropdown stores the asset id as its value (warnings match
+    // proposals by asset id). The network dropdown stores the chain NAME
+    // (e.g. "sol", "base") because the same chain has a different per-token
+    // network id for every asset, so an id-based match would only ever hit one
+    // token. Matching by name lets a single warning cover the whole chain.
+    let tokenOptions = [];        // [{ id, name }]
+    let allNetworkOptions = [];   // [{ id, name }] de-duped across assets by name
+    const tokenNameById = {};
+    const networkNameById = {};
+    let bridgeTokensPromise = null;
+
+    // ─── LABEL HELPERS ────────────────────────────────────────────────────────
+    function tokenLabel(id) {
+      return id ? (tokenNameById[id] || id) : '';
+    }
+    // `value` is the chain name; fall back to resolving a legacy network id.
+    function networkLabel(value) {
+      if (!value) return '';
+      return (networkNameById[value] || value).toUpperCase();
+    }
+
+    // Token/network targeting only applies to the transaction features slot.
+    // (deposit/exchange/payments are edited through the virtual 'features' entry.)
+    const SLOTS_WITH_TOKEN_FILTER = new Set(['features']);
+
+    // Login is one slot in the form; a specific wallet is stored as the
+    // composite slot `login.wallet.<id>` (the frontend reads these directly).
+    const LOGIN_WALLET_PREFIX = 'login.wallet.';
+    const WALLET_OPTIONS = [
+      { value: 'ledger', label: 'Ledger' },
+      { value: 'evm', label: 'EVM Wallets' },
+      { value: 'passkey', label: 'Passkey' },
+      { value: 'meteor', label: 'Meteor' },
+      { value: 'intear', label: 'Intear' },
+      { value: 'near-mobile', label: 'NEAR Mobile' },
+      { value: 'near-cli', label: 'NEAR CLI' },
+      { value: 'phantom', label: 'Phantom' },
+    ];
+
+    // Split a stored slot into its base ('login') and wallet id (or '').
+    function splitLoginSlot(slot) {
+      if (slot && slot.startsWith(LOGIN_WALLET_PREFIX)) {
+        return { base: 'login', wallet: slot.slice(LOGIN_WALLET_PREFIX.length) };
+      }
+      return { base: slot, wallet: '' };
+    }
+
+    function walletLabel(id) {
+      const found = WALLET_OPTIONS.find(w => w.value === id);
+      return found ? found.label : id;
+    }
+
+    function buildWalletOptions(selected) {
+      let opts = '<option value="">All wallets</option>';
+      WALLET_OPTIONS.forEach(w => {
+        opts += `<option value="${w.value}" ${w.value === selected ? 'selected' : ''}>${w.label}</option>`;
+      });
+      return opts;
+    }
+
+    // ─── CATALOG (injected at serve time from shared/status-situations.json) ───
+    const CATALOG = "__TEMPLATE_DATA__";
+    const SITUATIONS = CATALOG.situations || [];
+    const PLACEMENTS = CATALOG.placements || {};
+
+    const ACTION_BY_SLOT = {
+      payments: 'payment',
+      deposit: 'deposit',
+      exchange: 'exchange',
+      features: 'transaction',
+      'action.approve': 'approve',
+      'action.reject': 'reject',
+      'action.remove': 'remove',
+      'action.create-proposal': 'proposal',
+      'data.balances': 'transaction',
+    };
+
+    function findSituation(id) {
+      return SITUATIONS.find(s => s.id === id);
+    }
+
+    function sortedSituations() {
+      return [...SITUATIONS].sort((a, b) => (a.row || 999) - (b.row || 999));
+    }
+
+    function buildSituationOptions(selected) {
+      let opts = '<option value="">— Pick a situation —</option>';
+      sortedSituations().forEach(s => {
+        const prefix = s.row ? `#${s.row} · ` : '';
+        opts += `<option value="${s.id}" ${s.id === selected ? 'selected' : ''}>${prefix}${escapeHtml(s.label)}</option>`;
+      });
+      return opts;
+    }
+
+    function getFilteredPlacements(sit) {
+      if (!sit) return [];
+      const featureSlots = new Set(['payments', 'exchange', 'deposit']);
+      const hasFeaturesMode = sit.placements.includes('features');
+      return sit.placements.filter(p => !(hasFeaturesMode && featureSlots.has(p)));
+    }
+
+    function buildPlacementOptions(situationId, selected) {
+      const sit = findSituation(situationId);
+      if (!sit) return '';
+      const placements = getFilteredPlacements(sit);
+      return placements.map(p => {
+        const label = PLACEMENTS[p] || p;
+        return `<option value="${p}" ${p === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+      }).join('');
+    }
+
+    function renderPlacementField(situationId, selected) {
+      const section = document.getElementById('placement-section');
+      const container = document.getElementById('placement-field-wrap');
+      if (!section || !container) return;
+
+      const sit = findSituation(situationId);
+      if (situationIsLogin(situationId) || !sit || !getFilteredPlacements(sit).length) {
+        section.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+      }
+
+      section.classList.remove('hidden');
+      const placements = getFilteredPlacements(sit);
+      const value = selected && placements.includes(selected) ? selected : placements[0];
+      if (placements.length === 1) {
+        const label = PLACEMENTS[value] || value;
+        container.innerHTML =
+          `<input type="hidden" id="f-placement" value="${escapeHtml(value)}">` +
+          `<select disabled class="placement-static-select" aria-label="Where it appears">${buildPlacementOptions(situationId, value)}</select>` +
+          `<p class="hint">Only one placement applies for this situation.</p>`;
+      } else {
+        container.innerHTML =
+          `<select id="f-placement">${buildPlacementOptions(situationId, value)}</select>`;
+      }
+    }
+
+    function scopeUsesToken(scope) {
+      return Boolean(scope && scope.includes('token'));
+    }
+
+    function scopeUsesNetwork(scope) {
+      return Boolean(scope && scope.includes('network'));
+    }
+
+    function scopeUsesExclusiveTokenOrNetwork(scope) {
+      return scope === 'token|network';
+    }
+
+    function scopeUsesWallet(scope) {
+      return scope === 'wallet';
+    }
+
+    function scopeUsesRequestType(scope) {
+      return scope === 'requestType';
+    }
+
+    function situationIsWaitlist(situationId) {
+      return situationId === 'treasury_creation_unavailable';
+    }
+
+    function situationIsLogin(situationId) {
+      return situationId === 'wallet_login_unavailable';
+    }
+
+    function inferPlacementFromSlot(slot, situationId) {
+      if (!slot) return '';
+      if (TRANSACTION_SLOT_OPTIONS.some(s => s.value === slot)) return 'features';
+      if (situationId === 'requests_wont_process' && ACTION_SLOT_VALUES.includes(slot)) return 'actions';
+      if (slot.startsWith(LOGIN_WALLET_PREFIX)) return 'login.wallet.*';
+      return slot;
+    }
+
+    function pickScopeMessage(sit, st) {
+      if (!sit?.messagesByScope) return null;
+      const hasToken = Boolean(st.token?.trim());
+      const hasNetwork = Boolean(st.network?.trim());
+      if (hasToken && hasNetwork) return sit.messagesByScope['token+network'] || null;
+      if (hasToken && !hasNetwork) return sit.messagesByScope.token || null;
+      if (hasNetwork && !hasToken) return sit.messagesByScope.network || null;
+      return null;
+    }
+
+    // ─── MESSAGE TEMPLATE ENGINE ──────────────────────────────────────────────
+    function normalizeMessageNewlines(text) {
+      if (!text) return '';
+      return String(text).replace(/\\n/g, '\n');
+    }
+
+    function resolveCatalogTemplateKey(st) {
+      if (st.effectiveSlot?.startsWith(LOGIN_WALLET_PREFIX)) return 'login.wallet.*';
+      if (situationIsLogin(st.situation) && !st.wallet) return 'login';
+      if (st.placement === 'features' || st.effectiveSlot === 'features' || st.slot === 'features') {
+        const selected = selectedTransactionSlots();
+        if (selected.length === 1) return selected[0];
+        if (selected.length > 1) return 'features';
+      }
+      return st.effectiveSlot || st.placement || st.slot || '';
+    }
+
+    function getMessageTemplate(situation, slotOrPlacement) {
+      if (!situation) return '';
+      let key = slotOrPlacement || '';
+      if (key.startsWith(LOGIN_WALLET_PREFIX)) key = 'login.wallet.*';
+      const raw = situation.byPlacement?.[key] ?? situation.message ?? '';
+      return normalizeMessageNewlines(raw);
+    }
+
+    function scheduleTextFromForm() {
+      const isScheduled = !document.querySelector('input[name="timing"][value="now"]')?.checked;
+      if (!isScheduled) return '';
+      const schedStart = document.getElementById('f-starts-at')?.value || '';
+      const schedEnd = document.getElementById('f-ends-at')?.value || '';
+      const parts = [];
+      if (schedStart) parts.push('on ' + new Date(schedStart + 'Z').toLocaleString());
+      if (schedEnd) parts.push('until ' + new Date(schedEnd + 'Z').toLocaleString());
+      return parts.join(' ');
+    }
+
+    function fillMessageTemplate(template, ctx) {
+      const subject = subjectFor(tokenLabel(ctx.token), networkLabel(ctx.network));
+      const slot = ctx.effectiveSlot || ctx.placement || '';
+      const action = ACTION_BY_SLOT[slot] || 'transaction';
+      const result = normalizeMessageNewlines(template)
+        .replace(/\{statusPageLink\}/g, CATALOG.statusPageLink || '')
+        .replace(/\{subject\}/g, subject)
+        .replace(/\{token\}/g, tokenLabel(ctx.token))
+        .replace(/\{network\}/g, networkLabel(ctx.network))
+        .replace(/\{wallet\}/g, walletLabel(ctx.wallet))
+        .replace(/\{action\}/g, action)
+        .replace(/\{schedule\}/g, ctx.schedule || '')
+        .replace(/\{requestType\}/g, ctx.requestType || '')
+        .replace(/\{capability\}/g, ctx.capability || '');
+      return result;
+    }
+
+    function generateMessagesFromCatalog(st) {
+      const sit = findSituation(st.situation);
+      if (!sit) return null;
+
+      const scopeMessage = pickScopeMessage(sit, st);
+      if (scopeMessage) {
+        return fillMessageTemplate(scopeMessage, { ...st, schedule: scheduleTextFromForm() });
+      }
+
+      const slotKey = st.effectiveSlot?.startsWith(LOGIN_WALLET_PREFIX)
+        ? 'login.wallet.*'
+        : (situationIsLogin(st.situation) && !st.wallet ? 'login' : st.placement);
+      const template = getMessageTemplate(sit, resolveCatalogTemplateKey(st) || slotKey);
+      if (!template) return null;
+      return fillMessageTemplate(template, { ...st, schedule: scheduleTextFromForm() });
+    }
+
+    // ─── SLOT PLACEMENT & BEHAVIOR DEFINITIONS ────────────────────────────────
+    const SLOT_PLACEMENT = {
+      'features': 'Payments, Exchange, and Deposit pages — banner above the form',
+      app: 'Sidebar banner across the entire platform',
+      login: 'Login screen — banner above wallet list',
+      'treasury-creation': 'Treasury creation flow — replaced by waitlist',
+      deposit: 'Deposit page — banner above the form',
+      exchange: 'Exchange page — banner above the form',
+      payments: 'Payments page — banner above the form',
+      actions: 'All "Create request" buttons + Approve / Reject / Remove (every request action)',
+      'action.approve': 'Vote modal and requests/proposal sidebar — disables the Approve button',
+      'action.reject': 'Vote modal and requests/proposal sidebar — disables the Reject button',
+      'action.remove': 'Vote modal and requests/proposal sidebar — disables the Remove button',
+      'action.create-proposal': 'All "Create request" buttons',
+      'data.balances': 'Sidebar on desktop, a one-time dashboard modal',
+      'data.activity': 'Dashboard recent activity — skeleton overlay with centered message',
+    };
+
+    // The specific CTA that a critical warning disables, per slot. Only slots
+    // wired to blocking on the frontend appear here — others are banner-only.
+    const CTA_BY_SLOT = {
+      'features': 'Send payment, Swap, and Deposit actions are all disabled',
+      deposit: 'Deposit token/network selectors disabled',
+      exchange: '"Briefly Unavailable" on Swap; approval paused (reject still works)',
+      payments: '"Briefly Unavailable" on Send payment; approval paused (reject still works)',
+      actions: 'every "Create request" button plus Approve / Reject / Remove are disabled',
+      'action.approve': 'the Approve button is disabled (Reject and Remove still work)',
+      'action.reject': 'the Reject button is disabled',
+      'action.remove': 'the Remove button is disabled',
+      'action.create-proposal': 'every "Create request" button is disabled (payments, exchange, members, settings…)',
+    };
+
+    // Data slots are informational only — they never disable a button.
+    function slotIsDataOnly(slot) {
+      return Boolean(slot && slot.startsWith('data.'));
+    }
+
+    // Whether a critical warning on this slot actually disables a button.
+    function slotBlocksAction(slot) {
+      return slot === 'app' || Boolean(CTA_BY_SLOT[slot]);
+    }
+
+    // Sentence describing what a critical warning blocks for this slot.
+    function blockedCtaText(slot) {
+      if (slot === 'app') {
+        return 'all action buttons across the app are disabled — Send payment, Swap, vote, and every Create request button';
+      }
+      return CTA_BY_SLOT[slot] || '';
+    }
+
+    function selectedTransactionSlots() {
+      return [...document.querySelectorAll('.f-tx-slot:checked')].map(el => el.value);
+    }
+
+    function transactionSlotsPlacement(scoped) {
+      const labels = selectedTransactionSlots().map(value => {
+        const opt = TRANSACTION_SLOT_OPTIONS.find(s => s.value === value);
+        return opt?.label || value;
+      });
+      if (labels.length === 0) return 'No transaction features selected';
+
+      const suffix = scoped
+        ? ' — inline on the token field in the form'
+        : ' — banner above the form';
+
+      if (labels.length === TRANSACTION_SLOT_OPTIONS.length) {
+        return `Payments, Exchange, and Deposit pages${suffix}`;
+      }
+      const pageWord = labels.length === 1 ? 'page' : 'pages';
+      return `${labels.join(', ')} ${pageWord}${suffix}`;
+    }
+
+    function featuresBlockedCtaText(scoped) {
+      const selected = selectedTransactionSlots();
+      if (selected.length === 0) return 'select at least one feature above';
+
+      if (scoped) {
+        return 'matching token/network only — inline hint on the field; critical blocks that option (reject still works)';
+      }
+
+      const labels = selected.map(value => {
+        const opt = TRANSACTION_SLOT_OPTIONS.find(s => s.value === value);
+        return opt?.label || value;
+      });
+      return `"Briefly Unavailable" on ${labels.join(', ')}; approval paused (reject still works)`;
+    }
+
+    // ─── PREVIEW HELPERS ──────────────────────────────────────────────────────
+    function formatScopeLabel(token, network, wallet) {
+      const t = tokenLabel(token);
+      const n = networkLabel(network);
+      if (t && n) return `Applies only to ${t} on ${n}`;
+      if (t) return `Applies only to ${t}`;
+      if (n) return `Applies only to ${n} network`;
+      if (wallet) return `Applies only to ${walletLabel(wallet)} wallet`;
+      return '';
+    }
+
+    function previewBehavior(st, blocks) {
+      const scoped = messageUsesTooltipMode(st.slot, st.token, st.network);
+      const isLogin = st.slot === 'login';
+
+      if (slotIsDataOnly(st.slot)) {
+        return '<span class="behavior-tag passive">Shown only</span> informational — nothing is disabled';
+      }
+      if (isLogin && st.wallet) {
+        return '<span class="behavior-tag blocks">Blocks login</span> "Offline" badge on that wallet';
+      }
+      if (isLogin) {
+        return '<span class="behavior-tag blocks">Blocks login</span> banner above the wallet list';
+      }
+      if (st.slot === 'features') {
+        if (!blocks) {
+          return scoped
+            ? '<span class="behavior-tag passive">Shown only</span> inline hint for this token/network — users can still proceed'
+            : '<span class="behavior-tag passive">Shown only</span> banner on selected features — users can still proceed';
+        }
+        return `<span class="behavior-tag blocks">Blocks the action</span> ${featuresBlockedCtaText(scoped)}`;
+      }
+      if (blocks && slotBlocksAction(st.slot)) {
+        const detail = blockedCtaText(st.slot);
+        const suffix = scoped ? ' — matching token/network only' : '';
+        return `<span class="behavior-tag blocks">Blocks the action</span> ${detail}${suffix}`;
+      }
+      if (scoped) {
+        return '<span class="behavior-tag passive">Shown only</span> inline hint for this token/network — users can still proceed';
+      }
+      return '<span class="behavior-tag passive">Shown only</span> users can still proceed';
+    }
+
+    function axisLabel(value) {
+      if (!value || value === '—') return '—';
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    }
+
+    function updateClassificationDisplay(sit) {
+      const el = document.getElementById('classification-text');
+      if (!el) return;
+      el.innerHTML =
+        `<strong>Response:</strong> ${escapeHtml(axisLabel(sit?.response))} · ` +
+        `<strong>Severity:</strong> ${escapeHtml(axisLabel(sit?.severity))}`;
+    }
+
+    function previewMetaHtml(placement, scopeLabel, behavior, response, severity) {
+      const scopeLine = scopeLabel
+        ? `<span><b>Scope:</b> ${escapeHtml(scopeLabel)}</span>`
+        : '';
+      return `
+        <div class="preview-meta">
+          <span><b>Response:</b> ${escapeHtml(axisLabel(response))}</span>
+          <span><b>Severity:</b> ${escapeHtml(axisLabel(severity))}</span>
+          <span><b>Where:</b> ${escapeHtml(placement)}</span>
+          ${scopeLine}
+          <span><b>Behavior:</b> ${behavior}</span>
+        </div>
+      `;
+    }
+
+    function placementForSlot(slot, scoped) {
+      if (slot === 'features') return transactionSlotsPlacement(scoped);
+      const base = SLOT_PLACEMENT[slot] || 'Selected slot';
+      if (scoped && slotSupportsTokenFilter(slot)) {
+        return base.replace(' — banner above the form', '') + ' — inline on the token field in the form';
+      }
+      return base;
+    }
+
+    function actionWord(slot) {
+      if (!slot) return 'transaction';
+      return ACTION_BY_SLOT[slot] || 'transaction';
+    }
+
+    function subjectFor(token, network) {
+      if (token && network) return `${token} on ${network}`;
+      if (token) return token;
+      if (network) return network;
+      return 'This option';
+    }
+
+    function parseStoredMessage(raw) {
+      if (!raw || !String(raw).trim()) return { primary: '', secondary: '' };
+      const lines = normalizeMessageNewlines(raw).split('\n');
+      const headingIdx = lines.findIndex(l => /^(#{1,6})\s+/.test(l.trim()));
+      if (headingIdx >= 0) {
+        const primary = lines[headingIdx].replace(/^#{1,6}\s+/, '').trim();
+        const secondary = lines.slice(headingIdx + 1).join('\n').trim();
+        return { primary, secondary };
+      }
+      return { primary: String(raw).trim(), secondary: '' };
+    }
+
+    function mergeStoredMessage(primary, secondary) {
+      const p = (primary || '').trim();
+      const s = (secondary || '').trim();
+      if (!p) return '';
+      if (!s) return p;
+      return `### ${p}\n${s}`;
+    }
+
+    function messageUsesTooltipMode(slot, token, network) {
+      return slotSupportsTokenFilter(slot) && Boolean((token || '').trim() || (network || '').trim());
+    }
+
+    function updateMessageFieldsVisibility() {
+      const st = currentFormState();
+      const tooltipMode = messageUsesTooltipMode(st.slot, st.token, st.network);
+      const tooltipEl = document.getElementById('message-tooltip-mode');
+      const bannerEl = document.getElementById('message-banner-mode');
+      if (!tooltipEl || !bannerEl) return;
+
+      const wasTooltip = !tooltipEl.classList.contains('hidden');
+      if (wasTooltip !== tooltipMode) {
+        if (tooltipMode) {
+          document.getElementById('f-shown-text').value = document.getElementById('f-heading').value;
+          document.getElementById('f-tooltip-text').value = document.getElementById('f-paragraph').value;
+        } else {
+          document.getElementById('f-heading').value = document.getElementById('f-shown-text').value;
+          document.getElementById('f-paragraph').value = document.getElementById('f-tooltip-text').value;
+        }
+      }
+
+      tooltipEl.classList.toggle('hidden', !tooltipMode);
+      bannerEl.classList.toggle('hidden', tooltipMode);
+    }
+
+    function clearMessageFields() {
+      ['f-shown-text', 'f-tooltip-text', 'f-heading', 'f-paragraph'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    }
+
+    function setMessageFields(raw) {
+      updateMessageFieldsVisibility();
+      const { primary, secondary } = parseStoredMessage(raw || '');
+      const st = currentFormState();
+      if (messageUsesTooltipMode(st.slot, st.token, st.network)) {
+        document.getElementById('f-shown-text').value = primary;
+        document.getElementById('f-tooltip-text').value = secondary;
+      } else {
+        document.getElementById('f-heading').value = primary;
+        document.getElementById('f-paragraph').value = secondary;
+      }
+    }
+
+    function getMessageFromForm() {
+      const st = currentFormState();
+      if (messageUsesTooltipMode(st.slot, st.token, st.network)) {
+        return mergeStoredMessage(
+          document.getElementById('f-shown-text')?.value || '',
+          document.getElementById('f-tooltip-text')?.value || ''
+        );
+      }
+      return mergeStoredMessage(
+        document.getElementById('f-heading')?.value || '',
+        document.getElementById('f-paragraph')?.value || ''
+      );
+    }
+
+    // ─── BRIDGE TOKENS & SEARCHABLE SELECT ───────────────────────────────────
+    async function loadBridgeTokens() {
+      if (bridgeAssets.length > 0) return;
+      if (bridgeTokensPromise) return bridgeTokensPromise;
+
+      bridgeTokensPromise = (async () => {
+        try {
+          const res = await fetch('/api/intents/bridge-tokens?includeNearNetwork=true', {
+            credentials: 'omit',
+            headers: { 'Accept': 'application/json' },
+          });
+          if (!res.ok) {
+            console.warn('Bridge tokens returned', res.status);
+            return;
+          }
+          const data = await res.json();
+          bridgeAssets = data.assets || [];
+          const netByName = new Map();
+          bridgeAssets.forEach(a => {
+            tokenNameById[a.id] = a.assetName;
+            (a.networks || []).forEach(n => {
+              networkNameById[n.id] = n.name;
+              if (!netByName.has(n.name)) netByName.set(n.name, { id: n.id, name: n.name });
+            });
+          });
+          tokenOptions = bridgeAssets
+            .map(a => ({ id: a.id, name: a.assetName }))
+            .sort((x, y) => x.name.localeCompare(y.name));
+          allNetworkOptions = [...netByName.values()].sort((x, y) => x.name.localeCompare(y.name));
+        } catch (e) {
+          console.warn('Failed to load bridge tokens:', e);
+        }
+      })();
+
+      return bridgeTokensPromise;
+    }
+
+    // Resolve a stored network value (name or legacy per-token network id) to
+    // the chain name used as the dropdown value.
+    function normalizeNetworkValue(storedValue, networks) {
+      if (!storedValue) return '';
+      const trimmed = storedValue.trim();
+      const byName = networks.find(n => n.name.toLowerCase() === trimmed.toLowerCase());
+      if (byName) return byName.name;
+      const mappedName = networkNameById[trimmed];
+      if (mappedName) {
+        const match = networks.find(n => n.name === mappedName);
+        if (match) return match.name;
+      }
+      return trimmed;
+    }
+
+    function networksForToken(tokenId) {
+      if (!tokenId) return allNetworkOptions;
+      const asset = bridgeAssets.find(a => a.id === tokenId);
+      if (!asset) return allNetworkOptions;
+      // Network ids are per-token, so filtering the global list by id drops
+      // networks this token supports. Derive from the token's own networks,
+      // de-duped by name (the dropdown value), matching the deposit/payments UI.
+      const byName = new Map();
+      (asset.networks || []).forEach(n => {
+        if (!byName.has(n.name)) byName.set(n.name, { id: n.id, name: n.name });
+      });
+      return [...byName.values()].sort((x, y) => x.name.localeCompare(y.name));
+    }
+
+    function tokenSelectItems(selected) {
+      const items = [{ value: '', label: 'All tokens' }];
+      tokenOptions.forEach(t => items.push({ value: t.id, label: t.name }));
+      if (selected && !items.some(i => i.value === selected)) {
+        items.push({ value: selected, label: tokenLabel(selected) || selected });
+      }
+      return items;
+    }
+
+    function networkSelectItems(networks, selected) {
+      const normalized = normalizeNetworkValue(selected, networks);
+      const items = [{ value: '', label: 'All networks' }];
+      networks.forEach(n => items.push({ value: n.name, label: n.name.toUpperCase() }));
+      if (normalized && !items.some(i => i.value === normalized)) {
+        items.push({ value: normalized, label: networkLabel(normalized) });
+      }
+      return items;
+    }
+
+    const searchableSelectClosers = new Map();
+
+    function labelForSearchableSelect(value, items, emptyLabel) {
+      if (!value) return emptyLabel;
+      const found = items.find(i => i.value === value);
+      return found ? found.label : value;
+    }
+
+    function renderSearchableSelectList(listEl, items, query, selectedValue) {
+      const q = query.trim().toLowerCase();
+      const filtered = q
+        ? items.filter(i =>
+            i.label.toLowerCase().includes(q) ||
+            i.value.toLowerCase().includes(q)
+          )
+        : items;
+      if (!filtered.length) {
+        listEl.innerHTML = '<li class="search-select-empty">No matches</li>';
+        return;
+      }
+      listEl.innerHTML = filtered.map(i =>
+        `<li class="search-select-option ${i.value === selectedValue ? 'selected' : ''}" data-value="${escapeHtml(i.value)}" role="option">${escapeHtml(i.label)}</li>`
+      ).join('');
+    }
+
+    function mountSearchableSelect({ id, items, value, onChange, emptyLabel, searchPlaceholder, disabled = false }) {
+      const wrap = document.getElementById(`${id}-wrap`);
+      const hidden = document.getElementById(id);
+      if (!wrap || !hidden) return;
+
+      const currentValue = value ?? hidden.value ?? '';
+      hidden.value = currentValue;
+      const displayLabel = labelForSearchableSelect(currentValue, items, emptyLabel);
+
+      wrap.innerHTML = `
+        <div class="search-select">
+          <button type="button" class="search-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+            <span class="search-select-value">${escapeHtml(displayLabel)}</span>
+            <span class="search-select-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="search-select-panel hidden">
+            <input type="search" class="search-select-search" placeholder="${escapeHtml(searchPlaceholder)}" autocomplete="off">
+            <ul class="search-select-list" role="listbox"></ul>
+          </div>
+        </div>
+      `;
+
+      const trigger = wrap.querySelector('.search-select-trigger');
+      const panel = wrap.querySelector('.search-select-panel');
+      const searchInput = wrap.querySelector('.search-select-search');
+      const listEl = wrap.querySelector('.search-select-list');
+      const valueEl = wrap.querySelector('.search-select-value');
+      trigger.disabled = disabled;
+
+      function close() {
+        panel.classList.add('hidden');
+        trigger.setAttribute('aria-expanded', 'false');
+        searchableSelectClosers.delete(id);
+      }
+
+      function open() {
+        searchableSelectClosers.forEach((closeFn, otherId) => {
+          if (otherId !== id) closeFn();
+        });
+        panel.classList.remove('hidden');
+        trigger.setAttribute('aria-expanded', 'true');
+        searchInput.value = '';
+        renderSearchableSelectList(listEl, items, '', hidden.value);
+        searchInput.focus();
+        searchableSelectClosers.set(id, close);
+      }
+
+      function select(newValue) {
+        hidden.value = newValue;
+        valueEl.textContent = labelForSearchableSelect(newValue, items, emptyLabel);
+        close();
+        if (onChange) onChange();
+      }
+
+      trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (trigger.disabled) return;
+        if (panel.classList.contains('hidden')) open();
+        else close();
+      });
+
+      panel.addEventListener('click', (e) => e.stopPropagation());
+
+      searchInput.addEventListener('input', () => {
+        listEl.querySelectorAll('.nav-active').forEach(o => o.classList.remove('nav-active'));
+        renderSearchableSelectList(listEl, items, searchInput.value, hidden.value);
+      });
+
+      listEl.addEventListener('click', (e) => {
+        const opt = e.target.closest('.search-select-option');
+        if (!opt) return;
+        select(opt.dataset.value || '');
+      });
+
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { close(); return; }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const active = listEl.querySelector('.nav-active');
+          if (active) { select(active.dataset.value || ''); return; }
+          const first = listEl.querySelector('.search-select-option');
+          if (first) select(first.dataset.value || '');
+          return;
+        }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const opts = [...listEl.querySelectorAll('.search-select-option')];
+          if (!opts.length) return;
+          const cur = listEl.querySelector('.nav-active');
+          const idx = cur ? opts.indexOf(cur) : -1;
+          const next = e.key === 'ArrowDown'
+            ? Math.min(idx + 1, opts.length - 1)
+            : Math.max(idx - 1, 0);
+          opts.forEach(o => o.classList.remove('nav-active'));
+          opts[next].classList.add('nav-active');
+          opts[next].scrollIntoView({ block: 'nearest' });
+          return;
+        }
+        if (e.key === 'Home' || e.key === 'End') {
+          e.preventDefault();
+          const opts = [...listEl.querySelectorAll('.search-select-option')];
+          if (!opts.length) return;
+          const target = e.key === 'Home' ? opts[0] : opts[opts.length - 1];
+          opts.forEach(o => o.classList.remove('nav-active'));
+          target.classList.add('nav-active');
+          target.scrollIntoView({ block: 'nearest' });
+        }
+      });
+    }
+
+    function setSearchableSelectDisabled(id, disabled) {
+      const trigger = document.getElementById(`${id}-wrap`)?.querySelector('.search-select-trigger');
+      if (trigger) trigger.disabled = disabled;
+    }
+
+    function syncTokenNetworkExclusivity() {
+      if (formEditMode) return;
+      const sit = findSituation(formFieldValue('f-situation'));
+      const scope = sit?.scope || '';
+      if (!scopeUsesExclusiveTokenOrNetwork(scope)) {
+        setSearchableSelectDisabled('f-token', false);
+        setSearchableSelectDisabled('f-network', false);
+        return;
+      }
+
+      const token = document.getElementById('f-token')?.value || '';
+      const network = document.getElementById('f-network')?.value || '';
+
+      if (token) {
+        setSearchableSelectDisabled('f-token', false);
+        setSearchableSelectDisabled('f-network', true);
+      } else if (network) {
+        setSearchableSelectDisabled('f-token', true);
+        setSearchableSelectDisabled('f-network', false);
+      } else {
+        setSearchableSelectDisabled('f-token', false);
+        setSearchableSelectDisabled('f-network', false);
+      }
+    }
+
+    function refreshTokenSearchSelect() {
+      const hidden = document.getElementById('f-token');
+      if (!hidden) return;
+      mountSearchableSelect({
+        id: 'f-token',
+        items: tokenSelectItems(hidden.value),
+        value: hidden.value,
+        onChange: onTokenChange,
+        emptyLabel: 'All tokens',
+        searchPlaceholder: 'Search tokens…',
+      });
+    }
+
+    function refreshNetworkSearchSelect(networks) {
+      const hidden = document.getElementById('f-network');
+      if (!hidden) return;
+      const list = networks || networksForToken(document.getElementById('f-token')?.value || '');
+      mountSearchableSelect({
+        id: 'f-network',
+        items: networkSelectItems(list, hidden.value),
+        value: hidden.value,
+        onChange: onNetworkChange,
+        emptyLabel: 'All networks',
+        searchPlaceholder: 'Search networks…',
+      });
+    }
+
+    function syncTokenNetworkSelects(token, network) {
+      const hiddenToken = document.getElementById('f-token');
+      const hiddenNetwork = document.getElementById('f-network');
+      if (!hiddenToken || !hiddenNetwork) return;
+
+      hiddenToken.value = token || '';
+      refreshTokenSearchSelect();
+
+      const networks = networksForToken(hiddenToken.value);
+      const networkValue = normalizeNetworkValue(network || '', networks);
+      hiddenNetwork.value = networkValue;
+      refreshNetworkSearchSelect(networks);
+      syncTokenNetworkExclusivity();
+    }
+
+    function slotSupportsTokenFilter(slot) {
+      return SLOTS_WITH_TOKEN_FILTER.has(slot);
+    }
+
+    let auditPage = 1;
+    const auditLimit = 25;
+
+    function showFormError(msg) {
+      const el = document.getElementById('form-error');
+      if (el) {
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        showPageError(msg);
+      }
+    }
+
+    function clearFormError() {
+      const el = document.getElementById('form-error');
+      if (el) { el.textContent = ''; el.classList.add('hidden'); }
+    }
+
+    // ─── ERROR DISPLAY & API CLIENT ───────────────────────────────────────────
+    function showPageError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function clearPageError() {
+      const el = document.getElementById('error');
+      el.textContent = '';
+      el.classList.add('hidden');
+    }
+
+    async function api(path, options = {}) {
+      clearPageError();
+      clearFormError();
+      const res = await fetch(path, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+      });
+      if (!res.ok && res.status !== 204) {
+        let msg;
+        try {
+          const json = await res.json();
+          msg = json.error || JSON.stringify(json);
+        } catch {
+          msg = await res.text().catch(() => '') || `Request failed (${res.status})`;
+        }
+        showFormError(msg);
+        throw new Error(msg);
+      }
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    // ─── WARNINGS LIST RENDERING ──────────────────────────────────────────────
+    function fmtDate(d) {
+      if (!d) return '—';
+      return new Date(d).toLocaleString('en-GB', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' }) + ' UTC';
+    }
+
+    let activeSubtab = 'live';
+
+    function slotLabel(value) {
+      if (value && value.startsWith(LOGIN_WALLET_PREFIX)) {
+        return `Login › ${walletLabel(value.slice(LOGIN_WALLET_PREFIX.length))}`;
+      }
+      const found = SLOTS.find(s => s.value === (value || ''));
+      if (found) return found.label;
+      const txSlot = TRANSACTION_SLOT_OPTIONS.find(s => s.value === value);
+      if (txSlot) return txSlot.label;
+      return value || '—';
+    }
+
+    function warningIsLive(w, now = new Date()) {
+      return w.isActive ||
+        (w.showFrom && new Date(w.showFrom) <= now &&
+          (!w.endsAt || new Date(w.endsAt) > now));
+    }
+
+    function findExistingWarning(slot, token, network) {
+      const t = token || '';
+      const n = network || '';
+      return warningsCache.find(w =>
+        (w.slot || '') === (slot || '') &&
+        (w.token || '') === t &&
+        (w.network || '') === n
+      );
+    }
+
+    function renderWarnings(warnings) {
+      document.getElementById('warnings-loading').classList.add('hidden');
+
+      const now = new Date();
+      const live = warnings.filter(w => warningIsLive(w, now));
+      const upcoming = warnings.filter(w => !warningIsLive(w, now) && w.showFrom && new Date(w.showFrom) > now);
+
+      document.getElementById('count-live').textContent = live.length;
+      document.getElementById('count-scheduled').textContent = upcoming.length;
+
+      const filtered = activeSubtab === 'live' ? live : upcoming;
+
+      const list = document.getElementById('warnings-list');
+      const empty = document.getElementById('warnings-empty');
+
+      if (filtered.length === 0) {
+        list.classList.add('hidden');
+        list.innerHTML = '';
+        empty.textContent = activeSubtab === 'live'
+          ? 'No active warnings. Everything is operational.'
+          : 'No upcoming warnings.';
+        empty.classList.remove('hidden');
+      } else {
+        empty.classList.add('hidden');
+        list.classList.remove('hidden');
+        list.innerHTML = filtered.map(w => {
+          const scope = [findSituation(w.situation)?.label || w.situation, slotLabel(w.slot), tokenLabel(w.token), networkLabel(w.network)].filter(Boolean).join(' › ');
+          const scheduleInfo = w.startsAt || w.showFrom
+            ? `${w.showFrom ? 'Shows ' + fmtDate(w.showFrom) : ''}${w.startsAt ? (w.showFrom ? ' · ' : '') + 'Starts ' + fmtDate(w.startsAt) : ''}${w.endsAt ? ' → Ends ' + fmtDate(w.endsAt) : ''}`
+            : null;
+          const linkedInfo = w.linkedService
+            ? `<span style="color:var(--accent)">⟵ ${escapeHtml(w.linkedService)}${w.linkedPostId ? ' #' + escapeHtml(w.linkedPostId) : ''}</span>`
+            : '';
+          const groupSize = w.groupId ? warnings.filter(x => x.groupId === w.groupId).length : 0;
+          const groupInfo = groupSize > 1
+            ? `<span title="Editing or deleting affects all ${groupSize} grouped warnings">⛓ grouped (${groupSize})</span>`
+            : '';
+          return `
+          <article class="card ${w.response || 'notice'}">
+            <div class="card-header">
+              <h3>${escapeHtml(scope)}</h3>
+              <div class="actions">
+                <button class="secondary" data-action="edit-warning" data-id="${w.id}">Edit</button>
+                <button class="secondary" data-action="duplicate-warning" data-id="${w.id}">Duplicate</button>
+                <button class="danger" data-action="delete-warning" data-id="${w.id}">Delete</button>
+              </div>
+            </div>
+            ${w.userMessage ? `<div class="card-message">${escapeHtml(w.userMessage)}</div>` : ''}
+            ${w.internalNote ? `<div class="card-note">${escapeHtml(w.internalNote)}</div>` : ''}
+            <div class="card-footer">
+              <span>Response: ${axisLabel(w.response)} · Severity: ${axisLabel(w.severity)}</span>
+              ${scheduleInfo ? `<span>${scheduleInfo}</span>` : ''}
+              ${linkedInfo}
+              ${groupInfo}
+              <span>by ${escapeHtml(w.updatedBy || '—')} · ${fmtDate(w.updatedAt)}</span>
+            </div>
+          </article>`;
+        }).join('');
+      }
+    }
+
+    // ─── DATE & FORM UTILITIES ────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function toUTCInput(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    }
+
+    function msToUTCInput(ms) {
+      if (ms == null || ms === '') return '';
+      return toUTCInput(new Date(ms).toISOString());
+    }
+
+    function fromUTCInput(value) {
+      if (!value) return '';
+      return value + ':00.000Z';
+    }
+
+    function formFieldValue(id) {
+      return document.getElementById(id)?.value ?? '';
+    }
+
+    function optionalUtcField(id) {
+      const value = formFieldValue(id);
+      return value ? fromUTCInput(value) : '';
+    }
+
+    function resolveFormSlot() {
+      const situationId = formFieldValue('f-situation');
+      if (situationIsLogin(situationId)) {
+        const walletId = formFieldValue('f-wallet');
+        return walletId ? `${LOGIN_WALLET_PREFIX}${walletId}` : 'login';
+      }
+      const placement = formFieldValue('f-placement');
+      if (placement === 'actions') return 'actions';
+      if (placement === 'login.wallet.*') {
+        const walletId = formFieldValue('f-wallet');
+        return walletId ? `${LOGIN_WALLET_PREFIX}${walletId}` : 'login';
+      }
+      return placement;
+    }
+
+    function buildSaveBody() {
+      const isActive = document.querySelector('input[name="timing"][value="now"]').checked;
+      const situationId = formFieldValue('f-situation');
+      const sit = findSituation(situationId);
+      const placement = formFieldValue('f-placement');
+      const slot = resolveFormSlot();
+      const waitlist = situationIsWaitlist(situationId);
+
+      return {
+        slot,
+        token: formFieldValue('f-token'),
+        network: formFieldValue('f-network'),
+        isActive,
+        response: sit?.response || 'notice',
+        severity: sit?.severity || 'high',
+        userMessage: waitlist ? '' : getMessageFromForm().trim(),
+        situation: situationId,
+        internalNote: formFieldValue('f-note'),
+        showFrom: optionalUtcField('f-show-from'),
+        startsAt: optionalUtcField('f-starts-at'),
+        endsAt: optionalUtcField('f-ends-at'),
+        linkedService: formFieldValue('f-linked-service'),
+        linkedPostId: formFieldValue('f-linked-post'),
+      };
+    }
+
+    // ─── LINKED SERVICES ──────────────────────────────────────────────────────
+    async function syncLinkedServiceSelects(linkedService, linkedPostId) {
+      const serviceSel = document.getElementById('f-linked-service');
+      const postSel = document.getElementById('f-linked-post');
+      if (!serviceSel || !postSel) return;
+
+      serviceSel.value = linkedService || '';
+      postSel.innerHTML = '<option value="">— Any incident on this service —</option>';
+      postSel.disabled = !serviceSel.value;
+
+      if (!serviceSel.value) {
+        postSel.value = '';
+        return;
+      }
+
+      await onLinkedServiceChange();
+
+      if (!linkedPostId) {
+        postSel.value = '';
+        return;
+      }
+
+      if (![...postSel.options].some(o => o.value === linkedPostId)) {
+        postSel.innerHTML += `<option value="${escapeHtml(linkedPostId)}">${escapeHtml(linkedPostId)}</option>`;
+      }
+      postSel.value = linkedPostId;
+    }
+
+    // ─── FORM BUILDER ─────────────────────────────────────────────────────────
+    async function buildWarningForm(w = null) {
+      const form = document.getElementById('warning-form');
+      document.getElementById('warning-form-shell').classList.remove('hidden');
+      document.getElementById('warnings-content').classList.add('hidden');
+
+      const isEdit = Boolean(w?.id);
+      const rawSlot = w?.slot || '';
+      const { wallet } = splitLoginSlot(rawSlot);
+      const txSlotValues = TRANSACTION_SLOT_OPTIONS.map(s => s.value);
+      const isStoredTxSlot = txSlotValues.includes(rawSlot);
+      const situationId = w?.situation || '';
+      const groupSlots = (w && w.groupId)
+        ? new Set(warningsCache.filter(x => x.groupId === w.groupId).map(x => x.slot))
+        : new Set([rawSlot]);
+      const placement = isStoredTxSlot
+        ? 'features'
+        : inferPlacementFromSlot(rawSlot, situationId);
+      const isActionGroupSlot = ACTION_SLOT_VALUES.includes(rawSlot)
+        && (situationId === 'requests_wont_process'
+          || (w?.groupId && groupSlots.size > 1 && [...groupSlots].every(s => ACTION_SLOT_VALUES.includes(s))));
+      const resolvedPlacement = isActionGroupSlot ? 'actions' : placement;
+      const sit = findSituation(situationId);
+      const scope = sit?.scope || '';
+      const token = w?.token || '';
+      const networks = networksForToken(token);
+      const tokenSelected = Boolean(token || w?.network);
+      const isWaitlist = situationIsWaitlist(situationId);
+      const isLogin = situationIsLogin(situationId);
+      const showTokenNetwork = scopeUsesToken(scope) || scopeUsesNetwork(scope);
+      const showWallet = scopeUsesWallet(scope) || isLogin;
+      const showFeatures = resolvedPlacement === 'features';
+      const showRequestType = scopeUsesRequestType(scope);
+      const showScopeChoiceHint = situationId === 'network_paused';
+
+      form.innerHTML = `
+        <h3>${w ? 'Edit warning #' + w.id : 'Create warning'}</h3>
+
+        <div class="form-section">
+          <div class="form-section-label">Situation</div>
+          <select id="f-situation" ${isEdit ? 'disabled' : ''}>${buildSituationOptions(situationId)}</select>
+          <p class="hint" id="situation-where">${sit ? escapeHtml(sit.where || '') : 'Pick the playbook situation that matches this incident.'}</p>
+          ${isEdit ? '<p class="hint">Situation cannot be changed after creation. Delete and re-create if needed.</p>' : ''}
+        </div>
+
+        <div class="form-section ${situationId && !isLogin ? '' : 'hidden'}" id="placement-section">
+          <div class="form-section-label">Where it appears</div>
+          <div id="placement-field-wrap"></div>
+        </div>
+
+        <div class="form-section ${showFeatures ? '' : 'hidden'}" id="transaction-slots-section">
+          <div class="form-section-label">Which flows?</div>
+          <div class="flex-row">
+            ${TRANSACTION_SLOT_OPTIONS.map(s => `<label class="check-label"><input type="checkbox" class="f-tx-slot" value="${s.value}" ${isStoredTxSlot ? (groupSlots.has(s.value) ? 'checked' : '') : 'checked'} ${isEdit ? 'disabled' : ''}> ${s.label}</label>`).join('')}
+          </div>
+          <p class="hint">One warning is created per selected feature, with the same message.${isEdit ? ' Cannot be changed after creation.' : ''}</p>
+        </div>
+
+        <div class="form-section ${showTokenNetwork ? '' : 'hidden'}" id="token-network-section">
+          <div class="form-section-label">Token / Network</div>
+          <p class="hint ${showScopeChoiceHint ? '' : 'hidden'}" id="token-network-hint">Pick a token (paused on all networks), a network (all tokens paused), or both (one specific token on one network).</p>
+          <div class="row" id="token-network-row">
+            <div class="${scopeUsesToken(scope) ? '' : 'hidden'}" id="token-field-wrap">
+              <label>Token</label>
+              <input type="hidden" id="f-token" value="${escapeHtml(token)}">
+              <div id="f-token-wrap"></div>
+            </div>
+            <div class="${scopeUsesNetwork(scope) ? '' : 'hidden'}" id="network-field-wrap">
+              <label>Network</label>
+              <input type="hidden" id="f-network" value="${escapeHtml(normalizeNetworkValue(w?.network || '', networks))}">
+              <div id="f-network-wrap"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section ${showWallet ? '' : 'hidden'}" id="wallet-section">
+          <div class="form-section-label">Wallet</div>
+          <select id="f-wallet" ${isEdit ? 'disabled' : ''}>${buildWalletOptions(wallet)}</select>
+          <p class="hint">All wallets = login banner. One wallet = Offline badge on that wallet only.${isEdit ? ' Cannot be changed after creation.' : ''}</p>
+        </div>
+
+        <div class="form-section hidden" id="request-type-section">
+          <div class="form-section-label">Request type</div>
+          <select id="f-request-type">
+            <option value="payments">payments</option>
+            <option value="swaps">swaps</option>
+          </select>
+        </div>
+
+        <div class="form-section ${situationId ? '' : 'hidden'}" id="classification-section">
+          <div class="form-section-label">Classification</div>
+          <p style="margin:0; font-size:0.9em;" id="classification-text">
+            <strong>Response:</strong> ${escapeHtml(axisLabel(sit?.response))} ·
+            <strong>Severity:</strong> ${escapeHtml(axisLabel(sit?.severity))}
+          </p>
+        </div>
+
+        <div class="form-section ${isWaitlist ? '' : 'hidden'}" id="waitlist-section">
+          <div class="form-section-label">Treasury creation</div>
+          <p class="hint">Activating this shows the existing <strong>waitlist UI</strong> in the app (copy is not changed on the frontend).</p>
+        </div>
+
+        <div class="form-section ${isLogin ? '' : 'hidden'}" id="login-info-section">
+          <div class="form-section-label">Login</div>
+          <p class="hint">Message is stored for ops/audit. The app keeps the existing <strong>Offline badge / banner</strong> behaviour.</p>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label">Timing</div>
+          <div class="timing-row">
+            <label class="toggle">
+              <input type="radio" name="timing" value="now" ${!w?.showFrom && !w?.startsAt ? 'checked' : ''}>
+              <strong>Active now</strong>
+            </label>
+            <label class="toggle">
+              <input type="radio" name="timing" value="scheduled" ${w?.showFrom || w?.startsAt ? 'checked' : ''}>
+              <strong>Scheduled</strong>
+            </label>
+          </div>
+          <div id="schedule-fields" style="${w?.showFrom || w?.startsAt ? '' : 'display:none'}">
+            <div class="row">
+              <div>
+                <label>Show in UI from (UTC)</label>
+                <input type="datetime-local" id="f-show-from" value="${toUTCInput(w?.showFrom)}">
+                <p class="hint">When the warning appears to users. Leave empty to show immediately when activated.</p>
+              </div>
+              <div>
+                <label>Event starts (UTC)</label>
+                <input type="datetime-local" id="f-starts-at" value="${toUTCInput(w?.startsAt)}">
+                <p class="hint">When the maintenance/event actually begins.</p>
+              </div>
+            </div>
+            <div class="row" style="margin-top:0.5rem">
+              <div>
+                <label>Event ends (UTC)</label>
+                <input type="datetime-local" id="f-ends-at" value="${toUTCInput(w?.endsAt)}">
+                <p class="hint">Auto-closes the warning at this time.</p>
+              </div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section" id="linking-section">
+          <div class="form-section-label">Link to upstream service (optional)</div>
+          <p class="hint" style="margin-top:0">Link this warning to an upstream incident so it auto-closes when the issue resolves.</p>
+          <div class="row">
+            <div>
+              <label>Service</label>
+              <select id="f-linked-service">
+                <option value="">— None —</option>
+                <option value="near-intents" ${w?.linkedService === 'near-intents' ? 'selected' : ''}>NEAR Intents</option>
+                <option value="near-protocol" ${w?.linkedService === 'near-protocol' ? 'selected' : ''}>NEAR Protocol</option>
+                <option value="near-rpc" ${w?.linkedService === 'near-rpc' ? 'selected' : ''}>NEAR RPC</option>
+              </select>
+            </div>
+            <div>
+              <label>Specific post/incident <span style="font-weight:normal">(optional)</span></label>
+              <select id="f-linked-post" ${!w?.linkedService ? 'disabled' : ''}>
+                <option value="">— Any incident on this service —</option>
+              </select>
+              <p class="hint">Pick a specific Intents post to auto-fill the schedule from its window and auto-close when it ends. Leave blank to auto-close when the service recovers.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section ${isWaitlist ? 'hidden' : ''}" id="message-section">
+          <div class="form-section-label">Message</div>
+
+          <div id="message-tooltip-mode" class="${tokenSelected ? '' : 'hidden'}">
+            <label for="f-shown-text">Shown text</label>
+            <input type="text" id="f-shown-text" placeholder="Short text next to the token or network field">
+            <p class="hint">Inline warning shown beside the field.</p>
+            <label for="f-tooltip-text">Tooltip details <span style="font-weight:normal">(optional)</span></label>
+            <textarea id="f-tooltip-text" placeholder="Extra detail shown on hover" style="min-height:60px"></textarea>
+            <p class="hint">Only shown when filled in. Supports <code>{action}</code>.</p>
+          </div>
+
+          <div id="message-banner-mode" class="${tokenSelected ? 'hidden' : ''}">
+            <label for="f-heading">Heading <span style="font-weight:normal">(optional)</span></label>
+            <input type="text" id="f-heading" placeholder="Bold heading in the banner">
+            <label for="f-paragraph">Message</label>
+            <textarea id="f-paragraph" placeholder="Body text shown below the heading"></textarea>
+            <p class="hint">Supports <code>[text](url)</code> links, <code>{action}</code>, and <code>{schedule}</code>. Stored as <code>### heading</code> + body when both parts are set.</p>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-label">Internal note</div>
+          <textarea id="f-note" placeholder="Only visible to the team in this admin panel" style="min-height:50px">${w?.internalNote ? escapeHtml(w.internalNote) : ''}</textarea>
+        </div>
+
+        <div class="preview" id="warning-preview"></div>
+
+        <div class="form-section ${placement === 'app' ? '' : 'hidden'}" id="also-block-login-section">
+          <label class="toggle">
+            <input type="checkbox" id="f-also-block-login" ${(placement === 'app' && warningsCache.some(x => x.slot === 'login')) ? 'checked' : ''}>
+            <span>Also pause login for all wallets</span>
+          </label>
+          <p class="hint">Creates a separate login warning so new users can't sign in while the app is in this state.</p>
+        </div>
+
+        <div id="form-error" class="form-error hidden"></div>
+        <div class="toolbar" style="margin-top:0.75rem">
+          <button data-action="save-warning" data-id="${w ? w.id : ''}">Save</button>
+        </div>
+      `;
+      renderPlacementField(situationId, resolvedPlacement);
+      syncTokenNetworkSelects(token, w?.network || '');
+      if (isEdit) {
+        // In edit mode: lock placement dropdown and token/network selects.
+        const placementSelect = document.getElementById('f-placement');
+        if (placementSelect) placementSelect.disabled = true;
+        setSearchableSelectDisabled('f-token', true);
+        setSearchableSelectDisabled('f-network', true);
+      }
+      if (w?.userMessage) setMessageFields(w.userMessage);
+      else applyTemplate();
+      updateMessageFieldsVisibility();
+      await syncLinkedServiceSelects(w?.linkedService || '', w?.linkedPostId || '');
+      updatePreview();
+    }
+
+    // ─── FORM EVENT HANDLERS ──────────────────────────────────────────────────
+    function toggleActiveSchedule() {
+      const isNow = document.querySelector('input[name="timing"][value="now"]').checked;
+      const fields = document.getElementById('schedule-fields');
+      fields.style.display = isNow ? 'none' : 'block';
+      if (isNow) {
+        document.getElementById('f-show-from').value = '';
+        document.getElementById('f-starts-at').value = '';
+        document.getElementById('f-ends-at').value = '';
+      }
+      updatePreview();
+    }
+
+    function currentFormState() {
+      const situation = document.getElementById('f-situation')?.value || '';
+      const placement = document.getElementById('f-placement')?.value || '';
+      const sit = findSituation(situation);
+      const effectiveSlot = resolveFormSlot();
+      return {
+        situation,
+        placement,
+        slot: effectiveSlot,
+        effectiveSlot,
+        token: document.getElementById('f-token')?.value || '',
+        network: document.getElementById('f-network')?.value || '',
+        wallet: document.getElementById('f-wallet')?.value || '',
+        requestType: document.getElementById('f-request-type')?.value || '',
+        response: sit?.response || 'notice',
+        severity: sit?.severity || 'high',
+      };
+    }
+
+    function applyTemplate(preserveManual = false) {
+      const st = currentFormState();
+      updateMessageFieldsVisibility();
+      const generated = generateMessagesFromCatalog(st);
+      if (generated) {
+        setMessageFields(generated);
+      } else if (!preserveManual) {
+        clearMessageFields();
+      }
+      updatePreview();
+    }
+
+    function onSituationChange() {
+      const situationId = formFieldValue('f-situation');
+      const sit = findSituation(situationId);
+      document.getElementById('situation-where').textContent = sit?.where || 'Pick the playbook situation that matches this incident.';
+      renderPlacementField(situationId, sit?.placements?.[0] || '');
+      document.getElementById('classification-section')?.classList.toggle('hidden', !situationId);
+      updateClassificationDisplay(sit);
+      // Clear token/network so preview scope doesn't bleed across situations.
+      const hiddenToken = document.getElementById('f-token');
+      const hiddenNetwork = document.getElementById('f-network');
+      if (hiddenToken) { hiddenToken.value = ''; refreshTokenSearchSelect?.(); }
+      if (hiddenNetwork) { hiddenNetwork.value = ''; refreshNetworkSearchSelect?.(); }
+      onPlacementChange();
+    }
+
+    function onPlacementChange() {
+      const st = currentFormState();
+      const sit = findSituation(st.situation);
+      const scope = sit?.scope || '';
+      const placement = st.placement;
+
+      document.getElementById('transaction-slots-section')?.classList.toggle('hidden', placement !== 'features');
+      document.getElementById('token-network-section')?.classList.toggle('hidden', !(scopeUsesToken(scope) || scopeUsesNetwork(scope)));
+      document.getElementById('token-field-wrap')?.classList.toggle('hidden', !scopeUsesToken(scope));
+      document.getElementById('network-field-wrap')?.classList.toggle('hidden', !scopeUsesNetwork(scope));
+      document.getElementById('token-network-hint')?.classList.toggle('hidden', st.situation !== 'network_paused' && st.situation !== 'network_slow');
+      document.getElementById('wallet-section')?.classList.toggle('hidden', !(scopeUsesWallet(scope) || situationIsLogin(st.situation)));
+      document.getElementById('request-type-section')?.classList.toggle('hidden', true);
+      document.getElementById('waitlist-section')?.classList.toggle('hidden', !situationIsWaitlist(st.situation));
+      document.getElementById('login-info-section')?.classList.toggle('hidden', !situationIsLogin(st.situation));
+      document.getElementById('message-section')?.classList.toggle('hidden', situationIsWaitlist(st.situation));
+      document.getElementById('also-block-login-section')?.classList.toggle('hidden', placement !== 'app');
+
+      syncTokenNetworkExclusivity();
+      applyTemplate();
+    }
+
+    function updatePreview() {
+      const el = document.getElementById('warning-preview');
+      if (!el) return;
+      const st = currentFormState();
+
+      if (situationIsWaitlist(st.situation)) {
+        el.innerHTML = `
+          <p class="preview-label">Live preview — how users will see it</p>
+          <p class="preview-detail">Users see the existing <strong>waitlist UI</strong> (frontend copy unchanged).</p>
+          <div class="preview-meta">
+            <span><b>Where:</b> ${escapeHtml(PLACEMENTS[st.placement] || st.placement)}</span>
+            <span><b>Behavior:</b> <span class="behavior-tag blocks">Blocks creation</span></span>
+          </div>
+        `;
+        return;
+      }
+
+      const rawDetail = getMessageFromForm();
+      const action = actionWord(st.slot);
+      const tooltipMode = messageUsesTooltipMode(st.slot, st.token, st.network);
+      const scheduleText = scheduleTextFromForm();
+      const hasInlineSchedule = rawDetail && rawDetail.includes('{schedule}');
+      let rendered = (rawDetail || '(no message yet)').replace(/\{action\}/g, action);
+      if (hasInlineSchedule) {
+        rendered = rendered.replace(/\{schedule\}/g, scheduleText || '');
+      }
+      const blocks = st.response === 'paused';
+      const scoped = messageUsesTooltipMode(st.slot, st.token, st.network);
+      const placement = placementForSlot(st.slot, scoped);
+      const scopeLabel = formatScopeLabel(st.token, st.network, st.wallet);
+      const behavior = previewBehavior(st, blocks);
+
+      // Render [text](url) markdown links as <a> tags, escaping the rest.
+      function renderLinks(text) {
+        return escapeHtml(text).replace(
+          /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+          '<a href="$2" target="_blank" rel="noreferrer" style="text-decoration:underline">$1</a>'
+        );
+      }
+
+      // Form-field preview: inline text + optional tooltip icon.
+      if (tooltipMode) {
+        const { primary, secondary } = parseStoredMessage(rendered);
+        const inline = renderLinks(primary || '(no shown text yet)');
+        const tooltipHtml = secondary ? renderLinks(secondary) : '';
+        el.innerHTML = `
+          <p class="preview-label">Live preview — form field (inline + tooltip)</p>
+          <p class="preview-detail preview-inline-row">
+            <span>${inline}</span>
+            ${tooltipHtml ? '<span class="preview-info-icon" title="Tooltip">i</span>' : ''}
+          </p>
+          ${tooltipHtml ? `<p class="preview-detail preview-tooltip-note"><b>Tooltip on hover:</b> ${tooltipHtml}</p>` : ''}
+          ${previewMetaHtml(placement, scopeLabel, behavior, st.response, st.severity)}
+        `;
+        return;
+      }
+
+      // Banner preview: heading + paragraph.
+      const previewLines = rendered.split('\n');
+      const headingParts = [];
+      const bodyParts = [];
+      for (const line of previewLines) {
+        const hMatch = line.match(/^(#{1,6})\s+(.*)/);
+        if (hMatch) {
+          headingParts.push(hMatch[2]);
+        } else {
+          bodyParts.push(line);
+        }
+      }
+      const previewHeading = headingParts.length > 0 ? renderLinks(headingParts.join(' ')) : null;
+      const previewBody = renderLinks(bodyParts.join(' '));
+
+      // Show schedule as a separate line only when not already inline via {schedule}.
+      let scheduleLine = '';
+      if (!hasInlineSchedule && scheduleText) {
+        scheduleLine = `<span style="display:block;margin-top:4px;font-size:0.8em;opacity:0.8">${scheduleText}</span>`;
+      }
+
+      el.innerHTML = `
+        <p class="preview-label">Live preview — banner (heading + message)</p>
+        <p class="preview-detail">${previewHeading ? `<strong>${previewHeading}</strong><br>` : ''}${previewBody}${scheduleLine}</p>
+        ${previewMetaHtml(placement, scopeLabel, behavior, st.response, st.severity)}
+      `;
+    }
+
+    function onTokenChange() {
+      const hiddenToken = document.getElementById('f-token');
+      const hiddenNetwork = document.getElementById('f-network');
+      if (!hiddenToken || !hiddenNetwork) return;
+
+      const sit = findSituation(formFieldValue('f-situation'));
+      if (scopeUsesExclusiveTokenOrNetwork(sit?.scope || '') && hiddenToken.value) {
+        hiddenNetwork.value = '';
+      }
+
+      const currentNetwork = hiddenNetwork.value;
+      const networks = networksForToken(hiddenToken.value);
+      const normalizedNetwork = normalizeNetworkValue(currentNetwork, networks);
+      const stillValid = !normalizedNetwork || networks.some(n => n.name === normalizedNetwork);
+      hiddenNetwork.value = stillValid ? normalizedNetwork : '';
+      refreshNetworkSearchSelect(networks);
+      syncTokenNetworkExclusivity();
+      applyTemplate();
+    }
+
+    function onNetworkChange() {
+      const hiddenToken = document.getElementById('f-token');
+      const hiddenNetwork = document.getElementById('f-network');
+      if (!hiddenToken || !hiddenNetwork) return;
+
+      const sit = findSituation(formFieldValue('f-situation'));
+      if (scopeUsesExclusiveTokenOrNetwork(sit?.scope || '') && hiddenNetwork.value) {
+        hiddenToken.value = '';
+        refreshTokenSearchSelect();
+      }
+
+      syncTokenNetworkExclusivity();
+      applyTemplate();
+    }
+
+    function onTransactionSlotsChange() {
+      applyTemplate();
+    }
+
+    let statusIncidentsCache = null;
+    let intentsPostsById = {};
+
+    function setTimingScheduled() {
+      const scheduled = document.querySelector('input[name="timing"][value="scheduled"]');
+      if (scheduled) scheduled.checked = true;
+      const fields = document.getElementById('schedule-fields');
+      if (fields) fields.style.display = 'block';
+    }
+
+    function intentsPostTimes(post) {
+      return {
+        startsAt: post.starts_at ?? post.startsAt ?? null,
+        endsAt: post.ends_at ?? post.endsAt ?? null,
+      };
+    }
+
+    function applyScheduleFromIntentsPost(post) {
+      if (!post) {
+        // Clear the lock when a post is deselected.
+        ['f-show-from', 'f-starts-at', 'f-ends-at'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.removeAttribute('data-locked');
+            el.title = '';
+          }
+        });
+        const hint = document.getElementById('linked-post-schedule-hint');
+        if (hint) hint.remove();
+        return;
+      }
+
+      const { startsAt, endsAt } = intentsPostTimes(post);
+      if (startsAt == null && endsAt == null) return;
+
+      setTimingScheduled();
+      const showFromEl = document.getElementById('f-show-from');
+      const startsEl = document.getElementById('f-starts-at');
+      const endsEl = document.getElementById('f-ends-at');
+      const now = Date.now();
+
+      if (startsAt != null && startsEl) {
+        startsEl.value = msToUTCInput(startsAt);
+        if (showFromEl) {
+          showFromEl.value = startsAt > now ? msToUTCInput(startsAt) : '';
+        }
+      }
+      if (endsAt != null && endsEl) {
+        endsEl.value = msToUTCInput(endsAt);
+      }
+
+      // Mark fields as filled from the linked post so admins know the source.
+      [showFromEl, startsEl, endsEl].forEach(el => {
+        if (!el) return;
+        el.setAttribute('data-locked', 'post');
+        el.title = 'Auto-filled from linked Intents post — edit to override';
+      });
+
+      // Insert a one-time hint below the schedule fields if not already shown.
+      if (!document.getElementById('linked-post-schedule-hint')) {
+        const fieldsDiv = document.getElementById('schedule-fields');
+        if (fieldsDiv) {
+          const hint = document.createElement('p');
+          hint.id = 'linked-post-schedule-hint';
+          hint.className = 'hint';
+          hint.style.color = 'var(--accent)';
+          hint.textContent = 'Schedule filled from linked Intents post. Edit the fields above to override.';
+          fieldsDiv.appendChild(hint);
+        }
+      }
+
+      applyTemplate();
+      updatePreview();
+    }
+
+    async function loadStatusIncidents() {
+      if (statusIncidentsCache) return statusIncidentsCache;
+      try {
+        const data = await api('/internal/api/status-incidents');
+        statusIncidentsCache = data;
+        return data;
+      } catch {
+        return { intentsPosts: [], services: [] };
+      }
+    }
+
+    async function onLinkedServiceChange() {
+      const service = document.getElementById('f-linked-service').value;
+      const postSel = document.getElementById('f-linked-post');
+      const previousPost = postSel.value;
+      postSel.innerHTML = '<option value="">— Any incident on this service —</option>';
+      postSel.disabled = !service;
+      if (!service) {
+        postSel.value = '';
+        return;
+      }
+
+      if (service === 'near-intents') {
+        const data = await loadStatusIncidents();
+        intentsPostsById = {};
+        (data.intentsPosts || []).forEach(p => {
+          const postType = p.post_type || p.postType || '';
+          const label = p.title + (postType ? ` (${postType})` : '');
+          if (p.id) intentsPostsById[p.id] = p;
+          postSel.innerHTML += `<option value="${escapeHtml(p.id || '')}">${escapeHtml(label)}</option>`;
+        });
+      }
+
+      if (previousPost && [...postSel.options].some(o => o.value === previousPost)) {
+        postSel.value = previousPost;
+      }
+    }
+
+    function onLinkedPostChange() {
+      const service = document.getElementById('f-linked-service')?.value;
+      const postId = document.getElementById('f-linked-post')?.value;
+      if (service !== 'near-intents') return;
+      applyScheduleFromIntentsPost(postId ? intentsPostsById[postId] : null);
+    }
+
+    function hideWarningForm(force = false) {
+      if (!force && formDirty) {
+        if (!confirm('You have unsaved changes. Discard them?')) return;
+      }
+      formDirty = false;
+      formOpenSession++;
+      document.getElementById('warning-form-shell').classList.add('hidden');
+      document.getElementById('warning-form').innerHTML = '';
+      document.getElementById('warnings-content').classList.remove('hidden');
+      document.getElementById('btn-new-warning').disabled = false;
+    }
+
+    // ─── WARNINGS CRUD ────────────────────────────────────────────────────────
+    let warningsCache = [];
+    let formOpenSession = 0;
+    let formDirty = false;
+    let formEditMode = false;
+
+    async function openWarningForm(w = null) {
+      const session = ++formOpenSession;
+      const form = document.getElementById('warning-form');
+      const addBtn = document.getElementById('btn-new-warning');
+      const title = w ? 'Edit warning #' + w.id : 'Create warning';
+
+      form.innerHTML = `
+        <h3>${title}</h3>
+        <div class="loading-state" style="padding:3rem 0">Loading token list…</div>
+      `;
+      document.getElementById('warning-form-shell').classList.remove('hidden');
+      document.getElementById('warnings-content').classList.add('hidden');
+      addBtn.disabled = true;
+
+      formDirty = false;
+      formEditMode = Boolean(w?.id);
+      try {
+        await loadBridgeTokens();
+        if (session !== formOpenSession) return;
+        await buildWarningForm(w);
+      } catch (e) {
+        if (session !== formOpenSession) return;
+        form.innerHTML = `
+          <h3>${title}</h3>
+          <p class="error">${escapeHtml(e.message || 'Failed to load form')}</p>
+        `;
+      } finally {
+        if (session === formOpenSession) addBtn.disabled = false;
+      }
+    }
+
+    async function editWarning(id) {
+      const w = warningsCache.find(x => x.id === id);
+      if (!w) return;
+      await openWarningForm(w);
+    }
+
+    async function duplicateWarning(id) {
+      const w = warningsCache.find(x => x.id === id);
+      if (!w) return;
+      // Open as a new warning with all fields pre-filled (id and groupId cleared).
+      await openWarningForm({ ...w, id: null, groupId: null });
+    }
+
+    async function saveWarning(id, btnEl) {
+      clearFormError();
+      const body = buildSaveBody();
+      const slot = body.slot;
+      const editId = (id != null && id !== 'null') ? Number(id) : null;
+      const saveBtn = btnEl || document.querySelector('[data-action="save-warning"]');
+      const savedLabel = saveBtn ? saveBtn.innerHTML : null;
+      const setSaving = (on) => {
+        if (!saveBtn) return;
+        saveBtn.disabled = on;
+        saveBtn.innerHTML = on ? '<span class="btn-spinner"></span>Saving…' : savedLabel;
+      };
+      try {
+        setSaving(true);
+        const slotsToCreate = (body.slot === 'features')
+          ? [...document.querySelectorAll('.f-tx-slot:checked')].map(el => el.value)
+          : (body.slot === 'actions')
+            ? ACTION_SLOT_VALUES
+            : [body.slot];
+
+        if (!body.situation) {
+          showFormError('Pick a situation before saving.');
+          return;
+        }
+
+        if (slotsToCreate.length === 0) {
+          showFormError(body.slot === 'features'
+            ? 'Select at least one transaction feature.'
+            : 'Could not resolve where this warning appears.');
+          return;
+        }
+
+        if (body.situation === 'network_paused' || body.situation === 'network_slow') {
+          const hasToken = Boolean(body.token?.trim());
+          const hasNetwork = Boolean(body.network?.trim());
+          if (!hasToken && !hasNetwork) {
+            showFormError('Pick a token, a network, or both.');
+            return;
+          }
+        }
+
+        if (body.startsAt && body.endsAt && new Date(body.endsAt) <= new Date(body.startsAt)) {
+          showFormError('"Event ends" must be after "Event starts".');
+          return;
+        }
+
+        // Existing group members, when editing a feature warning that belongs to a group.
+        // Grouping only spans the feature slots (the virtual 'features' entry); the
+        // app/login pairing below is handled separately because their messages differ.
+        const editedWarning = editId ? warningsCache.find(x => x.id === editId) : null;
+        const existingGroupId = editedWarning?.groupId || null;
+        const groupMembers = existingGroupId
+          ? warningsCache.filter(x => x.groupId === existingGroupId)
+          : (editedWarning ? [editedWarning] : []);
+
+        // Editing a warning that is part of a real group applies to every member.
+        if (groupMembers.length > 1 &&
+            !confirm(`This warning is part of a group of ${groupMembers.length} (${groupMembers.map(m => m.slot).join(', ')}). Changes will apply to all of them. Continue?`)) {
+          return;
+        }
+
+        // A shared group id is needed whenever this save touches more than one slot.
+        const groupId = slotsToCreate.length > 1
+          ? (existingGroupId || newGroupId())
+          : null;
+
+        for (const s of slotsToCreate) {
+          const st = currentFormState();
+          st.effectiveSlot = s;
+          st.slot = s;
+          const slotMessage = generateMessagesFromCatalog(st) || body.userMessage;
+          const payload = { ...body, slot: s, userMessage: slotMessage, groupId: groupId || '' };
+          const member = groupMembers.find(m => m.slot === s);
+          let targetId = member?.id;
+          // Editing a single warning always updates that row, even if slot lookup fails
+          // (e.g. virtual 'features' form vs stored transaction slot).
+          if (!targetId && editId && slotsToCreate.length === 1) {
+            targetId = editId;
+          }
+          if (!targetId) {
+            targetId = findExistingWarning(s, payload.token, payload.network)?.id;
+          }
+          if (targetId) {
+            await api(`/internal/api/warnings/${targetId}`, { method: 'PUT', body: JSON.stringify(payload) });
+          } else {
+            await api('/internal/api/warnings', { method: 'POST', body: JSON.stringify(payload) });
+          }
+        }
+
+        // Remove group members whose feature slot is no longer selected.
+        for (const m of groupMembers) {
+          if (!slotsToCreate.includes(m.slot)) {
+            await api(`/internal/api/warnings/${m.id}`, { method: 'DELETE' });
+          }
+        }
+
+        // "Also pause login" stays a separate (ungrouped) login warning, since its
+        // message/severity are derived rather than shared with the app warning.
+        const alsoBlockLogin = document.getElementById('f-also-block-login');
+        if (slot === 'app' && alsoBlockLogin && alsoBlockLogin.checked) {
+          const loginBody = {
+            slot: 'login',
+            situation: 'wallet_login_unavailable',
+            isActive: body.isActive,
+            response: 'paused',
+            severity: 'high',
+            internalNote: body.internalNote ? `Auto: ${body.internalNote}` : 'Auto-created with app-wide warning',
+            showFrom: body.showFrom,
+            startsAt: body.startsAt,
+            endsAt: body.endsAt,
+          };
+          const existingLogin = warningsCache.find(x => x.slot === 'login');
+          if (existingLogin) {
+            await api(`/internal/api/warnings/${existingLogin.id}`, { method: 'PUT', body: JSON.stringify(loginBody) });
+          } else {
+            await api('/internal/api/warnings', { method: 'POST', body: JSON.stringify(loginBody) });
+          }
+        }
+
+        hideWarningForm(true);
+        await loadWarnings();
+      } catch (e) {
+        // error already shown by api()
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    function newGroupId() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+      return 'grp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    }
+
+    async function deleteWarning(id) {
+      const target = warningsCache.find(x => x.id === id);
+      const groupMembers = target?.groupId
+        ? warningsCache.filter(x => x.groupId === target.groupId)
+        : [];
+      let idsToDelete = [id];
+      if (groupMembers.length > 1) {
+        if (!confirm(`This warning is part of a group of ${groupMembers.length} (${groupMembers.map(m => m.slot).join(', ')}). Delete all of them?`)) return;
+        idsToDelete = groupMembers.map(m => m.id);
+      } else if (!confirm('Delete this warning?')) {
+        return;
+      }
+      try {
+        for (const wid of idsToDelete) {
+          await api(`/internal/api/warnings/${wid}`, { method: 'DELETE' });
+        }
+        await loadWarnings();
+      } catch (e) {
+        showPageError(e.message);
+      }
+    }
+
+    async function loadWarnings() {
+      const loading = document.getElementById('warnings-loading');
+      const list = document.getElementById('warnings-list');
+      const empty = document.getElementById('warnings-empty');
+      loading.classList.remove('hidden');
+      list.classList.add('hidden');
+      empty.classList.add('hidden');
+      warningsCache = await api('/internal/api/warnings');
+      renderWarnings(warningsCache);
+    }
+
+    function warningHeadingFromMessage(message) {
+      if (!message) return '';
+      const trimmed = String(message).trim();
+      if (trimmed.startsWith('### ')) {
+        return trimmed.slice(4).split('\n')[0].trim();
+      }
+      return trimmed.split('\n')[0].trim();
+    }
+
+    // ─── AUDIT LOG ────────────────────────────────────────────────────────────
+    const AUDIT_ACTION_LABELS = {
+      created: 'Created',
+      activated: 'Activated',
+      updated: 'Updated',
+      deleted: 'Deleted',
+      scheduled: 'Scheduled',
+    };
+
+    const AUDIT_SOURCE_LABELS = {
+      status_fallback: 'Telegram fallback',
+      status_recovery: 'Auto-recovery',
+      linked_service_recovery: 'Linked service cleared',
+      linked_post_resolved: 'Intents post resolved',
+      upsert_replace: 'Replaced duplicate',
+      expired_schedule: 'Schedule ended',
+    };
+
+    const HEALTH_SERVICE_LABELS = {
+      backend: 'Backend API',
+      exchange: 'Exchange quotes',
+      'near-protocol': 'NEAR Protocol status',
+      'near-rpc': 'NEAR RPC',
+      'near-intents': 'NEAR Intents',
+    };
+
+    function auditWarningId(entry) {
+      if (entry.warningId != null) return entry.warningId;
+      const c = entry.changes || {};
+      if (c.id != null) return c.id;
+      return null;
+    }
+
+    function auditChannel(entry) {
+      const source = entry.changes?.source;
+      if (source && AUDIT_SOURCE_LABELS[source]) return AUDIT_SOURCE_LABELS[source];
+      if (entry.changedBy === 'system') return 'System';
+      return 'Admin';
+    }
+
+    function formatAuditValue(value) {
+      if (value == null || value === '') return '—';
+      if (typeof value === 'boolean') return value ? 'yes' : 'no';
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    }
+
+    function auditActionHeadline(entry) {
+      const action = AUDIT_ACTION_LABELS[entry.action] || entry.action;
+      const c = entry.changes || {};
+
+      if (c.source === 'status_fallback') {
+        const service = HEALTH_SERVICE_LABELS[c.service] || c.service || 'Health check';
+        return `${action} · Auto-fallback · ${service}`;
+      }
+      if (c.source === 'status_recovery') {
+        const service = HEALTH_SERVICE_LABELS[c.service] || c.service;
+        return `Deleted · Auto-recovery${service ? ` · ${service}` : ''}`;
+      }
+      if (c.source === 'linked_service_recovery') {
+        const service = HEALTH_SERVICE_LABELS[c.service] || c.service || 'Linked service';
+        return `Deleted · ${service} recovered`;
+      }
+      if (c.source === 'linked_post_resolved') {
+        return 'Deleted · NEAR Intents post resolved';
+      }
+      if (c.source === 'admin_update') {
+        const slot = slotLabel(c.slot);
+        return slot && slot !== '—' ? `Deleted · ${slot}` : 'Deleted';
+      }
+      if (c.source === 'upsert_replace') {
+        const slot = slotLabel(c.slot);
+        return slot && slot !== '—' ? `Deleted · duplicate · ${slot}` : 'Deleted · duplicate';
+      }
+      if (c.source === 'expired_schedule') {
+        const slot = slotLabel(c.slot);
+        return slot && slot !== '—' ? `Deleted · schedule ended · ${slot}` : 'Deleted · schedule ended';
+      }
+      if (entry.action === 'deleted') {
+        const slot = slotLabel(c.slot);
+        return slot && slot !== '—' ? `Deleted · ${slot}` : 'Deleted';
+      }
+
+      const slot = slotLabel(c.slot);
+      if (slot && slot !== '—') return `${action} · ${slot}`;
+      return action;
+    }
+
+    function auditMetaLines(entry) {
+      const c = entry.changes || {};
+      const lines = [];
+
+      if (entry.action === 'updated') {
+        Object.entries(c).forEach(([key, value]) => {
+          if (!Array.isArray(value) || value.length !== 2) return;
+          const label = key.replace(/_/g, ' ');
+          if (key === 'slot') {
+            lines.push([label, `${slotLabel(value[0])} → ${slotLabel(value[1])}`]);
+          } else if (key === 'user_message') {
+            lines.push([
+              'Message',
+              `${warningHeadingFromMessage(value[0]) || '—'} → ${warningHeadingFromMessage(value[1]) || '—'}`,
+            ]);
+          } else {
+            lines.push([label, `${formatAuditValue(value[0])} → ${formatAuditValue(value[1])}`]);
+          }
+        });
+        return lines;
+      }
+
+      if (c.service) {
+        lines.push(['Health check', HEALTH_SERVICE_LABELS[c.service] || c.service]);
+      }
+      if (c.slot) {
+        const scope = [slotLabel(c.slot), tokenLabel(c.token), networkLabel(c.network)]
+          .filter(Boolean)
+          .join(' › ');
+        lines.push(['Slot', scope]);
+      }
+      if (c.response) lines.push(['Response', c.response]);
+      if (c.severity) lines.push(['Severity', c.severity]);
+      if (c.situation) lines.push(['Situation', c.situation]);
+
+      const heading = warningHeadingFromMessage(c.user_message);
+      if (heading) lines.push(['Message', heading]);
+
+      if (c.internal_note) lines.push(['Internal note', c.internal_note]);
+      if (c.linked_service) {
+        lines.push(['Linked service', c.linked_service + (c.linked_post_id ? ` #${c.linked_post_id}` : '')]);
+      } else if (c.linked_post_id) {
+        lines.push(['Linked post', c.linked_post_id]);
+      }
+
+      const warningId = auditWarningId(entry);
+      if (warningId != null) {
+        lines.push([entry.action === 'deleted' ? 'Formerly' : 'Warning', `#${warningId}`]);
+      }
+
+      return lines;
+    }
+
+    function auditActionClass(entry) {
+      const action = entry.action || 'updated';
+      if (['created', 'activated', 'deleted', 'updated', 'scheduled'].includes(action)) {
+        return action;
+      }
+      return 'updated';
+    }
+
+    function formatAuditEntry(entry) {
+      const headline = auditActionHeadline(entry);
+      const actionClass = auditActionClass(entry);
+      const actionLabel = AUDIT_ACTION_LABELS[entry.action] || entry.action;
+      const actor = entry.changedBy === 'system' ? 'system' : entry.changedBy;
+      const actorLine = `${escapeHtml(actor)} · ${escapeHtml(auditChannel(entry))} · ${fmtDate(entry.createdAt)}`;
+      const metaLines = auditMetaLines(entry);
+      const metaHtml = metaLines.length
+        ? `<div class="audit-meta">${metaLines.map(([label, value]) =>
+            `<span><b>${escapeHtml(label)}:</b> ${escapeHtml(value)}</span>`
+          ).join('')}</div>`
+        : '';
+
+      const warningId = auditWarningId(entry);
+      const editBtn = warningId != null && entry.action !== 'deleted'
+        ? `<button type="button" class="secondary audit-edit-btn" data-action="edit-warning" data-id="${warningId}">Edit warning</button>`
+        : '';
+
+      const rawJson = entry.changes
+        ? `<details class="audit-raw"><summary>Show raw JSON</summary><pre class="changes">${escapeHtml(JSON.stringify(entry.changes, null, 2))}</pre></details>`
+        : '';
+
+      return `
+        <article class="card audit-card ${actionClass}">
+          <div class="audit-card-header">
+            <h3>${escapeHtml(headline)}</h3>
+            <span class="audit-action-tag">${escapeHtml(actionLabel)}</span>
+          </div>
+          <div class="audit-actor meta">${actorLine}</div>
+          ${metaHtml}
+          <div class="audit-card-footer">
+            ${editBtn}
+            ${rawJson}
+          </div>
+        </article>
+      `;
+    }
+
+    function renderAudit(data) {
+      const list = document.getElementById('audit-list');
+      document.getElementById('audit-page-info').textContent =
+        `Page ${data.page} · ${data.entries.length} of ${data.total}`;
+      list.innerHTML = data.entries.map(formatAuditEntry).join('') || '<p class="meta">No audit entries yet.</p>';
+    }
+
+    async function loadAudit() {
+      const data = await api(`/internal/api/audit-log?page=${auditPage}&limit=${auditLimit}`);
+      renderAudit(data);
+    }
+
+    // ─── BOOTSTRAP ────────────────────────────────────────────────────────────
+
+    // Delegated click: close searchable selects + handle data-action buttons.
+    document.addEventListener('click', (e) => {
+      searchableSelectClosers.forEach(closeFn => closeFn());
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const id = btn.dataset.id ? Number(btn.dataset.id) : null;
+      switch (action) {
+        case 'hide-form':      hideWarningForm(); break;
+        case 'save-warning':   saveWarning(id, btn); break;
+        case 'edit-warning':   editWarning(id); break;
+        case 'delete-warning': deleteWarning(id); break;
+        case 'duplicate-warning': duplicateWarning(id); break;
+      }
+    });
+
+    // Delegated change: form field interactions.
+    document.getElementById('warning-form-shell').addEventListener('change', (e) => {
+      formDirty = true;
+      const t = e.target;
+      if (t.id === 'f-situation')          { onSituationChange(); return; }
+      if (t.id === 'f-placement')          { onPlacementChange(); return; }
+      if (t.id === 'f-wallet')             { applyTemplate(); return; }
+      if (t.id === 'f-request-type')       { applyTemplate(); return; }
+      if (t.id === 'f-linked-service')     { onLinkedServiceChange(); return; }
+      if (t.id === 'f-linked-post')        { onLinkedPostChange(); return; }
+      if (t.classList.contains('f-tx-slot')) { onTransactionSlotsChange(); return; }
+      if (t.name === 'timing')             { toggleActiveSchedule(); return; }
+    });
+
+    // Delegated input: live preview on datetime/text fields.
+    document.getElementById('warning-form-shell').addEventListener('input', (e) => {
+      formDirty = true;
+      const PREVIEW_IDS = new Set(['f-show-from','f-starts-at','f-ends-at','f-heading','f-paragraph','f-shown-text','f-tooltip-text']);
+      if (PREVIEW_IDS.has(e.target.id)) updatePreview();
+    });
+
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'warnings') {
+          hideWarningForm();
+          loadWarnings();
+        }
+        if (btn.dataset.tab === 'audit') loadAudit();
+      });
+    });
+
+    document.querySelectorAll('#warning-subtabs .subtab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#warning-subtabs .subtab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeSubtab = btn.dataset.filter;
+        renderWarnings(warningsCache);
+      });
+    });
+
+    document.getElementById('btn-new-warning').addEventListener('click', () => openWarningForm());
+    document.getElementById('btn-refresh-warnings').addEventListener('click', loadWarnings);
+    document.getElementById('btn-refresh-audit').addEventListener('click', loadAudit);
+    document.getElementById('btn-audit-prev').addEventListener('click', () => { if (auditPage > 1) { auditPage--; loadAudit(); } });
+    document.getElementById('btn-audit-next').addEventListener('click', () => { auditPage++; loadAudit(); });
+
+    loadWarnings();
+    // Bridge tokens load on demand when opening Add/Edit (token/network pickers).
+  </script>
+</body>
+</html>

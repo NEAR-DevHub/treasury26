@@ -1,0 +1,205 @@
+{
+  "statusPageLink": "[Status page](https://status.trezu.org/)",
+  "placements": {
+    "app": "App-wide banner (every page)",
+    "login": "Login – all wallets",
+    "login.wallet.*": "Login – one wallet (Offline badge)",
+    "treasury-creation": "Create-treasury form (waitlist)",
+    "features": "Payments, Exchange & Deposits",
+    "actions": "Create request buttons + Approve/Reject/Remove",
+    "payments": "Payments",
+    "exchange": "Exchange",
+    "deposit": "Deposits",
+    "action.create-proposal": "Create request buttons",
+    "action.approve": "Approve buttons (vote modal + sidebar)",
+    "action.reject": "Reject buttons (vote modal + sidebar)",
+    "action.remove": "Remove buttons (vote modal + sidebar)",
+    "data.balances": "Dashboard balances + sidebar",
+    "data.activity": "Transaction history"
+  },
+  "situations": [
+    {
+      "id": "scheduled_maintenance",
+      "row": 1,
+      "label": "Scheduled maintenance – planned, known ahead",
+      "response": "notice",
+      "severity": "low",
+      "where": "Affected flow + dashboard note; whole-app also on status page + social",
+      "placements": ["features", "app"],
+      "scope": "schedule",
+      "byPlacement": {
+        "payments": "### Scheduled update\nPayments will be briefly unavailable {schedule}.",
+        "exchange": "### Scheduled update\nSwaps will be briefly unavailable {schedule}.",
+        "deposit": "### Scheduled update\nDeposits will be briefly unavailable {schedule}.",
+        "features": "### Scheduled update\nSome features will be briefly unavailable {schedule}.",
+        "app": "### Scheduled update\nTrezu will be briefly unavailable {schedule}.\nYour funds are on-chain and in your control."
+      }
+    },
+    {
+      "id": "provider_maintenance",
+      "row": 2,
+      "label": "Provider maintenance – upstream scheduled window",
+      "response": "notice",
+      "severity": "low",
+      "where": "Affected flow + dashboard note",
+      "placements": ["features"],
+      "scope": "schedule",
+      "byPlacement": {
+        "payments": "### Scheduled provider maintenance\nPayments may be briefly unavailable {schedule}. Your funds are on-chain and in your control.",
+        "exchange": "### Scheduled provider maintenance\nSwaps may be briefly unavailable {schedule}. Your funds are on-chain and in your control.",
+        "deposit": "### Scheduled provider maintenance\nDeposits may be briefly unavailable {schedule}. Your funds are on-chain and in your control.",
+        "features": "### Scheduled provider maintenance\nSome features may be briefly unavailable {schedule}. Your funds are on-chain and in your control."
+      }
+    },
+    {
+      "id": "network_slow",
+      "row": 3,
+      "label": "Network or token slow – still works, just slower",
+      "response": "notice",
+      "severity": "low",
+      "where": "In the flow, when that token or network is selected",
+      "placements": ["features"],
+      "scope": "token|network|token+network",
+      "message": "### {subject} is slow right now\nYour {action} will go through once it recovers, it just may take longer than usual."
+    },
+    {
+      "id": "network_paused",
+      "row": 4,
+      "label": "Token or network paused – one token, one network, or both",
+      "response": "paused",
+      "severity": "high",
+      "where": "In the flow, when that token or network is selected",
+      "placements": ["features"],
+      "scope": "token|network|token+network",
+      "messagesByScope": {
+        "token": "### {token} is paused right now\nOther tokens work as normal.",
+        "network": "### {network} is paused right now\nYou can use a different network in the meantime.",
+        "token+network": "### {token} on {network} is paused right now\nOther tokens work as normal."
+      }
+    },
+    {
+      "id": "features_paused",
+      "row": 5,
+      "label": "Feature pages down – payments / exchange / deposit",
+      "response": "paused",
+      "severity": "high",
+      "where": "Top of the affected page(s)",
+      "placements": ["features"],
+      "byPlacement": {
+        "payments": "### Payments are temporarily paused.\nWe're working on it.",
+        "exchange": "### Exchange is temporarily paused.\nWe're working on it.",
+        "deposit": "### Deposits are temporarily paused.\nWe're working on it.",
+        "features": "### Some features are temporarily paused.\nWe're working on it."
+      }
+    },
+    {
+      "id": "transactions_halted",
+      "row": 6,
+      "label": "Everything halted – Intents fully down, nothing can move",
+      "response": "paused",
+      "severity": "high",
+      "where": "Top banner, all pages",
+      "placements": ["app"],
+      "noAutoPost": true,
+      "message": "### Transactions are paused right now\nA network provider is recovering. Your funds are on-chain and in your control. Updates: {statusPageLink}"
+    },
+    {
+      "id": "balance_unavailable",
+      "row": 7,
+      "label": "Balances not showing – display issue, money untouched",
+      "response": "notice",
+      "severity": "high",
+      "where": "Pop-up once → dashboard balance area + sidebar",
+      "placements": ["data.balances"],
+      "message": "### Balance temporarily unavailable.\nWe can't show your balances right now. Your funds are on-chain and exactly where you left them. You can keep using your treasury."
+    },
+    {
+      "id": "history_not_loading",
+      "row": 8,
+      "label": "History not loading – display issue",
+      "response": "notice",
+      "severity": "high",
+      "where": "Recent Transactions + Requests history",
+      "placements": ["data.activity"],
+      "message": "### Transaction history isn't loading right now\nThis affects what you can see, not your funds or your treasury."
+    },
+    {
+      "id": "requests_wont_process",
+      "row": 9,
+      "label": "Requests won't process – can't create or send",
+      "response": "paused",
+      "severity": "high",
+      "where": "Create request buttons and Approve / Reject / Remove",
+      "placements": ["actions"],
+      "message": "Can't process new requests for a few minutes – a temporary network issue. Your funds are unaffected, try again shortly."
+    },
+    {
+      "id": "approvals_paused",
+      "row": 10,
+      "label": "Approvals paused – pending requests can't be approved",
+      "response": "paused",
+      "severity": "high",
+      "where": "All Approve buttons (vote modal + sidebar)",
+      "placements": ["action.approve"],
+      "message": "Approving requests is paused right now while a network provider recovers.\n You can still reject pending requests, and approvals will work again once it's back."
+    },
+    {
+      "id": "wallet_login_unavailable",
+      "row": 11,
+      "label": "Wallet login unavailable – a wallet provider is down",
+      "response": "paused",
+      "severity": "high",
+      "where": "Login screen – all wallets banner, or Offline badge on one wallet",
+      "placements": [],
+      "scope": "wallet",
+      "byPlacement": {
+        "login": "### Signing in isn't available right now.\nYour funds are on-chain and untouched – you can sign in again once it's back.",
+        "login.wallet.*": "### Signing in with {wallet} isn't available right now.\nYour funds are on-chain and untouched – you can sign in again once it's back."
+      }
+    },
+    {
+      "id": "backend_down",
+      "row": 12,
+      "label": "Backend down – data won't load",
+      "response": "notice",
+      "severity": "high",
+      "where": "Automatic banner across the app",
+      "placements": ["app"],
+      "noAutoPost": true,
+      "message": "### We're having a temporary issue\nSome data may not load. Your funds are on-chain and unaffected – try again shortly."
+    },
+    {
+      "id": "whole_app_down",
+      "row": 13,
+      "label": "Whole app down – Trezu won't load at all",
+      "response": "paused",
+      "severity": "high",
+      "where": "Status page + social + landing (outside the app)",
+      "placements": ["app"],
+      "noAutoPost": true,
+      "message": "### Trezu is temporarily down.\nYour funds are on-chain and in your control. Updates: {statusPageLink}"
+    },
+    {
+      "id": "treasury_creation_unavailable",
+      "row": 14,
+      "label": "Treasury creation unavailable – show waitlist",
+      "response": "paused",
+      "severity": "low",
+      "where": "Replaces the create-treasury form",
+      "placements": ["treasury-creation"],
+      "message": "Creating new treasuries is invite-only for now. Join the waitlist and we'll let you know when it opens up."
+    },
+    {
+      "id": "funds_at_risk",
+      "row": 15,
+      "label": "Funds may be at risk – STOP",
+      "response": "paused",
+      "severity": "critical",
+      "where": "Full-screen block, all pages",
+      "placements": ["app"],
+      "customCopy": true,
+      "noAutoPost": true,
+      "message": "### We've paused Trezu while we investigate an issue.\nWe recommend not making any transactions until we confirm everything's clear. Updates: {statusPageLink}"
+    }
+  ]
+}

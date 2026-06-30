@@ -36,6 +36,12 @@ import {
     estimateVoteStorage,
 } from "@/lib/sputnik-storage";
 import { cn } from "@/lib/utils";
+import {
+    DIRECT_TRIGGER_WALLET_IDS,
+    SELECTED_WALLET_STORAGE_KEY,
+    TARGET_WALLET_STORAGE_KEY,
+    isDirectTriggerWallet,
+} from "@/lib/wallets";
 
 /**
  * Ensures sandboxed iframes get bluetooth permission for Ledger Nano X BLE.
@@ -96,24 +102,13 @@ interface Vote {
 // AUTH_PURPOSE / AUTH_RECIPIENT (nt-be/src/auth/handlers.rs).
 const LOGIN_PURPOSE = "PROVE_OWNERSHIP" as const;
 const LOGIN_RECIPIENT = "Trezu App";
-const LEDGER_WALLET_ID = "ledger";
-const WALLETCONTRACT_EIP712_WALLET_ID = "walletcontract-eip712";
-// Wallets that get their own dedicated button and are triggered directly by id
-// through NearConnect, so they are excluded from the generic "near" wallet
-// selector popup. When connecting one of these, only the others are excluded.
-const DIRECT_TRIGGER_WALLET_IDS = [
-    LEDGER_WALLET_ID,
-    WALLETCONTRACT_EIP712_WALLET_ID,
-];
 // localStorage key @hot-labs/near-connect uses to remember the chosen wallet
 // (so `connector.wallet()` resolves it on later calls and after reload).
-const SELECTED_WALLET_STORAGE_KEY = "selected-wallet";
 // Our own copy of the forced direct-trigger wallet id (Ledger / EIP-712).
 // SELECTED_WALLET_STORAGE_KEY alone isn't enough: on reload the connector must
 // be rebuilt INCLUDING that wallet (not excluded), otherwise `connector.wallet()`
 // can't resolve it and the user is signed out. We persist the forced target
 // here and restore it on bare init().
-const TARGET_WALLET_STORAGE_KEY = "trezu:target-wallet";
 
 // WalletConnect Core must be initialized exactly once per page. The connector
 // is rebuilt whenever the excluded-wallet set changes (e.g. switching to the
@@ -219,8 +214,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 ? window.localStorage.getItem(TARGET_WALLET_STORAGE_KEY)
                 : null;
         const restoredTarget =
-            persistedTarget &&
-            DIRECT_TRIGGER_WALLET_IDS.includes(persistedTarget)
+            persistedTarget && isDirectTriggerWallet(persistedTarget)
                 ? persistedTarget
                 : undefined;
         const targetWalletId =
@@ -320,7 +314,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 // Persist direct-trigger wallets under our own key so the
                 // connector is rebuilt including them after a reload. Clear it
                 // for generic NEAR wallets, which need no special inclusion.
-                if (DIRECT_TRIGGER_WALLET_IDS.includes(selectedWalletId)) {
+                if (isDirectTriggerWallet(selectedWalletId)) {
                     window.localStorage.setItem(
                         TARGET_WALLET_STORAGE_KEY,
                         selectedWalletId,

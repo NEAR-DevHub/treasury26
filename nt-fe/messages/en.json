@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "Search request by name or ID",
         "searchPlaceholderShort": "Search by name or ID",
-        "errorLoading": "Error loading proposals. Please try again.",
         "empty": {
             "title": "Create your first request",
             "description": "Requests for payments, exchanges, and other actions will appear here once created.",
@@ -616,6 +615,7 @@
             "actionReject": "reject",
             "actionRemove": "remove",
             "insufficientBalance": "Requests <highlight>{ids}</highlight> cannot be approved due to insufficient balance. Your approval will only apply to the remaining requests.",
+            "approveBlockedBulk": "{count, plural, one {# selected request can't be approved right now — unselect it to continue.} other {# selected requests can't be approved right now — unselect them to continue.}}",
             "remove": "Remove",
             "confirm": "Confirm"
         },
@@ -1426,10 +1426,6 @@
             "openInTelegram": "Open {bot} in Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Under Maintenance",
-        "maintenanceMessage": "We're currently performing maintenance. Some features may be temporarily unavailable. Please check back soon."
-    },
     "creditsQuota": {
         "available": "{count} Available",
         "used": "{count} Used",
@@ -1974,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "Create Request",
-        "noPermission": "You don't have permission to create a request"
+        "noPermission": "You don't have permission to create a request",
+        "paused": "Temporarily paused",
+        "brieflyUnavailable": "Briefly Unavailable"
     },
     "address": {
         "copied": "Address copied to clipboard"
@@ -2188,6 +2186,87 @@
             "docsDescription": "Find detailed guides for every feature.",
             "videoTitle": "Watch the walkthrough",
             "videoDescription": "See how Trezu works in a short video."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "on",
+            "until": "until"
+        },
+        "actions": {
+            "payment": "payment",
+            "deposit": "deposit",
+            "exchange": "exchange",
+            "approve": "approval",
+            "reject": "rejection",
+            "remove": "removal",
+            "proposal": "proposal",
+            "transaction": "transaction"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} on {network}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### Scheduled update\nPayments will be briefly unavailable {schedule}.",
+                "exchange": "### Scheduled update\nSwaps will be briefly unavailable {schedule}.",
+                "deposit": "### Scheduled update\nDeposits will be briefly unavailable {schedule}.",
+                "features": "### Scheduled update\nSome features will be briefly unavailable {schedule}.",
+                "app": "### Scheduled update\nTrezu will be briefly unavailable {schedule}.\nYour funds are on-chain and in your control."
+            },
+            "provider_maintenance": {
+                "payments": "### Scheduled provider maintenance\nPayments may be briefly unavailable {schedule}. Your funds are on-chain and in your control.",
+                "exchange": "### Scheduled provider maintenance\nSwaps may be briefly unavailable {schedule}. Your funds are on-chain and in your control.",
+                "deposit": "### Scheduled provider maintenance\nDeposits may be briefly unavailable {schedule}. Your funds are on-chain and in your control.",
+                "features": "### Scheduled provider maintenance\nSome features may be briefly unavailable {schedule}. Your funds are on-chain and in your control."
+            },
+            "network_slow": {
+                "default": "### {subject} is slow right now\nYour {action} will go through once it recovers, it just may take longer than usual."
+            },
+            "network_paused": {
+                "token": "### {token} is paused right now\nOther tokens work as normal.",
+                "network": "### {network} is paused right now\nYou can use a different network in the meantime.",
+                "token+network": "### {token} on {network} is paused right now\nOther tokens work as normal."
+            },
+            "features_paused": {
+                "payments": "### Payments are temporarily paused.\nWe're working on it.",
+                "exchange": "### Exchange is temporarily paused.\nWe're working on it.",
+                "deposit": "### Deposits are temporarily paused.\nWe're working on it.",
+                "features": "### Some features are temporarily paused.\nWe're working on it."
+            },
+            "transactions_halted": {
+                "default": "### Transactions are paused right now\nA network provider is recovering. Your funds are on-chain and in your control. Updates: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### Balance temporarily unavailable.\nWe can't show your balances right now. Your funds are on-chain and exactly where you left them. You can keep using your treasury."
+            },
+            "history_not_loading": {
+                "default": "### Transaction history isn't loading right now\nThis affects what you can see, not your funds or your treasury."
+            },
+            "requests_wont_process": {
+                "default": "Can't process new requests for a few minutes – a temporary network issue. Your funds are unaffected, try again shortly."
+            },
+            "approvals_paused": {
+                "default": "Approving requests is paused right now while a network provider recovers.\n You can still reject pending requests, and approvals will work again once it's back."
+            },
+            "wallet_login_unavailable": {
+                "login": "### Signing in isn't available right now.\nYour funds are on-chain and untouched – you can sign in again once it's back.",
+                "loginWallet": "### Signing in with {wallet} isn't available right now.\nYour funds are on-chain and untouched – you can sign in again once it's back."
+            },
+            "backend_down": {
+                "default": "### We're having a temporary issue\nSome data may not load. Your funds are on-chain and unaffected – try again shortly."
+            },
+            "whole_app_down": {
+                "default": "### Trezu is temporarily down.\nYour funds are on-chain and in your control. Updates: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "Creating new treasuries is invite-only for now. Join the waitlist and we'll let you know when it opens up."
+            },
+            "funds_at_risk": {
+                "default": "### We've paused Trezu while we investigate an issue.\nWe recommend not making any transactions until we confirm everything's clear. Updates: {statusPageLink}"
+            }
         }
     },
     "customTemplates": {

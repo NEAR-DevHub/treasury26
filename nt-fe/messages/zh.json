@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "按名称或 ID 搜索请求",
         "searchPlaceholderShort": "按名称或 ID 搜索",
-        "errorLoading": "加载提案出错。请再试一次。",
         "empty": {
             "title": "创建您的第一个请求",
             "description": "付款、兑换及其他操作的请求在创建后将显示在此处。",
@@ -616,6 +615,7 @@
             "actionReject": "拒绝",
             "actionRemove": "移除",
             "insufficientBalance": "由于余额不足,请求 <highlight>{ids}</highlight> 无法被批准。您的批准将仅适用于其余请求。",
+            "approveBlockedBulk": "{count, plural, other {所选 # 个请求目前无法批准 — 请取消选择以继续。}}",
             "remove": "移除",
             "confirm": "确认"
         },
@@ -1426,10 +1426,6 @@
             "openInTelegram": "在 Telegram 中打开 {bot}"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "维护中",
-        "maintenanceMessage": "我们正在进行维护。某些功能可能暂时不可用。请稍后再试。"
-    },
     "creditsQuota": {
         "available": "{count} 可用",
         "used": "已用 {count}",
@@ -1974,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "创建请求",
-        "noPermission": "您没有创建请求的权限"
+        "noPermission": "您没有创建请求的权限",
+        "paused": "暂时暂停",
+        "brieflyUnavailable": "暂时不可用"
     },
     "address": {
         "copied": "地址已复制到剪贴板"
@@ -2188,6 +2186,87 @@
             "docsDescription": "在文档中了解所有功能。",
             "videoTitle": "观看演示",
             "videoDescription": "观看一段简短视频,了解 Trezu 的工作方式。"
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "于",
+            "until": "至"
+        },
+        "actions": {
+            "payment": "支付",
+            "deposit": "充值",
+            "exchange": "兑换",
+            "approve": "批准",
+            "reject": "拒绝",
+            "remove": "移除",
+            "proposal": "提案",
+            "transaction": "交易"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network} 上的 {token}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### 计划更新\n支付将在{schedule}期间短暂不可用。",
+                "exchange": "### 计划更新\n兑换将在{schedule}期间短暂不可用。",
+                "deposit": "### 计划更新\n存款将在{schedule}期间短暂不可用。",
+                "features": "### 计划更新\n部分功能将在{schedule}期间短暂不可用。",
+                "app": "### 计划更新\nTrezu将在{schedule}期间短暂不可用。\n您的资金在链上（on-chain），由您自行掌控。"
+            },
+            "network_slow": {
+                "default": "### {subject}目前运行缓慢\n您的{action}将在恢复后完成，只是可能比平时需要更长时间。"
+            },
+            "network_paused": {
+                "token": "### {token}目前已暂停\n其他代币正常运作。",
+                "network": "### {network}目前已暂停\n您可以暂时使用其他网络。",
+                "token+network": "### {network}上的{token}目前已暂停\n其他代币正常运作。"
+            },
+            "features_paused": {
+                "payments": "### 支付已暂时停止。\n我们正在修复中。",
+                "exchange": "### 兑换已暂时停止。\n我们正在修复中。",
+                "deposit": "### 存款已暂时停止。\n我们正在修复中。",
+                "features": "### 部分功能已暂时停止。\n我们正在修复中。"
+            },
+            "transactions_halted": {
+                "default": "### 交易目前已暂停\n在网络供应商恢复期间，交易已暂停。您的资金在链上（on-chain），由您自行掌控。更新：{statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### 余额暂时不可用。\n我们目前无法显示您的余额。您的资金在链上（on-chain），安全保存在原处。您可以继续使用您的金库。"
+            },
+            "history_not_loading": {
+                "default": "### 交易记录目前无法加载\n这只影响您的查看，不影响您的资金或金库。"
+            },
+            "requests_wont_process": {
+                "default": "### 由于临时网络问题，无法处理新请求，请稍等几分钟。\n 您的资金不受影响，请稍后重试。"
+            },
+            "approvals_paused": {
+                "default": "在网络供应商恢复期间，请求审批已暂停。\n 您仍可拒绝待处理的请求，服务恢复后审批将重新可用。"
+            },
+            "wallet_login_unavailable": {
+                "login": "### 目前无法登录。\n您的资金在链上（on-chain）且安全无虞——服务恢复后即可重新登录。",
+                "loginWallet": "### 目前无法使用{wallet}登录。\n您的资金在链上（on-chain）且安全无虞——服务恢复后即可重新登录。"
+            },
+            "backend_down": {
+                "default": "### 我们遇到了临时问题\n部分数据可能无法加载。您的资金在链上（on-chain），不受影响——请稍后重试。"
+            },
+            "whole_app_down": {
+                "default": "### Trezu暂时不可用。\n您的资金在链上（on-chain），由您自行掌控。更新：{statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "创建新金库目前仅限受邀用户。加入等候名单，开放后我们将通知您。"
+            },
+            "funds_at_risk": {
+                "default": "### 我们在调查问题期间已暂停Trezu。\n在我们确认一切安全之前，建议不要进行任何交易。更新：{statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### 计划供应商维护\n支付可能在{schedule}期间短暂不可用。您的资金在链上，由您完全控制。",
+                "exchange": "### 计划供应商维护\n兑换可能在{schedule}期间短暂不可用。您的资金在链上，由您完全控制。",
+                "deposit": "### 计划供应商维护\n存款可能在{schedule}期间短暂不可用。您的资金在链上，由您完全控制。",
+                "features": "### 计划供应商维护\n部分功能可能在{schedule}期间短暂不可用。您的资金在链上，由您完全控制。"
+            }
         }
     },
     "customTemplates": {

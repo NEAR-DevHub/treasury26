@@ -188,6 +188,9 @@ async fn async_main() {
         state.clone(),
     );
 
+    // Spawn status monitor worker (Oh Dear health checks + fallback warnings)
+    nt_be::handlers::status::run_status_monitor_loop(state.clone());
+
     // Spawn notification worker (event detection + Telegram dispatch)
     nt_be::handlers::notifications::run_notification_loop(
         state.clone(),

@@ -304,6 +304,33 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/intents/status",
             get(handlers::intents::system_status::get_system_status),
         )
+        // Warnings endpoints
+        .route(
+            "/api/warnings",
+            get(handlers::warnings::public::get_warnings),
+        )
+        .route(
+            "/internal/warnings",
+            get(handlers::warnings::admin_page::serve_admin_page),
+        )
+        .route(
+            "/internal/api/warnings",
+            get(handlers::warnings::admin::list_warnings)
+                .post(handlers::warnings::admin::create_warning),
+        )
+        .route(
+            "/internal/api/warnings/{id}",
+            put(handlers::warnings::admin::update_warning)
+                .delete(handlers::warnings::admin::delete_warning),
+        )
+        .route(
+            "/internal/api/audit-log",
+            get(handlers::warnings::admin::get_audit_log),
+        )
+        .route(
+            "/internal/api/status-incidents",
+            get(handlers::status::incidents::get_status_incidents),
+        )
         .route(
             "/api/oh-dear/status/{service}",
             get(handlers::status::get_status),

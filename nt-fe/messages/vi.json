@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "Tìm yêu cầu theo tên hoặc ID",
         "searchPlaceholderShort": "Tìm theo tên hoặc ID",
-        "errorLoading": "Lỗi khi tải đề xuất. Vui lòng thử lại.",
         "empty": {
             "title": "Tạo yêu cầu đầu tiên của bạn",
             "description": "Yêu cầu thanh toán, trao đổi và các hành động khác sẽ xuất hiện ở đây khi được tạo.",
@@ -616,6 +615,7 @@
             "actionReject": "từ chối",
             "actionRemove": "xóa",
             "insufficientBalance": "Yêu cầu <highlight>{ids}</highlight> không thể phê duyệt do số dư không đủ. Phê duyệt của bạn sẽ chỉ áp dụng cho các yêu cầu còn lại.",
+            "approveBlockedBulk": "{count, plural, one {# yêu cầu đã chọn không thể được phê duyệt ngay bây giờ — bỏ chọn để tiếp tục.} other {# yêu cầu đã chọn không thể được phê duyệt ngay bây giờ — bỏ chọn để tiếp tục.}}",
             "remove": "Xóa",
             "confirm": "Xác nhận"
         },
@@ -1426,10 +1426,6 @@
             "openInTelegram": "Mở {bot} trong Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Đang bảo trì",
-        "maintenanceMessage": "Chúng tôi đang thực hiện bảo trì. Một số tính năng có thể tạm thời không khả dụng. Vui lòng quay lại sau."
-    },
     "creditsQuota": {
         "available": "{count} khả dụng",
         "used": "Đã dùng {count}",
@@ -1974,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "Tạo yêu cầu",
-        "noPermission": "Bạn không có quyền tạo yêu cầu"
+        "noPermission": "Bạn không có quyền tạo yêu cầu",
+        "paused": "Tạm dừng",
+        "brieflyUnavailable": "Tạm thời không khả dụng"
     },
     "address": {
         "copied": "Đã sao chép địa chỉ vào bộ nhớ tạm"
@@ -2188,6 +2186,87 @@
             "docsDescription": "Tìm hiểu về tất cả tính năng trong tài liệu.",
             "videoTitle": "Xem demo",
             "videoDescription": "Xem video ngắn cho thấy cách Trezu hoạt động."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "vào",
+            "until": "đến"
+        },
+        "actions": {
+            "payment": "thanh toán",
+            "deposit": "nạp tiền",
+            "exchange": "hoán đổi",
+            "approve": "phê duyệt",
+            "reject": "từ chối",
+            "remove": "xóa",
+            "proposal": "đề xuất",
+            "transaction": "giao dịch"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} trên {network}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### Cập nhật theo lịch\nThanh toán sẽ tạm thời không khả dụng {schedule}.",
+                "exchange": "### Cập nhật theo lịch\nGiao dịch hoán đổi sẽ tạm thời không khả dụng {schedule}.",
+                "deposit": "### Cập nhật theo lịch\nNạp tiền sẽ tạm thời không khả dụng {schedule}.",
+                "features": "### Cập nhật theo lịch\nMột số tính năng sẽ tạm thời không khả dụng {schedule}.",
+                "app": "### Cập nhật theo lịch\nTrezu sẽ tạm thời không khả dụng {schedule}.\nTài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn."
+            },
+            "network_slow": {
+                "default": "### {subject} đang chậm lúc này\n{action} của bạn sẽ được xử lý khi mạng phục hồi, chỉ có thể mất nhiều thời gian hơn bình thường."
+            },
+            "network_paused": {
+                "token": "### {token} đang tạm dừng lúc này\nCác token khác hoạt động bình thường.",
+                "network": "### {network} đang tạm dừng lúc này\nBạn có thể sử dụng mạng khác trong thời gian chờ.",
+                "token+network": "### {token} trên {network} đang tạm dừng lúc này\nCác token khác hoạt động bình thường."
+            },
+            "features_paused": {
+                "payments": "### Thanh toán tạm thời bị tạm dừng.\nChúng tôi đang khắc phục.",
+                "exchange": "### Giao dịch hoán đổi tạm thời bị tạm dừng.\nChúng tôi đang khắc phục.",
+                "deposit": "### Nạp tiền tạm thời bị tạm dừng.\nChúng tôi đang khắc phục.",
+                "features": "### Một số tính năng tạm thời bị tạm dừng.\nChúng tôi đang khắc phục."
+            },
+            "transactions_halted": {
+                "default": "### Giao dịch hiện đang bị tạm dừng\nGiao dịch bị tạm dừng trong khi nhà cung cấp mạng đang phục hồi. Tài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn. Cập nhật: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### Số dư tạm thời không khả dụng.\nChúng tôi không thể hiển thị số dư của bạn lúc này. Tài sản của bạn nằm on-chain, chính xác nơi bạn để chúng. Bạn có thể tiếp tục sử dụng kho bạc của mình."
+            },
+            "history_not_loading": {
+                "default": "### Lịch sử giao dịch hiện không tải được\nĐiều này chỉ ảnh hưởng đến hiển thị, không ảnh hưởng đến tài sản hay kho bạc của bạn."
+            },
+            "requests_wont_process": {
+                "default": "### Không thể xử lý yêu cầu mới trong vài phút – sự cố mạng tạm thời.\n Tài sản của bạn không bị ảnh hưởng, vui lòng thử lại sau ít phút."
+            },
+            "approvals_paused": {
+                "default": "Phê duyệt yêu cầu đang bị tạm dừng trong khi nhà cung cấp mạng phục hồi.\n Bạn vẫn có thể từ chối các yêu cầu đang chờ, và phê duyệt sẽ hoạt động trở lại khi dịch vụ được khôi phục."
+            },
+            "wallet_login_unavailable": {
+                "login": "### Đăng nhập hiện không khả dụng.\nTài sản của bạn nằm on-chain và không bị ảnh hưởng – bạn có thể đăng nhập lại khi dịch vụ được khôi phục.",
+                "loginWallet": "### Đăng nhập bằng {wallet} hiện không khả dụng.\nTài sản của bạn nằm on-chain và không bị ảnh hưởng – bạn có thể đăng nhập lại khi dịch vụ được khôi phục."
+            },
+            "backend_down": {
+                "default": "### Chúng tôi đang gặp sự cố tạm thời\nMột số dữ liệu có thể không tải được. Tài sản của bạn nằm on-chain và không bị ảnh hưởng – vui lòng thử lại sau ít phút."
+            },
+            "whole_app_down": {
+                "default": "### Trezu tạm thời ngừng hoạt động.\nTài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn. Cập nhật: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "Tạo kho bạc mới hiện chỉ dành cho người được mời. Tham gia danh sách chờ và chúng tôi sẽ thông báo khi mở đăng ký."
+            },
+            "funds_at_risk": {
+                "default": "### Chúng tôi đã tạm dừng Trezu trong khi điều tra sự cố.\nChúng tôi khuyến nghị không thực hiện giao dịch cho đến khi xác nhận mọi thứ an toàn. Cập nhật: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### Bảo trì nhà cung cấp theo lịch\nThanh toán có thể tạm thời không khả dụng {schedule}. Tiền của bạn đang ở trên chuỗi và trong tầm kiểm soát của bạn.",
+                "exchange": "### Bảo trì nhà cung cấp theo lịch\nGiao dịch hoán đổi có thể tạm thời không khả dụng {schedule}. Tiền của bạn đang ở trên chuỗi và trong tầm kiểm soát của bạn.",
+                "deposit": "### Bảo trì nhà cung cấp theo lịch\nNạp tiền có thể tạm thời không khả dụng {schedule}. Tiền của bạn đang ở trên chuỗi và trong tầm kiểm soát của bạn.",
+                "features": "### Bảo trì nhà cung cấp theo lịch\nMột số tính năng có thể tạm thời không khả dụng {schedule}. Tiền của bạn đang ở trên chuỗi và trong tầm kiểm soát của bạn."
+            }
         }
     },
     "customTemplates": {

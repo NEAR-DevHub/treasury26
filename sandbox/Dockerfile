@@ -57,14 +57,17 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY nt-be/Cargo.toml nt-be/Cargo.lock ./
-COPY nt-be/src ./src
-COPY nt-be/migrations ./migrations
-COPY nt-be/.sqlx ./.sqlx
-COPY nt-be/data ./data
+# Mirror the repo layout: `shared/` is a sibling of the `nt-be` crate root so the
+# `include_str!("../../../../shared/...")` path in templates.rs resolves at build time.
+COPY nt-be/Cargo.toml nt-be/Cargo.lock nt-be/
+COPY nt-be/src nt-be/src
+COPY nt-be/migrations nt-be/migrations
+COPY nt-be/.sqlx nt-be/.sqlx
+COPY nt-be/data nt-be/data
+COPY shared/ shared/
 
 ENV SQLX_OFFLINE=true
-RUN cargo build --release
+RUN cd nt-be && cargo build --release
 
 # ============================================================================
 # Stage 4: Build the Sputnik Indexer
@@ -93,7 +96,7 @@ WORKDIR /app
 
 # Copy built binaries
 COPY --from=sandbox-builder /build/sandbox-init/target/release/sandbox-init /usr/local/bin/
-COPY --from=api-builder /build/target/release/nt-be /usr/local/bin/
+COPY --from=api-builder /build/nt-be/target/release/nt-be /usr/local/bin/
 COPY --from=indexer-builder /app/target/release/sputnik-indexer /usr/local/bin/
 
 # Copy contract WASM

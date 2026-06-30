@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useNextStep } from "nextstepjs";
 import { useEffect, useState } from "react";
-import { SystemStatusBanner } from "@/components/system-status-banner";
+import { SlotWarning } from "@/components/warning-message";
 import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { TOUR_NAMES } from "@/features/onboarding/steps/dashboard";
@@ -477,10 +477,25 @@ export function Sidebar({ onClose }: SidebarProps) {
                 </nav>
 
                 <div className="hidden lg:flex flex-col w-full justify-center items-center gap-2">
-                    <SystemStatusBanner
-                        className={cn("px-3.5", isReduced && "hidden")}
-                        isSidebar
-                    />
+                    <div
+                        className={cn(
+                            "w-full px-3.5 flex flex-col gap-2",
+                            isReduced && "hidden",
+                        )}
+                    >
+                        <SlotWarning
+                            slot="data.balances"
+                            headingClassName="font-medium"
+                            iconPosition="top"
+                            bodyClassName="text-xs"
+                        />
+                        <SlotWarning
+                            slot="app"
+                            headingClassName="font-medium"
+                            iconPosition="top"
+                            bodyClassName="text-xs"
+                        />
+                    </div>
                     <CreateBanner disabled={isReduced} />
                     <div className={cn(!isReduced && "px-3.5 w-full flex")}>
                         <ConfidentialBanner

@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "Anfrage nach Name oder ID suchen",
         "searchPlaceholderShort": "Nach Name oder ID suchen",
-        "errorLoading": "Fehler beim Laden der Vorschläge. Bitte erneut versuchen.",
         "empty": {
             "title": "Erstellen Sie Ihre erste Anfrage",
             "description": "Anfragen für Zahlungen, Tausche und andere Aktionen erscheinen hier, sobald sie erstellt werden.",
@@ -616,6 +615,7 @@
             "actionReject": "ablehnen",
             "actionRemove": "entfernen",
             "insufficientBalance": "Anfragen <highlight>{ids}</highlight> können wegen unzureichenden Guthabens nicht genehmigt werden. Ihre Genehmigung gilt nur für die verbleibenden Anfragen.",
+            "approveBlockedBulk": "{count, plural, one {# ausgewählte Anfrage kann derzeit nicht genehmigt werden — heben Sie die Auswahl auf, um fortzufahren.} other {# ausgewählte Anfragen können derzeit nicht genehmigt werden — heben Sie die Auswahl auf, um fortzufahren.}}",
             "remove": "Entfernen",
             "confirm": "Bestätigen"
         },
@@ -1426,10 +1426,6 @@
             "openInTelegram": "{bot} in Telegram öffnen"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Wartungsarbeiten",
-        "maintenanceMessage": "Wir führen derzeit Wartungsarbeiten durch. Einige Funktionen sind möglicherweise vorübergehend nicht verfügbar. Bitte schauen Sie bald wieder vorbei."
-    },
     "creditsQuota": {
         "available": "{count} verfügbar",
         "used": "{count} verwendet",
@@ -1974,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "Anfrage erstellen",
-        "noPermission": "Sie haben keine Berechtigung, eine Anfrage zu erstellen"
+        "noPermission": "Sie haben keine Berechtigung, eine Anfrage zu erstellen",
+        "paused": "Vorübergehend pausiert",
+        "brieflyUnavailable": "Kurzzeitig nicht verfügbar"
     },
     "address": {
         "copied": "Adresse in die Zwischenablage kopiert"
@@ -2188,6 +2186,87 @@
             "docsDescription": "Erfahren Sie alles über die Funktionen in der Dokumentation.",
             "videoTitle": "Demo ansehen",
             "videoDescription": "Sehen Sie ein kurzes Video, das zeigt, wie Trezu funktioniert."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "am",
+            "until": "bis"
+        },
+        "actions": {
+            "payment": "Zahlung",
+            "deposit": "Einzahlung",
+            "exchange": "Tausch",
+            "approve": "Genehmigung",
+            "reject": "Ablehnung",
+            "remove": "Entfernung",
+            "proposal": "Antrag",
+            "transaction": "Transaktion"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} auf {network}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### Geplantes Update\nZahlungen werden {schedule} kurzzeitig nicht verfügbar sein.",
+                "exchange": "### Geplantes Update\nTauschvorgänge werden {schedule} kurzzeitig nicht verfügbar sein.",
+                "deposit": "### Geplantes Update\nEinzahlungen werden {schedule} kurzzeitig nicht verfügbar sein.",
+                "features": "### Geplantes Update\nEinige Funktionen werden {schedule} kurzzeitig nicht verfügbar sein.",
+                "app": "### Geplantes Update\nTrezu wird {schedule} kurzzeitig nicht verfügbar sein.\nIhre Mittel sind on-chain und unter Ihrer Kontrolle."
+            },
+            "network_slow": {
+                "default": "### {subject} ist gerade langsam\nIhre {action} wird durchgeführt, sobald sich das Netzwerk erholt hat – es kann nur etwas länger dauern als üblich."
+            },
+            "network_paused": {
+                "token": "### {token} ist gerade pausiert\nAndere Token funktionieren normal.",
+                "network": "### {network} ist gerade pausiert\nSie können in der Zwischenzeit ein anderes Netzwerk nutzen.",
+                "token+network": "### {token} auf {network} ist gerade pausiert\nAndere Token funktionieren normal."
+            },
+            "features_paused": {
+                "payments": "### Zahlungen sind vorübergehend pausiert.\nWir arbeiten daran.",
+                "exchange": "### Der Tausch ist vorübergehend pausiert.\nWir arbeiten daran.",
+                "deposit": "### Einzahlungen sind vorübergehend pausiert.\nWir arbeiten daran.",
+                "features": "### Einige Funktionen sind vorübergehend pausiert.\nWir arbeiten daran."
+            },
+            "transactions_halted": {
+                "default": "### Transaktionen sind derzeit pausiert\nTransaktionen sind pausiert, während sich ein Netzwerkanbieter erholt. Ihre Mittel sind on-chain und unter Ihrer Kontrolle. Updates: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### Guthaben vorübergehend nicht verfügbar.\nWir können Ihre Guthaben derzeit nicht anzeigen. Ihre Mittel sind on-chain und genau dort, wo Sie sie hinterlassen haben. Sie können Ihre Treasury weiterhin nutzen."
+            },
+            "history_not_loading": {
+                "default": "### Transaktionsverlauf wird derzeit nicht geladen\nDies betrifft nur die Anzeige, nicht Ihre Mittel oder Ihre Treasury."
+            },
+            "requests_wont_process": {
+                "default": "### Neue Anfragen können für einige Minuten nicht bearbeitet werden – ein vorübergehendes Netzwerkproblem.\n Ihre Mittel sind nicht betroffen, versuchen Sie es in Kürze erneut."
+            },
+            "approvals_paused": {
+                "default": "Die Genehmigung von Anfragen ist pausiert, während sich ein Netzwerkanbieter erholt.\n Sie können ausstehende Anfragen weiterhin ablehnen, und Genehmigungen funktionieren wieder, sobald der Dienst wiederhergestellt ist."
+            },
+            "wallet_login_unavailable": {
+                "login": "### Die Anmeldung ist derzeit nicht verfügbar.\nIhre Mittel sind on-chain und unberührt – Sie können sich wieder anmelden, sobald der Dienst wiederhergestellt ist.",
+                "loginWallet": "### Die Anmeldung mit {wallet} ist derzeit nicht verfügbar.\nIhre Mittel sind on-chain und unberührt – Sie können sich wieder anmelden, sobald der Dienst wiederhergestellt ist."
+            },
+            "backend_down": {
+                "default": "### Wir haben ein vorübergehendes Problem\nEinige Daten werden möglicherweise nicht geladen. Ihre Mittel sind on-chain und nicht betroffen – versuchen Sie es in Kürze erneut."
+            },
+            "whole_app_down": {
+                "default": "### Trezu ist vorübergehend nicht erreichbar.\nIhre Mittel sind on-chain und unter Ihrer Kontrolle. Updates: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "Das Erstellen neuer Treasuries ist derzeit nur auf Einladung möglich. Tragen Sie sich in die Warteliste ein und wir informieren Sie, sobald es verfügbar ist."
+            },
+            "funds_at_risk": {
+                "default": "### Wir haben Trezu pausiert, während wir ein Problem untersuchen.\nWir empfehlen, keine Transaktionen durchzuführen, bis wir bestätigen, dass alles in Ordnung ist. Updates: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### Geplante Anbieterwartung\nZahlungen sind möglicherweise {schedule} kurzzeitig nicht verfügbar. Ihr Guthaben ist On-Chain und unter Ihrer Kontrolle.",
+                "exchange": "### Geplante Anbieterwartung\nTauschvorgänge sind möglicherweise {schedule} kurzzeitig nicht verfügbar. Ihr Guthaben ist On-Chain und unter Ihrer Kontrolle.",
+                "deposit": "### Geplante Anbieterwartung\nEinzahlungen sind möglicherweise {schedule} kurzzeitig nicht verfügbar. Ihr Guthaben ist On-Chain und unter Ihrer Kontrolle.",
+                "features": "### Geplante Anbieterwartung\nEinige Funktionen sind möglicherweise {schedule} kurzzeitig nicht verfügbar. Ihr Guthaben ist On-Chain und unter Ihrer Kontrolle."
+            }
         }
     },
     "customTemplates": {

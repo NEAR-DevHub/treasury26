@@ -26,6 +26,7 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import Logo from "@/components/icons/logo";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useWarnings } from "@/hooks/use-warnings";
 import {
     type CreateTreasuryRequest,
     checkHandleUnused,
@@ -141,6 +142,10 @@ export function TreasuryOnboardingPage({
     const tSteps = useTranslations("createTreasury.steps");
     const tPages = useTranslations("pages.createTreasury");
     const tLanding = useTranslations("landing");
+    const { getWarning, isLoading: isLoadingWarnings } = useWarnings();
+    const treasuryCreationWarning = getWarning("treasury-creation");
+    const isTreasuryCreationBlocked =
+        treasuryCreationWarning?.response === "paused";
     const {
         accountId,
         connect,
@@ -360,6 +365,11 @@ export function TreasuryOnboardingPage({
             return;
         }
 
+        if (isTreasuryCreationBlocked) {
+            setShowWaitlist(true);
+            return;
+        }
+
         const request: CreateTreasuryRequest = {
             name: values.treasuryName,
             accountId: `${values.accountName}${ACCOUNT_SUFFIX}`,
@@ -432,7 +442,7 @@ export function TreasuryOnboardingPage({
         </Link>
     ) : undefined;
 
-    if (isInitializing) {
+    if (isInitializing || isLoadingWarnings) {
         return <LoadingScreen />;
     }
 
@@ -802,13 +812,13 @@ export function TreasuryOnboardingPage({
                     description={t("headerDescription")}
                     backButton={returnTo || false}
                     hideCollapseButton
-                    hideSystemStatusBanner
+                    hideAppWarningBanner
                     transparentHeader
                     hideHeaderBottomBorder
                     logo={headerLogo}
                     mainClassName="pt-1"
                 >
-                    {showWaitlist
+                    {showWaitlist || isTreasuryCreationBlocked
                         ? waitlistBody
                         : showLoginScreen
                           ? loginScreenBody
@@ -824,7 +834,7 @@ export function TreasuryOnboardingPage({
             backButton={returnTo || false}
             hideCollapseButton
             hideLogin
-            hideSystemStatusBanner
+            hideAppWarningBanner
             transparentHeader
             hideHeaderBottomBorder
             logo={headerLogo}
@@ -837,7 +847,7 @@ export function TreasuryOnboardingPage({
                 treasuryId={createdTreasuryId}
                 onClose={() => setProgressOpen(false)}
             />
-            {showWaitlist
+            {showWaitlist || isTreasuryCreationBlocked
                 ? waitlistBody
                 : showLoginScreen
                   ? loginScreenBody

@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "Buscar solicitação por nome ou ID",
         "searchPlaceholderShort": "Buscar por nome ou ID",
-        "errorLoading": "Erro ao carregar propostas. Por favor, tente novamente.",
         "empty": {
             "title": "Crie sua primeira solicitação",
             "description": "Solicitações de pagamentos, trocas e outras ações aparecerão aqui assim que forem criadas.",
@@ -616,6 +615,7 @@
             "actionReject": "rejeitar",
             "actionRemove": "remover",
             "insufficientBalance": "As solicitações <highlight>{ids}</highlight> não podem ser aprovadas devido a saldo insuficiente. Sua aprovação será aplicada apenas às solicitações restantes.",
+            "approveBlockedBulk": "{count, plural, one {# solicitação selecionada não pode ser aprovada agora — desmarque-a para continuar.} other {# solicitações selecionadas não podem ser aprovadas agora — desmarque-as para continuar.}}",
             "remove": "Remover",
             "confirm": "Confirmar"
         },
@@ -1426,10 +1426,6 @@
             "openInTelegram": "Abrir {bot} no Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Em manutenção",
-        "maintenanceMessage": "Estamos realizando manutenção no momento. Alguns recursos podem ficar temporariamente indisponíveis. Por favor, volte em breve."
-    },
     "creditsQuota": {
         "available": "{count} disponíveis",
         "used": "{count} usados",
@@ -1974,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "Criar solicitação",
-        "noPermission": "Você não tem permissão para criar uma solicitação"
+        "noPermission": "Você não tem permissão para criar uma solicitação",
+        "paused": "Pausado temporariamente",
+        "brieflyUnavailable": "Brevemente indisponível"
     },
     "address": {
         "copied": "Endereço copiado para a área de transferência"
@@ -2188,6 +2186,87 @@
             "docsDescription": "Conheça todos os recursos na documentação.",
             "videoTitle": "Assista à demonstração",
             "videoDescription": "Assista a um vídeo curto mostrando como a Trezu funciona."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Página de status](https://status.trezu.org/)",
+        "schedule": {
+            "on": "em",
+            "until": "até"
+        },
+        "actions": {
+            "payment": "pagamento",
+            "deposit": "depósito",
+            "exchange": "troca",
+            "approve": "aprovação",
+            "reject": "rejeição",
+            "remove": "remoção",
+            "proposal": "proposta",
+            "transaction": "transação"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} em {network}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### Atualização programada\nOs pagamentos ficarão brevemente indisponíveis {schedule}.",
+                "exchange": "### Atualização programada\nAs trocas ficarão brevemente indisponíveis {schedule}.",
+                "deposit": "### Atualização programada\nOs depósitos ficarão brevemente indisponíveis {schedule}.",
+                "features": "### Atualização programada\nAlguns recursos ficarão brevemente indisponíveis {schedule}.",
+                "app": "### Atualização programada\nTrezu ficará brevemente indisponível {schedule}.\nSeus fundos estão on-chain e sob seu controle."
+            },
+            "network_slow": {
+                "default": "### {subject} está lento neste momento\nSua {action} será processada assim que se recuperar, pode apenas demorar mais do que o normal."
+            },
+            "network_paused": {
+                "token": "### {token} está em pausa neste momento\nOs outros tokens funcionam normalmente.",
+                "network": "### {network} está em pausa neste momento\nVocê pode usar outra rede enquanto isso.",
+                "token+network": "### {token} na {network} está em pausa neste momento\nOs outros tokens funcionam normalmente."
+            },
+            "features_paused": {
+                "payments": "### Os pagamentos estão temporariamente pausados.\nEstamos trabalhando nisso.",
+                "exchange": "### A troca está temporariamente pausada.\nEstamos trabalhando nisso.",
+                "deposit": "### Os depósitos estão temporariamente pausados.\nEstamos trabalhando nisso.",
+                "features": "### Alguns recursos estão temporariamente pausados.\nEstamos trabalhando nisso."
+            },
+            "transactions_halted": {
+                "default": "### As transações estão pausadas no momento\nAs transações estão pausadas enquanto um provedor de rede se recupera. Seus fundos estão on-chain e sob seu controle. Atualizações: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### Saldo temporariamente indisponível.\nNão conseguimos exibir seus saldos no momento. Seus fundos estão on-chain, exatamente onde você os deixou. Você pode continuar usando sua tesouraria."
+            },
+            "history_not_loading": {
+                "default": "### O histórico de transações não está carregando no momento\nIsso afeta o que você pode ver, não seus fundos ou sua tesouraria."
+            },
+            "requests_wont_process": {
+                "default": "### Não é possível processar novas solicitações por alguns minutos – um problema de rede temporário.\n Seus fundos não são afetados, tente novamente em breve."
+            },
+            "approvals_paused": {
+                "default": "A aprovação de solicitações está pausada enquanto um provedor de rede se recupera.\n Você ainda pode rejeitar solicitações pendentes, e as aprovações voltarão a funcionar assim que o serviço for restabelecido."
+            },
+            "wallet_login_unavailable": {
+                "login": "### O login não está disponível no momento.\nSeus fundos estão on-chain e intactos – você poderá entrar novamente assim que o serviço for restabelecido.",
+                "loginWallet": "### O login com {wallet} não está disponível no momento.\nSeus fundos estão on-chain e intactos – você poderá entrar novamente assim que o serviço for restabelecido."
+            },
+            "backend_down": {
+                "default": "### Estamos com um problema temporário\nAlguns dados podem não carregar. Seus fundos estão on-chain e não são afetados – tente novamente em breve."
+            },
+            "whole_app_down": {
+                "default": "### Trezu está temporariamente fora do ar.\nSeus fundos estão on-chain e sob seu controle. Atualizações: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "A criação de novas tesourarias é apenas por convite no momento. Entre na lista de espera e avisaremos quando estiver disponível."
+            },
+            "funds_at_risk": {
+                "default": "### Pausamos Trezu enquanto investigamos um problema.\nRecomendamos não realizar transações até confirmarmos que tudo está em ordem. Atualizações: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### Manutenção programada do provedor\nOs pagamentos podem ficar brevemente indisponíveis {schedule}. Seus fundos estão on-chain e sob seu controle.",
+                "exchange": "### Manutenção programada do provedor\nAs trocas podem ficar brevemente indisponíveis {schedule}. Seus fundos estão on-chain e sob seu controle.",
+                "deposit": "### Manutenção programada do provedor\nOs depósitos podem ficar brevemente indisponíveis {schedule}. Seus fundos estão on-chain e sob seu controle.",
+                "features": "### Manutenção programada do provedor\nAlguns recursos podem ficar brevemente indisponíveis {schedule}. Seus fundos estão on-chain e sob seu controle."
+            }
         }
     },
     "customTemplates": {

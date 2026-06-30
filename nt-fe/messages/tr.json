@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "Talebi ada veya kimliğe göre ara",
         "searchPlaceholderShort": "Ad veya kimliğe göre ara",
-        "errorLoading": "Öneriler yüklenirken hata oluştu. Lütfen tekrar deneyin.",
         "empty": {
             "title": "İlk talebinizi oluşturun",
             "description": "Ödeme, takas ve diğer eylemler için talepler oluşturulduktan sonra burada görünecek.",
@@ -616,6 +615,7 @@
             "actionReject": "reddetme",
             "actionRemove": "kaldırma",
             "insufficientBalance": "<highlight>{ids}</highlight> talepleri yetersiz bakiye nedeniyle onaylanamaz. Onayınız yalnızca kalan taleplere uygulanacak.",
+            "approveBlockedBulk": "{count, plural, one {Seçilen # talep şu anda onaylanamaz — devam etmek için seçimini kaldırın.} other {Seçilen # talep şu anda onaylanamaz — devam etmek için seçimlerini kaldırın.}}",
             "remove": "Kaldır",
             "confirm": "Onayla"
         },
@@ -1426,10 +1426,6 @@
             "openInTelegram": "{bot} Telegram'da aç"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Bakım Altında",
-        "maintenanceMessage": "Şu anda bakım gerçekleştiriyoruz. Bazı özellikler geçici olarak kullanılamayabilir. Lütfen kısa süre sonra tekrar kontrol edin."
-    },
     "creditsQuota": {
         "available": "{count} Kullanılabilir",
         "used": "{count} Kullanıldı",
@@ -1974,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "Talep Oluştur",
-        "noPermission": "Talep oluşturma izniniz yok"
+        "noPermission": "Talep oluşturma izniniz yok",
+        "paused": "Geçici olarak duraklatıldı",
+        "brieflyUnavailable": "Kısa süreliğine kullanılamıyor"
     },
     "address": {
         "copied": "Adres panoya kopyalandı"
@@ -2188,6 +2186,87 @@
             "docsDescription": "Tüm özellikler hakkında belgelerden bilgi edinin.",
             "videoTitle": "Demoyu İzleyin",
             "videoDescription": "Trezu'nun nasıl çalıştığını gösteren kısa bir video izleyin."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "tarihinde",
+            "until": "tarihine kadar"
+        },
+        "actions": {
+            "payment": "ödeme",
+            "deposit": "para yatırma",
+            "exchange": "takas",
+            "approve": "onay",
+            "reject": "ret",
+            "remove": "kaldırma",
+            "proposal": "teklif",
+            "transaction": "işlem"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network} ağındaki {token}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### Planlı güncelleme\nÖdemeler {schedule} süresince kısa bir süreliğine kullanılamayacak.",
+                "exchange": "### Planlı güncelleme\nTakaslar {schedule} süresince kısa bir süreliğine kullanılamayacak.",
+                "deposit": "### Planlı güncelleme\nPara yatırma {schedule} süresince kısa bir süreliğine kullanılamayacak.",
+                "features": "### Planlı güncelleme\nBazı özellikler {schedule} süresince kısa bir süreliğine kullanılamayacak.",
+                "app": "### Planlı güncelleme\nTrezu {schedule} süresince kısa bir süreliğine kullanılamayacak.\nFonlarınız on-chain ve sizin kontrolünüzde."
+            },
+            "network_slow": {
+                "default": "### {subject} şu anda yavaş çalışıyor\n{action} işleminiz ağ düzeldiğinde gerçekleşecek, sadece normalden biraz daha uzun sürebilir."
+            },
+            "network_paused": {
+                "token": "### {token} şu anda duraklatıldı\nDiğer tokenlar normal şekilde çalışıyor.",
+                "network": "### {network} şu anda duraklatıldı\nBu süre zarfında farklı bir ağ kullanabilirsiniz.",
+                "token+network": "### {token} {network} üzerinde şu anda duraklatıldı\nDiğer tokenlar normal şekilde çalışıyor."
+            },
+            "features_paused": {
+                "payments": "### Ödemeler geçici olarak duraklatıldı.\nÜzerinde çalışıyoruz.",
+                "exchange": "### Takas geçici olarak duraklatıldı.\nÜzerinde çalışıyoruz.",
+                "deposit": "### Para yatırma geçici olarak duraklatıldı.\nÜzerinde çalışıyoruz.",
+                "features": "### Bazı özellikler geçici olarak duraklatıldı.\nÜzerinde çalışıyoruz."
+            },
+            "transactions_halted": {
+                "default": "### İşlemler şu anda duraklatıldı\nBir ağ sağlayıcısı düzelirken işlemler duraklatıldı. Fonlarınız on-chain ve sizin kontrolünüzde. Güncellemeler: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### Bakiye geçici olarak kullanılamıyor.\nBakiyelerinizi şu anda gösteremiyoruz. Fonlarınız on-chain ve tam olarak bıraktığınız yerde. Haznenizi kullanmaya devam edebilirsiniz."
+            },
+            "history_not_loading": {
+                "default": "### İşlem geçmişi şu anda yüklenmiyor\nBu yalnızca görüntülemeyi etkiler, fonlarınızı veya haznenizi etkilemez."
+            },
+            "requests_wont_process": {
+                "default": "### Geçici bir ağ sorunu nedeniyle birkaç dakika boyunca yeni istekler işlenemiyor.\n Fonlarınız etkilenmez, kısa süre sonra tekrar deneyin."
+            },
+            "approvals_paused": {
+                "default": "Bir ağ sağlayıcısı düzelirken istek onayları duraklatıldı.\n Bekleyen istekleri yine de reddedebilirsiniz ve hizmet geri geldiğinde onaylar tekrar çalışacak."
+            },
+            "wallet_login_unavailable": {
+                "login": "### Giriş şu anda kullanılamıyor.\nFonlarınız on-chain ve dokunulmamış – hizmet geri geldiğinde tekrar giriş yapabilirsiniz.",
+                "loginWallet": "### {wallet} ile giriş şu anda kullanılamıyor.\nFonlarınız on-chain ve dokunulmamış – hizmet geri geldiğinde tekrar giriş yapabilirsiniz."
+            },
+            "backend_down": {
+                "default": "### Geçici bir sorun yaşıyoruz\nBazı veriler yüklenmeyebilir. Fonlarınız on-chain ve etkilenmemiştir – kısa süre sonra tekrar deneyin."
+            },
+            "whole_app_down": {
+                "default": "### Trezu geçici olarak kullanılamıyor.\nFonlarınız on-chain ve sizin kontrolünüzde. Güncellemeler: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "Yeni hazne oluşturma şu anda yalnızca davetle mümkün. Bekleme listesine katılın, açıldığında size haber vereceğiz."
+            },
+            "funds_at_risk": {
+                "default": "### Bir sorunu araştırırken Trezu'yu duraklattık.\nHer şeyin yolunda olduğunu onaylayana kadar işlem yapmamayı öneririz. Güncellemeler: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### Planlanmış sağlayıcı bakımı\nÖdemeler {schedule} süresince kısa bir süreliğine kullanılamayabilir. Varlıklarınız zincir üzerinde ve kontrolünüzdedir.",
+                "exchange": "### Planlanmış sağlayıcı bakımı\nTakaslar {schedule} süresince kısa bir süreliğine kullanılamayabilir. Varlıklarınız zincir üzerinde ve kontrolünüzdedir.",
+                "deposit": "### Planlanmış sağlayıcı bakımı\nPara yatırmalar {schedule} süresince kısa bir süreliğine kullanılamayabilir. Varlıklarınız zincir üzerinde ve kontrolünüzdedir.",
+                "features": "### Planlanmış sağlayıcı bakımı\nBazı özellikler {schedule} süresince kısa bir süreliğine kullanılamayabilir. Varlıklarınız zincir üzerinde ve kontrolünüzdedir."
+            }
         }
     },
     "customTemplates": {

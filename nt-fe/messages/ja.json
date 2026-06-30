@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "名前またはIDでリクエストを検索",
         "searchPlaceholderShort": "名前またはIDで検索",
-        "errorLoading": "提案の読み込みに失敗しました。もう一度お試しください。",
         "empty": {
             "title": "最初のリクエストを作成しましょう",
             "description": "支払い、交換などのリクエストは作成されるとここに表示されます。",
@@ -616,6 +615,7 @@
             "actionReject": "却下",
             "actionRemove": "削除",
             "insufficientBalance": "残高不足のため、リクエスト<highlight>{ids}</highlight>は承認できません。承認は残りのリクエストにのみ適用されます。",
+            "approveBlockedBulk": "{count, plural, one {選択した # 件のリクエストは現在承認できません。続行するには選択を解除してください。} other {選択した # 件のリクエストは現在承認できません。続行するには選択を解除してください。}}",
             "remove": "削除",
             "confirm": "確認"
         },
@@ -1426,10 +1426,6 @@
             "openInTelegram": "Telegramで{bot}を開く"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "メンテナンス中",
-        "maintenanceMessage": "現在メンテナンスを実施しています。一部の機能が一時的に利用できない場合があります。しばらくしてから再度ご確認ください。"
-    },
     "creditsQuota": {
         "available": "{count} 利用可能",
         "used": "{count} 使用済み",
@@ -1974,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "リクエストを作成",
-        "noPermission": "リクエストを作成する権限がありません"
+        "noPermission": "リクエストを作成する権限がありません",
+        "paused": "一時停止中",
+        "brieflyUnavailable": "一時的に利用不可"
     },
     "address": {
         "copied": "アドレスをクリップボードにコピーしました"
@@ -2188,6 +2186,87 @@
             "docsDescription": "ドキュメントですべての機能について学びましょう。",
             "videoTitle": "デモを見る",
             "videoDescription": "Trezuの動作を示す短い動画をご覧ください。"
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "に",
+            "until": "まで"
+        },
+        "actions": {
+            "payment": "支払い",
+            "deposit": "入金",
+            "exchange": "スワップ",
+            "approve": "承認",
+            "reject": "却下",
+            "remove": "削除",
+            "proposal": "提案",
+            "transaction": "取引"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network} 上の {token}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### 予定されたアップデート\n支払いは{schedule}に一時的に利用できなくなります。",
+                "exchange": "### 予定されたアップデート\nスワップは{schedule}に一時的に利用できなくなります。",
+                "deposit": "### 予定されたアップデート\n入金は{schedule}に一時的に利用できなくなります。",
+                "features": "### 予定されたアップデート\n一部の機能は{schedule}に一時的に利用できなくなります。",
+                "app": "### 予定されたアップデート\nTrezuは{schedule}に一時的に利用できなくなります。\nお客様の資金はon-chainにあり、ご自身の管理下にあります。"
+            },
+            "network_slow": {
+                "default": "### {subject}は現在遅延しています\nお客様の{action}は回復次第処理されますが、通常より時間がかかる場合があります。"
+            },
+            "network_paused": {
+                "token": "### {token}は現在一時停止中です\n他のトークンは通常通りご利用いただけます。",
+                "network": "### {network}は現在一時停止中です\nその間、別のネットワークをご利用いただけます。",
+                "token+network": "### {network}上の{token}は現在一時停止中です\n他のトークンは通常通りご利用いただけます。"
+            },
+            "features_paused": {
+                "payments": "### 支払いは一時的に停止中です。\n復旧に取り組んでいます。",
+                "exchange": "### 両替は一時的に停止中です。\n復旧に取り組んでいます。",
+                "deposit": "### 入金は一時的に停止中です。\n復旧に取り組んでいます。",
+                "features": "### 一部の機能は一時的に停止中です。\n復旧に取り組んでいます。"
+            },
+            "transactions_halted": {
+                "default": "### トランザクションは現在停止中です\nネットワークプロバイダーの回復中のため、トランザクションは停止しています。お客様の資金はon-chainにあり、ご自身の管理下にあります。最新情報: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### 残高が一時的に表示できません。\n現在、残高を表示することができません。お客様の資金はon-chainにあり、そのまま安全に保管されています。引き続きトレジャリーをご利用いただけます。"
+            },
+            "history_not_loading": {
+                "default": "### 取引履歴が現在読み込めません\nこれは表示に影響するものであり、お客様の資金やトレジャリーには影響しません。"
+            },
+            "requests_wont_process": {
+                "default": "### 一時的なネットワークの問題により、数分間新しいリクエストを処理できません。\n お客様の資金は影響を受けません。しばらくしてから再度お試しください。"
+            },
+            "approvals_paused": {
+                "default": "ネットワークプロバイダーの回復中のため、リクエストの承認は停止しています。\n 保留中のリクエストを拒否することは可能です。サービスが復旧次第、承認も再開されます。"
+            },
+            "wallet_login_unavailable": {
+                "login": "### 現在ログインできません。\nお客様の資金はon-chainにあり、安全です – サービスが復旧次第、再度ログインしていただけます。",
+                "loginWallet": "### 現在{wallet}でのログインができません。\nお客様の資金はon-chainにあり、安全です – サービスが復旧次第、再度ログインしていただけます。"
+            },
+            "backend_down": {
+                "default": "### 一時的な問題が発生しています\n一部のデータが読み込めない場合があります。お客様の資金はon-chainにあり、影響を受けていません – しばらくしてから再度お試しください。"
+            },
+            "whole_app_down": {
+                "default": "### Trezuは一時的に停止中です。\nお客様の資金はon-chainにあり、ご自身の管理下にあります。最新情報: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "新しいトレジャリーの作成は現在招待制です。ウェイトリストにご登録いただければ、利用可能になり次第お知らせいたします。"
+            },
+            "funds_at_risk": {
+                "default": "### 問題を調査中のため、Trezuを一時停止しています。\nすべてが安全であることを確認するまで、取引を行わないことをお勧めします。最新情報: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### プロバイダーの定期メンテナンス\n支払いは{schedule}に一時的に利用できない場合があります。資金はオンチェーン上にあり、あなたのコントロール下にあります。",
+                "exchange": "### プロバイダーの定期メンテナンス\nスワップは{schedule}に一時的に利用できない場合があります。資金はオンチェーン上にあり、あなたのコントロール下にあります。",
+                "deposit": "### プロバイダーの定期メンテナンス\n入金は{schedule}に一時的に利用できない場合があります。資金はオンチェーン上にあり、あなたのコントロール下にあります。",
+                "features": "### プロバイダーの定期メンテナンス\n一部の機能は{schedule}に一時的に利用できない場合があります。資金はオンチェーン上にあり、あなたのコントロール下にあります。"
+            }
         }
     },
     "customTemplates": {

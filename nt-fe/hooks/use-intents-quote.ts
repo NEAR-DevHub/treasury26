@@ -163,6 +163,8 @@ interface UseIntentsQuoteParams {
     amountMode?: IntentsAmountMode;
     destinationNetwork?: string;
     isPayment?: boolean;
+    /** When false, the quote is never fetched (e.g. the action is paused). */
+    enabled?: boolean;
 }
 
 export function useIntentsQuote({
@@ -177,6 +179,7 @@ export function useIntentsQuote({
     amountMode = "recipient",
     destinationNetwork,
     isPayment = false,
+    enabled = true,
 }: UseIntentsQuoteParams) {
     const t = useTranslations("intentsQuote");
     const isIntents = isIntentsToken(token);
@@ -196,6 +199,7 @@ export function useIntentsQuote({
         !!debouncedAddress && isAddressValidForToken(debouncedAddress, token);
     const requiresDestinationSelectionForPayment = isPayment && isIntents;
     const isQuoteReady =
+        enabled &&
         isIntents &&
         !!treasuryId &&
         isRecipientReady &&

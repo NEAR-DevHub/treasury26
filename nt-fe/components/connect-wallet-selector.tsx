@@ -4,6 +4,7 @@ import { Check, Fingerprint, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
+import { SlotWarning } from "@/components/warning-message";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import {
@@ -14,83 +15,27 @@ import {
 } from "@/components/modal";
 import { StepperHeader } from "@/components/step-wizard";
 import { Pill } from "@/components/pill";
+import {
+    useWarningOfflineBadgeLabel,
+    useResolveWarningMessage,
+} from "@/hooks/use-warnings";
+import { useWarnings } from "@/hooks/use-warnings";
 import { trackEvent } from "@/lib/analytics";
+import {
+    LAST_USED_WALLET_STORAGE_KEY,
+    NEAR_WALLET_CHOICES,
+    SELECTED_WALLET_STORAGE_KEY,
+    WALLET_IDS,
+    WALLET_OPTIONS,
+    type WalletOption,
+    getWalletGroup,
+    getWalletLoginSlot,
+    resolveManifestWalletId,
+} from "@/lib/wallets";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
-const WALLET_IDS = {
-    NEAR: "near",
-    LEDGER: "ledger",
-    EVM: "walletcontract-eip712",
-    PASSKEY: "passkey",
-    METEOR: "meteor-wallet",
-    INTEAR: "intear-wallet",
-    NEAR_MOBILE: "near-mobile",
-    NEAR_CLI: "near-cli",
-    PHANTOM: "phantom",
-} as const;
-
-type WalletId = (typeof WALLET_IDS)[keyof typeof WALLET_IDS];
-
-const MANIFEST_WALLET_IDS = {
-    LEDGER: WALLET_IDS.LEDGER,
-    METEOR: WALLET_IDS.METEOR,
-    INTEAR: WALLET_IDS.INTEAR,
-    NEAR_MOBILE: WALLET_IDS.NEAR_MOBILE,
-    NEAR_CLI: WALLET_IDS.NEAR_CLI,
-    EVM: WALLET_IDS.EVM,
-} as const;
-
-export type WalletOption = {
-    id: WalletId;
-    label: string;
-    imgSrc?: string;
-    imageClassName?: string;
-    secondaryIconSrc?: string;
-    tertiaryIconSrc?: string;
-    isPopular?: boolean;
-    recentGroupAlias?: WalletId;
-    supported: boolean;
-};
-
 type WalletPickerType = "near";
-const LAST_USED_WALLET_STORAGE_KEY = "trezu:last-used-wallet";
-const SELECTED_WALLET_STORAGE_KEY = "selected-wallet";
-
-const WALLET_OPTIONS: WalletOption[] = [
-    {
-        id: WALLET_IDS.NEAR,
-        label: "NEAR Wallets",
-        imgSrc: "/near.com.svg",
-        isPopular: true,
-        supported: true,
-    },
-    {
-        id: WALLET_IDS.LEDGER,
-        label: "Ledger",
-        imgSrc: "/wallets/ledger.svg",
-        supported: true,
-    },
-    {
-        id: WALLET_IDS.PASSKEY,
-        label: "Passkey",
-        supported: false,
-    },
-    {
-        id: WALLET_IDS.PHANTOM,
-        label: "Phantom Wallet",
-        imgSrc: "/icons/phantom.svg",
-        supported: false,
-    },
-    {
-        id: WALLET_IDS.EVM,
-        label: "EVM Wallets",
-        imgSrc: "/icons/metamask.svg",
-        secondaryIconSrc: "/icons/fireblocks.svg",
-        tertiaryIconSrc: "/icons/binance-web3.svg",
-        supported: true,
-    },
-];
 
 function WalletOptionIcon({
     wallet,
@@ -159,28 +104,6 @@ interface ConnectWalletSelectorProps {
     onConnectSupported: (walletId?: string) => Promise<void> | void;
 }
 
-type HotLabsManifestWalletId =
-    (typeof MANIFEST_WALLET_IDS)[keyof typeof MANIFEST_WALLET_IDS];
-
-const MANIFEST_WALLET_ID_BY_OPTION: Partial<
-    Record<WalletId, HotLabsManifestWalletId>
-> = {
-    [WALLET_IDS.LEDGER]: MANIFEST_WALLET_IDS.LEDGER,
-    [WALLET_IDS.METEOR]: MANIFEST_WALLET_IDS.METEOR,
-    [WALLET_IDS.INTEAR]: MANIFEST_WALLET_IDS.INTEAR,
-    [WALLET_IDS.NEAR_MOBILE]: MANIFEST_WALLET_IDS.NEAR_MOBILE,
-    [WALLET_IDS.NEAR_CLI]: MANIFEST_WALLET_IDS.NEAR_CLI,
-    [WALLET_IDS.EVM]: MANIFEST_WALLET_IDS.EVM,
-};
-
-const WALLET_GROUP_BY_ID: Partial<Record<WalletId, WalletId>> = {
-    [WALLET_IDS.NEAR]: WALLET_IDS.NEAR,
-    [WALLET_IDS.EVM]: WALLET_IDS.EVM,
-    [WALLET_IDS.LEDGER]: WALLET_IDS.LEDGER,
-    [WALLET_IDS.PASSKEY]: WALLET_IDS.PASSKEY,
-    [WALLET_IDS.PHANTOM]: WALLET_IDS.PHANTOM,
-};
-
 export function ConnectWalletSelector({
     source,
     connectFlow,
@@ -194,6 +117,9 @@ export function ConnectWalletSelector({
 }: ConnectWalletSelectorProps) {
     const router = useRouter();
     const t = useTranslations("createTreasury");
+    const { getWarning } = useWarnings();
+    const resolveWarningMessage = useResolveWarningMessage();
+    const offlineBadgeLabel = useWarningOfflineBadgeLabel();
     const { accountId, authError } = useNear();
     const [unsupportedWallet, setUnsupportedWallet] =
         useState<WalletOption | null>(null);
@@ -213,35 +139,6 @@ export function ConnectWalletSelector({
         string | null
     >(null);
 
-    const nearWalletChoices: WalletOption[] = [
-        {
-            id: WALLET_IDS.METEOR,
-            label: "Meteor Wallet",
-            imgSrc: "/icons/meteor.svg",
-            supported: true,
-            isPopular: true,
-            recentGroupAlias: WALLET_IDS.NEAR,
-        },
-        {
-            id: WALLET_IDS.INTEAR,
-            label: "Intear Wallet",
-            imgSrc: "/icons/intear.svg",
-            supported: true,
-        },
-        {
-            id: WALLET_IDS.NEAR_MOBILE,
-            label: "NEAR Mobile",
-            imgSrc: "/icons/near-mobile.svg",
-            supported: true,
-        },
-        {
-            id: WALLET_IDS.NEAR_CLI,
-            label: "NEAR CLI",
-            imgSrc: "/icons/near-cli.svg",
-            supported: true,
-        },
-    ];
-
     const closeUnsupportedWalletModal = () => {
         setUnsupportedWallet(null);
     };
@@ -259,20 +156,6 @@ export function ConnectWalletSelector({
             </button>
         </>
     ) : undefined;
-
-    const getWalletGroup = (walletId: string | null): WalletId | null => {
-        if (!walletId) return null;
-
-        if (walletId.includes("phantom")) return WALLET_IDS.PHANTOM;
-        if (walletId.includes("walletcontract-eip712")) return WALLET_IDS.EVM;
-        const knownGroup = WALLET_GROUP_BY_ID[walletId as WalletId];
-        if (knownGroup) return knownGroup;
-        return WALLET_IDS.NEAR;
-    };
-
-    const resolveConnectWalletId = (
-        walletId: WalletOption["id"],
-    ): WalletOption["id"] | undefined => MANIFEST_WALLET_ID_BY_OPTION[walletId];
 
     const recentWalletGroup = useMemo(
         () => getWalletGroup(lastUsedWalletId),
@@ -298,37 +181,91 @@ export function ConnectWalletSelector({
         setPendingRecentWalletId(null);
     }, [pendingRecentWalletId, authError]);
 
-    const getTopLevelBadgeLabel = (wallet: WalletOption) => {
-        const hasRecent = !!lastUsedWalletId || !!recentWalletGroup;
-        if (wallet.id === lastUsedWalletId || wallet.id === recentWalletGroup) {
-            return t("walletSelector.recentBadge");
-        }
-        if (hasRecent) {
-            return undefined;
-        }
-        return wallet.isPopular ? t("walletSelector.popularBadge") : undefined;
+    const isLoginPaused = getWarning("login")?.response === "paused";
+
+    const isWalletChoiceBlocked = (walletId: WalletOption["id"]) => {
+        if (isLoginPaused) return true;
+        // The NEAR group is a container — it opens a modal whose inner choices
+        // carry their own offline state, so the container itself isn't blocked.
+        if (walletId === WALLET_IDS.NEAR) return false;
+        const walletWarning = getWarning(getWalletLoginSlot(walletId));
+        return walletWarning?.response === "paused";
     };
 
-    const getModalBadgeLabel = (wallet: WalletOption) => {
-        if (wallet.id === lastUsedWalletId) {
-            return t("walletSelector.recentBadge");
-        }
+    // Per-wallet warning from the admin system. When present, the wallet
+    // card shows an "Offline" badge (with the admin message as tooltip)
+    // instead of "Recent".
+    // Login wallet warnings are always paused (offline). Only surface those so
+    // the "Offline" badge and the disabled state stay in lockstep.
+    const getWalletWarning = (walletId: WalletOption["id"]) => {
+        const warning = getWarning(getWalletLoginSlot(walletId));
+        return warning?.response === "paused" ? warning : null;
+    };
 
+    type BadgeInfo = { label: string; tooltip?: string; isOffline?: boolean };
+
+    // Show "Offline" badge only for per-wallet warnings, not when all
+    // login is paused (the banner already covers that case).
+    const getTopLevelBadge = (wallet: WalletOption): BadgeInfo | null => {
+        // The NEAR group card opens a modal, so its inner choices show their own
+        // "Offline" badges — don't tag the container itself.
+        if (!isLoginPaused && wallet.id !== WALLET_IDS.NEAR) {
+            const walletWarning = getWalletWarning(wallet.id);
+            if (walletWarning) {
+                const slot = getWalletLoginSlot(wallet.id);
+                return {
+                    label: offlineBadgeLabel,
+                    tooltip:
+                        resolveWarningMessage(walletWarning, slot) ?? undefined,
+                    isOffline: true,
+                };
+            }
+        }
+        const hasRecent = !!lastUsedWalletId || !!recentWalletGroup;
+        if (wallet.id === lastUsedWalletId || wallet.id === recentWalletGroup) {
+            return { label: t("walletSelector.recentBadge") };
+        }
+        if (hasRecent) return null;
+        return wallet.isPopular
+            ? { label: t("walletSelector.popularBadge") }
+            : null;
+    };
+
+    const getModalBadge = (wallet: WalletOption): BadgeInfo | null => {
+        if (!isLoginPaused) {
+            const walletWarning = getWalletWarning(wallet.id);
+            if (walletWarning) {
+                const slot = getWalletLoginSlot(wallet.id);
+                return {
+                    label: offlineBadgeLabel,
+                    tooltip:
+                        resolveWarningMessage(walletWarning, slot) ?? undefined,
+                    isOffline: true,
+                };
+            }
+        }
+        if (wallet.id === lastUsedWalletId) {
+            return { label: t("walletSelector.recentBadge") };
+        }
         if (
             wallet.recentGroupAlias &&
             wallet.recentGroupAlias === recentWalletGroup
         ) {
-            return t("walletSelector.recentBadge");
+            return { label: t("walletSelector.recentBadge") };
         }
-
         if (wallet.id === recentWalletGroup) {
-            return t("walletSelector.recentBadge");
+            return { label: t("walletSelector.recentBadge") };
         }
-
-        return wallet.isPopular ? t("walletSelector.popularBadge") : undefined;
+        return wallet.isPopular
+            ? { label: t("walletSelector.popularBadge") }
+            : null;
     };
 
     const handleWalletChoice = (wallet: WalletOption) => {
+        if (isWalletChoiceBlocked(wallet.id)) {
+            return;
+        }
+
         if (wallet.id === WALLET_IDS.NEAR) {
             setUnsupportedWallet(null);
             setIsGuideOpen(false);
@@ -347,7 +284,7 @@ export function ConnectWalletSelector({
             setIsGuideOpen(false);
             setWalletPickerOpen(null);
             setPendingRecentWalletId(wallet.id);
-            const connectWalletId = resolveConnectWalletId(wallet.id);
+            const connectWalletId = resolveManifestWalletId(wallet.id);
             const maybeConnect = onConnectSupported(connectWalletId);
             Promise.resolve(maybeConnect).catch(() => {
                 setPendingRecentWalletId(null);
@@ -358,7 +295,7 @@ export function ConnectWalletSelector({
         setUnsupportedWallet(wallet);
     };
 
-    const walletPickerChoices = nearWalletChoices;
+    const walletPickerChoices = NEAR_WALLET_CHOICES;
 
     return (
         <>
@@ -368,6 +305,7 @@ export function ConnectWalletSelector({
                     description={headerDescription}
                     handleBack={showBackButton ? onBack : undefined}
                 />
+                <SlotWarning slot="login" className="mb-4" />
                 {showOnboardingHints && (
                     <div className="space-y-3 mb-4">
                         <div className="flex items-start gap-2">
@@ -388,19 +326,29 @@ export function ConnectWalletSelector({
                             variant="secondary"
                             className="h-26 items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted"
                             onClick={() => handleWalletChoice(wallet)}
-                            disabled={isConnectingWallet}
+                            disabled={
+                                isConnectingWallet ||
+                                isWalletChoiceBlocked(wallet.id)
+                            }
                         >
                             <div className="flex w-full flex-col gap-2">
                                 <div className="flex items-center justify-between">
                                     <WalletOptionIcon wallet={wallet} />
-                                    {getTopLevelBadgeLabel(wallet) && (
-                                        <Pill
-                                            title={
-                                                getTopLevelBadgeLabel(wallet)!
-                                            }
-                                            className="bg-general-success-background-faded text-general-success-foreground"
-                                        />
-                                    )}
+                                    {(() => {
+                                        const badge = getTopLevelBadge(wallet);
+                                        if (!badge) return null;
+                                        return (
+                                            <Pill
+                                                title={badge.label}
+                                                info={badge.tooltip}
+                                                className={
+                                                    badge.isOffline
+                                                        ? "bg-general-warning-background-faded text-general-warning-foreground"
+                                                        : "bg-general-success-background-faded text-general-success-foreground"
+                                                }
+                                            />
+                                        );
+                                    })()}
                                 </div>
                                 <div className="text-lg font-semibold">
                                     {wallet.label}
@@ -428,35 +376,50 @@ export function ConnectWalletSelector({
                                     : t("walletSelector.chooseNearWallet")}
                             </DialogTitle>
                         </DialogHeader>
+                        <SlotWarning slot="login" className="mb-2" />
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             {walletPickerChoices.map((wallet) => (
-                                <Button
-                                    key={wallet.id}
-                                    type="button"
-                                    variant="secondary"
-                                    className="h-26 items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted"
-                                    onClick={() => handleWalletChoice(wallet)}
-                                    disabled={isConnectingWallet}
-                                >
-                                    <div className="flex w-full flex-col gap-2">
-                                        <div className="flex items-center justify-between">
-                                            <WalletOptionIcon wallet={wallet} />
-                                            {getModalBadgeLabel(wallet) && (
-                                                <Pill
-                                                    title={
-                                                        getModalBadgeLabel(
-                                                            wallet,
-                                                        )!
-                                                    }
-                                                    className="bg-general-success-background-faded text-general-success-foreground"
+                                <div key={wallet.id}>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="h-26 w-full items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted"
+                                        onClick={() =>
+                                            handleWalletChoice(wallet)
+                                        }
+                                        disabled={
+                                            isConnectingWallet ||
+                                            isWalletChoiceBlocked(wallet.id)
+                                        }
+                                    >
+                                        <div className="flex w-full flex-col gap-2">
+                                            <div className="flex items-center justify-between">
+                                                <WalletOptionIcon
+                                                    wallet={wallet}
                                                 />
-                                            )}
+                                                {(() => {
+                                                    const badge =
+                                                        getModalBadge(wallet);
+                                                    if (!badge) return null;
+                                                    return (
+                                                        <Pill
+                                                            title={badge.label}
+                                                            info={badge.tooltip}
+                                                            className={
+                                                                badge.isOffline
+                                                                    ? "bg-general-warning-background-faded text-general-warning-foreground"
+                                                                    : "bg-general-success-background-faded text-general-success-foreground"
+                                                            }
+                                                        />
+                                                    );
+                                                })()}
+                                            </div>
+                                            <div className="text-lg font-semibold">
+                                                {wallet.label}
+                                            </div>
                                         </div>
-                                        <div className="text-lg font-semibold">
-                                            {wallet.label}
-                                        </div>
-                                    </div>
-                                </Button>
+                                    </Button>
+                                </div>
                             ))}
                         </div>
                     </DialogContent>

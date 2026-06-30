@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { PageCard } from "@/components/card";
@@ -8,9 +8,18 @@ import { Button } from "@/components/button";
 import { Textarea } from "@/components/textarea";
 import { Upload, FileText, ArrowLeft, DollarSign, Info, X } from "lucide-react";
 import TokenSelect, { SelectedTokenData } from "@/components/token-select";
+import {
+    SlotWarning,
+    WarningMessage,
+    hasInlineWarning,
+} from "@/components/warning-message";
 import { NumberBadge } from "@/components/number-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CreateRequestButton } from "@/components/create-request-button";
+import {
+    useBridgeAssetsForWarnings,
+    useBridgeScopedWarning,
+} from "@/hooks/use-warnings";
 import { useSubscription } from "@/hooks/use-subscription";
 import { isTrialPlan } from "@/lib/subscription-api";
 import { BulkPaymentCreditsDisplay } from "./bulk-payment-credits-display";
@@ -28,6 +37,7 @@ import {
     validateIntentsFeeCoverage,
 } from "../utils";
 import { useBulkParsingLabels } from "../utils/use-parsing-labels";
+import { cn } from "@/lib/utils";
 
 interface UploadDataStepProps {
     handleBack?: () => void;
@@ -44,6 +54,7 @@ export function UploadDataStep({
     onContinue,
 }: UploadDataStepProps) {
     const t = useTranslations("bulkPayment.upload");
+    const tCreate = useTranslations("createRequestButton");
     const parsingLabels = useBulkParsingLabels();
     const form = useFormContext<BulkPaymentFormValues>();
     const { data: subscription, isLoading: isLoadingSubscription } =
@@ -69,6 +80,18 @@ export function UploadDataStep({
     const pasteDataInput = form.watch("pasteDataInput");
     const activeTab = form.watch("activeTab");
     const uploadedFileName = form.watch("uploadedFileName");
+
+    const { data: bridgeAssets = [] } = useBridgeAssetsForWarnings("payments", {
+        includeNearNetwork: true,
+    });
+    const { blocked: paymentsSlotBlocked, scopedMessage: sendWarningMessage } =
+        useBridgeScopedWarning(
+            "payments",
+            bridgeAssets,
+            selectedToken?.address,
+        );
+    const showTokenWarning =
+        selectedToken != null && hasInlineWarning(sendWarningMessage);
 
     // Restore uploaded file state when navigating back
     useEffect(() => {
@@ -360,29 +383,49 @@ export function UploadDataStep({
                                         {t("selectAsset")}
                                     </h3>
 
-                                    <TokenSelect
-                                        selectedToken={
-                                            selectedToken as SelectedTokenData | null
-                                        }
-                                        setSelectedToken={(token) =>
-                                            form.setValue(
-                                                "selectedToken",
-                                                token,
-                                            )
-                                        }
-                                        disableTokens={(token) =>
-                                            token.address.startsWith("nep245:")
-                                        }
-                                        disableTokenMessage={t(
-                                            "disableTokenMessage",
+                                    <SlotWarning slot="payments" />
+
+                                    <div
+                                        className={cn(
+                                            "w-full min-w-0",
+                                            showTokenWarning &&
+                                                "flex flex-col rounded-lg bg-muted px-1 pb-3",
                                         )}
-                                        disabled={availableCredits === 0}
-                                        iconSize="lg"
-                                        classNames={{
-                                            trigger:
-                                                "w-full h-14 rounded-lg px-4 bg-muted hover:bg-muted/80 hover:border-none",
-                                        }}
-                                    />
+                                    >
+                                        <TokenSelect
+                                            selectedToken={
+                                                selectedToken as SelectedTokenData | null
+                                            }
+                                            setSelectedToken={(token) =>
+                                                form.setValue(
+                                                    "selectedToken",
+                                                    token,
+                                                )
+                                            }
+                                            disableTokens={(token) =>
+                                                token.address.startsWith(
+                                                    "nep245:",
+                                                )
+                                            }
+                                            disableTokenMessage={t(
+                                                "disableTokenMessage",
+                                            )}
+                                            disabled={availableCredits === 0}
+                                            iconSize="lg"
+                                            classNames={{
+                                                trigger: showTokenWarning
+                                                    ? "w-full h-14 shrink-0 border-0 bg-transparent shadow-none hover:bg-transparent hover:border-none rounded-none px-0"
+                                                    : "w-full h-14 rounded-lg px-4 bg-muted hover:bg-muted/80 hover:border-none",
+                                            }}
+                                        />
+                                        {showTokenWarning && (
+                                            <WarningMessage
+                                                variant="inline"
+                                                message={sendWarningMessage}
+                                                className="text-xs pl-3"
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -684,7 +727,8 @@ export function UploadDataStep({
                             (activeTab === "upload" && !csvData) ||
                             (activeTab === "paste" && !pasteDataInput.trim()) ||
                             availableCredits === 0 ||
-                            isReviewLoading
+                            isReviewLoading ||
+                            paymentsSlotBlocked
                         }
                         onClick={handleContinue}
                         isSubmitting={isReviewLoading}
@@ -693,14 +737,16 @@ export function UploadDataStep({
                             { kind: "call", action: "AddProposal" },
                         ]}
                         idleMessage={
-                            availableCredits === 0
-                                ? t("limitsUsed")
-                                : !selectedToken ||
-                                    (activeTab === "upload" && !csvData) ||
-                                    (activeTab === "paste" &&
-                                        !pasteDataInput.trim())
-                                  ? t("selectAndProvide")
-                                  : t("continueToReview")
+                            paymentsSlotBlocked
+                                ? tCreate("brieflyUnavailable")
+                                : availableCredits === 0
+                                  ? t("limitsUsed")
+                                  : !selectedToken ||
+                                      (activeTab === "upload" && !csvData) ||
+                                      (activeTab === "paste" &&
+                                          !pasteDataInput.trim())
+                                    ? t("selectAndProvide")
+                                    : t("continueToReview")
                         }
                     />
                 </PageCard>

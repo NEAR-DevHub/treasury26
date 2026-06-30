@@ -6,6 +6,8 @@ import {
 } from "@/components/auth-button";
 import { PageCard } from "@/components/card";
 import { NumberBadge } from "@/components/number-badge";
+import { SlotWarning } from "@/components/warning-message";
+import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
@@ -84,6 +86,9 @@ export function PendingRequestItem({
     );
     const { accountId } = useNear();
     const isUserVoter = !!proposal.votes[accountId ?? ""];
+    const approveBlock = useProposalApproveBlock([proposal]);
+    const approveBlocked = approveBlock.anyBlocked;
+    const approveBlockedWarning = approveBlock.blockedWarnings[0] ?? null;
     const title = useMemo(() => {
         if (type === "Confidential Request") {
             return extractConfidentialRequestData(proposal, treasuryId).title;
@@ -118,6 +123,18 @@ export function PendingRequestItem({
                                     insufficientBalanceInfo
                                 }
                             />
+                            {approveBlocked && approveBlockedWarning?.slot && (
+                                <SlotWarning
+                                    slot={approveBlockedWarning.slot}
+                                    token={
+                                        approveBlockedWarning.token ?? undefined
+                                    }
+                                    network={
+                                        approveBlockedWarning.network ??
+                                        undefined
+                                    }
+                                />
+                            )}
                             <div className="flex gap-3 w-full sm:invisible sm:group-hover:visible transition-opacity duration-300 ease-in-out">
                                 <AuthButtonWithProposal
                                     proposalKind={proposal.kind}
@@ -162,7 +179,7 @@ export function PendingRequestItem({
                                             e.preventDefault();
                                             onVote("Approve");
                                         }}
-                                        disabled={isUserVoter}
+                                        disabled={isUserVoter || approveBlocked}
                                         tooltip={
                                             isUserVoter
                                                 ? noVoteMessage

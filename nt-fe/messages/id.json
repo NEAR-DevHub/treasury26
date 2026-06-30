@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "Cari permintaan berdasarkan nama atau ID",
         "searchPlaceholderShort": "Cari berdasarkan nama atau ID",
-        "errorLoading": "Kesalahan saat memuat usulan. Silakan coba lagi.",
         "empty": {
             "title": "Buat permintaan pertama Anda",
             "description": "Permintaan pembayaran, pertukaran, dan tindakan lainnya akan muncul di sini setelah dibuat.",
@@ -616,6 +615,7 @@
             "actionReject": "menolak",
             "actionRemove": "menghapus",
             "insufficientBalance": "Permintaan <highlight>{ids}</highlight> tidak dapat disetujui karena saldo tidak mencukupi. Persetujuan Anda hanya akan berlaku untuk permintaan yang tersisa.",
+            "approveBlockedBulk": "{count, plural, one {# permintaan terpilih tidak dapat disetujui saat ini — batalkan pilihan untuk melanjutkan.} other {# permintaan terpilih tidak dapat disetujui saat ini — batalkan pilihan untuk melanjutkan.}}",
             "remove": "Hapus",
             "confirm": "Konfirmasi"
         },
@@ -1426,10 +1426,6 @@
             "openInTelegram": "Buka {bot} di Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Dalam Pemeliharaan",
-        "maintenanceMessage": "Kami sedang melakukan pemeliharaan. Beberapa fitur mungkin tidak tersedia sementara. Silakan periksa kembali sebentar lagi."
-    },
     "creditsQuota": {
         "available": "{count} Tersedia",
         "used": "{count} Terpakai",
@@ -1974,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "Buat Permintaan",
-        "noPermission": "Anda tidak memiliki izin untuk membuat permintaan"
+        "noPermission": "Anda tidak memiliki izin untuk membuat permintaan",
+        "paused": "Dijeda sementara",
+        "brieflyUnavailable": "Sementara tidak tersedia"
     },
     "address": {
         "copied": "Alamat disalin ke papan klip"
@@ -2188,6 +2186,87 @@
             "docsDescription": "Pelajari semua fitur di dokumen.",
             "videoTitle": "Tonton Demo",
             "videoDescription": "Tonton video singkat yang menunjukkan cara kerja Trezu."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "pada",
+            "until": "hingga"
+        },
+        "actions": {
+            "payment": "pembayaran",
+            "deposit": "setoran",
+            "exchange": "penukaran",
+            "approve": "persetujuan",
+            "reject": "penolakan",
+            "remove": "penghapusan",
+            "proposal": "usulan",
+            "transaction": "transaksi"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} di {network}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### Pembaruan terjadwal\nPembayaran akan tidak tersedia sebentar {schedule}.",
+                "exchange": "### Pembaruan terjadwal\nPenukaran akan tidak tersedia sebentar {schedule}.",
+                "deposit": "### Pembaruan terjadwal\nSetoran akan tidak tersedia sebentar {schedule}.",
+                "features": "### Pembaruan terjadwal\nBeberapa fitur akan tidak tersedia sebentar {schedule}.",
+                "app": "### Pembaruan terjadwal\nTrezu akan tidak tersedia sebentar {schedule}.\nDana Anda ada di on-chain dan dalam kendali Anda."
+            },
+            "network_slow": {
+                "default": "### {subject} sedang lambat saat ini\n{action} Anda akan diproses setelah jaringan pulih, hanya mungkin memakan waktu lebih lama dari biasanya."
+            },
+            "network_paused": {
+                "token": "### {token} sedang dijeda saat ini\nToken lainnya berfungsi normal.",
+                "network": "### {network} sedang dijeda saat ini\nAnda dapat menggunakan jaringan lain untuk sementara.",
+                "token+network": "### {token} di {network} sedang dijeda saat ini\nToken lainnya berfungsi normal."
+            },
+            "features_paused": {
+                "payments": "### Pembayaran sementara dijeda.\nKami sedang menanganinya.",
+                "exchange": "### Penukaran sementara dijeda.\nKami sedang menanganinya.",
+                "deposit": "### Setoran sementara dijeda.\nKami sedang menanganinya.",
+                "features": "### Beberapa fitur sementara dijeda.\nKami sedang menanganinya."
+            },
+            "transactions_halted": {
+                "default": "### Transaksi saat ini dijeda\nTransaksi dijeda sementara penyedia jaringan memulihkan layanan. Dana Anda ada di on-chain dan dalam kendali Anda. Pembaruan: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### Saldo sementara tidak tersedia.\nKami tidak dapat menampilkan saldo Anda saat ini. Dana Anda ada di on-chain, tepat di mana Anda meninggalkannya. Anda dapat terus menggunakan treasury Anda."
+            },
+            "history_not_loading": {
+                "default": "### Riwayat transaksi saat ini tidak dapat dimuat\nIni hanya memengaruhi tampilan, bukan dana atau treasury Anda."
+            },
+            "requests_wont_process": {
+                "default": "### Tidak dapat memproses permintaan baru selama beberapa menit – masalah jaringan sementara.\n Dana Anda tidak terpengaruh, silakan coba lagi sebentar lagi."
+            },
+            "approvals_paused": {
+                "default": "Persetujuan permintaan dijeda sementara penyedia jaringan memulihkan layanan.\n Anda masih dapat menolak permintaan yang tertunda, dan persetujuan akan berfungsi kembali setelah layanan pulih."
+            },
+            "wallet_login_unavailable": {
+                "login": "### Masuk saat ini tidak tersedia.\nDana Anda ada di on-chain dan tidak tersentuh – Anda dapat masuk kembali setelah layanan pulih.",
+                "loginWallet": "### Masuk dengan {wallet} saat ini tidak tersedia.\nDana Anda ada di on-chain dan tidak tersentuh – Anda dapat masuk kembali setelah layanan pulih."
+            },
+            "backend_down": {
+                "default": "### Kami mengalami masalah sementara\nBeberapa data mungkin tidak dapat dimuat. Dana Anda ada di on-chain dan tidak terpengaruh – silakan coba lagi sebentar lagi."
+            },
+            "whole_app_down": {
+                "default": "### Trezu sementara tidak tersedia.\nDana Anda ada di on-chain dan dalam kendali Anda. Pembaruan: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "Pembuatan treasury baru saat ini hanya melalui undangan. Bergabunglah dengan daftar tunggu dan kami akan memberitahu Anda saat dibuka."
+            },
+            "funds_at_risk": {
+                "default": "### Kami telah menjeda Trezu sementara kami menyelidiki masalah.\nKami menyarankan untuk tidak melakukan transaksi apa pun sampai kami mengonfirmasi semuanya aman. Pembaruan: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### Pemeliharaan penyedia terjadwal\nPembayaran mungkin tidak tersedia sebentar {schedule}. Dana Anda berada di on-chain dan dalam kendali Anda.",
+                "exchange": "### Pemeliharaan penyedia terjadwal\nPenukaran mungkin tidak tersedia sebentar {schedule}. Dana Anda berada di on-chain dan dalam kendali Anda.",
+                "deposit": "### Pemeliharaan penyedia terjadwal\nSetoran mungkin tidak tersedia sebentar {schedule}. Dana Anda berada di on-chain dan dalam kendali Anda.",
+                "features": "### Pemeliharaan penyedia terjadwal\nBeberapa fitur mungkin tidak tersedia sebentar {schedule}. Dana Anda berada di on-chain dan dalam kendali Anda."
+            }
         }
     },
     "customTemplates": {

@@ -8,7 +8,6 @@ import { Button } from "@/components/button";
 import { Textarea } from "@/components/textarea";
 import { Edit2, Info, Trash2 } from "lucide-react";
 import { StepProps, ReviewStep } from "@/components/step-wizard";
-import { WarningAlert } from "@/components/warning-alert";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import Big from "@/lib/big";
 import { getPaymentBalanceWarning } from "@/lib/intents-fee";
