@@ -200,6 +200,7 @@ export function TemplateEditor({
             <InputBlock
                 title={t("editor.nameLabel")}
                 invalid={nameTouched && nameMissing}
+                interactive
             >
                 <LargeInput
                     borderless
@@ -231,6 +232,7 @@ export function TemplateEditor({
                 <InputBlock
                     title={t("editor.manifestLabel")}
                     invalid={codeShowErrors}
+                    interactive
                 >
                     <Textarea
                         borderless
