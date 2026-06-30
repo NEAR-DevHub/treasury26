@@ -157,8 +157,7 @@ fn map_history_status(raw: &str) -> SwapStatus {
     }
 }
 
-/// Read confidential swap status from bronze. `None` means not yet ingested
-/// (callers surface a 404).
+/// Read confidential swap status from bronze. `None` means not yet ingested.
 pub async fn fetch_confidential_swap_status(
     pool: &sqlx::PgPool,
     dao_id: &str,
@@ -225,12 +224,16 @@ pub async fn get_swap_status(
                 })?;
 
                 if is_confidential {
-                    return fetch_confidential_swap_status(&db_pool, dao_id, &deposit_address)
-                        .await?
-                        .ok_or((
-                            StatusCode::NOT_FOUND,
-                            "confidential swap status not yet available".to_string(),
-                        ));
+                    // No bronze row yet → return PROCESSING so the UI shows a
+                    // pending state rather than nothing.
+                    return Ok(
+                        fetch_confidential_swap_status(&db_pool, dao_id, &deposit_address)
+                            .await?
+                            .unwrap_or_else(|| SimplifiedSwapStatusResponse {
+                                status: SwapStatus::Processing,
+                                updated_at: chrono::Utc::now().to_rfc3339(),
+                            }),
+                    );
                 }
             }
 
