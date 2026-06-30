@@ -162,14 +162,14 @@ export function useSwapStatus(
                 daoId || undefined,
             ),
         enabled: enabled && !!depositAddress,
-        staleTime: 1000 * 60, // 1 minute
+        staleTime: 1000 * 10, // 10 seconds
         refetchInterval: (query) => {
             const data = query.state.data;
             // If status is terminal (SUCCESS, REFUNDED, FAILED), stop polling
             if (isTerminalSwapStatus(data?.status)) {
                 return false;
             }
-            return 1000 * 60; // 1 minute
+            return 1000 * 10; // 10 seconds
         },
         retry: (failureCount, error) => {
             // Don't retry on 404 (deposit address not found)
