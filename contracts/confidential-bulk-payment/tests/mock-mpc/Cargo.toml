@@ -1,0 +1,28 @@
+[package]
+name = "mock-mpc"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+near-sdk = "5.26"
+
+# Pin transitive proc-macro deps to versions whose MSRV matches the workspace
+# rust-toolchain (1.86). Newer minor versions raise MSRV to 1.88 and break the
+# wasm build. Listed as direct deps purely to constrain version resolution.
+darling = "=0.21.3"
+darling_core = "=0.21.3"
+darling_macro = "=0.21.3"
+serde_with = "=3.17.0"
+serde_with_macros = "=3.17.0"
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true

@@ -46,12 +46,34 @@ interface UploadDataStepProps {
         payments: BulkPaymentData[],
         networkFeePerRecipient: string | null,
     ) => void;
+    /** When true, restrict token picker to Intents tokens and skip credit
+     * gating (confidential bulk has its own backend cost model). */
+    isConfidential?: boolean;
+    /** Slot rendered above the token select — used by confidential bulk to
+     * surface the destination network picker. */
+    networkSlot?: React.ReactNode;
+    /**
+     * Raw destination network name (e.g. "near", "eth", "sol") used to drive
+     * recipient address validation in confidential bulk. When omitted,
+     * validation falls back to the selected token's own network.
+     */
+    destinationNetwork?: string;
+    /**
+     * Destination intents asset id (e.g. "nep141:arb-...omft.near") used for
+     * fee estimation in confidential bulk where source token chain differs
+     * from the recipient chain.
+     */
+    destinationAssetId?: string | null;
 }
 
 export function UploadDataStep({
     handleBack,
     treasuryId,
     onContinue,
+    isConfidential = false,
+    networkSlot,
+    destinationNetwork,
+    destinationAssetId,
 }: UploadDataStepProps) {
     const t = useTranslations("bulkPayment.upload");
     const tCreate = useTranslations("createRequestButton");
@@ -176,6 +198,15 @@ export function UploadDataStep({
             return;
         }
 
+        // Confidential bulk requires a picked recipient network — its raw name
+        // drives address validation for ALL recipients. RecipientNetworkSelect
+        // auto-picks when only one option matches the first address, but the
+        // user may have wiped the selection (no compatible network) — block here.
+        if (isConfidential && !destinationNetwork) {
+            setDataErrors([{ row: 0, message: t("selectRecipientNetwork") }]);
+            return;
+        }
+
         setDataErrors(null);
         setIsReviewLoading(true);
         try {
@@ -190,12 +221,14 @@ export function UploadDataStep({
                     csvData,
                     parsingLabels,
                     selectedToken,
+                    destinationNetwork,
                 );
             } else {
                 result = parseAndValidatePasteData(
                     pasteDataInput,
                     parsingLabels,
                     selectedToken,
+                    destinationNetwork,
                 );
             }
 
@@ -205,26 +238,46 @@ export function UploadDataStep({
                 return;
             }
 
-            if (activeTab === "paste") {
+            // Confidential bulk to NEAR.COM has no withdrawal fee — skip
+            // estimation entirely (the SDK can't price a destination-less
+            // transfer and would throw).
+            const skipFeeValidation = isConfidential && !destinationAssetId;
+
+            // Confidential cross-chain pads each recipient amount by the
+            // estimated network fee at submit time, so coverage errors are
+            // not blocking — we just need the per-recipient fee for display
+            // and padding. Public bulk still treats coverage as a blocker
+            // (paste tab only, matching prior behavior).
+            const needsFeeEstimation =
+                !skipFeeValidation && (isConfidential || activeTab === "paste");
+
+            if (needsFeeEstimation) {
                 const feeValidationResult = await validateIntentsFeeCoverage(
                     result.payments,
-                    selectedToken,
+                    isConfidential && destinationAssetId
+                        ? { ...selectedToken, address: destinationAssetId }
+                        : selectedToken,
                     parsingLabels,
                 );
-                const feeErrors = feeValidationResult.payments
-                    .filter((payment) => !!payment.validationError)
-                    .map((payment) => ({
-                        row: payment.row || 0,
-                        message: payment.validationError!,
-                    }));
 
-                if (feeErrors.length > 0) {
-                    setDataErrors(feeErrors);
-                    return;
+                if (!isConfidential) {
+                    const feeErrors = feeValidationResult.payments
+                        .filter((payment) => !!payment.validationError)
+                        .map((payment) => ({
+                            row: payment.row || 0,
+                            message: payment.validationError!,
+                        }));
+
+                    if (feeErrors.length > 0) {
+                        setDataErrors(feeErrors);
+                        return;
+                    }
                 }
 
                 onContinue(
-                    feeValidationResult.payments,
+                    isConfidential
+                        ? result.payments
+                        : feeValidationResult.payments,
                     feeValidationResult.networkFee,
                 );
                 return;
@@ -403,9 +456,12 @@ export function UploadDataStep({
                                                 )
                                             }
                                             disableTokens={(token) =>
-                                                token.address.startsWith(
-                                                    "nep245:",
-                                                )
+                                                isConfidential
+                                                    ? token.residency?.toLowerCase() !==
+                                                      "intents"
+                                                    : token.address.startsWith(
+                                                          "nep245:",
+                                                      )
                                             }
                                             disableTokenMessage={t(
                                                 "disableTokenMessage",
@@ -713,6 +769,9 @@ export function UploadDataStep({
                                                     )}
                                             </div>
                                         </TabsContent>
+                                        <div className="mt-2">
+                                            {networkSlot}
+                                        </div>
                                     </Tabs>
                                 </div>
                             </div>

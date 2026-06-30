@@ -53,7 +53,7 @@ export function ProposalTypeIcon({
             );
             const mappedType = extract.mapped?.type;
 
-            if (mappedType === "payment") {
+            if (mappedType === "payment" || mappedType === "bulk") {
                 return <PaymentIcon />;
             } else if (mappedType) {
                 return <ExchangeIcon />;

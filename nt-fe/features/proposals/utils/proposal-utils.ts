@@ -484,6 +484,12 @@ export function getProposalRequiredFunds(
                     amount: d.mapped.data.amountIn,
                 };
             }
+            if (d.mapped?.type === "bulk") {
+                return {
+                    tokenId: d.mapped.data.tokenId,
+                    amount: d.mapped.data.totalAmount,
+                };
+            }
             return null;
         }
         default:

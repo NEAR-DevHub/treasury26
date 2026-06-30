@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO confidential_bulk_payments (\n            dao_id, bulk_account_id, header_payload_hash,\n            recipient_payload_hashes, status\n        )\n        VALUES ($1, $2, $3, $4, 'pending')\n        ON CONFLICT (dao_id, header_payload_hash) DO UPDATE SET\n            recipient_payload_hashes = EXCLUDED.recipient_payload_hashes,\n            bulk_account_id = EXCLUDED.bulk_account_id,\n            status = 'pending',\n            last_error = NULL,\n            proposal_id = NULL,\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9e2b9419c4e054b8eec55f6ab1291c6043d8d123c21d6ccd1f4a1bce63e5bfc4"
+}

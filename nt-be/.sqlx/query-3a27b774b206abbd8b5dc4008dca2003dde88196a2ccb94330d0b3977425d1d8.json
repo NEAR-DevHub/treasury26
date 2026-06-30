@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE confidential_bulk_payments\n        SET proposal_id = $3,\n            status = CASE WHEN status = 'pending' THEN 'activating' ELSE status END,\n            updated_at = NOW()\n        WHERE dao_id = $1 AND header_payload_hash = $2\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3a27b774b206abbd8b5dc4008dca2003dde88196a2ccb94330d0b3977425d1d8"
+}

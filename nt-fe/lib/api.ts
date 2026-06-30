@@ -1385,6 +1385,39 @@ export async function generateIntent(request: {
     return response.data;
 }
 
+export interface BulkPaymentPrepareRequest {
+    daoId: string;
+    originAsset: string;
+    /** True when FE picked the near.com row in the network selector. */
+    toNearCom: boolean;
+    /** Cross-chain destination asset id; required when toNearCom is false. */
+    destinationAsset?: string;
+    decimals: number;
+    payments: Array<{ recipient: string; amount: string }>;
+    notes?: string;
+    slippageTolerance?: number;
+}
+
+export interface BulkPaymentPrepareResponse {
+    bulkAccountId: string;
+    headerPayloadHash: string;
+    recipientPayloadHashes: string[];
+}
+
+export async function prepareConfidentialBulkPayment(
+    request: BulkPaymentPrepareRequest,
+): Promise<BulkPaymentPrepareResponse> {
+    const url = `${BACKEND_API_BASE}/confidential-intents/bulk-payment/prepare`;
+    const response = await axios.post<BulkPaymentPrepareResponse>(
+        url,
+        request,
+        {
+            withCredentials: true,
+        },
+    );
+    return response.data;
+}
+
 /**
  * Receipt Search Result
  */

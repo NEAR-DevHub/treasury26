@@ -189,6 +189,7 @@ export interface VestingData {
 export type MappedConfidentialRequest =
     | { type: "swap"; data: SwapRequestData }
     | { type: "payment"; data: PaymentRequestData }
+    | { type: "bulk"; data: ConfidentialBulkData }
     | null;
 
 export interface ConfidentialRequestData {
@@ -230,6 +231,42 @@ export interface BatchPaymentRequestData {
     totalAmount: string;
     batchId: string;
     notes?: string;
+}
+
+/**
+ * Per-recipient row inside a confidential bulk payment.
+ *
+ * `quoteMetadata` is the full 1Click quote returned at prepare time —
+ * recipient address, amount, destinationAsset, depositAddress, etc. all live
+ * inside its `quote` and `quoteRequest` sub-objects (same shape as the
+ * single-confidential `ConfidentialRequestData.mapped.data`).
+ */
+export interface ConfidentialBulkRecipient {
+    payloadHash: string;
+    quoteMetadata?: Record<string, unknown> | null;
+    /** pending | submitted | failed | missing */
+    status: string;
+    submitResult?: Record<string, unknown> | null;
+}
+
+/**
+ * Bulk-confidential payload mapped from `confidential_metadata.bulk`.
+ * Surfaced as `ConfidentialRequestData.mapped` with `type: "bulk"`, so the
+ * single Confidential Request UIKind handles both legs (single + bulk).
+ */
+export interface ConfidentialBulkData {
+    /** Sub-account that signs each recipient leg. */
+    bulkAccountId?: string;
+    /** pending | activating | signing | completed | failed (BE state machine) */
+    bulkStatus?: string;
+    /** Origin asset id (Intents) — uniform across recipients. */
+    tokenId: string;
+    /** Sum of recipient amounts in smallest units. */
+    totalAmount: string;
+    /** Notes for the proposal */
+    notes?: string;
+    /** Per-recipient rows from the linked `confidential_intents` rows. */
+    recipients: ConfidentialBulkRecipient[];
 }
 
 /**

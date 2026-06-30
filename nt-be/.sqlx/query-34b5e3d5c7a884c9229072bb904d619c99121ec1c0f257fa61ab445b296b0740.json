@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE confidential_bulk_payments SET status = 'signing', updated_at = NOW() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "34b5e3d5c7a884c9229072bb904d619c99121ec1c0f257fa61ab445b296b0740"
+}

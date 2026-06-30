@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE monitored_accounts\n            SET bulk_payment_access_token = $1,\n                bulk_payment_refresh_token = $2,\n                bulk_payment_token_expires_at = $3\n            WHERE account_id = $4\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6ec054f6d168f5258d7869bf1abd434fe105963ac5dc3157fc29a248ff291496"
+}

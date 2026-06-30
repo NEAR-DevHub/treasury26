@@ -10,9 +10,13 @@
 // - Deterministic IDs (same list = same ID)
 // - Integrity verification (hash proves list contents)
 // - No auto-incrementing counters needed
-use near_sdk::json_types::U128;
+use near_sdk::json_types::{Base58CryptoHash, U128};
+use near_sdk::serde_json::json;
 use near_sdk::store::IterableMap;
-use near_sdk::{env, log, near, require, AccountId, Gas, NearToken, Promise, PromiseOrValue};
+use near_sdk::{
+    AccountId, CryptoHash, Gas, NearToken, Promise, PromiseError, PromiseOrValue, env, log, near,
+    require,
+};
 
 /// List ID is a hex-encoded SHA-256 hash (64 characters)
 /// Example: "a1b2c3d4e5f6..." (64 hex chars = 32 bytes)
@@ -23,6 +27,10 @@ pub struct BulkPaymentContract {
     /// Payment lists indexed by their content hash (hex-encoded SHA-256)
     payment_lists: IterableMap<ListId, PaymentList>,
     storage_credits: IterableMap<AccountId, NearToken>,
+    /// Hash of the globally-deployed `confidential-bulk-payment` WASM. Set by
+    /// the contract account itself (via DAO upgrade) before any per-DAO
+    /// confidential subaccount can be created.
+    confidential_code_hash: Option<CryptoHash>,
 }
 
 #[near(serializers = [json])]
@@ -85,6 +93,7 @@ impl Default for BulkPaymentContract {
         Self {
             payment_lists: IterableMap::new(b"p"),
             storage_credits: IterableMap::new(b"s"),
+            confidential_code_hash: None,
         }
     }
 }
@@ -659,6 +668,110 @@ impl BulkPaymentContract {
         // Return 0 to keep all tokens
         U128(0)
     }
+
+    // ── Confidential bulk-payment factory ───────────────────────────────────
+
+    /// Record the globally-deployed `confidential-bulk-payment` WASM hash.
+    /// Subaccount creations reference this code via `use_global_contract`.
+    /// Self-only — must be invoked through a DAO/upgrade flow on this account.
+    pub fn set_confidential_code_hash(&mut self, code_hash: Base58CryptoHash) {
+        require!(
+            env::predecessor_account_id() == env::current_account_id(),
+            "Only the contract account can set the confidential code hash"
+        );
+        self.confidential_code_hash = Some(CryptoHash::from(code_hash));
+    }
+
+    /// Permissionless factory for per-DAO confidential bulk-payment subaccounts.
+    ///
+    /// Anyone can pay to bootstrap `<prefix>.<this_account>` for a sputnik-dao
+    /// `<prefix>.sputnik-dao.<network>`. The naming binding is the only auth:
+    /// signatures issued by the subaccount under `predecessor=<sub>` can only
+    /// ever be requested by the matching DAO, because the subaccount's
+    /// `init(owner_dao)` is checked against the same prefix on the target.
+    ///
+    /// The full attached deposit funds the new subaccount. ~1 NEAR is enough
+    /// for the global-contract reference, contract state, and the 1-yocto
+    /// `add_public_key` call dispatched during `bootstrap()`.
+    #[payable]
+    pub fn create_confidential_subaccount(&mut self, dao_id: AccountId) -> Promise {
+        let code_hash = self
+            .confidential_code_hash
+            .expect("confidential_code_hash not configured");
+
+        let current = env::current_account_id();
+        let current_str = current.as_str();
+
+        let dao_str = dao_id.as_str();
+        let prefix = dao_str
+            .strip_suffix(".sputnik-dao.near")
+            .unwrap_or_else(|| env::panic_str("dao_id must end with .sputnik-dao.near"));
+        require!(
+            !prefix.is_empty() && !prefix.contains('.'),
+            "dao_id must have exactly one label before the suffix"
+        );
+
+        let sub_str = format!("{prefix}.{current_str}");
+        let sub: AccountId = sub_str
+            .parse()
+            .unwrap_or_else(|_| env::panic_str("derived subaccount id is invalid"));
+
+        let attached = env::attached_deposit();
+        const MIN_DEPOSIT: NearToken = NearToken::from_millinear(100); // 0.1 NEAR
+        require!(
+            attached >= MIN_DEPOSIT,
+            format!("attached deposit must be at least {}", MIN_DEPOSIT)
+        );
+
+        let init_args = json!({ "owner_dao": dao_id }).to_string().into_bytes();
+
+        let create = Promise::new(sub.clone())
+            .create_account()
+            .transfer(attached)
+            .use_global_contract(code_hash)
+            .function_call(
+                "init".to_string(),
+                init_args,
+                NearToken::from_yoctonear(0),
+                Gas::from_tgas(20),
+            )
+            .function_call(
+                "bootstrap".to_string(),
+                Vec::new(),
+                NearToken::from_yoctonear(0),
+                Gas::from_tgas(60),
+            );
+
+        create.then(
+            Self::ext(env::current_account_id())
+                .with_static_gas(Gas::from_tgas(5))
+                .on_create_confidential_subaccount(env::predecessor_account_id(), attached),
+        )
+    }
+
+    /// Refund the caller if the subaccount creation batch failed.
+    #[private]
+    pub fn on_create_confidential_subaccount(
+        &mut self,
+        refund_to: AccountId,
+        amount: NearToken,
+        #[callback_result] result: Result<(), PromiseError>,
+    ) -> Option<Promise> {
+        if result.is_err() {
+            log!(
+                "create_confidential_subaccount failed; refunding {} to {}",
+                amount,
+                refund_to
+            );
+            Some(Promise::new(refund_to).transfer(amount))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_confidential_code_hash(&self) -> Option<Base58CryptoHash> {
+        self.confidential_code_hash.map(Base58CryptoHash::from)
+    }
 }
 
 /// NEP-245 Multi-Token Receiver implementation
@@ -779,7 +892,7 @@ impl MultiTokenReceiver for BulkPaymentContract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use near_sdk::test_utils::{accounts, VMContextBuilder};
+    use near_sdk::test_utils::{VMContextBuilder, accounts};
     use near_sdk::testing_env;
 
     fn get_context(predecessor: AccountId) -> VMContextBuilder {
