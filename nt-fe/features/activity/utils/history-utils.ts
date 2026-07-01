@@ -251,6 +251,44 @@ export function getToAccount(
     );
 }
 
+/**
+ * Resolve the raw sender account id (no display fallbacks). Returns null when
+ * there is no real account to link to (swaps, or missing/unknown values), so
+ * callers can decide whether to render a hoverable user vs. a plain label.
+ */
+export function getFromAccountId(
+    activity: ActivityAccount,
+    isReceived: boolean,
+    treasuryId: string | null | undefined,
+): string | null {
+    if (activity.swap) return null;
+    if (isReceived) {
+        return (
+            normalizeAccountValue(activity.counterparty) ??
+            normalizeAccountValue(activity.signerId)
+        );
+    }
+    return normalizeAccountValue(treasuryId);
+}
+
+/**
+ * Resolve the raw recipient account id (no display fallbacks). Returns null
+ * when there is no real account to link to.
+ */
+export function getToAccountId(
+    activity: ActivityAccount,
+    isReceived: boolean,
+    treasuryId: string | null | undefined,
+): string | null {
+    if (isReceived) {
+        return normalizeAccountValue(treasuryId);
+    }
+    return (
+        normalizeAccountValue(activity.counterparty) ??
+        normalizeAccountValue(activity.receiverId)
+    );
+}
+
 function buildHistoryDescriptionLabels(
     t: (key: string, values?: Record<string, any>) => string,
 ): HistoryDescriptionLabels {

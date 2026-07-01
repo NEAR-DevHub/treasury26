@@ -370,7 +370,8 @@
             "to": "送信先",
             "method": "メソッド",
             "contract": "コントラクト",
-            "transaction": "トランザクション"
+            "transaction": "トランザクション",
+            "depositTransaction": "入金トランザクション"
         },
         "refresh": {
             "ariaLabel": "機密履歴を更新",
