@@ -168,6 +168,7 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         archival_network,
         bulk_payment_contract_id: env_vars.bulk_payment_contract_id.clone(),
         env_vars,
+        token_price_service: Arc::new(nt_be::services::TokenPriceService::new(db_pool.clone())),
         db_pool,
         price_service,
         transfer_hint_service: transfer_hint_service.map(Arc::new),

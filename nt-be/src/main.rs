@@ -127,6 +127,8 @@ async fn async_main() {
         });
     }
 
+    nt_be::services::spawn_token_price_ingest_worker(state.clone());
+
     nt_be::handlers::intents::confidential::bronze::ingest_worker::spawn_confidential_history_worker(
         state.clone(),
     );

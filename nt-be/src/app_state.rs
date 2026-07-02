@@ -9,7 +9,7 @@ use crate::{
         TransferHintService, fastnear::FastNearProvider, neardata::NeardataClient,
     },
     handlers::public_history::bronze::NearblocksPriority,
-    services::{DeFiLlamaClient, PriceLookupService},
+    services::{DeFiLlamaClient, PriceLookupService, TokenPriceService},
     utils::{
         cache::{Cache, CacheKey, CacheTier},
         env::EnvVars,
@@ -22,7 +22,7 @@ use crate::{
 /// Sustained NearBlocks request ceiling (per minute) shared by every NearBlocks
 /// caller. Kept under the plan's 190/min hard limit to leave headroom for the
 /// on-demand v1 call sites; the daily/monthly budget is enforced separately.
-const NEARBLOCKS_MAX_PER_MINUTE: u32 = 3;
+const NEARBLOCKS_MAX_PER_MINUTE: u32 = 10;
 
 pub struct AppState {
     pub http_client: reqwest::Client,
@@ -40,6 +40,9 @@ pub struct AppState {
     pub env_vars: EnvVars,
     pub db_pool: PgPool,
     pub price_service: PriceLookupService<DeFiLlamaClient>,
+    /// Centralized token registry + minute-level USD prices, fed by the
+    /// token price ingest worker. Latest-price reads are in-memory.
+    pub token_price_service: Arc<TokenPriceService>,
     pub bulk_payment_contract_id: AccountId,
     pub telegram_client: TelegramClient,
     /// Optional transfer hint service for accelerated balance change detection
@@ -290,6 +293,8 @@ impl AppStateBuilder {
             .price_service
             .unwrap_or_else(|| PriceLookupService::without_provider(db_pool.clone()));
 
+        let token_price_service = Arc::new(TokenPriceService::new(db_pool.clone()));
+
         // Use bulk payment contract from env or default
         let bulk_payment_contract_id = self
             .bulk_payment_contract_id
@@ -369,6 +374,7 @@ impl AppStateBuilder {
             env_vars,
             db_pool,
             price_service,
+            token_price_service,
             bulk_payment_contract_id,
             transfer_hint_service,
             neardata_client,

@@ -20,6 +20,7 @@ use crate::AppState;
 use crate::handlers::public_history::silver::models::{
     PublicTransactionType, PublicTransferDirection, PublicTransferLegKind, SilverTransferLegRow,
 };
+use crate::services::TokenPriceService;
 
 const PUBLIC_GOLD_SCHEDULER_TICK: Duration = Duration::from_secs(10);
 const PUBLIC_GOLD_WORKERS: usize = 4;
@@ -368,9 +369,33 @@ fn plan_exchange_pairs(rows: &[SilverTransferLegRow]) -> Result<ExchangePairs, S
     })
 }
 
-fn public_gold_event_from_leg(
+/// USD value of a leg's decimal-adjusted amount at the event time. Lookup
+/// failures degrade to None (NULL in gold) rather than failing projection.
+async fn leg_amount_usd(
+    token_prices: &TokenPriceService,
+    leg: &SilverTransferLegRow,
+    event_time: chrono::DateTime<chrono::Utc>,
+) -> Option<BigDecimal> {
+    match token_prices
+        .price_for_valuation(&leg.token_id, event_time)
+        .await
+    {
+        Ok(price) => price.map(|price| &leg.amount * price),
+        Err(e) => {
+            tracing::warn!(
+                token_id = %leg.token_id,
+                error = %e,
+                "price lookup failed for gold usd valuation"
+            );
+            None
+        }
+    }
+}
+
+async fn public_gold_event_from_leg(
     leg: &SilverTransferLegRow,
     ledger: &mut GoldLedger,
+    token_prices: &TokenPriceService,
 ) -> Result<Option<GoldPublicHistoryEvent>, String> {
     let direction = leg_direction(leg)?;
     if !is_projectable_transfer(leg)? {
@@ -382,6 +407,7 @@ fn public_gold_event_from_leg(
 
     match direction {
         PublicTransferDirection::Incoming => {
+            let amount_in_usd = leg_amount_usd(token_prices, leg, event_time).await;
             let (before, after) = ledger.apply_in(&leg.token_id, &leg.amount);
             Ok(Some(GoldPublicHistoryEvent {
                 gold_event_key,
@@ -394,7 +420,7 @@ fn public_gold_event_from_leg(
                 token_out: None,
                 amount_in: Some(leg.amount.clone()),
                 amount_out: None,
-                amount_in_usd: None,
+                amount_in_usd,
                 amount_out_usd: None,
                 usd_change: None,
                 token_in_balance_before: Some(before),
@@ -421,6 +447,7 @@ fn public_gold_event_from_leg(
             }))
         }
         PublicTransferDirection::Outgoing => {
+            let amount_out_usd = leg_amount_usd(token_prices, leg, event_time).await;
             let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
             Ok(Some(GoldPublicHistoryEvent {
                 gold_event_key,
@@ -434,7 +461,7 @@ fn public_gold_event_from_leg(
                 amount_in: None,
                 amount_out: Some(leg.amount.clone()),
                 amount_in_usd: None,
-                amount_out_usd: None,
+                amount_out_usd,
                 usd_change: None,
                 token_in_balance_before: None,
                 token_in_balance_after: None,
@@ -573,6 +600,7 @@ fn completed_exchange_event_from_legs(
 
 pub async fn project_public_gold_for_account(
     pool: &PgPool,
+    token_prices: &TokenPriceService,
     account_id: &str,
 ) -> Result<GoldProjectionResult, sqlx::Error> {
     let mut tx = pool.begin().await?;
@@ -702,7 +730,7 @@ pub async fn project_public_gold_for_account(
             continue;
         }
 
-        match public_gold_event_from_leg(&leg, &mut ledger) {
+        match public_gold_event_from_leg(&leg, &mut ledger, token_prices).await {
             Ok(Some(event)) => {
                 preserve_keys.insert(event.gold_event_key.clone());
                 upsert_gold_event(&mut tx, &event).await?;
@@ -732,15 +760,18 @@ pub async fn project_public_gold_for_account(
 
 pub async fn project_public_gold_for_dirty_accounts(
     pool: &PgPool,
+    token_prices: &Arc<TokenPriceService>,
 ) -> Result<GoldProjectionCycleStats, sqlx::Error> {
     let dirty_accounts = load_dirty_accounts(pool).await?;
     let accounts_seen = dirty_accounts.len();
 
     let mut stream = futures::stream::iter(dirty_accounts.into_iter().map(|account| {
         let pool = pool.clone();
+        let token_prices = Arc::clone(token_prices);
         async move {
             let account_id = account.account_id;
-            let result = project_public_gold_for_account(&pool, &account_id).await;
+            let result =
+                project_public_gold_for_account(&pool, &token_prices, &account_id).await;
             (account_id, result)
         }
     }))
@@ -788,7 +819,9 @@ pub fn spawn_public_gold_projection_worker(state: Arc<AppState>) {
         loop {
             timer.tick().await;
             let started_at = Instant::now();
-            match project_public_gold_for_dirty_accounts(&state.db_pool).await {
+            match project_public_gold_for_dirty_accounts(&state.db_pool, &state.token_price_service)
+                .await
+            {
                 Ok(stats) if stats.accounts_seen > 0 => {
                     tracing::info!(
                         elapsed_secs = started_at.elapsed().as_secs_f64(),
