@@ -359,14 +359,14 @@ pub(crate) fn project_row(
         None => bare_account(row.account_id.as_str()),
     };
 
-    // Extract quoteTransactions[0] fields from the parsed API item (preferred) or
-    // from raw_payload directly as a fallback for rows ingested before the typed field.
+    // Extract quoteTransactions[0] from the parsed API item or raw_payload directly
+    // (fallback for rows ingested before the typed field was added).
     let first_quote_tx = row
         .raw_payload
         .get("quoteTransactions")
         .and_then(|v| v.as_array())
         .and_then(|arr| arr.first());
-    let sender_address = api
+    let deposit_sender = api
         .as_ref()
         .and_then(|i| i.first_quote_sender())
         .map(str::to_owned)
@@ -387,9 +387,17 @@ pub(crate) fn project_row(
                 .map(str::to_owned)
         });
 
+    // `counterparty` is the single frontend-facing "other side" field:
+    //   Sent     → the recipient (who received funds)
+    //   Deposit  → the real on-chain sender from quoteTransactions[0].sender,
+    //              falling back to intents.near when unavailable
+    //   Exchange → intents.near (the solver)
     let counterparty = match kind {
         ConfidentialTxType::Sent => recipient.clone(),
-        ConfidentialTxType::Exchange | ConfidentialTxType::Deposit => bare_account("intents.near"),
+        ConfidentialTxType::Deposit => deposit_sender
+            .clone()
+            .unwrap_or_else(|| bare_account("intents.near")),
+        ConfidentialTxType::Exchange => bare_account("intents.near"),
     };
 
     Ok(Some(GoldHistoryEvent {
@@ -421,7 +429,6 @@ pub(crate) fn project_row(
         proposal_execution_transaction_hash: row.proposal_execution_transaction_hash.clone(),
         quote_created_at: row.created_at_external,
         proposal_created_at: row.proposal_created_at,
-        sender_address,
         deposit_tx_hash,
     }))
 }

@@ -41,9 +41,7 @@ pub(crate) struct GoldHistoryEvent {
     pub(crate) proposal_execution_transaction_hash: Option<String>,
     pub(crate) quote_created_at: DateTime<Utc>,
     pub(crate) proposal_created_at: Option<DateTime<Utc>>,
-    /// On-chain deposit sender address extracted from quoteTransactions[0].sender.
-    pub(crate) sender_address: Option<String>,
-    /// On-chain deposit tx hash extracted from quoteTransactions[0].txHash.
+    /// On-chain deposit tx hash from quoteTransactions[0].txHash.
     pub(crate) deposit_tx_hash: Option<String>,
 }
 

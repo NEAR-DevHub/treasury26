@@ -51,8 +51,6 @@ struct ConfidentialBalanceChangeRow {
     quote_created_at: DateTime<Utc>,
     created_at: DateTime<Utc>,
     proposal_id: Option<i64>,
-    /// On-chain deposit sender address from quoteTransactions[0].sender.
-    sender_address: Option<String>,
     /// On-chain deposit tx hash from quoteTransactions[0].txHash.
     deposit_tx_hash: Option<String>,
 }
@@ -88,7 +86,6 @@ impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for ConfidentialBalanceChangeRow {
             quote_created_at: row.try_get("quote_created_at")?,
             created_at: row.try_get("created_at")?,
             proposal_id: row.try_get("proposal_id")?,
-            sender_address: row.try_get("sender_address")?,
             deposit_tx_hash: row.try_get("deposit_tx_hash")?,
         })
     }
@@ -183,7 +180,7 @@ pub async fn fetch_balance_change_legs(
                 proposal_executed_at,
                 proposal_execution_transaction_hash,
                 quote_created_at, created_at,
-                sender_address, deposit_tx_hash,
+                deposit_tx_hash,
                 (
                     SELECT ci.proposal_id
                     FROM confidential_intents ci
@@ -205,7 +202,6 @@ pub async fn fetch_balance_change_legs(
                 END AS leg_amount,
                 CASE
                     WHEN transaction_type = 'sent' THEN dao_id
-                    WHEN transaction_type = 'deposit' THEN COALESCE(sender_address, counterparty)
                     ELSE counterparty
                 END AS leg_from_account,
                 CASE
@@ -231,7 +227,7 @@ pub async fn fetch_balance_change_legs(
             proposal_executed_at,
             proposal_execution_transaction_hash,
             quote_created_at, created_at, proposal_id,
-            sender_address, deposit_tx_hash
+            deposit_tx_hash
         FROM legs
         WHERE 1 = 1
         "#,
@@ -455,7 +451,6 @@ impl LegRow {
             quote_created_at,
             created_at,
             proposal_id,
-            sender_address,
             deposit_tx_hash,
         } = row;
 
@@ -500,20 +495,18 @@ impl LegRow {
                 // Match gold ledger delta (amount_out - amount_in for same-asset fees), not
                 // gross amount_out — keeps amount = balance_after - balance_before.
                 let amount = &balance_after - &balance_before;
-                // Use the real on-chain sender when available (EVM address from
-                // quoteTransactions[0].sender), falling back to the generic intents.near.
-                let resolved_counterparty = sender_address.clone().unwrap_or(counterparty);
                 // Use the deposit tx hash as the transaction identifier when there
                 // is no NEAR proposal execution tx (typical for pure deposits).
-                let resolved_tx_hash = deposit_tx_hash.clone().or(transaction_hash);
+                // counterparty already holds the real on-chain sender (set in classify.rs).
+                let resolved_tx_hash = transaction_hash.or(deposit_tx_hash);
                 Some(LegRow {
                     id,
                     token_id: destination_asset,
                     amount,
                     balance_before,
                     balance_after,
-                    counterparty: Some(resolved_counterparty.clone()),
-                    signer_id: Some(resolved_counterparty),
+                    counterparty: Some(counterparty.clone()),
+                    signer_id: Some(counterparty),
                     receiver_id: Some(dao_id_str),
                     block_height,
                     block_time: resolved_block_time,
