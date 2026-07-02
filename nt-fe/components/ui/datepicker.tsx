@@ -814,10 +814,11 @@ export function DatePickerPopover({
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
-                    variant={borderless ? "ghost" : "outline"}
+                    variant={borderless ? "ghost" : "unstyled"}
                     className={cn(
-                        "w-full justify-start text-left font-normal",
+                        "inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-md text-sm transition-all disabled:pointer-events-none disabled:opacity-50 w-full justify-start text-left font-normal h-9 px-4",
                         !value && "text-muted-foreground",
+                        !borderless && "bg-muted hover:bg-general-tertiary",
                         borderless &&
                             "border-none shadow-none hover:bg-transparent",
                         classNames?.trigger,
