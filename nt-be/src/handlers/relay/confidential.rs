@@ -521,7 +521,8 @@ pub async fn try_auto_submit_intent(
             .await;
 
             if update_result.is_ok() {
-                match link_intent_to_history_event(&state.db_pool, treasury_id, payload_hash).await {
+                match link_intent_to_history_event(&state.db_pool, treasury_id, payload_hash).await
+                {
                     Ok(Some(history_event_id)) => {
                         tracing::info!(
                             "Linked submitted confidential intent for {} (hash={}) to history_event_id={}",
@@ -549,7 +550,8 @@ pub async fn try_auto_submit_intent(
 
                 // Must run after the refresh above so the Gold row exists.
                 if let Err(e) =
-                    refresh_gold_metadata_for_intent(&state.db_pool, treasury_id, payload_hash).await
+                    refresh_gold_metadata_for_intent(&state.db_pool, treasury_id, payload_hash)
+                        .await
                 {
                     tracing::warn!(
                         "Failed to refresh confidential gold metadata for {} (hash={}): {}",

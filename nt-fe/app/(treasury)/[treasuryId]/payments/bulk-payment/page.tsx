@@ -65,10 +65,8 @@ export default function BulkPaymentPage() {
     const pageTitle = isConfidential ? t("confidentialTitle") : t("title");
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
-    const {
-        data: bridgeAssets = [],
-        isLoading: isBridgeAssetsLoading,
-    } = useBridgeTokens(true);
+    const { data: bridgeAssets = [], isLoading: isBridgeAssetsLoading } =
+        useBridgeTokens(true);
 
     const [step, setStep] = useState(0);
     const [destinationNetworkId, setDestinationNetworkId] =
