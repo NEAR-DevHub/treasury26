@@ -25,16 +25,27 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { EmptyState } from "@/components/empty-state";
+import { ConfidentialState } from "@/components/confidential-state";
 import { NotEnoughBalance } from "../not-enough-balance";
 import { FormattedDate } from "@/components/formatted-date";
 import { Policy } from "@/types/policy";
 import { extractConfidentialRequestData } from "../../utils/proposal-extractors";
 import { useRouter } from "next/navigation";
 
-const MAX_DISPLAYED_REQUESTS = 4;
+const MAX_DISPLAYED_REQUESTS = 3;
 
 function PendingRequestItemSkeleton() {
-    return <Skeleton className="h-20 w-full rounded-lg" />;
+    return <Skeleton className="h-16 w-full rounded-lg" />;
+}
+
+function PendingRequestsGridSkeleton() {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+            {Array.from({ length: MAX_DISPLAYED_REQUESTS }).map((_, index) => (
+                <PendingRequestItemSkeleton key={index} />
+            ))}
+        </div>
+    );
 }
 
 function PendingRequestsSkeleton() {
@@ -50,13 +61,7 @@ function PendingRequestsSkeleton() {
                     <ChevronRight className="size-4" />
                 </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
-                {Array.from({ length: MAX_DISPLAYED_REQUESTS }).map(
-                    (_, index) => (
-                        <PendingRequestItemSkeleton key={index} />
-                    ),
-                )}
-            </div>
+            <PendingRequestsGridSkeleton />
         </div>
     );
 }
@@ -203,7 +208,8 @@ export function PendingRequestItem({
 export function PendingRequests() {
     const t = useTranslations("requests.pending");
     const { accountId } = useNear();
-    const { treasuryId } = useTreasury();
+    const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
+    const isHidden = isConfidential && isGuestTreasury;
     const router = useRouter();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
@@ -212,14 +218,33 @@ export function PendingRequests() {
         proposals: Proposal[];
     }>({ vote: "Approve", proposals: [] });
     const { data: pendingRequests, isLoading: isRequestsLoading } =
-        useProposals(treasuryId, {
-            statuses: ["InProgress"],
-            ...(accountId && {
-                voter_votes: `${accountId}:No Voted`,
-            }),
-        });
+        useProposals(
+            treasuryId,
+            {
+                statuses: ["InProgress"],
+                ...(accountId && {
+                    voter_votes: `${accountId}:No Voted`,
+                }),
+            },
+            !isHidden,
+        );
 
     const isLoading = isRequestsLoading;
+
+    if (isHidden) {
+        return (
+            <div className="bg-general-tertiary rounded-lg p-5 gap-3 flex flex-col w-full h-fit min-h-[300px]">
+                <div className="flex justify-between">
+                    <div className="flex items-center gap-1">
+                        <h1 className="font-semibold text-nowrap">
+                            {t("title")}
+                        </h1>
+                    </div>
+                </div>
+                <ConfidentialState skeleton={<PendingRequestsGridSkeleton />} />
+            </div>
+        );
+    }
 
     if (isLoading) {
         return <PendingRequestsSkeleton />;

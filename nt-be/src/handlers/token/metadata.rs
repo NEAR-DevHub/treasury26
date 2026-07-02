@@ -494,12 +494,24 @@ fn tokens_json_metadata_for_defuse(
             if let crate::constants::intents_tokens::TokenDeployment::Fungible {
                 address,
                 chain_name,
+                bridge,
                 ..
             } = deployment
                 && address_candidates
                     .iter()
                     .any(|candidate| candidate.eq_ignore_ascii_case(address))
             {
+                // A `direct`-bridge NEAR deployment is the omft/bridge wrapper
+                // contract (e.g. `zec.omft.near`, `xrp.omft.near`), not the asset's
+                // home chain. Don't let it mask a non-NEAR origin chain; keep
+                // scanning for a real deployment and otherwise fall back to
+                // `origin_chain_name` (Zcash, XRP Ledger, ...).
+                let is_near_bridge_wrapper = chain_name.eq_ignore_ascii_case("near")
+                    && bridge.eq_ignore_ascii_case("direct")
+                    && !token.origin_chain_name.eq_ignore_ascii_case("near");
+                if is_near_bridge_wrapper {
+                    continue;
+                }
                 matched = Some(chain_name.clone());
                 break;
             }
@@ -1109,5 +1121,23 @@ mod tests {
         let resolved = tokens_json_metadata_for_defuse(defuse_id, &near_contract, defuse_id)
             .expect("expected token resolution from tokens.json");
         assert_eq!(resolved.network.as_deref(), Some("near"));
+    }
+
+    #[test]
+    fn omft_near_wrapper_does_not_mask_foreign_origin_chain() {
+        // `zec.omft.near` is the NEAR omft wrapper (bridge: "direct"); the asset's
+        // home chain is Zcash, so the resolved network must be the origin chain.
+        let defuse_id = "nep141:zec.omft.near";
+        let contracts = vec!["zec.omft.near".to_string()];
+        let resolved = tokens_json_metadata_for_defuse(defuse_id, &contracts, defuse_id)
+            .expect("expected token resolution from tokens.json");
+        assert_eq!(resolved.network.as_deref(), Some("zcash"));
+
+        // Same shape for XRP (`xrp.omft.near` -> XRP Ledger).
+        let defuse_id = "nep141:xrp.omft.near";
+        let contracts = vec!["xrp.omft.near".to_string()];
+        let resolved = tokens_json_metadata_for_defuse(defuse_id, &contracts, defuse_id)
+            .expect("expected token resolution from tokens.json");
+        assert_eq!(resolved.network.as_deref(), Some("xrpledger"));
     }
 }

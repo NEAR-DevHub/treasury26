@@ -222,6 +222,7 @@ export function ManifestForm({
                                                 title={field.label}
                                                 info={field.help}
                                                 invalid={!!fieldState.error}
+                                                interactive
                                             >
                                                 <FieldControlInput
                                                     field={field}

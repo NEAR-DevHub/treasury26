@@ -31,7 +31,7 @@ export function InputBlock({
                 invalid && "border-destructive border bg-destructive/5",
                 interactive &&
                     !disabled &&
-                    "focus-within:bg-general-tertiary hover:bg-general-tertiary transition-colors",
+                    "focus-within:bg-general-unofficial-ghost-hover hover:bg-general-unofficial-ghost-hover transition-colors",
                 disabled && "opacity-50 pointer-events-none",
                 className,
             )}
