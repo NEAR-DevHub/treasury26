@@ -333,6 +333,10 @@ export function DepositModal({
         [t],
     );
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
+    // Guests on confidential treasuries can only use the NEAR direct network;
+    // other networks are shown as "for members only" and disabled. When network
+    // selection is restricted like this, we must not auto-select a network.
+    const isNetworkSelectionRestricted = isConfidential && isGuestTreasury;
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -810,7 +814,11 @@ export function DepositModal({
                 if (prefillNetwork) networkToSelect = prefillNetwork;
             }
 
-            if (!networkToSelect && availableNetworks.length === 1) {
+            if (
+                !networkToSelect &&
+                availableNetworks.length === 1 &&
+                !isNetworkSelectionRestricted
+            ) {
                 networkToSelect = availableNetworks[0];
             }
 
@@ -866,8 +874,13 @@ export function DepositModal({
                 },
             });
 
-            // Auto-select network only when there is exactly one option.
-            if (availableNetworks.length === 1) {
+            // Auto-select network only when there is exactly one option and the
+            // user is actually allowed to select a network (guests on confidential
+            // treasuries have network selection disabled).
+            if (
+                availableNetworks.length === 1 &&
+                !isNetworkSelectionRestricted
+            ) {
                 form.setValue("network", availableNetworks[0]);
             } else {
                 form.setValue("network", null);
@@ -878,6 +891,7 @@ export function DepositModal({
             assetNetworksMap,
             networkBalancesByAsset,
             invalidatePendingAddressRequest,
+            isNetworkSelectionRestricted,
         ],
     );
 
