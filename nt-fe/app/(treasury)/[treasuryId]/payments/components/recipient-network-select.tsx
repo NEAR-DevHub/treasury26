@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { Button } from "@/components/button";
 import { InputBlock } from "@/components/input-block";
+import { WarningMessage } from "@/components/warning-message";
 import { getNetworkDisplayName } from "@/components/token-display";
 import type { Token } from "@/components/token-input";
 import { NEAR_NETWORK_ID, NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
@@ -50,6 +51,7 @@ interface RecipientNetworkSelectProps {
      * callers can derive blockchain type (for downstream address validation).
      */
     onNetworkChange?: (option: RecipientNetworkOption) => void;
+    warningMessage?: string | null;
 }
 
 export type RecipientNetworkRuleOption = RecipientNetworkOption & {
@@ -62,6 +64,9 @@ function isAddressCompatibleWithNetwork(
 ): boolean {
     if (!address) return true;
     const blockchain = getBlockchainType(networkName);
+    if (blockchain === "unknown") {
+        return false;
+    }
     if (blockchain === NEAR_NETWORK_ID) {
         // NEAR full check is async; sync format check is enough for sectioning.
         return isValidNearAddressFormat(address);
@@ -120,6 +125,7 @@ export function RecipientNetworkSelect({
     isBridgeAssetsLoading = false,
     sectionRules,
     onNetworkChange,
+    warningMessage,
 }: RecipientNetworkSelectProps) {
     const t = useTranslations("recipientNetworkSelect");
     const tAddressBookTable = useTranslations("addressBookTable");
@@ -269,6 +275,13 @@ export function RecipientNetworkSelect({
                     )}
                     <ChevronDown className="size-5 text-muted-foreground ml-auto" />
                 </Button>
+                {warningMessage && (
+                    <WarningMessage
+                        variant="inline"
+                        message={warningMessage}
+                        className="text-sm"
+                    />
+                )}
             </InputBlock>
 
             <SelectModal

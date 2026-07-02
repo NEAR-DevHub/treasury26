@@ -102,7 +102,7 @@ pub async fn list_address_book(
         AddressBookRow,
         r#"
         SELECT ab.id, ab.dao_id, ab.name, ab.networks, ab.address, ab.note, ab.created_at,
-               u.account_id AS created_by_wallet
+               u.account_id AS "created_by_wallet?"
         FROM address_book ab
         LEFT JOIN users u ON u.id = ab.created_by
         WHERE ab.dao_id = $1
@@ -266,7 +266,7 @@ pub async fn export_address_book(
             AddressBookRow,
             r#"
             SELECT ab.id, ab.dao_id, ab.name, ab.networks, ab.address, ab.note, ab.created_at,
-                   u.account_id AS created_by_wallet
+                   u.account_id AS "created_by_wallet?"
             FROM address_book ab
             LEFT JOIN users u ON u.id = ab.created_by
             WHERE ab.dao_id = $1 AND ab.id = ANY($2)
@@ -288,7 +288,7 @@ pub async fn export_address_book(
             AddressBookRow,
             r#"
             SELECT ab.id, ab.dao_id, ab.name, ab.networks, ab.address, ab.note, ab.created_at,
-                   u.account_id AS created_by_wallet
+                   u.account_id AS "created_by_wallet?"
             FROM address_book ab
             LEFT JOIN users u ON u.id = ab.created_by
             WHERE ab.dao_id = $1
@@ -546,6 +546,46 @@ mod tests {
                 .to_vec(),
         )
         .expect("Response body should be valid UTF-8")
+    }
+
+    /// An entry whose creator was removed (`created_by` set NULL by the FK's `ON DELETE SET NULL`)
+    /// must list without crashing: the `LEFT JOIN users` yields a NULL `created_by_wallet`, which
+    /// the query has to decode as `None`. Regression for the missing `?` nullability override (the
+    /// same fix this PR applies to proposal_templates; the export queries get the override too).
+    #[sqlx::test]
+    async fn test_list_tolerates_null_creator(pool: PgPool) {
+        let state = test_state(pool.clone());
+        let app = create_routes(state.clone());
+
+        seed_policy_member(&pool, DAO_ID, USER_ACCOUNT_ID).await;
+        let auth_cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
+        // insert_address_book_entry leaves created_by NULL — the post-ON-DELETE-SET-NULL state.
+        insert_address_book_entry(&pool, DAO_ID, "Orphan", "orphan.near").await;
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(format!("/api/address-book?daoId={DAO_ID}"))
+                    .header("cookie", &auth_cookie)
+                    .body(Body::empty())
+                    .expect("Should build list request"),
+            )
+            .await
+            .expect("List request should complete");
+
+        let status = response.status();
+        let body = response_text(response).await;
+        assert_eq!(status, StatusCode::OK, "List should succeed. Body: {body}");
+
+        let entries: serde_json::Value =
+            serde_json::from_str(&body).expect("List response should be valid JSON");
+        let entries = entries
+            .as_array()
+            .expect("List response should be an array");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["name"], "Orphan");
+        assert_eq!(entries[0]["createdBy"], serde_json::Value::Null);
     }
 
     #[sqlx::test]

@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "名前またはIDでリクエストを検索",
         "searchPlaceholderShort": "名前またはIDで検索",
-        "errorLoading": "提案の読み込みに失敗しました。もう一度お試しください。",
         "empty": {
             "title": "最初のリクエストを作成しましょう",
             "description": "支払い、交換などのリクエストは作成されるとここに表示されます。",
@@ -616,6 +615,7 @@
             "actionReject": "却下",
             "actionRemove": "削除",
             "insufficientBalance": "残高不足のため、リクエスト<highlight>{ids}</highlight>は承認できません。承認は残りのリクエストにのみ適用されます。",
+            "approveBlockedBulk": "{count, plural, one {選択した # 件のリクエストは現在承認できません。続行するには選択を解除してください。} other {選択した # 件のリクエストは現在承認できません。続行するには選択を解除してください。}}",
             "remove": "削除",
             "confirm": "確認"
         },
@@ -854,7 +854,8 @@
             "general": "一般",
             "voting": "投票",
             "preferences": "環境設定",
-            "integrations": "連携"
+            "integrations": "連携",
+            "developer": "開発者"
         },
         "general": {
             "validation": {
@@ -1425,10 +1426,6 @@
             "openInTelegram": "Telegramで{bot}を開く"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "メンテナンス中",
-        "maintenanceMessage": "現在メンテナンスを実施しています。一部の機能が一時的に利用できない場合があります。しばらくしてから再度ご確認ください。"
-    },
     "creditsQuota": {
         "available": "{count} 利用可能",
         "used": "{count} 使用済み",
@@ -1918,7 +1915,8 @@
         "guestSaveIntro": "あなたはこのトレジャリーのゲストです。データの閲覧のみ可能です。",
         "guestSaveAction": "このゲストトレジャリーをトレジャリー一覧に保存できます。",
         "newFeatureRich": "新機能!🎉 頻繁に使用するアドレスを保存して、より速く、エラーのない支払いを実現します。連絡先は非公開で、チームのみが閲覧できます。",
-        "newFeatureCta": "試してみる"
+        "newFeatureCta": "試してみる",
+        "requestTemplates": "カスタムリクエストの準備が整いました。ここから開いて最初のリクエストタイプを作成しましょう。"
     },
     "statusDate": {
         "expires": "有効期限",
@@ -1972,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "リクエストを作成",
-        "noPermission": "リクエストを作成する権限がありません"
+        "noPermission": "リクエストを作成する権限がありません",
+        "paused": "一時停止中",
+        "brieflyUnavailable": "一時的に利用不可"
     },
     "address": {
         "copied": "アドレスをクリップボードにコピーしました"
@@ -2186,6 +2186,233 @@
             "docsDescription": "ドキュメントですべての機能について学びましょう。",
             "videoTitle": "デモを見る",
             "videoDescription": "Trezuの動作を示す短い動画をご覧ください。"
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "に",
+            "until": "まで"
+        },
+        "actions": {
+            "payment": "支払い",
+            "deposit": "入金",
+            "exchange": "スワップ",
+            "approve": "承認",
+            "reject": "却下",
+            "remove": "削除",
+            "proposal": "提案",
+            "transaction": "取引"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network} 上の {token}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### 予定されたアップデート\n支払いは{schedule}に一時的に利用できなくなります。",
+                "exchange": "### 予定されたアップデート\nスワップは{schedule}に一時的に利用できなくなります。",
+                "deposit": "### 予定されたアップデート\n入金は{schedule}に一時的に利用できなくなります。",
+                "features": "### 予定されたアップデート\n一部の機能は{schedule}に一時的に利用できなくなります。",
+                "app": "### 予定されたアップデート\nTrezuは{schedule}に一時的に利用できなくなります。\nお客様の資金はon-chainにあり、ご自身の管理下にあります。"
+            },
+            "network_slow": {
+                "default": "### {subject}は現在遅延しています\nお客様の{action}は回復次第処理されますが、通常より時間がかかる場合があります。"
+            },
+            "network_paused": {
+                "token": "### {token}は現在一時停止中です\n他のトークンは通常通りご利用いただけます。",
+                "network": "### {network}は現在一時停止中です\nその間、別のネットワークをご利用いただけます。",
+                "token+network": "### {network}上の{token}は現在一時停止中です\n他のトークンは通常通りご利用いただけます。"
+            },
+            "features_paused": {
+                "payments": "### 支払いは一時的に停止中です。\n復旧に取り組んでいます。",
+                "exchange": "### 両替は一時的に停止中です。\n復旧に取り組んでいます。",
+                "deposit": "### 入金は一時的に停止中です。\n復旧に取り組んでいます。",
+                "features": "### 一部の機能は一時的に停止中です。\n復旧に取り組んでいます。"
+            },
+            "transactions_halted": {
+                "default": "### トランザクションは現在停止中です\nネットワークプロバイダーの回復中のため、トランザクションは停止しています。お客様の資金はon-chainにあり、ご自身の管理下にあります。最新情報: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### 残高が一時的に表示できません。\n現在、残高を表示することができません。お客様の資金はon-chainにあり、そのまま安全に保管されています。引き続きトレジャリーをご利用いただけます。"
+            },
+            "history_not_loading": {
+                "default": "### 取引履歴が現在読み込めません\nこれは表示に影響するものであり、お客様の資金やトレジャリーには影響しません。"
+            },
+            "requests_wont_process": {
+                "default": "### 一時的なネットワークの問題により、数分間新しいリクエストを処理できません。\n お客様の資金は影響を受けません。しばらくしてから再度お試しください。"
+            },
+            "approvals_paused": {
+                "default": "ネットワークプロバイダーの回復中のため、リクエストの承認は停止しています。\n 保留中のリクエストを拒否することは可能です。サービスが復旧次第、承認も再開されます。"
+            },
+            "wallet_login_unavailable": {
+                "login": "### 現在ログインできません。\nお客様の資金はon-chainにあり、安全です – サービスが復旧次第、再度ログインしていただけます。",
+                "loginWallet": "### 現在{wallet}でのログインができません。\nお客様の資金はon-chainにあり、安全です – サービスが復旧次第、再度ログインしていただけます。"
+            },
+            "backend_down": {
+                "default": "### 一時的な問題が発生しています\n一部のデータが読み込めない場合があります。お客様の資金はon-chainにあり、影響を受けていません – しばらくしてから再度お試しください。"
+            },
+            "whole_app_down": {
+                "default": "### Trezuは一時的に停止中です。\nお客様の資金はon-chainにあり、ご自身の管理下にあります。最新情報: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "新しいトレジャリーの作成は現在招待制です。ウェイトリストにご登録いただければ、利用可能になり次第お知らせいたします。"
+            },
+            "funds_at_risk": {
+                "default": "### 問題を調査中のため、Trezuを一時停止しています。\nすべてが安全であることを確認するまで、取引を行わないことをお勧めします。最新情報: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### プロバイダーの定期メンテナンス\n支払いは{schedule}に一時的に利用できない場合があります。資金はオンチェーン上にあり、あなたのコントロール下にあります。",
+                "exchange": "### プロバイダーの定期メンテナンス\nスワップは{schedule}に一時的に利用できない場合があります。資金はオンチェーン上にあり、あなたのコントロール下にあります。",
+                "deposit": "### プロバイダーの定期メンテナンス\n入金は{schedule}に一時的に利用できない場合があります。資金はオンチェーン上にあり、あなたのコントロール下にあります。",
+                "features": "### プロバイダーの定期メンテナンス\n一部の機能は{schedule}に一時的に利用できない場合があります。資金はオンチェーン上にあり、あなたのコントロール下にあります。"
+            }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "リクエストテンプレート",
+        "pageDescription": "カスタムリクエストタイプ用の再利用可能なテンプレートを作成します。",
+        "loading": "読み込み中…",
+        "back": "戻る",
+        "howItWorks": "仕組み",
+        "toastDeleted": "テンプレートを削除しました",
+        "errDelete": "テンプレートの削除に失敗しました",
+        "deleteDialog": {
+            "title": "テンプレートを削除",
+            "body": "<b>{name}</b> を削除しますか？メンバーはこのテンプレートから提案を提出できなくなります。この操作は元に戻せません。",
+            "confirm": "削除",
+            "deleting": "削除中…"
+        },
+        "editor": {
+            "nameLabel": "名前",
+            "namePlaceholder": "Set Greeting",
+            "nameRequired": "名前は必須です",
+            "tabVisual": "ビジュアル",
+            "tabCode": "コード",
+            "manifestLabel": "マニフェスト（JSON）",
+            "invalidJsonToast": "ビジュアルビルダーに切り替える前に、無効な JSON を修正してください"
+        },
+        "index": {
+            "emptyTitle": "最初のテンプレートを作成しましょう",
+            "emptyDescription": "よく送信するリクエスト用のテンプレートを作成します。チームはワンクリックで再利用できます。",
+            "createTemplate": "テンプレートを作成",
+            "heading": "テンプレート",
+            "addNew": "新規追加",
+            "createRequest": "リクエストを作成",
+            "actions": "テンプレートの操作",
+            "edit": "編集",
+            "pin": "サイドバーに固定",
+            "unpin": "テンプレートの固定を解除",
+            "delete": "削除",
+            "errPin": "固定を更新できませんでした"
+        },
+        "create": {
+            "title": "新しいテンプレート",
+            "submit": "テンプレートを作成",
+            "submitting": "作成中…",
+            "toastCreated": "テンプレートを作成しました",
+            "errCreate": "テンプレートの作成に失敗しました"
+        },
+        "edit": {
+            "title": "テンプレートを編集",
+            "submit": "変更を保存",
+            "deleteButton": "テンプレートを削除",
+            "toastSaved": "テンプレートを保存しました",
+            "errSave": "テンプレートの保存に失敗しました",
+            "notFound": "テンプレートが見つかりません。"
+        },
+        "fill": {
+            "noTemplate": "「{slug}」に対応するテンプレートが見つかりません。",
+            "invalidManifest": "このテンプレートのマニフェストは無効です:",
+            "proposalFiled": "リクエストを提出しました"
+        },
+        "developer": {
+            "title": "カスタムリクエスト",
+            "description": "支払いや交換以上の機能が必要な場合は、独自のリクエストタイプを作成できます。必要なフィールドを追加すれば、メンバーは他のリクエストと同じように送信できます。",
+            "enable": "有効化",
+            "disable": "無効化",
+            "errUpdate": "設定を更新できませんでした"
+        },
+        "visual": {
+            "detailsTitle": "詳細",
+            "idLabel": "ID（slug）",
+            "titleLabel": "タイトル",
+            "descriptionLabel": "説明（任意）",
+            "summaryLabel": "概要（任意、'{{'fields'}}' に対応）",
+            "onChainCallTitle": "オンチェーン呼び出し",
+            "onChainCallDescription": "このテンプレートが提出する固定の FunctionCall です。",
+            "receiverLabel": "受信者（コントラクト）",
+            "methodLabel": "メソッド",
+            "depositLabel": "デポジット（yoctoNEAR）",
+            "gasLabel": "ガス",
+            "argumentsTitle": "引数",
+            "argumentsDescription": "コントラクトに送信される引数です。それぞれ静的（固定値）またはメンバー入力（動的）のいずれかで、後者の場合は入力の設定がインラインで表示されます。",
+            "otherInputsTitle": "その他の入力",
+            "otherInputsDescription": "合成値の中でのみ使用される入力（直接のメンバー入力引数ではないもの）と、手動で追加したものです。ほとんどのテンプレートにはありません。"
+        },
+        "fields": {
+            "addField": "フィールドを追加",
+            "inputHeading": "入力 {number}",
+            "remove": "削除",
+            "nameLabel": "名前",
+            "unused": "未使用 — '{{'{name}'}}' を使用する引数はありません。メンバーは入力しますが、送信されません。",
+            "label": "ラベル",
+            "typeLabel": "タイプ",
+            "required": "必須",
+            "optionsLabel": "選択肢（1行に1つ）",
+            "advancedOptions": "詳細オプション",
+            "helpLabel": "ヘルプ（任意）",
+            "helpPlaceholder": "入力欄の下に表示されます",
+            "minLabel": "最小（任意）",
+            "maxLabel": "最大（任意）",
+            "patternLabel": "パターン（regex、任意）",
+            "defaultLabel": "デフォルト（任意）"
+        },
+        "fieldTypes": {
+            "account": "NEAR アカウント",
+            "token": "トークン",
+            "uint": "整数",
+            "amount": "トークン量",
+            "number": "数値",
+            "text": "テキスト",
+            "select": "ドロップダウン",
+            "bool": "トグル",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "引数を追加",
+            "argumentHeading": "引数 {number}",
+            "remove": "削除",
+            "argumentNameLabel": "引数名",
+            "argumentNamePlaceholder": "argument",
+            "typeLabel": "タイプ",
+            "modeStatic": "静的",
+            "modeMemberInput": "メンバー入力",
+            "valueTypeLabel": "値のタイプ",
+            "valueLabel": "値",
+            "stringValuePlaceholder": "テキストまたは '{{field}}'",
+            "insertField": "+ フィールド",
+            "keyPlaceholder": "キー",
+            "addKey": "キーを追加",
+            "addItem": "項目を追加"
+        },
+        "form": {
+            "selectPlaceholder": "オプションを選択",
+            "fileProposal": "提案を提出"
+        },
+        "collapsePinned": "固定したテンプレートを折りたたむ",
+        "expandPinned": "固定したテンプレートを展開する",
+        "validation": {
+            "required": "{label}は必須です",
+            "account": "{label}は有効なNEARアカウントである必要があります",
+            "wholeNumber": "{label}は整数である必要があります",
+            "number": "{label}は数値である必要があります",
+            "select": "{label}：一覧から選択してください",
+            "json": "{label}は有効なJSONである必要があります",
+            "invalid": "{label}が無効です",
+            "pattern": "{label}が必要なパターンに一致しません",
+            "min": "{label}は{min}以上である必要があります",
+            "max": "{label}は{max}以下である必要があります"
         }
     }
 }

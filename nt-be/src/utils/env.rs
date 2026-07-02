@@ -20,7 +20,10 @@ pub struct EnvVars {
     pub disable_ft_lockup_scheduler: bool,
     pub monitor_interval_seconds: u64,
     pub telegram_bot_token: Option<String>,
+    /// General notifications channel (user creation, treasury creation, etc.)
     pub telegram_chat_id: Option<String>,
+    /// Dedicated ops / monitoring channel for status-monitor alerts.
+    pub telegram_ops_chat_id: Option<String>,
     pub coingecko_api_key: Option<String>,
     pub coingecko_api_base_url: String, // Override for testing
     pub defillama_api_base_url: String, // DeFiLlama API base URL (override for testing)
@@ -55,6 +58,7 @@ pub struct EnvVars {
     // Telegram bot webhook configuration
     pub telegram_webhook_secret: Option<String>,
     pub frontend_base_url: String,
+    pub admin_users: Vec<crate::utils::admin_auth::AdminCredential>,
     // Confidential auth token lifetime in days (default: 36500 ≈ 100 years)
     pub confidential_auth_expires_days: i64,
     pub testing_sputnik_dao_ids: HashSet<String>,
@@ -136,6 +140,9 @@ impl Default for EnvVars {
             telegram_chat_id: std::env::var("TELEGRAM_CHAT_ID")
                 .ok()
                 .filter(|s| !s.is_empty()),
+            telegram_ops_chat_id: std::env::var("TELEGRAM_OPS_CHAT_ID")
+                .ok()
+                .filter(|s| !s.is_empty()),
             nearblocks_api_key: std::env::var("NEARBLOCKS_API_KEY")
                 .ok()
                 .filter(|s| !s.is_empty()),
@@ -207,6 +214,9 @@ impl Default for EnvVars {
                 .filter(|s| !s.is_empty()),
             frontend_base_url: std::env::var("FRONTEND_BASE_URL")
                 .unwrap_or_else(|_| "http://localhost:3001".to_string()),
+            admin_users: crate::utils::admin_auth::parse_admin_users(
+                std::env::var("ADMIN_USERS").ok().as_deref(),
+            ),
             confidential_auth_expires_days: std::env::var("CONFIDENTIAL_AUTH_EXPIRES_DAYS")
                 .ok()
                 .and_then(|s| s.parse().ok())

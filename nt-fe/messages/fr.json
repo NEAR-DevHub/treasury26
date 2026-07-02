@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "Rechercher une demande par nom ou ID",
         "searchPlaceholderShort": "Rechercher par nom ou ID",
-        "errorLoading": "Erreur lors du chargement des propositions. Veuillez réessayer.",
         "empty": {
             "title": "Créez votre première demande",
             "description": "Les demandes de paiements, d'échanges et autres actions apparaîtront ici une fois créées.",
@@ -616,6 +615,7 @@
             "actionReject": "rejeter",
             "actionRemove": "supprimer",
             "insufficientBalance": "Les demandes <highlight>{ids}</highlight> ne peuvent pas être approuvées en raison d'un solde insuffisant. Votre approbation s'appliquera uniquement aux demandes restantes.",
+            "approveBlockedBulk": "{count, plural, one {# demande sélectionnée ne peut pas être approuvée pour le moment — désélectionnez-la pour continuer.} other {# demandes sélectionnées ne peuvent pas être approuvées pour le moment — désélectionnez-les pour continuer.}}",
             "remove": "Supprimer",
             "confirm": "Confirmer"
         },
@@ -854,7 +854,8 @@
             "general": "Général",
             "voting": "Vote",
             "preferences": "Préférences",
-            "integrations": "Intégrations"
+            "integrations": "Intégrations",
+            "developer": "Développeur"
         },
         "general": {
             "validation": {
@@ -1425,10 +1426,6 @@
             "openInTelegram": "Ouvrir {bot} dans Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "En maintenance",
-        "maintenanceMessage": "Nous effectuons actuellement une maintenance. Certaines fonctionnalités peuvent être temporairement indisponibles. Veuillez revenir bientôt."
-    },
     "creditsQuota": {
         "available": "{count} disponibles",
         "used": "{count} utilisés",
@@ -1918,7 +1915,8 @@
         "guestSaveIntro": "Vous êtes un invité de cette trésorerie. Vous ne pouvez consulter que les données.",
         "guestSaveAction": "Vous pouvez enregistrer cette trésorerie invitée dans votre liste de trésoreries.",
         "newFeatureRich": "Nouveau ! 🎉 Enregistrez les adresses fréquemment utilisées pour des paiements plus rapides et sans erreur. Vos contacts restent privés et visibles uniquement par votre équipe.",
-        "newFeatureCta": "Essayer"
+        "newFeatureCta": "Essayer",
+        "requestTemplates": "Les demandes personnalisées sont prêtes. Ouvrez-les ici pour créer votre premier type de demande."
     },
     "statusDate": {
         "expires": "Expire",
@@ -1972,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "Créer une demande",
-        "noPermission": "Vous n'avez pas l'autorisation de créer une demande"
+        "noPermission": "Vous n'avez pas l'autorisation de créer une demande",
+        "paused": "Temporairement en pause",
+        "brieflyUnavailable": "Brièvement indisponible"
     },
     "address": {
         "copied": "Adresse copiée dans le presse-papiers"
@@ -2186,6 +2186,233 @@
             "docsDescription": "Découvrez toutes les fonctionnalités dans la documentation.",
             "videoTitle": "Regarder la démo",
             "videoDescription": "Regardez une courte vidéo montrant comment Trezu fonctionne."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "le",
+            "until": "jusqu'au"
+        },
+        "actions": {
+            "payment": "paiement",
+            "deposit": "dépôt",
+            "exchange": "échange",
+            "approve": "approbation",
+            "reject": "rejet",
+            "remove": "suppression",
+            "proposal": "proposition",
+            "transaction": "transaction"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} sur {network}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### Mise à jour programmée\nLes paiements seront brièvement indisponibles {schedule}.",
+                "exchange": "### Mise à jour programmée\nLes échanges seront brièvement indisponibles {schedule}.",
+                "deposit": "### Mise à jour programmée\nLes dépôts seront brièvement indisponibles {schedule}.",
+                "features": "### Mise à jour programmée\nCertaines fonctionnalités seront brièvement indisponibles {schedule}.",
+                "app": "### Mise à jour programmée\nTrezu sera brièvement indisponible {schedule}.\nVos fonds sont on-chain et sous votre contrôle."
+            },
+            "network_slow": {
+                "default": "### {subject} est lent en ce moment\nVotre {action} sera traitée une fois le réseau rétabli, cela pourrait simplement prendre plus de temps que d'habitude."
+            },
+            "network_paused": {
+                "token": "### {token} est en pause en ce moment\nLes autres tokens fonctionnent normalement.",
+                "network": "### {network} est en pause en ce moment\nVous pouvez utiliser un autre réseau en attendant.",
+                "token+network": "### {token} sur {network} est en pause en ce moment\nLes autres tokens fonctionnent normalement."
+            },
+            "features_paused": {
+                "payments": "### Les paiements sont temporairement suspendus.\nNous y travaillons.",
+                "exchange": "### Les échanges sont temporairement suspendus.\nNous y travaillons.",
+                "deposit": "### Les dépôts sont temporairement suspendus.\nNous y travaillons.",
+                "features": "### Certaines fonctionnalités sont temporairement suspendues.\nNous y travaillons."
+            },
+            "transactions_halted": {
+                "default": "### Les transactions sont suspendues pour le moment\nLes transactions sont suspendues pendant qu'un fournisseur de réseau se rétablit. Vos fonds sont on-chain et sous votre contrôle. Mises à jour : {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### Solde temporairement indisponible.\nNous ne pouvons pas afficher vos soldes pour le moment. Vos fonds sont on-chain, exactement là où vous les avez laissés. Vous pouvez continuer à utiliser votre trésorerie."
+            },
+            "history_not_loading": {
+                "default": "### L'historique des transactions ne se charge pas pour le moment\nCela affecte ce que vous pouvez voir, pas vos fonds ni votre trésorerie."
+            },
+            "requests_wont_process": {
+                "default": "### Impossible de traiter les nouvelles demandes pendant quelques minutes – un problème réseau temporaire.\n Vos fonds ne sont pas affectés, réessayez dans un instant."
+            },
+            "approvals_paused": {
+                "default": "L'approbation des demandes est suspendue pendant qu'un fournisseur de réseau se rétablit.\n Vous pouvez toujours rejeter les demandes en attente, et les approbations fonctionneront à nouveau une fois le service rétabli."
+            },
+            "wallet_login_unavailable": {
+                "login": "### La connexion n'est pas disponible pour le moment.\nVos fonds sont on-chain et intacts – vous pourrez vous reconnecter une fois le service rétabli.",
+                "loginWallet": "### La connexion avec {wallet} n'est pas disponible pour le moment.\nVos fonds sont on-chain et intacts – vous pourrez vous reconnecter une fois le service rétabli."
+            },
+            "backend_down": {
+                "default": "### Nous rencontrons un problème temporaire\nCertaines données peuvent ne pas se charger. Vos fonds sont on-chain et non affectés – réessayez dans un instant."
+            },
+            "whole_app_down": {
+                "default": "### Trezu est temporairement indisponible.\nVos fonds sont on-chain et sous votre contrôle. Mises à jour : {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "La création de nouvelles trésoreries est sur invitation uniquement pour le moment. Rejoignez la liste d'attente et nous vous informerons dès l'ouverture."
+            },
+            "funds_at_risk": {
+                "default": "### Nous avons suspendu Trezu pendant que nous enquêtons sur un problème.\nNous recommandons de ne pas effectuer de transactions tant que nous n'avons pas confirmé que tout est en ordre. Mises à jour : {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### Maintenance programmée du fournisseur\nLes paiements peuvent être brièvement indisponibles {schedule}. Vos fonds sont on-chain et sous votre contrôle.",
+                "exchange": "### Maintenance programmée du fournisseur\nLes échanges peuvent être brièvement indisponibles {schedule}. Vos fonds sont on-chain et sous votre contrôle.",
+                "deposit": "### Maintenance programmée du fournisseur\nLes dépôts peuvent être brièvement indisponibles {schedule}. Vos fonds sont on-chain et sous votre contrôle.",
+                "features": "### Maintenance programmée du fournisseur\nCertaines fonctionnalités peuvent être brièvement indisponibles {schedule}. Vos fonds sont on-chain et sous votre contrôle."
+            }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "Modèles de demande",
+        "pageDescription": "Créez des modèles réutilisables pour des types de demande personnalisés.",
+        "loading": "Chargement…",
+        "back": "Retour",
+        "howItWorks": "Comment ça marche",
+        "toastDeleted": "Modèle supprimé",
+        "errDelete": "Échec de la suppression du modèle",
+        "deleteDialog": {
+            "title": "Supprimer le modèle",
+            "body": "Supprimer <b>{name}</b> ? Les membres ne pourront plus déposer de propositions à partir de ce modèle. Cette action est irréversible.",
+            "confirm": "Supprimer",
+            "deleting": "Suppression…"
+        },
+        "editor": {
+            "nameLabel": "Nom",
+            "namePlaceholder": "Définir le message d'accueil",
+            "nameRequired": "Le nom est obligatoire",
+            "tabVisual": "Visuel",
+            "tabCode": "Code",
+            "manifestLabel": "Manifeste (JSON)",
+            "invalidJsonToast": "Corrigez le JSON invalide avant de passer au constructeur visuel"
+        },
+        "index": {
+            "emptyTitle": "Créez votre premier modèle",
+            "emptyDescription": "Créez un modèle pour les demandes que vous envoyez souvent. Votre équipe le réutilise en un clic.",
+            "createTemplate": "Créer un modèle",
+            "heading": "Modèles",
+            "addNew": "Ajouter",
+            "createRequest": "Créer une demande",
+            "actions": "Actions du modèle",
+            "edit": "Modifier",
+            "pin": "Épingler à la barre latérale",
+            "unpin": "Désépingler le modèle",
+            "delete": "Supprimer",
+            "errPin": "Impossible de mettre à jour l'épinglage"
+        },
+        "create": {
+            "title": "Nouveau modèle",
+            "submit": "Créer un modèle",
+            "submitting": "Création…",
+            "toastCreated": "Modèle créé",
+            "errCreate": "Échec de la création du modèle"
+        },
+        "edit": {
+            "title": "Modifier le modèle",
+            "submit": "Enregistrer les modifications",
+            "deleteButton": "Supprimer le modèle",
+            "toastSaved": "Modèle enregistré",
+            "errSave": "Échec de l'enregistrement du modèle",
+            "notFound": "Modèle introuvable."
+        },
+        "fill": {
+            "noTemplate": "Aucun modèle trouvé pour « {slug} ».",
+            "invalidManifest": "Le manifeste de ce modèle est invalide :",
+            "proposalFiled": "Demande déposée"
+        },
+        "developer": {
+            "title": "Demandes personnalisées",
+            "description": "Créez vos propres types de demande lorsque vous avez besoin de plus que des paiements et des échanges. Ajoutez les champs dont vous avez besoin et vos membres peuvent les soumettre comme n'importe quelle autre demande.",
+            "enable": "Activer",
+            "disable": "Désactiver",
+            "errUpdate": "Impossible de mettre à jour le paramètre"
+        },
+        "visual": {
+            "detailsTitle": "Détails",
+            "idLabel": "ID (slug)",
+            "titleLabel": "Titre",
+            "descriptionLabel": "Description (facultatif)",
+            "summaryLabel": "Résumé (facultatif, prend en charge les '{{'fields'}}')",
+            "onChainCallTitle": "Appel on-chain",
+            "onChainCallDescription": "Le FunctionCall fixe que ce modèle dépose.",
+            "receiverLabel": "Destinataire (contrat)",
+            "methodLabel": "Méthode",
+            "depositLabel": "Dépôt (yoctoNEAR)",
+            "gasLabel": "Gas",
+            "argumentsTitle": "Arguments",
+            "argumentsDescription": "Les arguments envoyés au contrat. Chacun est Statique (une valeur fixe) ou une Saisie membre (dynamique) — pour cette dernière, la configuration de la saisie apparaît en ligne.",
+            "otherInputsTitle": "Autres saisies",
+            "otherInputsDescription": "Saisies utilisées uniquement à l'intérieur d'une valeur composée (et non comme argument de saisie membre direct), ainsi que celles que vous ajoutez manuellement. La plupart des modèles n'en ont aucune."
+        },
+        "fields": {
+            "addField": "Ajouter un champ",
+            "inputHeading": "Saisie {number}",
+            "remove": "Supprimer",
+            "nameLabel": "Nom",
+            "unused": "Inutilisé — aucun argument n''utilise '{{'{name}'}}' ; les membres le remplissent mais il n''est pas envoyé.",
+            "label": "Libellé",
+            "typeLabel": "Type",
+            "required": "Obligatoire",
+            "optionsLabel": "Options (une par ligne)",
+            "advancedOptions": "Options avancées",
+            "helpLabel": "Aide (facultatif)",
+            "helpPlaceholder": "Affiché sous la saisie",
+            "minLabel": "Min (facultatif)",
+            "maxLabel": "Max (facultatif)",
+            "patternLabel": "Motif (regex, facultatif)",
+            "defaultLabel": "Valeur par défaut (facultatif)"
+        },
+        "fieldTypes": {
+            "account": "Compte NEAR",
+            "token": "Token",
+            "uint": "Nombre entier",
+            "amount": "Montant de token",
+            "number": "Nombre",
+            "text": "Texte",
+            "select": "Liste déroulante",
+            "bool": "Bascule",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "Ajouter un argument",
+            "argumentHeading": "Argument {number}",
+            "remove": "Supprimer",
+            "argumentNameLabel": "Nom de l'argument",
+            "argumentNamePlaceholder": "argument",
+            "typeLabel": "Type",
+            "modeStatic": "Statique",
+            "modeMemberInput": "Saisie membre",
+            "valueTypeLabel": "Type de valeur",
+            "valueLabel": "Valeur",
+            "stringValuePlaceholder": "texte ou '{{field}}'",
+            "insertField": "+ champ",
+            "keyPlaceholder": "clé",
+            "addKey": "Ajouter une clé",
+            "addItem": "Ajouter un élément"
+        },
+        "form": {
+            "selectPlaceholder": "Choisissez une option",
+            "fileProposal": "Déposer la proposition"
+        },
+        "collapsePinned": "Réduire les modèles épinglés",
+        "expandPinned": "Développer les modèles épinglés",
+        "validation": {
+            "required": "{label} est obligatoire",
+            "account": "{label} doit être un compte NEAR valide",
+            "wholeNumber": "{label} doit être un nombre entier",
+            "number": "{label} doit être un nombre",
+            "select": "{label} : choisissez une option proposée",
+            "json": "{label} doit être un JSON valide",
+            "invalid": "{label} n''est pas valide",
+            "pattern": "{label} ne correspond pas au format requis",
+            "min": "{label} doit être au minimum {min}",
+            "max": "{label} doit être au maximum {max}"
         }
     }
 }

@@ -167,6 +167,7 @@ for (const file of walk(root, ignoreDirs)) {
 // - any prefix of the key sits in dynamicNamespaces (so a dynamic `t(`${x}.foo`)`
 //   inside `useTranslations("ns")` covers every `ns.*.foo` key).
 function isUsed(key) {
+    if (key.startsWith("warnings.situations.")) return true;
     if (usedKeys.has(key)) return true;
     const parts = key.split(".");
     for (let i = 1; i <= parts.length - 1; i++) {

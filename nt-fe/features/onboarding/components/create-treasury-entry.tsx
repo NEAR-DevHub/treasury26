@@ -26,6 +26,7 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import Logo from "@/components/icons/logo";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useWarnings } from "@/hooks/use-warnings";
 import {
     type CreateTreasuryRequest,
     checkHandleUnused,
@@ -141,6 +142,10 @@ export function TreasuryOnboardingPage({
     const tSteps = useTranslations("createTreasury.steps");
     const tPages = useTranslations("pages.createTreasury");
     const tLanding = useTranslations("landing");
+    const { getWarning, isLoading: isLoadingWarnings } = useWarnings();
+    const treasuryCreationWarning = getWarning("treasury-creation");
+    const isTreasuryCreationBlocked =
+        treasuryCreationWarning?.response === "paused";
     const {
         accountId,
         connect,
@@ -169,6 +174,7 @@ export function TreasuryOnboardingPage({
     const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
     const [showWaitlist, setShowWaitlist] = useState(false);
     const pendingAutoCreateRef = useRef(false);
+    const hasTrackedOnboardingEntry = useRef(false);
     const waitlistCardClassName =
         "mx-auto h-[516px] w-full max-w-[600px] items-center justify-center gap-5 overflow-hidden rounded-xl border border-border bg-card p-4";
     const waitlistSubtextClassName =
@@ -201,6 +207,34 @@ export function TreasuryOnboardingPage({
         pathname,
         preferredTreasuryId,
         router,
+        shouldKeepUserOnCreatePage,
+    ]);
+
+    useEffect(() => {
+        if (isInitializing || isLoading || hasTrackedOnboardingEntry.current) {
+            return;
+        }
+
+        hasTrackedOnboardingEntry.current = true;
+
+        if (!shouldKeepUserOnCreatePage && accountId && preferredTreasuryId) {
+            trackEvent("onboarding_existing_treasury_redirect", {
+                entry_page: pathname,
+                treasury_id: preferredTreasuryId,
+            });
+            return;
+        }
+
+        trackEvent("onboarding_landed", {
+            page: pathname,
+            is_authenticated: !!accountId,
+        });
+    }, [
+        accountId,
+        isInitializing,
+        isLoading,
+        pathname,
+        preferredTreasuryId,
         shouldKeepUserOnCreatePage,
     ]);
 
@@ -331,6 +365,11 @@ export function TreasuryOnboardingPage({
             return;
         }
 
+        if (isTreasuryCreationBlocked) {
+            setShowWaitlist(true);
+            return;
+        }
+
         const request: CreateTreasuryRequest = {
             name: values.treasuryName,
             accountId: `${values.accountName}${ACCOUNT_SUFFIX}`,
@@ -363,11 +402,9 @@ export function TreasuryOnboardingPage({
                     );
                     setCreatedTreasuryId(treasuryId);
                     trackEvent("treasury-created", {
-                        source: "/",
                         treasury_id: treasuryId,
                     });
                     trackEvent("onboarding-completed", {
-                        source: "/",
                         treasury_id: treasuryId,
                     });
                     queryClient.invalidateQueries({
@@ -405,7 +442,7 @@ export function TreasuryOnboardingPage({
         </Link>
     ) : undefined;
 
-    if (isInitializing) {
+    if (isInitializing || isLoadingWarnings) {
         return <LoadingScreen />;
     }
 
@@ -637,7 +674,7 @@ export function TreasuryOnboardingPage({
                 }
                 onConnectSupported={async (walletId?: string) => {
                     if (authError) clearError();
-                    await connect(walletId);
+                    await connect(walletId, isCreateRoute ? "/create" : "/");
                 }}
             />
         </div>
@@ -775,13 +812,13 @@ export function TreasuryOnboardingPage({
                     description={t("headerDescription")}
                     backButton={returnTo || false}
                     hideCollapseButton
-                    hideSystemStatusBanner
+                    hideAppWarningBanner
                     transparentHeader
                     hideHeaderBottomBorder
                     logo={headerLogo}
                     mainClassName="pt-1"
                 >
-                    {showWaitlist
+                    {showWaitlist || isTreasuryCreationBlocked
                         ? waitlistBody
                         : showLoginScreen
                           ? loginScreenBody
@@ -797,7 +834,7 @@ export function TreasuryOnboardingPage({
             backButton={returnTo || false}
             hideCollapseButton
             hideLogin
-            hideSystemStatusBanner
+            hideAppWarningBanner
             transparentHeader
             hideHeaderBottomBorder
             logo={headerLogo}
@@ -810,7 +847,7 @@ export function TreasuryOnboardingPage({
                 treasuryId={createdTreasuryId}
                 onClose={() => setProgressOpen(false)}
             />
-            {showWaitlist
+            {showWaitlist || isTreasuryCreationBlocked
                 ? waitlistBody
                 : showLoginScreen
                   ? loginScreenBody

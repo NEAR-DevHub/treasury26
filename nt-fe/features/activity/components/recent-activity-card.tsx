@@ -1,6 +1,19 @@
 "use client";
 
+import {
+    AlertTriangle,
+    ArrowDownToLine,
+    ArrowRight,
+    ArrowRightLeft,
+    ArrowUpToLine,
+    ChevronRight,
+    Clock,
+    Shield,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/button";
+import { EmptyState } from "@/components/empty-state";
 import {
     Card,
     CardContent,
@@ -8,29 +21,17 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-    ArrowDownToLine,
-    ArrowUpToLine,
-    ArrowRightLeft,
-    ArrowRight,
-    Clock,
-    ChevronRight,
-    Shield,
-} from "lucide-react";
-import { EmptyState } from "@/components/empty-state";
-import { useRecentActivity } from "@/hooks/use-treasury-queries";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useRecentActivity } from "@/hooks/use-treasury-queries";
+import type { RecentActivity as RecentActivityType } from "@/lib/api";
 import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
 import {
     useFormatHistoryDuration,
     useGetActivityLabel,
     useGetActivitySubLabel,
 } from "../utils/history-utils";
-import { useState, useMemo } from "react";
-import type { RecentActivity as RecentActivityType } from "@/lib/api";
 
 type GroupedActivity =
     | {
@@ -45,23 +46,27 @@ type GroupedActivity =
           tokenMetadata: RecentActivityType["tokenMetadata"];
           blockTime: string; // Most recent time
       };
+
 import {
-    useReactTable,
-    getCoreRowModel,
-    flexRender,
+    type ColumnDef,
     createColumnHelper,
-    ColumnDef,
+    flexRender,
+    getCoreRowModel,
+    useReactTable,
 } from "@tanstack/react-table";
-import { Table, TableBody, TableCell, TableRow } from "@/components/table";
-import { FormattedDate } from "@/components/formatted-date";
-import { TransactionDetailsModal } from "./transaction-details-modal";
-import { ExportButton } from "@/components/export-button";
 import Link from "next/link";
-import { useMediaQuery } from "@/hooks/use-media-query";
-import { StepperHeader } from "@/components/step-wizard";
 import { ConfidentialState } from "@/components/confidential-state";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { ExportButton } from "@/components/export-button";
+import { FormattedDate } from "@/components/formatted-date";
+import { parseWarningCopy } from "@/components/warning-message";
+import { StepperHeader } from "@/components/step-wizard";
+import { Table, TableBody, TableCell, TableRow } from "@/components/table";
 import { Tooltip } from "@/components/tooltip";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { useWarningMessage } from "@/hooks/use-warnings";
+import { useWarnings } from "@/hooks/use-warnings";
+import { TransactionDetailsModal } from "./transaction-details-modal";
 
 const ITEMS_ON_DASHBOARD = 10;
 const MAX_ITEMS = 100;
@@ -151,27 +156,61 @@ const groupStakingActivities = (
 export function RecentActivitySkeleton() {
     return (
         <div className="space-y-4 px-4 py-2">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(6)].map((_, i) => (
                 <div
                     key={i}
-                    className="grid grid-cols-[1fr_auto] items-center gap-6 border-b pb-3 last:border-b-0"
+                    className="grid grid-cols-[1fr_auto] items-center gap-6 border-b border-border pb-3 last:border-b-0"
                 >
                     <div className="flex items-center gap-3 min-w-0">
-                        <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                        <Skeleton className="h-10 w-10 rounded-full shrink-0 bg-general-unofficial-accent-0" />
                         <div className="space-y-2 min-w-0 flex-1">
-                            <Skeleton className="h-6 w-[min(420px,100%)]" />
-                            <Skeleton className="h-4 w-[min(420px,100%)]" />
+                            <Skeleton className="h-6 w-[min(420px,100%)] bg-general-unofficial-accent-0" />
+                            <Skeleton className="h-4 w-[min(420px,100%)] bg-general-unofficial-accent-0" />
                         </div>
                     </div>
                     <div className="text-right space-y-2">
-                        <Skeleton className="h-6 w-36" />
-                        <Skeleton className="h-4 w-36 ml-auto" />
+                        <Skeleton className="h-6 w-36 bg-general-unofficial-accent-0" />
+                        <Skeleton className="h-4 w-36 ml-auto bg-general-unofficial-accent-0" />
                     </div>
                 </div>
             ))}
         </div>
     );
 }
+
+function RecentActivityUnavailableOverlay({
+    heading,
+    body,
+}: {
+    heading: string | null;
+    body: string;
+}) {
+    return (
+        <div className="relative min-h-[28rem]">
+            <RecentActivitySkeleton />
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 py-8">
+                <div className="pointer-events-auto flex max-w-lg flex-col items-center gap-3 text-center">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-general-orange-background">
+                        <AlertTriangle className="size-5 text-general-orange-foreground" />
+                    </div>
+                    <div>
+                        {heading && (
+                            <p className="text-base font-semibold text-foreground">
+                                {heading}
+                            </p>
+                        )}
+                        {body && (
+                            <p className="text-sm text-muted-foreground">
+                                {body}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function RecentActivity() {
     const t = useTranslations("activity");
     const tCommon = useTranslations("common");
@@ -187,13 +226,25 @@ export function RecentActivity() {
         new Set(),
     );
     const isMobile = useMediaQuery("(max-width: 640px)");
+    const isHidden = isConfidential && isGuestTreasury;
+    const { getWarning } = useWarnings();
+    const activityWarning = getWarning("data.activity");
+    const activityWarningMessage = useWarningMessage(
+        activityWarning,
+        "data.activity",
+    );
+    const activityWarningCopy = useMemo(
+        () => parseWarningCopy(activityWarningMessage),
+        [activityWarningMessage],
+    );
+    const showActivityUnavailable =
+        Boolean(activityWarningMessage) && !isHidden;
     const { data: response, isLoading } = useRecentActivity(
         treasuryId,
         MAX_ITEMS,
         0,
         hideSmallTransactions ? 1 : undefined,
     );
-    const isHidden = isConfidential && isGuestTreasury;
 
     const { data: planDetails } = useSubscription(treasuryId);
 
@@ -546,6 +597,11 @@ export function RecentActivity() {
                     {isHidden ? (
                         <ConfidentialState
                             skeleton={<RecentActivitySkeleton />}
+                        />
+                    ) : showActivityUnavailable ? (
+                        <RecentActivityUnavailableOverlay
+                            heading={activityWarningCopy.heading}
+                            body={activityWarningCopy.body}
                         />
                     ) : isLoading ? (
                         <RecentActivitySkeleton />

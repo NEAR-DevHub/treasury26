@@ -10,6 +10,7 @@ import { GoogleAnalytics } from "@/components/google-analytics";
 import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { WarningsProvider } from "@/components/warnings-provider";
 import { Toaster } from "@/components/toaster";
 import { TourProvider } from "@/features/onboarding/components/tour-provider";
 
@@ -85,10 +86,12 @@ export default async function RootLayout({
                 <NextIntlClientProvider locale={locale} messages={messages}>
                     <ThemeProvider>
                         <QueryProvider>
-                            <NearInitializer />
-                            <AuthProvider>
-                                <TourProvider>{children}</TourProvider>
-                            </AuthProvider>
+                            <WarningsProvider>
+                                <NearInitializer />
+                                <AuthProvider>
+                                    <TourProvider>{children}</TourProvider>
+                                </AuthProvider>
+                            </WarningsProvider>
                             <Toaster />
                             <GoogleAnalytics />
                         </QueryProvider>

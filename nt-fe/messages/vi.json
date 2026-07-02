@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "Tìm yêu cầu theo tên hoặc ID",
         "searchPlaceholderShort": "Tìm theo tên hoặc ID",
-        "errorLoading": "Lỗi khi tải đề xuất. Vui lòng thử lại.",
         "empty": {
             "title": "Tạo yêu cầu đầu tiên của bạn",
             "description": "Yêu cầu thanh toán, trao đổi và các hành động khác sẽ xuất hiện ở đây khi được tạo.",
@@ -616,6 +615,7 @@
             "actionReject": "từ chối",
             "actionRemove": "xóa",
             "insufficientBalance": "Yêu cầu <highlight>{ids}</highlight> không thể phê duyệt do số dư không đủ. Phê duyệt của bạn sẽ chỉ áp dụng cho các yêu cầu còn lại.",
+            "approveBlockedBulk": "{count, plural, one {# yêu cầu đã chọn không thể được phê duyệt ngay bây giờ — bỏ chọn để tiếp tục.} other {# yêu cầu đã chọn không thể được phê duyệt ngay bây giờ — bỏ chọn để tiếp tục.}}",
             "remove": "Xóa",
             "confirm": "Xác nhận"
         },
@@ -854,7 +854,8 @@
             "general": "Chung",
             "voting": "Bỏ phiếu",
             "preferences": "Tùy chọn",
-            "integrations": "Tích hợp"
+            "integrations": "Tích hợp",
+            "developer": "Nhà phát triển"
         },
         "general": {
             "validation": {
@@ -1425,10 +1426,6 @@
             "openInTelegram": "Mở {bot} trong Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Đang bảo trì",
-        "maintenanceMessage": "Chúng tôi đang thực hiện bảo trì. Một số tính năng có thể tạm thời không khả dụng. Vui lòng quay lại sau."
-    },
     "creditsQuota": {
         "available": "{count} khả dụng",
         "used": "Đã dùng {count}",
@@ -1918,7 +1915,8 @@
         "guestSaveIntro": "Bạn là khách của ngân quỹ này. Bạn chỉ có thể xem dữ liệu.",
         "guestSaveAction": "Bạn có thể lưu ngân quỹ khách này vào danh sách ngân quỹ của bạn.",
         "newFeatureRich": "Mới! 🎉 Lưu các địa chỉ thường dùng để chi trả nhanh hơn và không có lỗi. Liên hệ của bạn được giữ riêng tư và chỉ đội của bạn nhìn thấy.",
-        "newFeatureCta": "Hãy thử"
+        "newFeatureCta": "Hãy thử",
+        "requestTemplates": "Yêu cầu tùy chỉnh đã sẵn sàng. Mở nó tại đây để tạo loại yêu cầu đầu tiên của bạn."
     },
     "statusDate": {
         "expires": "Hết hạn",
@@ -1972,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "Tạo yêu cầu",
-        "noPermission": "Bạn không có quyền tạo yêu cầu"
+        "noPermission": "Bạn không có quyền tạo yêu cầu",
+        "paused": "Tạm dừng",
+        "brieflyUnavailable": "Tạm thời không khả dụng"
     },
     "address": {
         "copied": "Đã sao chép địa chỉ vào bộ nhớ tạm"
@@ -2186,6 +2186,233 @@
             "docsDescription": "Tìm hiểu về tất cả tính năng trong tài liệu.",
             "videoTitle": "Xem demo",
             "videoDescription": "Xem video ngắn cho thấy cách Trezu hoạt động."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "vào",
+            "until": "đến"
+        },
+        "actions": {
+            "payment": "thanh toán",
+            "deposit": "nạp tiền",
+            "exchange": "hoán đổi",
+            "approve": "phê duyệt",
+            "reject": "từ chối",
+            "remove": "xóa",
+            "proposal": "đề xuất",
+            "transaction": "giao dịch"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} trên {network}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### Cập nhật theo lịch\nThanh toán sẽ tạm thời không khả dụng {schedule}.",
+                "exchange": "### Cập nhật theo lịch\nGiao dịch hoán đổi sẽ tạm thời không khả dụng {schedule}.",
+                "deposit": "### Cập nhật theo lịch\nNạp tiền sẽ tạm thời không khả dụng {schedule}.",
+                "features": "### Cập nhật theo lịch\nMột số tính năng sẽ tạm thời không khả dụng {schedule}.",
+                "app": "### Cập nhật theo lịch\nTrezu sẽ tạm thời không khả dụng {schedule}.\nTài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn."
+            },
+            "network_slow": {
+                "default": "### {subject} đang chậm lúc này\n{action} của bạn sẽ được xử lý khi mạng phục hồi, chỉ có thể mất nhiều thời gian hơn bình thường."
+            },
+            "network_paused": {
+                "token": "### {token} đang tạm dừng lúc này\nCác token khác hoạt động bình thường.",
+                "network": "### {network} đang tạm dừng lúc này\nBạn có thể sử dụng mạng khác trong thời gian chờ.",
+                "token+network": "### {token} trên {network} đang tạm dừng lúc này\nCác token khác hoạt động bình thường."
+            },
+            "features_paused": {
+                "payments": "### Thanh toán tạm thời bị tạm dừng.\nChúng tôi đang khắc phục.",
+                "exchange": "### Giao dịch hoán đổi tạm thời bị tạm dừng.\nChúng tôi đang khắc phục.",
+                "deposit": "### Nạp tiền tạm thời bị tạm dừng.\nChúng tôi đang khắc phục.",
+                "features": "### Một số tính năng tạm thời bị tạm dừng.\nChúng tôi đang khắc phục."
+            },
+            "transactions_halted": {
+                "default": "### Giao dịch hiện đang bị tạm dừng\nGiao dịch bị tạm dừng trong khi nhà cung cấp mạng đang phục hồi. Tài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn. Cập nhật: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### Số dư tạm thời không khả dụng.\nChúng tôi không thể hiển thị số dư của bạn lúc này. Tài sản của bạn nằm on-chain, chính xác nơi bạn để chúng. Bạn có thể tiếp tục sử dụng kho bạc của mình."
+            },
+            "history_not_loading": {
+                "default": "### Lịch sử giao dịch hiện không tải được\nĐiều này chỉ ảnh hưởng đến hiển thị, không ảnh hưởng đến tài sản hay kho bạc của bạn."
+            },
+            "requests_wont_process": {
+                "default": "### Không thể xử lý yêu cầu mới trong vài phút – sự cố mạng tạm thời.\n Tài sản của bạn không bị ảnh hưởng, vui lòng thử lại sau ít phút."
+            },
+            "approvals_paused": {
+                "default": "Phê duyệt yêu cầu đang bị tạm dừng trong khi nhà cung cấp mạng phục hồi.\n Bạn vẫn có thể từ chối các yêu cầu đang chờ, và phê duyệt sẽ hoạt động trở lại khi dịch vụ được khôi phục."
+            },
+            "wallet_login_unavailable": {
+                "login": "### Đăng nhập hiện không khả dụng.\nTài sản của bạn nằm on-chain và không bị ảnh hưởng – bạn có thể đăng nhập lại khi dịch vụ được khôi phục.",
+                "loginWallet": "### Đăng nhập bằng {wallet} hiện không khả dụng.\nTài sản của bạn nằm on-chain và không bị ảnh hưởng – bạn có thể đăng nhập lại khi dịch vụ được khôi phục."
+            },
+            "backend_down": {
+                "default": "### Chúng tôi đang gặp sự cố tạm thời\nMột số dữ liệu có thể không tải được. Tài sản của bạn nằm on-chain và không bị ảnh hưởng – vui lòng thử lại sau ít phút."
+            },
+            "whole_app_down": {
+                "default": "### Trezu tạm thời ngừng hoạt động.\nTài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn. Cập nhật: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "Tạo kho bạc mới hiện chỉ dành cho người được mời. Tham gia danh sách chờ và chúng tôi sẽ thông báo khi mở đăng ký."
+            },
+            "funds_at_risk": {
+                "default": "### Chúng tôi đã tạm dừng Trezu trong khi điều tra sự cố.\nChúng tôi khuyến nghị không thực hiện giao dịch cho đến khi xác nhận mọi thứ an toàn. Cập nhật: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### Bảo trì nhà cung cấp theo lịch\nThanh toán có thể tạm thời không khả dụng {schedule}. Tiền của bạn đang ở trên chuỗi và trong tầm kiểm soát của bạn.",
+                "exchange": "### Bảo trì nhà cung cấp theo lịch\nGiao dịch hoán đổi có thể tạm thời không khả dụng {schedule}. Tiền của bạn đang ở trên chuỗi và trong tầm kiểm soát của bạn.",
+                "deposit": "### Bảo trì nhà cung cấp theo lịch\nNạp tiền có thể tạm thời không khả dụng {schedule}. Tiền của bạn đang ở trên chuỗi và trong tầm kiểm soát của bạn.",
+                "features": "### Bảo trì nhà cung cấp theo lịch\nMột số tính năng có thể tạm thời không khả dụng {schedule}. Tiền của bạn đang ở trên chuỗi và trong tầm kiểm soát của bạn."
+            }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "Mẫu yêu cầu",
+        "pageDescription": "Tạo các mẫu có thể tái sử dụng cho các loại yêu cầu tùy chỉnh.",
+        "loading": "Đang tải…",
+        "back": "Quay lại",
+        "howItWorks": "Cách hoạt động",
+        "toastDeleted": "Đã xóa mẫu",
+        "errDelete": "Không thể xóa mẫu",
+        "deleteDialog": {
+            "title": "Xóa mẫu",
+            "body": "Xóa <b>{name}</b>? Thành viên sẽ không còn có thể nộp đề xuất từ mẫu này. Thao tác này không thể hoàn tác.",
+            "confirm": "Xóa",
+            "deleting": "Đang xóa…"
+        },
+        "editor": {
+            "nameLabel": "Tên",
+            "namePlaceholder": "Đặt lời chào",
+            "nameRequired": "Tên là bắt buộc",
+            "tabVisual": "Trực quan",
+            "tabCode": "Mã",
+            "manifestLabel": "Manifest (JSON)",
+            "invalidJsonToast": "Hãy sửa JSON không hợp lệ trước khi chuyển sang trình tạo trực quan"
+        },
+        "index": {
+            "emptyTitle": "Tạo mẫu đầu tiên của bạn",
+            "emptyDescription": "Tạo một mẫu cho các yêu cầu bạn gửi thường xuyên. Nhóm của bạn tái sử dụng nó chỉ với một cú nhấp.",
+            "createTemplate": "Tạo mẫu",
+            "heading": "Mẫu",
+            "addNew": "Thêm mới",
+            "createRequest": "Tạo yêu cầu",
+            "actions": "Hành động với mẫu",
+            "edit": "Chỉnh sửa",
+            "pin": "Ghim vào thanh bên",
+            "unpin": "Bỏ ghim mẫu",
+            "delete": "Xóa",
+            "errPin": "Không thể cập nhật ghim"
+        },
+        "create": {
+            "title": "Mẫu mới",
+            "submit": "Tạo mẫu",
+            "submitting": "Đang tạo…",
+            "toastCreated": "Đã tạo mẫu",
+            "errCreate": "Không thể tạo mẫu"
+        },
+        "edit": {
+            "title": "Chỉnh sửa mẫu",
+            "submit": "Lưu thay đổi",
+            "deleteButton": "Xóa mẫu",
+            "toastSaved": "Đã lưu mẫu",
+            "errSave": "Không thể lưu mẫu",
+            "notFound": "Không tìm thấy mẫu."
+        },
+        "fill": {
+            "noTemplate": "Không tìm thấy mẫu cho “{slug}”.",
+            "invalidManifest": "Manifest của mẫu này không hợp lệ:",
+            "proposalFiled": "Đã nộp yêu cầu"
+        },
+        "developer": {
+            "title": "Yêu cầu tùy chỉnh",
+            "description": "Tạo các loại yêu cầu của riêng bạn khi bạn cần nhiều hơn thanh toán và trao đổi. Thêm các trường bạn cần và các thành viên của bạn có thể gửi chúng như bất kỳ yêu cầu nào khác.",
+            "enable": "Bật",
+            "disable": "Tắt",
+            "errUpdate": "Không thể cập nhật cài đặt"
+        },
+        "visual": {
+            "detailsTitle": "Chi tiết",
+            "idLabel": "ID (slug)",
+            "titleLabel": "Tiêu đề",
+            "descriptionLabel": "Mô tả (tùy chọn)",
+            "summaryLabel": "Tóm tắt (tùy chọn, hỗ trợ '{{'fields'}}')",
+            "onChainCallTitle": "Lời gọi on-chain",
+            "onChainCallDescription": "FunctionCall cố định mà mẫu này nộp.",
+            "receiverLabel": "Người nhận (hợp đồng)",
+            "methodLabel": "Phương thức",
+            "depositLabel": "Tiền gửi (yoctoNEAR)",
+            "gasLabel": "Gas",
+            "argumentsTitle": "Đối số",
+            "argumentsDescription": "Các đối số được gửi đến hợp đồng. Mỗi đối số là Tĩnh (một giá trị cố định) hoặc Đầu vào của thành viên (động) — đối với loại thứ hai, cấu hình của đầu vào sẽ hiển thị nội tuyến.",
+            "otherInputsTitle": "Đầu vào khác",
+            "otherInputsDescription": "Các đầu vào chỉ được sử dụng bên trong một giá trị tổng hợp (không phải là đối số đầu vào trực tiếp của thành viên), cùng với bất kỳ đầu vào nào bạn thêm thủ công. Hầu hết các mẫu không có đầu vào nào."
+        },
+        "fields": {
+            "addField": "Thêm trường",
+            "inputHeading": "Đầu vào {number}",
+            "remove": "Xóa",
+            "nameLabel": "Tên",
+            "unused": "Không sử dụng — không có đối số nào dùng '{{'{name}'}}'; thành viên điền nó nhưng nó không được gửi đi.",
+            "label": "Nhãn",
+            "typeLabel": "Loại",
+            "required": "Bắt buộc",
+            "optionsLabel": "Tùy chọn (mỗi dòng một mục)",
+            "advancedOptions": "Tùy chọn nâng cao",
+            "helpLabel": "Trợ giúp (tùy chọn)",
+            "helpPlaceholder": "Hiển thị bên dưới đầu vào",
+            "minLabel": "Tối thiểu (tùy chọn)",
+            "maxLabel": "Tối đa (tùy chọn)",
+            "patternLabel": "Mẫu (regex, tùy chọn)",
+            "defaultLabel": "Mặc định (tùy chọn)"
+        },
+        "fieldTypes": {
+            "account": "Tài khoản NEAR",
+            "token": "Token",
+            "uint": "Số nguyên",
+            "amount": "Số lượng token",
+            "number": "Số",
+            "text": "Văn bản",
+            "select": "Danh sách thả xuống",
+            "bool": "Công tắc",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "Thêm đối số",
+            "argumentHeading": "Đối số {number}",
+            "remove": "Xóa",
+            "argumentNameLabel": "Tên đối số",
+            "argumentNamePlaceholder": "đối số",
+            "typeLabel": "Loại",
+            "modeStatic": "Tĩnh",
+            "modeMemberInput": "Đầu vào của thành viên",
+            "valueTypeLabel": "Loại giá trị",
+            "valueLabel": "Giá trị",
+            "stringValuePlaceholder": "văn bản hoặc '{{field}}'",
+            "insertField": "+ trường",
+            "keyPlaceholder": "khóa",
+            "addKey": "Thêm khóa",
+            "addItem": "Thêm mục"
+        },
+        "form": {
+            "selectPlaceholder": "Chọn một tùy chọn",
+            "fileProposal": "Nộp đề xuất"
+        },
+        "collapsePinned": "Thu gọn mẫu đã ghim",
+        "expandPinned": "Mở rộng mẫu đã ghim",
+        "validation": {
+            "required": "{label} là bắt buộc",
+            "account": "{label} phải là một tài khoản NEAR hợp lệ",
+            "wholeNumber": "{label} phải là số nguyên",
+            "number": "{label} phải là một số",
+            "select": "{label}: hãy chọn một tùy chọn trong danh sách",
+            "json": "{label} phải là JSON hợp lệ",
+            "invalid": "{label} không hợp lệ",
+            "pattern": "{label} không khớp với định dạng yêu cầu",
+            "min": "{label} phải lớn hơn hoặc bằng {min}",
+            "max": "{label} phải nhỏ hơn hoặc bằng {max}"
         }
     }
 }

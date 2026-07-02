@@ -8,6 +8,7 @@ import { useAssets } from "@/hooks/use-assets";
 import { availableBalance } from "@/lib/balance";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import TokenSelect, { SelectedTokenData } from "./token-select";
+import { WarningMessage } from "./warning-message";
 import { LargeInput } from "./large-input";
 import { InputBlock } from "./input-block";
 import { FormField, FormMessage } from "./ui/form";
@@ -77,6 +78,8 @@ interface TokenInputProps<
     loading?: boolean;
     customValue?: string;
     infoMessage?: string;
+    /** Token/slot warning (`### heading` + body). Renders heading inline, body in tooltip. */
+    warningMessage?: string | null;
     /**
      * When true, shows "Insufficient balance" error if amount exceeds balance.
      * Default: false
@@ -107,6 +110,7 @@ export function TokenInput<
     loading = false,
     customValue,
     infoMessage,
+    warningMessage,
     showInsufficientBalance = false,
     networkFee = null,
     dynamicFontSize = false,
@@ -309,18 +313,12 @@ export function TokenInput<
                                 )}
                             />
                         </div>
-                        <p
-                            className={cn(
-                                "text-muted-foreground text-xs invisible truncate",
-                                estimatedUSDValue !== null &&
-                                    estimatedUSDValue > 0 &&
-                                    "visible",
+                        {estimatedUSDValue !== null &&
+                            estimatedUSDValue > 0 && (
+                                <p className="text-muted-foreground text-xs truncate">
+                                    {`≈ ${formatCurrency(estimatedUSDValue)}`}
+                                </p>
                             )}
-                        >
-                            {estimatedUSDValue !== null && estimatedUSDValue > 0
-                                ? `≈ ${formatCurrency(estimatedUSDValue)}`
-                                : "Invisible"}
-                        </p>
                         {balanceWarning && (
                             <p className="text-general-info-foreground text-sm mt-2">
                                 {balanceWarning.type === "fee_not_covered"
@@ -334,6 +332,12 @@ export function TokenInput<
                         )}
                         {fieldState.error ? (
                             <FormMessage />
+                        ) : warningMessage ? (
+                            <WarningMessage
+                                variant="inline"
+                                message={warningMessage}
+                                className="text-sm mt-2"
+                            />
                         ) : infoMessage ? (
                             <p className="text-general-info-foreground text-sm mt-2">
                                 {infoMessage}

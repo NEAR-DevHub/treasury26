@@ -1,3 +1,4 @@
+pub mod admin_auth;
 pub mod base64json;
 pub mod cache;
 pub mod datetime;

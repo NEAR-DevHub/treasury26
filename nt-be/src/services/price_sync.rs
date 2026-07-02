@@ -1,10 +1,11 @@
 //! Background price synchronization service
 //!
-//! This service runs periodically to fetch and cache historical prices from DeFiLlama.
+//! This service runs periodically to fetch and cache prices from DeFiLlama.
 //! API endpoints only read from the cache - they never block on price fetches.
 //!
-//! The list of assets to sync is derived from the balance_changes table - we only
-//! fetch prices for tokens that users actually have in their treasuries.
+//! The list of assets to sync is derived from public balance changes and
+//! confidential gold tables - we only fetch prices for tokens users actually
+//! have in their treasuries.
 
 use chrono::{NaiveDate, Utc};
 use sqlx::PgPool;
@@ -15,16 +16,18 @@ use super::price_lookup::token_id_to_unified_asset_id;
 use super::price_provider::PriceProvider;
 use bigdecimal::BigDecimal;
 
-/// Interval between price sync checks (1 minute)
+/// Interval between current price cache refreshes.
 const SYNC_CHECK_INTERVAL_SECS: u64 = 60;
+
+/// Maximum number of provider asset IDs to request in one current-price call.
+const CURRENT_PRICE_BATCH_SIZE: usize = 50;
 
 /// Run the background price sync service
 ///
-/// This function runs in a loop, checking every minute for assets that need
-/// price data. It only fetches for assets that don't have recent data.
+/// This function runs in a loop, refreshing current prices every 60 seconds
+/// and backfilling historical daily prices for assets that need them.
 ///
-/// The list of assets is derived from the balance_changes table - we only sync
-/// prices for tokens that users actually have in their treasuries.
+/// The list of assets is derived from public and confidential treasury data.
 pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool, provider: P) {
     tracing::info!(
         "Starting background price sync service (check interval: {} seconds)",
@@ -39,39 +42,65 @@ pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool
     loop {
         interval.tick().await;
 
-        // Find assets that need syncing (don't have yesterday's price)
-        // We sync end-of-day prices, so we only sync completed days (yesterday and earlier)
-        let yesterday = (Utc::now() - chrono::Duration::days(1)).date_naive();
-        let assets_needing_sync = match get_assets_needing_sync(&pool, &provider, yesterday).await {
+        let provider_asset_ids = match get_all_provider_asset_ids(&pool, &provider).await {
             Ok(assets) => assets,
             Err(e) => {
-                tracing::error!("Failed to check which assets need sync: {}", e);
+                tracing::error!("Failed to load price sync asset list: {}", e);
                 continue;
             }
         };
 
-        if assets_needing_sync.is_empty() {
-            tracing::debug!("All assets have yesterday's prices, no sync needed");
+        if provider_asset_ids.is_empty() {
+            tracing::debug!("No assets found for price sync");
             continue;
         }
 
-        tracing::info!(
-            "Price sync: {} assets need updating",
-            assets_needing_sync.len()
-        );
-
-        for asset_id in assets_needing_sync {
-            match sync_asset_prices(&pool, &provider, &asset_id).await {
-                Ok(count) => {
-                    tracing::info!("Synced {} prices for {}", count, asset_id);
-                }
+        // Find assets that need syncing (don't have yesterday's price)
+        // We sync end-of-day prices, so we only sync completed days (yesterday and earlier)
+        let yesterday = (Utc::now() - chrono::Duration::days(1)).date_naive();
+        let assets_needing_sync =
+            match get_assets_needing_sync(&pool, &provider_asset_ids, yesterday).await {
+                Ok(assets) => assets,
                 Err(e) => {
-                    tracing::warn!("Failed to sync prices for {}: {}", asset_id, e);
+                    tracing::error!("Failed to check which assets need sync: {}", e);
+                    continue;
                 }
-            }
+            };
 
-            // Small delay between assets to avoid rate limiting
-            tokio::time::sleep(Duration::from_millis(500)).await;
+        if assets_needing_sync.is_empty() {
+            tracing::debug!("All assets have yesterday's prices, no sync needed");
+        } else {
+            tracing::info!(
+                "Price sync: {} assets need updating",
+                assets_needing_sync.len()
+            );
+
+            for asset_id in assets_needing_sync {
+                match sync_asset_prices(&pool, &provider, &asset_id).await {
+                    Ok(count) => {
+                        tracing::info!("Synced {} prices for {}", count, asset_id);
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to sync prices for {}: {}", asset_id, e);
+                    }
+                }
+
+                // Small delay between assets to avoid rate limiting
+                tokio::time::sleep(Duration::from_millis(500)).await;
+            }
+        }
+
+        match sync_current_prices(&pool, &provider, &provider_asset_ids).await {
+            Ok(count) => {
+                tracing::info!(
+                    "Refreshed {} current prices for {} tracked assets",
+                    count,
+                    provider_asset_ids.len()
+                );
+            }
+            Err(e) => {
+                tracing::warn!("Failed to refresh current prices: {}", e);
+            }
         }
     }
 }
@@ -79,20 +108,31 @@ pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool
 /// Get list of provider asset IDs that need syncing (latest price is before target date)
 ///
 /// This function:
-/// 1. Queries distinct token_ids from balance_changes table
+/// 1. Queries distinct token IDs from public and confidential treasury tables
 /// 2. Maps them to unified asset IDs using token_id_to_unified_asset_id
 /// 3. Maps unified IDs to provider-specific asset IDs
-/// 4. Filters to those missing yesterday's price
-async fn get_assets_needing_sync<P: PriceProvider>(
+async fn get_all_provider_asset_ids<P: PriceProvider>(
     pool: &PgPool,
     provider: &P,
-    target_date: NaiveDate,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
-    // Get all unique token_ids from balance_changes
+    // Get all unique token IDs/assets we have seen in public and confidential data.
     let token_ids: Vec<(String,)> = sqlx::query_as(
         r#"
         SELECT DISTINCT token_id
         FROM balance_changes
+        WHERE token_id IS NOT NULL
+        UNION
+        SELECT DISTINCT asset AS token_id
+        FROM gold_confidential_balance_snapshots
+        WHERE asset IS NOT NULL
+        UNION
+        SELECT DISTINCT origin_asset AS token_id
+        FROM gold_confidential_history_events
+        WHERE origin_asset IS NOT NULL
+        UNION
+        SELECT DISTINCT destination_asset AS token_id
+        FROM gold_confidential_history_events
+        WHERE destination_asset IS NOT NULL
         "#,
     )
     .fetch_all(pool)
@@ -110,42 +150,75 @@ async fn get_assets_needing_sync<P: PriceProvider>(
         }
     }
 
+    tracing::debug!(
+        "Found {} unique provider asset IDs for price sync",
+        provider_asset_ids.len()
+    );
+
+    Ok(provider_asset_ids.into_iter().collect())
+}
+
+/// Get list of provider asset IDs that need historical syncing.
+async fn get_assets_needing_sync(
+    pool: &PgPool,
+    provider_asset_ids: &[String],
+    target_date: NaiveDate,
+) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     if provider_asset_ids.is_empty() {
         return Ok(Vec::new());
     }
 
-    tracing::debug!(
-        "Found {} unique provider asset IDs from balance_changes",
-        provider_asset_ids.len()
-    );
-
-    // Get the latest price date for each asset
-    let latest_dates: Vec<(String, NaiveDate)> = sqlx::query_as(
+    // Current prices update today's row every cycle, so historical catch-up must
+    // check the specific completed day rather than relying on MAX(price_date).
+    let synced_assets: Vec<(String,)> = sqlx::query_as(
         r#"
-        SELECT asset_id, MAX(price_date) as latest_date
+        SELECT DISTINCT asset_id
         FROM historical_prices
-        GROUP BY asset_id
+        WHERE asset_id = ANY($1)
+          AND price_date = $2
         "#,
     )
+    .bind(provider_asset_ids)
+    .bind(target_date)
     .fetch_all(pool)
     .await?;
 
-    let latest_map: HashMap<String, NaiveDate> = latest_dates.into_iter().collect();
-
-    // Return assets that either:
-    // 1. Don't exist in the database yet
-    // 2. Have a latest price date older than target date (yesterday)
-    let needing_sync: Vec<String> = provider_asset_ids
+    let synced_assets: HashSet<String> = synced_assets
         .into_iter()
-        .filter(|asset| {
-            match latest_map.get(asset) {
-                None => true,                          // Asset not in DB yet
-                Some(latest) => *latest < target_date, // Latest price is older than target
-            }
-        })
+        .map(|(asset_id,)| asset_id)
+        .collect();
+
+    let needing_sync: Vec<String> = provider_asset_ids
+        .iter()
+        .filter(|asset| !synced_assets.contains(*asset))
+        .cloned()
         .collect();
 
     Ok(needing_sync)
+}
+
+/// Refresh today's cached price for all tracked assets.
+async fn sync_current_prices<P: PriceProvider>(
+    pool: &PgPool,
+    provider: &P,
+    asset_ids: &[String],
+) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    if asset_ids.is_empty() {
+        return Ok(0);
+    }
+
+    let mut total = 0;
+    for chunk in asset_ids.chunks(CURRENT_PRICE_BATCH_SIZE) {
+        let prices = provider.get_current_prices(chunk).await?;
+        if prices.is_empty() {
+            continue;
+        }
+
+        cache_current_prices(pool, &prices, provider.source_name()).await?;
+        total += prices.len();
+    }
+
+    Ok(total)
 }
 
 /// Sync prices for a single asset
@@ -204,7 +277,44 @@ async fn cache_prices_batch(
     Ok(())
 }
 
-/// Perform an immediate price sync for all assets in balance_changes
+/// Cache current prices as today's row in `historical_prices`.
+async fn cache_current_prices(
+    pool: &PgPool,
+    prices: &HashMap<String, f64>,
+    source: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if prices.is_empty() {
+        return Ok(());
+    }
+
+    let today = Utc::now().date_naive();
+    let asset_ids: Vec<String> = prices.keys().cloned().collect();
+    let dates: Vec<NaiveDate> = asset_ids.iter().map(|_| today).collect();
+    let price_values: Vec<BigDecimal> = asset_ids
+        .iter()
+        .map(|asset_id| BigDecimal::try_from(prices[asset_id]))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO historical_prices (asset_id, price_date, price_usd, source)
+        SELECT unnest($1::text[]), unnest($2::date[]), unnest($3::numeric[]), $4
+        ON CONFLICT (asset_id, price_date, source) DO UPDATE SET
+            price_usd = EXCLUDED.price_usd,
+            fetched_at = NOW()
+        "#,
+    )
+    .bind(&asset_ids)
+    .bind(&dates)
+    .bind(&price_values)
+    .bind(source)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Perform an immediate historical price sync for all tracked assets
 ///
 /// This is useful for initial startup or manual triggers.
 /// Returns the number of assets successfully synced.
@@ -214,7 +324,8 @@ pub async fn sync_all_prices_now<P: PriceProvider + Send + Sync>(
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
     // Get all assets that need syncing (using a far future date to get all)
     let far_future = NaiveDate::from_ymd_opt(2099, 12, 31).unwrap();
-    let assets = get_assets_needing_sync(pool, provider, far_future).await?;
+    let provider_asset_ids = get_all_provider_asset_ids(pool, provider).await?;
+    let assets = get_assets_needing_sync(pool, &provider_asset_ids, far_future).await?;
 
     tracing::info!("Running immediate price sync for {} assets", assets.len());
 

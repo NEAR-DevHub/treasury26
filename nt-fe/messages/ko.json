@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "이름 또는 ID로 요청 검색",
         "searchPlaceholderShort": "이름 또는 ID로 검색",
-        "errorLoading": "제안을 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요.",
         "empty": {
             "title": "첫 요청을 생성하세요",
             "description": "결제, 교환 및 기타 작업에 대한 요청은 생성되면 여기에 표시됩니다.",
@@ -616,6 +615,7 @@
             "actionReject": "거부",
             "actionRemove": "제거",
             "insufficientBalance": "잔액 부족으로 인해 요청 <highlight>{ids}</highlight>은(는) 승인할 수 없습니다. 승인은 나머지 요청에만 적용됩니다.",
+            "approveBlockedBulk": "{count, plural, one {선택한 요청 #개를 지금 승인할 수 없습니다. 계속하려면 선택을 해제하세요.} other {선택한 요청 #개를 지금 승인할 수 없습니다. 계속하려면 선택을 해제하세요.}}",
             "remove": "제거",
             "confirm": "확인"
         },
@@ -854,7 +854,8 @@
             "general": "일반",
             "voting": "투표",
             "preferences": "환경설정",
-            "integrations": "통합"
+            "integrations": "통합",
+            "developer": "개발자"
         },
         "general": {
             "validation": {
@@ -1425,10 +1426,6 @@
             "openInTelegram": "Telegram에서 {bot} 열기"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "유지 보수 중",
-        "maintenanceMessage": "현재 유지 보수를 진행하고 있습니다. 일부 기능이 일시적으로 사용 불가능할 수 있습니다. 잠시 후 다시 확인해 주세요."
-    },
     "creditsQuota": {
         "available": "{count}개 사용 가능",
         "used": "{count}개 사용됨",
@@ -1918,7 +1915,8 @@
         "guestSaveIntro": "이 트레저리의 게스트입니다. 데이터 보기만 가능합니다.",
         "guestSaveAction": "이 게스트 트레저리를 트레저리 목록에 저장할 수 있습니다.",
         "newFeatureRich": "신규! 🎉 자주 사용하는 주소를 저장하여 더 빠르고 오류 없는 지급을 하세요. 연락처는 비공개로 유지되며 팀에게만 표시됩니다.",
-        "newFeatureCta": "사용해 보기"
+        "newFeatureCta": "사용해 보기",
+        "requestTemplates": "맞춤 요청이 준비되었습니다. 여기서 열어 첫 번째 요청 유형을 만들어 보세요."
     },
     "statusDate": {
         "expires": "만료 시간",
@@ -1972,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "요청 생성",
-        "noPermission": "요청을 생성할 권한이 없습니다"
+        "noPermission": "요청을 생성할 권한이 없습니다",
+        "paused": "일시 중지됨",
+        "brieflyUnavailable": "잠시 이용 불가"
     },
     "address": {
         "copied": "주소가 클립보드에 복사되었습니다"
@@ -2186,6 +2186,233 @@
             "docsDescription": "문서에서 모든 기능에 대해 알아보세요.",
             "videoTitle": "데모 시청",
             "videoDescription": "Trezu 작동 방식을 보여주는 짧은 비디오를 시청하세요."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "에",
+            "until": "까지"
+        },
+        "actions": {
+            "payment": "결제",
+            "deposit": "입금",
+            "exchange": "스왑",
+            "approve": "승인",
+            "reject": "거부",
+            "remove": "삭제",
+            "proposal": "제안",
+            "transaction": "거래"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network}의 {token}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### 예정된 업데이트\n결제가 {schedule}에 잠시 이용 불가합니다.",
+                "exchange": "### 예정된 업데이트\n스왑이 {schedule}에 잠시 이용 불가합니다.",
+                "deposit": "### 예정된 업데이트\n입금이 {schedule}에 잠시 이용 불가합니다.",
+                "features": "### 예정된 업데이트\n일부 기능이 {schedule}에 잠시 이용 불가합니다.",
+                "app": "### 예정된 업데이트\nTrezu가 {schedule}에 잠시 이용 불가합니다.\n귀하의 자금은 on-chain에 있으며 귀하의 통제 하에 있습니다."
+            },
+            "network_slow": {
+                "default": "### {subject}이(가) 현재 느립니다\n귀하의 {action}은(는) 복구되면 처리됩니다. 평소보다 시간이 조금 더 걸릴 수 있습니다."
+            },
+            "network_paused": {
+                "token": "### {token}이(가) 현재 일시 중지되었습니다\n다른 토큰은 정상적으로 작동합니다.",
+                "network": "### {network}이(가) 현재 일시 중지되었습니다\n그동안 다른 네트워크를 사용하실 수 있습니다.",
+                "token+network": "### {network}의 {token}이(가) 현재 일시 중지되었습니다\n다른 토큰은 정상적으로 작동합니다."
+            },
+            "features_paused": {
+                "payments": "### 결제가 일시적으로 중지되었습니다.\n복구 작업 중입니다.",
+                "exchange": "### 교환이 일시적으로 중지되었습니다.\n복구 작업 중입니다.",
+                "deposit": "### 입금이 일시적으로 중지되었습니다.\n복구 작업 중입니다.",
+                "features": "### 일부 기능이 일시적으로 중지되었습니다.\n복구 작업 중입니다."
+            },
+            "transactions_halted": {
+                "default": "### 현재 거래가 중지되었습니다\n네트워크 제공업체가 복구되는 동안 거래가 중지되었습니다. 귀하의 자금은 on-chain에 있으며 귀하의 통제 하에 있습니다. 업데이트: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### 잔액을 일시적으로 확인할 수 없습니다.\n현재 잔액을 표시할 수 없습니다. 귀하의 자금은 on-chain에 있으며 그대로 안전하게 보관되어 있습니다. 트레저리를 계속 사용하실 수 있습니다."
+            },
+            "history_not_loading": {
+                "default": "### 거래 내역이 현재 로드되지 않습니다\n이는 표시에만 영향을 미치며, 귀하의 자금이나 트레저리에는 영향이 없습니다."
+            },
+            "requests_wont_process": {
+                "default": "### 일시적인 네트워크 문제로 몇 분간 새로운 요청을 처리할 수 없습니다.\n 귀하의 자금은 영향을 받지 않습니다. 잠시 후 다시 시도해 주세요."
+            },
+            "approvals_paused": {
+                "default": "네트워크 제공업체가 복구되는 동안 요청 승인이 중지되었습니다.\n 대기 중인 요청을 거부하는 것은 가능하며, 서비스가 복구되면 승인도 다시 가능합니다."
+            },
+            "wallet_login_unavailable": {
+                "login": "### 현재 로그인할 수 없습니다.\n귀하의 자금은 on-chain에 있으며 안전합니다 – 서비스가 복구되면 다시 로그인하실 수 있습니다.",
+                "loginWallet": "### 현재 {wallet}(으)로 로그인할 수 없습니다.\n귀하의 자금은 on-chain에 있으며 안전합니다 – 서비스가 복구되면 다시 로그인하실 수 있습니다."
+            },
+            "backend_down": {
+                "default": "### 일시적인 문제가 발생했습니다\n일부 데이터가 로드되지 않을 수 있습니다. 귀하의 자금은 on-chain에 있으며 영향을 받지 않습니다 – 잠시 후 다시 시도해 주세요."
+            },
+            "whole_app_down": {
+                "default": "### Trezu가 일시적으로 중단되었습니다.\n귀하의 자금은 on-chain에 있으며 귀하의 통제 하에 있습니다. 업데이트: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "새 트레저리 생성은 현재 초대제로 운영됩니다. 대기자 명단에 등록하시면 이용 가능 시 알려드리겠습니다."
+            },
+            "funds_at_risk": {
+                "default": "### 문제를 조사하는 동안 Trezu를 일시 중지했습니다.\n모든 것이 안전한지 확인할 때까지 거래를 하지 않으시기를 권장합니다. 업데이트: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### 예정된 제공업체 점검\n결제 서비스가 {schedule}에 잠시 이용 불가할 수 있습니다. 자금은 온체인에 있으며 귀하의 통제 하에 있습니다.",
+                "exchange": "### 예정된 제공업체 점검\n스왑 서비스가 {schedule}에 잠시 이용 불가할 수 있습니다. 자금은 온체인에 있으며 귀하의 통제 하에 있습니다.",
+                "deposit": "### 예정된 제공업체 점검\n입금 서비스가 {schedule}에 잠시 이용 불가할 수 있습니다. 자금은 온체인에 있으며 귀하의 통제 하에 있습니다.",
+                "features": "### 예정된 제공업체 점검\n일부 기능이 {schedule}에 잠시 이용 불가할 수 있습니다. 자금은 온체인에 있으며 귀하의 통제 하에 있습니다."
+            }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "요청 템플릿",
+        "pageDescription": "맞춤 요청 유형을 위한 재사용 가능한 템플릿을 만드세요.",
+        "loading": "불러오는 중…",
+        "back": "뒤로",
+        "howItWorks": "작동 방식",
+        "toastDeleted": "템플릿이 삭제되었습니다",
+        "errDelete": "템플릿 삭제에 실패했습니다",
+        "deleteDialog": {
+            "title": "템플릿 삭제",
+            "body": "<b>{name}</b> 템플릿을 삭제할까요? 멤버가 더 이상 이 템플릿으로 제안을 제출할 수 없게 됩니다. 이 작업은 되돌릴 수 없습니다.",
+            "confirm": "삭제",
+            "deleting": "삭제 중…"
+        },
+        "editor": {
+            "nameLabel": "이름",
+            "namePlaceholder": "인사말 설정",
+            "nameRequired": "이름은 필수입니다",
+            "tabVisual": "비주얼",
+            "tabCode": "코드",
+            "manifestLabel": "매니페스트 (JSON)",
+            "invalidJsonToast": "비주얼 빌더로 전환하기 전에 잘못된 JSON을 수정하세요"
+        },
+        "index": {
+            "emptyTitle": "첫 번째 템플릿을 만드세요",
+            "emptyDescription": "자주 보내는 요청을 위한 템플릿을 만드세요. 팀이 클릭 한 번으로 재사용할 수 있습니다.",
+            "createTemplate": "템플릿 만들기",
+            "heading": "템플릿",
+            "addNew": "새로 추가",
+            "createRequest": "요청 만들기",
+            "actions": "템플릿 작업",
+            "edit": "편집",
+            "pin": "사이드바에 고정",
+            "unpin": "템플릿 고정 해제",
+            "delete": "삭제",
+            "errPin": "고정 상태를 업데이트할 수 없습니다"
+        },
+        "create": {
+            "title": "새 템플릿",
+            "submit": "템플릿 만들기",
+            "submitting": "생성 중…",
+            "toastCreated": "템플릿이 생성되었습니다",
+            "errCreate": "템플릿 생성에 실패했습니다"
+        },
+        "edit": {
+            "title": "템플릿 편집",
+            "submit": "변경 사항 저장",
+            "deleteButton": "템플릿 삭제",
+            "toastSaved": "템플릿이 저장되었습니다",
+            "errSave": "템플릿 저장에 실패했습니다",
+            "notFound": "템플릿을 찾을 수 없습니다."
+        },
+        "fill": {
+            "noTemplate": "“{slug}”에 해당하는 템플릿을 찾을 수 없습니다.",
+            "invalidManifest": "이 템플릿의 매니페스트가 유효하지 않습니다:",
+            "proposalFiled": "요청이 제출되었습니다"
+        },
+        "developer": {
+            "title": "맞춤 요청",
+            "description": "결제와 교환만으로는 부족할 때 직접 요청 유형을 만드세요. 필요한 필드를 추가하면 멤버가 다른 요청과 똑같이 제출할 수 있습니다.",
+            "enable": "사용",
+            "disable": "사용 안 함",
+            "errUpdate": "설정을 업데이트할 수 없습니다"
+        },
+        "visual": {
+            "detailsTitle": "세부 정보",
+            "idLabel": "ID (슬러그)",
+            "titleLabel": "제목",
+            "descriptionLabel": "설명 (선택)",
+            "summaryLabel": "요약 (선택, '{{'fields'}}' 지원)",
+            "onChainCallTitle": "온체인 호출",
+            "onChainCallDescription": "이 템플릿이 제출하는 고정된 FunctionCall입니다.",
+            "receiverLabel": "수신자 (컨트랙트)",
+            "methodLabel": "메서드",
+            "depositLabel": "예치금 (yoctoNEAR)",
+            "gasLabel": "가스",
+            "argumentsTitle": "인자",
+            "argumentsDescription": "컨트랙트로 전송되는 인자입니다. 각 인자는 정적(고정 값) 또는 멤버 입력(동적) 중 하나이며, 후자의 경우 입력의 구성이 인라인으로 표시됩니다.",
+            "otherInputsTitle": "기타 입력",
+            "otherInputsDescription": "조합된 값 안에서만 사용되는 입력(직접적인 멤버 입력 인자가 아님)과 수동으로 추가한 입력입니다. 대부분의 템플릿에는 없습니다."
+        },
+        "fields": {
+            "addField": "필드 추가",
+            "inputHeading": "입력 {number}",
+            "remove": "제거",
+            "nameLabel": "이름",
+            "unused": "사용되지 않음 — '{{'{name}'}}'을(를) 사용하는 인자가 없습니다. 멤버가 입력하더라도 전송되지 않습니다.",
+            "label": "라벨",
+            "typeLabel": "유형",
+            "required": "필수",
+            "optionsLabel": "옵션 (한 줄에 하나씩)",
+            "advancedOptions": "고급 옵션",
+            "helpLabel": "도움말 (선택)",
+            "helpPlaceholder": "입력 아래에 표시됩니다",
+            "minLabel": "최소 (선택)",
+            "maxLabel": "최대 (선택)",
+            "patternLabel": "패턴 (regex, 선택)",
+            "defaultLabel": "기본값 (선택)"
+        },
+        "fieldTypes": {
+            "account": "NEAR 계정",
+            "token": "토큰",
+            "uint": "정수",
+            "amount": "토큰 수량",
+            "number": "숫자",
+            "text": "텍스트",
+            "select": "드롭다운",
+            "bool": "토글",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "인자 추가",
+            "argumentHeading": "인자 {number}",
+            "remove": "제거",
+            "argumentNameLabel": "인자 이름",
+            "argumentNamePlaceholder": "argument",
+            "typeLabel": "유형",
+            "modeStatic": "정적",
+            "modeMemberInput": "멤버 입력",
+            "valueTypeLabel": "값 유형",
+            "valueLabel": "값",
+            "stringValuePlaceholder": "텍스트 또는 '{{field}}'",
+            "insertField": "+ 필드",
+            "keyPlaceholder": "키",
+            "addKey": "키 추가",
+            "addItem": "항목 추가"
+        },
+        "form": {
+            "selectPlaceholder": "옵션을 선택하세요",
+            "fileProposal": "제안 제출"
+        },
+        "collapsePinned": "고정한 템플릿 접기",
+        "expandPinned": "고정한 템플릿 펼치기",
+        "validation": {
+            "required": "{label}은(는) 필수 항목입니다",
+            "account": "{label}은(는) 유효한 NEAR 계정이어야 합니다",
+            "wholeNumber": "{label}은(는) 정수여야 합니다",
+            "number": "{label}은(는) 숫자여야 합니다",
+            "select": "{label}: 목록에 있는 옵션을 선택하세요",
+            "json": "{label}은(는) 유효한 JSON이어야 합니다",
+            "invalid": "{label}이(가) 올바르지 않습니다",
+            "pattern": "{label}이(가) 요구되는 형식과 일치하지 않습니다",
+            "min": "{label}은(는) 최소 {min} 이상이어야 합니다",
+            "max": "{label}은(는) 최대 {max} 이하여야 합니다"
         }
     }
 }

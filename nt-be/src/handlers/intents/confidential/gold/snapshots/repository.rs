@@ -9,6 +9,8 @@ pub struct SnapshotRow {
     pub asset: String,
     pub raw_balance: BigDecimal,
     pub balance: BigDecimal,
+    pub price_usd: Option<BigDecimal>,
+    pub value_usd: Option<BigDecimal>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -70,14 +72,16 @@ pub async fn insert_snapshot_rows(
     let assets: Vec<String> = rows.iter().map(|r| r.asset.clone()).collect();
     let raw_balances: Vec<BigDecimal> = rows.iter().map(|r| r.raw_balance.clone()).collect();
     let balances: Vec<BigDecimal> = rows.iter().map(|r| r.balance.clone()).collect();
+    let prices_usd: Vec<Option<BigDecimal>> = rows.iter().map(|r| r.price_usd.clone()).collect();
+    let values_usd: Vec<Option<BigDecimal>> = rows.iter().map(|r| r.value_usd.clone()).collect();
 
     let result = sqlx::query(
         r#"
         INSERT INTO gold_confidential_balance_snapshots
-            (dao_id, asset, snapshot_at, raw_balance, balance)
-        SELECT $1, asset, $2, raw_balance, balance
-        FROM UNNEST($3::text[], $4::numeric[], $5::numeric[])
-            AS t(asset, raw_balance, balance)
+            (dao_id, asset, snapshot_at, raw_balance, balance, price_usd, value_usd)
+        SELECT $1, asset, $2, raw_balance, balance, price_usd, value_usd
+        FROM UNNEST($3::text[], $4::numeric[], $5::numeric[], $6::numeric[], $7::numeric[])
+            AS t(asset, raw_balance, balance, price_usd, value_usd)
         ON CONFLICT (dao_id, asset, snapshot_at) DO NOTHING
         "#,
     )
@@ -86,6 +90,8 @@ pub async fn insert_snapshot_rows(
     .bind(&assets)
     .bind(&raw_balances)
     .bind(&balances)
+    .bind(&prices_usd)
+    .bind(&values_usd)
     .execute(pool)
     .await?;
 

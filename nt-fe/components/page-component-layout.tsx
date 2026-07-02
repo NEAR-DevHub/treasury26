@@ -9,7 +9,7 @@ import { Button } from "@/components/button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Pill } from "@/components/pill";
 import { SignIn } from "@/components/sign-in";
-import { SystemStatusBanner } from "@/components/system-status-banner";
+import { SlotWarning } from "@/components/warning-message";
 import { isStaging } from "@/constants/features";
 import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ interface PageComponentLayoutProps {
     backButton?: boolean | string;
     hideLogin?: boolean;
     hideCollapseButton?: boolean;
-    hideSystemStatusBanner?: boolean;
+    hideAppWarningBanner?: boolean;
     transparentHeader?: boolean;
     hideHeaderBottomBorder?: boolean;
     logo?: ReactNode;
@@ -35,7 +35,7 @@ export function PageComponentLayout({
     backButton,
     hideCollapseButton,
     hideLogin,
-    hideSystemStatusBanner,
+    hideAppWarningBanner,
     transparentHeader = false,
     hideHeaderBottomBorder = false,
     logo,
@@ -152,8 +152,15 @@ export function PageComponentLayout({
                     mainClassName,
                 )}
             >
-                {!hideSystemStatusBanner && (
-                    <SystemStatusBanner className="lg:hidden mb-3" />
+                {!hideAppWarningBanner && (
+                    <>
+                        <SlotWarning
+                            slot="data.balances"
+                            className="lg:hidden mb-3"
+                            headingClassName="font-medium"
+                        />
+                        <SlotWarning slot="app" className="lg:hidden mb-3" />
+                    </>
                 )}
                 {children}
             </main>

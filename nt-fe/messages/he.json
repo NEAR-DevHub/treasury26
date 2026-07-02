@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "חיפוש בקשה לפי שם או מזהה",
         "searchPlaceholderShort": "חיפוש לפי שם או מזהה",
-        "errorLoading": "שגיאה בטעינת ההצעות. אנא נסה שוב.",
         "empty": {
             "title": "צור את הבקשה הראשונה שלך",
             "description": "בקשות לתשלומים, החלפות ופעולות אחרות יופיעו כאן לאחר יצירתן.",
@@ -616,6 +615,7 @@
             "actionReject": "לדחות",
             "actionRemove": "להסיר",
             "insufficientBalance": "לא ניתן לאשר את הבקשות <highlight>{ids}</highlight> עקב יתרה לא מספקת. האישור שלך יחול רק על הבקשות הנותרות.",
+            "approveBlockedBulk": "{count, plural, one {לא ניתן לאשר את הבקשה הנבחרת כעת — בטל את הבחירה כדי להמשיך.} other {לא ניתן לאשר # מהבקשות הנבחרות כעת — בטל את הבחירה כדי להמשיך.}}",
             "remove": "הסרה",
             "confirm": "אישור"
         },
@@ -854,7 +854,8 @@
             "general": "כללי",
             "voting": "הצבעה",
             "preferences": "העדפות",
-            "integrations": "אינטגרציות"
+            "integrations": "אינטגרציות",
+            "developer": "מפתח"
         },
         "general": {
             "validation": {
@@ -1425,10 +1426,6 @@
             "openInTelegram": "פתחו את {bot} ב-Telegram"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "בתחזוקה",
-        "maintenanceMessage": "אנו מבצעים כעת תחזוקה. ייתכן שחלק מהתכונות לא יהיו זמינות באופן זמני. אנא בדוק שוב בקרוב."
-    },
     "creditsQuota": {
         "available": "{count} זמינים",
         "used": "{count} בשימוש",
@@ -1918,7 +1915,8 @@
         "guestSaveIntro": "אתה אורח של אוצר זה. אתה יכול לראות רק את הנתונים.",
         "guestSaveAction": "ניתן לשמור את האוצר האורח הזה לרשימת האוצרות שלך.",
         "newFeatureRich": "חדש! 🎉 שמור כתובות בשימוש תדיר לתשלומים מהירים יותר וללא שגיאות. אנשי הקשר שלך נשארים פרטיים וגלויים רק לצוות שלך.",
-        "newFeatureCta": "נסה זאת"
+        "newFeatureCta": "נסה זאת",
+        "requestTemplates": "בקשות מותאמות אישית מוכנות. פתחו אותן כאן כדי לבנות את סוג הבקשה הראשון שלכם."
     },
     "statusDate": {
         "expires": "פג תוקף",
@@ -1972,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "צור בקשה",
-        "noPermission": "אין לך הרשאה ליצור בקשה"
+        "noPermission": "אין לך הרשאה ליצור בקשה",
+        "paused": "מושהה זמנית",
+        "brieflyUnavailable": "לא זמין לזמן קצר"
     },
     "address": {
         "copied": "הכתובת הועתקה ללוח"
@@ -2186,6 +2186,233 @@
             "docsDescription": "למד על כל התכונות בתיעוד.",
             "videoTitle": "צפה בדמו",
             "videoDescription": "צפה בסרטון קצר המראה איך Trezu עובד."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "בתאריך",
+            "until": "עד"
+        },
+        "actions": {
+            "payment": "תשלום",
+            "deposit": "הפקדה",
+            "exchange": "המרה",
+            "approve": "אישור",
+            "reject": "דחייה",
+            "remove": "הסרה",
+            "proposal": "הצעה",
+            "transaction": "עסקה"
+        },
+        "subject": {
+            "tokenOnNetwork": "{token} ב-{network}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### עדכון מתוכנן\nתשלומים לא יהיו זמינים לזמן קצר {schedule}.",
+                "exchange": "### עדכון מתוכנן\nהמרות לא יהיו זמינות לזמן קצר {schedule}.",
+                "deposit": "### עדכון מתוכנן\nהפקדות לא יהיו זמינות לזמן קצר {schedule}.",
+                "features": "### עדכון מתוכנן\nחלק מהתכונות לא יהיו זמינות לזמן קצר {schedule}.",
+                "app": "### עדכון מתוכנן\nTrezu לא יהיה זמין לזמן קצר {schedule}.\nהכספים שלך נמצאים on-chain ובשליטתך."
+            },
+            "network_slow": {
+                "default": "### {subject} פועל לאט כרגע\nה{action} שלך תבוצע ברגע שהרשת תתאושש, ייתכן שזה ייקח קצת יותר זמן מהרגיל."
+            },
+            "network_paused": {
+                "token": "### {token} מושהה כרגע\nטוקנים אחרים פועלים כרגיל.",
+                "network": "### {network} מושהית כרגע\nניתן להשתמש ברשת אחרת בינתיים.",
+                "token+network": "### {token} ב-{network} מושהה כרגע\nטוקנים אחרים פועלים כרגיל."
+            },
+            "features_paused": {
+                "payments": "### התשלומים מושהים זמנית.\nאנחנו עובדים על זה.",
+                "exchange": "### ההמרות מושהות זמנית.\nאנחנו עובדים על זה.",
+                "deposit": "### ההפקדות מושהות זמנית.\nאנחנו עובדים על זה.",
+                "features": "### חלק מהתכונות מושהות זמנית.\nאנחנו עובדים על זה."
+            },
+            "transactions_halted": {
+                "default": "### העסקאות מושהות כרגע\nהעסקאות מושהות בזמן שספק הרשת מתאושש. הכספים שלך נמצאים on-chain ובשליטתך. עדכונים: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### היתרה אינה זמינה זמנית.\nאיננו יכולים להציג את היתרות שלך כרגע. הכספים שלך נמצאים on-chain, בדיוק היכן שהשארת אותם. תוכל להמשיך להשתמש בטרז׳רי שלך."
+            },
+            "history_not_loading": {
+                "default": "### היסטוריית העסקאות לא נטענת כרגע\nזה משפיע על מה שאתה יכול לראות, לא על הכספים או הטרז׳רי שלך."
+            },
+            "requests_wont_process": {
+                "default": "### לא ניתן לעבד בקשות חדשות לכמה דקות – בעיית רשת זמנית.\n הכספים שלך לא מושפעים, נסה שוב בקרוב."
+            },
+            "approvals_paused": {
+                "default": "אישור בקשות מושהה כרגע בזמן שספק הרשת מתאושש.\n עדיין ניתן לדחות בקשות ממתינות, והאישורים יחזרו לפעול ברגע שהשירות ישוחזר."
+            },
+            "wallet_login_unavailable": {
+                "login": "### ההתחברות אינה זמינה כרגע.\nהכספים שלך נמצאים on-chain ולא נגעו בהם – תוכל להתחבר שוב ברגע שהשירות יחזור.",
+                "loginWallet": "### ההתחברות עם {wallet} אינה זמינה כרגע.\nהכספים שלך נמצאים on-chain ולא נגעו בהם – תוכל להתחבר שוב ברגע שהשירות יחזור."
+            },
+            "backend_down": {
+                "default": "### אנחנו חווים בעיה זמנית\nחלק מהנתונים עשויים לא להיטען. הכספים שלך נמצאים on-chain ולא מושפעים – נסה שוב בקרוב."
+            },
+            "whole_app_down": {
+                "default": "### Trezu אינו זמין זמנית.\nהכספים שלך נמצאים on-chain ובשליטתך. עדכונים: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "יצירת טרז׳רי חדש היא בהזמנה בלבד כרגע. הצטרף לרשימת ההמתנה ונודיע לך כשזה ייפתח."
+            },
+            "funds_at_risk": {
+                "default": "### השהינו את Trezu בזמן שאנו חוקרים בעיה.\nאנו ממליצים שלא לבצע עסקאות עד שנאשר שהכל תקין. עדכונים: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### תחזוקת ספק מתוכננת\nתשלומים עשויים להיות לא זמינים לזמן קצר {schedule}. הכספים שלכם נמצאים on-chain ותחת שליטתכם.",
+                "exchange": "### תחזוקת ספק מתוכננת\nהמרות עשויות להיות לא זמינות לזמן קצר {schedule}. הכספים שלכם נמצאים on-chain ותחת שליטתכם.",
+                "deposit": "### תחזוקת ספק מתוכננת\nהפקדות עשויות להיות לא זמינות לזמן קצר {schedule}. הכספים שלכם נמצאים on-chain ותחת שליטתכם.",
+                "features": "### תחזוקת ספק מתוכננת\nחלק מהתכונות עשויות להיות לא זמינות לזמן קצר {schedule}. הכספים שלכם נמצאים on-chain ותחת שליטתכם."
+            }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "תבניות בקשה",
+        "pageDescription": "בנו תבניות לשימוש חוזר עבור סוגי בקשות מותאמים אישית.",
+        "loading": "טוען…",
+        "back": "חזרה",
+        "howItWorks": "איך זה עובד",
+        "toastDeleted": "התבנית נמחקה",
+        "errDelete": "מחיקת התבנית נכשלה",
+        "deleteDialog": {
+            "title": "מחיקת תבנית",
+            "body": "למחוק את <b>{name}</b>? חברים לא יוכלו עוד להגיש הצעות באמצעותה. לא ניתן לבטל פעולה זו.",
+            "confirm": "מחק",
+            "deleting": "מוחק…"
+        },
+        "editor": {
+            "nameLabel": "שם",
+            "namePlaceholder": "הגדרת ברכה",
+            "nameRequired": "שם הוא שדה חובה",
+            "tabVisual": "חזותי",
+            "tabCode": "קוד",
+            "manifestLabel": "מניפסט (JSON)",
+            "invalidJsonToast": "תקנו את ה-JSON השגוי לפני המעבר לבונה החזותי"
+        },
+        "index": {
+            "emptyTitle": "צרו את התבנית הראשונה שלכם",
+            "emptyDescription": "צרו תבנית עבור בקשות שאתם שולחים לעיתים קרובות. הצוות שלכם ישתמש בה שוב בלחיצה אחת.",
+            "createTemplate": "צור תבנית",
+            "heading": "תבניות",
+            "addNew": "הוסף חדש",
+            "createRequest": "צור בקשה",
+            "actions": "פעולות תבנית",
+            "edit": "ערוך",
+            "pin": "הצמד לסרגל הצד",
+            "unpin": "בטל הצמדת תבנית",
+            "delete": "מחק",
+            "errPin": "לא ניתן היה לעדכן את ההצמדה"
+        },
+        "create": {
+            "title": "תבנית חדשה",
+            "submit": "צור תבנית",
+            "submitting": "יוצר…",
+            "toastCreated": "התבנית נוצרה",
+            "errCreate": "יצירת התבנית נכשלה"
+        },
+        "edit": {
+            "title": "עריכת תבנית",
+            "submit": "שמור שינויים",
+            "deleteButton": "מחק תבנית",
+            "toastSaved": "התבנית נשמרה",
+            "errSave": "שמירת התבנית נכשלה",
+            "notFound": "התבנית לא נמצאה."
+        },
+        "fill": {
+            "noTemplate": "לא נמצאה תבנית עבור ״{slug}״.",
+            "invalidManifest": "המניפסט של תבנית זו אינו תקין:",
+            "proposalFiled": "הבקשה הוגשה"
+        },
+        "developer": {
+            "title": "בקשות מותאמות אישית",
+            "description": "בנו סוגי בקשות משלכם כשאתם זקוקים ליותר מתשלומים והחלפה. הוסיפו את השדות שאתם צריכים והחברים שלכם יוכלו להגיש אותם כמו כל בקשה אחרת.",
+            "enable": "הפעל",
+            "disable": "השבת",
+            "errUpdate": "לא ניתן היה לעדכן את ההגדרה"
+        },
+        "visual": {
+            "detailsTitle": "פרטים",
+            "idLabel": "מזהה (slug)",
+            "titleLabel": "כותרת",
+            "descriptionLabel": "תיאור (אופציונלי)",
+            "summaryLabel": "סיכום (אופציונלי, תומך ב-'{{'fields'}}')",
+            "onChainCallTitle": "קריאה על השרשרת",
+            "onChainCallDescription": "ה-FunctionCall הקבועה שתבנית זו מגישה.",
+            "receiverLabel": "מקבל (חוזה)",
+            "methodLabel": "מתודה",
+            "depositLabel": "פיקדון (yoctoNEAR)",
+            "gasLabel": "דלק",
+            "argumentsTitle": "ארגומנטים",
+            "argumentsDescription": "הארגומנטים הנשלחים לחוזה. כל אחד הוא סטטי (ערך קבוע) או קלט חבר (דינמי) — עבור האחרון, תצורת הקלט מופיעה בתוך השורה.",
+            "otherInputsTitle": "קלטים נוספים",
+            "otherInputsDescription": "קלטים המשמשים רק בתוך ערך מורכב (לא ארגומנט קלט-חבר ישיר), בתוספת כל אלה שתוסיפו באופן ידני. לרוב התבניות אין כאלה."
+        },
+        "fields": {
+            "addField": "הוסף שדה",
+            "inputHeading": "קלט {number}",
+            "remove": "הסר",
+            "nameLabel": "שם",
+            "unused": "לא בשימוש — אף ארגומנט אינו משתמש ב-'{{'{name}'}}'; חברים ממלאים אותו אך הוא אינו נשלח.",
+            "label": "תווית",
+            "typeLabel": "סוג",
+            "required": "חובה",
+            "optionsLabel": "אפשרויות (אחת בכל שורה)",
+            "advancedOptions": "אפשרויות מתקדמות",
+            "helpLabel": "עזרה (אופציונלי)",
+            "helpPlaceholder": "מוצג מתחת לקלט",
+            "minLabel": "מינימום (אופציונלי)",
+            "maxLabel": "מקסימום (אופציונלי)",
+            "patternLabel": "תבנית (regex, אופציונלי)",
+            "defaultLabel": "ברירת מחדל (אופציונלי)"
+        },
+        "fieldTypes": {
+            "account": "חשבון NEAR",
+            "token": "טוקן",
+            "uint": "מספר שלם",
+            "amount": "כמות טוקנים",
+            "number": "מספר",
+            "text": "טקסט",
+            "select": "תפריט נפתח",
+            "bool": "מתג",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "הוסף ארגומנט",
+            "argumentHeading": "ארגומנט {number}",
+            "remove": "הסר",
+            "argumentNameLabel": "שם הארגומנט",
+            "argumentNamePlaceholder": "ארגומנט",
+            "typeLabel": "סוג",
+            "modeStatic": "סטטי",
+            "modeMemberInput": "קלט חבר",
+            "valueTypeLabel": "סוג ערך",
+            "valueLabel": "ערך",
+            "stringValuePlaceholder": "טקסט או '{{field}}'",
+            "insertField": "+ שדה",
+            "keyPlaceholder": "מפתח",
+            "addKey": "הוסף מפתח",
+            "addItem": "הוסף פריט"
+        },
+        "form": {
+            "selectPlaceholder": "בחרו אפשרות",
+            "fileProposal": "הגש הצעה"
+        },
+        "collapsePinned": "כווץ תבניות מוצמדות",
+        "expandPinned": "הרחב תבניות מוצמדות",
+        "validation": {
+            "required": "חובה למלא את השדה {label}",
+            "account": "{label} חייב להיות חשבון NEAR תקין",
+            "wholeNumber": "{label} חייב להיות מספר שלם",
+            "number": "{label} חייב להיות מספר",
+            "select": "{label}: יש לבחור אחת מהאפשרויות ברשימה",
+            "json": "{label} חייב להיות JSON תקין",
+            "invalid": "{label} אינו תקין",
+            "pattern": "{label} אינו תואם לתבנית הנדרשת",
+            "min": "{label} חייב להיות לפחות {min}",
+            "max": "{label} חייב להיות לכל היותר {max}"
         }
     }
 }

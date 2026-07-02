@@ -43,6 +43,22 @@ impl AuthUser {
         member.map(|_| ()).ok_or(AuthError::NotDaoMember)
     }
 
+    /// `verify_dao_member` mapped for HTTP handlers: a genuine non-member is `403`, while a
+    /// DB/internal failure is logged and surfaced as `500` instead of being silently collapsed
+    /// into a misleading `403`. Handlers should prefer this over `.map_err(|_| forbidden())`.
+    pub async fn verify_dao_member_for_http(
+        &self,
+        db: &sqlx::PgPool,
+        dao_id: &AccountIdRef,
+    ) -> Result<(), (StatusCode, String)> {
+        self.verify_dao_member(db, dao_id).await.map_err(|e| {
+            if !matches!(e, AuthError::NotDaoMember) {
+                tracing::error!("verify_dao_member failed for {}: {e}", self.account_id);
+            }
+            e.status_and_message()
+        })
+    }
+
     fn role_has_action_permission(role: &Value, action_name: &str) -> bool {
         role.get("permissions")
             .and_then(Value::as_array)
@@ -277,5 +293,92 @@ impl FromRequestParts<Arc<AppState>> for OptionalAuthUser {
             Ok(user) => Ok(OptionalAuthUser(Some(user))),
             Err(_) => Ok(OptionalAuthUser(None)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::test_utils::{build_test_state, policy_granting, seed_treasury_policy};
+    use serde_json::json;
+
+    /// The role/permission rules themselves — pure, via the synchronous
+    /// `verify_can_perform_action_with_policy`, so no DB / cache / RPC is involved. Covers all
+    /// three advertised branches: a Group role gates by member + action, an `Everyone` role lets
+    /// any account through, and a `*:*` wildcard permits any action.
+    #[test]
+    fn policy_permission_rules() {
+        let dao: AccountId = "test-dao.sputnik-dao.near".parse().unwrap();
+        let alice = AuthUser {
+            account_id: "alice.near".parse().unwrap(),
+        };
+        let bob = AuthUser {
+            account_id: "bob.near".parse().unwrap(),
+        };
+
+        // Group role granting one action: only the member, only that action.
+        let group = policy_granting("alice.near", &["*:ChangePolicy"]);
+        assert!(
+            alice
+                .verify_can_perform_action_with_policy(&group, &dao, "ChangePolicy")
+                .is_ok()
+        );
+        assert!(
+            alice
+                .verify_can_perform_action_with_policy(&group, &dao, "AddProposal")
+                .is_err(),
+            "an action the role does not grant must be rejected"
+        );
+        assert!(
+            bob.verify_can_perform_action_with_policy(&group, &dao, "ChangePolicy")
+                .is_err(),
+            "an account outside the role's group must be rejected"
+        );
+
+        // `Everyone` role: any account may perform the granted action.
+        let everyone = json!({
+            "roles": [{ "name": "all", "kind": "Everyone", "permissions": ["*:ChangePolicy"] }],
+        });
+        assert!(
+            bob.verify_can_perform_action_with_policy(&everyone, &dao, "ChangePolicy")
+                .is_ok(),
+            "an Everyone role must let any account through"
+        );
+
+        // `*:*` wildcard permission: the member may perform any action.
+        let admin = policy_granting("alice.near", &["*:*"]);
+        assert!(
+            alice
+                .verify_can_perform_action_with_policy(&admin, &dao, "AddProposal")
+                .is_ok(),
+            "a *:* permission must grant any action"
+        );
+    }
+
+    /// The cache seam this PR exists for: `seed_treasury_policy` must make
+    /// `verify_can_perform_action` (which fetches the policy through the cache) resolve without
+    /// touching the network. If the seeded key didn't match `fetch_treasury_policy_cached`'s key,
+    /// this would miss the cache and RPC a non-existent test DAO and error — so a passing assertion
+    /// also proves the seed and fetch keys agree.
+    #[sqlx::test]
+    async fn seeded_policy_is_served_from_cache(pool: sqlx::PgPool) {
+        let state = Arc::new(build_test_state(pool));
+        let dao: AccountId = "test-dao.sputnik-dao.near".parse().unwrap();
+        seed_treasury_policy(
+            &state,
+            &dao,
+            policy_granting("alice.near", &["*:ChangePolicy"]),
+        )
+        .await;
+
+        let alice = AuthUser {
+            account_id: "alice.near".parse().unwrap(),
+        };
+        assert!(
+            alice
+                .verify_can_perform_action(&state, &dao, "ChangePolicy")
+                .await
+                .is_ok()
+        );
     }
 }

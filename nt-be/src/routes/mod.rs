@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     extract::State,
     http::StatusCode,
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -304,6 +304,33 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/intents/status",
             get(handlers::intents::system_status::get_system_status),
         )
+        // Warnings endpoints
+        .route(
+            "/api/warnings",
+            get(handlers::warnings::public::get_warnings),
+        )
+        .route(
+            "/internal/warnings",
+            get(handlers::warnings::admin_page::serve_admin_page),
+        )
+        .route(
+            "/internal/api/warnings",
+            get(handlers::warnings::admin::list_warnings)
+                .post(handlers::warnings::admin::create_warning),
+        )
+        .route(
+            "/internal/api/warnings/{id}",
+            put(handlers::warnings::admin::update_warning)
+                .delete(handlers::warnings::admin::delete_warning),
+        )
+        .route(
+            "/internal/api/audit-log",
+            get(handlers::warnings::admin::get_audit_log),
+        )
+        .route(
+            "/internal/api/status-incidents",
+            get(handlers::status::incidents::get_status_incidents),
+        )
         .route(
             "/api/oh-dear/status/{service}",
             get(handlers::status::get_status),
@@ -344,6 +371,23 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/address-book/export",
             get(handlers::address_book::export_address_book),
+        )
+        // Proposal template (custom-proposal framework) endpoints
+        .route(
+            "/api/treasury/{dao_id}/proposal-templates",
+            get(handlers::proposal_templates::list_proposal_templates)
+                .post(handlers::proposal_templates::create_proposal_template),
+        )
+        .route(
+            "/api/treasury/{dao_id}/proposal-templates/{id}",
+            put(handlers::proposal_templates::update_proposal_template)
+                .delete(handlers::proposal_templates::delete_proposal_template),
+        )
+        // Custom Requests feature flag (opt-in, gated on ChangePolicy)
+        .route(
+            "/api/treasury/{dao_id}/custom-requests",
+            get(handlers::treasury::custom_requests::get_custom_requests_setting)
+                .put(handlers::treasury::custom_requests::set_custom_requests_setting),
         )
         // DAO endpoints
         .route(

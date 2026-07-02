@@ -6,7 +6,7 @@ interface ButtonWithTooltipProps extends React.ComponentProps<typeof Button> {
     /**
      * Message to show in tooltip when button is disabled
      */
-    tooltipMessage?: string;
+    tooltipMessage?: ReactNode;
     /**
      * Button content/text
      */

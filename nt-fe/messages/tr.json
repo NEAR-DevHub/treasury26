@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "Talebi ada veya kimliğe göre ara",
         "searchPlaceholderShort": "Ad veya kimliğe göre ara",
-        "errorLoading": "Öneriler yüklenirken hata oluştu. Lütfen tekrar deneyin.",
         "empty": {
             "title": "İlk talebinizi oluşturun",
             "description": "Ödeme, takas ve diğer eylemler için talepler oluşturulduktan sonra burada görünecek.",
@@ -616,6 +615,7 @@
             "actionReject": "reddetme",
             "actionRemove": "kaldırma",
             "insufficientBalance": "<highlight>{ids}</highlight> talepleri yetersiz bakiye nedeniyle onaylanamaz. Onayınız yalnızca kalan taleplere uygulanacak.",
+            "approveBlockedBulk": "{count, plural, one {Seçilen # talep şu anda onaylanamaz — devam etmek için seçimini kaldırın.} other {Seçilen # talep şu anda onaylanamaz — devam etmek için seçimlerini kaldırın.}}",
             "remove": "Kaldır",
             "confirm": "Onayla"
         },
@@ -854,7 +854,8 @@
             "general": "Genel",
             "voting": "Oylama",
             "preferences": "Tercihler",
-            "integrations": "Entegrasyonlar"
+            "integrations": "Entegrasyonlar",
+            "developer": "Geliştirici"
         },
         "general": {
             "validation": {
@@ -1425,10 +1426,6 @@
             "openInTelegram": "{bot} Telegram'da aç"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "Bakım Altında",
-        "maintenanceMessage": "Şu anda bakım gerçekleştiriyoruz. Bazı özellikler geçici olarak kullanılamayabilir. Lütfen kısa süre sonra tekrar kontrol edin."
-    },
     "creditsQuota": {
         "available": "{count} Kullanılabilir",
         "used": "{count} Kullanıldı",
@@ -1918,7 +1915,8 @@
         "guestSaveIntro": "Bu hazinenin misafirisiniz. Yalnızca verileri görüntüleyebilirsiniz.",
         "guestSaveAction": "Bu misafir hazineyi hazinelerinize kaydedebilirsiniz.",
         "newFeatureRich": "Yeni! 🎉 Daha hızlı, hatasız ödemeler için sık kullanılan adresleri kaydedin. Kişileriniz gizli kalır ve yalnızca ekibinize görünür.",
-        "newFeatureCta": "Deneyin"
+        "newFeatureCta": "Deneyin",
+        "requestTemplates": "Özel İstekler hazır. İlk istek türünüzü oluşturmak için burada açın."
     },
     "statusDate": {
         "expires": "Sona Erer",
@@ -1972,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "Talep Oluştur",
-        "noPermission": "Talep oluşturma izniniz yok"
+        "noPermission": "Talep oluşturma izniniz yok",
+        "paused": "Geçici olarak duraklatıldı",
+        "brieflyUnavailable": "Kısa süreliğine kullanılamıyor"
     },
     "address": {
         "copied": "Adres panoya kopyalandı"
@@ -2186,6 +2186,233 @@
             "docsDescription": "Tüm özellikler hakkında belgelerden bilgi edinin.",
             "videoTitle": "Demoyu İzleyin",
             "videoDescription": "Trezu'nun nasıl çalıştığını gösteren kısa bir video izleyin."
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "tarihinde",
+            "until": "tarihine kadar"
+        },
+        "actions": {
+            "payment": "ödeme",
+            "deposit": "para yatırma",
+            "exchange": "takas",
+            "approve": "onay",
+            "reject": "ret",
+            "remove": "kaldırma",
+            "proposal": "teklif",
+            "transaction": "işlem"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network} ağındaki {token}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### Planlı güncelleme\nÖdemeler {schedule} süresince kısa bir süreliğine kullanılamayacak.",
+                "exchange": "### Planlı güncelleme\nTakaslar {schedule} süresince kısa bir süreliğine kullanılamayacak.",
+                "deposit": "### Planlı güncelleme\nPara yatırma {schedule} süresince kısa bir süreliğine kullanılamayacak.",
+                "features": "### Planlı güncelleme\nBazı özellikler {schedule} süresince kısa bir süreliğine kullanılamayacak.",
+                "app": "### Planlı güncelleme\nTrezu {schedule} süresince kısa bir süreliğine kullanılamayacak.\nFonlarınız on-chain ve sizin kontrolünüzde."
+            },
+            "network_slow": {
+                "default": "### {subject} şu anda yavaş çalışıyor\n{action} işleminiz ağ düzeldiğinde gerçekleşecek, sadece normalden biraz daha uzun sürebilir."
+            },
+            "network_paused": {
+                "token": "### {token} şu anda duraklatıldı\nDiğer tokenlar normal şekilde çalışıyor.",
+                "network": "### {network} şu anda duraklatıldı\nBu süre zarfında farklı bir ağ kullanabilirsiniz.",
+                "token+network": "### {token} {network} üzerinde şu anda duraklatıldı\nDiğer tokenlar normal şekilde çalışıyor."
+            },
+            "features_paused": {
+                "payments": "### Ödemeler geçici olarak duraklatıldı.\nÜzerinde çalışıyoruz.",
+                "exchange": "### Takas geçici olarak duraklatıldı.\nÜzerinde çalışıyoruz.",
+                "deposit": "### Para yatırma geçici olarak duraklatıldı.\nÜzerinde çalışıyoruz.",
+                "features": "### Bazı özellikler geçici olarak duraklatıldı.\nÜzerinde çalışıyoruz."
+            },
+            "transactions_halted": {
+                "default": "### İşlemler şu anda duraklatıldı\nBir ağ sağlayıcısı düzelirken işlemler duraklatıldı. Fonlarınız on-chain ve sizin kontrolünüzde. Güncellemeler: {statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### Bakiye geçici olarak kullanılamıyor.\nBakiyelerinizi şu anda gösteremiyoruz. Fonlarınız on-chain ve tam olarak bıraktığınız yerde. Haznenizi kullanmaya devam edebilirsiniz."
+            },
+            "history_not_loading": {
+                "default": "### İşlem geçmişi şu anda yüklenmiyor\nBu yalnızca görüntülemeyi etkiler, fonlarınızı veya haznenizi etkilemez."
+            },
+            "requests_wont_process": {
+                "default": "### Geçici bir ağ sorunu nedeniyle birkaç dakika boyunca yeni istekler işlenemiyor.\n Fonlarınız etkilenmez, kısa süre sonra tekrar deneyin."
+            },
+            "approvals_paused": {
+                "default": "Bir ağ sağlayıcısı düzelirken istek onayları duraklatıldı.\n Bekleyen istekleri yine de reddedebilirsiniz ve hizmet geri geldiğinde onaylar tekrar çalışacak."
+            },
+            "wallet_login_unavailable": {
+                "login": "### Giriş şu anda kullanılamıyor.\nFonlarınız on-chain ve dokunulmamış – hizmet geri geldiğinde tekrar giriş yapabilirsiniz.",
+                "loginWallet": "### {wallet} ile giriş şu anda kullanılamıyor.\nFonlarınız on-chain ve dokunulmamış – hizmet geri geldiğinde tekrar giriş yapabilirsiniz."
+            },
+            "backend_down": {
+                "default": "### Geçici bir sorun yaşıyoruz\nBazı veriler yüklenmeyebilir. Fonlarınız on-chain ve etkilenmemiştir – kısa süre sonra tekrar deneyin."
+            },
+            "whole_app_down": {
+                "default": "### Trezu geçici olarak kullanılamıyor.\nFonlarınız on-chain ve sizin kontrolünüzde. Güncellemeler: {statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "Yeni hazne oluşturma şu anda yalnızca davetle mümkün. Bekleme listesine katılın, açıldığında size haber vereceğiz."
+            },
+            "funds_at_risk": {
+                "default": "### Bir sorunu araştırırken Trezu'yu duraklattık.\nHer şeyin yolunda olduğunu onaylayana kadar işlem yapmamayı öneririz. Güncellemeler: {statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### Planlanmış sağlayıcı bakımı\nÖdemeler {schedule} süresince kısa bir süreliğine kullanılamayabilir. Varlıklarınız zincir üzerinde ve kontrolünüzdedir.",
+                "exchange": "### Planlanmış sağlayıcı bakımı\nTakaslar {schedule} süresince kısa bir süreliğine kullanılamayabilir. Varlıklarınız zincir üzerinde ve kontrolünüzdedir.",
+                "deposit": "### Planlanmış sağlayıcı bakımı\nPara yatırmalar {schedule} süresince kısa bir süreliğine kullanılamayabilir. Varlıklarınız zincir üzerinde ve kontrolünüzdedir.",
+                "features": "### Planlanmış sağlayıcı bakımı\nBazı özellikler {schedule} süresince kısa bir süreliğine kullanılamayabilir. Varlıklarınız zincir üzerinde ve kontrolünüzdedir."
+            }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "İstek Şablonları",
+        "pageDescription": "Özel istek türleri için yeniden kullanılabilir şablonlar oluşturun.",
+        "loading": "Yükleniyor…",
+        "back": "Geri",
+        "howItWorks": "Nasıl Çalışır",
+        "toastDeleted": "Şablon silindi",
+        "errDelete": "Şablon silinemedi",
+        "deleteDialog": {
+            "title": "Şablonu sil",
+            "body": "<b>{name}</b> şablonunu silmek istiyor musunuz? Üyeler artık bundan teklif oluşturamayacak. Bu işlem geri alınamaz.",
+            "confirm": "Sil",
+            "deleting": "Siliniyor…"
+        },
+        "editor": {
+            "nameLabel": "Ad",
+            "namePlaceholder": "Karşılama Ayarla",
+            "nameRequired": "Ad gerekli",
+            "tabVisual": "Görsel",
+            "tabCode": "Kod",
+            "manifestLabel": "Manifest (JSON)",
+            "invalidJsonToast": "Görsel oluşturucuya geçmeden önce geçersiz JSON'ı düzeltin"
+        },
+        "index": {
+            "emptyTitle": "İlk şablonunuzu oluşturun",
+            "emptyDescription": "Sık gönderdiğiniz istekler için bir şablon oluşturun. Ekibiniz onu tek tıkla yeniden kullanır.",
+            "createTemplate": "Şablon Oluştur",
+            "heading": "Şablonlar",
+            "addNew": "Yeni Ekle",
+            "createRequest": "İstek Oluştur",
+            "actions": "Şablon işlemleri",
+            "edit": "Düzenle",
+            "pin": "Kenar Çubuğuna Sabitle",
+            "unpin": "Şablonu Sabitlemeyi Kaldır",
+            "delete": "Sil",
+            "errPin": "Sabitleme güncellenemedi"
+        },
+        "create": {
+            "title": "Yeni Şablon",
+            "submit": "Şablon Oluştur",
+            "submitting": "Oluşturuluyor…",
+            "toastCreated": "Şablon oluşturuldu",
+            "errCreate": "Şablon oluşturulamadı"
+        },
+        "edit": {
+            "title": "Şablonu Düzenle",
+            "submit": "Değişiklikleri Kaydet",
+            "deleteButton": "Şablonu Sil",
+            "toastSaved": "Şablon kaydedildi",
+            "errSave": "Şablon kaydedilemedi",
+            "notFound": "Şablon bulunamadı."
+        },
+        "fill": {
+            "noTemplate": "“{slug}” için şablon bulunamadı.",
+            "invalidManifest": "Bu şablonun manifesti geçersiz:",
+            "proposalFiled": "İstek oluşturuldu"
+        },
+        "developer": {
+            "title": "Özel İstekler",
+            "description": "Ödemeler ve takastan fazlasına ihtiyaç duyduğunuzda kendi istek türlerinizi oluşturun. İhtiyacınız olan alanları ekleyin; üyeleriniz onları diğer istekler gibi gönderebilir.",
+            "enable": "Etkinleştir",
+            "disable": "Devre Dışı Bırak",
+            "errUpdate": "Ayar güncellenemedi"
+        },
+        "visual": {
+            "detailsTitle": "Ayrıntılar",
+            "idLabel": "Kimlik (slug)",
+            "titleLabel": "Başlık",
+            "descriptionLabel": "Açıklama (isteğe bağlı)",
+            "summaryLabel": "Özet (isteğe bağlı, '{{'fields'}}' destekler)",
+            "onChainCallTitle": "Zincir üstü çağrı",
+            "onChainCallDescription": "Bu şablonun oluşturduğu sabit FunctionCall.",
+            "receiverLabel": "Alıcı (kontrat)",
+            "methodLabel": "Metot",
+            "depositLabel": "Depozito (yoctoNEAR)",
+            "gasLabel": "Gas",
+            "argumentsTitle": "Argümanlar",
+            "argumentsDescription": "Kontrata gönderilen argümanlar. Her biri Statik (sabit bir değer) ya da Üye girdisidir (dinamik) — ikincisinde girdinin yapılandırması satır içinde görünür.",
+            "otherInputsTitle": "Diğer girdiler",
+            "otherInputsDescription": "Yalnızca birleştirilmiş bir değerin içinde kullanılan girdiler (doğrudan bir üye-girdi argümanı değil) ve manuel olarak eklediğiniz girdiler. Çoğu şablonda hiç bulunmaz."
+        },
+        "fields": {
+            "addField": "Alan Ekle",
+            "inputHeading": "Girdi {number}",
+            "remove": "Kaldır",
+            "nameLabel": "Ad",
+            "unused": "Kullanılmıyor — hiçbir argüman '{{'{name}'}}' kullanmıyor; üyeler doldurur ama gönderilmez.",
+            "label": "Etiket",
+            "typeLabel": "Tür",
+            "required": "Zorunlu",
+            "optionsLabel": "Seçenekler (her satıra bir tane)",
+            "advancedOptions": "Gelişmiş seçenekler",
+            "helpLabel": "Yardım (isteğe bağlı)",
+            "helpPlaceholder": "Girdinin altında gösterilir",
+            "minLabel": "Min (isteğe bağlı)",
+            "maxLabel": "Maks (isteğe bağlı)",
+            "patternLabel": "Desen (regex, isteğe bağlı)",
+            "defaultLabel": "Varsayılan (isteğe bağlı)"
+        },
+        "fieldTypes": {
+            "account": "NEAR hesabı",
+            "token": "Token",
+            "uint": "Tam sayı",
+            "amount": "Token miktarı",
+            "number": "Sayı",
+            "text": "Metin",
+            "select": "Açılır liste",
+            "bool": "Anahtar",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "Argüman Ekle",
+            "argumentHeading": "Argüman {number}",
+            "remove": "Kaldır",
+            "argumentNameLabel": "Argüman adı",
+            "argumentNamePlaceholder": "argüman",
+            "typeLabel": "Tür",
+            "modeStatic": "Statik",
+            "modeMemberInput": "Üye girdisi",
+            "valueTypeLabel": "Değer türü",
+            "valueLabel": "Değer",
+            "stringValuePlaceholder": "metin veya '{{field}}'",
+            "insertField": "+ alan",
+            "keyPlaceholder": "anahtar",
+            "addKey": "Anahtar Ekle",
+            "addItem": "Öğe Ekle"
+        },
+        "form": {
+            "selectPlaceholder": "Bir seçenek seçin",
+            "fileProposal": "Teklif Oluştur"
+        },
+        "collapsePinned": "Sabitlenmiş şablonları daralt",
+        "expandPinned": "Sabitlenmiş şablonları genişlet",
+        "validation": {
+            "required": "{label} alanı zorunludur",
+            "account": "{label} geçerli bir NEAR hesabı olmalıdır",
+            "wholeNumber": "{label} bir tam sayı olmalıdır",
+            "number": "{label} bir sayı olmalıdır",
+            "select": "{label} için listelenen seçeneklerden birini seçin",
+            "json": "{label} geçerli bir JSON olmalıdır",
+            "invalid": "{label} geçersiz",
+            "pattern": "{label} gerekli desenle eşleşmiyor",
+            "min": "{label} en az {min} olmalıdır",
+            "max": "{label} en fazla {max} olmalıdır"
         }
     }
 }

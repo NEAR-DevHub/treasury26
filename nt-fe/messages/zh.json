@@ -548,7 +548,6 @@
         },
         "searchPlaceholder": "按名称或 ID 搜索请求",
         "searchPlaceholderShort": "按名称或 ID 搜索",
-        "errorLoading": "加载提案出错。请再试一次。",
         "empty": {
             "title": "创建您的第一个请求",
             "description": "付款、兑换及其他操作的请求在创建后将显示在此处。",
@@ -616,6 +615,7 @@
             "actionReject": "拒绝",
             "actionRemove": "移除",
             "insufficientBalance": "由于余额不足,请求 <highlight>{ids}</highlight> 无法被批准。您的批准将仅适用于其余请求。",
+            "approveBlockedBulk": "{count, plural, other {所选 # 个请求目前无法批准 — 请取消选择以继续。}}",
             "remove": "移除",
             "confirm": "确认"
         },
@@ -854,7 +854,8 @@
             "general": "常规",
             "voting": "投票",
             "preferences": "偏好设置",
-            "integrations": "集成"
+            "integrations": "集成",
+            "developer": "开发者"
         },
         "general": {
             "validation": {
@@ -1425,10 +1426,6 @@
             "openInTelegram": "在 Telegram 中打开 {bot}"
         }
     },
-    "systemStatus": {
-        "underMaintenance": "维护中",
-        "maintenanceMessage": "我们正在进行维护。某些功能可能暂时不可用。请稍后再试。"
-    },
     "creditsQuota": {
         "available": "{count} 可用",
         "used": "已用 {count}",
@@ -1918,7 +1915,8 @@
         "guestSaveIntro": "您是此金库的访客。您只能查看数据。",
         "guestSaveAction": "您可以将此访客金库保存到您的金库列表。",
         "newFeatureRich": "新功能!🎉 保存常用地址,实现更快、零错误的付款。 您的联系人保持私密,仅对您的团队可见。",
-        "newFeatureCta": "试用一下"
+        "newFeatureCta": "试用一下",
+        "requestTemplates": "自定义请求已就绪。在此打开它，构建你的第一个请求类型。"
     },
     "statusDate": {
         "expires": "过期",
@@ -1972,7 +1970,9 @@
     },
     "createRequestButton": {
         "idle": "创建请求",
-        "noPermission": "您没有创建请求的权限"
+        "noPermission": "您没有创建请求的权限",
+        "paused": "暂时暂停",
+        "brieflyUnavailable": "暂时不可用"
     },
     "address": {
         "copied": "地址已复制到剪贴板"
@@ -2186,6 +2186,233 @@
             "docsDescription": "在文档中了解所有功能。",
             "videoTitle": "观看演示",
             "videoDescription": "观看一段简短视频,了解 Trezu 的工作方式。"
+        }
+    },
+    "warnings": {
+        "offlineBadge": "Offline",
+        "statusPageLink": "[Status page](https://status.trezu.org/)",
+        "schedule": {
+            "on": "于",
+            "until": "至"
+        },
+        "actions": {
+            "payment": "支付",
+            "deposit": "充值",
+            "exchange": "兑换",
+            "approve": "批准",
+            "reject": "拒绝",
+            "remove": "移除",
+            "proposal": "提案",
+            "transaction": "交易"
+        },
+        "subject": {
+            "tokenOnNetwork": "{network} 上的 {token}"
+        },
+        "situations": {
+            "scheduled_maintenance": {
+                "payments": "### 计划更新\n支付将在{schedule}期间短暂不可用。",
+                "exchange": "### 计划更新\n兑换将在{schedule}期间短暂不可用。",
+                "deposit": "### 计划更新\n存款将在{schedule}期间短暂不可用。",
+                "features": "### 计划更新\n部分功能将在{schedule}期间短暂不可用。",
+                "app": "### 计划更新\nTrezu将在{schedule}期间短暂不可用。\n您的资金在链上（on-chain），由您自行掌控。"
+            },
+            "network_slow": {
+                "default": "### {subject}目前运行缓慢\n您的{action}将在恢复后完成，只是可能比平时需要更长时间。"
+            },
+            "network_paused": {
+                "token": "### {token}目前已暂停\n其他代币正常运作。",
+                "network": "### {network}目前已暂停\n您可以暂时使用其他网络。",
+                "token+network": "### {network}上的{token}目前已暂停\n其他代币正常运作。"
+            },
+            "features_paused": {
+                "payments": "### 支付已暂时停止。\n我们正在修复中。",
+                "exchange": "### 兑换已暂时停止。\n我们正在修复中。",
+                "deposit": "### 存款已暂时停止。\n我们正在修复中。",
+                "features": "### 部分功能已暂时停止。\n我们正在修复中。"
+            },
+            "transactions_halted": {
+                "default": "### 交易目前已暂停\n在网络供应商恢复期间，交易已暂停。您的资金在链上（on-chain），由您自行掌控。更新：{statusPageLink}"
+            },
+            "balance_unavailable": {
+                "default": "### 余额暂时不可用。\n我们目前无法显示您的余额。您的资金在链上（on-chain），安全保存在原处。您可以继续使用您的金库。"
+            },
+            "history_not_loading": {
+                "default": "### 交易记录目前无法加载\n这只影响您的查看，不影响您的资金或金库。"
+            },
+            "requests_wont_process": {
+                "default": "### 由于临时网络问题，无法处理新请求，请稍等几分钟。\n 您的资金不受影响，请稍后重试。"
+            },
+            "approvals_paused": {
+                "default": "在网络供应商恢复期间，请求审批已暂停。\n 您仍可拒绝待处理的请求，服务恢复后审批将重新可用。"
+            },
+            "wallet_login_unavailable": {
+                "login": "### 目前无法登录。\n您的资金在链上（on-chain）且安全无虞——服务恢复后即可重新登录。",
+                "loginWallet": "### 目前无法使用{wallet}登录。\n您的资金在链上（on-chain）且安全无虞——服务恢复后即可重新登录。"
+            },
+            "backend_down": {
+                "default": "### 我们遇到了临时问题\n部分数据可能无法加载。您的资金在链上（on-chain），不受影响——请稍后重试。"
+            },
+            "whole_app_down": {
+                "default": "### Trezu暂时不可用。\n您的资金在链上（on-chain），由您自行掌控。更新：{statusPageLink}"
+            },
+            "treasury_creation_unavailable": {
+                "default": "创建新金库目前仅限受邀用户。加入等候名单，开放后我们将通知您。"
+            },
+            "funds_at_risk": {
+                "default": "### 我们在调查问题期间已暂停Trezu。\n在我们确认一切安全之前，建议不要进行任何交易。更新：{statusPageLink}"
+            },
+            "provider_maintenance": {
+                "payments": "### 计划供应商维护\n支付可能在{schedule}期间短暂不可用。您的资金在链上，由您完全控制。",
+                "exchange": "### 计划供应商维护\n兑换可能在{schedule}期间短暂不可用。您的资金在链上，由您完全控制。",
+                "deposit": "### 计划供应商维护\n存款可能在{schedule}期间短暂不可用。您的资金在链上，由您完全控制。",
+                "features": "### 计划供应商维护\n部分功能可能在{schedule}期间短暂不可用。您的资金在链上，由您完全控制。"
+            }
+        }
+    },
+    "customTemplates": {
+        "pageTitle": "请求模板",
+        "pageDescription": "为自定义请求类型构建可复用的模板。",
+        "loading": "加载中…",
+        "back": "返回",
+        "howItWorks": "工作原理",
+        "toastDeleted": "模板已删除",
+        "errDelete": "删除模板失败",
+        "deleteDialog": {
+            "title": "删除模板",
+            "body": "确定删除 <b>{name}</b>？成员将无法再使用它发起提案。此操作无法撤销。",
+            "confirm": "删除",
+            "deleting": "正在删除…"
+        },
+        "editor": {
+            "nameLabel": "名称",
+            "namePlaceholder": "设置问候语",
+            "nameRequired": "名称为必填项",
+            "tabVisual": "可视化",
+            "tabCode": "代码",
+            "manifestLabel": "清单（JSON）",
+            "invalidJsonToast": "切换到可视化构建器前，请先修正无效的 JSON"
+        },
+        "index": {
+            "emptyTitle": "创建你的第一个模板",
+            "emptyDescription": "为你经常发送的请求创建一个模板。你的团队可以一键复用它。",
+            "createTemplate": "创建模板",
+            "heading": "模板",
+            "addNew": "新增",
+            "createRequest": "创建请求",
+            "actions": "模板操作",
+            "edit": "编辑",
+            "pin": "固定到侧边栏",
+            "unpin": "取消固定模板",
+            "delete": "删除",
+            "errPin": "无法更新固定状态"
+        },
+        "create": {
+            "title": "新建模板",
+            "submit": "创建模板",
+            "submitting": "正在创建…",
+            "toastCreated": "模板已创建",
+            "errCreate": "创建模板失败"
+        },
+        "edit": {
+            "title": "编辑模板",
+            "submit": "保存更改",
+            "deleteButton": "删除模板",
+            "toastSaved": "模板已保存",
+            "errSave": "保存模板失败",
+            "notFound": "未找到模板。"
+        },
+        "fill": {
+            "noTemplate": "未找到与“{slug}”对应的模板。",
+            "invalidManifest": "此模板的清单无效：",
+            "proposalFiled": "请求已提交"
+        },
+        "developer": {
+            "title": "自定义请求",
+            "description": "当你需要的不只是付款和兑换时，可构建你自己的请求类型。添加你需要的字段，你的成员便能像提交其他请求一样提交它们。",
+            "enable": "启用",
+            "disable": "停用",
+            "errUpdate": "无法更新此设置"
+        },
+        "visual": {
+            "detailsTitle": "详情",
+            "idLabel": "ID（slug）",
+            "titleLabel": "标题",
+            "descriptionLabel": "描述（可选）",
+            "summaryLabel": "摘要（可选，支持 '{{'fields'}}'）",
+            "onChainCallTitle": "链上调用",
+            "onChainCallDescription": "此模板提交的固定 FunctionCall。",
+            "receiverLabel": "接收方（合约）",
+            "methodLabel": "方法",
+            "depositLabel": "存入金额（yoctoNEAR）",
+            "gasLabel": "Gas",
+            "argumentsTitle": "参数",
+            "argumentsDescription": "发送给合约的参数。每个参数为静态值（固定值）或成员输入（动态）——后者的配置会内联显示。",
+            "otherInputsTitle": "其他输入",
+            "otherInputsDescription": "仅在组合值内部使用的输入（而非直接作为成员输入参数），以及你手动添加的任何输入。大多数模板没有此类输入。"
+        },
+        "fields": {
+            "addField": "添加字段",
+            "inputHeading": "输入 {number}",
+            "remove": "移除",
+            "nameLabel": "名称",
+            "unused": "未使用 —— 没有参数使用 '{{'{name}'}}'；成员会填写它，但不会被发送。",
+            "label": "标签",
+            "typeLabel": "类型",
+            "required": "必填",
+            "optionsLabel": "选项（每行一个）",
+            "advancedOptions": "高级选项",
+            "helpLabel": "帮助说明（可选）",
+            "helpPlaceholder": "显示在输入框下方",
+            "minLabel": "最小值（可选）",
+            "maxLabel": "最大值（可选）",
+            "patternLabel": "格式（regex，可选）",
+            "defaultLabel": "默认值（可选）"
+        },
+        "fieldTypes": {
+            "account": "NEAR 账户",
+            "token": "代币",
+            "uint": "整数",
+            "amount": "代币数量",
+            "number": "数字",
+            "text": "文本",
+            "select": "下拉菜单",
+            "bool": "开关",
+            "json": "JSON"
+        },
+        "args": {
+            "addArgument": "添加参数",
+            "argumentHeading": "参数 {number}",
+            "remove": "移除",
+            "argumentNameLabel": "参数名称",
+            "argumentNamePlaceholder": "参数",
+            "typeLabel": "类型",
+            "modeStatic": "静态值",
+            "modeMemberInput": "成员输入",
+            "valueTypeLabel": "值类型",
+            "valueLabel": "值",
+            "stringValuePlaceholder": "文本或 '{{field}}'",
+            "insertField": "+ 字段",
+            "keyPlaceholder": "键",
+            "addKey": "添加键",
+            "addItem": "添加项"
+        },
+        "form": {
+            "selectPlaceholder": "请选择一个选项",
+            "fileProposal": "提交提案"
+        },
+        "collapsePinned": "折叠已固定的模板",
+        "expandPinned": "展开已固定的模板",
+        "validation": {
+            "required": "{label}为必填项",
+            "account": "{label}必须是有效的 NEAR 账户",
+            "wholeNumber": "{label}必须是整数",
+            "number": "{label}必须是数字",
+            "select": "{label}：请选择列表中的选项",
+            "json": "{label}必须是有效的 JSON",
+            "invalid": "{label}无效",
+            "pattern": "{label}与要求的格式不匹配",
+            "min": "{label}不得小于 {min}",
+            "max": "{label}不得大于 {max}"
         }
     }
 }
