@@ -85,7 +85,9 @@ pub struct QuoteEnvelope {
     pub quote: Option<QuoteData>,
 }
 
-pub async fn fetch_swap_status_response(
+/// Fetch swap status for a public (non-confidential) treasury from the 1Click
+/// `/v0/status` endpoint.
+pub async fn fetch_public_swap_status(
     http_client: &Client,
     oneclick_api_url: &str,
     oneclick_jwt_token: Option<&String>,
@@ -215,41 +217,49 @@ pub async fn get_swap_status(
     let result = state
         .cache
         .cached(CacheTier::ShortTerm, cache_key, async move {
-            if let Some(dao_id) = dao_id.as_deref() {
-                let is_confidential = is_confidential_dao(&db_pool, dao_id).await.map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to check confidential treasury: {}", e),
-                    )
-                })?;
-
-                if is_confidential {
-                    // No bronze row yet → return PROCESSING so the UI shows a
-                    // pending state rather than nothing.
-                    return Ok(
-                        fetch_confidential_swap_status(&db_pool, dao_id, &deposit_address)
-                            .await?
-                            .unwrap_or_else(|| SimplifiedSwapStatusResponse {
-                                status: SwapStatus::Processing,
-                                updated_at: chrono::Utc::now().to_rfc3339(),
-                            }),
-                    );
+            // Resolve the confidential treasury id up front so the two status
+            // sources read as equal-level alternatives below (confidential
+            // treasuries read from our own store; public ones hit 1Click).
+            let confidential_dao_id = match dao_id.as_deref() {
+                Some(dao_id)
+                    if is_confidential_dao(&db_pool, dao_id).await.map_err(|e| {
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            format!("Failed to check confidential treasury: {}", e),
+                        )
+                    })? =>
+                {
+                    Some(dao_id.to_string())
                 }
+                _ => None,
+            };
+
+            if let Some(dao_id) = confidential_dao_id {
+                // Not ingested yet → PROCESSING so the UI shows a pending state
+                // rather than nothing.
+                Ok::<_, (StatusCode, String)>(
+                    fetch_confidential_swap_status(&db_pool, &dao_id, &deposit_address)
+                        .await?
+                        .unwrap_or_else(|| SimplifiedSwapStatusResponse {
+                            status: SwapStatus::Processing,
+                            updated_at: chrono::Utc::now().to_rfc3339(),
+                        }),
+                )
+            } else {
+                let full_response = fetch_public_swap_status(
+                    &http_client,
+                    &oneclick_api_url,
+                    oneclick_jwt_token.as_ref(),
+                    &deposit_address,
+                    deposit_memo.as_deref(),
+                )
+                .await?;
+
+                Ok::<_, (StatusCode, String)>(SimplifiedSwapStatusResponse {
+                    status: full_response.status,
+                    updated_at: full_response.updated_at,
+                })
             }
-
-            let full_response = fetch_swap_status_response(
-                &http_client,
-                &oneclick_api_url,
-                oneclick_jwt_token.as_ref(),
-                &deposit_address,
-                deposit_memo.as_deref(),
-            )
-            .await?;
-
-            Ok::<_, (StatusCode, String)>(SimplifiedSwapStatusResponse {
-                status: full_response.status,
-                updated_at: full_response.updated_at,
-            })
         })
         .await?;
 
@@ -275,7 +285,7 @@ pub async fn get_quote_by_deposit_address(
     let result = state
         .cache
         .cached(CacheTier::ShortTerm, cache_key, async move {
-            let full_response = fetch_swap_status_response(
+            let full_response = fetch_public_swap_status(
                 &http_client,
                 &oneclick_api_url,
                 oneclick_jwt_token.as_ref(),
