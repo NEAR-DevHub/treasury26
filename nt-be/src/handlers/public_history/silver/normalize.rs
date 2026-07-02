@@ -106,6 +106,13 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         .ok_or_else(|| "MT event missing token_id".to_string())?;
     let decimals = row.decimals.unwrap_or(24);
     let kind = leg_kind_from_cause(row.cause.as_deref());
+    let direction = if delta.is_positive() {
+        PublicTransferDirection::Incoming
+    } else if delta.is_negative() {
+        PublicTransferDirection::Outgoing
+    } else {
+        PublicTransferDirection::Internal
+    };
     let amount = PublicAmount::from_raw(delta.abs(), decimals);
 
     Ok(Some(NormalizedTransferLeg {
@@ -121,7 +128,7 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         block_timestamp: row.block_timestamp.clone(),
         block_time: row.block_time,
         asset: PublicAsset::intents(token_id),
-        direction: direction_from_delta(&delta, kind),
+        direction,
         counterparty: row.involved_account_id.clone(),
         amount,
         leg_kind: kind,
@@ -194,6 +201,10 @@ pub fn normalize_bronze_row(
 
 #[cfg(test)]
 mod tests {
+    use bigdecimal::BigDecimal;
+    use chrono::{TimeZone, Utc};
+    use std::str::FromStr;
+
     use super::super::models::PublicTokenStandard;
     use super::*;
 
@@ -209,5 +220,49 @@ mod tests {
             PublicAsset::intents("x").token_standard(),
             PublicTokenStandard::Nep245
         );
+    }
+
+    #[test]
+    fn mt_mint_is_incoming_deposit_not_internal() {
+        let row = BronzePublicHistoryRow {
+            id: 1,
+            account_id: "tobi.sputnik-dao.near".to_string(),
+            source: PublicHistorySource::NearblocksMt.as_str().to_string(),
+            source_event_key: "mt-mint".to_string(),
+            transaction_hash: Some("tx".to_string()),
+            receipt_id: Some("receipt".to_string()),
+            event_index: Some(0),
+            block_height: 205251934,
+            block_timestamp: BigDecimal::from(0),
+            block_time: Utc.timestamp_opt(0, 0).unwrap(),
+            affected_account_id: "tobi.sputnik-dao.near".to_string(),
+            involved_account_id: None,
+            contract_account_id: Some("intents.near".to_string()),
+            token_id: Some(
+                "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near".to_string(),
+            ),
+            cause: Some("MINT".to_string()),
+            action_kind: None,
+            method_name: None,
+            delta_amount_raw: Some(BigDecimal::from(100000)),
+            decimals: Some(6),
+            deposit_raw: None,
+            outcome_status: None,
+            raw_payload: serde_json::json!({}),
+            proposal_ref: None,
+            proposal_id: None,
+        };
+
+        let leg = normalize_bronze_row(&row)
+            .expect("normalization should succeed")
+            .expect("mint should create a leg");
+
+        assert_eq!(leg.direction, PublicTransferDirection::Incoming);
+        assert_eq!(leg.leg_kind, PublicTransferLegKind::Mint);
+        assert_eq!(
+            leg.asset.token_id(),
+            "intents.near:nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+        );
+        assert_eq!(leg.amount.amount, BigDecimal::from_str("0.1").unwrap());
     }
 }

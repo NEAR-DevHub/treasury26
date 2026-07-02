@@ -27,6 +27,7 @@ use crate::config::get_plan_config;
 use crate::handlers::balance_changes::query_builder::{
     BalanceChangeFilters, FROM_ACCOUNT_EXPR, RELAYER_ACCOUNT, TO_ACCOUNT_EXPR, build_count_query,
 };
+use crate::handlers::balance_changes::{confidential_list, public_list};
 use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, get_balance_changes_internal};
@@ -124,6 +125,10 @@ pub async fn get_balance_chart(
 ) -> Result<Json<ChartResponse>, (StatusCode, String)> {
     user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await?;
+    let is_confidential =
+        confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str())
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let last_synced_at = sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
         "SELECT last_synced_at FROM monitored_accounts WHERE account_id = $1",
@@ -136,14 +141,25 @@ pub async fn get_balance_chart(
     .flatten(); // unwrap Option<DateTime> from nullable column
 
     // Load prior balances (most recent balance_after for each token before start_time)
-    let prior_balances = load_prior_balances(
-        &state.db_pool,
-        params.account_id.as_str(),
-        params.start_time,
-        params.token_ids.as_ref(),
-    )
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let prior_balances = if is_confidential {
+        load_prior_balances(
+            &state.db_pool,
+            params.account_id.as_str(),
+            params.start_time,
+            params.token_ids.as_ref(),
+        )
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    } else {
+        public_list::load_prior_balances(
+            &state.db_pool,
+            params.account_id.as_str(),
+            params.start_time,
+            params.token_ids.as_ref(),
+        )
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    };
 
     // Compute interval timestamps up front so we can pass them to SQL for the
     // sponsor totals query — one cumulative sum per chart point, no per-snapshot scanning.
@@ -160,13 +176,17 @@ pub async fn get_balance_chart(
     // For each interval timestamp, fetch the cumulative sponsored NEAR amount up to
     // that point. We hide sponsor.trezu.near deposits and CreateAccount amounts from
     // users, so the chart subtracts them to show the balance without our top-ups.
-    let sponsor_totals = load_sponsor_totals_per_interval(
-        &state.db_pool,
-        params.account_id.as_str(),
-        &interval_timestamps,
-    )
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let sponsor_totals = if is_confidential {
+        load_sponsor_totals_per_interval(
+            &state.db_pool,
+            params.account_id.as_str(),
+            &interval_timestamps,
+        )
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    } else {
+        HashMap::new()
+    };
 
     let query = BalanceChangesQuery {
         account_id: params.account_id.clone(),
@@ -1512,6 +1532,15 @@ pub async fn get_recent_activity(
 
     let limit = params.limit.unwrap_or(10).min(100);
     let offset = params.offset.unwrap_or(0);
+    let is_confidential =
+        confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str())
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": e.to_string() })),
+                )
+            })?;
 
     // Get account plan info and calculate date cutoff
     let account_plan = get_account_plan_info(&state.db_pool, params.account_id.as_str())
@@ -1662,7 +1691,37 @@ pub async fn get_recent_activity(
         count_query = count_query.bind(to_accounts_not);
     }
 
-    let total: i64 = count_query.fetch_one(&state.db_pool).await.unwrap_or(0);
+    let total: i64 = if is_confidential {
+        count_query.fetch_one(&state.db_pool).await.unwrap_or(0)
+    } else {
+        let count_query = BalanceChangesQuery {
+            account_id: params.account_id.clone(),
+            limit: None,
+            offset: None,
+            start_time: count_date_cutoff_str
+                .clone()
+                .or_else(|| start_date.map(|s| s.to_string())),
+            end_time: end_date.map(|s| s.to_string()),
+            token_ids: token_ids.clone(),
+            exclude_token_ids: exclude_token_ids.clone(),
+            transaction_types: transaction_types_for_query.clone(),
+            min_amount: None,
+            max_amount: None,
+            tx_hash: params.tx_hash.clone(),
+            from_accounts: params.from_account.clone(),
+            from_accounts_not: params.from_account_not.clone(),
+            to_accounts: params.to_account.clone(),
+            to_accounts_not: params.to_account_not.clone(),
+            include_metadata: Some(false),
+            include_prices: Some(false),
+            include_chain_metadata: Some(false),
+            exclude_near_dust: true,
+            exclude_swaps_from_direction: true,
+        };
+        public_list::count_balance_change_legs(&state.db_pool, &count_query)
+            .await
+            .unwrap_or(0)
+    };
 
     // If min_usd_value filter is specified, we need to fetch more records and filter them
     // because we can't filter by USD value in the database (prices come from API)

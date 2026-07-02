@@ -283,7 +283,10 @@ mod tests {
 
     #[test]
     fn canonicalize_passes_through_defuse_ids() {
-        assert_eq!(canonicalize_token_id("nep141:wrap.near"), "nep141:wrap.near");
+        assert_eq!(
+            canonicalize_token_id("nep141:wrap.near"),
+            "nep141:wrap.near"
+        );
         assert_eq!(
             canonicalize_token_id("nep245:v2_1.omni.hot.tg:137_abc"),
             "nep245:v2_1.omni.hot.tg:137_abc"

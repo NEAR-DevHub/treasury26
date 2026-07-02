@@ -17,13 +17,23 @@ use super::repository::{
     load_silver_suffix, seed_ledger_before, upsert_gold_event, upsert_projection_error,
 };
 use crate::AppState;
+
 use crate::handlers::public_history::silver::models::{
     PublicTransactionType, PublicTransferDirection, PublicTransferLegKind, SilverTransferLegRow,
 };
 use crate::services::TokenPriceService;
+use std::sync::LazyLock;
+
+use crate::utils::env::EnvVars;
 
 const PUBLIC_GOLD_SCHEDULER_TICK: Duration = Duration::from_secs(10);
 const PUBLIC_GOLD_WORKERS: usize = 4;
+
+/// The NEAR runtime's implicit account; sender of gas-fee reward refunds
+/// credited to contract accounts (~0.0001 NEAR per contract call).
+const SYSTEM_ACCOUNT: &str = "system";
+
+static ENV_VARS: LazyLock<EnvVars> = LazyLock::new(EnvVars::default);
 
 struct ExchangePairs {
     outgoing_to_incoming: HashMap<i64, i64>,
@@ -205,14 +215,34 @@ fn leg_kind(leg: &SilverTransferLegRow) -> Result<PublicTransferLegKind, String>
     PublicTransferLegKind::from_db(&leg.leg_kind)
 }
 
+/// Native NEAR movements that are relayer/protocol noise, never real
+/// treasury activity: proposal-storage top-ups & bonds fronted by the
+/// sponsor, and gas-fee rewards credited by `system`. Hidden from the
+/// public history feed to match `balance_changes`.
+fn is_noise_native_movement(leg: &SilverTransferLegRow) -> bool {
+    if leg.token_standard != "native" {
+        return false;
+    }
+    let relayer_account = ENV_VARS.signer_id.as_str();
+    matches!(
+        leg.counterparty.as_deref(),
+        Some(cp) if cp == relayer_account || cp == SYSTEM_ACCOUNT
+    )
+}
+
 fn is_projectable_transfer(leg: &SilverTransferLegRow) -> Result<bool, String> {
+    if is_noise_native_movement(leg) {
+        return Ok(false);
+    }
     let direction = leg_direction(leg)?;
     let kind = leg_kind(leg)?;
+    let is_nep245 = leg.token_standard == "nep245";
     Ok(direction != PublicTransferDirection::Internal
-        && !matches!(
-            kind,
-            PublicTransferLegKind::Mint | PublicTransferLegKind::Burn
-        ))
+        && (is_nep245
+            || !matches!(
+                kind,
+                PublicTransferLegKind::Mint | PublicTransferLegKind::Burn
+            )))
 }
 
 fn is_quote_matched_exchange_deposit(
@@ -770,8 +800,7 @@ pub async fn project_public_gold_for_dirty_accounts(
         let token_prices = Arc::clone(token_prices);
         async move {
             let account_id = account.account_id;
-            let result =
-                project_public_gold_for_account(&pool, &token_prices, &account_id).await;
+            let result = project_public_gold_for_account(&pool, &token_prices, &account_id).await;
             (account_id, result)
         }
     }))
@@ -847,9 +876,109 @@ pub fn spawn_public_gold_projection_worker(state: Arc<AppState>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Once;
+
+    static INIT_TEST_ENV: Once = Once::new();
+
+    fn init_test_env() {
+        INIT_TEST_ENV.call_once(|| {
+            dotenvy::from_filename(".env").ok();
+            dotenvy::from_filename_override(".env.test").ok();
+        });
+    }
 
     fn decimal(value: &str) -> BigDecimal {
         value.parse().expect("valid decimal")
+    }
+
+    fn leg(token_standard: &str, counterparty: Option<&str>, amount: &str) -> SilverTransferLegRow {
+        SilverTransferLegRow {
+            id: 1,
+            account_id: "dao.near".to_string(),
+            leg_key: "leg-1".to_string(),
+            proposal_ref: None,
+            proposal_id: None,
+            transaction_hash: None,
+            receipt_id: None,
+            block_height: 1,
+            block_time: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0).unwrap(),
+            token_standard: token_standard.to_string(),
+            token_id: if token_standard == "native" {
+                "near".to_string()
+            } else {
+                "usdt.tether-token.near".to_string()
+            },
+            direction: "incoming".to_string(),
+            counterparty: counterparty.map(str::to_string),
+            amount_raw: decimal(amount),
+            amount: decimal(amount),
+            decimals: 24,
+            leg_kind: "transfer".to_string(),
+            raw_payload: serde_json::json!({}),
+            proposal_status: None,
+            proposal_created_at: None,
+            proposal_executed_at: None,
+            proposal_execution_block_height: None,
+            proposal_execution_transaction_hash: None,
+            quote_metadata: None,
+            quote_deposit_address: None,
+        }
+    }
+
+    fn relayer_account() -> String {
+        init_test_env();
+        ENV_VARS.signer_id.as_str().to_string()
+    }
+
+    #[test]
+    fn sponsor_storage_topup_is_noise() {
+        init_test_env();
+        // ~0.03 NEAR storage top-up from the relayer.
+        let row = leg("native", Some(&relayer_account()), "0.03");
+        assert!(is_noise_native_movement(&row));
+        assert!(!is_projectable_transfer(&row).unwrap());
+    }
+
+    #[test]
+    fn sponsor_bond_is_noise_regardless_of_amount() {
+        init_test_env();
+        // Legacy proposal bond fronted by the relayer, well above any dust threshold.
+        let row = leg("native", Some(&relayer_account()), "1.1");
+        assert!(is_noise_native_movement(&row));
+        assert!(!is_projectable_transfer(&row).unwrap());
+    }
+
+    #[test]
+    fn system_gas_reward_is_noise() {
+        init_test_env();
+        let row = leg("native", Some(SYSTEM_ACCOUNT), "0.0001");
+        assert!(is_noise_native_movement(&row));
+        assert!(!is_projectable_transfer(&row).unwrap());
+    }
+
+    #[test]
+    fn real_user_native_deposit_is_kept() {
+        init_test_env();
+        let row = leg("native", Some("alice.near"), "0.001");
+        assert!(!is_noise_native_movement(&row));
+        assert!(is_projectable_transfer(&row).unwrap());
+    }
+
+    #[test]
+    fn non_native_leg_from_sponsor_is_kept() {
+        init_test_env();
+        // Native-only guard: FT legs are never treated as native noise.
+        let row = leg("nep141", Some(&relayer_account()), "5");
+        assert!(!is_noise_native_movement(&row));
+        assert!(is_projectable_transfer(&row).unwrap());
+    }
+
+    #[test]
+    fn nep245_mint_is_projectable() {
+        let mut row = leg("nep245", None, "0.1");
+        row.direction = "incoming".to_string();
+        row.leg_kind = "mint".to_string();
+        assert!(is_projectable_transfer(&row).unwrap());
     }
 
     #[test]

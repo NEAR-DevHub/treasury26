@@ -267,8 +267,11 @@ impl TokenPriceIngestor {
 
         create_day_partition(&self.pool, today).await?;
         create_day_partition(&self.pool, today + Duration::days(1)).await?;
-        drop_expired_partitions(&self.pool, today - Duration::days(MINUTE_PRICE_RETENTION_DAYS))
-            .await?;
+        drop_expired_partitions(
+            &self.pool,
+            today - Duration::days(MINUTE_PRICE_RETENTION_DAYS),
+        )
+        .await?;
 
         self.partitions_ensured_for = Some(today);
         Ok(())
