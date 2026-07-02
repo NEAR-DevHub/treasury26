@@ -2,9 +2,11 @@ use std::fmt;
 
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum PublicHistorySource {
     NearblocksFt,
     NearblocksMt,

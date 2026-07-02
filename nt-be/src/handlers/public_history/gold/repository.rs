@@ -124,14 +124,18 @@ pub async fn load_silver_suffix(
             l.token_id,
             l.direction::text AS direction,
             l.counterparty,
+            l.amount_raw,
             l.amount,
+            l.decimals,
             l.leg_kind::text AS leg_kind,
             l.raw_payload,
             dp.status::text AS proposal_status,
             dp.proposal_created_at,
             dp.proposal_executed_at,
             dp.proposal_execution_block_height,
-            dp.proposal_execution_transaction_hash
+            dp.proposal_execution_transaction_hash,
+            dp.quote_metadata,
+            dp.quote_deposit_address
         FROM silver_public_transfer_legs l
         LEFT JOIN dao_proposals dp
           ON dp.id = l.proposal_ref
@@ -183,15 +187,14 @@ pub async fn upsert_gold_event(
             proposal_executed_at,
             proposal_execution_block_height,
             proposal_execution_transaction_hash,
-            swap_correlation_id,
-            swap_status,
+            status,
             raw_payload
         )
         VALUES (
             $1, $2, $3, $4, $5, $6::public_transaction_type, $7, $8,
             $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
             $19, $20, $21, $22, $23, $24, $25, $26::proposal_status,
-            $27, $28, $29, $30, $31, $32, $33
+            $27, $28, $29, $30, $31::public_history_event_status, $32
         )
         ON CONFLICT (gold_event_key) DO UPDATE SET
             primary_transfer_leg_id = EXCLUDED.primary_transfer_leg_id,
@@ -223,8 +226,7 @@ pub async fn upsert_gold_event(
             proposal_executed_at = EXCLUDED.proposal_executed_at,
             proposal_execution_block_height = EXCLUDED.proposal_execution_block_height,
             proposal_execution_transaction_hash = EXCLUDED.proposal_execution_transaction_hash,
-            swap_correlation_id = EXCLUDED.swap_correlation_id,
-            swap_status = EXCLUDED.swap_status,
+            status = EXCLUDED.status,
             raw_payload = EXCLUDED.raw_payload,
             updated_at = NOW()
         "#,
@@ -259,8 +261,7 @@ pub async fn upsert_gold_event(
     .bind(event.proposal_executed_at)
     .bind(event.proposal_execution_block_height)
     .bind(&event.proposal_execution_transaction_hash)
-    .bind(&event.swap_correlation_id)
-    .bind(&event.swap_status)
+    .bind(event.status.as_str())
     .bind(&event.raw_payload)
     .execute(&mut **tx)
     .await?;

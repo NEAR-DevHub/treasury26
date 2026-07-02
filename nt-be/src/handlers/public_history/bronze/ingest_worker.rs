@@ -5,6 +5,7 @@ use axum::http::StatusCode;
 use futures::StreamExt;
 
 use crate::AppState;
+use crate::handlers::public_history::bronze::NearblocksPriority;
 use crate::handlers::public_history::bronze::api::{
     NearblocksPage, fetch_ft_transfers, fetch_mt_transfers, fetch_receipts,
 };
@@ -17,10 +18,10 @@ use crate::handlers::public_history::proposals::linker::link_public_proposal_rec
 
 const PUBLIC_HISTORY_SCHEDULER_TICK: Duration = Duration::from_secs(10);
 const PUBLIC_HISTORY_ACCOUNT_LIMIT: i64 = 20;
-const PUBLIC_HISTORY_PAGE_LIMIT: u32 = 50;
-const PUBLIC_HISTORY_WORKERS: usize = 4;
+pub(crate) const PUBLIC_HISTORY_PAGE_LIMIT: u32 = 25;
+const PUBLIC_HISTORY_WORKERS: usize = 2;
 
-type HandlerResult<T> = Result<T, (StatusCode, String)>;
+pub(crate) type HandlerResult<T> = Result<T, (StatusCode, String)>;
 
 #[derive(Debug, Clone, Default)]
 struct SourceCycleStats {
@@ -32,7 +33,7 @@ struct SourceCycleStats {
     rows_changed: u64,
 }
 
-fn latest_seen(page: &NearblocksPage) -> (Option<i64>, Option<bigdecimal::BigDecimal>) {
+pub(crate) fn latest_seen(page: &NearblocksPage) -> (Option<i64>, Option<bigdecimal::BigDecimal>) {
     let height = page.events.iter().map(|event| event.block_height).max();
     let timestamp = page
         .events
@@ -42,21 +43,43 @@ fn latest_seen(page: &NearblocksPage) -> (Option<i64>, Option<bigdecimal::BigDec
     (height, timestamp)
 }
 
-async fn fetch_source_page(
+pub(crate) async fn fetch_source_page(
     state: &AppState,
     account_id: &str,
     source: PublicHistorySource,
     cursor: Option<&str>,
+    priority: NearblocksPriority,
 ) -> HandlerResult<NearblocksPage> {
     match source {
         PublicHistorySource::NearblocksFt => {
-            fetch_ft_transfers(state, account_id, cursor, PUBLIC_HISTORY_PAGE_LIMIT).await
+            fetch_ft_transfers(
+                state,
+                account_id,
+                cursor,
+                PUBLIC_HISTORY_PAGE_LIMIT,
+                priority,
+            )
+            .await
         }
         PublicHistorySource::NearblocksMt => {
-            fetch_mt_transfers(state, account_id, cursor, PUBLIC_HISTORY_PAGE_LIMIT).await
+            fetch_mt_transfers(
+                state,
+                account_id,
+                cursor,
+                PUBLIC_HISTORY_PAGE_LIMIT,
+                priority,
+            )
+            .await
         }
         PublicHistorySource::NearblocksReceipt => {
-            fetch_receipts(state, account_id, cursor, PUBLIC_HISTORY_PAGE_LIMIT).await
+            fetch_receipts(
+                state,
+                account_id,
+                cursor,
+                PUBLIC_HISTORY_PAGE_LIMIT,
+                priority,
+            )
+            .await
         }
     }
 }
@@ -66,7 +89,8 @@ async fn poll_latest_page(
     account_id: &str,
     source: PublicHistorySource,
 ) -> HandlerResult<(NearblocksPage, u64, u64, u64)> {
-    let page = fetch_source_page(state, account_id, source, None).await?;
+    let page =
+        fetch_source_page(state, account_id, source, None, NearblocksPriority::Latest).await?;
     let upsert_result = upsert_public_history_events(&state.db_pool, &page.events)
         .await
         .map_err(|e| {
@@ -138,9 +162,18 @@ async fn backfill_one_page(
         return Ok((0, 0, 0));
     }
 
-    let backward_cursor = cursor.as_ref().and_then(|cursor| cursor.backward_cursor.as_deref());
+    let backward_cursor = cursor
+        .as_ref()
+        .and_then(|cursor| cursor.backward_cursor.as_deref());
     let saved_backward_cursor = backward_cursor.map(ToString::to_string);
-    let page = fetch_source_page(state, account_id, source, backward_cursor).await?;
+    let page = fetch_source_page(
+        state,
+        account_id,
+        source,
+        backward_cursor,
+        NearblocksPriority::Backfill,
+    )
+    .await?;
     let upsert_result = upsert_public_history_events(&state.db_pool, &page.events)
         .await
         .map_err(|e| {
@@ -196,9 +229,14 @@ async fn process_account_source(
             .map_err(|(status, message)| format!("latest poll failed ({}): {}", status, message))?;
 
     let (backfill_touched, backfill_inserted, backfill_changed) =
-        backfill_one_page(state, &account_id, source).await.map_err(|(status, message)| {
-            format!("backfill failed after latest poll ({}): {}", status, message)
-        })?;
+        backfill_one_page(state, &account_id, source)
+            .await
+            .map_err(|(status, message)| {
+                format!(
+                    "backfill failed after latest poll ({}): {}",
+                    status, message
+                )
+            })?;
 
     Ok((
         latest_touched + backfill_touched,
@@ -211,16 +249,19 @@ async fn tick_public_history_source(
     state: &AppState,
     source: PublicHistorySource,
 ) -> SourceCycleStats {
-    let account_ids =
-        match load_due_public_history_accounts(&state.db_pool, source, PUBLIC_HISTORY_ACCOUNT_LIMIT)
-            .await
-        {
-            Ok(account_ids) => account_ids,
-            Err(e) => {
-                tracing::error!(source = %source, error = %e, "failed to load public history accounts");
-                return SourceCycleStats::default();
-            }
-        };
+    let account_ids = match load_due_public_history_accounts(
+        &state.db_pool,
+        source,
+        PUBLIC_HISTORY_ACCOUNT_LIMIT,
+    )
+    .await
+    {
+        Ok(account_ids) => account_ids,
+        Err(e) => {
+            tracing::error!(source = %source, error = %e, "failed to load public history accounts");
+            return SourceCycleStats::default();
+        }
+    };
     let accounts_seen = account_ids.len();
     let mut stream = futures::stream::iter(account_ids.into_iter().map(|account_id| async move {
         let result = process_account_source(state, account_id.clone(), source).await;

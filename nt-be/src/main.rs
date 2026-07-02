@@ -139,7 +139,7 @@ async fn async_main() {
         state.db_pool.clone(),
     );
 
-    nt_be::handlers::public_history::spawn_public_history_workers(state.clone());
+    nt_be::handlers::public_history::spawn_public_history_queue_workers(state.clone());
     nt_be::handlers::public_history::spawn_public_silver_worker(state.clone());
     nt_be::handlers::public_history::spawn_public_gold_projection_worker(state.clone());
 

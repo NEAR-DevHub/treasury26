@@ -119,10 +119,21 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         None
     };
 
+    // Drop the driver so the gate fails open (no rate limiting in tests, matching
+    // the old effectively-unlimited test limiter) without spawning a background task.
+    let (nearblocks_gate, _) = crate::utils::priority_rate_gate::PriorityRateGate::<
+        crate::handlers::public_history::bronze::NearblocksPriority,
+    >::new(crate::utils::rate_limiter::RateLimiter::per_minute(
+        "nearblocks-test",
+        10_000,
+        10_000,
+    ));
+
     AppState {
         cache: Cache::new(),
         telegram_client: crate::utils::telegram::TelegramClient::default(),
         http_client,
+        nearblocks_gate,
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
         bulk_payment_signer: Signer::from_secret_key(env_vars.bulk_payment_signer.clone())

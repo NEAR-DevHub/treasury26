@@ -293,7 +293,9 @@ pub struct SilverTransferLegRow {
     pub token_id: String,
     pub direction: String,
     pub counterparty: Option<String>,
+    pub amount_raw: BigDecimal,
     pub amount: BigDecimal,
+    pub decimals: i32,
     pub leg_kind: String,
     pub raw_payload: Value,
     pub proposal_status: Option<String>,
@@ -301,4 +303,6 @@ pub struct SilverTransferLegRow {
     pub proposal_executed_at: Option<DateTime<Utc>>,
     pub proposal_execution_block_height: Option<i64>,
     pub proposal_execution_transaction_hash: Option<String>,
+    pub quote_metadata: Option<Value>,
+    pub quote_deposit_address: Option<String>,
 }

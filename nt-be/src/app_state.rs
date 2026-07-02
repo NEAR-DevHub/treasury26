@@ -8,16 +8,29 @@ use crate::{
     handlers::balance_changes::transfer_hints::{
         TransferHintService, fastnear::FastNearProvider, neardata::NeardataClient,
     },
+    handlers::public_history::bronze::NearblocksPriority,
     services::{DeFiLlamaClient, PriceLookupService},
     utils::{
         cache::{Cache, CacheKey, CacheTier},
         env::EnvVars,
+        priority_rate_gate::PriorityRateGate,
+        rate_limiter::RateLimiter,
         telegram::TelegramClient,
     },
 };
 
+/// Sustained NearBlocks request ceiling (per minute) shared by every NearBlocks
+/// caller. Kept under the plan's 190/min hard limit to leave headroom for the
+/// on-demand v1 call sites; the daily/monthly budget is enforced separately.
+const NEARBLOCKS_MAX_PER_MINUTE: u32 = 3;
+
 pub struct AppState {
     pub http_client: reqwest::Client,
+    /// Priority admission gate over the shared NearBlocks budget. Every NearBlocks
+    /// caller draws on one per-minute ceiling; latest (user-facing) requests
+    /// preempt backfill (bulk) requests for the next permit. Replaces the raw
+    /// limiter so the priority ordering can't be bypassed at the one acquire site.
+    pub nearblocks_gate: PriorityRateGate<NearblocksPriority>,
     pub cache: Cache,
     pub signer: Arc<Signer>,
     pub bulk_payment_signer: Arc<Signer>,
@@ -330,8 +343,22 @@ impl AppStateBuilder {
             None
         };
 
+        // Build the shared NearBlocks limiter, wrap it in the priority gate, and
+        // spawn the gate's driver here so no AppState can exist without a running
+        // driver (a gate whose driver isn't running would fail open → unlimited
+        // NearBlocks calls). build() is always awaited inside a tokio runtime.
+        let nearblocks_limiter = RateLimiter::per_minute(
+            "nearblocks",
+            NEARBLOCKS_MAX_PER_MINUTE,
+            NEARBLOCKS_MAX_PER_MINUTE,
+        );
+        let (nearblocks_gate, nearblocks_gate_driver) =
+            PriorityRateGate::<NearblocksPriority>::new(nearblocks_limiter);
+        tokio::spawn(nearblocks_gate_driver.run());
+
         Ok(AppState {
             http_client: self.http_client.unwrap_or_default(),
+            nearblocks_gate,
             cache: self.cache.unwrap_or_default(),
             signer,
             bulk_payment_signer,

@@ -19,7 +19,10 @@ fn normalize_cause(cause: Option<&str>) -> Option<&str> {
 }
 
 fn leg_kind_from_cause(cause: Option<&str>) -> PublicTransferLegKind {
-    match normalize_cause(cause).map(str::to_ascii_uppercase).as_deref() {
+    match normalize_cause(cause)
+        .map(str::to_ascii_uppercase)
+        .as_deref()
+    {
         Some("MINT") => PublicTransferLegKind::Mint,
         Some("BURN") => PublicTransferLegKind::Burn,
         _ => PublicTransferLegKind::Transfer,
@@ -30,7 +33,10 @@ fn direction_from_delta(
     delta: &BigDecimal,
     kind: PublicTransferLegKind,
 ) -> PublicTransferDirection {
-    if matches!(kind, PublicTransferLegKind::Mint | PublicTransferLegKind::Burn) {
+    if matches!(
+        kind,
+        PublicTransferLegKind::Mint | PublicTransferLegKind::Burn
+    ) {
         return PublicTransferDirection::Internal;
     }
     if delta.is_positive() {
@@ -126,7 +132,9 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
     }))
 }
 
-fn normalize_receipt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransferLeg>, String> {
+fn normalize_receipt(
+    row: &BronzePublicHistoryRow,
+) -> Result<Option<NormalizedTransferLeg>, String> {
     let action = row.action_kind.as_deref().unwrap_or_default();
     if !action.eq_ignore_ascii_case("TRANSFER") {
         return Ok(None);
@@ -186,8 +194,8 @@ pub fn normalize_bronze_row(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::models::PublicTokenStandard;
+    use super::*;
 
     #[test]
     fn public_asset_formats_are_canonical() {

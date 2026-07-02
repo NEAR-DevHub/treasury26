@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::time::Duration;
 
 use axum::http::StatusCode;
 use bigdecimal::BigDecimal;
@@ -7,6 +8,7 @@ use serde_json::Value;
 
 use crate::AppState;
 use crate::handlers::balance_changes::utils::block_timestamp_to_datetime;
+use crate::handlers::public_history::bronze::NearblocksPriority;
 use crate::handlers::public_history::bronze::store::{
     BronzePublicHistoryEvent, PublicHistorySource,
 };
@@ -86,6 +88,8 @@ struct NearblocksReceipt {
     actions: Vec<NearblocksReceiptAction>,
     #[serde(default)]
     outcome: Option<NearblocksReceiptOutcome>,
+    #[serde(default)]
+    actions_agg: Option<NearblocksReceiptActionsAgg>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,6 +97,11 @@ struct NearblocksReceiptAction {
     action: String,
     method: Option<String>,
     args: Option<Value>,
+    deposit: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NearblocksReceiptActionsAgg {
     deposit: Option<String>,
 }
 
@@ -125,6 +134,9 @@ fn block_timestamp<'a>(block: &'a NearblocksBlock, override_timestamp: Option<&'
 
 fn success_status(outcome: Option<&NearblocksReceiptOutcome>) -> Option<bool> {
     let status = outcome?.status.as_ref()?;
+    if let Some(success) = status.as_bool() {
+        return Some(success);
+    }
     if status.get("SuccessValue").is_some()
         || status.get("SuccessReceiptId").is_some()
         || status.as_str() == Some("SUCCESS")
@@ -137,12 +149,32 @@ fn success_status(outcome: Option<&NearblocksReceiptOutcome>) -> Option<bool> {
     None
 }
 
+/// Max attempts (including the first) before a 429 is surfaced as an error.
+const NEARBLOCKS_MAX_ATTEMPTS: u32 = 4;
+/// Fallback backoff when a 429 response omits a usable `Retry-After` header.
+const NEARBLOCKS_DEFAULT_BACKOFF: Duration = Duration::from_secs(2);
+/// Cap on any single backoff so a hostile `Retry-After` can't stall a worker.
+const NEARBLOCKS_MAX_BACKOFF: Duration = Duration::from_secs(30);
+
+/// Parse a `Retry-After` header (delta-seconds form) into a bounded delay.
+fn retry_after_delay(response: &reqwest::Response) -> Duration {
+    response
+        .headers()
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.trim().parse::<u64>().ok())
+        .map(Duration::from_secs)
+        .unwrap_or(NEARBLOCKS_DEFAULT_BACKOFF)
+        .min(NEARBLOCKS_MAX_BACKOFF)
+}
+
 async fn fetch_raw_page(
     state: &AppState,
     account_id: &str,
     path: &str,
     cursor: Option<&str>,
     limit: u32,
+    priority: NearblocksPriority,
 ) -> Result<Value, (StatusCode, String)> {
     let Some(api_key) = state.env_vars.nearblocks_api_key.as_ref() else {
         return Err((
@@ -151,42 +183,68 @@ async fn fetch_raw_page(
         ));
     };
 
-    let url = format!("{}/v3/accounts/{}/{}", NEARBLOCKS_V3_BASE_URL, account_id, path);
+    let url = format!(
+        "{}/v3/accounts/{}/{}",
+        NEARBLOCKS_V3_BASE_URL, account_id, path
+    );
     let mut params = vec![("per_page", limit.to_string())];
     if let Some(cursor) = cursor {
         params.push(("cursor", cursor.to_string()));
     }
 
-    let response = state
-        .http_client
-        .get(&url)
-        .query(&params)
-        .header("accept", "application/json")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .send()
-        .await
-        .map_err(|e| {
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+
+        // Draw on the shared NearBlocks budget before every request so all
+        // callers stay collectively under the plan's per-minute ceiling; latest
+        // requests preempt backfill for the next permit.
+        state.nearblocks_gate.acquire(priority).await;
+
+        let response = state
+            .http_client
+            .get(&url)
+            .query(&params)
+            .header("accept", "application/json")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .send()
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::BAD_GATEWAY,
+                    format!("NearBlocks request failed: {}", e),
+                )
+            })?;
+
+        let status = response.status();
+
+        if status == StatusCode::TOO_MANY_REQUESTS && attempt < NEARBLOCKS_MAX_ATTEMPTS {
+            let backoff = retry_after_delay(&response);
+            tracing::warn!(
+                path = path,
+                attempt,
+                backoff_secs = backoff.as_secs(),
+                "NearBlocks rate limited (429); backing off and retrying"
+            );
+            tokio::time::sleep(backoff).await;
+            continue;
+        }
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err((
+                StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
+                format!("NearBlocks returned {}: {}", status, body),
+            ));
+        }
+
+        return response.json::<Value>().await.map_err(|e| {
             (
                 StatusCode::BAD_GATEWAY,
-                format!("NearBlocks request failed: {}", e),
+                format!("NearBlocks response is not JSON: {}", e),
             )
-        })?;
-
-    let status = response.status();
-    if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
-        return Err((
-            StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
-            format!("NearBlocks returned {}: {}", status, body),
-        ));
+        });
     }
-
-    response.json::<Value>().await.map_err(|e| {
-        (
-            StatusCode::BAD_GATEWAY,
-            format!("NearBlocks response is not JSON: {}", e),
-        )
-    })
 }
 
 fn raw_items(raw: &Value) -> Result<&Vec<Value>, (StatusCode, String)> {
@@ -212,8 +270,9 @@ pub async fn fetch_ft_transfers(
     account_id: &str,
     cursor: Option<&str>,
     limit: u32,
+    priority: NearblocksPriority,
 ) -> Result<NearblocksPage, (StatusCode, String)> {
-    let raw = fetch_raw_page(state, account_id, "ft-txns", cursor, limit).await?;
+    let raw = fetch_raw_page(state, account_id, "ft-txns", cursor, limit, priority).await?;
     let mut events = Vec::new();
 
     for (index, raw_item) in raw_items(&raw)?.iter().enumerate() {
@@ -272,8 +331,9 @@ pub async fn fetch_mt_transfers(
     account_id: &str,
     cursor: Option<&str>,
     limit: u32,
+    priority: NearblocksPriority,
 ) -> Result<NearblocksPage, (StatusCode, String)> {
-    let raw = fetch_raw_page(state, account_id, "mt-txns", cursor, limit).await?;
+    let raw = fetch_raw_page(state, account_id, "mt-txns", cursor, limit, priority).await?;
     let mut events = Vec::new();
 
     for (index, raw_item) in raw_items(&raw)?.iter().enumerate() {
@@ -333,15 +393,19 @@ pub async fn fetch_receipts(
     account_id: &str,
     cursor: Option<&str>,
     limit: u32,
+    priority: NearblocksPriority,
 ) -> Result<NearblocksPage, (StatusCode, String)> {
-    let raw = fetch_raw_page(state, account_id, "receipts", cursor, limit).await?;
+    let raw = fetch_raw_page(state, account_id, "receipts", cursor, limit, priority).await?;
     let mut events = Vec::new();
 
     for (receipt_index, raw_item) in raw_items(&raw)?.iter().enumerate() {
         let item: NearblocksReceipt = serde_json::from_value(raw_item.clone()).map_err(|e| {
             (
                 StatusCode::BAD_GATEWAY,
-                format!("NearBlocks receipt item {} parse failed: {}", receipt_index, e),
+                format!(
+                    "NearBlocks receipt item {} parse failed: {}",
+                    receipt_index, e
+                ),
             )
         })?;
         let timestamp = item.block.block_timestamp.clone();
@@ -359,12 +423,26 @@ pub async fn fetch_receipts(
             item.actions
         };
 
+        let aggregate_deposit = item
+            .actions_agg
+            .as_ref()
+            .and_then(|agg| agg.deposit.as_deref())
+            .filter(|deposit| !deposit.is_empty());
+
         for (action_index, action) in actions.into_iter().enumerate() {
             let event_index = i32::try_from(action_index).unwrap_or(i32::MAX);
-            let deposit_raw = action
+            let deposit = action
                 .deposit
                 .as_deref()
-                .filter(|deposit| !deposit.is_empty())
+                .filter(|deposit| !deposit.is_empty());
+            let deposit_raw = deposit
+                .or_else(|| {
+                    action
+                        .action
+                        .eq_ignore_ascii_case("TRANSFER")
+                        .then_some(aggregate_deposit)
+                        .flatten()
+                })
                 .and_then(|deposit| BigDecimal::from_str(deposit).ok());
             events.push(BronzePublicHistoryEvent {
                 account_id: account_id.to_string(),

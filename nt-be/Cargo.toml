@@ -23,6 +23,9 @@ serde_with = { version = "3.16.1", features = ["base64"] }
 chrono = "0.4"
 futures = "0.3"
 async-stream = "0.3"
+governor = "0.7"
+apalis = { version = "0.7.4", features = ["tracing", "retry", "timeout", "catch-panic", "limit"] }
+apalis-sql = { version = "0.7.4", features = ["postgres", "tokio-comp"] }
 sqlx = { version = "0.8", features = [
     "runtime-tokio",
     "tls-rustls",

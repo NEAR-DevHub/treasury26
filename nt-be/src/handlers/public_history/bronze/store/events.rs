@@ -1,8 +1,6 @@
 use sqlx::PgPool;
 
-use super::models::{
-    BronzePublicHistoryEvent, PublicHistoryUpsertResult, min_datetime,
-};
+use super::models::{BronzePublicHistoryEvent, PublicHistoryUpsertResult, min_datetime};
 use crate::handlers::public_history::silver::cursors::mark_silver_dirty_tx;
 
 pub async fn upsert_public_history_events(
@@ -145,8 +143,7 @@ pub async fn upsert_public_history_events(
             } else {
                 result.rows_changed += 1;
             }
-            result.earliest_changed_at =
-                min_datetime(result.earliest_changed_at, Some(block_time));
+            result.earliest_changed_at = min_datetime(result.earliest_changed_at, Some(block_time));
         } else {
             result.rows_unchanged += 1;
         }

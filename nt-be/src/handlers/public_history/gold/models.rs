@@ -33,11 +33,7 @@ impl GoldLedger {
         Self { balances }
     }
 
-    pub fn apply_in(
-        &mut self,
-        token_id: &str,
-        amount: &BigDecimal,
-    ) -> (BigDecimal, BigDecimal) {
+    pub fn apply_in(&mut self, token_id: &str, amount: &BigDecimal) -> (BigDecimal, BigDecimal) {
         let before = self
             .balances
             .get(token_id)
@@ -48,11 +44,7 @@ impl GoldLedger {
         (before, after)
     }
 
-    pub fn apply_out(
-        &mut self,
-        token_id: &str,
-        amount: &BigDecimal,
-    ) -> (BigDecimal, BigDecimal) {
+    pub fn apply_out(&mut self, token_id: &str, amount: &BigDecimal) -> (BigDecimal, BigDecimal) {
         let before = self
             .balances
             .get(token_id)
@@ -61,6 +53,23 @@ impl GoldLedger {
         let after = before.clone() - amount.clone();
         self.balances.insert(token_id.to_string(), after.clone());
         (before, after)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum PublicHistoryEventStatus {
+    Pending,
+    Success,
+    Failed,
+}
+
+impl PublicHistoryEventStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Success => "success",
+            Self::Failed => "failed",
+        }
     }
 }
 
@@ -96,8 +105,7 @@ pub struct GoldPublicHistoryEvent {
     pub proposal_executed_at: Option<DateTime<Utc>>,
     pub proposal_execution_block_height: Option<i64>,
     pub proposal_execution_transaction_hash: Option<String>,
-    pub swap_correlation_id: Option<String>,
-    pub swap_status: Option<String>,
+    pub status: PublicHistoryEventStatus,
     pub raw_payload: Value,
 }
 

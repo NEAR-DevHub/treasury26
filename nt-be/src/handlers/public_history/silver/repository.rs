@@ -2,9 +2,7 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
-use super::models::{
-    BronzePublicHistoryRow, DirtyPublicHistoryAccount, NormalizedTransferLeg,
-};
+use super::models::{BronzePublicHistoryRow, DirtyPublicHistoryAccount, NormalizedTransferLeg};
 use crate::handlers::public_history::gold::cursors::mark_gold_dirty_tx;
 
 pub async fn load_dirty_accounts(

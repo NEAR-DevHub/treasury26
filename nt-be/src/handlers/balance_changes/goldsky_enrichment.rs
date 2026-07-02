@@ -23,6 +23,7 @@ use crate::handlers::intents::confidential::bronze::store::{
 };
 use crate::handlers::intents::confidential::gold::history_events::refresh_gold_metadata_for_intent;
 use crate::handlers::proposals::scraper::{extract_payload_hash_from_kind, fetch_proposal};
+use crate::services::goldsky_cursor::{load_goldsky_cursor, save_goldsky_cursor};
 use base64::Engine;
 use bigdecimal::Zero;
 use near_api::NetworkConfig;
@@ -72,85 +73,6 @@ struct ParsedEvent {
     /// correct block.
     #[allow(dead_code)]
     forward_scan: bool,
-}
-
-// ---------------------------------------------------------------------------
-// Cursor management
-// ---------------------------------------------------------------------------
-
-#[derive(Debug)]
-struct Cursor {
-    last_processed_id: String,
-    last_processed_block: i64,
-}
-
-async fn get_cursor(
-    app_pool: &PgPool,
-    goldsky_pool: &PgPool,
-    consumer_name: &str,
-) -> Result<Cursor, Box<dyn std::error::Error>> {
-    let row = sqlx::query_as::<_, (String, i64)>(
-        "SELECT last_processed_id, last_processed_block FROM goldsky_cursors WHERE consumer_name = $1",
-    )
-    .bind(consumer_name)
-    .fetch_optional(app_pool)
-    .await?;
-
-    match row {
-        Some((id, block)) => Ok(Cursor {
-            last_processed_id: id,
-            last_processed_block: block,
-        }),
-        None => {
-            // No cursor yet — seed from the latest block in the Goldsky sink so we
-            // don't reprocess the entire history on first deploy.
-            let latest: Option<(String, i64)> = sqlx::query_as(
-                "SELECT id, trigger_block_height FROM indexed_dao_outcomes ORDER BY trigger_block_height DESC, id DESC LIMIT 1",
-            )
-            .fetch_optional(goldsky_pool)
-            .await?;
-
-            match latest {
-                Some((id, block)) => {
-                    tracing::info!(
-                        "No cursor found, seeding from latest block {} in Goldsky sink",
-                        block
-                    );
-                    update_cursor(app_pool, consumer_name, &id, block).await?;
-                    Ok(Cursor {
-                        last_processed_id: id,
-                        last_processed_block: block,
-                    })
-                }
-                None => Ok(Cursor {
-                    last_processed_id: String::new(),
-                    last_processed_block: 0,
-                }),
-            }
-        }
-    }
-}
-
-async fn update_cursor(
-    app_pool: &PgPool,
-    consumer_name: &str,
-    last_id: &str,
-    last_block: i64,
-) -> Result<(), Box<dyn std::error::Error>> {
-    sqlx::query(
-        "INSERT INTO goldsky_cursors (consumer_name, last_processed_id, last_processed_block, updated_at)
-         VALUES ($1, $2, $3, NOW())
-         ON CONFLICT (consumer_name) DO UPDATE SET
-           last_processed_id = EXCLUDED.last_processed_id,
-           last_processed_block = EXCLUDED.last_processed_block,
-           updated_at = NOW()",
-    )
-    .bind(consumer_name)
-    .bind(last_id)
-    .bind(last_block)
-    .execute(app_pool)
-    .await?;
-    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -730,7 +652,7 @@ pub async fn run_enrichment_cycle(
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let http_client = reqwest::Client::new();
     let consumer_name = "balance_enrichment";
-    let cursor = get_cursor(app_pool, goldsky_pool, consumer_name).await?;
+    let cursor = load_goldsky_cursor(app_pool, goldsky_pool, consumer_name).await?;
 
     // Only enrich accounts that are being monitored — avoids wasting RPC calls
     // on unmonitored DAOs (e.g., hot-dao produces thousands of outcomes)
@@ -1084,7 +1006,7 @@ pub async fn run_enrichment_cycle(
     }
 
     // Persist cursor in app DB
-    update_cursor(
+    save_goldsky_cursor(
         app_pool,
         consumer_name,
         &last_processed_id,

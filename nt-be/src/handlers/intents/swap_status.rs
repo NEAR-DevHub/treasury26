@@ -67,14 +67,14 @@ pub struct QuoteByDepositAddressResponse {
     #[serde(rename = "nearTxHashes")]
     pub near_tx_hashes: Option<Vec<String>>,
     #[serde(rename = "originChainTxHashes")]
-    pub origin_chain_tx_hashes: Option<Vec<String>>,
+    pub origin_chain_tx_hashes: Option<Vec<serde_json::Value>>,
     #[serde(rename = "destinationChainTxHashes")]
-    pub destination_chain_tx_hashes: Option<Vec<String>>,
+    pub destination_chain_tx_hashes: Option<Vec<serde_json::Value>>,
 }
 
 pub type QuoteData = QuoteByDepositAddressResponse;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FullSwapStatusResponse {
     #[serde(rename = "correlationId")]
     pub correlation_id: Option<String>,
@@ -89,9 +89,13 @@ pub struct FullSwapStatusResponse {
     pub _other: serde_json::Value,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct QuoteEnvelope {
     pub quote: Option<QuoteData>,
+    #[serde(rename = "quoteRequest")]
+    pub quote_request: Option<serde_json::Value>,
+    #[serde(flatten)]
+    pub _other: serde_json::Value,
 }
 
 pub async fn fetch_swap_status_response(

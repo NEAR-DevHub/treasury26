@@ -260,7 +260,10 @@ mod tests {
             .unwrap()
             .with_timezone(&Utc);
 
-        assert_eq!(public_history_next_poll_delay(true, None, now), HOT_POLL_DELAY);
+        assert_eq!(
+            public_history_next_poll_delay(true, None, now),
+            HOT_POLL_DELAY
+        );
         assert_eq!(
             public_history_next_poll_delay(false, Some(now - Duration::minutes(30)), now),
             RECENT_POLL_DELAY

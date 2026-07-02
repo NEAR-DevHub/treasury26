@@ -10,8 +10,8 @@ use super::models::{SilverProjectionCycleStats, SilverProjectionResult};
 use super::normalize::normalize_bronze_row;
 use super::repository::{
     clear_projection_error, delete_stale_silver_rows, earliest_bronze_time, has_silver_before,
-    load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change, upsert_silver_leg,
-    upsert_projection_error,
+    load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change,
+    upsert_projection_error, upsert_silver_leg,
 };
 use crate::AppState;
 
