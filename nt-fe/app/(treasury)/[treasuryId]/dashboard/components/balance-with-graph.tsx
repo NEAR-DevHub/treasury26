@@ -558,9 +558,6 @@ export default function BalanceWithGraph({
                                                         ", ",
                                                     )}
                                                 </p>
-                                                <p className="text-muted-foreground mt-1 text-[10px]">
-                                                    {t("noPriceHistory")}
-                                                </p>
                                             </div>
                                         }
                                     >
