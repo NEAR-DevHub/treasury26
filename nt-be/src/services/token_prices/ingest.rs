@@ -2,10 +2,10 @@
 //!
 //! One request per tick (~49 KB, ETag-aware so unchanged payloads cost a
 //! 304 with an empty body), two batched statements: upsert the `tokens`
-//! registry and append changed prices to the `token_prices` minute series.
-//! Prices that did not move since the last inserted row are skipped, so
-//! quiet assets write far fewer than 1440 rows/day. Daily partitions are
-//! created a day ahead and dropped past the retention window.
+//! registry and append changed prices to the `token_prices` 5-minute series.
+//! Prices that did not move since the last persisted row are skipped, so
+//! quiet assets write far fewer than 288 rows/day. Monthly partitions are
+//! created one month ahead and retained for historical valuation.
 
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration as StdDuration;
 
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, Duration, DurationRound, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, Duration, DurationRound, NaiveDate, Timelike, Utc};
 use serde::Deserialize;
 use sqlx::PgPool;
 
@@ -24,7 +24,7 @@ pub const TOKEN_PRICE_INGEST_TICK: StdDuration = StdDuration::from_secs(60);
 
 const TOKENS_API_URL: &str = "https://api-mng-console.chaindefuser.com/api/tokens";
 const TOKENS_API_TIMEOUT: StdDuration = StdDuration::from_secs(30);
-const MINUTE_PRICE_RETENTION_DAYS: i64 = 30;
+const TOKEN_PRICE_PERSIST_INTERVAL_MINUTES: u32 = 5;
 
 #[derive(Debug, Deserialize)]
 struct TokensApiResponse {
@@ -116,20 +116,22 @@ impl TokenPriceIngestor {
         let minute_at = now
             .duration_trunc(Duration::minutes(1))
             .expect("minute truncation cannot fail");
-        match self.insert_changed_prices(&items, minute_at).await {
-            Ok(written) => {
-                if written > 0 {
-                    tracing::info!(
-                        "wrote {} price rows for {} tokens at {}",
-                        written,
-                        items.len(),
-                        minute_at
-                    );
+        if should_persist_price_sample(minute_at) {
+            match self.insert_changed_prices(&items, minute_at).await {
+                Ok(written) => {
+                    if written > 0 {
+                        tracing::info!(
+                            "wrote {} price rows for {} tokens at {}",
+                            written,
+                            items.len(),
+                            minute_at
+                        );
+                    }
                 }
-            }
-            Err(e) => {
-                tracing::warn!("token_prices insert failed: {}", e);
-                return;
+                Err(e) => {
+                    tracing::warn!("token_prices insert failed: {}", e);
+                    return;
+                }
             }
         }
 
@@ -213,8 +215,8 @@ impl TokenPriceIngestor {
         Ok(())
     }
 
-    /// Append one minute row per token whose price moved since the last
-    /// written row. Returns the number of rows written.
+    /// Append one persisted sample per token whose price moved since the last
+    /// written sample. Returns the number of rows written.
     async fn insert_changed_prices(
         &mut self,
         items: &[TokenApiItem],
@@ -258,70 +260,53 @@ impl TokenPriceIngestor {
         Ok(written)
     }
 
-    /// Once per day: create partitions for today and tomorrow, drop those
-    /// past the retention window.
+    /// Once per month: create partitions for this month and next month.
     async fn maintain_partitions(&mut self, today: NaiveDate) -> Result<(), sqlx::Error> {
-        if self.partitions_ensured_for == Some(today) {
+        let month = month_start(today);
+        if self.partitions_ensured_for == Some(month) {
             return Ok(());
         }
 
-        create_day_partition(&self.pool, today).await?;
-        create_day_partition(&self.pool, today + Duration::days(1)).await?;
-        drop_expired_partitions(
-            &self.pool,
-            today - Duration::days(MINUTE_PRICE_RETENTION_DAYS),
-        )
-        .await?;
+        create_month_partition(&self.pool, month).await?;
+        create_month_partition(&self.pool, next_month_start(month)).await?;
 
-        self.partitions_ensured_for = Some(today);
+        self.partitions_ensured_for = Some(month);
         Ok(())
     }
 }
 
-fn partition_name(day: NaiveDate) -> String {
-    format!("token_prices_p{}", day.format("%Y%m%d"))
+fn should_persist_price_sample(at: DateTime<Utc>) -> bool {
+    at.minute() % TOKEN_PRICE_PERSIST_INTERVAL_MINUTES == 0
 }
 
-async fn create_day_partition(pool: &PgPool, day: NaiveDate) -> Result<(), sqlx::Error> {
+fn month_start(day: NaiveDate) -> NaiveDate {
+    NaiveDate::from_ymd_opt(day.year(), day.month(), 1).expect("valid month start")
+}
+
+fn next_month_start(month: NaiveDate) -> NaiveDate {
+    let (year, month) = if month.month() == 12 {
+        (month.year() + 1, 1)
+    } else {
+        (month.year(), month.month() + 1)
+    };
+    NaiveDate::from_ymd_opt(year, month, 1).expect("valid next month start")
+}
+
+fn partition_name(month: NaiveDate) -> String {
+    format!("token_prices_p{}", month.format("%Y%m"))
+}
+
+async fn create_month_partition(pool: &PgPool, month: NaiveDate) -> Result<(), sqlx::Error> {
     // DDL cannot take bind parameters; both values are chrono-formatted.
+    let next_month = next_month_start(month);
     let sql = format!(
         "CREATE TABLE IF NOT EXISTS {} PARTITION OF token_prices \
          FOR VALUES FROM ('{} 00:00:00+00') TO ('{} 00:00:00+00')",
-        partition_name(day),
-        day,
-        day + Duration::days(1),
+        partition_name(month),
+        month,
+        next_month,
     );
     sqlx::query(&sql).execute(pool).await?;
-    Ok(())
-}
-
-async fn drop_expired_partitions(pool: &PgPool, cutoff: NaiveDate) -> Result<(), sqlx::Error> {
-    let partitions: Vec<(String,)> = sqlx::query_as(
-        r#"
-        SELECT c.relname
-        FROM pg_inherits i
-        JOIN pg_class c ON c.oid = i.inhrelid
-        JOIN pg_class p ON p.oid = i.inhparent
-        WHERE p.relname = 'token_prices'
-        "#,
-    )
-    .fetch_all(pool)
-    .await?;
-
-    for (name,) in partitions {
-        let Some(day) = name
-            .strip_prefix("token_prices_p")
-            .and_then(|s| NaiveDate::parse_from_str(s, "%Y%m%d").ok())
-        else {
-            continue;
-        };
-        if day < cutoff {
-            sqlx::query(&format!("DROP TABLE IF EXISTS {}", name))
-                .execute(pool)
-                .await?;
-            tracing::info!("dropped expired token_prices partition {}", name);
-        }
-    }
     Ok(())
 }
 
@@ -391,8 +376,30 @@ mod tests {
     }
 
     #[test]
-    fn partition_names_are_date_stamped() {
+    fn partition_names_are_month_stamped() {
         let day = NaiveDate::from_ymd_opt(2026, 7, 2).unwrap();
-        assert_eq!(partition_name(day), "token_prices_p20260702");
+        assert_eq!(partition_name(month_start(day)), "token_prices_p202607");
+    }
+
+    #[test]
+    fn next_month_start_handles_year_boundary() {
+        let december = NaiveDate::from_ymd_opt(2026, 12, 1).unwrap();
+        assert_eq!(
+            next_month_start(december),
+            NaiveDate::from_ymd_opt(2027, 1, 1).unwrap()
+        );
+    }
+
+    #[test]
+    fn should_persist_only_on_five_minute_boundaries() {
+        let boundary = DateTime::parse_from_rfc3339("2026-07-02T12:35:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let off_boundary = DateTime::parse_from_rfc3339("2026-07-02T12:36:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        assert!(should_persist_price_sample(boundary));
+        assert!(!should_persist_price_sample(off_boundary));
     }
 }

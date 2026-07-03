@@ -3,9 +3,7 @@
 //! Latest prices are served from an in-memory snapshot of the `tokens`
 //! table (refreshed by the ingest worker after every tick), so hot-path
 //! valuation never touches the database. Point-in-time prices resolve to
-//! the nearest earlier minute in `token_prices`; timestamps older than the
-//! minute retention window still fall back to the daily `historical_prices`
-//! table at the call sites (consumer redirection keeps that fallback).
+//! the nearest earlier persisted sample in `token_prices`.
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -164,9 +162,9 @@ impl TokenPriceService {
         self.price_at(raw_token_id, at).await
     }
 
-    /// USD price at (or nearest before) a timestamp from the minute series.
-    /// Returns None when the timestamp predates the retention window or the
-    /// token is unknown.
+    /// USD price at (or nearest before) a timestamp from the persisted series.
+    /// Returns None when the timestamp predates stored samples or the token is
+    /// unknown.
     pub async fn price_at(
         &self,
         raw_token_id: &str,
