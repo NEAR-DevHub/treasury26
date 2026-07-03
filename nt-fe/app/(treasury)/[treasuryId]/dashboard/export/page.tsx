@@ -784,11 +784,11 @@ export default function ExportActivityPage() {
                                                                     )
                                                                 }
                                                                 className={cn(
-                                                                    "flex-1 border",
+                                                                    "flex-1 border transition-colors",
                                                                     documentType ===
                                                                         type.value
-                                                                        ? "bg-secondary"
-                                                                        : "",
+                                                                        ? "bg-general-secondary"
+                                                                        : "hover:bg-general-tertiary",
                                                                 )}
                                                                 style={{
                                                                     borderColor:
@@ -876,8 +876,7 @@ export default function ExportActivityPage() {
                                                     align="start"
                                                     side="bottom"
                                                     classNames={{
-                                                        trigger:
-                                                            "w-full justify-start bg-transparent! border-2 font-normal",
+                                                        trigger: "w-full",
                                                     }}
                                                     placeholder={tEx(
                                                         "selectDateRange",
@@ -896,7 +895,7 @@ export default function ExportActivityPage() {
                                                     >
                                                         <Button
                                                             variant="outline"
-                                                            className="w-full justify-between bg-transparent! border-2 font-normal"
+                                                            className="w-full justify-between bg-muted! dark:bg-muted! border-0! shadow-none! hover:bg-general-tertiary! dark:hover:bg-general-tertiary! font-normal"
                                                         >
                                                             <div className="flex items-center gap-2 min-w-0 flex-1">
                                                                 <Coins className="w-4 h-4 shrink-0" />
@@ -908,7 +907,7 @@ export default function ExportActivityPage() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent
-                                                        className="min-w-(--radix-dropdown-menu-trigger-width) text-foreground"
+                                                        className="min-w-(--radix-dropdown-menu-trigger-width) text-foreground max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/40"
                                                         align="start"
                                                     >
                                                         <DropdownMenuCheckboxItem
@@ -987,7 +986,7 @@ export default function ExportActivityPage() {
                                                     >
                                                         <Button
                                                             variant="outline"
-                                                            className="w-full justify-between bg-transparent! border-2 font-normal"
+                                                            className="w-full justify-between bg-muted! dark:bg-muted! border-0! shadow-none! hover:bg-general-tertiary! dark:hover:bg-general-tertiary! font-normal"
                                                         >
                                                             <span className="truncate flex-1 text-left">
                                                                 {getSelectedTypesLabel()}

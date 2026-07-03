@@ -47,6 +47,7 @@
     --general-unofficial-border-3: rgb(212, 212, 212);
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgb(245, 245, 245);
+    --general-unofficial-ghost-hover: rgba(0, 0, 0, 0.05);
     --onboarding-primary: rgba(9, 83, 255, 1);
     --brand-blue: rgba(9, 83, 255, 1);
     --general-unofficial-outline: rgba(255, 255, 255, 0.1);
@@ -147,6 +148,7 @@
     --general-unofficial-border-3: rgb(64, 64, 64);
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgba(38, 38, 38);
+    --general-unofficial-ghost-hover: rgba(255, 255, 255, 0.1);
     --onboarding-primary: rgba(9, 83, 255, 1);
     --brand-blue: rgba(9, 83, 255, 1);
     --general-unofficial-outline: rgba(255, 255, 255, 0.05);
@@ -252,6 +254,9 @@
     --color-general-unofficial-border-3: var(--general-unofficial-border-3);
     --color-general-unofficial-border-5: var(--general-unofficial-border-5);
     --color-general-secondary: var(--general-secondary);
+    --color-general-unofficial-ghost-hover: var(
+        --general-unofficial-ghost-hover
+    );
     --color-onboarding-primary: var(--onboarding-primary);
     --color-brand-blue: var(--brand-blue);
     --color-general-unofficial-outline: var(--general-unofficial-outline);

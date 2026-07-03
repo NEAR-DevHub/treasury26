@@ -33,7 +33,7 @@ use crate::AppState;
 use crate::handlers::balance_changes::utils::with_transport_retry;
 use crate::handlers::intents::confidential::gold::history_events::refresh_gold_metadata_for_intent;
 use crate::handlers::intents::confidential::link_intent_to_history_event;
-use crate::handlers::intents::swap_status::fetch_swap_status_response;
+use crate::handlers::intents::swap_status::fetch_public_swap_status;
 use crate::handlers::proposals::scraper::{
     ProposalStatus, extract_from_description, extract_payload_hash_from_kind, fetch_proposal,
 };
@@ -534,7 +534,7 @@ async fn fetch_quote_metadata_for_deposit(
     proposal_id: i64,
     deposit_address: &str,
 ) -> Option<Value> {
-    match fetch_swap_status_response(
+    match fetch_public_swap_status(
         &state.http_client,
         &state.env_vars.oneclick_api_url,
         state.env_vars.oneclick_jwt_token.as_ref(),

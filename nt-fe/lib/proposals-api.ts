@@ -736,6 +736,7 @@ export async function getLastProposalId(daoId: string): Promise<number> {
 export async function getSwapStatus(
     depositAddress: string,
     depositMemo?: string,
+    daoId?: string,
 ): Promise<SwapStatusResponse | null> {
     if (!depositAddress) {
         return null;
@@ -748,6 +749,7 @@ export async function getSwapStatus(
                 params: {
                     depositAddress,
                     depositMemo,
+                    daoId,
                 },
             },
         );

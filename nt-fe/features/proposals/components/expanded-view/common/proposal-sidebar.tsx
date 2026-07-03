@@ -46,7 +46,7 @@ import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
 import Big from "@/lib/big";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
-import { cn, nanosToMs } from "@/lib/utils";
+import { cn, getIntentsExplorerUrl, nanosToMs } from "@/lib/utils";
 import { stripMessageForTooltip } from "@/lib/warnings";
 import { useNear } from "@/stores/near-store";
 import type { Policy } from "@/types/policy";
@@ -370,11 +370,13 @@ export function ProposalSidebar({
                 (!hasDepositAddress || !shouldUseSwapDate),
         );
 
-    // Fetch swap status for executed intents proposals (exchange or payment)
+    // Fetch swap status for executed intents proposals (exchange or payment).
+    const shouldFetchSwapStatus = isExecuted && hasDepositAddress;
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress || null,
         undefined,
-        shouldUseSwapDate,
+        shouldFetchSwapStatus,
+        treasuryId,
     );
     const shouldRequireSwapSuccess =
         hasDepositAddress && !isConfidentialRequestProposal;
@@ -525,12 +527,16 @@ export function ProposalSidebar({
                             </Link>
                         </Button>
                     )}
-                    {/* For intents-routed non-confidential proposals, show intents explorer link */}
-                    {isExecuted &&
-                    hasDepositAddress &&
-                    !isConfidentialRequestProposal ? (
+                    {/* Intents-routed proposals link to the NEAR Intents explorer
+                        (masked route for confidential, standard for public). */}
+                    {isExecuted && hasDepositAddress ? (
                         <Link
-                            href={`https://explorer.near-intents.org/transactions/${depositAddress}`}
+                            href={
+                                getIntentsExplorerUrl(
+                                    depositAddress,
+                                    isConfidentialRequestProposal,
+                                ) ?? "#"
+                            }
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"

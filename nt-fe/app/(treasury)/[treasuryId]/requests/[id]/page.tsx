@@ -88,7 +88,18 @@ export default function RequestPage({ params }: RequestPageProps) {
                 description={t("detailDescription")}
                 backButton={`/${treasuryId}/requests`}
             >
-                <ConfidentialState skeleton={<RequestPageSkeleton />} />
+                <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full">
+                    <PageCard className="w-full">
+                        <ConfidentialState
+                            skeleton={<Skeleton className="h-[300px] w-full" />}
+                        />
+                    </PageCard>
+                    <div className="w-full">
+                        <PageCard className="w-full">
+                            <Skeleton className="h-[200px] w-full" />
+                        </PageCard>
+                    </div>
+                </div>
             </PageComponentLayout>
         );
     }

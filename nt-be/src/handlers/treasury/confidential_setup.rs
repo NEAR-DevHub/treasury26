@@ -33,86 +33,100 @@ pub async fn setup_confidential_treasury(
     target_policy: Value,
     progress: Option<&mpsc::Sender<ProgressEvent>>,
 ) -> Result<(), (StatusCode, String)> {
-    // ── Add Public Key to intents.near ──────────────────────────────────
+    // ── Add Public Key to intents.near (idempotent) ─────────────────────
     if let Some(tx) = progress {
         send_progress(tx, "adding_public_key", "in_progress").await;
     }
 
     let treasury_id_public_key = fetch_mpc_public_key(state, treasury_id.as_str()).await?;
 
-    let public_key_args = json!({
-        "public_key": treasury_id_public_key,
-    });
-    let public_key_args_b64 =
-        base64::engine::general_purpose::STANDARD.encode(public_key_args.to_string());
-    submit_and_approve_proposal(
-        state,
-        treasury_id,
-        json!({
-        "proposal": {
-            "description": "Add public key to intents.near",
-            "kind": {
-                "FunctionCall": {
-                    "receiver_id": INTENTS_CONTRACT_ID,
-                    "actions": [{
-                        "method_name": "add_public_key",
-                        "args": public_key_args_b64,
-                        "deposit": "1",
-                        "gas": NearGas::from_tgas(5),
-                    }],
+    if intents_has_public_key(state, treasury_id, &treasury_id_public_key).await? {
+        tracing::info!(
+            "Confidential setup: public key already registered for {}, skipping add",
+            treasury_id
+        );
+    } else {
+        let public_key_args = json!({
+            "public_key": treasury_id_public_key,
+        });
+        let public_key_args_b64 =
+            base64::engine::general_purpose::STANDARD.encode(public_key_args.to_string());
+        submit_and_approve_proposal(
+            state,
+            treasury_id,
+            json!({
+            "proposal": {
+                "description": "Add public key to intents.near",
+                "kind": {
+                    "FunctionCall": {
+                        "receiver_id": INTENTS_CONTRACT_ID,
+                        "actions": [{
+                            "method_name": "add_public_key",
+                            "args": public_key_args_b64,
+                            "deposit": "1",
+                            "gas": NearGas::from_tgas(5),
+                        }],
+                    }
                 }
-            }
-        }}),
-    )
-    .await?;
+            }}),
+        )
+        .await?;
+    }
 
     if let Some(tx) = progress {
         send_progress(tx, "adding_public_key", "completed").await;
     }
 
-    // ── Auth proposal ───────────────────────────────────────────────────
+    // ── Auth proposal + 1Click authentication (idempotent) ──────────────
     if let Some(tx) = progress {
         send_progress(tx, "authenticating", "in_progress").await;
     }
 
-    tracing::info!(
-        "Confidential setup: creating auth proposal for {}",
-        treasury_id
-    );
+    if has_valid_confidential_token(&state.db_pool, treasury_id).await {
+        tracing::info!(
+            "Confidential setup: {} already authenticated with 1Click, skipping auth",
+            treasury_id
+        );
+    } else {
+        tracing::info!(
+            "Confidential setup: creating auth proposal for {}",
+            treasury_id
+        );
 
-    let (auth_proposal, auth_payload) = build_auth_proposal(state, treasury_id.as_str()).await?;
+        let (auth_proposal, auth_payload) =
+            build_auth_proposal(state, treasury_id.as_str()).await?;
 
-    let (proposal_id, vote_result_debug) =
-        submit_and_approve_proposal(state, treasury_id, auth_proposal).await?;
+        let (proposal_id, vote_result_debug) =
+            submit_and_approve_proposal(state, treasury_id, auth_proposal).await?;
 
-    tracing::info!(
-        "Confidential setup: auth proposal #{} approved for {}",
-        proposal_id,
-        treasury_id
-    );
+        tracing::info!(
+            "Confidential setup: auth proposal #{} approved for {}",
+            proposal_id,
+            treasury_id
+        );
 
-    // ── Authenticate with 1Click ────────────────────────────────────────
-    let sig_bytes = extract_mpc_signature(&vote_result_debug).ok_or_else(|| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to extract MPC signature from auth proposal result".to_string(),
+        let sig_bytes = extract_mpc_signature(&vote_result_debug).ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to extract MPC signature from auth proposal result".to_string(),
+            )
+        })?;
+        let sig_b58 = format!("ed25519:{}", bs58::encode(&sig_bytes).into_string());
+
+        authenticate_with_1click(
+            state,
+            treasury_id,
+            &treasury_id_public_key,
+            &auth_payload,
+            &sig_b58,
         )
-    })?;
-    let sig_b58 = format!("ed25519:{}", bs58::encode(&sig_bytes).into_string());
+        .await?;
 
-    authenticate_with_1click(
-        state,
-        treasury_id,
-        &treasury_id_public_key,
-        &auth_payload,
-        &sig_b58,
-    )
-    .await?;
-
-    tracing::info!(
-        "Confidential setup: DAO {} authenticated with 1Click",
-        treasury_id
-    );
+        tracing::info!(
+            "Confidential setup: DAO {} authenticated with 1Click",
+            treasury_id
+        );
+    }
 
     if let Some(tx) = progress {
         send_progress(tx, "authenticating", "completed").await;
@@ -148,6 +162,56 @@ pub async fn setup_confidential_treasury(
     }
 
     Ok(())
+}
+
+/// Check whether `intents.near` already has the given public key registered
+/// for the treasury. Used to make the `add_public_key` step idempotent on
+/// resume.
+async fn intents_has_public_key(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+    public_key: &str,
+) -> Result<bool, (StatusCode, String)> {
+    Contract(INTENTS_CONTRACT_ID.into())
+        .call_function(
+            "has_public_key",
+            json!({
+                "account_id": treasury_id.as_str(),
+                "public_key": public_key,
+            }),
+        )
+        .read_only::<bool>()
+        .fetch_from(&state.network)
+        .await
+        .map(|r| r.data)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to check has_public_key on intents.near: {e}"),
+            )
+        })
+}
+
+/// Whether a treasury already holds a non-expired 1Click access token. Used to
+/// skip the auth proposal + 1Click authentication on resume.
+async fn has_valid_confidential_token(pool: &sqlx::PgPool, treasury_id: &AccountId) -> bool {
+    sqlx::query_scalar::<_, bool>(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM monitored_accounts
+            WHERE account_id = $1
+              AND confidential_access_token IS NOT NULL
+              AND (
+                confidential_token_expires_at IS NULL
+                OR confidential_token_expires_at > NOW()
+              )
+        )
+        "#,
+    )
+    .bind(treasury_id.as_str())
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false)
 }
 
 /// Submit a proposal and immediately approve it.

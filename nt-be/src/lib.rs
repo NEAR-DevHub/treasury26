@@ -11,5 +11,5 @@ pub mod services;
 pub mod utils;
 
 pub use app_state::AppState;
-pub use events::AppEvent;
 pub use config::{BillingPeriod, PlanConfig, PlanType};
+pub use events::AppEvent;

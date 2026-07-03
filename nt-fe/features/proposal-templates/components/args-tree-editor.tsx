@@ -12,7 +12,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Fragment } from "react";
 import { Button } from "@/components/button";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/input";
 import {
     Select,
     SelectContent,
@@ -86,7 +86,7 @@ export function ArgsTreeEditor({
             ))}
             <Button
                 type="button"
-                variant="ghost"
+                variant="unstyled"
                 size="sm"
                 className="self-start px-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
                 onClick={() =>
