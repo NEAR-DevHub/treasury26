@@ -93,9 +93,21 @@ pub async fn load_bronze_suffix(
             dp.id AS proposal_ref,
             dp.proposal_id
         FROM bronze_public_history_events b
-        LEFT JOIN dao_proposals dp
-          ON dp.dao_id = b.account_id
-         AND dp.proposal_execution_transaction_hash = b.transaction_hash
+        -- Batched act_proposal calls can execute multiple proposals in one tx.
+        -- Link only unambiguous matches; otherwise leave proposal_ref null.
+        LEFT JOIN LATERAL (
+            SELECT matched.id, matched.proposal_id
+            FROM (
+                SELECT
+                    dp.id,
+                    dp.proposal_id,
+                    COUNT(*) OVER () AS match_count
+                FROM dao_proposals dp
+                WHERE dp.dao_id = b.account_id
+                  AND dp.proposal_execution_transaction_hash = b.transaction_hash
+            ) matched
+            WHERE matched.match_count = 1
+        ) dp ON TRUE
         WHERE b.account_id = $1
           AND b.block_time >= $2
         ORDER BY b.block_time ASC, b.block_height ASC, b.id ASC

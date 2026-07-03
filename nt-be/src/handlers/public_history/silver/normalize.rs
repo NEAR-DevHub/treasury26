@@ -64,7 +64,9 @@ fn normalize_ft(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         .contract_account_id
         .clone()
         .ok_or_else(|| "FT event missing contract_account_id".to_string())?;
-    let decimals = row.decimals.unwrap_or(24);
+    let decimals = row
+        .decimals
+        .ok_or_else(|| "FT event missing decimals".to_string())?;
     let kind = leg_kind_from_cause(row.cause.as_deref());
     let amount = PublicAmount::from_raw(delta.abs(), decimals);
 
@@ -104,7 +106,9 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         .token_id
         .clone()
         .ok_or_else(|| "MT event missing token_id".to_string())?;
-    let decimals = row.decimals.unwrap_or(24);
+    let decimals = row
+        .decimals
+        .ok_or_else(|| "MT event missing decimals".to_string())?;
     let kind = leg_kind_from_cause(row.cause.as_deref());
     let direction = if delta.is_positive() {
         PublicTransferDirection::Incoming
@@ -191,6 +195,10 @@ fn normalize_receipt(
 pub fn normalize_bronze_row(
     row: &BronzePublicHistoryRow,
 ) -> Result<Option<NormalizedTransferLeg>, String> {
+    if row.outcome_status == Some(false) {
+        return Ok(None);
+    }
+
     let source = PublicHistorySource::from_db(&row.source).map_err(|e| e.to_string())?;
     match source {
         PublicHistorySource::NearblocksFt => normalize_ft(row),
@@ -207,6 +215,35 @@ mod tests {
 
     use super::super::models::PublicTokenStandard;
     use super::*;
+
+    fn base_row(source: PublicHistorySource) -> BronzePublicHistoryRow {
+        BronzePublicHistoryRow {
+            id: 1,
+            account_id: "dao.near".to_string(),
+            source: source.as_str().to_string(),
+            source_event_key: "event-1".to_string(),
+            transaction_hash: Some("tx".to_string()),
+            receipt_id: Some("receipt".to_string()),
+            event_index: Some(0),
+            block_height: 1,
+            block_timestamp: BigDecimal::from(0),
+            block_time: Utc.timestamp_opt(0, 0).unwrap(),
+            affected_account_id: "dao.near".to_string(),
+            involved_account_id: Some("alice.near".to_string()),
+            contract_account_id: Some("token.near".to_string()),
+            token_id: Some("nep141:token.near".to_string()),
+            cause: None,
+            action_kind: None,
+            method_name: None,
+            delta_amount_raw: Some(BigDecimal::from(100)),
+            decimals: Some(6),
+            deposit_raw: None,
+            outcome_status: None,
+            raw_payload: serde_json::json!({}),
+            proposal_ref: None,
+            proposal_id: None,
+        }
+    }
 
     #[test]
     fn public_asset_formats_are_canonical() {
@@ -264,5 +301,49 @@ mod tests {
             "intents.near:nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
         );
         assert_eq!(leg.amount.amount, BigDecimal::from_str("0.1").unwrap());
+    }
+
+    #[test]
+    fn failed_receipt_is_skipped() {
+        let mut row = base_row(PublicHistorySource::NearblocksReceipt);
+        row.action_kind = Some("TRANSFER".to_string());
+        row.deposit_raw = Some(BigDecimal::from(1000));
+        row.decimals = Some(24);
+        row.outcome_status = Some(false);
+
+        let leg = normalize_bronze_row(&row).expect("failed row should not error");
+
+        assert!(leg.is_none());
+    }
+
+    #[test]
+    fn failed_ft_row_is_skipped_before_validation() {
+        let mut row = base_row(PublicHistorySource::NearblocksFt);
+        row.decimals = None;
+        row.outcome_status = Some(false);
+
+        let leg = normalize_bronze_row(&row).expect("failed row should not error");
+
+        assert!(leg.is_none());
+    }
+
+    #[test]
+    fn ft_missing_decimals_is_projection_error() {
+        let mut row = base_row(PublicHistorySource::NearblocksFt);
+        row.decimals = None;
+
+        let err = normalize_bronze_row(&row).expect_err("missing decimals should error");
+
+        assert_eq!(err, "FT event missing decimals");
+    }
+
+    #[test]
+    fn mt_missing_decimals_is_projection_error() {
+        let mut row = base_row(PublicHistorySource::NearblocksMt);
+        row.decimals = None;
+
+        let err = normalize_bronze_row(&row).expect_err("missing decimals should error");
+
+        assert_eq!(err, "MT event missing decimals");
     }
 }

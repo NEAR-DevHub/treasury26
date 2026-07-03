@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use bigdecimal::BigDecimal;
 use futures::StreamExt;
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 
 use super::cursors::clear_gold_dirty_if_not_advanced;
 use super::models::{
@@ -13,8 +13,9 @@ use super::models::{
     PublicHistoryEventStatus,
 };
 use super::repository::{
-    clear_projection_error, delete_stale_gold_rows, earliest_silver_time, load_dirty_accounts,
-    load_silver_suffix, seed_ledger_before, upsert_gold_event, upsert_projection_error,
+    clear_projection_error, delete_stale_gold_rows, earliest_silver_time, has_gold_before,
+    load_dirty_accounts, load_silver_suffix, seed_ledger_before, upsert_gold_event,
+    upsert_projection_error,
 };
 use crate::AppState;
 
@@ -76,6 +77,19 @@ struct PendingExchange {
     outgoing: SilverTransferLegRow,
     token_out_balance_before: BigDecimal,
     token_out_balance_after: BigDecimal,
+}
+
+fn choose_recompute_from(
+    earliest: chrono::DateTime<chrono::Utc>,
+    cursor_recompute_from: Option<chrono::DateTime<chrono::Utc>>,
+    has_prior_gold: bool,
+) -> chrono::DateTime<chrono::Utc> {
+    let recompute_from = cursor_recompute_from.unwrap_or(earliest);
+    if earliest < recompute_from && !has_prior_gold {
+        earliest
+    } else {
+        recompute_from
+    }
 }
 
 fn collect_string_array(value: &Value, key: &str, out: &mut HashSet<String>) {
@@ -628,6 +642,29 @@ fn completed_exchange_event_from_legs(
     }
 }
 
+async fn persist_completed_exchange(
+    tx: &mut Transaction<'_, Postgres>,
+    pending: PendingExchange,
+    incoming: &SilverTransferLegRow,
+    quote_by_proposal_ref: &HashMap<i64, ParsedQuoteStatus>,
+    ledger: &mut GoldLedger,
+    preserve_keys: &mut HashSet<String>,
+    stats: &mut GoldProjectionResult,
+) -> Result<(), sqlx::Error> {
+    let quote = pending
+        .outgoing
+        .proposal_ref
+        .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
+    let outgoing_id = pending.outgoing.id;
+    let event = completed_exchange_event_from_legs(&pending, incoming, quote, ledger);
+    preserve_keys.insert(event.gold_event_key.clone());
+    upsert_gold_event(tx, &event).await?;
+    clear_projection_error(tx, outgoing_id).await?;
+    clear_projection_error(tx, incoming.id).await?;
+    stats.rows_projected += 1;
+    Ok(())
+}
+
 pub async fn project_public_gold_for_account(
     pool: &PgPool,
     token_prices: &TokenPriceService,
@@ -678,10 +715,13 @@ pub async fn project_public_gold_for_account(
         return Ok(GoldProjectionResult::default());
     };
 
-    let mut recompute_from = cursor_recompute_from.unwrap_or(earliest);
-    if earliest < recompute_from {
-        recompute_from = earliest;
-    }
+    let initial_recompute_from = cursor_recompute_from.unwrap_or(earliest);
+    let has_prior_gold = if earliest < initial_recompute_from {
+        has_gold_before(&mut tx, account_id, initial_recompute_from).await?
+    } else {
+        true
+    };
+    let recompute_from = choose_recompute_from(earliest, cursor_recompute_from, has_prior_gold);
 
     let seed_rows = seed_ledger_before(&mut tx, account_id, recompute_from).await?;
     let mut ledger = GoldLedger::from_seed(seed_rows);
@@ -704,6 +744,7 @@ pub async fn project_public_gold_for_account(
     };
     let mut preserve_keys: HashSet<String> = HashSet::new();
     let mut pending_exchanges: HashMap<i64, PendingExchange> = HashMap::new();
+    let mut deferred_incoming: HashMap<i64, SilverTransferLegRow> = HashMap::new();
     let mut stats = GoldProjectionResult::default();
 
     for leg in rows {
@@ -720,6 +761,20 @@ pub async fn project_public_gold_for_account(
 
             if exchange_pairs.outgoing_to_incoming.contains_key(&leg.id) {
                 pending_exchanges.insert(leg.id, pending);
+                if let Some(incoming) = deferred_incoming.remove(&leg.id)
+                    && let Some(pending) = pending_exchanges.remove(&leg.id)
+                {
+                    persist_completed_exchange(
+                        &mut tx,
+                        pending,
+                        &incoming,
+                        &quote_by_proposal_ref,
+                        &mut ledger,
+                        &mut preserve_keys,
+                        &mut stats,
+                    )
+                    .await?;
+                }
             } else {
                 match pending_exchange_event_from_leg(&pending, quote) {
                     Ok(event) => {
@@ -744,19 +799,21 @@ pub async fn project_public_gold_for_account(
             continue;
         }
 
-        if let Some(outgoing_id) = exchange_pairs.incoming_to_outgoing.get(&leg.id)
-            && let Some(pending) = pending_exchanges.remove(outgoing_id)
-        {
-            let quote = pending
-                .outgoing
-                .proposal_ref
-                .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
-            let event = completed_exchange_event_from_legs(&pending, &leg, quote, &mut ledger);
-            preserve_keys.insert(event.gold_event_key.clone());
-            upsert_gold_event(&mut tx, &event).await?;
-            clear_projection_error(&mut tx, pending.outgoing.id).await?;
-            clear_projection_error(&mut tx, leg.id).await?;
-            stats.rows_projected += 1;
+        if let Some(outgoing_id) = exchange_pairs.incoming_to_outgoing.get(&leg.id) {
+            if let Some(pending) = pending_exchanges.remove(outgoing_id) {
+                persist_completed_exchange(
+                    &mut tx,
+                    pending,
+                    &leg,
+                    &quote_by_proposal_ref,
+                    &mut ledger,
+                    &mut preserve_keys,
+                    &mut stats,
+                )
+                .await?;
+            } else {
+                deferred_incoming.insert(*outgoing_id, leg);
+            }
             continue;
         }
 
@@ -985,6 +1042,123 @@ mod tests {
         row.direction = "incoming".to_string();
         row.leg_kind = "mint".to_string();
         assert!(is_projectable_transfer(&row).unwrap());
+    }
+
+    #[test]
+    fn recompute_from_stays_incremental_when_prior_gold_exists() {
+        let earliest = chrono::DateTime::<chrono::Utc>::from_timestamp(10, 0).unwrap();
+        let cursor = chrono::DateTime::<chrono::Utc>::from_timestamp(20, 0).unwrap();
+
+        assert_eq!(choose_recompute_from(earliest, Some(cursor), true), cursor);
+    }
+
+    #[test]
+    fn recompute_from_collapses_to_earliest_for_first_projection() {
+        let earliest = chrono::DateTime::<chrono::Utc>::from_timestamp(10, 0).unwrap();
+        let cursor = chrono::DateTime::<chrono::Utc>::from_timestamp(20, 0).unwrap();
+
+        assert_eq!(
+            choose_recompute_from(earliest, Some(cursor), false),
+            earliest
+        );
+    }
+
+    #[test]
+    fn same_block_incoming_before_outgoing_is_deferred_until_exchange_completion() {
+        let mut incoming = leg("nep245", Some("intents.near"), "2");
+        incoming.id = 1;
+        incoming.leg_key = "incoming".to_string();
+        incoming.direction = "incoming".to_string();
+        incoming.transaction_hash = Some("fulfillment-tx".to_string());
+        incoming.token_id = "intents.near:nep141:usdt.near".to_string();
+        incoming.amount_raw = decimal("2000000");
+        incoming.amount = decimal("2");
+
+        let mut outgoing = leg("nep245", Some("deposit-address"), "1");
+        outgoing.id = 2;
+        outgoing.leg_key = "outgoing".to_string();
+        outgoing.direction = "outgoing".to_string();
+        outgoing.proposal_ref = Some(7);
+        outgoing.quote_deposit_address = Some("deposit-address".to_string());
+        outgoing.transaction_hash = Some("proposal-tx".to_string());
+        outgoing.token_id = "intents.near:nep141:usdc.near".to_string();
+        outgoing.amount_raw = decimal("1000000");
+        outgoing.amount = decimal("1");
+        outgoing.quote_metadata = Some(serde_json::json!({
+            "status": "SUCCESS",
+            "nearTxHashes": ["fulfillment-tx"],
+            "quoteResponse": {
+                "quoteRequest": {
+                    "originAsset": "nep141:usdc.near",
+                    "destinationAsset": "nep141:usdt.near"
+                },
+                "quote": {
+                    "amountIn": "1000000"
+                }
+            },
+            "swapDetails": {
+                "amountIn": "1000000",
+                "amountOut": "2000000"
+            }
+        }));
+
+        let rows = vec![incoming.clone(), outgoing.clone()];
+        let quote_by_proposal_ref = build_quote_map(&rows);
+        let exchange_pairs = plan_exchange_pairs(&rows).expect("exchange pair plan");
+        let mut pending_exchanges: HashMap<i64, PendingExchange> = HashMap::new();
+        let mut deferred_incoming: HashMap<i64, SilverTransferLegRow> = HashMap::new();
+        let mut ledger = GoldLedger::default();
+        let mut emitted = Vec::new();
+
+        for leg in rows {
+            let quote = leg
+                .proposal_ref
+                .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
+            if is_quote_matched_exchange_deposit(&leg, quote).unwrap_or(false) {
+                let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
+                let pending = PendingExchange {
+                    outgoing: leg.clone(),
+                    token_out_balance_before: before,
+                    token_out_balance_after: after,
+                };
+                pending_exchanges.insert(leg.id, pending);
+                if let Some(incoming) = deferred_incoming.remove(&leg.id)
+                    && let Some(pending) = pending_exchanges.remove(&leg.id)
+                {
+                    let quote = pending
+                        .outgoing
+                        .proposal_ref
+                        .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
+                    let event =
+                        completed_exchange_event_from_legs(&pending, &incoming, quote, &mut ledger);
+                    emitted.push(event.transaction_type.as_str());
+                }
+                continue;
+            }
+
+            if let Some(outgoing_id) = exchange_pairs.incoming_to_outgoing.get(&leg.id) {
+                if let Some(pending) = pending_exchanges.remove(outgoing_id) {
+                    let quote = pending
+                        .outgoing
+                        .proposal_ref
+                        .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
+                    let event =
+                        completed_exchange_event_from_legs(&pending, &leg, quote, &mut ledger);
+                    emitted.push(event.transaction_type.as_str());
+                } else {
+                    deferred_incoming.insert(*outgoing_id, leg);
+                }
+                continue;
+            }
+
+            if leg_direction(&leg).unwrap() == PublicTransferDirection::Incoming {
+                emitted.push("deposit");
+            }
+        }
+
+        assert_eq!(emitted, vec!["exchange"]);
+        assert!(deferred_incoming.is_empty());
+        assert!(pending_exchanges.is_empty());
     }
 
     #[test]
