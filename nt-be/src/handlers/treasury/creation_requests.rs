@@ -45,7 +45,7 @@ pub async fn record_creation_started(
 
     sqlx::query(
         r#"
-        INSERT INTO treasury_creation_requests
+        INSERT INTO incomplete_treasury_creations
             (account_id, name, payment_threshold, governance_threshold,
              governors, financiers, requestors, is_confidential, status, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'in_progress', NOW())
@@ -78,7 +78,7 @@ pub async fn record_creation_started(
 /// Delete the request on successful completion, so the table only retains
 /// in-flight (`pending`) and gave-up (`failed`) rows.
 pub async fn delete_creation_request(pool: &PgPool, account_id: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM treasury_creation_requests WHERE account_id = $1")
+    sqlx::query("DELETE FROM incomplete_treasury_creations WHERE account_id = $1")
         .bind(account_id)
         .execute(pool)
         .await?;
@@ -95,7 +95,7 @@ pub async fn mark_creation_pending(
     let truncated: String = error.chars().take(1000).collect();
     sqlx::query(
         r#"
-        UPDATE treasury_creation_requests
+        UPDATE incomplete_treasury_creations
         SET status = 'pending', last_error = $2, updated_at = NOW()
         WHERE account_id = $1 AND status <> 'failed'
         "#,
@@ -107,16 +107,25 @@ pub async fn mark_creation_pending(
     Ok(())
 }
 
-/// Give up on a request that has exhausted its sweep attempts (terminal).
-pub async fn mark_creation_failed(pool: &PgPool, account_id: &str) -> Result<(), sqlx::Error> {
+/// Mark a request `failed` (terminal) and record the error. Used both when a
+/// request exhausts its sweep attempts and when it hits an unrecoverable error
+/// (e.g. the handle is taken). Applies to any non-failed row so it works
+/// straight from `in_progress` as well as `pending`.
+pub async fn mark_creation_failed(
+    pool: &PgPool,
+    account_id: &str,
+    error: &str,
+) -> Result<(), sqlx::Error> {
+    let truncated: String = error.chars().take(1000).collect();
     sqlx::query(
         r#"
-        UPDATE treasury_creation_requests
-        SET status = 'failed', updated_at = NOW()
-        WHERE account_id = $1 AND status = 'pending'
+        UPDATE incomplete_treasury_creations
+        SET status = 'failed', last_error = $2, updated_at = NOW()
+        WHERE account_id = $1 AND status <> 'failed'
         "#,
     )
     .bind(account_id)
+    .bind(truncated)
     .execute(pool)
     .await?;
     Ok(())
@@ -142,10 +151,10 @@ pub async fn claim_stale_pending(
 ) -> Result<Vec<SweepCandidate>, sqlx::Error> {
     let rows = sqlx::query(
         r#"
-        UPDATE treasury_creation_requests
+        UPDATE incomplete_treasury_creations
         SET attempts = attempts + 1, updated_at = NOW()
         WHERE account_id IN (
-            SELECT account_id FROM treasury_creation_requests
+            SELECT account_id FROM incomplete_treasury_creations
             WHERE attempts < $1
               AND (
                     (status = 'pending'

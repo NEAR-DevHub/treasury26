@@ -51,7 +51,7 @@ function isPermanentCreationError(message?: string): boolean {
     if (!message) return false;
     const normalized = message.toLowerCase();
     return (
-        normalized.includes("not managed by this platform") ||
+        normalized.includes("already taken") ||
         normalized.includes("creation disabled")
     );
 }

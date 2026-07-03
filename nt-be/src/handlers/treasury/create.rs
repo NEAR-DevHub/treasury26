@@ -319,6 +319,14 @@ fn creation_error_retryable(attempt: u32, message: &str) -> bool {
     attempt < MAX_CREATION_ATTEMPTS && is_transport_error(message)
 }
 
+/// Whether an error is terminal — it can never succeed on retry, so neither the
+/// in-request loop nor the background sweeper should keep trying. Currently this
+/// is the `ExistingDaoState::Taken` case: the handle exists and belongs to an
+/// account we don't control.
+pub(crate) fn is_terminal_creation_error(message: &str) -> bool {
+    message.contains("already taken")
+}
+
 /// Build an SSE error event with the given message.
 fn error_event(message: String) -> ProgressEvent {
     ProgressEvent {
@@ -503,16 +511,34 @@ pub(crate) async fn run_creation(
             }
         }
         Err(evt) => {
-            // Flip to `pending` so the sweeper picks it up, then wake the
-            // sweeper right away instead of waiting for its next poll tick.
             let message = evt.message.as_deref().unwrap_or_default();
-            if let Err(e) =
-                creation_requests::mark_creation_pending(&state.db_pool, treasury.as_str(), message)
-                    .await
-            {
-                tracing::warn!("Failed to mark creation pending for {}: {}", treasury, e);
+            if is_terminal_creation_error(message) {
+                // The handle is taken by an account we don't control — retrying
+                // can never succeed, so mark it `failed` and do NOT wake the
+                // sweeper (which would otherwise burn its attempts + alert).
+                if let Err(e) = creation_requests::mark_creation_failed(
+                    &state.db_pool,
+                    treasury.as_str(),
+                    message,
+                )
+                .await
+                {
+                    tracing::warn!("Failed to mark creation failed for {}: {}", treasury, e);
+                }
+            } else {
+                // Flip to `pending` so the sweeper picks it up, then wake the
+                // sweeper right away instead of waiting for its next poll tick.
+                if let Err(e) = creation_requests::mark_creation_pending(
+                    &state.db_pool,
+                    treasury.as_str(),
+                    message,
+                )
+                .await
+                {
+                    tracing::warn!("Failed to mark creation pending for {}: {}", treasury, e);
+                }
+                state.creation_sweep_notify.notify_one();
             }
-            state.creation_sweep_notify.notify_one();
         }
     }
 
@@ -564,7 +590,7 @@ async fn run_creation_inner(
     match existing {
         ExistingDaoState::Taken => {
             return Err(error_event(format!(
-                "Treasury {treasury} already exists and is not managed by this platform."
+                "The name \"{treasury}\" is already taken. Please choose a different treasury name."
             )));
         }
         ExistingDaoState::Absent => {
@@ -739,7 +765,7 @@ mod tests {
         // Non-transport (logic) errors are never retried.
         assert!(!creation_error_retryable(
             1,
-            "Treasury already exists and is not managed by this platform."
+            "The name \"foo.sputnik-dao.near\" is already taken. Please choose a different treasury name."
         ));
         assert!(!creation_error_retryable(1, "1Click auth failed (400)"));
 

@@ -2,7 +2,7 @@
 //!
 //! When a creation attempt fails part-way (e.g. an RPC timeout after the DAO is
 //! created but before confidential ownership handoff), its intent is left
-//! `pending` in `treasury_creation_requests`. This worker claims stale pending
+//! `pending` in `incomplete_treasury_creations`. This worker claims stale pending
 //! requests and re-runs the (idempotent, resumable) creation flow, so a user's
 //! chosen treasury gets finished without them having to come back — even if
 //! they closed the tab or the process restarted.
@@ -127,13 +127,23 @@ async fn resume_one(state: &Arc<AppState>, candidate: SweepCandidate) {
                 return;
             }
 
+            // Terminal error (e.g. handle taken): run_creation already marked
+            // the row `failed`. Don't warn/alert as a give-up or keep retrying.
+            if super::create::is_terminal_creation_error(&message) {
+                tracing::info!(
+                    "Treasury creation sweeper: {account} is not resumable ({message}); marked failed"
+                );
+                return;
+            }
+
             tracing::warn!(
                 "Treasury creation sweeper: attempt {attempts}/{MAX_SWEEP_ATTEMPTS} for {account} failed: {message}"
             );
 
             if attempts >= MAX_SWEEP_ATTEMPTS {
                 if let Err(e) =
-                    creation_requests::mark_creation_failed(&state.db_pool, &account).await
+                    creation_requests::mark_creation_failed(&state.db_pool, &account, &message)
+                        .await
                 {
                     tracing::warn!("Failed to mark creation failed for {account}: {e}");
                 }
