@@ -5,6 +5,7 @@ import {
     ArrowUpRightIcon,
     Check,
     ChevronDown,
+    ClockIcon,
     Coins,
     Download,
     Info,
@@ -16,6 +17,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
+import { EmptyState } from "@/components/empty-state";
 import { Tooltip } from "@/components/tooltip";
 import {
     DropdownMenu,
@@ -870,6 +872,16 @@ export default function BalanceWithGraph({
                     <div className="h-56 w-full space-y-3 p-4">
                         <Skeleton className="h-50 w-full" />
                     </div>
+                ) : selectedToken !== "all" &&
+                  displayChartData.data.length === 0 ? (
+                    <EmptyState
+                        icon={ClockIcon}
+                        title={t("noTokenChartTitle")}
+                        description={t("noTokenChartDescription", {
+                            symbol: selectedTokenGroup?.symbol ?? selectedToken,
+                        })}
+                        className="h-56"
+                    />
                 ) : (
                     <BalanceChart
                         data={displayChartData.data}

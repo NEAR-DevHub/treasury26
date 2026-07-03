@@ -1813,6 +1813,8 @@
         "bucketAvailable": "Kullanılabilir",
         "bucketLocked": "Kilitli",
         "bucketEarning": "Kazanç",
+        "noTokenChartTitle": "Verileriniz yükleniyor",
+        "noTokenChartDescription": "Varlık verileriniz yükleniyor. Bu biraz zaman alabilir.",
         "period": {
             "1W": "1H",
             "1M": "1A",

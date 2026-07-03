@@ -1813,6 +1813,8 @@
         "bucketAvailable": "זמין",
         "bucketLocked": "נעול",
         "bucketEarning": "מרוויח",
+        "noTokenChartTitle": "טוען את הנתונים שלך",
+        "noTokenChartDescription": "אנחנו טוענים את נתוני הנכסים שלך. זה עשוי לקחת זמן מה.",
         "period": {
             "1W": "שבוע",
             "1M": "חודש",

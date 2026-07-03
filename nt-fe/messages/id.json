@@ -1813,6 +1813,8 @@
         "bucketAvailable": "Tersedia",
         "bucketLocked": "Terkunci",
         "bucketEarning": "Pendapatan",
+        "noTokenChartTitle": "Memuat data Anda",
+        "noTokenChartDescription": "Kami sedang memuat data aset Anda. Ini mungkin memerlukan beberapa waktu.",
         "period": {
             "1W": "1Mg",
             "1M": "1Bl",

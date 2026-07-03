@@ -1813,6 +1813,8 @@
         "bucketAvailable": "可用",
         "bucketLocked": "已锁定",
         "bucketEarning": "收益中",
+        "noTokenChartTitle": "正在加载您的数据",
+        "noTokenChartDescription": "我们正在加载您的资产数据，这可能需要一些时间。",
         "period": {
             "1W": "1周",
             "1M": "1月",

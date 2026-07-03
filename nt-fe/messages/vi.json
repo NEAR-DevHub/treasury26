@@ -1813,6 +1813,8 @@
         "bucketAvailable": "Khả dụng",
         "bucketLocked": "Đã khóa",
         "bucketEarning": "Thu nhập",
+        "noTokenChartTitle": "Đang tải dữ liệu của bạn",
+        "noTokenChartDescription": "Chúng tôi đang tải dữ liệu tài sản của bạn. Việc này có thể mất một chút thời gian.",
         "period": {
             "1W": "1T",
             "1M": "1Th",

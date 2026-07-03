@@ -1813,6 +1813,8 @@
         "bucketAvailable": "Available",
         "bucketLocked": "Locked",
         "bucketEarning": "Earning",
+        "noTokenChartTitle": "Loading your data",
+        "noTokenChartDescription": "We're loading your asset data. This might take some time.",
         "period": {
             "1W": "1W",
             "1M": "1M",

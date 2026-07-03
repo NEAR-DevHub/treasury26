@@ -1813,6 +1813,8 @@
         "bucketAvailable": "Disponível",
         "bucketLocked": "Bloqueado",
         "bucketEarning": "Rendendo",
+        "noTokenChartTitle": "Carregando seus dados",
+        "noTokenChartDescription": "Estamos carregando os dados dos seus ativos. Isso pode levar algum tempo.",
         "period": {
             "1W": "1S",
             "1M": "1M",

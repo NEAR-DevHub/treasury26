@@ -1813,6 +1813,8 @@
         "bucketAvailable": "Доступно",
         "bucketLocked": "Заблоковано",
         "bucketEarning": "Заробіток",
+        "noTokenChartTitle": "Завантаження ваших даних",
+        "noTokenChartDescription": "Ми завантажуємо дані про ваші активи. Це може зайняти деякий час.",
         "period": {
             "1W": "1т",
             "1M": "1м",

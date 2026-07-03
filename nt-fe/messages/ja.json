@@ -1813,6 +1813,8 @@
         "bucketAvailable": "利用可能",
         "bucketLocked": "ロック",
         "bucketEarning": "収益中",
+        "noTokenChartTitle": "データを読み込んでいます",
+        "noTokenChartDescription": "資産データを読み込んでいます。少し時間がかかる場合があります。",
         "period": {
             "1W": "1週",
             "1M": "1ヶ月",
