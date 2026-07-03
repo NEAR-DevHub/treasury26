@@ -489,7 +489,7 @@ test.describe("Custom Templates — access gates", () => {
         await expect(page.getByText("Set Greeting")).toBeVisible();
     });
 
-    test("Requestor sees the list + Create Request but no authoring affordances", async ({
+    test("Requestor gets an enabled Create Request; Add New is disabled, ⋮ menu hidden", async ({
         page,
     }) => {
         await setupMocks(page, [template()], { policy: PROPOSER_POLICY });
@@ -498,36 +498,40 @@ test.describe("Custom Templates — access gates", () => {
         await expect(page.getByText("Set Greeting")).toBeVisible({
             timeout: 15000,
         });
-        // Can still file a request...
+        // Can file a request...
         await expect(
             page.getByRole("button", { name: "Create Request" }),
-        ).toBeVisible();
-        // ...but the authoring controls (Add New, the ⋮ row menu) are gone.
-        await expect(page.getByRole("button", { name: "Add New" })).toHaveCount(
-            0,
-        );
+        ).toBeEnabled();
+        // ...authoring "Add New" is shown disabled (with a tooltip), not hidden...
+        await expect(
+            page.getByRole("button", { name: "Add New" }),
+        ).toBeDisabled();
+        // ...and the per-row ⋮ overflow (edit/pin/delete) stays hidden.
         await expect(
             page.getByRole("button", { name: "Template actions" }),
         ).toHaveCount(0);
     });
 
-    test("manager without call:AddProposal sees authoring UI but no Create Request", async ({
+    test("manager without call:AddProposal: authoring enabled, Create Request disabled", async ({
         page,
     }) => {
-        // Can author templates but can't file one (templates are FunctionCall) → don't offer the
-        // dead-end fill entry, but keep the ⋮ manage menu.
         await setupMocks(page, [template()], { policy: MANAGER_ONLY_POLICY });
         await page.goto(`/${TREASURY_ID}/custom-templates`);
 
         await expect(page.getByText("Set Greeting")).toBeVisible({
             timeout: 15000,
         });
+        // Can manage (⋮ menu + Add New enabled)...
         await expect(
             page.getByRole("button", { name: "Template actions" }),
         ).toBeVisible();
         await expect(
+            page.getByRole("button", { name: "Add New" }),
+        ).toBeEnabled();
+        // ...but can't file a FunctionCall template → Create Request shown disabled, not hidden.
+        await expect(
             page.getByRole("button", { name: "Create Request" }),
-        ).toHaveCount(0);
+        ).toBeDisabled();
     });
 
     test("transfer-only requestor has no templates access → dashboard", async ({

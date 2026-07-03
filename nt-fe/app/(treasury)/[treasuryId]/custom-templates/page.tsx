@@ -31,6 +31,7 @@ import {
     DialogTitle,
 } from "@/components/modal";
 import { PageComponentLayout } from "@/components/page-component-layout";
+import { Tooltip } from "@/components/tooltip";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -69,6 +70,35 @@ function HowItWorksLink() {
     );
 }
 
+/**
+ * A primary action that, when the user lacks the required permission, renders disabled with a
+ * tooltip explaining why — per review feedback we show + explain rather than hide, so a member sees
+ * the action exists and understands they'd need a role for it (not that it's broken/taken away).
+ */
+function GatedButton({
+    allowed,
+    tooltip,
+    children,
+    ...buttonProps
+}: {
+    allowed: boolean;
+    tooltip: string;
+} & React.ComponentProps<typeof Button>) {
+    if (allowed) {
+        return <Button {...buttonProps}>{children}</Button>;
+    }
+    return (
+        <Tooltip content={tooltip}>
+            {/* Radix needs a real event target to hover; a disabled <button> emits none, so wrap it. */}
+            <span className="inline-block">
+                <Button {...buttonProps} disabled>
+                    {children}
+                </Button>
+            </span>
+        </Tooltip>
+    );
+}
+
 function EmptyState({
     onCreate,
     canManage,
@@ -77,6 +107,7 @@ function EmptyState({
     canManage: boolean;
 }) {
     const t = useTranslations("customTemplates");
+    const tAuth = useTranslations("auth");
     return (
         <PageCard className="items-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -92,12 +123,13 @@ function EmptyState({
             </div>
             <div className="flex items-center gap-2">
                 <HowItWorksLink />
-                {/* Only policy managers can author templates; a proposer sees just the docs link. */}
-                {canManage ? (
-                    <Button onClick={onCreate}>
-                        <Plus className="size-4" /> {t("index.createTemplate")}
-                    </Button>
-                ) : null}
+                <GatedButton
+                    allowed={canManage}
+                    tooltip={tAuth("noPermission")}
+                    onClick={onCreate}
+                >
+                    <Plus className="size-4" /> {t("index.createTemplate")}
+                </GatedButton>
             </div>
         </PageCard>
     );
@@ -123,6 +155,7 @@ function TemplateRow({
     onDelete,
 }: TemplateRowProps) {
     const t = useTranslations("customTemplates");
+    const tCreate = useTranslations("createRequestButton");
     return (
         <div className="group flex min-h-[75px] items-center justify-between gap-3 rounded-xl bg-[#FAFAF9] p-4 dark:bg-muted">
             <div className="flex min-w-0 flex-col gap-0.5">
@@ -182,13 +215,16 @@ function TemplateRow({
                         </DropdownMenuContent>
                     </DropdownMenu>
                 ) : null}
-                {/* Filing needs call:AddProposal (templates build a FunctionCall). Hide the entry so a
-                    manager-only or transfer-only member isn't walked into a dead-end fill form. */}
-                {canPropose ? (
-                    <Button onClick={onCreateRequest}>
-                        {t("index.createRequest")}
-                    </Button>
-                ) : null}
+                {/* Filing needs call:AddProposal (templates build a FunctionCall). Disable rather than
+                    hide so a manager-only / transfer-only member sees the action and why it's blocked
+                    instead of being walked into a dead-end fill form. */}
+                <GatedButton
+                    allowed={canPropose}
+                    tooltip={tCreate("noPermission")}
+                    onClick={onCreateRequest}
+                >
+                    {t("index.createRequest")}
+                </GatedButton>
             </div>
         </div>
     );
@@ -196,6 +232,7 @@ function TemplateRow({
 
 export default function CustomTemplatesIndexPage() {
     const t = useTranslations("customTemplates");
+    const tAuth = useTranslations("auth");
     const router = useRouter();
     const { treasuryId } = useTreasury();
     const { canManage, canPropose } = useCustomTemplatesAccess();
@@ -261,15 +298,15 @@ export default function CustomTemplatesIndexPage() {
                             </h2>
                             <div className="flex items-center gap-2">
                                 <HowItWorksLink />
-                                {canManage ? (
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => go("/create")}
-                                    >
-                                        <Plus className="size-4" />{" "}
-                                        {t("index.addNew")}
-                                    </Button>
-                                ) : null}
+                                <GatedButton
+                                    allowed={canManage}
+                                    tooltip={tAuth("noPermission")}
+                                    variant="secondary"
+                                    onClick={() => go("/create")}
+                                >
+                                    <Plus className="size-4" />{" "}
+                                    {t("index.addNew")}
+                                </GatedButton>
                             </div>
                         </div>
                         <div className="flex flex-col gap-3">
