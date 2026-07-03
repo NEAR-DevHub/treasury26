@@ -221,9 +221,10 @@ test("dashboard chart x-axis labels should not overlap on desktop with 3M period
         .first()
         .waitFor({ state: "visible", timeout: 15_000 });
 
-    // On desktop, the time period selector is a ToggleGroup (hidden on mobile)
-    const btn3M = page.locator(".hidden.md\\:flex").getByText("3M");
-    await btn3M.click();
+    // On desktop, the time period selector is a dropdown (hidden on mobile):
+    // open the trigger, then pick "3M" from the portaled menu.
+    await page.getByTestId("chart-period-trigger").click();
+    await page.getByTestId("chart-period-option-3M").click();
 
     // Wait for chart to re-render with 3M data
     await chartContainer

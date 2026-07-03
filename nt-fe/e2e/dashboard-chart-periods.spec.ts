@@ -135,6 +135,16 @@ async function setupMocks(page: Page) {
 }
 
 /**
+ * Select a time period from the desktop dropdown. The trigger shows the
+ * currently selected period; the other options live in a portaled menu that
+ * must be opened first.
+ */
+async function selectDesktopPeriod(page: Page, period: string) {
+    await page.getByTestId("chart-period-trigger").click();
+    await page.getByTestId(`chart-period-option-${period}`).click();
+}
+
+/**
  * Collect x-axis tick labels from the rendered chart.
  * Returns an array of { text, left, right } for each visible tick label.
  */
@@ -262,11 +272,8 @@ test.describe("Dashboard chart time period aggregation (issue #228)", () => {
                 .first()
                 .waitFor({ state: "visible", timeout: 15_000 });
 
-            // Select the target time period via desktop ToggleGroup
-            const periodBtn = page
-                .locator(".hidden.md\\:flex")
-                .getByText(period, { exact: true });
-            await periodBtn.click();
+            // Select the target time period via the desktop dropdown
+            await selectDesktopPeriod(page, period);
 
             // Wait for chart to re-render with new period data
             await page.waitForTimeout(2000);
@@ -375,11 +382,8 @@ test.describe("Dashboard chart time period aggregation (issue #228)", () => {
             .waitFor({ state: "visible", timeout: 15_000 });
 
         for (const period of ["1W", "1M", "3M", "1Y"] as const) {
-            // Select period
-            const periodBtn = page
-                .locator(".hidden.md\\:flex")
-                .getByText(period, { exact: true });
-            await periodBtn.click();
+            // Select period via the desktop dropdown
+            await selectDesktopPeriod(page, period);
             await page.waitForTimeout(2000);
 
             // Count rendered data points in the SVG path

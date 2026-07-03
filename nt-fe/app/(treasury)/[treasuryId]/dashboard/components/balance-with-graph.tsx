@@ -637,6 +637,7 @@ export default function BalanceWithGraph({
                                         size="sm"
                                         disabled={isLoadingTokens || isLoading}
                                         className="h-9 min-w-[140px] justify-between font-normal"
+                                        data-testid="chart-token-trigger"
                                     >
                                         {selectedToken === "all" ? (
                                             <span className="flex items-center gap-2">
@@ -714,6 +715,7 @@ export default function BalanceWithGraph({
                                         size="sm"
                                         disabled={isLoadingTokens || isLoading}
                                         className="h-9 w-fit justify-between gap-1.5 font-normal"
+                                        data-testid="chart-period-trigger"
                                     >
                                         <span>
                                             {t(`period.${selectedPeriod}`)}
@@ -732,6 +734,7 @@ export default function BalanceWithGraph({
                                                 setSelectedPeriod(period)
                                             }
                                             className="flex items-center justify-between gap-2"
+                                            data-testid={`chart-period-option-${period}`}
                                         >
                                             <span>{t(`period.${period}`)}</span>
                                             {selectedPeriod === period && (
