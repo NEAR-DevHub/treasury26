@@ -13,7 +13,7 @@ FROM rust AS contract-builder
 WORKDIR /build
 
 # Install cargo-near via pre-built binary (much faster than cargo install)
-RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.17.0/cargo-near-installer.sh | sh
+RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.21.1/cargo-near-installer.sh | sh
 
 COPY contracts/bulk-payment/Cargo.toml contracts/bulk-payment/Cargo.lock* ./
 COPY contracts/bulk-payment/src ./src
