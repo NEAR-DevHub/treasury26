@@ -151,7 +151,15 @@ pub async fn get_balance_changes_internal(
     if is_confidential {
         return confidential_list::fetch_balance_change_legs(state, params).await;
     }
-    if !is_confidential {
+
+    let has_public_gold_rows: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM gold_public_history_events WHERE dao_id = $1)",
+    )
+    .bind(params.account_id.as_str())
+    .fetch_one(&state.db_pool)
+    .await?;
+
+    if has_public_gold_rows {
         return public_list::fetch_balance_change_legs(state, params).await;
     }
 

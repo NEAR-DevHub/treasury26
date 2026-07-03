@@ -2,6 +2,7 @@
 
 use near_api::{NetworkConfig, RPCEndpoint, Signer};
 use nt_be::AppState;
+use std::net::TcpListener;
 use std::process::{Child, Command};
 use std::sync::{Arc, Once};
 use std::time::Duration;
@@ -253,6 +254,15 @@ pub struct TestServer {
     _mock_server: Option<MockServer>,
 }
 
+fn available_local_port() -> u16 {
+    let listener =
+        TcpListener::bind("127.0.0.1:0").expect("Failed to bind ephemeral local test port");
+    listener
+        .local_addr()
+        .expect("Failed to read local test port")
+        .port()
+}
+
 impl TestServer {
     /// Start the test server with a mock DeFiLlama server for deterministic tests
     pub async fn start() -> Self {
@@ -264,12 +274,13 @@ impl TestServer {
         // Start mock DeFiLlama server
         let mock_server = start_mock_defillama_server().await;
         let mock_uri = mock_server.uri();
+        let port = available_local_port();
 
         // Start the pre-built server binary directly (not `cargo run`) to avoid
         // blocking on the cargo build lock when called from within `cargo test`.
         // Clear proxy env vars so the server uses real RPC endpoints (not the test proxy).
         let mut process = Command::new(env!("CARGO_BIN_EXE_nt-be"))
-            .env("PORT", "3001")
+            .env("PORT", port.to_string())
             .env("RUST_LOG", "info")
             .env("MONITOR_INTERVAL_SECONDS", "0") // Disable background monitoring
             .env("DATABASE_URL", &db_url) // Override with test database
@@ -279,6 +290,8 @@ impl TestServer {
             )
             .env("SIGNER_ID", "sandbox")
             .env("DEFILLAMA_API_BASE_URL", &mock_uri) // Point to mock server
+            .env("GOLDSKY_DATABASE_URL", "")
+            .env("NEARBLOCKS_API_KEY", "")
             .env_remove("NEAR_RPC_URL")
             .env_remove("NEAR_ARCHIVAL_RPC_URL")
             .env_remove("TRANSFER_HINTS_BASE_URL")
@@ -286,8 +299,6 @@ impl TestServer {
             .env_remove("INTENTS_EXPLORER_API_URL")
             .spawn()
             .expect("Failed to start server");
-
-        let port = 3001;
 
         // Wait for server to be ready
         let client = reqwest::Client::new();
@@ -330,9 +341,10 @@ impl TestServer {
         // Start mock DeFiLlama server
         let mock_server = start_mock_defillama_server().await;
         let mock_uri = mock_server.uri();
+        let port = available_local_port();
 
         let mut process = Command::new(env!("CARGO_BIN_EXE_nt-be"))
-            .env("PORT", "3001")
+            .env("PORT", port.to_string())
             .env("RUST_LOG", "info")
             .env("DATABASE_URL", &db_url)
             .env("GOLDSKY_DATABASE_URL", goldsky_database_url)
@@ -354,8 +366,6 @@ impl TestServer {
             .env_remove("INTENTS_EXPLORER_API_URL")
             .spawn()
             .expect("Failed to start server");
-
-        let port = 3001;
 
         let client = reqwest::Client::new();
         for attempt in 0..60 {
