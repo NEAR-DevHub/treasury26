@@ -144,10 +144,10 @@ pub async fn upsert_public_history_events(
         }
     }
 
-    if let Some(recompute_from) = result.earliest_changed_at {
-        if let Some(account_id) = events.first().map(|event| event.account_id.as_str()) {
-            mark_silver_dirty_tx(&mut tx, account_id, Some(recompute_from)).await?;
-        }
+    if let Some(recompute_from) = result.earliest_changed_at
+        && let Some(account_id) = events.first().map(|event| event.account_id.as_str())
+    {
+        mark_silver_dirty_tx(&mut tx, account_id, Some(recompute_from)).await?;
     }
 
     tx.commit().await?;

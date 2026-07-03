@@ -66,8 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "id": proposal_id,
             "action": "VoteApprove",
             "proposal": kind,
-        }))?
-        .into(),
+        }))?,
         gas: NearGas::from_tgas(300),
         deposit: NearToken::from_yoctonear(0),
     })))

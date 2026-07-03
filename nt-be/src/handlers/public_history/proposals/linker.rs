@@ -371,7 +371,7 @@ async fn fetch_proposal_receipt_from_rpc(
     with_transport_retry(PUBLIC_PROPOSAL_TX_STATUS_LABEL, || {
         let req = methods::EXPERIMENTAL_tx_status::RpcTransactionStatusRequest {
             transaction_info: methods::EXPERIMENTAL_tx_status::TransactionInfo::TransactionId {
-                tx_hash: tx_hash.clone(),
+                tx_hash,
                 sender_account_id: sender_account_id.clone(),
             },
             wait_until: TxExecutionStatus::Final,
@@ -1002,7 +1002,7 @@ mod tests {
 
     #[test]
     fn groups_collapse_receipts_per_proposal() {
-        let events = vec![
+        let events = [
             receipt_event(
                 "on_proposal_callback",
                 serde_json::json!({ "proposal_id": 5 }),

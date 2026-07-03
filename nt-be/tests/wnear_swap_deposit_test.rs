@@ -229,7 +229,7 @@ async fn test_wnear_swap_deposit_detected_via_enrichment(pool: PgPool) {
         .find(|item| {
             item.swap
                 .as_ref()
-                .map_or(false, |s| s.swap_role == "fulfillment")
+                .is_some_and(|s| s.swap_role == "fulfillment")
         })
         .expect("Should have a fulfillment entry in Exchange tab");
 
@@ -247,11 +247,7 @@ async fn test_wnear_swap_deposit_detected_via_enrichment(pool: PgPool) {
     let deposits: Vec<_> = exchange
         .data
         .iter()
-        .filter(|item| {
-            item.swap
-                .as_ref()
-                .map_or(false, |s| s.swap_role == "deposit")
-        })
+        .filter(|item| item.swap.as_ref().is_some_and(|s| s.swap_role == "deposit"))
         .collect();
 
     assert_eq!(

@@ -276,7 +276,8 @@ impl TokenPriceIngestor {
 }
 
 fn should_persist_price_sample(at: DateTime<Utc>) -> bool {
-    at.minute() % TOKEN_PRICE_PERSIST_INTERVAL_MINUTES == 0
+    at.minute()
+        .is_multiple_of(TOKEN_PRICE_PERSIST_INTERVAL_MINUTES)
 }
 
 fn month_start(day: NaiveDate) -> NaiveDate {

@@ -123,6 +123,24 @@ pub fn normalize_quote_metadata_accounts(mut value: Value) -> Value {
     value
 }
 
+impl ConfidentialQuoteMetadata {
+    pub fn from_value(value: &Value) -> Option<Self> {
+        serde_json::from_value(value.clone()).ok()
+    }
+
+    pub fn deposit_address(&self) -> Option<&str> {
+        self.quote
+            .as_ref()
+            .and_then(|q| q.deposit_address.as_deref())
+    }
+
+    pub fn quote_request_recipient(&self) -> Option<&str> {
+        self.quote_request
+            .as_ref()
+            .and_then(|q| q.recipient.as_deref())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -234,23 +252,5 @@ mod tests {
             normalized["quoteRequest"]["recipient"].as_str(),
             Some("bob.near")
         );
-    }
-}
-
-impl ConfidentialQuoteMetadata {
-    pub fn from_value(value: &Value) -> Option<Self> {
-        serde_json::from_value(value.clone()).ok()
-    }
-
-    pub fn deposit_address(&self) -> Option<&str> {
-        self.quote
-            .as_ref()
-            .and_then(|q| q.deposit_address.as_deref())
-    }
-
-    pub fn quote_request_recipient(&self) -> Option<&str> {
-        self.quote_request
-            .as_ref()
-            .and_then(|q| q.recipient.as_deref())
     }
 }

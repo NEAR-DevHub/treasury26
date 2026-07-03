@@ -31,10 +31,7 @@ pub(crate) const BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY: i32 = 20;
 type PublicHistoryStorage = PostgresStorage<PublicHistoryJob>;
 
 fn public_history_error(message: impl Into<String>) -> Error {
-    Error::Failed(Arc::new(Box::new(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        message.into(),
-    ))))
+    Error::Failed(Arc::new(Box::new(std::io::Error::other(message.into()))))
 }
 
 fn latest_storage(pool: PgPool) -> PublicHistoryStorage {

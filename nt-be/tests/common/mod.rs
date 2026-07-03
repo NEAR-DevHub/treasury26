@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use near_api::{NetworkConfig, RPCEndpoint, Signer};
 use nt_be::AppState;
 use std::process::{Child, Command};
@@ -154,6 +156,8 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         10_000,
     ));
 
+    let (event_tx, _) = tokio::sync::broadcast::channel(nt_be::events::EVENT_BUS_CAPACITY);
+
     AppState {
         cache: nt_be::utils::cache::Cache::new(),
         telegram_client: nt_be::utils::telegram::TelegramClient::default(),
@@ -174,6 +178,7 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         transfer_hint_service: transfer_hint_service.map(Arc::new),
         neardata_client: None,
         goldsky_pool: None,
+        event_tx,
     }
 }
 

@@ -368,11 +368,13 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let mut env_vars = EnvVars::default();
-        env_vars.oneclick_jwt_token = None; // No JWT token
-        env_vars.oneclick_app_fee_bps = Some(50);
-        env_vars.oneclick_app_fee_recipient = Some("treasury.near".to_string());
-        env_vars.oneclick_referral = None;
+        let env_vars = EnvVars {
+            oneclick_jwt_token: None, // No JWT token
+            oneclick_app_fee_bps: Some(50),
+            oneclick_app_fee_recipient: Some("treasury.near".to_string()),
+            oneclick_referral: None,
+            ..Default::default()
+        };
 
         let state = create_test_state(&mock_server.uri(), Some(env_vars)).await;
 
@@ -408,14 +410,16 @@ mod tests {
         dotenvy::from_filename(".env").ok();
         dotenvy::from_filename(".env.test").ok();
 
-        let mut env_vars = EnvVars::default();
-        // Use real API URL
-        env_vars.oneclick_api_url = "https://1click.chaindefuser.com".to_string();
-        // JWT token from env if available
-        env_vars.oneclick_jwt_token = std::env::var("ONECLICK_JWT_TOKEN").ok();
-        env_vars.oneclick_app_fee_bps = Some(50);
-        env_vars.oneclick_app_fee_recipient = Some("treasury.near".to_string());
-        env_vars.oneclick_referral = Some("near-treasury".to_string());
+        let env_vars = EnvVars {
+            // Use real API URL
+            oneclick_api_url: "https://1click.chaindefuser.com".to_string(),
+            // JWT token from env if available
+            oneclick_jwt_token: std::env::var("ONECLICK_JWT_TOKEN").ok(),
+            oneclick_app_fee_bps: Some(50),
+            oneclick_app_fee_recipient: Some("treasury.near".to_string()),
+            oneclick_referral: Some("near-treasury".to_string()),
+            ..Default::default()
+        };
 
         let db_pool = sqlx::postgres::PgPool::connect_lazy(&env_vars.database_url)
             .expect("Failed to create lazy pool");

@@ -36,6 +36,17 @@ struct TokenSnapshot {
     by_contract: HashMap<String, String>,
 }
 
+type TokenSnapshotRow = (
+    String,
+    String,
+    i16,
+    String,
+    Option<String>,
+    Option<String>,
+    Option<BigDecimal>,
+    Option<DateTime<Utc>>,
+);
+
 pub struct TokenPriceService {
     pool: PgPool,
     snapshot: RwLock<Arc<TokenSnapshot>>,
@@ -53,16 +64,7 @@ impl TokenPriceService {
 
     /// Reload the in-memory snapshot from the `tokens` table (~200 rows).
     pub async fn refresh_snapshot(&self) -> Result<usize, sqlx::Error> {
-        let rows: Vec<(
-            String,
-            String,
-            i16,
-            String,
-            Option<String>,
-            Option<String>,
-            Option<BigDecimal>,
-            Option<DateTime<Utc>>,
-        )> = sqlx::query_as(
+        let rows: Vec<TokenSnapshotRow> = sqlx::query_as(
             r#"
             SELECT token_id, symbol, decimals, blockchain,
                    contract_address, coingecko_id, price_usd, price_updated_at

@@ -132,6 +132,8 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         10_000,
     ));
 
+    let (event_tx, _) = tokio::sync::broadcast::channel(crate::events::EVENT_BUS_CAPACITY);
+
     AppState {
         cache: Cache::new(),
         telegram_client: crate::utils::telegram::TelegramClient::default(),
@@ -152,6 +154,7 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         transfer_hint_service: transfer_hint_service.map(Arc::new),
         goldsky_pool: None,
         neardata_client: None,
+        event_tx,
     }
 }
 

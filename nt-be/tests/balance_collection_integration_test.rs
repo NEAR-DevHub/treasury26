@@ -470,7 +470,7 @@ async fn test_near_snapshot_with_existing_intents_tokens(pool: PgPool) -> sqlx::
 
     // Run monitoring cycle with current block
     println!("Running monitoring cycle for {}...", account_id);
-    let network = common::create_archival_network();
+    let _network = common::create_archival_network();
     let up_to_block = 182_490_734i64; // Current block as of Jan 24, 2026
 
     run_maintenance_cycle(
@@ -593,19 +593,14 @@ async fn test_continuous_monitoring(pool: PgPool) -> sqlx::Result<()> {
 
     // Run one monitoring cycle
     println!("Running monitoring cycle...");
-    let network = common::create_archival_network();
+    let _network = common::create_archival_network();
     let up_to_block = 177_000_000i64;
     run_maintenance_cycle(
         &common::build_test_state_archival(pool.clone()),
         up_to_block,
     )
     .await
-    .map_err(|e| {
-        sqlx::Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     // Verify last_synced_at was updated
     let after_sync = sqlx::query!(
@@ -886,7 +881,7 @@ async fn test_ft_token_discovery_through_monitoring(pool: PgPool) -> sqlx::Resul
     );
     println!("✓ Verified empty state (0 records)");
 
-    let network = common::create_archival_network();
+    let _network = common::create_archival_network();
 
     // Run first monitoring cycle
     // This should:
@@ -1166,12 +1161,7 @@ async fn test_ft_discovery_petersalomonsen_block_178086209(pool: PgPool) -> sqlx
     println!("\n=== Collecting NEAR Balance Changes ===");
     let filled = fill_gaps(&pool, &network, account_id, "near", target_block + 1)
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     println!("Filled {} NEAR balance change gaps", filled.len());
 
@@ -1351,7 +1341,7 @@ async fn test_discover_intents_tokens_webassemblymusic_treasury(pool: PgPool) ->
     common::load_test_env();
     use nt_be::handlers::balance_changes::account_monitor::run_maintenance_cycle;
 
-    let network = common::create_archival_network();
+    let _network = common::create_archival_network();
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
 
     // Block 165324279 has a btc.omft.near intents balance change of 0.0002 BTC
@@ -1511,9 +1501,9 @@ async fn test_fastnear_ft_token_discovery(pool: PgPool) -> sqlx::Result<()> {
     );
     println!("✓ Verified empty state (0 records)");
 
-    let network = common::create_archival_network();
-    let http_client = reqwest::Client::new();
-    let fastnear_api_key = common::get_fastnear_api_key();
+    let _network = common::create_archival_network();
+    let _http_client = reqwest::Client::new();
+    let _fastnear_api_key = common::get_fastnear_api_key();
 
     let up_to_block = 185_000_000i64;
 
