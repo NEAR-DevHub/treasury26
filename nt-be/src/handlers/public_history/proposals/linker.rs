@@ -872,7 +872,10 @@ async fn link_proposal_group(
         .map_err(db_error)?;
     tx.commit().await.map_err(db_error)?;
 
-    if let Some(payload_hash) = merged_kind.as_ref().and_then(extract_payload_hash_from_kind) {
+    if let Some(payload_hash) = merged_kind
+        .as_ref()
+        .and_then(extract_payload_hash_from_kind)
+    {
         if let Some(created) = group.created
             && let Err(e) = mirror_confidential_proposal_created(
                 &state.db_pool,
@@ -943,7 +946,6 @@ mod tests {
             receipt_id: Some("receipt-id".to_string()),
             event_index: None,
             block_height: block_time_secs,
-            block_hash: None,
             block_timestamp: bigdecimal::BigDecimal::from(block_time_secs),
             block_time: chrono::DateTime::<Utc>::from_timestamp(block_time_secs, 0).unwrap(),
             affected_account_id: "dao.near".to_string(),

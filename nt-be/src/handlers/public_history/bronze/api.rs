@@ -28,7 +28,6 @@ struct NearblocksMeta {
 
 #[derive(Debug, Deserialize)]
 struct NearblocksBlock {
-    block_hash: Option<String>,
     block_height: String,
     block_timestamp: String,
 }
@@ -302,7 +301,6 @@ pub async fn fetch_ft_transfers(
             receipt_id: Some(item.receipt_id),
             event_index: Some(item.event_index),
             block_height,
-            block_hash: item.block.block_hash,
             block_timestamp,
             block_time: block_timestamp_to_datetime(parse_i64(&timestamp, "block_timestamp")?),
             affected_account_id: item.affected_account_id,
@@ -364,7 +362,6 @@ pub async fn fetch_mt_transfers(
             receipt_id: Some(item.receipt_id),
             event_index: Some(item.event_index),
             block_height,
-            block_hash: item.block.block_hash,
             block_timestamp,
             block_time: block_timestamp_to_datetime(parse_i64(&timestamp, "block_timestamp")?),
             affected_account_id: item.affected_account_id,
@@ -452,7 +449,6 @@ pub async fn fetch_receipts(
                 receipt_id: Some(item.receipt_id.clone()),
                 event_index: Some(event_index),
                 block_height,
-                block_hash: item.block.block_hash.clone(),
                 block_timestamp: block_timestamp.clone(),
                 block_time: block_timestamp_to_datetime(parse_i64(&timestamp, "block_timestamp")?),
                 affected_account_id: item

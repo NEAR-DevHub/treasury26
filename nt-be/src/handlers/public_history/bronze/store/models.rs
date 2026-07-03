@@ -66,7 +66,6 @@ pub struct BronzePublicHistoryEvent {
     pub receipt_id: Option<String>,
     pub event_index: Option<i32>,
     pub block_height: i64,
-    pub block_hash: Option<String>,
     pub block_timestamp: BigDecimal,
     pub block_time: DateTime<Utc>,
     pub affected_account_id: String,
@@ -105,9 +104,6 @@ pub struct PublicHistoryCursor {
     pub source: String,
     pub backward_cursor: Option<String>,
     pub backfill_done: bool,
-    pub next_poll_at: DateTime<Utc>,
-    pub last_polled_at: Option<DateTime<Utc>>,
-    pub last_activity_at: Option<DateTime<Utc>>,
     pub last_seen_block_height: Option<i64>,
 }
 

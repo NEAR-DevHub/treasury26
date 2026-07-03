@@ -3,7 +3,7 @@ use bigdecimal::num_traits::{Signed, Zero};
 
 use super::models::{
     BronzePublicHistoryRow, NormalizedTransferLeg, ProposalLink, PublicAmount, PublicAsset,
-    PublicTransferConfidence, PublicTransferDirection, PublicTransferLegKind,
+    PublicTransferDirection, PublicTransferLegKind,
 };
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
 
@@ -78,18 +78,13 @@ fn normalize_ft(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         proposal_link: proposal_link(row),
         transaction_hash: row.transaction_hash.clone(),
         receipt_id: row.receipt_id.clone(),
-        event_index: row.event_index,
         block_height: row.block_height,
-        block_timestamp: row.block_timestamp.clone(),
         block_time: row.block_time,
         asset: PublicAsset::nep141(contract),
         direction: direction_from_delta(&delta, kind),
         counterparty: row.involved_account_id.clone(),
         amount,
         leg_kind: kind,
-        linked_mint_bronze_id: None,
-        linked_transfer_bronze_id: None,
-        confidence: PublicTransferConfidence::SourceEvent,
         raw_payload: row.raw_payload.clone(),
     }))
 }
@@ -127,18 +122,13 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         proposal_link: proposal_link(row),
         transaction_hash: row.transaction_hash.clone(),
         receipt_id: row.receipt_id.clone(),
-        event_index: row.event_index,
         block_height: row.block_height,
-        block_timestamp: row.block_timestamp.clone(),
         block_time: row.block_time,
         asset: PublicAsset::intents(token_id),
         direction,
         counterparty: row.involved_account_id.clone(),
         amount,
         leg_kind: kind,
-        linked_mint_bronze_id: None,
-        linked_transfer_bronze_id: None,
-        confidence: PublicTransferConfidence::SourceEvent,
         raw_payload: row.raw_payload.clone(),
     }))
 }
@@ -176,18 +166,13 @@ fn normalize_receipt(
         proposal_link: proposal_link(row),
         transaction_hash: row.transaction_hash.clone(),
         receipt_id: row.receipt_id.clone(),
-        event_index: row.event_index,
         block_height: row.block_height,
-        block_timestamp: row.block_timestamp.clone(),
         block_time: row.block_time,
         asset: PublicAsset::native_near(),
         direction,
         counterparty: row.involved_account_id.clone(),
         amount: PublicAmount::from_raw(deposit, 24),
         leg_kind: PublicTransferLegKind::Transfer,
-        linked_mint_bronze_id: None,
-        linked_transfer_bronze_id: None,
-        confidence: PublicTransferConfidence::ReceiptAction,
         raw_payload: row.raw_payload.clone(),
     }))
 }

@@ -207,18 +207,19 @@ fn bind_public_filters<'a>(
             sent,
             exchange,
         } => {
-            builder.push(" AND transaction_type::text IN (");
-            let mut separated = builder.separated(", ");
+            let mut transaction_types = Vec::new();
             if deposit {
-                separated.push_bind("deposit");
+                transaction_types.push("deposit".to_string());
             }
             if sent {
-                separated.push_bind("sent");
+                transaction_types.push("sent".to_string());
             }
             if exchange {
-                separated.push_bind("exchange");
+                transaction_types.push("exchange".to_string());
             }
-            builder.push(")")
+            builder.push(" AND transaction_type = ANY(");
+            builder.push_bind(transaction_types);
+            builder.push("::public_transaction_type[])")
         }
     };
 

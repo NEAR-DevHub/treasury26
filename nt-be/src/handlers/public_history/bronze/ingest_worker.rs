@@ -13,14 +13,8 @@ pub(crate) const PUBLIC_HISTORY_PAGE_LIMIT: u32 = 25;
 
 pub(crate) type HandlerResult<T> = Result<T, (StatusCode, String)>;
 
-pub(crate) fn latest_seen(page: &NearblocksPage) -> (Option<i64>, Option<bigdecimal::BigDecimal>) {
-    let height = page.events.iter().map(|event| event.block_height).max();
-    let timestamp = page
-        .events
-        .iter()
-        .max_by_key(|event| event.block_height)
-        .map(|event| event.block_timestamp.clone());
-    (height, timestamp)
+pub(crate) fn latest_seen(page: &NearblocksPage) -> Option<i64> {
+    page.events.iter().map(|event| event.block_height).max()
 }
 
 pub(crate) async fn fetch_source_page(

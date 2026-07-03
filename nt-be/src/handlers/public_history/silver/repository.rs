@@ -134,9 +134,7 @@ pub async fn upsert_silver_leg(
             proposal_id,
             transaction_hash,
             receipt_id,
-            event_index,
             block_height,
-            block_timestamp,
             block_time,
             token_standard,
             token_id,
@@ -146,17 +144,13 @@ pub async fn upsert_silver_leg(
             amount,
             decimals,
             leg_kind,
-            linked_mint_bronze_id,
-            linked_transfer_bronze_id,
-            confidence,
             raw_payload
         )
         VALUES (
             $1, $2, $3, $4::public_history_source, $5, $6, $7, $8,
-            $9, $10, $11, $12, $13::public_token_standard, $14,
-            $15::public_transfer_direction, $16, $17, $18, $19,
-            $20::public_transfer_leg_kind, $21, $22,
-            $23::public_transfer_confidence, $24
+            $9, $10, $11::public_token_standard, $12,
+            $13::public_transfer_direction, $14, $15, $16, $17,
+            $18::public_transfer_leg_kind, $19
         )
         ON CONFLICT (leg_key) DO UPDATE SET
             source_event_id = EXCLUDED.source_event_id,
@@ -165,9 +159,7 @@ pub async fn upsert_silver_leg(
             proposal_id = EXCLUDED.proposal_id,
             transaction_hash = EXCLUDED.transaction_hash,
             receipt_id = EXCLUDED.receipt_id,
-            event_index = EXCLUDED.event_index,
             block_height = EXCLUDED.block_height,
-            block_timestamp = EXCLUDED.block_timestamp,
             block_time = EXCLUDED.block_time,
             token_standard = EXCLUDED.token_standard,
             token_id = EXCLUDED.token_id,
@@ -177,9 +169,6 @@ pub async fn upsert_silver_leg(
             amount = EXCLUDED.amount,
             decimals = EXCLUDED.decimals,
             leg_kind = EXCLUDED.leg_kind,
-            linked_mint_bronze_id = EXCLUDED.linked_mint_bronze_id,
-            linked_transfer_bronze_id = EXCLUDED.linked_transfer_bronze_id,
-            confidence = EXCLUDED.confidence,
             raw_payload = EXCLUDED.raw_payload,
             updated_at = NOW()
         "#,
@@ -192,9 +181,7 @@ pub async fn upsert_silver_leg(
     .bind(leg.proposal_link.as_ref().map(|link| link.proposal_id))
     .bind(&leg.transaction_hash)
     .bind(&leg.receipt_id)
-    .bind(leg.event_index)
     .bind(leg.block_height)
-    .bind(&leg.block_timestamp)
     .bind(leg.block_time)
     .bind(leg.asset.token_standard().as_str())
     .bind(leg.asset.token_id())
@@ -204,9 +191,6 @@ pub async fn upsert_silver_leg(
     .bind(&leg.amount.amount)
     .bind(leg.amount.decimals)
     .bind(leg.leg_kind.as_str())
-    .bind(leg.linked_mint_bronze_id)
-    .bind(leg.linked_transfer_bronze_id)
-    .bind(leg.confidence.as_str())
     .bind(&leg.raw_payload)
     .execute(&mut **tx)
     .await?;

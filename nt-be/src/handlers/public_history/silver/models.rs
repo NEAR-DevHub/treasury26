@@ -89,23 +89,6 @@ impl PublicTransferLegKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PublicTransferConfidence {
-    SourceEvent,
-    ReceiptAction,
-    LinkedReceipt,
-}
-
-impl PublicTransferConfidence {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::SourceEvent => "source_event",
-            Self::ReceiptAction => "receipt_action",
-            Self::LinkedReceipt => "linked_receipt",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PublicTransactionType {
     Deposit,
     Sent,
@@ -237,18 +220,13 @@ pub struct NormalizedTransferLeg {
     pub proposal_link: Option<ProposalLink>,
     pub transaction_hash: Option<String>,
     pub receipt_id: Option<String>,
-    pub event_index: Option<i32>,
     pub block_height: i64,
-    pub block_timestamp: BigDecimal,
     pub block_time: DateTime<Utc>,
     pub asset: PublicAsset,
     pub direction: PublicTransferDirection,
     pub counterparty: Option<String>,
     pub amount: PublicAmount,
     pub leg_kind: PublicTransferLegKind,
-    pub linked_mint_bronze_id: Option<i64>,
-    pub linked_transfer_bronze_id: Option<i64>,
-    pub confidence: PublicTransferConfidence,
     pub raw_payload: Value,
 }
 

@@ -23,7 +23,6 @@ pub async fn upsert_public_history_events(
                 receipt_id,
                 event_index,
                 block_height,
-                block_hash,
                 block_timestamp,
                 block_time,
                 affected_account_id,
@@ -42,7 +41,7 @@ pub async fn upsert_public_history_events(
             VALUES (
                 $1, $2::public_history_source, $3, $4, $5, $6, $7, $8,
                 $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-                $19, $20, $21, $22
+                $19, $20, $21
             )
             ON CONFLICT (source, source_event_key) DO UPDATE SET
                 account_id = EXCLUDED.account_id,
@@ -50,7 +49,6 @@ pub async fn upsert_public_history_events(
                 receipt_id = EXCLUDED.receipt_id,
                 event_index = EXCLUDED.event_index,
                 block_height = EXCLUDED.block_height,
-                block_hash = EXCLUDED.block_hash,
                 block_timestamp = EXCLUDED.block_timestamp,
                 block_time = EXCLUDED.block_time,
                 affected_account_id = EXCLUDED.affected_account_id,
@@ -72,7 +70,6 @@ pub async fn upsert_public_history_events(
                 bronze_public_history_events.receipt_id,
                 bronze_public_history_events.event_index,
                 bronze_public_history_events.block_height,
-                bronze_public_history_events.block_hash,
                 bronze_public_history_events.block_timestamp,
                 bronze_public_history_events.block_time,
                 bronze_public_history_events.affected_account_id,
@@ -93,7 +90,6 @@ pub async fn upsert_public_history_events(
                 EXCLUDED.receipt_id,
                 EXCLUDED.event_index,
                 EXCLUDED.block_height,
-                EXCLUDED.block_hash,
                 EXCLUDED.block_timestamp,
                 EXCLUDED.block_time,
                 EXCLUDED.affected_account_id,
@@ -119,7 +115,6 @@ pub async fn upsert_public_history_events(
         .bind(&event.receipt_id)
         .bind(event.event_index)
         .bind(event.block_height)
-        .bind(&event.block_hash)
         .bind(&event.block_timestamp)
         .bind(event.block_time)
         .bind(&event.affected_account_id)

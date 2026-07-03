@@ -192,9 +192,7 @@ async fn run_latest_refresh(
     let mut cursor: Option<String> = None;
     let mut totals = (0, 0, 0);
     let mut pages_fetched = 0usize;
-    let mut had_history_changes = false;
     let mut max_seen_height: Option<i64> = None;
-    let mut max_seen_timestamp: Option<bigdecimal::BigDecimal> = None;
 
     loop {
         let page = fetch_source_page(
@@ -211,12 +209,10 @@ async fn run_latest_refresh(
         totals.0 += touched;
         totals.1 += inserted;
         totals.2 += changed;
-        had_history_changes |= inserted > 0 || changed > 0;
 
-        let (page_height, page_timestamp) = latest_seen(&page);
+        let page_height = latest_seen(&page);
         if page_height > max_seen_height {
             max_seen_height = page_height;
-            max_seen_timestamp = page_timestamp;
         }
 
         // NearBlocks only paginates newest→older, so a refresh walks from the
@@ -252,21 +248,14 @@ async fn run_latest_refresh(
     // One poll record per drain: the block-height watermark (GREATEST upsert)
     // advances only after every fetched page ingested successfully, so a
     // failed drain retries from an unmoved watermark.
-    record_public_history_poll_result(
-        &state.db_pool,
-        account_id,
-        source,
-        had_history_changes,
-        max_seen_height,
-        max_seen_timestamp.as_ref(),
-    )
-    .await
-    .map_err(|error| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("public poll schedule update failed: {}", error),
-        )
-    })?;
+    record_public_history_poll_result(&state.db_pool, account_id, source, max_seen_height)
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("public poll schedule update failed: {}", error),
+            )
+        })?;
 
     Ok(totals)
 }
@@ -309,9 +298,8 @@ async fn run_backfill_page(
     let page_is_empty = page.events.is_empty();
     let (touched, inserted, changed) = ingest_page(state, source, &page.events).await?;
 
-    let backfill_done = page_is_empty
-        || next_cursor.is_none()
-        || next_cursor.as_deref() == job_cursor.as_deref();
+    let backfill_done =
+        page_is_empty || next_cursor.is_none() || next_cursor.as_deref() == job_cursor.as_deref();
     save_public_backfill_progress(
         &state.db_pool,
         account_id,
