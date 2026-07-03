@@ -8,6 +8,7 @@ import { ConfidentialState } from "@/components/confidential-state";
 import { EmptyState } from "@/components/empty-state";
 import { StepperHeader } from "@/components/step-wizard";
 import { Tooltip } from "@/components/tooltip";
+import { useIsHistoryRefreshing } from "@/features/activity";
 import { useAggregatedTokens } from "@/hooks/use-assets";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { TreasuryAsset } from "@/lib/api";
@@ -22,6 +23,7 @@ export default function Assets({ tokens, state }: Props) {
     const t = useTranslations("assetsPage");
     const tCommon = useTranslations("common");
     const { isConfidential } = useTreasury();
+    const isHistoryRefreshing = useIsHistoryRefreshing();
     const aggregatedTokens = useAggregatedTokens(tokens);
     const bucketVisibility = getDashboardBucketVisibility(tokens);
     const hasTabs = bucketVisibility.showLocked || bucketVisibility.showEarning;
@@ -31,7 +33,7 @@ export default function Assets({ tokens, state }: Props) {
             return <ConfidentialState skeleton={<AssetsTableSkeleton />} />;
         }
 
-        if (state === "loading") {
+        if (state === "loading" || isHistoryRefreshing) {
             return <AssetsTableSkeleton />;
         }
 

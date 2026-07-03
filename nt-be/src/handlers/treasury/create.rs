@@ -21,6 +21,7 @@ use crate::{
 };
 
 use super::confidential_setup;
+use super::creation_requests;
 
 pub const TREASURY_CREATE_DEPOSIT: NearToken = NearToken::from_millinear(90);
 pub const REGISTERING_DAO_TIMEOUT_IN_SECS: u64 = 10;
@@ -318,6 +319,14 @@ fn creation_error_retryable(attempt: u32, message: &str) -> bool {
     attempt < MAX_CREATION_ATTEMPTS && is_transport_error(message)
 }
 
+/// Whether an error is terminal — it can never succeed on retry, so neither the
+/// in-request loop nor the background sweeper should keep trying. Currently this
+/// is the `ExistingDaoState::Taken` case: the handle exists and belongs to an
+/// account we don't control.
+pub(crate) fn is_terminal_creation_error(message: &str) -> bool {
+    message.contains("already taken")
+}
+
 /// Build an SSE error event with the given message.
 fn error_event(message: String) -> ProgressEvent {
     ProgressEvent {
@@ -416,7 +425,7 @@ async fn classify_treasury_account(
 /// Entry point spawned by the SSE handler. Serializes concurrent/duplicate
 /// creation attempts for the same treasury behind a Postgres advisory lock,
 /// then runs the (idempotent, resumable) creation flow.
-async fn run_creation(
+pub(crate) async fn run_creation(
     state: Arc<AppState>,
     payload: CreateTreasuryRequest,
     tx: mpsc::Sender<ProgressEvent>,
@@ -452,6 +461,14 @@ async fn run_creation(
         )));
     }
 
+    // Persist the creation intent so the background sweeper can resume/finish
+    // this treasury if every in-request attempt below fails (or the process
+    // dies). For confidential DAOs the target policy isn't recoverable from
+    // chain, so this stored request is the only way to complete them later.
+    if let Err(e) = creation_requests::record_creation_started(&state.db_pool, &payload).await {
+        tracing::warn!("Failed to record creation start for {}: {}", treasury, e);
+    }
+
     // Auto-retry the (idempotent) flow on transient failures so the user never
     // has to intervene. The spawned task outlives the SSE connection, so this
     // keeps making progress even if the client disconnects.
@@ -478,6 +495,49 @@ async fn run_creation(
                     delay
                 );
                 tokio::time::sleep(delay).await;
+            }
+        }
+    }
+
+    // Record the terminal outcome so the sweeper knows whether to keep trying.
+    match &result {
+        Ok(()) => {
+            // Success → drop the row so the table doesn't accumulate finished
+            // creations; only pending/failed rows are retained.
+            if let Err(e) =
+                creation_requests::delete_creation_request(&state.db_pool, treasury.as_str()).await
+            {
+                tracing::warn!("Failed to delete creation request for {}: {}", treasury, e);
+            }
+        }
+        Err(evt) => {
+            let message = evt.message.as_deref().unwrap_or_default();
+            if is_terminal_creation_error(message) {
+                // The handle is taken by an account we don't control — retrying
+                // can never succeed, so mark it `failed` and do NOT wake the
+                // sweeper (which would otherwise burn its attempts + alert).
+                if let Err(e) = creation_requests::mark_creation_failed(
+                    &state.db_pool,
+                    treasury.as_str(),
+                    message,
+                )
+                .await
+                {
+                    tracing::warn!("Failed to mark creation failed for {}: {}", treasury, e);
+                }
+            } else {
+                // Flip to `pending` so the sweeper picks it up, then wake the
+                // sweeper right away instead of waiting for its next poll tick.
+                if let Err(e) = creation_requests::mark_creation_pending(
+                    &state.db_pool,
+                    treasury.as_str(),
+                    message,
+                )
+                .await
+                {
+                    tracing::warn!("Failed to mark creation pending for {}: {}", treasury, e);
+                }
+                state.creation_sweep_notify.notify_one();
             }
         }
     }
@@ -530,7 +590,7 @@ async fn run_creation_inner(
     match existing {
         ExistingDaoState::Taken => {
             return Err(error_event(format!(
-                "Treasury {treasury} already exists and is not managed by this platform."
+                "The name \"{treasury}\" is already taken. Please choose a different treasury name."
             )));
         }
         ExistingDaoState::Absent => {
@@ -705,7 +765,7 @@ mod tests {
         // Non-transport (logic) errors are never retried.
         assert!(!creation_error_retryable(
             1,
-            "Treasury already exists and is not managed by this platform."
+            "The name \"foo.sputnik-dao.near\" is already taken. Please choose a different treasury name."
         ));
         assert!(!creation_error_retryable(1, "1Click auth failed (400)"));
 

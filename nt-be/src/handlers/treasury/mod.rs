@@ -2,6 +2,8 @@ pub mod check_handle_unused;
 pub mod confidential_setup;
 pub mod config;
 pub mod create;
+pub mod creation_requests;
+pub mod creation_sweeper;
 pub mod custom_requests;
 pub mod policy;
 pub mod whitelist_request;

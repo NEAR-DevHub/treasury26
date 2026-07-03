@@ -3,6 +3,9 @@
 import {
     ArrowLeftRight,
     ArrowUpRightIcon,
+    Check,
+    ChevronDown,
+    ClockIcon,
     Coins,
     Download,
     Info,
@@ -14,7 +17,14 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
+import { EmptyState } from "@/components/empty-state";
 import { Tooltip } from "@/components/tooltip";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
     Select,
     SelectContent,
@@ -24,7 +34,6 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useBalanceChart } from "@/hooks/use-treasury-queries";
 import type { ChartInterval, TreasuryAsset } from "@/lib/api";
@@ -38,6 +47,7 @@ import {
 } from "@/lib/dashboard-balance-view";
 import { formatBalance, formatCurrencyWithSubCent } from "@/lib/utils";
 import { HistoryRefreshButton } from "@/features/activity/components/history-refresh-button";
+import { useIsHistoryRefreshing } from "@/features/activity";
 import BalanceChart from "./chart";
 
 interface Props {
@@ -130,6 +140,7 @@ export default function BalanceWithGraph({
     const t = useTranslations("balanceWithGraph");
     const tCommon = useTranslations("common");
     const locale = useLocale();
+    const isHistoryRefreshing = useIsHistoryRefreshing();
     const {
         treasuryId,
         isConfidential: isConfidentialTreasury,
@@ -547,9 +558,6 @@ export default function BalanceWithGraph({
                                                         ", ",
                                                     )}
                                                 </p>
-                                                <p className="text-muted-foreground mt-1 text-[10px]">
-                                                    {t("noPriceHistory")}
-                                                </p>
                                             </div>
                                         }
                                     >
@@ -621,28 +629,22 @@ export default function BalanceWithGraph({
                     </div>
                     {!isConfidential && (
                         <div className="hidden md:flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
-                            <Select
-                                value={selectedToken}
-                                onValueChange={setSelectedToken}
-                            >
-                                <SelectTrigger
-                                    size="sm"
-                                    className="min-w-[140px] w-full"
-                                    disabled={
-                                        isLoadingTokens ||
-                                        (!isConfidential &&
-                                            (isLoading ||
-                                                chartData.data.length === 0))
-                                    }
-                                >
-                                    <SelectValue>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={isLoadingTokens || isLoading}
+                                        className="h-9 min-w-[140px] justify-between font-normal"
+                                        data-testid="chart-token-trigger"
+                                    >
                                         {selectedToken === "all" ? (
-                                            <div className="flex items-center gap-2">
+                                            <span className="flex items-center gap-2">
                                                 <Coins className="size-4" />
                                                 <span>{t("allTokens")}</span>
-                                            </div>
+                                            </span>
                                         ) : (
-                                            <div className="flex items-center gap-2">
+                                            <span className="flex items-center gap-2">
                                                 {selectedTokenGroup?.icon && (
                                                     <img
                                                         src={
@@ -657,23 +659,36 @@ export default function BalanceWithGraph({
                                                     />
                                                 )}
                                                 <span>{selectedToken}</span>
-                                            </div>
+                                            </span>
                                         )}
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[300px] overflow-y-auto">
-                                    <SelectItem value="all">
-                                        <div className="flex items-center gap-2">
+                                        <ChevronDown className="size-4 opacity-50" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    align="end"
+                                    className="max-h-[300px] min-w-[140px] overflow-y-auto"
+                                >
+                                    <DropdownMenuItem
+                                        onSelect={() => setSelectedToken("all")}
+                                        className="flex items-center justify-between gap-2"
+                                    >
+                                        <span className="flex items-center gap-2">
                                             <Coins className="size-4" />
                                             <span>{t("allTokens")}</span>
-                                        </div>
-                                    </SelectItem>
+                                        </span>
+                                        {selectedToken === "all" && (
+                                            <Check className="size-4" />
+                                        )}
+                                    </DropdownMenuItem>
                                     {groupedTokens.map((group) => (
-                                        <SelectItem
+                                        <DropdownMenuItem
                                             key={group.symbol}
-                                            value={group.symbol}
+                                            onSelect={() =>
+                                                setSelectedToken(group.symbol)
+                                            }
+                                            className="flex items-center justify-between gap-2"
                                         >
-                                            <div className="flex items-center gap-2">
+                                            <span className="flex items-center gap-2">
                                                 {group.icon && (
                                                     <img
                                                         src={group.icon}
@@ -684,38 +699,50 @@ export default function BalanceWithGraph({
                                                     />
                                                 )}
                                                 <span>{group.symbol}</span>
-                                            </div>
-                                        </SelectItem>
+                                            </span>
+                                            {selectedToken === group.symbol && (
+                                                <Check className="size-4" />
+                                            )}
+                                        </DropdownMenuItem>
                                     ))}
-                                </SelectContent>
-                            </Select>
-                            {!isConfidential && (
-                                <ToggleGroup
-                                    type="single"
-                                    size="sm"
-                                    variant={"default"}
-                                    className="border border-input"
-                                    disabled={
-                                        isLoadingTokens ||
-                                        isLoading ||
-                                        chartData.data.length === 0
-                                    }
-                                    value={selectedPeriod}
-                                    onValueChange={(e) =>
-                                        e && setSelectedPeriod(e as TimePeriod)
-                                    }
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={isLoadingTokens || isLoading}
+                                        className="h-9 w-fit justify-between gap-1.5 font-normal"
+                                        data-testid="chart-period-trigger"
+                                    >
+                                        <span>
+                                            {t(`period.${selectedPeriod}`)}
+                                        </span>
+                                        <ChevronDown className="size-4 opacity-50" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    align="end"
+                                    className="min-w-[92px]"
                                 >
-                                    {TIME_PERIODS.map((e) => (
-                                        <ToggleGroupItem
-                                            key={e}
-                                            value={e}
-                                            className="hover:text-foreground"
+                                    {TIME_PERIODS.map((period) => (
+                                        <DropdownMenuItem
+                                            key={period}
+                                            onSelect={() =>
+                                                setSelectedPeriod(period)
+                                            }
+                                            className="flex items-center justify-between gap-2"
+                                            data-testid={`chart-period-option-${period}`}
                                         >
-                                            {t(`period.${e}`)}
-                                        </ToggleGroupItem>
+                                            <span>{t(`period.${period}`)}</span>
+                                            {selectedPeriod === period && (
+                                                <Check className="size-4" />
+                                            )}
+                                        </DropdownMenuItem>
                                     ))}
-                                </ToggleGroup>
-                            )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     )}
                     <HistoryRefreshButton />
@@ -765,9 +792,7 @@ export default function BalanceWithGraph({
                         size="sm"
                         className="w-[140px]"
                         disabled={
-                            isLoadingTokens ||
-                            (!isConfidential &&
-                                (isLoading || chartData.data.length === 0))
+                            isLoadingTokens || (!isConfidential && isLoading)
                         }
                     >
                         <SelectValue>
@@ -838,10 +863,22 @@ export default function BalanceWithGraph({
                 )}
             </div>
             <div className={cn(isConfidential ? "hidden" : "")}>
-                {isLoading || (isFetching && chartData.data.length === 0) ? (
+                {isLoading ||
+                isHistoryRefreshing ||
+                (isFetching && chartData.data.length === 0) ? (
                     <div className="h-56 w-full space-y-3 p-4">
                         <Skeleton className="h-50 w-full" />
                     </div>
+                ) : selectedToken !== "all" &&
+                  displayChartData.data.length === 0 ? (
+                    <EmptyState
+                        icon={ClockIcon}
+                        title={t("noTokenChartTitle")}
+                        description={t("noTokenChartDescription", {
+                            symbol: selectedTokenGroup?.symbol ?? selectedToken,
+                        })}
+                        className="h-56"
+                    />
                 ) : (
                     <BalanceChart
                         data={displayChartData.data}

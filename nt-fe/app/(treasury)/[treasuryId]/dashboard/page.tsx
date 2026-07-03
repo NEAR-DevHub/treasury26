@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { RecentActivity } from "@/features/activity";
+import {
+    HistoryRefreshIndicatorProvider,
+    RecentActivity,
+} from "@/features/activity";
 import { OnboardingProgress } from "@/features/onboarding";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { InfoBox } from "@/features/onboarding/components/info-box";
@@ -38,35 +41,39 @@ export default function AppPage() {
 
     return (
         <PageComponentLayout title={t("title")} description={t("description")}>
-            <div className="flex flex-col lg:flex-row gap-5">
-                <div className="flex flex-col gap-5 lg:w-3/5 w-full">
-                    <div className="lg:hidden empty:hidden">
-                        <CreateBanner />
+            <HistoryRefreshIndicatorProvider>
+                <div className="flex flex-col lg:flex-row gap-5">
+                    <div className="flex flex-col gap-5 lg:w-3/5 w-full">
+                        <div className="lg:hidden empty:hidden">
+                            <CreateBanner />
+                        </div>
+                        <OnboardingProgress
+                            onDepositClick={handleDepositOpen}
+                        />
+                        <BalanceWithGraph
+                            tokens={tokens}
+                            isHidden={isHidden}
+                            onDepositClick={handleDepositOpen}
+                            isLoading={isAssetsLoading}
+                        />
+                        <Assets
+                            tokens={tokens}
+                            state={
+                                isHidden
+                                    ? "hidden"
+                                    : isAssetsLoading
+                                      ? "loading"
+                                      : "ready"
+                            }
+                        />
+                        <RecentActivity />
                     </div>
-                    <OnboardingProgress onDepositClick={handleDepositOpen} />
-                    <BalanceWithGraph
-                        tokens={tokens}
-                        isHidden={isHidden}
-                        onDepositClick={handleDepositOpen}
-                        isLoading={isAssetsLoading}
-                    />
-                    <Assets
-                        tokens={tokens}
-                        state={
-                            isHidden
-                                ? "hidden"
-                                : isAssetsLoading
-                                  ? "loading"
-                                  : "ready"
-                        }
-                    />
-                    <RecentActivity />
+                    <div className="flex flex-col gap-5 w-full lg:w-2/5">
+                        <InfoBox />
+                        <PendingRequests />
+                    </div>
                 </div>
-                <div className="flex flex-col gap-5 w-full lg:w-2/5">
-                    <InfoBox />
-                    <PendingRequests />
-                </div>
-            </div>
+            </HistoryRefreshIndicatorProvider>
             <BalanceWarningModal />
             <WelcomeTooltip />
             <CongratsTooltip />

@@ -80,6 +80,10 @@ pub struct AppState {
     /// Used by the enrichment worker to read indexed_dao_outcomes.
     /// None if GOLDSKY_DATABASE_URL is not configured.
     pub goldsky_pool: Option<PgPool>,
+    /// Wakes the treasury creation sweeper immediately (instead of waiting for
+    /// its next poll tick) when an attempt fails, so a half-created treasury is
+    /// retried within moments rather than seconds.
+    pub creation_sweep_notify: Arc<tokio::sync::Notify>,
 }
 
 /// Builder for constructing AppState instances
@@ -378,6 +382,7 @@ impl AppStateBuilder {
             transfer_hint_service,
             neardata_client,
             goldsky_pool,
+            creation_sweep_notify: Arc::new(tokio::sync::Notify::new()),
         })
     }
 }

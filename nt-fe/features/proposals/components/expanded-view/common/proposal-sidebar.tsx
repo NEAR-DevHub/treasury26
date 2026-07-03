@@ -378,8 +378,10 @@ export function ProposalSidebar({
         shouldFetchSwapStatus,
         treasuryId,
     );
-    const shouldRequireSwapSuccess =
-        hasDepositAddress && !isConfidentialRequestProposal;
+    // Any intents-routed proposal (including confidential requests) must have a
+    // SUCCESS swap status before a receipt can be generated — a pending/failed/
+    // refunded swap has no finalized transaction to receipt.
+    const shouldRequireSwapSuccess = hasDepositAddress;
     // Public treasury receipts should remain accessible for logged-out users
     // and non-members from the requests page.
     const isPublicTreasuryGuestViewer = !isConfidential && isGuestTreasury;
@@ -390,6 +392,19 @@ export function ProposalSidebar({
         isExecuted &&
         (shouldUseSwapDate ? isLoadingSwapStatus : isLoadingTransaction);
     const isHidden = isConfidential && isGuestTreasury;
+
+    // Confidential exchange (a confidential request that is not a payment).
+    const isConfidentialExchange =
+        isConfidentialRequestProposal && !isConfidentialPayment;
+    // Swap is still settling (no finalized transaction yet).
+    const isSwapProcessing = swapStatus?.status === "PROCESSING";
+    // Hide the transaction link for confidential requests while the swap is
+    // still processing — there is no finalized transaction to link to yet.
+    const hideTransactionLink =
+        isConfidentialRequestProposal && isSwapProcessing;
+    // Confidential exchanges link to NEAR Blocks; other intents-routed
+    // proposals use the NEAR Intents explorer (masked for confidential).
+    const useNearblocksLink = !hasDepositAddress || isConfidentialExchange;
     // Receipt button visibility rules:
     // - Proposal must be executed and of a receipt-eligible kind.
     // - For intents-routed proposals (with depositAddress), swap status must be SUCCESS.
@@ -527,9 +542,23 @@ export function ProposalSidebar({
                             </Link>
                         </Button>
                     )}
-                    {/* Intents-routed proposals link to the NEAR Intents explorer
-                        (masked route for confidential, standard for public). */}
-                    {isExecuted && hasDepositAddress ? (
+                    {/* Transaction link. Hidden for confidential requests while
+                        the swap is still processing. Confidential exchanges link
+                        to NEAR Blocks; other intents-routed proposals use the
+                        NEAR Intents explorer (masked for confidential). */}
+                    {hideTransactionLink ? null : useNearblocksLink ? (
+                        transaction && (
+                            <Link
+                                href={transaction.nearblocks_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"
+                            >
+                                <SquareArrowOutUpRight className="size-4" />
+                                {t("viewTransaction")}
+                            </Link>
+                        )
+                    ) : (
                         <Link
                             href={
                                 getIntentsExplorerUrl(
@@ -544,19 +573,6 @@ export function ProposalSidebar({
                             <SquareArrowOutUpRight className="size-4" />
                             {t("viewTransaction")}
                         </Link>
-                    ) : (
-                        /* For other proposals, show regular transaction link */
-                        transaction && (
-                            <Link
-                                href={transaction.nearblocks_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"
-                            >
-                                <SquareArrowOutUpRight className="size-4" />
-                                {t("viewTransaction")}
-                            </Link>
-                        )
                     )}
                 </div>
             )}

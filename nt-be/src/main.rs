@@ -188,6 +188,10 @@ async fn async_main() {
         state.clone(),
     );
 
+    // Spawn treasury creation sweeper (finishes half-created treasuries left
+    // pending by failed/interrupted creation attempts).
+    nt_be::handlers::treasury::creation_sweeper::spawn_treasury_creation_sweeper(state.clone());
+
     // Spawn status monitor worker (Oh Dear health checks + fallback warnings)
     nt_be::handlers::status::run_status_monitor_loop(state.clone());
 
