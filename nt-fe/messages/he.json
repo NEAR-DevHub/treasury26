@@ -370,7 +370,8 @@
             "to": "אל",
             "method": "שיטה",
             "contract": "חוזה",
-            "transaction": "עסקה"
+            "transaction": "עסקה",
+            "depositTransaction": "עסקת הפקדה"
         },
         "refresh": {
             "ariaLabel": "רענון היסטוריה חסויה",

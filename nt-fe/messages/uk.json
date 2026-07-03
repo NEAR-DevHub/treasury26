@@ -370,7 +370,8 @@
             "to": "До",
             "method": "Метод",
             "contract": "Контракт",
-            "transaction": "Транзакція"
+            "transaction": "Транзакція",
+            "depositTransaction": "Транзакція поповнення"
         },
         "refresh": {
             "ariaLabel": "Оновити конфіденційну історію",

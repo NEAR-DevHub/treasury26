@@ -370,7 +370,8 @@
             "to": "Kime",
             "method": "Metot",
             "contract": "Sözleşme",
-            "transaction": "İşlem"
+            "transaction": "İşlem",
+            "depositTransaction": "Yatırma işlemi"
         },
         "refresh": {
             "ariaLabel": "Gizli geçmişi yenile",

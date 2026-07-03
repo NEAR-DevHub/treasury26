@@ -46,6 +46,59 @@ const TREASURY_POLICY = {
     bounty_forgiveness_period: "604800000000000",
 };
 
+/** A member who can file requests (Requestor) but cannot author templates (no ChangePolicy). */
+const PROPOSER_POLICY = {
+    ...TREASURY_POLICY,
+    roles: [
+        {
+            name: "requestors",
+            kind: { Group: [ACCOUNT_ID] },
+            permissions: ["call:AddProposal", "transfer:AddProposal"],
+            vote_policy: {},
+        },
+    ],
+};
+
+/** A member who is neither Requestor nor manager — may view the DAO but not the templates feature. */
+const BARE_MEMBER_POLICY = {
+    ...TREASURY_POLICY,
+    roles: [
+        {
+            name: "voters",
+            kind: { Group: [ACCOUNT_ID] },
+            permissions: ["*:VoteApprove"],
+            vote_policy: {},
+        },
+    ],
+};
+
+/** Can author templates (ChangePolicy) but cannot file one (no `call:AddProposal`). */
+const MANAGER_ONLY_POLICY = {
+    ...TREASURY_POLICY,
+    roles: [
+        {
+            name: "managers",
+            kind: { Group: [ACCOUNT_ID] },
+            permissions: ["*:ChangePolicy"],
+            vote_policy: {},
+        },
+    ],
+};
+
+/** A transfer-only Requestor — templates build a FunctionCall, so `transfer:AddProposal` can't file
+ * one; this member should get NO templates access at all. */
+const TRANSFER_ONLY_POLICY = {
+    ...TREASURY_POLICY,
+    roles: [
+        {
+            name: "transfer-requestors",
+            kind: { Group: [ACCOUNT_ID] },
+            permissions: ["transfer:AddProposal"],
+            vote_policy: {},
+        },
+    ],
+};
+
 const EMPTY_PROPOSALS = { page: 0, page_size: 15, total: 0, proposals: [] };
 
 /** Full subscription shape — the treasury layout reads `planConfig.limits`, so a stub crashes it. */
@@ -137,7 +190,13 @@ function json(route: Route, body: unknown, status = 200) {
  * proposal-templates` returns `templates`; non-GET mutations on that endpoint fall through so a
  * per-test route (registered later, higher priority) can intercept and assert them.
  */
-async function setupMocks(page: Page, templates: Record<string, unknown>[]) {
+async function setupMocks(
+    page: Page,
+    templates: Record<string, unknown>[],
+    options: { policy?: unknown; customRequestsEnabled?: boolean } = {},
+) {
+    const policy = options.policy ?? TREASURY_POLICY;
+    const customRequestsEnabled = options.customRequestsEnabled ?? true;
     await seedMockWalletAccount(page, ACCOUNT_ID, "init");
 
     await page.route("**/*", async (route) => {
@@ -166,7 +225,7 @@ async function setupMocks(page: Page, templates: Record<string, unknown>[]) {
             ]);
         }
         if (url.includes("/treasury/policy")) {
-            return json(route, TREASURY_POLICY);
+            return json(route, policy);
         }
         if (url.includes("/api/subscription/")) {
             return json(route, SUBSCRIPTION);
@@ -177,9 +236,9 @@ async function setupMocks(page: Page, templates: Record<string, unknown>[]) {
         if (url.includes("/proposals/")) {
             return json(route, EMPTY_PROPOSALS);
         }
-        // The Custom Requests feature gate (sidebar visibility) — enabled.
+        // The Custom Requests feature gate (sidebar visibility + route guard).
         if (url.endsWith("/custom-requests") && method === "GET") {
-            return json(route, { enabled: true });
+            return json(route, { enabled: customRequestsEnabled });
         }
         // Template list. Mutations (POST/PUT/DELETE) are owned by per-test routes.
         if (url.includes("/proposal-templates") && method === "GET") {
@@ -394,4 +453,93 @@ test.describe("Custom Templates — fill", () => {
         "successful submit files the proposal and resets the form",
         async () => {},
     );
+});
+
+/**
+ * The route/permission gates (#1026, #1027). The rest of the suite runs as a full council member; here
+ * we swap the flag and the policy to assert the deny paths — the sidebar-only check used to leave these
+ * routes reachable by direct URL.
+ */
+test.describe("Custom Templates — access gates", () => {
+    test("feature disabled: /custom-templates redirects to Settings → Developer (#1026)", async ({
+        page,
+    }) => {
+        await setupMocks(page, [template()], {
+            customRequestsEnabled: false,
+        });
+        await page.goto(`/${TREASURY_ID}/custom-templates`);
+        await page.waitForURL(/settings\?tab=developer/, { timeout: 15000 });
+    });
+
+    test("bare member (neither propose nor manage) is redirected to the dashboard (#1027)", async ({
+        page,
+    }) => {
+        // No access + can't manage → the treasury dashboard, not a Settings tab hidden from them.
+        await setupMocks(page, [template()], { policy: BARE_MEMBER_POLICY });
+        await page.goto(`/${TREASURY_ID}/custom-templates`);
+        await page.waitForURL(/\/dashboard$/, { timeout: 15000 });
+    });
+
+    test("Requestor may reach the list but not the create page — bounced to the list (#1027)", async ({
+        page,
+    }) => {
+        await setupMocks(page, [template()], { policy: PROPOSER_POLICY });
+        await page.goto(`/${TREASURY_ID}/custom-templates/create`);
+        await page.waitForURL(/custom-templates$/, { timeout: 15000 });
+        await expect(page.getByText("Set Greeting")).toBeVisible();
+    });
+
+    test("Requestor gets an enabled Create Request; Add New is disabled, ⋮ menu hidden", async ({
+        page,
+    }) => {
+        await setupMocks(page, [template()], { policy: PROPOSER_POLICY });
+        await page.goto(`/${TREASURY_ID}/custom-templates`);
+
+        await expect(page.getByText("Set Greeting")).toBeVisible({
+            timeout: 15000,
+        });
+        // Can file a request...
+        await expect(
+            page.getByRole("button", { name: "Create Request" }),
+        ).toBeEnabled();
+        // ...authoring "Add New" is shown disabled (with a tooltip), not hidden...
+        await expect(
+            page.getByRole("button", { name: "Add New" }),
+        ).toBeDisabled();
+        // ...and the per-row ⋮ overflow (edit/pin/delete) stays hidden.
+        await expect(
+            page.getByRole("button", { name: "Template actions" }),
+        ).toHaveCount(0);
+    });
+
+    test("manager without call:AddProposal: authoring enabled, Create Request disabled", async ({
+        page,
+    }) => {
+        await setupMocks(page, [template()], { policy: MANAGER_ONLY_POLICY });
+        await page.goto(`/${TREASURY_ID}/custom-templates`);
+
+        await expect(page.getByText("Set Greeting")).toBeVisible({
+            timeout: 15000,
+        });
+        // Can manage (⋮ menu + Add New enabled)...
+        await expect(
+            page.getByRole("button", { name: "Template actions" }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole("button", { name: "Add New" }),
+        ).toBeEnabled();
+        // ...but can't file a FunctionCall template → Create Request shown disabled, not hidden.
+        await expect(
+            page.getByRole("button", { name: "Create Request" }),
+        ).toBeDisabled();
+    });
+
+    test("transfer-only requestor has no templates access → dashboard", async ({
+        page,
+    }) => {
+        // transfer:AddProposal can't file a FunctionCall template, so it grants no access.
+        await setupMocks(page, [template()], { policy: TRANSFER_ONLY_POLICY });
+        await page.goto(`/${TREASURY_ID}/custom-templates`);
+        await page.waitForURL(/\/dashboard$/, { timeout: 15000 });
+    });
 });

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { CustomTemplatesGuard } from "./guard";
 
 export async function generateMetadata(): Promise<Metadata> {
     const t = await getTranslations("customTemplates");
@@ -11,5 +12,5 @@ export default function CustomTemplatesLayout({
 }: {
     children: React.ReactNode;
 }) {
-    return children;
+    return <CustomTemplatesGuard>{children}</CustomTemplatesGuard>;
 }

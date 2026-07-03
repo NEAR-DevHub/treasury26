@@ -106,6 +106,13 @@ export function TransactionDetailsModal({
         isConfidential,
     );
 
+    // Confidential deposits relabel the tx link to the on-chain deposit tx.
+    // Everything else stays generic.
+    const transactionLabel =
+        activity.actionKind === "ConfidentialDeposit"
+            ? t("depositTransaction")
+            : t("transaction");
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[600px]">
@@ -292,7 +299,7 @@ export function TransactionDetailsModal({
                             activity.receiptIds?.length
                                 ? [
                                       {
-                                          label: t("transaction"),
+                                          label: transactionLabel,
                                           value: (
                                               <TransactionHashCell
                                                   transactionHashes={
@@ -300,6 +307,10 @@ export function TransactionDetailsModal({
                                                   }
                                                   receiptIds={
                                                       activity.receiptIds
+                                                  }
+                                                  chainName={
+                                                      activity.tokenMetadata
+                                                          ?.chainName
                                                   }
                                                   className="flex items-center gap-2"
                                               />

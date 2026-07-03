@@ -11,12 +11,11 @@
  * the runtime manifest), so values flow as the generic `FieldValues`.
  */
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { type ControllerRenderProps, useForm } from "react-hook-form";
-import { Button } from "@/components/button";
+import { CreateRequestButton } from "@/components/create-request-button";
 import { InputBlock } from "@/components/input-block";
 import { LargeInput } from "@/components/large-input";
 import { Textarea } from "@/components/textarea";
@@ -237,16 +236,17 @@ export function ManifestForm({
                         </motion.div>
                     </AnimatePresence>
                 </div>
-                <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting ? (
-                        <>
-                            <Loader2 className="mr-2 size-4 animate-spin" />
-                            {label}
-                        </>
-                    ) : (
-                        label
-                    )}
-                </Button>
+                {/* Shared gating (Requestor permission, sponsored-tx availability, create-proposal
+                    maintenance pause) exactly like Payments/Exchange — a template files a FunctionCall
+                    proposal, so the required permission is `call:AddProposal`. Fixes #1029. */}
+                <CreateRequestButton
+                    type="submit"
+                    className="w-full h-10"
+                    isSubmitting={submitting}
+                    idleMessage={label}
+                    loadingMessage={label}
+                    permissions={[{ kind: "call", action: "AddProposal" }]}
+                />
             </form>
         </Form>
     );

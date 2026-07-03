@@ -370,7 +370,8 @@
             "to": "Đến",
             "method": "Phương thức",
             "contract": "Hợp đồng",
-            "transaction": "Giao dịch"
+            "transaction": "Giao dịch",
+            "depositTransaction": "Giao dịch nạp tiền"
         },
         "refresh": {
             "ariaLabel": "Làm mới lịch sử bảo mật",

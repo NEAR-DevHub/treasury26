@@ -370,7 +370,8 @@
             "to": "Ke",
             "method": "Metode",
             "contract": "Kontrak",
-            "transaction": "Transaksi"
+            "transaction": "Transaksi",
+            "depositTransaction": "Transaksi setoran"
         },
         "refresh": {
             "ariaLabel": "Segarkan riwayat rahasia",

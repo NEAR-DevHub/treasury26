@@ -13,6 +13,15 @@ pub struct HistoryApiPage {
     pub prev_cursor: Option<String>,
 }
 
+/// One entry in the `quoteTransactions` array returned by the 1Click history API.
+/// Represents an on-chain deposit transaction: the sender address and tx hash.
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct QuoteTransaction {
+    pub sender: Option<String>,
+    pub tx_hash: Option<String>,
+}
+
 /// One history row from 1Click, including projection fields read by classify.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -38,6 +47,22 @@ pub struct HistoryApiItem {
     pub refund_to: Option<String>,
     #[serde(default)]
     pub refund_type: Option<String>,
+    /// On-chain deposit transactions from the source chain (e.g. EVM).
+    /// The first entry's `sender` and `tx_hash` identify who deposited and on which tx.
+    #[serde(default)]
+    pub quote_transactions: Vec<QuoteTransaction>,
+}
+
+impl HistoryApiItem {
+    /// The sender address from the first `quoteTransactions` entry, if present.
+    pub fn first_quote_sender(&self) -> Option<&str> {
+        self.quote_transactions.first()?.sender.as_deref()
+    }
+
+    /// The tx hash from the first `quoteTransactions` entry, if present.
+    pub fn first_quote_tx_hash(&self) -> Option<&str> {
+        self.quote_transactions.first()?.tx_hash.as_deref()
+    }
 }
 
 /// Wrapper kept for bronze ingest: typed item + original JSON for storage.
@@ -116,6 +141,33 @@ mod tests {
         let item: HistoryApiItem = serde_json::from_value(raw).expect("item should parse");
         assert_eq!(item.deposit_address, "abc");
         assert_eq!(item.amount_out_formatted.as_deref(), Some("0.1"));
+        assert!(item.quote_transactions.is_empty());
+    }
+
+    #[test]
+    fn history_api_item_deserializes_quote_transactions() {
+        let raw = serde_json::json!({
+            "createdAt": "2026-06-29T16:51:40.541555Z",
+            "depositAddress": "46c3fdcb111762208af1e072c832dad91643816898da540057930456bc37eafe",
+            "depositType": "INTENTS",
+            "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+            "status": "SUCCESS",
+            "quoteTransactions": [
+                {
+                    "sender": "0xCca16F882B7C0EC5aba541999f7Ee05f858b426B",
+                    "txHash": "0x8b46d78a64ab09c0d89bc7f95f2580b2663e7143c2e0d297ee1d397e44a528c7"
+                }
+            ]
+        });
+        let item: HistoryApiItem = serde_json::from_value(raw).expect("item should parse");
+        assert_eq!(
+            item.first_quote_sender(),
+            Some("0xCca16F882B7C0EC5aba541999f7Ee05f858b426B")
+        );
+        assert_eq!(
+            item.first_quote_tx_hash(),
+            Some("0x8b46d78a64ab09c0d89bc7f95f2580b2663e7143c2e0d297ee1d397e44a528c7")
+        );
     }
 
     #[test]

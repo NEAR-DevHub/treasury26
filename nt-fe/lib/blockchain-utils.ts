@@ -172,6 +172,115 @@ export function getBlockchainType(chainName: string): BlockchainType {
 }
 
 /**
+ * Get the explorer URL for a transaction hash, given the chain it occurred on.
+ *
+ * The chain comes from token/asset metadata.
+ *
+ * Returns null for unknown chains (no link shown).
+ */
+export function getExplorerTxUrl(
+    chainName: string | null | undefined,
+    txHash: string,
+): string | null {
+    if (!chainName) return null;
+
+    const blockchainType = getBlockchainType(chainName);
+    const chainLower = chainName.toLowerCase();
+
+    switch (blockchainType) {
+        case NEAR_NETWORK_ID:
+            return `https://nearblocks.io/txns/${txHash}`;
+
+        case "ethereum":
+            // Map specific EVM chains to their explorers.
+            if (chainLower === "arbitrum" || chainLower === "arb") {
+                return `https://arbiscan.io/tx/${txHash}`;
+            }
+            if (chainLower === "polygon" || chainLower === "pol") {
+                return `https://polygonscan.com/tx/${txHash}`;
+            }
+            if (chainLower === "bsc" || chainLower === "binance") {
+                return `https://bscscan.com/tx/${txHash}`;
+            }
+            if (chainLower === "optimism" || chainLower === "op") {
+                return `https://optimistic.etherscan.io/tx/${txHash}`;
+            }
+            if (chainLower === "base") {
+                return `https://basescan.org/tx/${txHash}`;
+            }
+            if (chainLower === "avalanche" || chainLower === "avax") {
+                return `https://snowtrace.io/tx/${txHash}`;
+            }
+            if (chainLower === "gnosis") {
+                return `https://gnosisscan.io/tx/${txHash}`;
+            }
+            if (chainLower === "berachain" || chainLower === "bera") {
+                return `https://berascan.com/tx/${txHash}`;
+            }
+            if (chainLower === "scroll") {
+                return `https://scrollscan.com/tx/${txHash}`;
+            }
+            if (chainLower === "aurora") {
+                return `https://explorer.aurora.dev/tx/${txHash}`;
+            }
+            // Default to Ethereum mainnet for unspecified EVM chains.
+            return `https://etherscan.io/tx/${txHash}`;
+
+        case "bitcoin":
+            return `https://blockchair.com/bitcoin/transaction/${txHash}`;
+
+        case "bitcoincash":
+            return `https://blockchair.com/bitcoin-cash/transaction/${txHash}`;
+
+        case "litecoin":
+            return `https://blockchair.com/litecoin/transaction/${txHash}`;
+
+        case "dash":
+            return `https://blockchair.com/dash/transaction/${txHash}`;
+
+        case "starknet":
+            return `https://starkscan.co/tx/${txHash}`;
+
+        case "aleo":
+            return `https://explorer.aleo.org/transaction/${txHash}`;
+
+        case "ton":
+            return `https://tonscan.org/tx/${txHash}`;
+
+        case "solana":
+            return `https://solscan.io/tx/${txHash}`;
+
+        case "tron":
+            return `https://tronscan.org/#/transaction/${txHash}`;
+
+        case "zcash":
+            return `https://blockchair.com/zcash/transaction/${txHash}`;
+
+        case "dogecoin":
+            return `https://blockchair.com/dogecoin/transaction/${txHash}`;
+
+        case "xrp":
+            return `https://xrpscan.com/tx/${txHash}`;
+
+        case "stellar":
+            return `https://stellarchain.io/transactions/${txHash}`;
+
+        case "sui":
+            return `https://suiscan.xyz/mainnet/tx/${txHash}`;
+
+        case "aptos":
+            return `https://explorer.aptoslabs.com/txn/${txHash}`;
+
+        case "cardano":
+            return `https://cardanoscan.io/transaction/${txHash}`;
+
+        case "unknown":
+        default:
+            return null;
+    }
+}
+
+/**
  * Check if a token is on NEAR blockchain
  */
 export function isNearToken(chainName?: string, residency?: string): boolean {

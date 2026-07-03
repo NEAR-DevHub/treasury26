@@ -370,7 +370,8 @@
             "to": "An",
             "method": "Methode",
             "contract": "Vertrag",
-            "transaction": "Transaktion"
+            "transaction": "Transaktion",
+            "depositTransaction": "Einzahlungstransaktion"
         },
         "refresh": {
             "ariaLabel": "Vertraulichen Verlauf aktualisieren",
