@@ -817,6 +817,9 @@ pub async fn project_public_gold_for_dirty_accounts(
                 stats.accounts_skipped_locked += 1;
             }
             Ok(account_stats) => {
+                if account_stats.rows_projected > 0 || account_stats.rows_deleted > 0 {
+                    stats.changed_accounts.push(account_id);
+                }
                 stats.accounts_projected += 1;
                 stats.rows_projected += account_stats.rows_projected;
                 stats.rows_deleted += account_stats.rows_deleted;
@@ -863,6 +866,9 @@ pub fn spawn_public_gold_projection_worker(state: Arc<AppState>) {
                         errors_written = stats.errors_written,
                         "public gold cycle finished"
                     );
+                    for account_id in stats.changed_accounts {
+                        state.publish_treasury_projection_updated(account_id);
+                    }
                 }
                 Ok(_) => {}
                 Err(e) => {

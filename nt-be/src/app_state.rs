@@ -3,8 +3,10 @@ use chrono::{DateTime, Utc};
 use near_api::{AccountId, NetworkConfig, RPCEndpoint, Signer};
 use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
+use tokio::sync::broadcast;
 
 use crate::{
+    events::{AppEvent, EVENT_BUS_CAPACITY},
     handlers::balance_changes::transfer_hints::{
         TransferHintService, fastnear::FastNearProvider, neardata::NeardataClient,
     },
@@ -54,6 +56,7 @@ pub struct AppState {
     /// Used by the enrichment worker to read indexed_dao_outcomes.
     /// None if GOLDSKY_DATABASE_URL is not configured.
     pub goldsky_pool: Option<PgPool>,
+    pub event_tx: broadcast::Sender<AppEvent>,
 }
 
 /// Builder for constructing AppState instances
@@ -361,6 +364,8 @@ impl AppStateBuilder {
             PriorityRateGate::<NearblocksPriority>::new(nearblocks_limiter);
         tokio::spawn(nearblocks_gate_driver.run());
 
+        let (event_tx, _) = broadcast::channel(EVENT_BUS_CAPACITY);
+
         Ok(AppState {
             http_client: self.http_client.unwrap_or_default(),
             nearblocks_gate,
@@ -379,6 +384,7 @@ impl AppStateBuilder {
             transfer_hint_service,
             neardata_client,
             goldsky_pool,
+            event_tx,
         })
     }
 }
@@ -390,6 +396,16 @@ impl Default for AppStateBuilder {
 }
 
 impl AppState {
+    pub fn publish_treasury_projection_updated(&self, account_id: String) {
+        let event = AppEvent::treasury_projection_updated(account_id);
+        if let Err(e) = self.event_tx.send(event) {
+            tracing::debug!(
+                account_id = %e.0.account_id,
+                "no active SSE subscribers for treasury projection update"
+            );
+        }
+    }
+
     /// Create a new builder for constructing AppState
     ///
     /// # Example

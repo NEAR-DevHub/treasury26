@@ -1,8 +1,8 @@
 //! Daily gold reconciliation: mark backfilled DAOs dirty, then project.
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
-use sqlx::PgPool;
+use crate::AppState;
 
 use super::cursors::mark_backfilled_confidential_daos_gold_dirty;
 use super::deposit_corrections::ConfidentialDepositCorrector;
@@ -14,7 +14,7 @@ use super::history_events::{
 pub const CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(86_400);
 
 /// Background worker: runs gold reconciliation once at startup, then daily.
-pub fn spawn_confidential_gold_reconciliation_worker(pool: PgPool) {
+pub fn spawn_confidential_gold_reconciliation_worker(state: Arc<AppState>) {
     tokio::spawn(async move {
         tracing::info!(
             "Starting confidential gold reconciliation ({:?} interval, {} workers)",
@@ -22,20 +22,21 @@ pub fn spawn_confidential_gold_reconciliation_worker(pool: PgPool) {
             CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS
         );
 
-        run_reconciliation_pass(&pool, "startup").await;
+        run_reconciliation_pass(&state, "startup").await;
 
         let mut timer = tokio::time::interval(CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL);
         timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         timer.tick().await;
         loop {
             timer.tick().await;
-            run_reconciliation_pass(&pool, "daily").await;
+            run_reconciliation_pass(&state, "daily").await;
         }
     });
 }
 
 #[tracing::instrument(level = "info", skip_all, fields(job = "confidential_gold_reconciliation", phase = phase))]
-async fn run_reconciliation_pass(pool: &PgPool, phase: &str) {
+async fn run_reconciliation_pass(state: &AppState, phase: &str) {
+    let pool = &state.db_pool;
     match mark_backfilled_confidential_daos_gold_dirty(pool).await {
         Ok(rows) => tracing::info!(
             "{} reconciliation marked {} backfilled cursor rows dirty",
@@ -45,7 +46,7 @@ async fn run_reconciliation_pass(pool: &PgPool, phase: &str) {
         Err(e) => tracing::error!("{} reconciliation mark-dirty failed: {}", phase, e),
     }
 
-    project_dirty_daos(pool, phase, "pre-correction").await;
+    project_dirty_daos(state, phase, "pre-correction").await;
 
     // Corrections are paired against gold deposit rows, so a freshly rebuilt or
     // truncated database needs the base gold projection before this backfill can
@@ -69,28 +70,36 @@ async fn run_reconciliation_pass(pool: &PgPool, phase: &str) {
             };
 
         if corrections_written > 0 {
-            project_dirty_daos(pool, phase, "post-correction").await;
+            project_dirty_daos(state, phase, "post-correction").await;
         }
     }
 }
 
 #[tracing::instrument(level = "info", skip_all, fields(phase = phase, step = step))]
-async fn project_dirty_daos(pool: &PgPool, phase: &str, step: &str) {
-    match project_confidential_gold_for_dirty_daos(pool, CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS)
-        .await
+async fn project_dirty_daos(state: &AppState, phase: &str, step: &str) {
+    match project_confidential_gold_for_dirty_daos(
+        &state.db_pool,
+        CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,
+    )
+    .await
     {
-        Ok(stats) if stats.accounts_seen > 0 => tracing::info!(
-            "{} reconciliation {} projection seen={} projected={} locked={} failed={} rows={} deleted={} errors={}",
-            phase,
-            step,
-            stats.accounts_seen,
-            stats.accounts_projected,
-            stats.accounts_skipped_locked,
-            stats.accounts_failed,
-            stats.rows_projected,
-            stats.rows_deleted,
-            stats.errors_written
-        ),
+        Ok(stats) if stats.accounts_seen > 0 => {
+            tracing::info!(
+                "{} reconciliation {} projection seen={} projected={} locked={} failed={} rows={} deleted={} errors={}",
+                phase,
+                step,
+                stats.accounts_seen,
+                stats.accounts_projected,
+                stats.accounts_skipped_locked,
+                stats.accounts_failed,
+                stats.rows_projected,
+                stats.rows_deleted,
+                stats.errors_written
+            );
+            for account_id in stats.changed_accounts {
+                state.publish_treasury_projection_updated(account_id);
+            }
+        }
         Ok(_) => {}
         Err(e) => tracing::error!("{} reconciliation projection failed: {}", phase, e),
     }

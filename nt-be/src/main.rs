@@ -138,7 +138,7 @@ async fn async_main() {
     );
 
     nt_be::handlers::intents::confidential::gold::reconciliation_worker::spawn_confidential_gold_reconciliation_worker(
-        state.db_pool.clone(),
+        state.clone(),
     );
 
     nt_be::handlers::public_history::spawn_public_history_queue_workers(state.clone());
