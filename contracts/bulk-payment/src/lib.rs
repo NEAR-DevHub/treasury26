@@ -27,10 +27,6 @@ pub struct BulkPaymentContract {
     /// Payment lists indexed by their content hash (hex-encoded SHA-256)
     payment_lists: IterableMap<ListId, PaymentList>,
     storage_credits: IterableMap<AccountId, NearToken>,
-    /// Hash of the globally-deployed `confidential-bulk-payment` WASM. Set by
-    /// the contract account itself (via DAO upgrade) before any per-DAO
-    /// confidential subaccount can be created.
-    confidential_code_hash: Option<CryptoHash>,
 }
 
 #[near(serializers = [json])]
@@ -93,7 +89,6 @@ impl Default for BulkPaymentContract {
         Self {
             payment_lists: IterableMap::new(b"p"),
             storage_credits: IterableMap::new(b"s"),
-            confidential_code_hash: None,
         }
     }
 }
@@ -679,7 +674,7 @@ impl BulkPaymentContract {
             env::predecessor_account_id() == env::current_account_id(),
             "Only the contract account can set the confidential code hash"
         );
-        self.confidential_code_hash = Some(CryptoHash::from(code_hash));
+        env::storage_write(b"confidential_code_hash", &CryptoHash::from(code_hash));
     }
 
     /// Permissionless factory for per-DAO confidential bulk-payment subaccounts.
@@ -695,9 +690,10 @@ impl BulkPaymentContract {
     /// `add_public_key` call dispatched during `bootstrap()`.
     #[payable]
     pub fn create_confidential_subaccount(&mut self, dao_id: AccountId) -> Promise {
-        let code_hash = self
-            .confidential_code_hash
-            .expect("confidential_code_hash not configured");
+        let code_hash: CryptoHash = env::storage_read(b"confidential_code_hash")
+            .expect("confidential_code_hash not configured")
+            .try_into()
+            .expect("confidential_code_hash stored value is corrupted");
 
         let current = env::current_account_id();
         let current_str = current.as_str();
@@ -770,7 +766,13 @@ impl BulkPaymentContract {
     }
 
     pub fn get_confidential_code_hash(&self) -> Option<Base58CryptoHash> {
-        self.confidential_code_hash.map(Base58CryptoHash::from)
+        env::storage_read(b"confidential_code_hash").map(|code_hash| {
+            CryptoHash::into(
+                code_hash
+                    .try_into()
+                    .expect("confidential_code_hash stored value is corrupted"),
+            )
+        })
     }
 }
 
