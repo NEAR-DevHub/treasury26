@@ -39,6 +39,9 @@ CREATE INDEX IF NOT EXISTS SIdx ON apalis.jobs(status);
 CREATE UNIQUE INDEX IF NOT EXISTS unique_job_id ON apalis.jobs(id);
 CREATE INDEX IF NOT EXISTS LIdx ON apalis.jobs(lock_by);
 CREATE INDEX IF NOT EXISTS JTIdx ON apalis.jobs(job_type);
+CREATE INDEX IF NOT EXISTS idx_apalis_jobs_active_key
+    ON apalis.jobs (job_type, ((job->>'job_key')))
+    WHERE status IN ('Pending', 'Running', 'Failed');
 
 
 CREATE OR REPLACE FUNCTION apalis.get_jobs(

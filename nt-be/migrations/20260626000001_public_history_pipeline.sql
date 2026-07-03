@@ -31,31 +31,24 @@ CREATE TYPE public_transfer_leg_kind AS ENUM (
     'wrap_and_transfer'
 );
 
-CREATE TYPE public_transfer_confidence AS ENUM (
-    'source_event',
-    'receipt_action',
-    'linked_receipt'
-);
-
 CREATE TYPE public_transaction_type AS ENUM ('deposit', 'sent', 'exchange');
+
+CREATE TYPE public_history_event_status AS ENUM (
+    'pending',
+    'success',
+    'failed'
+);
 
 CREATE TABLE IF NOT EXISTS bronze_public_history_cursors (
     account_id TEXT NOT NULL,
     source public_history_source NOT NULL,
-    forward_cursor TEXT,
     backward_cursor TEXT,
     backfill_done BOOLEAN NOT NULL DEFAULT FALSE,
-    next_poll_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_polled_at TIMESTAMPTZ,
-    last_activity_at TIMESTAMPTZ,
     last_seen_block_height BIGINT,
-    last_seen_block_timestamp NUMERIC,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (account_id, source)
 );
-CREATE INDEX IF NOT EXISTS idx_bphc_due
-    ON bronze_public_history_cursors (source, next_poll_at);
 
 CREATE TABLE IF NOT EXISTS bronze_public_history_events (
     id BIGSERIAL PRIMARY KEY,
@@ -66,7 +59,6 @@ CREATE TABLE IF NOT EXISTS bronze_public_history_events (
     receipt_id TEXT,
     event_index INTEGER,
     block_height BIGINT NOT NULL,
-    block_hash TEXT,
     block_timestamp NUMERIC NOT NULL,
     block_time TIMESTAMPTZ NOT NULL,
     affected_account_id TEXT NOT NULL,
@@ -88,7 +80,7 @@ CREATE TABLE IF NOT EXISTS bronze_public_history_events (
 CREATE INDEX IF NOT EXISTS idx_bphe_account_source_time
     ON bronze_public_history_events (account_id, source, block_time, id);
 CREATE INDEX IF NOT EXISTS idx_bphe_account_time
-    ON bronze_public_history_events (account_id, block_time, id);
+    ON bronze_public_history_events (account_id, block_time, block_height, id);
 CREATE INDEX IF NOT EXISTS idx_bphe_tx_receipt
     ON bronze_public_history_events (transaction_hash, receipt_id);
 
@@ -106,6 +98,8 @@ CREATE TABLE IF NOT EXISTS dao_proposals (
     proposal_execution_block_height BIGINT,
     proposal_execution_transaction_hash TEXT,
     proposal_execution_receipt_id TEXT,
+    quote_metadata JSONB,
+    quote_deposit_address TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (dao_id, proposal_id)
@@ -115,6 +109,9 @@ CREATE INDEX IF NOT EXISTS idx_dao_proposals_dao_status
 CREATE INDEX IF NOT EXISTS idx_dao_proposals_execution_tx
     ON dao_proposals (dao_id, proposal_execution_transaction_hash)
     WHERE proposal_execution_transaction_hash IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_dao_proposals_quote_deposit_address
+    ON dao_proposals (dao_id, quote_deposit_address)
+    WHERE quote_deposit_address IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS silver_public_history_cursors (
     account_id TEXT PRIMARY KEY,
@@ -137,9 +134,7 @@ CREATE TABLE IF NOT EXISTS silver_public_transfer_legs (
     proposal_id BIGINT,
     transaction_hash TEXT,
     receipt_id TEXT,
-    event_index INTEGER,
     block_height BIGINT NOT NULL,
-    block_timestamp NUMERIC NOT NULL,
     block_time TIMESTAMPTZ NOT NULL,
     token_standard public_token_standard NOT NULL,
     token_id TEXT NOT NULL,
@@ -149,16 +144,13 @@ CREATE TABLE IF NOT EXISTS silver_public_transfer_legs (
     amount NUMERIC NOT NULL,
     decimals INTEGER NOT NULL,
     leg_kind public_transfer_leg_kind NOT NULL,
-    linked_mint_bronze_id BIGINT REFERENCES bronze_public_history_events(id),
-    linked_transfer_bronze_id BIGINT REFERENCES bronze_public_history_events(id),
-    confidence public_transfer_confidence NOT NULL,
     raw_payload JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (source_event_id)
 );
 CREATE INDEX IF NOT EXISTS idx_sptl_account_time
-    ON silver_public_transfer_legs (account_id, block_time, id);
+    ON silver_public_transfer_legs (account_id, block_time, block_height, id);
 CREATE INDEX IF NOT EXISTS idx_sptl_tx_receipt
     ON silver_public_transfer_legs (transaction_hash, receipt_id);
 CREATE INDEX IF NOT EXISTS idx_sptl_proposal_ref
@@ -220,8 +212,7 @@ CREATE TABLE IF NOT EXISTS gold_public_history_events (
     proposal_executed_at TIMESTAMPTZ,
     proposal_execution_block_height BIGINT,
     proposal_execution_transaction_hash TEXT,
-    swap_correlation_id TEXT,
-    swap_status TEXT,
+    status public_history_event_status NOT NULL DEFAULT 'success',
     raw_payload JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -230,18 +221,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_gphe_counter_leg_unique
     ON gold_public_history_events (counter_transfer_leg_id)
     WHERE counter_transfer_leg_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_gphe_dao_event_time
-    ON gold_public_history_events (
-        dao_id,
-        (COALESCE(proposal_executed_at, event_time)) DESC,
-        id DESC
-    );
+    ON gold_public_history_events (dao_id, event_time DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_gphe_dao_type_event_time
-    ON gold_public_history_events (
-        dao_id,
-        transaction_type,
-        (COALESCE(proposal_executed_at, event_time)) DESC,
-        id DESC
-    );
+    ON gold_public_history_events (dao_id, transaction_type, event_time DESC, id DESC);
 
 CREATE TABLE IF NOT EXISTS gold_public_history_projection_errors (
     id BIGSERIAL PRIMARY KEY,
