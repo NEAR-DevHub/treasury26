@@ -42,6 +42,7 @@ import {
     useDeleteProposalTemplate,
     useUpdateProposalTemplate,
 } from "@/features/proposal-templates/hooks/use-proposal-template-mutations";
+import { useCustomTemplatesAccess } from "@/features/proposal-templates/hooks/use-custom-templates-access";
 import { useProposalTemplates } from "@/features/proposal-templates/hooks/use-proposal-templates";
 import { manifestIdOf } from "@/features/proposal-templates/manifest";
 import type { ProposalTemplate } from "@/features/proposal-templates/types";
@@ -68,7 +69,13 @@ function HowItWorksLink() {
     );
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function EmptyState({
+    onCreate,
+    canManage,
+}: {
+    onCreate: () => void;
+    canManage: boolean;
+}) {
     const t = useTranslations("customTemplates");
     return (
         <PageCard className="items-center gap-3 py-16 text-center">
@@ -85,9 +92,12 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
             </div>
             <div className="flex items-center gap-2">
                 <HowItWorksLink />
-                <Button onClick={onCreate}>
-                    <Plus className="size-4" /> {t("index.createTemplate")}
-                </Button>
+                {/* Only policy managers can author templates; a proposer sees just the docs link. */}
+                {canManage ? (
+                    <Button onClick={onCreate}>
+                        <Plus className="size-4" /> {t("index.createTemplate")}
+                    </Button>
+                ) : null}
             </div>
         </PageCard>
     );
@@ -95,6 +105,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 
 interface TemplateRowProps {
     template: ProposalTemplate;
+    canManage: boolean;
     onCreateRequest: () => void;
     onEdit: () => void;
     onTogglePin: () => void;
@@ -103,6 +114,7 @@ interface TemplateRowProps {
 
 function TemplateRow({
     template,
+    canManage,
     onCreateRequest,
     onEdit,
     onTogglePin,
@@ -122,47 +134,52 @@ function TemplateRow({
                 ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-1">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={t("index.actions")}
-                            className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-                        >
-                            <EllipsisVertical className="size-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                            onClick={onEdit}
-                            className={MENU_ITEM_CLASS}
-                        >
-                            <Pencil className="size-4" /> {t("index.edit")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={onTogglePin}
-                            className={MENU_ITEM_CLASS}
-                        >
-                            {template.pinned ? (
-                                <>
-                                    <PinOff className="size-4" />{" "}
-                                    {t("index.unpin")}
-                                </>
-                            ) : (
-                                <>
-                                    <Pin className="size-4" /> {t("index.pin")}
-                                </>
-                            )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={onDelete}
-                            className={MENU_ITEM_CLASS}
-                        >
-                            <Trash2 className="size-4" /> {t("index.delete")}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Edit/Pin/Delete are authoring actions — managers only. Proposers just file. */}
+                {canManage ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t("index.actions")}
+                                className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                            >
+                                <EllipsisVertical className="size-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                                onClick={onEdit}
+                                className={MENU_ITEM_CLASS}
+                            >
+                                <Pencil className="size-4" /> {t("index.edit")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={onTogglePin}
+                                className={MENU_ITEM_CLASS}
+                            >
+                                {template.pinned ? (
+                                    <>
+                                        <PinOff className="size-4" />{" "}
+                                        {t("index.unpin")}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Pin className="size-4" />{" "}
+                                        {t("index.pin")}
+                                    </>
+                                )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={onDelete}
+                                className={MENU_ITEM_CLASS}
+                            >
+                                <Trash2 className="size-4" />{" "}
+                                {t("index.delete")}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : null}
                 <Button onClick={onCreateRequest}>
                     {t("index.createRequest")}
                 </Button>
@@ -175,6 +192,7 @@ export default function CustomTemplatesIndexPage() {
     const t = useTranslations("customTemplates");
     const router = useRouter();
     const { treasuryId } = useTreasury();
+    const { canManage } = useCustomTemplatesAccess();
     const { data: templates, isLoading } = useProposalTemplates();
     const updateTemplate = useUpdateProposalTemplate();
     const deleteTemplate = useDeleteProposalTemplate();
@@ -225,7 +243,10 @@ export default function CustomTemplatesIndexPage() {
                         </p>
                     </PageCard>
                 ) : enabled.length === 0 ? (
-                    <EmptyState onCreate={() => go("/create")} />
+                    <EmptyState
+                        onCreate={() => go("/create")}
+                        canManage={canManage}
+                    />
                 ) : (
                     <PageCard className="gap-4 p-5">
                         <div className="flex items-center justify-between gap-2">
@@ -234,13 +255,15 @@ export default function CustomTemplatesIndexPage() {
                             </h2>
                             <div className="flex items-center gap-2">
                                 <HowItWorksLink />
-                                <Button
-                                    variant="secondary"
-                                    onClick={() => go("/create")}
-                                >
-                                    <Plus className="size-4" />{" "}
-                                    {t("index.addNew")}
-                                </Button>
+                                {canManage ? (
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => go("/create")}
+                                    >
+                                        <Plus className="size-4" />{" "}
+                                        {t("index.addNew")}
+                                    </Button>
+                                ) : null}
                             </div>
                         </div>
                         <div className="flex flex-col gap-3">
@@ -248,6 +271,7 @@ export default function CustomTemplatesIndexPage() {
                                 <TemplateRow
                                     key={template.id}
                                     template={template}
+                                    canManage={canManage}
                                     onCreateRequest={() =>
                                         go(
                                             `/${manifestIdOf(template.manifest)}`,
