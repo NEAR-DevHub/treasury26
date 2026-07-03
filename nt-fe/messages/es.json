@@ -370,7 +370,8 @@
             "to": "A",
             "method": "Método",
             "contract": "Contrato",
-            "transaction": "Transacción"
+            "transaction": "Transacción",
+            "depositTransaction": "Transacción de depósito"
         },
         "refresh": {
             "ariaLabel": "Actualizar historial confidencial",

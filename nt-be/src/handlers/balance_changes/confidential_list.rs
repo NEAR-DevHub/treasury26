@@ -51,6 +51,8 @@ struct ConfidentialBalanceChangeRow {
     quote_created_at: DateTime<Utc>,
     created_at: DateTime<Utc>,
     proposal_id: Option<i64>,
+    /// On-chain deposit tx hash from quoteTransactions[0].txHash.
+    deposit_tx_hash: Option<String>,
 }
 
 impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for ConfidentialBalanceChangeRow {
@@ -84,6 +86,7 @@ impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for ConfidentialBalanceChangeRow {
             quote_created_at: row.try_get("quote_created_at")?,
             created_at: row.try_get("created_at")?,
             proposal_id: row.try_get("proposal_id")?,
+            deposit_tx_hash: row.try_get("deposit_tx_hash")?,
         })
     }
 }
@@ -177,6 +180,7 @@ pub async fn fetch_balance_change_legs(
                 proposal_executed_at,
                 proposal_execution_transaction_hash,
                 quote_created_at, created_at,
+                deposit_tx_hash,
                 (
                     SELECT ci.proposal_id
                     FROM confidential_intents ci
@@ -222,7 +226,8 @@ pub async fn fetch_balance_change_legs(
             proposal_execution_block_height,
             proposal_executed_at,
             proposal_execution_transaction_hash,
-            quote_created_at, created_at, proposal_id
+            quote_created_at, created_at, proposal_id,
+            deposit_tx_hash
         FROM legs
         WHERE 1 = 1
         "#,
@@ -446,6 +451,7 @@ impl LegRow {
             quote_created_at,
             created_at,
             proposal_id,
+            deposit_tx_hash,
         } = row;
 
         let resolved_block_time = proposal_executed_at.unwrap_or(quote_created_at);
@@ -489,6 +495,10 @@ impl LegRow {
                 // Match gold ledger delta (amount_out - amount_in for same-asset fees), not
                 // gross amount_out — keeps amount = balance_after - balance_before.
                 let amount = &balance_after - &balance_before;
+                // Use the deposit tx hash as the transaction identifier when there
+                // is no NEAR proposal execution tx (typical for pure deposits).
+                // counterparty already holds the real on-chain sender (set in classify.rs).
+                let resolved_tx_hash = transaction_hash.or(deposit_tx_hash);
                 Some(LegRow {
                     id,
                     token_id: destination_asset,
@@ -500,7 +510,7 @@ impl LegRow {
                     receiver_id: Some(dao_id_str),
                     block_height,
                     block_time: resolved_block_time,
-                    transaction_hash,
+                    transaction_hash: resolved_tx_hash,
                     created_at,
                     proposal_id,
                     usd_value: amount_out_usd,

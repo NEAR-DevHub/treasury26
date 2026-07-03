@@ -31,6 +31,7 @@ import {
     DialogTitle,
 } from "@/components/modal";
 import { PageComponentLayout } from "@/components/page-component-layout";
+import { Tooltip } from "@/components/tooltip";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -38,6 +39,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { apiErrorMessage } from "@/features/proposal-templates/api";
+import { useCustomTemplatesAccess } from "@/features/proposal-templates/hooks/use-custom-templates-access";
 import {
     useDeleteProposalTemplate,
     useUpdateProposalTemplate,
@@ -68,8 +70,44 @@ function HowItWorksLink() {
     );
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+/**
+ * A primary action that, when the user lacks the required permission, renders disabled with a
+ * tooltip explaining why — per review feedback we show + explain rather than hide, so a member sees
+ * the action exists and understands they'd need a role for it (not that it's broken/taken away).
+ */
+function GatedButton({
+    allowed,
+    tooltip,
+    children,
+    ...buttonProps
+}: {
+    allowed: boolean;
+    tooltip: string;
+} & React.ComponentProps<typeof Button>) {
+    if (allowed) {
+        return <Button {...buttonProps}>{children}</Button>;
+    }
+    return (
+        <Tooltip content={tooltip}>
+            {/* Radix needs a real event target to hover; a disabled <button> emits none, so wrap it. */}
+            <span className="inline-block">
+                <Button {...buttonProps} disabled>
+                    {children}
+                </Button>
+            </span>
+        </Tooltip>
+    );
+}
+
+function EmptyState({
+    onCreate,
+    canManage,
+}: {
+    onCreate: () => void;
+    canManage: boolean;
+}) {
     const t = useTranslations("customTemplates");
+    const tAuth = useTranslations("auth");
     return (
         <PageCard className="items-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -85,9 +123,13 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
             </div>
             <div className="flex items-center gap-2">
                 <HowItWorksLink />
-                <Button onClick={onCreate}>
+                <GatedButton
+                    allowed={canManage}
+                    tooltip={tAuth("noPermission")}
+                    onClick={onCreate}
+                >
                     <Plus className="size-4" /> {t("index.createTemplate")}
-                </Button>
+                </GatedButton>
             </div>
         </PageCard>
     );
@@ -95,6 +137,8 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 
 interface TemplateRowProps {
     template: ProposalTemplate;
+    canManage: boolean;
+    canPropose: boolean;
     onCreateRequest: () => void;
     onEdit: () => void;
     onTogglePin: () => void;
@@ -103,12 +147,15 @@ interface TemplateRowProps {
 
 function TemplateRow({
     template,
+    canManage,
+    canPropose,
     onCreateRequest,
     onEdit,
     onTogglePin,
     onDelete,
 }: TemplateRowProps) {
     const t = useTranslations("customTemplates");
+    const tCreate = useTranslations("createRequestButton");
     return (
         <div className="group flex min-h-[75px] items-center justify-between gap-3 rounded-xl bg-[#FAFAF9] p-4 dark:bg-muted">
             <div className="flex min-w-0 flex-col gap-0.5">
@@ -122,50 +169,62 @@ function TemplateRow({
                 ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-1">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={t("index.actions")}
-                            className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-                        >
-                            <EllipsisVertical className="size-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                            onClick={onEdit}
-                            className={MENU_ITEM_CLASS}
-                        >
-                            <Pencil className="size-4" /> {t("index.edit")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={onTogglePin}
-                            className={MENU_ITEM_CLASS}
-                        >
-                            {template.pinned ? (
-                                <>
-                                    <PinOff className="size-4" />{" "}
-                                    {t("index.unpin")}
-                                </>
-                            ) : (
-                                <>
-                                    <Pin className="size-4" /> {t("index.pin")}
-                                </>
-                            )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={onDelete}
-                            className={MENU_ITEM_CLASS}
-                        >
-                            <Trash2 className="size-4" /> {t("index.delete")}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <Button onClick={onCreateRequest}>
+                {/* Edit/Pin/Delete are authoring actions — managers only. Proposers just file. */}
+                {canManage ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t("index.actions")}
+                                className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                            >
+                                <EllipsisVertical className="size-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                                onClick={onEdit}
+                                className={MENU_ITEM_CLASS}
+                            >
+                                <Pencil className="size-4" /> {t("index.edit")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={onTogglePin}
+                                className={MENU_ITEM_CLASS}
+                            >
+                                {template.pinned ? (
+                                    <>
+                                        <PinOff className="size-4" />{" "}
+                                        {t("index.unpin")}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Pin className="size-4" />{" "}
+                                        {t("index.pin")}
+                                    </>
+                                )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={onDelete}
+                                className={MENU_ITEM_CLASS}
+                            >
+                                <Trash2 className="size-4" />{" "}
+                                {t("index.delete")}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : null}
+                {/* Filing needs call:AddProposal (templates build a FunctionCall). Disable rather than
+                    hide so a manager-only / transfer-only member sees the action and why it's blocked
+                    instead of being walked into a dead-end fill form. */}
+                <GatedButton
+                    allowed={canPropose}
+                    tooltip={tCreate("noPermission")}
+                    onClick={onCreateRequest}
+                >
                     {t("index.createRequest")}
-                </Button>
+                </GatedButton>
             </div>
         </div>
     );
@@ -173,8 +232,10 @@ function TemplateRow({
 
 export default function CustomTemplatesIndexPage() {
     const t = useTranslations("customTemplates");
+    const tAuth = useTranslations("auth");
     const router = useRouter();
     const { treasuryId } = useTreasury();
+    const { canManage, canPropose } = useCustomTemplatesAccess();
     const { data: templates, isLoading } = useProposalTemplates();
     const updateTemplate = useUpdateProposalTemplate();
     const deleteTemplate = useDeleteProposalTemplate();
@@ -225,7 +286,10 @@ export default function CustomTemplatesIndexPage() {
                         </p>
                     </PageCard>
                 ) : enabled.length === 0 ? (
-                    <EmptyState onCreate={() => go("/create")} />
+                    <EmptyState
+                        onCreate={() => go("/create")}
+                        canManage={canManage}
+                    />
                 ) : (
                     <PageCard className="gap-4 p-5">
                         <div className="flex items-center justify-between gap-2">
@@ -234,13 +298,15 @@ export default function CustomTemplatesIndexPage() {
                             </h2>
                             <div className="flex items-center gap-2">
                                 <HowItWorksLink />
-                                <Button
+                                <GatedButton
+                                    allowed={canManage}
+                                    tooltip={tAuth("noPermission")}
                                     variant="secondary"
                                     onClick={() => go("/create")}
                                 >
                                     <Plus className="size-4" />{" "}
                                     {t("index.addNew")}
-                                </Button>
+                                </GatedButton>
                             </div>
                         </div>
                         <div className="flex flex-col gap-3">
@@ -248,6 +314,8 @@ export default function CustomTemplatesIndexPage() {
                                 <TemplateRow
                                     key={template.id}
                                     template={template}
+                                    canManage={canManage}
+                                    canPropose={canPropose}
                                     onCreateRequest={() =>
                                         go(
                                             `/${manifestIdOf(template.manifest)}`,

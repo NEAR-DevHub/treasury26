@@ -16,6 +16,48 @@ use crate::{
     },
 };
 
+/// Per-endpoint RPC retries before near-api fails over to the next endpoint
+/// (near-api's default is 5). Bumped so transient RPC hiccups are absorbed
+/// before giving up on an endpoint.
+///
+/// NOTE: near-api only fails over on retryable errors (HTTP 408/429/5xx from a
+/// reachable server); hard connection errors and client timeouts are treated as
+/// `Critical` and abort immediately without failover. Timeout/connection
+/// resilience therefore comes from the multiple endpoints.
+const RPC_ENDPOINT_RETRIES: u8 = 7;
+
+/// Build the default mainnet RPC endpoints with provider-level failover.
+///
+/// FastNEAR (authenticated) is primary; public providers act as fallbacks so a
+/// single degraded provider can't stall signing/read flows.
+fn default_mainnet_endpoints(fastnear_api_key: &str) -> Vec<RPCEndpoint> {
+    vec![
+        RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
+            .with_api_key(fastnear_api_key.to_string())
+            .with_retries(RPC_ENDPOINT_RETRIES),
+        // Open fallbacks (no API key).
+        RPCEndpoint::new("https://rpc.mainnet.near.org".parse().unwrap())
+            .with_retries(RPC_ENDPOINT_RETRIES),
+        RPCEndpoint::new("https://free.rpc.fastnear.com".parse().unwrap())
+            .with_retries(RPC_ENDPOINT_RETRIES),
+    ]
+}
+
+/// Build the default mainnet archival RPC endpoints with provider-level failover.
+fn default_mainnet_archival_endpoints(fastnear_api_key: &str) -> Vec<RPCEndpoint> {
+    vec![
+        RPCEndpoint::new(
+            "https://archival-rpc.mainnet.fastnear.com/"
+                .parse()
+                .unwrap(),
+        )
+        .with_api_key(fastnear_api_key.to_string())
+        .with_retries(RPC_ENDPOINT_RETRIES),
+        RPCEndpoint::new("https://archival-rpc.mainnet.near.org".parse().unwrap())
+            .with_retries(RPC_ENDPOINT_RETRIES),
+    ]
+}
+
 pub struct AppState {
     pub http_client: reqwest::Client,
     pub cache: Cache,
@@ -226,12 +268,9 @@ impl AppStateBuilder {
                     ..NetworkConfig::testnet() // Use testnet defaults for sandbox
                 }
             } else {
-                // Otherwise use mainnet with FastNEAR
+                // Otherwise use mainnet with FastNEAR (+ public fallbacks)
                 NetworkConfig {
-                    rpc_endpoints: vec![
-                        RPCEndpoint::new("https://rpc.mainnet.fastnear.com/".parse().unwrap())
-                            .with_api_key(fastnear_api_key.clone()),
-                    ],
+                    rpc_endpoints: default_mainnet_endpoints(&fastnear_api_key),
                     ..NetworkConfig::mainnet()
                 }
             }
@@ -259,14 +298,7 @@ impl AppStateBuilder {
                 }
             } else {
                 NetworkConfig {
-                    rpc_endpoints: vec![
-                        RPCEndpoint::new(
-                            "https://archival-rpc.mainnet.fastnear.com/"
-                                .parse()
-                                .unwrap(),
-                        )
-                        .with_api_key(fastnear_api_key),
-                    ],
+                    rpc_endpoints: default_mainnet_archival_endpoints(&fastnear_api_key),
                     ..NetworkConfig::mainnet()
                 }
             }

@@ -370,7 +370,8 @@
             "to": "接收方",
             "method": "方法",
             "contract": "合约",
-            "transaction": "交易"
+            "transaction": "交易",
+            "depositTransaction": "存款交易"
         },
         "refresh": {
             "ariaLabel": "刷新机密历史记录",

@@ -370,7 +370,8 @@
             "to": "To",
             "method": "Method",
             "contract": "Contract",
-            "transaction": "Transaction"
+            "transaction": "Transaction",
+            "depositTransaction": "Deposit Transaction"
         },
         "refresh": {
             "ariaLabel": "Refresh confidential history",

@@ -370,7 +370,8 @@
             "to": "받는 사람",
             "method": "메서드",
             "contract": "컨트랙트",
-            "transaction": "트랜잭션"
+            "transaction": "트랜잭션",
+            "depositTransaction": "입금 트랜잭션"
         },
         "refresh": {
             "ariaLabel": "기밀 기록 새로 고침",

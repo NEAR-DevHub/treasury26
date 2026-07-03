@@ -41,6 +41,8 @@ pub(crate) struct GoldHistoryEvent {
     pub(crate) proposal_execution_transaction_hash: Option<String>,
     pub(crate) quote_created_at: DateTime<Utc>,
     pub(crate) proposal_created_at: Option<DateTime<Utc>>,
+    /// On-chain deposit tx hash from quoteTransactions[0].txHash.
+    pub(crate) deposit_tx_hash: Option<String>,
 }
 
 /// Back-compat alias used by repository upsert.

@@ -30,9 +30,13 @@ import {
     useGetActivityLabel,
     useGetFromAccount,
     getToAccount,
+    getFromAccountId,
+    getToAccountId,
 } from "../utils/history-utils";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
+import { TooltipUser } from "@/components/user";
+import { Address } from "@/components/address";
 
 interface ActivityTableProps {
     activities: RecentActivity[];
@@ -116,6 +120,16 @@ export function ActivityTable({
                                 const isReceived =
                                     parseFloat(activity.amount) > 0;
                                 const typeLabel = getTypeLabel(activity);
+                                const fromId = getFromAccountId(
+                                    activity,
+                                    isReceived,
+                                    treasuryId,
+                                );
+                                const toId = getToAccountId(
+                                    activity,
+                                    isReceived,
+                                    treasuryId,
+                                );
 
                                 return (
                                     <TableRow key={activity.id}>
@@ -333,24 +347,54 @@ export function ActivityTable({
                                             )}
                                         </TableCell>
                                         <TableCell className="min-w-[150px] max-w-[200px]">
-                                            <span className="text-sm truncate block">
-                                                {getFromAccount(
-                                                    activity,
-                                                    isReceived,
-                                                    treasuryId,
-                                                    isConfidential,
-                                                )}
-                                            </span>
+                                            {fromId ? (
+                                                <TooltipUser
+                                                    accountId={fromId}
+                                                    chainName={
+                                                        activity.tokenMetadata
+                                                            ?.chainName
+                                                    }
+                                                >
+                                                    <Address
+                                                        address={fromId}
+                                                        className="text-sm"
+                                                    />
+                                                </TooltipUser>
+                                            ) : (
+                                                <span className="text-sm truncate block">
+                                                    {getFromAccount(
+                                                        activity,
+                                                        isReceived,
+                                                        treasuryId,
+                                                        isConfidential,
+                                                    )}
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="min-w-[150px] max-w-[200px]">
-                                            <span className="text-sm truncate block">
-                                                {getToAccount(
-                                                    activity,
-                                                    isReceived,
-                                                    treasuryId,
-                                                    isConfidential,
-                                                )}
-                                            </span>
+                                            {toId ? (
+                                                <TooltipUser
+                                                    accountId={toId}
+                                                    chainName={
+                                                        activity.tokenMetadata
+                                                            ?.chainName
+                                                    }
+                                                >
+                                                    <Address
+                                                        address={toId}
+                                                        className="text-sm"
+                                                    />
+                                                </TooltipUser>
+                                            ) : (
+                                                <span className="text-sm truncate block">
+                                                    {getToAccount(
+                                                        activity,
+                                                        isReceived,
+                                                        treasuryId,
+                                                        isConfidential,
+                                                    )}
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
                                             <TransactionHashCell
@@ -358,6 +402,10 @@ export function ActivityTable({
                                                     activity.transactionHashes
                                                 }
                                                 receiptIds={activity.receiptIds}
+                                                chainName={
+                                                    activity.tokenMetadata
+                                                        ?.chainName
+                                                }
                                             />
                                         </TableCell>
                                     </TableRow>

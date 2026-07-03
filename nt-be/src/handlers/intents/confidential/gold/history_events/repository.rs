@@ -231,12 +231,13 @@ pub(crate) async fn upsert_projection(
             proposal_executed_at,
             proposal_execution_transaction_hash,
             quote_created_at,
-            proposal_created_at
+            proposal_created_at,
+            deposit_tx_hash
         )
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
             $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-            $21, $22, $23, $24, $25
+            $21, $22, $23, $24, $25, $26
         )
         ON CONFLICT (history_event_id) DO UPDATE SET
             intent_id = EXCLUDED.intent_id,
@@ -263,6 +264,7 @@ pub(crate) async fn upsert_projection(
             proposal_execution_transaction_hash = EXCLUDED.proposal_execution_transaction_hash,
             quote_created_at = EXCLUDED.quote_created_at,
             proposal_created_at = EXCLUDED.proposal_created_at,
+            deposit_tx_hash = EXCLUDED.deposit_tx_hash,
             updated_at = NOW()
         "#,
     )
@@ -291,6 +293,7 @@ pub(crate) async fn upsert_projection(
     .bind(&row.proposal_execution_transaction_hash)
     .bind(row.quote_created_at)
     .bind(row.proposal_created_at)
+    .bind(&row.deposit_tx_hash)
     .execute(&mut **tx)
     .await?;
 

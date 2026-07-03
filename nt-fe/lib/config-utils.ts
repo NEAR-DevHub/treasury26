@@ -269,3 +269,18 @@ export function isRequestor(
         hasPermission(policy, accountId, "transfer", "AddProposal")
     );
 }
+
+/**
+ * Whether the account may change the DAO policy. This is the permission the backend requires for
+ * authoring/managing proposal templates (create/edit/pin/delete) — nt-be gates those writes on the
+ * `ChangePolicy` action, and the app's canonical permission string for it is `proposal:ChangePolicy`
+ * (council roles carry `*:*`). Use it to hide authoring UI from members who can't perform the write.
+ */
+export function canChangePolicy(
+    policy: Policy | null | undefined,
+    accountId: string,
+): boolean {
+    if (!policy || !accountId) return false;
+
+    return hasPermission(policy, accountId, "proposal", "ChangePolicy");
+}
