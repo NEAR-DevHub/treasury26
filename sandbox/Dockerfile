@@ -8,7 +8,7 @@
 # ============================================================================
 # Stage 1: Build the Bulk Payment Contract
 # ============================================================================
-FROM rust:stable AS contract-builder
+FROM rust AS contract-builder
 
 WORKDIR /build
 
@@ -23,7 +23,7 @@ RUN cargo near build non-reproducible-wasm
 # ============================================================================
 # Stage 2: Build the Sandbox Initializer
 # ============================================================================
-FROM rust:stable AS sandbox-builder
+FROM rust AS sandbox-builder
 
 WORKDIR /build
 
@@ -41,7 +41,7 @@ RUN cd sandbox-init && cargo build --release
 # ============================================================================
 # Stage 3: Build the Treasury Backend (nt-be)
 # ============================================================================
-FROM rust:stable AS api-builder
+FROM rust AS api-builder
 
 WORKDIR /build
 
@@ -65,7 +65,7 @@ RUN cd nt-be && cargo build --release
 # ============================================================================
 # Stage 4: Build the Sputnik Indexer
 # ============================================================================
-FROM rust:stable AS indexer-builder
+FROM rust AS indexer-builder
 
 WORKDIR /app
 
