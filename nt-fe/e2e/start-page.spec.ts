@@ -120,7 +120,7 @@ test("Signed in + has treasury => redirects to /{daoId}", async ({ page }) => {
     );
 });
 
-test("Signed in + no treasuries + creation error => waitlist is shown", async ({
+test("Signed in + no treasuries + creation disabled => waitlist is shown", async ({
     page,
 }) => {
     await setupStartPageMocks(page, {
@@ -135,11 +135,15 @@ test("Signed in + no treasuries + creation error => waitlist is shown", async ({
             body: JSON.stringify({ unused: true }),
         }),
     );
+    // A permanent error (creation disabled) is not resumable, so the UI skips
+    // the in-session recovery re-drives and falls straight through to the
+    // waitlist. A transient error would instead spin for the full recovery
+    // window before showing the waitlist.
     await page.route("**/api/treasury/create-stream", async (route) =>
         route.fulfill({
             status: 200,
             headers: { "content-type": "text/event-stream" },
-            body: `data: {"step":"error","status":"error","message":"Mocked creation failure"}\n\n`,
+            body: `data: {"step":"error","status":"error","message":"Treasury creation disabled"}\n\n`,
         }),
     );
 
