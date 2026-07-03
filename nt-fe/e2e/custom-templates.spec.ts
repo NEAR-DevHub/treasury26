@@ -72,6 +72,33 @@ const BARE_MEMBER_POLICY = {
     ],
 };
 
+/** Can author templates (ChangePolicy) but cannot file one (no `call:AddProposal`). */
+const MANAGER_ONLY_POLICY = {
+    ...TREASURY_POLICY,
+    roles: [
+        {
+            name: "managers",
+            kind: { Group: [ACCOUNT_ID] },
+            permissions: ["*:ChangePolicy"],
+            vote_policy: {},
+        },
+    ],
+};
+
+/** A transfer-only Requestor — templates build a FunctionCall, so `transfer:AddProposal` can't file
+ * one; this member should get NO templates access at all. */
+const TRANSFER_ONLY_POLICY = {
+    ...TREASURY_POLICY,
+    roles: [
+        {
+            name: "transfer-requestors",
+            kind: { Group: [ACCOUNT_ID] },
+            permissions: ["transfer:AddProposal"],
+            vote_policy: {},
+        },
+    ],
+};
+
 const EMPTY_PROPOSALS = { page: 0, page_size: 15, total: 0, proposals: [] };
 
 /** Full subscription shape — the treasury layout reads `planConfig.limits`, so a stub crashes it. */
@@ -482,5 +509,33 @@ test.describe("Custom Templates — access gates", () => {
         await expect(
             page.getByRole("button", { name: "Template actions" }),
         ).toHaveCount(0);
+    });
+
+    test("manager without call:AddProposal sees authoring UI but no Create Request", async ({
+        page,
+    }) => {
+        // Can author templates but can't file one (templates are FunctionCall) → don't offer the
+        // dead-end fill entry, but keep the ⋮ manage menu.
+        await setupMocks(page, [template()], { policy: MANAGER_ONLY_POLICY });
+        await page.goto(`/${TREASURY_ID}/custom-templates`);
+
+        await expect(page.getByText("Set Greeting")).toBeVisible({
+            timeout: 15000,
+        });
+        await expect(
+            page.getByRole("button", { name: "Template actions" }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole("button", { name: "Create Request" }),
+        ).toHaveCount(0);
+    });
+
+    test("transfer-only requestor has no templates access → dashboard", async ({
+        page,
+    }) => {
+        // transfer:AddProposal can't file a FunctionCall template, so it grants no access.
+        await setupMocks(page, [template()], { policy: TRANSFER_ONLY_POLICY });
+        await page.goto(`/${TREASURY_ID}/custom-templates`);
+        await page.waitForURL(/\/dashboard$/, { timeout: 15000 });
     });
 });

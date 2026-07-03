@@ -38,11 +38,11 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { apiErrorMessage } from "@/features/proposal-templates/api";
+import { useCustomTemplatesAccess } from "@/features/proposal-templates/hooks/use-custom-templates-access";
 import {
     useDeleteProposalTemplate,
     useUpdateProposalTemplate,
 } from "@/features/proposal-templates/hooks/use-proposal-template-mutations";
-import { useCustomTemplatesAccess } from "@/features/proposal-templates/hooks/use-custom-templates-access";
 import { useProposalTemplates } from "@/features/proposal-templates/hooks/use-proposal-templates";
 import { manifestIdOf } from "@/features/proposal-templates/manifest";
 import type { ProposalTemplate } from "@/features/proposal-templates/types";
@@ -106,6 +106,7 @@ function EmptyState({
 interface TemplateRowProps {
     template: ProposalTemplate;
     canManage: boolean;
+    canPropose: boolean;
     onCreateRequest: () => void;
     onEdit: () => void;
     onTogglePin: () => void;
@@ -115,6 +116,7 @@ interface TemplateRowProps {
 function TemplateRow({
     template,
     canManage,
+    canPropose,
     onCreateRequest,
     onEdit,
     onTogglePin,
@@ -180,9 +182,13 @@ function TemplateRow({
                         </DropdownMenuContent>
                     </DropdownMenu>
                 ) : null}
-                <Button onClick={onCreateRequest}>
-                    {t("index.createRequest")}
-                </Button>
+                {/* Filing needs call:AddProposal (templates build a FunctionCall). Hide the entry so a
+                    manager-only or transfer-only member isn't walked into a dead-end fill form. */}
+                {canPropose ? (
+                    <Button onClick={onCreateRequest}>
+                        {t("index.createRequest")}
+                    </Button>
+                ) : null}
             </div>
         </div>
     );
@@ -192,7 +198,7 @@ export default function CustomTemplatesIndexPage() {
     const t = useTranslations("customTemplates");
     const router = useRouter();
     const { treasuryId } = useTreasury();
-    const { canManage } = useCustomTemplatesAccess();
+    const { canManage, canPropose } = useCustomTemplatesAccess();
     const { data: templates, isLoading } = useProposalTemplates();
     const updateTemplate = useUpdateProposalTemplate();
     const deleteTemplate = useDeleteProposalTemplate();
@@ -272,6 +278,7 @@ export default function CustomTemplatesIndexPage() {
                                     key={template.id}
                                     template={template}
                                     canManage={canManage}
+                                    canPropose={canPropose}
                                     onCreateRequest={() =>
                                         go(
                                             `/${manifestIdOf(template.manifest)}`,
