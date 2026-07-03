@@ -40,12 +40,12 @@ pub async fn load_public_history_cursor(
         SELECT
             account_id,
             source::text AS source,
-            forward_cursor,
             backward_cursor,
             backfill_done,
             next_poll_at,
             last_polled_at,
-            last_activity_at
+            last_activity_at,
+            last_seen_block_height
         FROM bronze_public_history_cursors
         WHERE account_id = $1
           AND source = $2::public_history_source
@@ -57,46 +57,11 @@ pub async fn load_public_history_cursor(
     .await
 }
 
-pub async fn save_public_latest_page_cursor(
-    pool: &PgPool,
-    account_id: &str,
-    source: PublicHistorySource,
-    next_cursor: Option<&str>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        r#"
-        INSERT INTO bronze_public_history_cursors (
-            account_id,
-            source,
-            forward_cursor,
-            last_polled_at,
-            updated_at
-        )
-        VALUES ($1, $2::public_history_source, $3, NOW(), NOW())
-        ON CONFLICT (account_id, source) DO UPDATE SET
-            forward_cursor = COALESCE(
-                EXCLUDED.forward_cursor,
-                bronze_public_history_cursors.forward_cursor
-            ),
-            last_polled_at = NOW(),
-            updated_at = NOW()
-        "#,
-    )
-    .bind(account_id)
-    .bind(source.as_str())
-    .bind(next_cursor)
-    .execute(pool)
-    .await?;
-
-    Ok(())
-}
-
 pub async fn save_public_backfill_progress(
     pool: &PgPool,
     account_id: &str,
     source: PublicHistorySource,
     backward_cursor: Option<&str>,
-    initial_forward_cursor: Option<&str>,
     backfill_done: bool,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
@@ -104,18 +69,13 @@ pub async fn save_public_backfill_progress(
         INSERT INTO bronze_public_history_cursors (
             account_id,
             source,
-            forward_cursor,
             backward_cursor,
             backfill_done,
             last_polled_at,
             updated_at
         )
-        VALUES ($1, $2::public_history_source, $3, $4, $5, NOW(), NOW())
+        VALUES ($1, $2::public_history_source, $3, $4, NOW(), NOW())
         ON CONFLICT (account_id, source) DO UPDATE SET
-            forward_cursor = COALESCE(
-                EXCLUDED.forward_cursor,
-                bronze_public_history_cursors.forward_cursor
-            ),
             backward_cursor = COALESCE(
                 EXCLUDED.backward_cursor,
                 bronze_public_history_cursors.backward_cursor
@@ -128,7 +88,6 @@ pub async fn save_public_backfill_progress(
     )
     .bind(account_id)
     .bind(source.as_str())
-    .bind(initial_forward_cursor)
     .bind(backward_cursor)
     .bind(backfill_done)
     .execute(pool)
@@ -220,34 +179,6 @@ pub async fn record_public_history_poll_result(
     .await?;
 
     Ok(())
-}
-
-pub async fn load_due_public_history_accounts(
-    pool: &PgPool,
-    source: PublicHistorySource,
-    limit: i64,
-) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar(
-        r#"
-        SELECT ma.account_id
-        FROM monitored_accounts ma
-        LEFT JOIN bronze_public_history_cursors c
-          ON c.account_id = ma.account_id
-         AND c.source = $1::public_history_source
-        WHERE ma.enabled = true
-          AND (
-              c.account_id IS NULL
-              OR c.next_poll_at IS NULL
-              OR c.next_poll_at <= NOW()
-          )
-        ORDER BY c.next_poll_at ASC NULLS FIRST, ma.account_id ASC
-        LIMIT $2
-        "#,
-    )
-    .bind(source.as_str())
-    .bind(limit)
-    .fetch_all(pool)
-    .await
 }
 
 #[cfg(test)]

@@ -144,6 +144,7 @@ async fn async_main() {
     nt_be::handlers::public_history::spawn_public_history_queue_workers(state.clone());
     nt_be::handlers::public_history::spawn_public_silver_worker(state.clone());
     nt_be::handlers::public_history::spawn_public_gold_projection_worker(state.clone());
+    nt_be::handlers::public_history::spawn_dao_proposal_reconciler(state.clone());
 
     // TODO: Re-enable once we have a DefiLlama API key or higher rate limit
     // Spawn usd_value backfill service

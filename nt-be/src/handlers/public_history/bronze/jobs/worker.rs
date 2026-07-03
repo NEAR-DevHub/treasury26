@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 
 use apalis::prelude::*;
@@ -14,7 +13,7 @@ use crate::handlers::public_history::bronze::ingest_worker::{
 };
 use crate::handlers::public_history::bronze::store::{
     PublicHistorySource, load_public_history_cursor, record_public_history_poll_result,
-    save_public_backfill_progress, save_public_latest_page_cursor, upsert_public_history_events,
+    save_public_backfill_progress, upsert_public_history_events,
 };
 use crate::handlers::public_history::proposals::linker::link_public_proposal_receipts;
 use crate::jobs::context::JobContext;
@@ -171,12 +170,16 @@ async fn ingest_page(
     ))
 }
 
+/// Max pages a single latest refresh may walk toward the watermark
+/// (~125 events with 25-item pages) before giving up.
+const LATEST_REFRESH_MAX_PAGES: usize = 5;
+
 async fn run_latest_refresh(
     state: &AppState,
     account_id: &str,
     source: PublicHistorySource,
 ) -> HandlerResult<(u64, u64, u64)> {
-    let previous_forward_cursor = load_public_history_cursor(&state.db_pool, account_id, source)
+    let watermark = load_public_history_cursor(&state.db_pool, account_id, source)
         .await
         .map_err(|error| {
             (
@@ -184,25 +187,16 @@ async fn run_latest_refresh(
                 format!("public cursor load failed: {}", error),
             )
         })?
-        .and_then(|cursor| cursor.forward_cursor);
+        .and_then(|cursor| cursor.last_seen_block_height);
 
     let mut cursor: Option<String> = None;
-    let mut seen_cursors = HashSet::new();
     let mut totals = (0, 0, 0);
+    let mut pages_fetched = 0usize;
+    let mut had_history_changes = false;
+    let mut max_seen_height: Option<i64> = None;
+    let mut max_seen_timestamp: Option<bigdecimal::BigDecimal> = None;
 
     loop {
-        if let Some(cursor_value) = cursor.as_deref()
-            && !seen_cursors.insert(cursor_value.to_string())
-        {
-            tracing::warn!(
-                account_id = account_id,
-                source = %source,
-                cursor = cursor_value,
-                "stopping public latest drain because NearBlocks repeated a cursor"
-            );
-            break;
-        }
-
         let page = fetch_source_page(
             state,
             account_id,
@@ -211,53 +205,68 @@ async fn run_latest_refresh(
             NearblocksPriority::Latest,
         )
         .await?;
-        let next_cursor = page.next_cursor.clone();
-        let page_is_empty = page.events.is_empty();
-        let reached_previous_cursor = next_cursor.as_deref() == previous_forward_cursor.as_deref()
-            && previous_forward_cursor.is_some();
-        let no_existing_watermark = previous_forward_cursor.is_none();
+        pages_fetched += 1;
 
         let (touched, inserted, changed) = ingest_page(state, source, &page.events).await?;
         totals.0 += touched;
         totals.1 += inserted;
         totals.2 += changed;
+        had_history_changes |= inserted > 0 || changed > 0;
 
-        save_public_latest_page_cursor(&state.db_pool, account_id, source, next_cursor.as_deref())
-            .await
-            .map_err(|error| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("public cursor save failed: {}", error),
-                )
-            })?;
-
-        let (height, timestamp) = latest_seen(&page);
-        record_public_history_poll_result(
-            &state.db_pool,
-            account_id,
-            source,
-            inserted > 0 || changed > 0,
-            height,
-            timestamp.as_ref(),
-        )
-        .await
-        .map_err(|error| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("public poll schedule update failed: {}", error),
-            )
-        })?;
-
-        if page_is_empty
-            || next_cursor.is_none()
-            || reached_previous_cursor
-            || (no_existing_watermark && cursor.is_none())
-        {
-            break;
+        let (page_height, page_timestamp) = latest_seen(&page);
+        if page_height > max_seen_height {
+            max_seen_height = page_height;
+            max_seen_timestamp = page_timestamp;
         }
 
-        cursor = next_cursor;
+        // NearBlocks only paginates newest→older, so a refresh walks from the
+        // head until it overlaps history it has already seen. An event strictly
+        // below the block-height watermark proves the overlap; strict-less-than
+        // re-ingests the watermark block itself, which the idempotent upsert
+        // absorbs.
+        let reached_watermark = match watermark {
+            Some(watermark) => page
+                .events
+                .iter()
+                .any(|event| event.block_height < watermark),
+            // First refresh seeds the watermark from one page; backfill owns
+            // the rest of history.
+            None => true,
+        };
+        if page.events.is_empty() || page.next_cursor.is_none() || reached_watermark {
+            break;
+        }
+        if pages_fetched >= LATEST_REFRESH_MAX_PAGES {
+            tracing::warn!(
+                account_id = account_id,
+                source = %source,
+                pages_fetched = pages_fetched,
+                watermark = ?watermark,
+                "stopping public latest drain at page cap before reaching the block-height watermark; events between them are skipped this pass"
+            );
+            break;
+        }
+        cursor = page.next_cursor;
     }
+
+    // One poll record per drain: the block-height watermark (GREATEST upsert)
+    // advances only after every fetched page ingested successfully, so a
+    // failed drain retries from an unmoved watermark.
+    record_public_history_poll_result(
+        &state.db_pool,
+        account_id,
+        source,
+        had_history_changes,
+        max_seen_height,
+        max_seen_timestamp.as_ref(),
+    )
+    .await
+    .map_err(|error| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("public poll schedule update failed: {}", error),
+        )
+    })?;
 
     Ok(totals)
 }
@@ -300,18 +309,14 @@ async fn run_backfill_page(
     let page_is_empty = page.events.is_empty();
     let (touched, inserted, changed) = ingest_page(state, source, &page.events).await?;
 
-    let initial_forward_cursor = if cursor.is_none() {
-        next_cursor.as_deref()
-    } else {
-        None
-    };
-    let backfill_done = page_is_empty || next_cursor.is_none();
+    let backfill_done = page_is_empty
+        || next_cursor.is_none()
+        || next_cursor.as_deref() == job_cursor.as_deref();
     save_public_backfill_progress(
         &state.db_pool,
         account_id,
         source,
         next_cursor.as_deref(),
-        initial_forward_cursor,
         backfill_done,
     )
     .await

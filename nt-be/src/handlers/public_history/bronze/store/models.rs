@@ -103,12 +103,12 @@ pub enum PublicHistoryUpsertState {
 pub struct PublicHistoryCursor {
     pub account_id: String,
     pub source: String,
-    pub forward_cursor: Option<String>,
     pub backward_cursor: Option<String>,
     pub backfill_done: bool,
     pub next_poll_at: DateTime<Utc>,
     pub last_polled_at: Option<DateTime<Utc>>,
     pub last_activity_at: Option<DateTime<Utc>>,
+    pub last_seen_block_height: Option<i64>,
 }
 
 pub fn min_datetime(
