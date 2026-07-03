@@ -66,6 +66,7 @@ import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useWarningMessage } from "@/hooks/use-warnings";
 import { useWarnings } from "@/hooks/use-warnings";
+import { useIsHistoryRefreshing } from "./history-refresh-indicator";
 import { TransactionDetailsModal } from "./transaction-details-modal";
 
 const ITEMS_ON_DASHBOARD = 10;
@@ -226,6 +227,7 @@ export function RecentActivity() {
         new Set(),
     );
     const isMobile = useMediaQuery("(max-width: 640px)");
+    const isHistoryRefreshing = useIsHistoryRefreshing();
     const isHidden = isConfidential && isGuestTreasury;
     const { getWarning } = useWarnings();
     const activityWarning = getWarning("data.activity");
@@ -603,7 +605,7 @@ export function RecentActivity() {
                             heading={activityWarningCopy.heading}
                             body={activityWarningCopy.body}
                         />
-                    ) : isLoading ? (
+                    ) : isLoading || isHistoryRefreshing ? (
                         <RecentActivitySkeleton />
                     ) : activities.length === 0 ? (
                         <EmptyState

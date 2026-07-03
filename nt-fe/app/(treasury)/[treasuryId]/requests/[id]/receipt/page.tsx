@@ -734,10 +734,7 @@ export default function RequestReceiptPage({
     const destinationAmountWithDecimals =
         receiptProposalData?.destinationAmountWithDecimals;
     const isExecutableReceipt = status === "Executed";
-    const shouldUseSwapExecutionDate =
-        isExecutableReceipt &&
-        !!depositAddress &&
-        !isConfidentialRequestProposal;
+    const shouldUseSwapExecutionDate = isExecutableReceipt && !!depositAddress;
 
     const { data: transaction, isLoading: isLoadingTransaction } =
         useProposalTransaction(
@@ -752,6 +749,14 @@ export default function RequestReceiptPage({
         shouldUseSwapExecutionDate,
         treasuryId,
     );
+    // Intents-routed proposals gate the receipt on a SUCCESS swap status — a
+    // pending/failed/refunded swap has no finalized receipt (mirrors the sidebar
+    // button gate). Public treasury receipts stay accessible to logged-out /
+    // non-member (guest) viewers regardless of swap status.
+    const isSwapSuccessReady =
+        !shouldUseSwapExecutionDate ||
+        (!isConfidential && isGuestTreasury) ||
+        swapStatus?.status === "SUCCESS";
     const transactionDate = getProposalExecutedDate(swapStatus, transaction);
     const isExchangeProposal = receiptProposalVariant === "exchange";
     const hasDepositAddress = !!depositAddress;
@@ -852,6 +857,7 @@ export default function RequestReceiptPage({
         (!isSingleReceiptProposal || receiptProposalData !== null) &&
         !!policy &&
         isExecutableReceipt &&
+        isSwapSuccessReady &&
         !(isBatchPaymentProposal && isConfidential);
     const batchPayments = batchPaymentData?.payments ?? [];
     const paymentsToRender = useMemo(
@@ -992,7 +998,11 @@ export default function RequestReceiptPage({
         ],
     );
 
-    if (isLoadingProposal || (canLoadPolicy && isLoadingPolicy)) {
+    if (
+        isLoadingProposal ||
+        (canLoadPolicy && isLoadingPolicy) ||
+        (shouldUseSwapExecutionDate && isLoadingSwapStatus)
+    ) {
         return (
             <div className="min-h-dvh bg-muted p-4 print:bg-white">
                 <div className="mx-auto w-full max-w-[700px]">
