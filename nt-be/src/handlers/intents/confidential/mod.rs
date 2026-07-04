@@ -18,13 +18,12 @@ pub mod types;
 pub use bronze::store::link_intent_to_history_event;
 pub use bronze::{
     HistoryEvent, HistoryPage, fetch_history, fetch_history_with_token,
-    spawn_confidential_history_worker, trigger_confidential_history_refresh,
+    trigger_confidential_history_refresh,
 };
 pub use gold::{
     get_confidential_balance_chart, mark_gold_dirty_for_history_event, mark_gold_dirty_tx,
     project_confidential_gold_for_dao, refresh_gold_metadata_for_intent,
-    snapshot_confidential_dao_balances, spawn_confidential_gold_reconciliation_worker,
-    spawn_confidential_snapshot_worker,
+    snapshot_confidential_dao_balances,
 };
 pub use types::{ConfidentialTxType, HistoryStatus, accounts_equal, bare_account};
 

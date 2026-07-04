@@ -7,8 +7,6 @@ use tokio::sync::RwLock;
 use crate::{AppState, constants::ALERT_LOW_BALANCE_THRESHOLD, utils::telegram::TelegramClient};
 
 const ALERT_COOLDOWN: Duration = Duration::from_secs(3600);
-const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(60);
-const INITIAL_DELAY: Duration = Duration::from_secs(20);
 
 static LAST_ALERT_SENT_AT: LazyLock<RwLock<Option<Instant>>> = LazyLock::new(|| RwLock::new(None));
 
@@ -48,7 +46,7 @@ pub async fn fetch_sponsor_liquid_balance(
     ))
 }
 
-async fn run_monitor_cycle(
+pub async fn run_sponsor_monitor_cycle(
     state: &Arc<AppState>,
     telegram_client: &TelegramClient,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -74,34 +72,6 @@ async fn run_monitor_cycle(
     );
 
     Ok(())
-}
-
-/// Poll sponsor liquid balance and send Telegram ops alerts when below threshold.
-pub fn run_sponsor_balance_monitor_loop(state: Arc<AppState>, telegram_client: TelegramClient) {
-    tokio::spawn(async move {
-        let poll_interval = std::env::var("SPONSOR_BALANCE_POLL_INTERVAL_SECONDS")
-            .ok()
-            .and_then(|s| s.parse::<u64>().ok())
-            .map(Duration::from_secs)
-            .unwrap_or(DEFAULT_POLL_INTERVAL);
-
-        tracing::info!(
-            "Starting sponsor balance monitor ({}s interval, {}s initial delay)",
-            poll_interval.as_secs(),
-            INITIAL_DELAY.as_secs(),
-        );
-
-        tokio::time::sleep(INITIAL_DELAY).await;
-
-        let mut interval_timer = tokio::time::interval(poll_interval);
-        loop {
-            interval_timer.tick().await;
-
-            if let Err(e) = run_monitor_cycle(&state, &telegram_client).await {
-                tracing::error!("Monitor cycle failed: {}", e);
-            }
-        }
-    });
 }
 
 #[cfg(test)]
