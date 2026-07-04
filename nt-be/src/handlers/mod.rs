@@ -1,4 +1,5 @@
 pub mod address_book;
+pub mod analytics;
 pub mod balance_changes;
 pub mod bulkpayment;
 pub mod chains;

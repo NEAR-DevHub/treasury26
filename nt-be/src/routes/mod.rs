@@ -332,6 +332,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::status::incidents::get_status_incidents),
         )
         .route(
+            "/internal/api/analytics/treasury-monthly",
+            get(handlers::analytics::get_treasury_monthly),
+        )
+        .route(
             "/api/oh-dear/status/{service}",
             get(handlers::status::get_status),
         )
