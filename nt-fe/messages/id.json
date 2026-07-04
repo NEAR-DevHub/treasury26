@@ -1809,10 +1809,11 @@
         "chartNow": "Sekarang",
         "totalBalance": "Saldo Total",
         "excludedTokens": "Token yang dikecualikan:",
-        "noPriceHistory": "Tidak ada riwayat harga. Pilih token untuk melihat perubahan saldonya.",
         "bucketAvailable": "Tersedia",
         "bucketLocked": "Terkunci",
         "bucketEarning": "Pendapatan",
+        "noTokenChartTitle": "Belum ada data untuk ditampilkan",
+        "noTokenChartDescription": "Kami belum dapat memuat riwayat token ini. Silakan cek kembali nanti.",
         "period": {
             "1W": "1Mg",
             "1M": "1Bl",
@@ -1857,7 +1858,7 @@
         "usdValue": "Nilai USD",
         "tokenBalance": "Saldo Token",
         "emptyTitle": "Belum ada apa-apa untuk ditampilkan",
-        "emptyDescription": "Tambahkan aset untuk mulai melacak portofolio Anda."
+        "emptyDescription": "Tidak ada riwayat saldo"
     },
     "user": {
         "saveToAddressBook": "Simpan ke Buku alamat",

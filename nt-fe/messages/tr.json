@@ -1809,10 +1809,11 @@
         "chartNow": "Şimdi",
         "totalBalance": "Toplam Bakiye",
         "excludedTokens": "Hariç tutulan tokenler:",
-        "noPriceHistory": "Fiyat geçmişi yok. Bakiye değişikliklerini görmek için bir token seçin.",
         "bucketAvailable": "Kullanılabilir",
         "bucketLocked": "Kilitli",
         "bucketEarning": "Kazanç",
+        "noTokenChartTitle": "Şu anda gösterilecek veri yok",
+        "noTokenChartDescription": "Bu token'ın geçmişini henüz yükleyemiyoruz. Kısa süre sonra tekrar kontrol edin.",
         "period": {
             "1W": "1H",
             "1M": "1A",
@@ -1857,7 +1858,7 @@
         "usdValue": "USD Değeri",
         "tokenBalance": "Token Bakiyesi",
         "emptyTitle": "Henüz gösterilecek bir şey yok",
-        "emptyDescription": "Portföyünüzü takip etmeye başlamak için varlıklar ekleyin."
+        "emptyDescription": "Bakiye geçmişi bulunmuyor"
     },
     "user": {
         "saveToAddressBook": "Adres defterine kaydet",

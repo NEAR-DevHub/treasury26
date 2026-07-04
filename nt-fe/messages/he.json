@@ -1809,10 +1809,11 @@
         "chartNow": "עכשיו",
         "totalBalance": "יתרה כוללת",
         "excludedTokens": "טוקנים לא נכללים:",
-        "noPriceHistory": "אין היסטוריית מחירים. בחר טוקן כדי לראות את שינויי היתרה שלו.",
         "bucketAvailable": "זמין",
         "bucketLocked": "נעול",
         "bucketEarning": "מרוויח",
+        "noTokenChartTitle": "אין נתונים להצגה כרגע",
+        "noTokenChartDescription": "אנחנו עדיין לא יכולים לטעון את היסטוריית הטוקן הזה. בדוק שוב בקרוב.",
         "period": {
             "1W": "שבוע",
             "1M": "חודש",
@@ -1857,7 +1858,7 @@
         "usdValue": "ערך USD",
         "tokenBalance": "יתרת טוקן",
         "emptyTitle": "אין מה להציג עדיין",
-        "emptyDescription": "הוסף נכסים כדי להתחיל לעקוב אחר התיק שלך."
+        "emptyDescription": "אין היסטוריית יתרה זמינה"
     },
     "user": {
         "saveToAddressBook": "שמור בספר הכתובות",

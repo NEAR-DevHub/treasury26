@@ -38,6 +38,24 @@ import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
 const ACCOUNT_SUFFIX = ".sputnik-dao.near";
+
+// After a resumable failure, the backend sweeper finishes the treasury in the
+// background. We re-drive the idempotent creation flow a few times so the user
+// lands in their treasury within this session instead of seeing an error.
+const CREATION_RECOVERY_MAX_ATTEMPTS = 12;
+const CREATION_RECOVERY_DELAY_MS = 5000;
+
+// Errors that will never succeed on retry (name taken, creation switched off).
+// Everything else is treated as transient/resumable.
+function isPermanentCreationError(message?: string): boolean {
+    if (!message) return false;
+    const normalized = message.toLowerCase();
+    return (
+        normalized.includes("already taken") ||
+        normalized.includes("creation disabled")
+    );
+}
+
 type InitialScreen = "create" | "login";
 type LoginScreenSource = "sign-in" | "connect-wallet";
 type FormValues = {
@@ -390,49 +408,126 @@ export function TreasuryOnboardingPage({
         setShowWaitlist(false);
         setProgressOpen(true);
 
-        try {
+        const finishWithTreasury = (treasuryId: string) => {
+            setProgressSteps((prev) =>
+                prev.map((step) => ({ ...step, status: "completed" })),
+            );
+            setCreatedTreasuryId(treasuryId);
+            trackEvent("treasury-created", { treasury_id: treasuryId });
+            trackEvent("onboarding-completed", { treasury_id: treasuryId });
+            queryClient.invalidateQueries({
+                queryKey: ["userTreasuries", accountId],
+            });
+            router.push(`/${treasuryId}`);
+        };
+
+        // Drive a single create-stream attempt. The backend flow is idempotent,
+        // so this can be safely re-driven to resume a half-finished creation.
+        //
+        // `trackProgress` maps per-step events onto the modal. We only do this
+        // for the first (live) attempt; during recovery the re-drives replay
+        // earlier steps and skip already-done ones, which would make the UI jump
+        // around — so there we ignore step events and hold a single spinner
+        // (see `showLoaderOnCurrentStep`) until it's actually done.
+        const attemptStream = async (
+            trackProgress: boolean,
+        ): Promise<
+            | { done: true; treasuryId: string }
+            | { done: false; message?: string }
+        > => {
+            let outcome:
+                | { done: true; treasuryId: string }
+                | { done: false; message?: string } = { done: false };
             await createTreasuryStream(request, (event) => {
                 if (event.step === "done") {
-                    const treasuryId = event.treasury!;
-                    setProgressSteps((prev) =>
-                        prev.map((step) => ({
-                            ...step,
-                            status: "completed",
-                        })),
-                    );
-                    setCreatedTreasuryId(treasuryId);
-                    trackEvent("treasury-created", {
-                        treasury_id: treasuryId,
-                    });
-                    trackEvent("onboarding-completed", {
-                        treasury_id: treasuryId,
-                    });
-                    queryClient.invalidateQueries({
-                        queryKey: ["userTreasuries", accountId],
-                    });
-                    router.push(`/${treasuryId}`);
+                    outcome = { done: true, treasuryId: event.treasury! };
                     return;
                 }
-
                 if (event.step === "error") {
-                    setProgressOpen(false);
-                    setShowWaitlist(true);
+                    outcome = { done: false, message: event.message };
                     return;
                 }
-
+                if (!trackProgress) return;
                 setProgressSteps((prev) =>
-                    prev.map((step) => {
-                        if (step.id !== event.step) return step;
-                        return {
-                            ...step,
-                            status: event.status as CreationStep["status"],
-                        };
-                    }),
+                    prev.map((step) =>
+                        step.id === event.step
+                            ? {
+                                  ...step,
+                                  status: event.status as CreationStep["status"],
+                              }
+                            : step,
+                    ),
                 );
             });
+            return outcome;
+        };
+
+        // Show the spinner on the step where it stalled (the first one that
+        // hasn't completed), so the modal never looks frozen while we recover.
+        const showLoaderOnCurrentStep = () => {
+            setProgressSteps((prev) => {
+                const idx = prev.findIndex(
+                    (step) => step.status !== "completed",
+                );
+                if (idx === -1) return prev;
+                return prev.map((step, i) =>
+                    i === idx ? { ...step, status: "in_progress" } : step,
+                );
+            });
+        };
+
+        // Keep the progress modal open and re-drive the flow until the backend
+        // (this call or the background sweeper) finishes the treasury, then send
+        // the user straight into it. Returns false if it never completes in time.
+        const recoverInSession = async (): Promise<boolean> => {
+            showLoaderOnCurrentStep();
+            for (
+                let attempt = 0;
+                attempt < CREATION_RECOVERY_MAX_ATTEMPTS;
+                attempt++
+            ) {
+                await new Promise((resolve) =>
+                    setTimeout(resolve, CREATION_RECOVERY_DELAY_MS),
+                );
+                try {
+                    const result = await attemptStream(false);
+                    if (result.done) {
+                        finishWithTreasury(result.treasuryId);
+                        return true;
+                    }
+                    if (isPermanentCreationError(result.message)) {
+                        return false;
+                    }
+                } catch {
+                    // Transient network blip — keep trying until the window ends.
+                }
+                // Re-assert the spinner in case that attempt left the steps
+                // static (e.g. the backend was busy and streamed nothing).
+                showLoaderOnCurrentStep();
+            }
+            return false;
+        };
+
+        try {
+            const first = await attemptStream(true);
+            if (first.done) {
+                finishWithTreasury(first.treasuryId);
+                return;
+            }
+            // A permanent error can't be resumed; otherwise the sweeper is
+            // already finishing it, so try to land the user in it this session.
+            if (
+                isPermanentCreationError(first.message) ||
+                !(await recoverInSession())
+            ) {
+                setProgressOpen(false);
+                setShowWaitlist(true);
+            }
         } catch {
-            setProgressOpen(false);
-            setShowWaitlist(true);
+            if (!(await recoverInSession())) {
+                setProgressOpen(false);
+                setShowWaitlist(true);
+            }
         }
     };
 

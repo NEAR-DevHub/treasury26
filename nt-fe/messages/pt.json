@@ -1809,10 +1809,11 @@
         "chartNow": "Agora",
         "totalBalance": "Saldo total",
         "excludedTokens": "Tokens excluídos:",
-        "noPriceHistory": "Sem histórico de preços. Selecione um token para ver as variações de saldo dele.",
         "bucketAvailable": "Disponível",
         "bucketLocked": "Bloqueado",
         "bucketEarning": "Rendendo",
+        "noTokenChartTitle": "Nenhum dado para mostrar agora",
+        "noTokenChartDescription": "Ainda não conseguimos carregar o histórico deste token. Volte em breve.",
         "period": {
             "1W": "1S",
             "1M": "1M",
@@ -1857,7 +1858,7 @@
         "usdValue": "Valor em USD",
         "tokenBalance": "Saldo do token",
         "emptyTitle": "Nada para mostrar ainda",
-        "emptyDescription": "Adicione ativos para começar a acompanhar seu portfólio."
+        "emptyDescription": "Nenhum histórico de saldo disponível"
     },
     "user": {
         "saveToAddressBook": "Salvar no catálogo de endereços",

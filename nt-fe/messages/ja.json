@@ -1809,10 +1809,11 @@
         "chartNow": "現在",
         "totalBalance": "総残高",
         "excludedTokens": "除外トークン:",
-        "noPriceHistory": "価格履歴がありません。トークンを選択して残高変動を確認してください。",
         "bucketAvailable": "利用可能",
         "bucketLocked": "ロック",
         "bucketEarning": "収益中",
+        "noTokenChartTitle": "現在表示できるデータはありません",
+        "noTokenChartDescription": "このトークンの履歴をまだ読み込めません。しばらくしてからもう一度ご確認ください。",
         "period": {
             "1W": "1週",
             "1M": "1ヶ月",
@@ -1857,7 +1858,7 @@
         "usdValue": "USD価値",
         "tokenBalance": "トークン残高",
         "emptyTitle": "まだ表示するものはありません",
-        "emptyDescription": "資産を追加してポートフォリオの追跡を開始してください。"
+        "emptyDescription": "残高履歴がありません"
     },
     "user": {
         "saveToAddressBook": "アドレス帳に保存",

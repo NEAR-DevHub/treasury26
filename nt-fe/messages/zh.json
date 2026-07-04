@@ -1809,10 +1809,11 @@
         "chartNow": "现在",
         "totalBalance": "总余额",
         "excludedTokens": "已排除代币:",
-        "noPriceHistory": "无价格历史。请选择代币以查看其余额变化。",
         "bucketAvailable": "可用",
         "bucketLocked": "已锁定",
         "bucketEarning": "收益中",
+        "noTokenChartTitle": "暂无可显示的数据",
+        "noTokenChartDescription": "我们暂时无法加载该代币的历史记录，请稍后再试。",
         "period": {
             "1W": "1周",
             "1M": "1月",
@@ -1857,7 +1858,7 @@
         "usdValue": "美元价值",
         "tokenBalance": "代币余额",
         "emptyTitle": "暂无内容",
-        "emptyDescription": "添加资产以开始跟踪您的投资组合。"
+        "emptyDescription": "暂无余额历史记录"
     },
     "user": {
         "saveToAddressBook": "保存到地址簿",

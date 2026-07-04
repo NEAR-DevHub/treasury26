@@ -1809,10 +1809,11 @@
         "chartNow": "Зараз",
         "totalBalance": "Загальний баланс",
         "excludedTokens": "Виключені токени:",
-        "noPriceHistory": "Немає історії цін. Оберіть токен, щоб побачити зміни його балансу.",
         "bucketAvailable": "Доступно",
         "bucketLocked": "Заблоковано",
         "bucketEarning": "Заробіток",
+        "noTokenChartTitle": "Зараз немає даних для показу",
+        "noTokenChartDescription": "Ми поки що не можемо завантажити історію цього токена. Завітайте пізніше.",
         "period": {
             "1W": "1т",
             "1M": "1м",
@@ -1857,7 +1858,7 @@
         "usdValue": "Значення у USD",
         "tokenBalance": "Баланс токенів",
         "emptyTitle": "Поки що нічого показувати",
-        "emptyDescription": "Додайте активи, щоб почати відстежувати портфель."
+        "emptyDescription": "Історія балансу недоступна"
     },
     "user": {
         "saveToAddressBook": "Зберегти в адресну книгу",

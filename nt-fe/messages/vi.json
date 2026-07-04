@@ -1809,10 +1809,11 @@
         "chartNow": "Bây giờ",
         "totalBalance": "Tổng số dư",
         "excludedTokens": "Token bị loại trừ:",
-        "noPriceHistory": "Không có lịch sử giá. Chọn một token để xem thay đổi số dư.",
         "bucketAvailable": "Khả dụng",
         "bucketLocked": "Đã khóa",
         "bucketEarning": "Thu nhập",
+        "noTokenChartTitle": "Hiện chưa có dữ liệu để hiển thị",
+        "noTokenChartDescription": "Chúng tôi chưa thể tải lịch sử của token này. Vui lòng quay lại sau.",
         "period": {
             "1W": "1T",
             "1M": "1Th",
@@ -1857,7 +1858,7 @@
         "usdValue": "Giá trị USD",
         "tokenBalance": "Số dư token",
         "emptyTitle": "Chưa có gì để hiển thị",
-        "emptyDescription": "Thêm tài sản để bắt đầu theo dõi danh mục đầu tư của bạn."
+        "emptyDescription": "Không có lịch sử số dư"
     },
     "user": {
         "saveToAddressBook": "Lưu vào sổ địa chỉ",

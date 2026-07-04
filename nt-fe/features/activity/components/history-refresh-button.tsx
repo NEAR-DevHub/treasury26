@@ -2,7 +2,7 @@
 
 import { RefreshCw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/button";
 import { useTreasury } from "@/hooks/use-treasury";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/hooks/use-treasury-queries";
 import type { ConfidentialHistoryRefreshStatus } from "@/lib/api";
 import { cn, formatRelativeTime } from "@/lib/utils";
+import { useSetHistoryRefreshing } from "./history-refresh-indicator";
 
 type RefreshControlState =
     | "ready"
@@ -103,6 +104,17 @@ export function HistoryRefreshButton({ className }: { className?: string }) {
     const isRefreshing = isConfidential
         ? isConfidentialRefreshing
         : publicRefresh.isRefreshing;
+
+    // Publish the in-flight state so dashboard widgets fed by the refreshed
+    // queries (chart, assets, recent activity) can show skeletons meanwhile.
+    const setHistoryRefreshing = useSetHistoryRefreshing();
+    useEffect(() => {
+        setHistoryRefreshing(isRefreshing);
+    }, [isRefreshing, setHistoryRefreshing]);
+    useEffect(() => {
+        return () => setHistoryRefreshing(false);
+    }, [setHistoryRefreshing]);
+
     const lastUpdatedAt = isConfidential
         ? refreshStatus?.lastUpdatedAt
         : publicRefresh.lastUpdatedAt;

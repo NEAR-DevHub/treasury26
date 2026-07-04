@@ -1809,10 +1809,11 @@
         "chartNow": "Jetzt",
         "totalBalance": "Gesamtguthaben",
         "excludedTokens": "Ausgeschlossene Token:",
-        "noPriceHistory": "Kein Preisverlauf. Wählen Sie ein Token, um dessen Guthabenänderungen zu sehen.",
         "bucketAvailable": "Verfügbar",
         "bucketLocked": "Gesperrt",
         "bucketEarning": "Erträge",
+        "noTokenChartTitle": "Derzeit keine Daten verfügbar",
+        "noTokenChartDescription": "Wir können den Verlauf dieses Tokens noch nicht laden. Schauen Sie bald wieder vorbei.",
         "period": {
             "1W": "1W",
             "1M": "1M",
@@ -1857,7 +1858,7 @@
         "usdValue": "USD-Wert",
         "tokenBalance": "Token-Guthaben",
         "emptyTitle": "Noch nichts anzuzeigen",
-        "emptyDescription": "Fügen Sie Vermögenswerte hinzu, um Ihr Portfolio zu verfolgen."
+        "emptyDescription": "Kein Kontostandsverlauf verfügbar"
     },
     "user": {
         "saveToAddressBook": "Im Adressbuch speichern",
