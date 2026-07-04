@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "פרטי הנמען והסכום המבוקש חסויים לחלוטין."
     },
     "bulkPayment": {
+        "missingNetworkFee": "אומדן עמלת הרשת אינו זמין — חזרו אחורה ואמתו מחדש את רשימת הנמענים לפני השליחה.",
         "comingSoonToast": "תשלומים בכמויות יגיעו בקרוב!",
         "submittingList": "שולח רשימת תשלומים בכמויות",
         "submittingProposal": "שולח הצעה",

@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "Empfaengerdaten und der angeforderte Betrag sind vollstaendig vertraulich."
     },
     "bulkPayment": {
+        "missingNetworkFee": "Die Netzwerkgebühr konnte nicht geschätzt werden — bitte gehen Sie zurück und validieren Sie die Empfängerliste erneut.",
         "comingSoonToast": "Sammelzahlungen kommen demnächst!",
         "submittingList": "Sammelzahlungsliste wird übermittelt",
         "submittingProposal": "Vorschlag wird übermittelt",

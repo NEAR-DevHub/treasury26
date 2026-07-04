@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "Les informations du destinataire et le montant demande sont entierement confidentiels."
     },
     "bulkPayment": {
+        "missingNetworkFee": "L'estimation des frais de réseau est indisponible — revenez en arrière et revalidez la liste des destinataires avant de soumettre.",
         "comingSoonToast": "Les paiements groupés arrivent bientôt !",
         "submittingList": "Soumission de la liste de paiements groupés",
         "submittingProposal": "Soumission de la proposition",

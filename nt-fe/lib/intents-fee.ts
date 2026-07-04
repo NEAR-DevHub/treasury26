@@ -108,10 +108,13 @@ export async function estimateIntentsNetworkFee(args: {
             args.destinationBlockchain,
         );
         if (!result.isValid) {
-            return {
-                networkFeeRaw: 0n,
-                networkFee: Big(0),
-            };
+            // A chain/address mismatch means we cannot price the withdrawal.
+            // Returning a zero fee here (pre-fix behavior) made callers treat
+            // the transfer as free and underpay recipients — fail loudly so
+            // callers surface an estimation error instead.
+            throw new Error(
+                `Cannot estimate network fee: address ${args.destinationAddress} is not valid for ${args.destinationBlockchain}`,
+            );
         }
     }
 

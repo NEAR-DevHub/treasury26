@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "Os dados do destinatário e o valor solicitado são totalmente confidenciais."
     },
     "bulkPayment": {
+        "missingNetworkFee": "A estimativa da taxa de rede não está disponível — volte e revalide a lista de destinatários antes de enviar.",
         "comingSoonToast": "Pagamentos em massa estão chegando em breve!",
         "submittingList": "Enviando lista de pagamentos em massa",
         "submittingProposal": "Enviando proposta",

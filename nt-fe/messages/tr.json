@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "Alici bilgileri ve talep edilen tutar tamamen gizlidir."
     },
     "bulkPayment": {
+        "missingNetworkFee": "Ağ ücreti tahmini alınamadı — göndermeden önce geri dönüp alıcı listesini yeniden doğrulayın.",
         "comingSoonToast": "Toplu ödemeler yakında geliyor!",
         "submittingList": "Toplu ödeme listesi gönderiliyor",
         "submittingProposal": "Öneri gönderiliyor",

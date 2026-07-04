@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "Detail penerima dan jumlah yang diminta sepenuhnya rahasia."
     },
     "bulkPayment": {
+        "missingNetworkFee": "Estimasi biaya jaringan tidak tersedia — kembali dan validasi ulang daftar penerima sebelum mengirim.",
         "comingSoonToast": "Pembayaran massal akan segera hadir!",
         "submittingList": "Mengirim daftar pembayaran massal",
         "submittingProposal": "Mengirim usulan",

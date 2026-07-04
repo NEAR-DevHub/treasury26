@@ -227,6 +227,16 @@ export default function BulkPaymentPage() {
         }));
 
         const toNearCom = destinationNetworkId === NEAR_COM_NETWORK_ID;
+
+        // Cross-chain legs are quoted EXACT_INPUT and pay the withdrawal fee
+        // out of the transferred amount — without the fee padding below the
+        // recipients would receive less than entered. Refuse to submit if
+        // the estimate is missing rather than silently underpaying.
+        if (!toNearCom && !networkFeePerRecipient) {
+            toast.error(tBulk("missingNetworkFee"));
+            return;
+        }
+
         try {
             const prepared = await prepareConfidentialBulkPayment({
                 daoId: selectedTreasury,

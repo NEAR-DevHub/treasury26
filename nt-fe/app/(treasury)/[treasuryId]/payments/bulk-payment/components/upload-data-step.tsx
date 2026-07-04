@@ -252,26 +252,44 @@ export function UploadDataStep({
                 !skipFeeValidation && (isConfidential || activeTab === "paste");
 
             if (needsFeeEstimation) {
+                // Confidential cross-chain: the fee must be estimated for the
+                // DESTINATION asset/chain, not the source token. Overriding
+                // only `address` (pre-fix behavior) kept the source token's
+                // `network`, so e.g. paying Solana from a near-network token
+                // failed the cross-chain gate and silently produced a zero
+                // fee — recipients then received less (fee was deducted from
+                // their leg instead of being padded on top).
                 const feeValidationResult = await validateIntentsFeeCoverage(
                     result.payments,
                     isConfidential && destinationAssetId
-                        ? { ...selectedToken, address: destinationAssetId }
+                        ? {
+                              ...selectedToken,
+                              address: destinationAssetId,
+                              network:
+                                  destinationNetwork || selectedToken.network,
+                              // Source-deployment minimum doesn't apply to the
+                              // destination asset; let the estimator use its
+                              // own default probe amount.
+                              minWithdrawalAmount: undefined,
+                          }
                         : selectedToken,
                     parsingLabels,
                 );
 
-                if (!isConfidential) {
-                    const feeErrors = feeValidationResult.payments
-                        .filter((payment) => !!payment.validationError)
-                        .map((payment) => ({
-                            row: payment.row || 0,
-                            message: payment.validationError!,
-                        }));
+                // Fee-estimation errors are blocking everywhere they matter:
+                // public bulk (coverage check) and confidential cross-chain
+                // (the fee pads every recipient leg — without it recipients
+                // would be shorted by the withdrawal fee).
+                const feeErrors = feeValidationResult.payments
+                    .filter((payment) => !!payment.validationError)
+                    .map((payment) => ({
+                        row: payment.row || 0,
+                        message: payment.validationError ?? "",
+                    }));
 
-                    if (feeErrors.length > 0) {
-                        setDataErrors(feeErrors);
-                        return;
-                    }
+                if (feeErrors.length > 0) {
+                    setDataErrors(feeErrors);
+                    return;
                 }
 
                 onContinue(

@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "Recipient details and the requested amount are fully confidential."
     },
     "bulkPayment": {
+        "missingNetworkFee": "Network fee estimate is unavailable — please go back and re-validate the recipient list before submitting.",
         "comingSoonToast": "Bulk payments are coming soon!",
         "submittingList": "Submitting bulk payment list",
         "submittingProposal": "Submitting proposal",

@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "Los datos del destinatario y el importe solicitado son totalmente confidenciales."
     },
     "bulkPayment": {
+        "missingNetworkFee": "La estimación de la comisión de red no está disponible — vuelva atrás y revalide la lista de destinatarios antes de enviar.",
         "comingSoonToast": "¡Los pagos masivos estarán disponibles pronto!",
         "submittingList": "Enviando la lista de pagos masivos",
         "submittingProposal": "Enviando la propuesta",

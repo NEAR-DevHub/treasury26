@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "수취인 정보와 요청 금액은 완전히 기밀입니다."
     },
     "bulkPayment": {
+        "missingNetworkFee": "네트워크 수수료 추정을 사용할 수 없습니다 — 제출하기 전에 돌아가서 수신자 목록을 다시 검증하세요.",
         "comingSoonToast": "일괄 결제는 곧 출시됩니다!",
         "submittingList": "일괄 결제 목록 제출 중",
         "submittingProposal": "제안 제출 중",

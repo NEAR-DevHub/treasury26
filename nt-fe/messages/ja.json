@@ -1036,6 +1036,7 @@
         "confidentialTooltip": "受取人の詳細と要求金額は完全に機密です。"
     },
     "bulkPayment": {
+        "missingNetworkFee": "ネットワーク手数料を見積もれませんでした。送信前に戻って受取人リストを再検証してください。",
         "comingSoonToast": "一括支払いは近日公開予定です!",
         "submittingList": "一括支払いリストを送信中",
         "submittingProposal": "提案を送信中",
