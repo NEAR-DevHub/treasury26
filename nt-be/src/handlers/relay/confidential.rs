@@ -437,8 +437,16 @@ pub async fn try_auto_submit_intent(
         }
     };
 
-    // Fetch the DAO's derived MPC public key from v1.signer
-    let mpc_public_key = match fetch_mpc_public_key(state, treasury_id, treasury_id).await {
+    // Fetch the DAO's derived MPC public key from v1.signer. Bulk-payment
+    // auth proposals sign with an empty path (the JWT is issued for the
+    // subaccount; the DAO signs as predecessor); everything else uses the
+    // DAO self path.
+    let mpc_path = if intent_type == "bulk_auth" {
+        ""
+    } else {
+        treasury_id
+    };
+    let mpc_public_key = match fetch_mpc_public_key(state, treasury_id, mpc_path).await {
         Ok(key) => key,
         Err(e) => {
             tracing::error!(
@@ -458,7 +466,7 @@ pub async fn try_auto_submit_intent(
         mpc_public_key
     );
 
-    let kind = if intent_type == "auth" {
+    let kind = if intent_type == "auth" || intent_type == "bulk_auth" {
         IntentSubmitKind::Auth
     } else {
         IntentSubmitKind::Shield
@@ -475,8 +483,10 @@ pub async fn try_auto_submit_intent(
                 sanitized_resp_body
             );
 
-            // For auth: store the JWT tokens in monitored_accounts.
-            if intent_type == "auth"
+            // For auth flavors: store the JWT tokens in monitored_accounts.
+            // `auth` authenticates the DAO itself; `bulk_auth` authenticates
+            // the DAO's bulk-payment subaccount (bulk-payments activation).
+            if (intent_type == "auth" || intent_type == "bulk_auth")
                 && let (Some(access_token), Some(refresh_token)) = (
                     resp_body.get("accessToken").and_then(|v| v.as_str()),
                     resp_body.get("refreshToken").and_then(|v| v.as_str()),
@@ -488,24 +498,34 @@ pub async fn try_auto_submit_intent(
                     .unwrap_or(3600);
                 let expires_at = chrono::Utc::now() + chrono::Duration::seconds(expires_in);
 
-                let _ = sqlx::query!(
+                let update_sql = if intent_type == "bulk_auth" {
+                    r#"
+                        UPDATE monitored_accounts
+                        SET bulk_payment_access_token = $1,
+                            bulk_payment_refresh_token = $2,
+                            bulk_payment_token_expires_at = $3
+                        WHERE account_id = $4
+                        "#
+                } else {
                     r#"
                         UPDATE monitored_accounts
                         SET confidential_access_token = $1,
                             confidential_refresh_token = $2,
                             confidential_token_expires_at = $3
                         WHERE account_id = $4
-                        "#,
-                    access_token,
-                    refresh_token,
-                    expires_at,
-                    treasury_id,
-                )
-                .execute(&state.db_pool)
-                .await;
+                        "#
+                };
+                let _ = sqlx::query(update_sql)
+                    .bind(access_token)
+                    .bind(refresh_token)
+                    .bind(expires_at)
+                    .bind(treasury_id)
+                    .execute(&state.db_pool)
+                    .await;
 
                 tracing::info!(
-                    "Stored confidential JWT for DAO {} (expires in {}s)",
+                    "Stored {} JWT for DAO {} (expires in {}s)",
+                    intent_type,
                     treasury_id,
                     expires_in
                 );

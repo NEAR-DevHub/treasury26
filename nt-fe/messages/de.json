@@ -1109,6 +1109,20 @@
         "remove": "Entfernen",
         "edit": "Bearbeiten"
     },
+    "bulkActivation": {
+        "introTitle": "Massenzahlungen aktivieren",
+        "introDescription": "Diese vertrauliche Treasury benötigt eine einmalige Aktivierung für Massenzahlungen: Die Registrierung des vertraulichen Massenzahlungs-Zugriffsschlüssels erfordert eine Genehmigungsrunde der Treasury-Mitglieder.",
+        "failedDescription": "Der letzte Aktivierungsversuch ist abgelaufen oder fehlgeschlagen. Starten Sie erneut — es wird eine neue Genehmigungsanfrage erstellt.",
+        "startButton": "Aktivierung starten",
+        "retryButton": "Aktivierung wiederholen",
+        "preparing": "Aktivierung wird vorbereitet…",
+        "approvalNote": "Dies erstellt eine Genehmigungsanfrage. Massenzahlungen werden automatisch freigeschaltet, sobald genügend Mitglieder zugestimmt haben.",
+        "awaitingTitle": "Warten auf Genehmigungen",
+        "awaitingDescription": "Die Aktivierungsanfrage wurde erstellt. Sobald genügend Treasury-Mitglieder zustimmen, wird der vertrauliche Zugriffsschlüssel registriert und Massenzahlungen werden automatisch freigeschaltet.",
+        "awaitingHint": "Nach der Genehmigung ist nichts weiter nötig — diese Seite aktualisiert sich automatisch.",
+        "proposalCreated": "Aktivierungsanfrage erstellt — warten auf Genehmigungen",
+        "activationFailed": "Aktivierung der Massenzahlungen konnte nicht gestartet werden"
+    },
     "bulkPaymentCredits": {
         "title": "Sammelzahlungen",
         "unlimited": "Unbegrenzt",

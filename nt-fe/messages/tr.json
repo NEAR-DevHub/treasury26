@@ -1109,6 +1109,20 @@
         "remove": "Kaldır",
         "edit": "Düzenle"
     },
+    "bulkActivation": {
+        "introTitle": "Toplu ödemeleri etkinleştir",
+        "introDescription": "Bu gizli hazinenin toplu ödeme gönderebilmesi için tek seferlik etkinleştirme gerekir: gizli toplu erişim anahtarının kaydı, hazine üyelerinden bir tur onay gerektirir.",
+        "failedDescription": "Önceki etkinleştirme denemesi süresi doldu veya başarısız oldu. Yeniden başlatın — yeni bir onay talebi oluşturulacak.",
+        "startButton": "Etkinleştirmeyi başlat",
+        "retryButton": "Etkinleştirmeyi yeniden dene",
+        "preparing": "Etkinleştirme hazırlanıyor…",
+        "approvalNote": "Bu bir onay talebi oluşturur. Yeterli üye onayladığında toplu ödemeler otomatik olarak açılır.",
+        "awaitingTitle": "Onaylar bekleniyor",
+        "awaitingDescription": "Etkinleştirme talebi oluşturuldu. Yeterli hazine üyesi onayladığında gizli erişim anahtarı kaydedilir ve toplu ödemeler otomatik olarak açılır.",
+        "awaitingHint": "Onaydan sonra başka bir işlem gerekmez — bu sayfa otomatik olarak güncellenir.",
+        "proposalCreated": "Etkinleştirme talebi oluşturuldu — onaylar bekleniyor",
+        "activationFailed": "Toplu ödeme etkinleştirmesi başlatılamadı"
+    },
     "bulkPaymentCredits": {
         "title": "Toplu Ödemeler",
         "unlimited": "Sınırsız",

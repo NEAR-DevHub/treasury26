@@ -1109,6 +1109,20 @@
         "remove": "Supprimer",
         "edit": "Modifier"
     },
+    "bulkActivation": {
+        "introTitle": "Activer les paiements groupés",
+        "introDescription": "Cette trésorerie confidentielle nécessite une activation unique pour les paiements groupés : l'enregistrement de sa clé d'accès confidentielle requiert un tour d'approbations des membres.",
+        "failedDescription": "La tentative d'activation précédente a expiré ou échoué. Relancez-la — une nouvelle demande d'approbation sera créée.",
+        "startButton": "Démarrer l'activation",
+        "retryButton": "Réessayer l'activation",
+        "preparing": "Préparation de l'activation…",
+        "approvalNote": "Ceci crée une demande d'approbation. Les paiements groupés se débloquent automatiquement dès que suffisamment de membres l'approuvent.",
+        "awaitingTitle": "En attente d'approbations",
+        "awaitingDescription": "La demande d'activation a été créée. Dès que suffisamment de membres l'approuvent, la clé d'accès confidentielle est enregistrée et les paiements groupés se débloquent automatiquement.",
+        "awaitingHint": "Aucune action requise après approbation — cette page se met à jour automatiquement.",
+        "proposalCreated": "Demande d'activation créée — en attente d'approbations",
+        "activationFailed": "Impossible de démarrer l'activation des paiements groupés"
+    },
     "bulkPaymentCredits": {
         "title": "Paiements groupés",
         "unlimited": "Illimité",

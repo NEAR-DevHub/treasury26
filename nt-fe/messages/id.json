@@ -1109,6 +1109,20 @@
         "remove": "Hapus",
         "edit": "Ubah"
     },
+    "bulkActivation": {
+        "introTitle": "Aktifkan pembayaran massal",
+        "introDescription": "Perbendaharaan rahasia ini memerlukan aktivasi satu kali untuk pembayaran massal: pendaftaran kunci akses massal rahasianya memerlukan satu putaran persetujuan dari anggota.",
+        "failedDescription": "Percobaan aktivasi sebelumnya kedaluwarsa atau gagal. Mulai lagi — permintaan persetujuan baru akan dibuat.",
+        "startButton": "Mulai aktivasi",
+        "retryButton": "Coba lagi aktivasi",
+        "preparing": "Menyiapkan aktivasi…",
+        "approvalNote": "Ini membuat permintaan persetujuan. Pembayaran massal terbuka otomatis setelah cukup anggota menyetujuinya.",
+        "awaitingTitle": "Menunggu persetujuan",
+        "awaitingDescription": "Permintaan aktivasi telah dibuat. Setelah cukup anggota menyetujuinya, kunci akses rahasia terdaftar dan pembayaran massal terbuka otomatis.",
+        "awaitingHint": "Tidak ada tindakan lain setelah persetujuan — halaman ini diperbarui otomatis.",
+        "proposalCreated": "Permintaan aktivasi dibuat — menunggu persetujuan anggota",
+        "activationFailed": "Gagal memulai aktivasi pembayaran massal"
+    },
     "bulkPaymentCredits": {
         "title": "Pembayaran Massal",
         "unlimited": "Tidak Terbatas",

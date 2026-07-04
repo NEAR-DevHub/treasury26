@@ -1109,6 +1109,20 @@
         "remove": "削除",
         "edit": "編集"
     },
+    "bulkActivation": {
+        "introTitle": "一括支払いを有効化",
+        "introDescription": "この機密トレジャリーで一括支払いを行うには、一度だけ有効化が必要です。機密一括アクセスキーの登録には、トレジャリーメンバーによる1回の承認ラウンドが必要です。",
+        "failedDescription": "前回の有効化は期限切れまたは失敗しました。再度開始してください — 新しい承認リクエストが作成されます。",
+        "startButton": "有効化を開始",
+        "retryButton": "有効化を再試行",
+        "preparing": "有効化を準備中…",
+        "approvalNote": "承認リクエストが作成されます。十分なメンバーが承認すると、一括支払いが自動的に利用可能になります。",
+        "awaitingTitle": "承認待ち",
+        "awaitingDescription": "有効化リクエストが作成されました。十分なメンバーが承認すると、機密アクセスキーが登録され、一括支払いが自動的に利用可能になります。",
+        "awaitingHint": "承認後の操作は不要です — このページは自動的に更新されます。",
+        "proposalCreated": "有効化リクエストを作成しました — メンバーの承認待ちです",
+        "activationFailed": "一括支払いの有効化を開始できませんでした"
+    },
     "bulkPaymentCredits": {
         "title": "一括支払い",
         "unlimited": "無制限",

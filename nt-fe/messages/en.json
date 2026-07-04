@@ -1109,6 +1109,20 @@
         "remove": "Remove",
         "edit": "Edit"
     },
+    "bulkActivation": {
+        "introTitle": "Activate bulk payments",
+        "introDescription": "This confidential treasury needs a one-time activation to send bulk payments: registering its confidential bulk access key requires one round of approvals from the treasury members.",
+        "failedDescription": "The previous activation attempt expired or failed. Start it again — a new approval request will be created.",
+        "startButton": "Start activation",
+        "retryButton": "Retry activation",
+        "preparing": "Preparing activation…",
+        "approvalNote": "This creates an approval request. Bulk payments unlock automatically once enough members approve it.",
+        "awaitingTitle": "Waiting for approvals",
+        "awaitingDescription": "The activation request has been created. Once enough treasury members approve it, the confidential bulk access key is registered and bulk payments unlock automatically.",
+        "awaitingHint": "No further action needed after approval — this page updates automatically.",
+        "proposalCreated": "Activation request created — waiting for member approvals",
+        "activationFailed": "Failed to start bulk payment activation"
+    },
     "bulkPaymentCredits": {
         "title": "Bulk Payments",
         "unlimited": "Unlimited",
