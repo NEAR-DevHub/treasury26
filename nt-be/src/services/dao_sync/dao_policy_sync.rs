@@ -9,7 +9,6 @@ use sqlx::PgPool;
 use std::collections::HashSet;
 use std::time::Duration;
 
-
 /// Max DAOs to process per cycle
 const MAX_DAOS_PER_CYCLE: i64 = 50;
 

@@ -113,4 +113,3 @@ async fn resume_one(state: &Arc<AppState>, candidate: SweepCandidate) {
         }
     }
 }
-

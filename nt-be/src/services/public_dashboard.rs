@@ -672,7 +672,6 @@ pub async fn ensure_this_week_public_dashboard_snapshot(
 }
 
 #[tracing::instrument(level = "info", skip_all, fields(job = "public_dashboard_refresh"))]
-
 #[cfg(test)]
 mod tests {
     use super::*;

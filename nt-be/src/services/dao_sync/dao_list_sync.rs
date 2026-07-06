@@ -6,7 +6,6 @@
 use near_api::{Contract, NetworkConfig};
 use sqlx::PgPool;
 
-
 /// Sputnik DAO factory contract
 const SPUTNIK_DAO_FACTORY: &str = "sputnik-dao.near";
 

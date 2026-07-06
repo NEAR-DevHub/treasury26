@@ -65,7 +65,10 @@ pub fn schedule_every_secs(secs: u64) -> Schedule {
     let secs = secs.max(1);
     let expr = if secs < 60 {
         if 60 % secs != 0 {
-            tracing::warn!(secs, "interval doesn't divide a minute; cron fires at fixed offsets");
+            tracing::warn!(
+                secs,
+                "interval doesn't divide a minute; cron fires at fixed offsets"
+            );
         }
         format!("*/{secs} * * * * *")
     } else if secs % 86_400 == 0 {
@@ -76,13 +79,19 @@ pub fn schedule_every_secs(secs: u64) -> Schedule {
     } else if secs % 3600 == 0 {
         let hours = secs / 3600;
         if 24 % hours != 0 {
-            tracing::warn!(secs, "interval doesn't divide a day; cron fires at fixed offsets");
+            tracing::warn!(
+                secs,
+                "interval doesn't divide a day; cron fires at fixed offsets"
+            );
         }
         format!("0 0 */{hours} * * *")
     } else if secs % 60 == 0 {
         let mins = secs / 60;
         if 60 % mins != 0 {
-            tracing::warn!(secs, "interval doesn't divide an hour; cron fires at fixed offsets");
+            tracing::warn!(
+                secs,
+                "interval doesn't divide an hour; cron fires at fixed offsets"
+            );
         }
         format!("0 */{mins} * * * *")
     } else {

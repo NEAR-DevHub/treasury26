@@ -218,8 +218,7 @@ pub async fn public_dashboard_refresh(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
-    let summary =
-        crate::services::ensure_this_week_public_dashboard_snapshot(&state).await?;
+    let summary = crate::services::ensure_this_week_public_dashboard_snapshot(&state).await?;
     Ok(match summary {
         Some(s) => format!("refreshed dashboard snapshot: {s:?}"),
         None => "snapshot already up to date".to_string(),

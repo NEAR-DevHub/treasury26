@@ -14,7 +14,6 @@ use crate::constants::intents_tokens::get_defuse_tokens_map;
 use crate::handlers::intents::confidential::balances::fetch_confidential_balances;
 use crate::handlers::intents::confidential::bronze::store::load_confidential_history_accounts;
 
-
 const SNAPSHOT_DEDUP_WINDOW: Duration = Duration::seconds(3300);
 const CONFIDENTIAL_BALANCE_SNAPSHOT_WORKERS: usize = 5;
 
@@ -194,7 +193,6 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
         })
         .await;
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -14,7 +14,6 @@ use crate::{
     handlers::warnings::db,
 };
 
-
 fn incident_status(status: &OhDearStatus) -> &'static str {
     match status {
         OhDearStatus::Warning => "warning",

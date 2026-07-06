@@ -576,7 +576,6 @@ pub async fn run_due_ft_lockup_claims(
     Ok(summary)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

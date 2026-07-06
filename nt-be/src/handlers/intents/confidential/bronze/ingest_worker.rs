@@ -652,7 +652,6 @@ pub async fn tick_confidential_history_scheduler(
     Ok(result)
 }
 
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

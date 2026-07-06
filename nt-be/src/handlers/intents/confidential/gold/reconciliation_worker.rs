@@ -13,7 +13,6 @@ use super::history_events::{
 
 pub const CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(86_400);
 
-
 #[tracing::instrument(level = "info", skip_all, fields(job = "confidential_gold_reconciliation", phase = phase))]
 pub async fn run_reconciliation_pass(pool: &PgPool, phase: &str) {
     match mark_backfilled_confidential_daos_gold_dirty(pool).await {

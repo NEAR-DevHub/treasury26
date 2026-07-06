@@ -16,7 +16,6 @@ use super::price_lookup::token_id_to_unified_asset_id;
 use super::price_provider::PriceProvider;
 use bigdecimal::BigDecimal;
 
-
 /// Maximum number of provider asset IDs to request in one current-price call.
 const CURRENT_PRICE_BATCH_SIZE: usize = 50;
 
