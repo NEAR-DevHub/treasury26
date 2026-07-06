@@ -23,9 +23,6 @@ use crate::handlers::public_history::silver::models::{
     PublicTransactionType, PublicTransferDirection, PublicTransferLegKind, SilverTransferLegRow,
 };
 use crate::services::TokenPriceService;
-use std::sync::LazyLock;
-
-use crate::utils::env::EnvVars;
 
 const PUBLIC_GOLD_SCHEDULER_TICK: Duration = Duration::from_secs(5);
 const PUBLIC_GOLD_WORKERS: usize = 4;
@@ -33,8 +30,6 @@ const PUBLIC_GOLD_WORKERS: usize = 4;
 /// The NEAR runtime's implicit account; sender of gas-fee reward refunds
 /// credited to contract accounts (~0.0001 NEAR per contract call).
 const SYSTEM_ACCOUNT: &str = "system";
-
-static ENV_VARS: LazyLock<EnvVars> = LazyLock::new(EnvVars::default);
 
 struct ExchangePairs {
     outgoing_to_incoming: HashMap<i64, i64>,
@@ -243,19 +238,21 @@ fn leg_kind(leg: &SilverTransferLegRow) -> Result<PublicTransferLegKind, String>
 /// treasury activity: proposal-storage top-ups & bonds fronted by the
 /// sponsor, and gas-fee rewards credited by `system`. Hidden from the
 /// public history feed to match `balance_changes`.
-fn is_noise_native_movement(leg: &SilverTransferLegRow) -> bool {
+fn is_noise_native_movement(leg: &SilverTransferLegRow, relayer_account: &str) -> bool {
     if leg.token_standard != "native" {
         return false;
     }
-    let relayer_account = ENV_VARS.signer_id.as_str();
     matches!(
         leg.counterparty.as_deref(),
         Some(cp) if cp == relayer_account || cp == SYSTEM_ACCOUNT
     )
 }
 
-fn is_projectable_transfer(leg: &SilverTransferLegRow) -> Result<bool, String> {
-    if is_noise_native_movement(leg) {
+fn is_projectable_transfer(
+    leg: &SilverTransferLegRow,
+    relayer_account: &str,
+) -> Result<bool, String> {
+    if is_noise_native_movement(leg, relayer_account) {
         return Ok(false);
     }
     let direction = leg_direction(leg)?;
@@ -272,8 +269,11 @@ fn is_projectable_transfer(leg: &SilverTransferLegRow) -> Result<bool, String> {
 fn is_quote_matched_exchange_deposit(
     leg: &SilverTransferLegRow,
     quote: Option<&ParsedQuoteStatus>,
+    relayer_account: &str,
 ) -> Result<bool, String> {
-    if !is_projectable_transfer(leg)? || leg_direction(leg)? != PublicTransferDirection::Outgoing {
+    if !is_projectable_transfer(leg, relayer_account)?
+        || leg_direction(leg)? != PublicTransferDirection::Outgoing
+    {
         return Ok(false);
     }
     let Some(quote_deposit_address) = leg.quote_deposit_address.as_deref() else {
@@ -295,8 +295,13 @@ fn is_quote_matched_exchange_deposit(
     Ok(true)
 }
 
-fn is_exchange_fulfillment_candidate(leg: &SilverTransferLegRow) -> Result<bool, String> {
-    if !is_projectable_transfer(leg)? || leg_direction(leg)? != PublicTransferDirection::Incoming {
+fn is_exchange_fulfillment_candidate(
+    leg: &SilverTransferLegRow,
+    relayer_account: &str,
+) -> Result<bool, String> {
+    if !is_projectable_transfer(leg, relayer_account)?
+        || leg_direction(leg)? != PublicTransferDirection::Incoming
+    {
         return Ok(false);
     }
     Ok(leg.counterparty.as_deref() == Some("intents.near")
@@ -334,11 +339,14 @@ fn build_quote_map(rows: &[SilverTransferLegRow]) -> HashMap<i64, ParsedQuoteSta
     quotes
 }
 
-fn plan_exchange_pairs(rows: &[SilverTransferLegRow]) -> Result<ExchangePairs, String> {
+fn plan_exchange_pairs(
+    rows: &[SilverTransferLegRow],
+    relayer_account: &str,
+) -> Result<ExchangePairs, String> {
     let quote_by_proposal_ref = build_quote_map(rows);
     let mut incoming_by_tx_hash: HashMap<String, Vec<usize>> = HashMap::new();
     for (index, row) in rows.iter().enumerate() {
-        if is_exchange_fulfillment_candidate(row)?
+        if is_exchange_fulfillment_candidate(row, relayer_account)?
             && let Some(tx_hash) = row.transaction_hash.as_ref()
         {
             incoming_by_tx_hash
@@ -359,7 +367,7 @@ fn plan_exchange_pairs(rows: &[SilverTransferLegRow]) -> Result<ExchangePairs, S
         let quote = row
             .proposal_ref
             .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
-        if !is_quote_matched_exchange_deposit(row, quote)? {
+        if !is_quote_matched_exchange_deposit(row, quote, relayer_account)? {
             continue;
         }
 
@@ -391,7 +399,9 @@ fn plan_exchange_pairs(rows: &[SilverTransferLegRow]) -> Result<ExchangePairs, S
     }
 
     for row in rows {
-        if matched_incoming_ids.contains(&row.id) || !is_exchange_fulfillment_candidate(row)? {
+        if matched_incoming_ids.contains(&row.id)
+            || !is_exchange_fulfillment_candidate(row, relayer_account)?
+        {
             continue;
         }
         let matched =
@@ -450,9 +460,10 @@ async fn public_gold_event_from_leg(
     leg: &SilverTransferLegRow,
     ledger: &mut GoldLedger,
     token_prices: &TokenPriceService,
+    relayer_account: &str,
 ) -> Result<Option<GoldPublicHistoryEvent>, String> {
     let direction = leg_direction(leg)?;
-    if !is_projectable_transfer(leg)? {
+    if !is_projectable_transfer(leg, relayer_account)? {
         return Ok(None);
     }
 
@@ -679,6 +690,7 @@ pub async fn project_public_gold_for_account(
     pool: &PgPool,
     token_prices: &TokenPriceService,
     account_id: &str,
+    relayer_account: &str,
 ) -> Result<GoldProjectionResult, sqlx::Error> {
     let mut tx = pool.begin().await?;
 
@@ -748,7 +760,7 @@ pub async fn project_public_gold_for_account(
     let mut ledger = GoldLedger::from_seed(seed_rows);
     let rows = load_silver_suffix(&mut tx, account_id, recompute_from).await?;
     let quote_by_proposal_ref = build_quote_map(&rows);
-    let exchange_pairs = match plan_exchange_pairs(&rows) {
+    let exchange_pairs = match plan_exchange_pairs(&rows, relayer_account) {
         Ok(pairs) => pairs,
         Err(reason) => {
             for row in &rows {
@@ -772,7 +784,7 @@ pub async fn project_public_gold_for_account(
         let quote = leg
             .proposal_ref
             .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
-        if is_quote_matched_exchange_deposit(&leg, quote).unwrap_or(false) {
+        if is_quote_matched_exchange_deposit(&leg, quote, relayer_account).unwrap_or(false) {
             let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
             let pending = PendingExchange {
                 outgoing: leg.clone(),
@@ -838,7 +850,7 @@ pub async fn project_public_gold_for_account(
             continue;
         }
 
-        match public_gold_event_from_leg(&leg, &mut ledger, token_prices).await {
+        match public_gold_event_from_leg(&leg, &mut ledger, token_prices, relayer_account).await {
             Ok(Some(event)) => {
                 preserve_keys.insert(event.gold_event_key.clone());
                 upsert_gold_event(&mut tx, &event).await?;
@@ -869,6 +881,7 @@ pub async fn project_public_gold_for_account(
 pub async fn project_public_gold_for_dirty_accounts(
     pool: &PgPool,
     token_prices: &Arc<TokenPriceService>,
+    relayer_account: &str,
 ) -> Result<GoldProjectionCycleStats, sqlx::Error> {
     let dirty_accounts = load_dirty_accounts(pool).await?;
     let accounts_seen = dirty_accounts.len();
@@ -876,9 +889,16 @@ pub async fn project_public_gold_for_dirty_accounts(
     let mut stream = futures::stream::iter(dirty_accounts.into_iter().map(|account| {
         let pool = pool.clone();
         let token_prices = Arc::clone(token_prices);
+        let relayer_account = relayer_account.to_string();
         async move {
             let account_id = account.account_id;
-            let result = project_public_gold_for_account(&pool, &token_prices, &account_id).await;
+            let result = project_public_gold_for_account(
+                &pool,
+                &token_prices,
+                &account_id,
+                &relayer_account,
+            )
+            .await;
             (account_id, result)
         }
     }))
@@ -929,8 +949,12 @@ pub fn spawn_public_gold_projection_worker(state: Arc<AppState>) {
         loop {
             timer.tick().await;
             let started_at = Instant::now();
-            match project_public_gold_for_dirty_accounts(&state.db_pool, &state.token_price_service)
-                .await
+            match project_public_gold_for_dirty_accounts(
+                &state.db_pool,
+                &state.token_price_service,
+                state.signer_id.as_str(),
+            )
+            .await
             {
                 Ok(stats) if stats.accounts_seen > 0 => {
                     tracing::info!(
@@ -960,16 +984,8 @@ pub fn spawn_public_gold_projection_worker(state: Arc<AppState>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Once;
 
-    static INIT_TEST_ENV: Once = Once::new();
-
-    fn init_test_env() {
-        INIT_TEST_ENV.call_once(|| {
-            dotenvy::from_filename(".env").ok();
-            dotenvy::from_filename_override(".env.test").ok();
-        });
-    }
+    const TEST_RELAYER_ACCOUNT: &str = "relayer.test.near";
 
     fn decimal(value: &str) -> BigDecimal {
         value.parse().expect("valid decimal")
@@ -1009,52 +1025,42 @@ mod tests {
         }
     }
 
-    fn relayer_account() -> String {
-        init_test_env();
-        ENV_VARS.signer_id.as_str().to_string()
-    }
-
     #[test]
     fn sponsor_storage_topup_is_noise() {
-        init_test_env();
         // ~0.03 NEAR storage top-up from the relayer.
-        let row = leg("native", Some(&relayer_account()), "0.03");
-        assert!(is_noise_native_movement(&row));
-        assert!(!is_projectable_transfer(&row).unwrap());
+        let row = leg("native", Some(TEST_RELAYER_ACCOUNT), "0.03");
+        assert!(is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
+        assert!(!is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
     }
 
     #[test]
     fn sponsor_bond_is_noise_regardless_of_amount() {
-        init_test_env();
         // Legacy proposal bond fronted by the relayer, well above any dust threshold.
-        let row = leg("native", Some(&relayer_account()), "1.1");
-        assert!(is_noise_native_movement(&row));
-        assert!(!is_projectable_transfer(&row).unwrap());
+        let row = leg("native", Some(TEST_RELAYER_ACCOUNT), "1.1");
+        assert!(is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
+        assert!(!is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
     }
 
     #[test]
     fn system_gas_reward_is_noise() {
-        init_test_env();
         let row = leg("native", Some(SYSTEM_ACCOUNT), "0.0001");
-        assert!(is_noise_native_movement(&row));
-        assert!(!is_projectable_transfer(&row).unwrap());
+        assert!(is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
+        assert!(!is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
     }
 
     #[test]
     fn real_user_native_deposit_is_kept() {
-        init_test_env();
         let row = leg("native", Some("alice.near"), "0.001");
-        assert!(!is_noise_native_movement(&row));
-        assert!(is_projectable_transfer(&row).unwrap());
+        assert!(!is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
+        assert!(is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
     }
 
     #[test]
     fn non_native_leg_from_sponsor_is_kept() {
-        init_test_env();
         // Native-only guard: FT legs are never treated as native noise.
-        let row = leg("nep141", Some(&relayer_account()), "5");
-        assert!(!is_noise_native_movement(&row));
-        assert!(is_projectable_transfer(&row).unwrap());
+        let row = leg("nep141", Some(TEST_RELAYER_ACCOUNT), "5");
+        assert!(!is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
+        assert!(is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
     }
 
     #[test]
@@ -1062,7 +1068,7 @@ mod tests {
         let mut row = leg("nep245", None, "0.1");
         row.direction = "incoming".to_string();
         row.leg_kind = "mint".to_string();
-        assert!(is_projectable_transfer(&row).unwrap());
+        assert!(is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
     }
 
     #[test]
@@ -1157,7 +1163,8 @@ mod tests {
 
         let rows = vec![incoming.clone(), outgoing.clone()];
         let quote_by_proposal_ref = build_quote_map(&rows);
-        let exchange_pairs = plan_exchange_pairs(&rows).expect("exchange pair plan");
+        let exchange_pairs =
+            plan_exchange_pairs(&rows, TEST_RELAYER_ACCOUNT).expect("exchange pair plan");
         let mut pending_exchanges: HashMap<i64, PendingExchange> = HashMap::new();
         let mut deferred_incoming: HashMap<i64, SilverTransferLegRow> = HashMap::new();
         let mut ledger = GoldLedger::default();
@@ -1167,7 +1174,8 @@ mod tests {
             let quote = leg
                 .proposal_ref
                 .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
-            if is_quote_matched_exchange_deposit(&leg, quote).unwrap_or(false) {
+            if is_quote_matched_exchange_deposit(&leg, quote, TEST_RELAYER_ACCOUNT).unwrap_or(false)
+            {
                 let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
                 let pending = PendingExchange {
                     outgoing: leg.clone(),

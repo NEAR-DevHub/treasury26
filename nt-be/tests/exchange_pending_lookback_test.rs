@@ -9,6 +9,7 @@ use serial_test::serial;
 use sqlx::postgres::PgPoolOptions;
 
 const ACCOUNT_ID: &str = "exchange-pending-lookback-test.sputnik-dao.near";
+const RELAYER_ACCOUNT: &str = "relayer.test.near";
 const USDC_TOKEN_ID: &str =
     "intents.near:nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near";
 
@@ -368,7 +369,7 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     mark_gold_dirty(&pool, ACCOUNT_ID, Some(outgoing_time))
         .await
         .expect("mark outgoing dirty");
-    project_public_gold_for_account(&pool, &token_prices, ACCOUNT_ID)
+    project_public_gold_for_account(&pool, &token_prices, ACCOUNT_ID, RELAYER_ACCOUNT)
         .await
         .expect("project outgoing pending exchange");
 
@@ -403,7 +404,7 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     mark_gold_dirty(&pool, ACCOUNT_ID, Some(incoming_time))
         .await
         .expect("mark incoming dirty");
-    project_public_gold_for_account(&pool, &token_prices, ACCOUNT_ID)
+    project_public_gold_for_account(&pool, &token_prices, ACCOUNT_ID, RELAYER_ACCOUNT)
         .await
         .expect("project delayed fulfillment");
 

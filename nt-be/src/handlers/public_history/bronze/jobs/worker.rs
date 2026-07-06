@@ -394,6 +394,7 @@ async fn handle_latest_job(job: PublicHistoryJob, context: Data<JobContext>) -> 
         &context.state.db_pool,
         &context.state.token_price_service,
         &account_id,
+        context.state.signer_id.as_str(),
     )
     .await
     {
