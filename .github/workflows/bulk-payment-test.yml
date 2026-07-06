@@ -56,7 +56,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config
       - name: Install cargo-near CLI
-        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.14.2/cargo-near-installer.sh | sh
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.21.1/cargo-near-installer.sh | sh
       - name: Run cargo test
         working-directory: contracts/bulk-payment
         run: cargo test -- --nocapture

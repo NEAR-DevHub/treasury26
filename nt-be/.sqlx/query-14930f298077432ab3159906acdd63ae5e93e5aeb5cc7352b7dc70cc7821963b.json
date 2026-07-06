@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE confidential_intents SET status = 'submitted', submit_result = $2, updated_at = NOW() WHERE payload_hash = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "14930f298077432ab3159906acdd63ae5e93e5aeb5cc7352b7dc70cc7821963b"
+}

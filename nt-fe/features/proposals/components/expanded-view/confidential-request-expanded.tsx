@@ -1,4 +1,5 @@
 import { ConfidentialRequestData } from "../../types/index";
+import { ConfidentialBulkExpanded } from "./confidential-bulk-expanded";
 import { SwapExpanded } from "./swap-expanded";
 import { TransferExpanded } from "./transfer-expanded";
 import { ConfidentialState } from "@/components/confidential-state";
@@ -32,6 +33,8 @@ export function ConfidentialRequestExpanded({
 
     if (mapped.type === "swap") {
         return <SwapExpanded data={mapped.data} isExecuted={isExecuted} />;
+    } else if (mapped.type === "bulk") {
+        return <ConfidentialBulkExpanded data={mapped.data} />;
     }
 
     return <TransferExpanded data={mapped.data} />;

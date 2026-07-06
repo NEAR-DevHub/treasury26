@@ -1068,7 +1068,8 @@
             "selectAndProvide": "資産を選択し、支払いデータを提供してください",
             "continueToReview": "確認に進む",
             "selectTokenError": "トークンを選択してください",
-            "providePaymentDataError": "支払いデータを提供してください"
+            "providePaymentDataError": "支払いデータを提供してください",
+            "selectRecipientNetwork": "受取人のネットワークを選択してください"
         },
         "editStep": {
             "title": "支払いを編集",
@@ -1303,6 +1304,7 @@
             "registeringKey": "公開鍵を登録中",
             "settingUpConfidential": "機密トランザクションを設定中",
             "configuringMembers": "トレジャリーのメンバーを設定中",
+            "provisioningBulkPayment": "一括支払いを設定中",
             "finalizingSetup": "セットアップを完了中"
         }
     },

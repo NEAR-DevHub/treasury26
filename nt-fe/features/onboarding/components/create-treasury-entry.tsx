@@ -289,6 +289,11 @@ export function TreasuryOnboardingPage({
                 status: "pending",
             },
             {
+                id: "bulk_payment_setup",
+                label: tSteps("provisioningBulkPayment"),
+                status: "pending",
+            },
+            {
                 id: "setting_policy",
                 label: tSteps("configuringMembers"),
                 status: "pending",
@@ -449,14 +454,16 @@ export function TreasuryOnboardingPage({
                 }
                 if (!trackProgress) return;
                 setProgressSteps((prev) =>
-                    prev.map((step) =>
-                        step.id === event.step
-                            ? {
-                                  ...step,
-                                  status: event.status as CreationStep["status"],
-                              }
-                            : step,
-                    ),
+                    prev.map((step) => {
+                        if (step.id !== event.step) return step;
+                        // Backend emits `failed` for non-fatal step failures
+                        // (e.g. bulk-payment provisioning) that shouldn't abort
+                        // the whole flow but still want to surface visually.
+                        const status = (
+                            event.status === "failed" ? "error" : event.status
+                        ) as CreationStep["status"];
+                        return { ...step, status };
+                    }),
                 );
             });
             return outcome;

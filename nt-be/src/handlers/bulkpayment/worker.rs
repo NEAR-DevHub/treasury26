@@ -117,10 +117,16 @@ async fn complete_pending_list(pool: &PgPool, list_id: &str) {
 /// status, and calls payout_batch for approved lists. Lists are removed from the
 /// database when completed, rejected, or not found on-chain.
 ///
+/// Also drives the confidential bulk-payment state machine (per-DAO sub
+/// activate → ping → submit) on the same tick.
+///
 /// Returns the number of batches processed.
 pub async fn query_and_process_pending_lists(
     state: &Arc<AppState>,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    // Drive confidential bulk-payments alongside the public list payouts.
+    super::confidential_processor::process_confidential_bulk_payments(state).await;
+
     // Get pending list IDs from the database
     let rows = sqlx::query!("SELECT list_id FROM pending_payment_lists WHERE completed_at IS NULL")
         .fetch_all(&state.db_pool)

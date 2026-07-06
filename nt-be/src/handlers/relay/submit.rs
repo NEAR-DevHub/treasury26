@@ -165,7 +165,7 @@ pub async fn relay_delegate_action(
     confidential::spawn_auto_submit_intents(
         &state,
         treasury_id.as_str(),
-        operation.confidential_payload_hashes(),
+        operation.confidential_payloads_with_ids(),
         &outcome_debug,
     );
 

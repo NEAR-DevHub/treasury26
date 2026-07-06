@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO confidential_intents (\n            dao_id, payload_hash, intent_payload, correlation_id,\n            quote_metadata, notes, intent_type, status\n        )\n        SELECT * FROM UNNEST(\n            $1::TEXT[], $2::TEXT[], $3::JSONB[], $4::TEXT[],\n            $5::JSONB[], $6::TEXT[], $7::TEXT[]\n        ) AS t(dao_id, payload_hash, intent_payload, correlation_id, quote_metadata, notes, intent_type),\n        (SELECT 'pending'::TEXT AS status) s\n        ON CONFLICT (dao_id, payload_hash) DO UPDATE SET\n            intent_payload = EXCLUDED.intent_payload,\n            correlation_id = EXCLUDED.correlation_id,\n            quote_metadata = EXCLUDED.quote_metadata,\n            notes = EXCLUDED.notes,\n            intent_type = EXCLUDED.intent_type,\n            status = 'pending',\n            submit_result = NULL,\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray",
+        "JsonbArray",
+        "TextArray",
+        "JsonbArray",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b8c93f6c2035f77b0f62a6c70eb010d0933b6dfda5d619105330c1b15dedc9ea"
+}

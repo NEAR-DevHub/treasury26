@@ -1068,7 +1068,8 @@
             "selectAndProvide": "Vermögenswert auswählen und Zahlungsdaten bereitstellen",
             "continueToReview": "Weiter zur Prüfung",
             "selectTokenError": "Bitte wählen Sie ein Token aus",
-            "providePaymentDataError": "Bitte stellen Sie Zahlungsdaten bereit"
+            "providePaymentDataError": "Bitte stellen Sie Zahlungsdaten bereit",
+            "selectRecipientNetwork": "Bitte wählen Sie ein Empfängernetzwerk"
         },
         "editStep": {
             "title": "Zahlung bearbeiten",
@@ -1303,6 +1304,7 @@
             "registeringKey": "Öffentlicher Schlüssel wird registriert",
             "settingUpConfidential": "Vertrauliche Transaktionen werden eingerichtet",
             "configuringMembers": "Treasury-Mitglieder werden konfiguriert",
+            "provisioningBulkPayment": "Massenzahlungen werden eingerichtet",
             "finalizingSetup": "Einrichtung wird abgeschlossen"
         }
     },

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE confidential_intents\n                    SET status = 'failed',\n                        submit_result = '\"no signature on chain\"'::jsonb,\n                        updated_at = NOW()\n                    WHERE payload_hash = $1\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e1e663a86a0ff8b9f3a586cf224cc06107104ed0a229b6a0da55d5d40481f99e"
+}

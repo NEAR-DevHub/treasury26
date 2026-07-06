@@ -1068,7 +1068,8 @@
             "selectAndProvide": "자산을 선택하고 결제 데이터를 제공하세요",
             "continueToReview": "검토로 계속",
             "selectTokenError": "토큰을 선택해 주세요",
-            "providePaymentDataError": "결제 데이터를 제공해 주세요"
+            "providePaymentDataError": "결제 데이터를 제공해 주세요",
+            "selectRecipientNetwork": "수신자 네트워크를 선택해 주세요"
         },
         "editStep": {
             "title": "결제 편집",
@@ -1303,6 +1304,7 @@
             "registeringKey": "공개 키 등록 중",
             "settingUpConfidential": "비공개 트랜잭션 설정 중",
             "configuringMembers": "트레저리 멤버 구성 중",
+            "provisioningBulkPayment": "대량 결제 설정 중",
             "finalizingSetup": "설정 완료 중"
         }
     },

@@ -1066,9 +1066,10 @@
             "singleTokenNetwork": "Single token and network",
             "limitsUsed": "You've used all your limits",
             "selectAndProvide": "Select asset and provide payment data",
-            "continueToReview": "Continue to Review",
+            "continueToReview": "See Preview",
             "selectTokenError": "Please select a token",
-            "providePaymentDataError": "Please provide payment data"
+            "providePaymentDataError": "Please provide payment data",
+            "selectRecipientNetwork": "Please select a recipient network"
         },
         "editStep": {
             "title": "Edit Payment",
@@ -1303,6 +1304,7 @@
             "registeringKey": "Registering public key",
             "settingUpConfidential": "Setting up confidential transactions",
             "configuringMembers": "Configuring treasury members",
+            "provisioningBulkPayment": "Setting up bulk payments",
             "finalizingSetup": "Finalizing setup"
         }
     },

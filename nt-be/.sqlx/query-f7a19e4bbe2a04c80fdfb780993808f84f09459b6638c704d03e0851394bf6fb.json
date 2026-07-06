@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT bulk_payment_access_token, bulk_payment_refresh_token, bulk_payment_token_expires_at\n        FROM monitored_accounts\n        WHERE account_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bulk_payment_access_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "bulk_payment_refresh_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "bulk_payment_token_expires_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "f7a19e4bbe2a04c80fdfb780993808f84f09459b6638c704d03e0851394bf6fb"
+}

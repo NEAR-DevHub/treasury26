@@ -1068,7 +1068,8 @@
             "selectAndProvide": "Pilih aset dan berikan data pembayaran",
             "continueToReview": "Lanjutkan ke Tinjauan",
             "selectTokenError": "Silakan pilih token",
-            "providePaymentDataError": "Silakan berikan data pembayaran"
+            "providePaymentDataError": "Silakan berikan data pembayaran",
+            "selectRecipientNetwork": "Silakan pilih jaringan penerima"
         },
         "editStep": {
             "title": "Ubah Pembayaran",
@@ -1303,6 +1304,7 @@
             "registeringKey": "Mendaftarkan kunci publik",
             "settingUpConfidential": "Menyiapkan transaksi rahasia",
             "configuringMembers": "Mengonfigurasi anggota treasury",
+            "provisioningBulkPayment": "Menyiapkan pembayaran massal",
             "finalizingSetup": "Menyelesaikan pengaturan"
         }
     },

@@ -13,6 +13,10 @@ import { default_near_token } from "@/constants/token";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
+import {
+    getBatchStorageDepositIsRegistered,
+    prepareConfidentialBulkPayment,
+} from "@/lib/api";
 import Big from "@/lib/big";
 import {
     buildApproveListProposal,
@@ -21,6 +25,14 @@ import {
 } from "@/lib/bulk-payment-api";
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import {
+    RecipientNetworkSelect,
+    type RecipientNetworkRuleOption,
+} from "../components/recipient-network-select";
+import type { SectionRule } from "@/lib/section-rules";
+import { buildConfidentialBulkProposal } from "@/features/confidential/utils/bulk-proposal-builder";
 import { BulkPaymentToast } from "../components/bulk-payment-toast";
 import {
     EditPaymentStep,
@@ -39,6 +51,7 @@ export default function BulkPaymentPage() {
     const tBulk = useTranslations("bulkPayment");
     const tReq = useTranslations("requests.actions");
     const tPaymentValidation = useTranslations("paymentForm.validation");
+    const tRecipientNetwork = useTranslations("recipientNetworkSelect");
     const bulkPaymentFormSchema = useMemo(
         () =>
             buildBulkPaymentFormSchema({
@@ -52,15 +65,21 @@ export default function BulkPaymentPage() {
     const pageTitle = isConfidential ? t("confidentialTitle") : t("title");
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
-
-    useEffect(() => {
-        if (isConfidential) {
-            toast.warning(tBulk("comingSoonToast"));
-            router.replace(`/${selectedTreasury}/payments`);
-        }
-    }, [isConfidential, selectedTreasury, router]);
+    const { data: bridgeAssets = [], isLoading: isBridgeAssetsLoading } =
+        useBridgeTokens(true);
 
     const [step, setStep] = useState(0);
+    const [destinationNetworkId, setDestinationNetworkId] =
+        useState<string>(NEAR_COM_NETWORK_ID);
+    const [destinationAssetId, setDestinationAssetId] = useState<string | null>(
+        null,
+    );
+    // Raw bridge network name ("near", "eth", "sol", ...). Drives address
+    // validation for ALL recipients regardless of which one filtered the
+    // network picker. Empty string when no network is selected (e.g. address
+    // has no compatible network).
+    const [destinationNetworkName, setDestinationNetworkName] =
+        useState<string>("near");
 
     const form = useForm<BulkPaymentFormValues>({
         resolver: zodResolver(bulkPaymentFormSchema),
@@ -76,6 +95,44 @@ export default function BulkPaymentPage() {
 
     const selectedToken = form.watch("selectedToken");
     const comment = form.watch("comment");
+    const csvDataWatch = form.watch("csvData");
+    const pasteDataWatch = form.watch("pasteDataInput");
+    const activeTab = form.watch("activeTab");
+    // RecipientNetworkSelect needs an address to drive compatibility split.
+    // Pull the first recipient from whichever input the user is using —
+    // compatible-network detection then matches the user's actual chain.
+    const firstRecipient = useMemo(() => {
+        const raw =
+            activeTab === "upload"
+                ? (csvDataWatch ?? "")
+                : (pasteDataWatch ?? "");
+        const lines = raw
+            .split(/\r?\n/)
+            .map((l) => l.trim())
+            .filter(Boolean);
+        // Skip a CSV header row if present (`recipient,amount`).
+        const start = lines[0]?.toLowerCase().startsWith("recipient") ? 1 : 0;
+        const firstLine = lines[start] ?? "";
+        // Format: `address,amount[,memo]`. First column is the address.
+        return firstLine.split(",")[0]?.trim() ?? "";
+    }, [activeTab, csvDataWatch, pasteDataWatch]);
+
+    const networkSectionRules = useMemo<
+        SectionRule<RecipientNetworkRuleOption>[]
+    >(
+        () => [
+            {
+                title: tRecipientNetwork("available"),
+                filter: (option) => option.isCompatible,
+            },
+            {
+                title: tRecipientNetwork("incompatible"),
+                filter: (option) => !option.isCompatible,
+                disabled: true,
+            },
+        ],
+        [tRecipientNetwork],
+    );
 
     const [paymentData, setPaymentData] = useState<BulkPaymentData[]>([]);
     const [networkFeePerRecipient, setNetworkFeePerRecipient] = useState<
@@ -142,10 +199,111 @@ export default function BulkPaymentPage() {
         setEditingIndex(null);
     };
 
+    // Confidential submission — talks to the BE prepare endpoint, builds an
+    // opaque v1.signer proposal that signs the header intent hash. The BE
+    // worker drives activate/ping/submit after the DAO approves.
+    const onSubmitConfidential = async () => {
+        if (!selectedTreasury || paymentData.length === 0 || !selectedToken)
+            return;
+
+        const proposalBond = policy?.proposal_bond || "0";
+
+        // Pad each recipient amount by the estimated network fee so the BE
+        // can keep using EXACT_INPUT 1Click quotes — the sub will always
+        // hold enough to cover the withdrawal, and the recipient nets ~the
+        // user-typed amount. NEAR.COM (intra-Intents) leg has no fee.
+        const feePerRecipient = networkFeePerRecipient
+            ? Big(networkFeePerRecipient)
+            : Big(0);
+        const payments = paymentData.map((p) => ({
+            recipient: p.recipient,
+            amount: Big(p.amount || "0")
+                .add(feePerRecipient)
+                .times(Big(10).pow(selectedToken.decimals))
+                .toFixed(0),
+        }));
+
+        const toNearCom = destinationNetworkId === NEAR_COM_NETWORK_ID;
+        try {
+            const prepared = await prepareConfidentialBulkPayment({
+                daoId: selectedTreasury,
+                originAsset: selectedToken.address,
+                toNearCom,
+                destinationAsset: toNearCom
+                    ? undefined
+                    : (destinationAssetId ?? destinationNetworkId),
+                decimals: selectedToken.decimals,
+                payments,
+                notes: comment || undefined,
+            });
+
+            const proposal = buildConfidentialBulkProposal({
+                headerPayloadHash: prepared.headerPayloadHash,
+                recipientPayloadHashes: prepared.recipientPayloadHashes,
+                treasuryId: selectedTreasury,
+            });
+
+            await createProposal(
+                tBulk("proposalSubmitted"),
+                {
+                    treasuryId: selectedTreasury,
+                    proposal: {
+                        description: proposal.proposal.description,
+                        kind: proposal.proposal.kind,
+                    },
+                    proposalBond,
+                    additionalTransactions: [],
+                    proposalType: "payment",
+                },
+                false,
+            );
+
+            trackEvent("bulk-payment-submitted", {
+                treasury_id: selectedTreasury,
+                token_symbol: selectedToken.symbol,
+                recipients_count: paymentData.length,
+                confidential: true,
+            });
+
+            toast.success(tBulk("proposalSubmitted"), {
+                duration: 10000,
+                action: {
+                    label: tReq("viewRequest"),
+                    onClick: () =>
+                        router.push(
+                            `/${selectedTreasury}/requests?tab=InProgress`,
+                        ),
+                },
+                classNames: {
+                    toast: "!p-2 !px-4",
+                    actionButton:
+                        "!bg-transparent !text-foreground hover:!bg-muted !border-0",
+                    title: "!border-r !border-r-border !pr-4",
+                },
+            });
+
+            await queryClient.invalidateQueries({
+                queryKey: ["subscription", selectedTreasury],
+            });
+
+            form.reset();
+            setStep(0);
+            setPaymentData([]);
+        } catch (error) {
+            console.error("Failed to submit confidential bulk payment:", error);
+            toast.error(
+                error instanceof Error ? error.message : tBulk("submitFailed"),
+            );
+        }
+    };
+
     // Handle submission
     const onSubmit = async () => {
         if (isSubmittingProposalRef.current) {
             return;
+        }
+        if (isConfidential) {
+            return onSubmitConfidential();
         }
         if (!selectedTreasury || paymentData.length === 0 || !selectedToken)
             return;
@@ -379,6 +537,50 @@ export default function BulkPaymentPage() {
                             handleBack={() => router.back()}
                             treasuryId={selectedTreasury || ""}
                             onContinue={handleContinueFromUpload}
+                            isConfidential={isConfidential}
+                            destinationNetwork={
+                                isConfidential
+                                    ? destinationNetworkName
+                                    : undefined
+                            }
+                            destinationAssetId={
+                                isConfidential ? destinationAssetId : undefined
+                            }
+                            networkSlot={
+                                isConfidential && selectedToken ? (
+                                    <RecipientNetworkSelect
+                                        value={destinationNetworkId}
+                                        onChange={(id) => {
+                                            setDestinationNetworkId(id);
+                                            if (!id) {
+                                                setDestinationNetworkName("");
+                                                setDestinationAssetId(null);
+                                            }
+                                        }}
+                                        token={
+                                            selectedToken as unknown as Parameters<
+                                                typeof RecipientNetworkSelect
+                                            >[0]["token"]
+                                        }
+                                        recipient={firstRecipient}
+                                        sectionRules={networkSectionRules}
+                                        bridgeAssets={bridgeAssets}
+                                        isBridgeAssetsLoading={
+                                            isBridgeAssetsLoading
+                                        }
+                                        onNetworkChange={(opt) => {
+                                            setDestinationAssetId(
+                                                opt.id === NEAR_COM_NETWORK_ID
+                                                    ? null
+                                                    : opt.id,
+                                            );
+                                            setDestinationNetworkName(
+                                                opt.networkName,
+                                            );
+                                        }}
+                                    />
+                                ) : null
+                            }
                         />
                     )}
 
