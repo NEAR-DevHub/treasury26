@@ -13,9 +13,9 @@ use super::models::{
     PublicHistoryEventStatus,
 };
 use super::repository::{
-    clear_projection_error, delete_stale_gold_rows, earliest_silver_time, has_gold_before,
-    load_dirty_accounts, load_silver_suffix, seed_ledger_before, upsert_gold_event,
-    upsert_projection_error,
+    clear_projection_error, delete_stale_gold_rows, earliest_pending_exchange_time,
+    earliest_silver_time, has_gold_before, load_dirty_accounts, load_silver_suffix,
+    seed_ledger_before, upsert_gold_event, upsert_projection_error,
 };
 use crate::AppState;
 
@@ -27,7 +27,7 @@ use std::sync::LazyLock;
 
 use crate::utils::env::EnvVars;
 
-const PUBLIC_GOLD_SCHEDULER_TICK: Duration = Duration::from_secs(10);
+const PUBLIC_GOLD_SCHEDULER_TICK: Duration = Duration::from_secs(5);
 const PUBLIC_GOLD_WORKERS: usize = 4;
 
 /// The NEAR runtime's implicit account; sender of gas-fee reward refunds
@@ -89,6 +89,16 @@ fn choose_recompute_from(
         earliest
     } else {
         recompute_from
+    }
+}
+
+fn widen_for_pending_exchange(
+    recompute_from: chrono::DateTime<chrono::Utc>,
+    earliest_pending: Option<chrono::DateTime<chrono::Utc>>,
+) -> chrono::DateTime<chrono::Utc> {
+    match earliest_pending {
+        Some(earliest_pending) if earliest_pending < recompute_from => earliest_pending,
+        _ => recompute_from,
     }
 }
 
@@ -722,6 +732,17 @@ pub async fn project_public_gold_for_account(
         true
     };
     let recompute_from = choose_recompute_from(earliest, cursor_recompute_from, has_prior_gold);
+    let earliest_pending = earliest_pending_exchange_time(&mut tx, account_id).await?;
+    let widened_recompute_from = widen_for_pending_exchange(recompute_from, earliest_pending);
+    if widened_recompute_from < recompute_from {
+        tracing::debug!(
+            account_id = account_id,
+            recompute_from = %widened_recompute_from,
+            previous_recompute_from = %recompute_from,
+            "public gold recompute widened for pending exchange"
+        );
+    }
+    let recompute_from = widened_recompute_from;
 
     let seed_rows = seed_ledger_before(&mut tx, account_id, recompute_from).await?;
     let mut ledger = GoldLedger::from_seed(seed_rows);
@@ -1060,6 +1081,38 @@ mod tests {
         assert_eq!(
             choose_recompute_from(earliest, Some(cursor), false),
             earliest
+        );
+    }
+
+    #[test]
+    fn pending_exchange_widen_keeps_current_without_pending() {
+        let recompute_from = chrono::DateTime::<chrono::Utc>::from_timestamp(20, 0).unwrap();
+
+        assert_eq!(
+            widen_for_pending_exchange(recompute_from, None),
+            recompute_from
+        );
+    }
+
+    #[test]
+    fn pending_exchange_widen_uses_older_pending_time() {
+        let recompute_from = chrono::DateTime::<chrono::Utc>::from_timestamp(20, 0).unwrap();
+        let pending = chrono::DateTime::<chrono::Utc>::from_timestamp(10, 0).unwrap();
+
+        assert_eq!(
+            widen_for_pending_exchange(recompute_from, Some(pending)),
+            pending
+        );
+    }
+
+    #[test]
+    fn pending_exchange_widen_ignores_newer_pending_time() {
+        let recompute_from = chrono::DateTime::<chrono::Utc>::from_timestamp(20, 0).unwrap();
+        let pending = chrono::DateTime::<chrono::Utc>::from_timestamp(30, 0).unwrap();
+
+        assert_eq!(
+            widen_for_pending_exchange(recompute_from, Some(pending)),
+            recompute_from
         );
     }
 

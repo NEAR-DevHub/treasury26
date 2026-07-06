@@ -151,7 +151,7 @@ fn success_status(outcome: Option<&NearblocksReceiptOutcome>) -> Option<bool> {
 /// Max attempts (including the first) before a 429 is surfaced as an error.
 const NEARBLOCKS_MAX_ATTEMPTS: u32 = 4;
 /// Fallback backoff when a 429 response omits a usable `Retry-After` header.
-const NEARBLOCKS_DEFAULT_BACKOFF: Duration = Duration::from_secs(2);
+const NEARBLOCKS_DEFAULT_BACKOFF: Duration = Duration::from_secs(6);
 /// Cap on any single backoff so a hostile `Retry-After` can't stall a worker.
 const NEARBLOCKS_MAX_BACKOFF: Duration = Duration::from_secs(30);
 

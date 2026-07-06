@@ -61,6 +61,26 @@ pub async fn has_gold_before(
     .await
 }
 
+pub async fn earliest_pending_exchange_time(
+    tx: &mut Transaction<'_, Postgres>,
+    dao_id: &str,
+) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT MIN(COALESCE(l.block_time, g.event_time))
+        FROM gold_public_history_events g
+        LEFT JOIN silver_public_transfer_legs l
+          ON l.id = g.primary_transfer_leg_id
+        WHERE g.dao_id = $1
+          AND g.transaction_type = 'exchange'
+          AND g.status = 'pending'
+        "#,
+    )
+    .bind(dao_id)
+    .fetch_one(&mut **tx)
+    .await
+}
+
 pub async fn seed_ledger_before(
     tx: &mut Transaction<'_, Postgres>,
     account_id: &str,

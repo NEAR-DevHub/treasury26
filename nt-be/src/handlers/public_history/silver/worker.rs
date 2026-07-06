@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -9,13 +9,13 @@ use super::cursors::clear_silver_dirty_if_not_advanced;
 use super::models::{SilverProjectionCycleStats, SilverProjectionResult};
 use super::normalize::normalize_bronze_row;
 use super::repository::{
-    clear_projection_error, delete_stale_silver_rows, earliest_bronze_time, has_silver_before,
+    clear_projection_errors, delete_stale_silver_rows, earliest_bronze_time, has_silver_before,
     load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change,
-    upsert_projection_error, upsert_silver_leg,
+    upsert_projection_errors, upsert_silver_legs,
 };
 use crate::AppState;
 
-const PUBLIC_SILVER_SCHEDULER_TICK: Duration = Duration::from_secs(10);
+const PUBLIC_SILVER_SCHEDULER_TICK: Duration = Duration::from_secs(5);
 const PUBLIC_SILVER_WORKERS: usize = 4;
 
 pub async fn project_public_silver_for_account(
@@ -74,26 +74,39 @@ pub async fn project_public_silver_for_account(
 
     let rows = load_bronze_suffix(&mut tx, account_id, recompute_from).await?;
     let mut stats = SilverProjectionResult::default();
+    let mut legs = Vec::new();
+    let mut leg_positions = HashMap::new();
     let mut preserve_leg_keys: HashSet<String> = HashSet::new();
+    let mut clear_error_source_event_ids = Vec::new();
+    let mut projection_errors = Vec::new();
 
     for row in rows {
         match normalize_bronze_row(&row) {
             Ok(Some(leg)) => {
-                preserve_leg_keys.insert(leg.leg_key.clone());
-                upsert_silver_leg(&mut tx, &leg).await?;
-                clear_projection_error(&mut tx, row.id).await?;
+                let leg_key = leg.leg_key.clone();
+                preserve_leg_keys.insert(leg_key.clone());
+                if let Some(index) = leg_positions.get(&leg_key).copied() {
+                    legs[index] = leg;
+                } else {
+                    leg_positions.insert(leg_key, legs.len());
+                    legs.push(leg);
+                }
+                clear_error_source_event_ids.push(row.id);
                 stats.rows_projected += 1;
             }
             Ok(None) => {
-                clear_projection_error(&mut tx, row.id).await?;
+                clear_error_source_event_ids.push(row.id);
             }
             Err(reason) => {
-                upsert_projection_error(&mut tx, row.id, account_id, &reason, &row.raw_payload)
-                    .await?;
+                projection_errors.push((row.id, reason, row.raw_payload));
                 stats.errors_written += 1;
             }
         }
     }
+
+    upsert_silver_legs(&mut tx, &legs).await?;
+    clear_projection_errors(&mut tx, &clear_error_source_event_ids).await?;
+    upsert_projection_errors(&mut tx, account_id, &projection_errors).await?;
 
     let preserve_leg_keys = preserve_leg_keys.into_iter().collect::<Vec<_>>();
     stats.rows_deleted =

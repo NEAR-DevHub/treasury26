@@ -15,7 +15,9 @@ use crate::handlers::public_history::bronze::store::{
     PublicHistorySource, load_public_history_cursor, record_public_history_poll_result,
     save_public_backfill_progress, upsert_public_history_events,
 };
+use crate::handlers::public_history::gold::projector::project_public_gold_for_account;
 use crate::handlers::public_history::proposals::linker::link_public_proposal_receipts;
+use crate::handlers::public_history::silver::worker::project_public_silver_for_account;
 use crate::jobs::context::JobContext;
 use crate::jobs::postgres::{active_job_exists, is_unique_violation_on, storage};
 
@@ -334,24 +336,100 @@ async fn handle_latest_job(job: PublicHistoryJob, context: Data<JobContext>) -> 
         return Ok(());
     };
 
-    run_latest_refresh(&context.state, &account_id, source)
+    let (touched, inserted, changed) = run_latest_refresh(&context.state, &account_id, source)
         .await
-        .map(|(touched, inserted, changed)| {
-            tracing::info!(
-                account_id = account_id,
-                source = %source,
-                rows_touched = touched,
-                rows_inserted = inserted,
-                rows_changed = changed,
-                "public latest refresh job finished"
-            );
-        })
         .map_err(|(status, message)| {
             public_history_error(format!(
                 "public latest refresh failed ({}): {}",
                 status, message
             ))
-        })
+        })?;
+
+    tracing::info!(
+        account_id = account_id,
+        source = %source,
+        rows_touched = touched,
+        rows_inserted = inserted,
+        rows_changed = changed,
+        "public latest refresh job finished"
+    );
+
+    let silver_ready =
+        match project_public_silver_for_account(&context.state.db_pool, &account_id).await {
+            Ok(silver_stats) if silver_stats.skipped_locked => {
+                tracing::debug!(
+                    account_id = account_id,
+                    source = %source,
+                    "public latest refresh projection nudge skipped silver lock"
+                );
+                false
+            }
+            Ok(silver_stats) => {
+                tracing::debug!(
+                    account_id = account_id,
+                    source = %source,
+                    rows_projected = silver_stats.rows_projected,
+                    rows_deleted = silver_stats.rows_deleted,
+                    errors_written = silver_stats.errors_written,
+                    "public latest refresh projection nudge finished silver"
+                );
+                true
+            }
+            Err(error) => {
+                tracing::warn!(
+                    account_id = account_id,
+                    source = %source,
+                    error = %error,
+                    "public latest refresh projection nudge failed silver"
+                );
+                false
+            }
+        };
+
+    if !silver_ready {
+        return Ok(());
+    }
+
+    match project_public_gold_for_account(
+        &context.state.db_pool,
+        &context.state.token_price_service,
+        &account_id,
+    )
+    .await
+    {
+        Ok(gold_stats) if gold_stats.skipped_locked => {
+            tracing::debug!(
+                account_id = account_id,
+                source = %source,
+                "public latest refresh projection nudge skipped gold lock"
+            );
+        }
+        Ok(gold_stats) => {
+            tracing::debug!(
+                account_id = account_id,
+                source = %source,
+                rows_projected = gold_stats.rows_projected,
+                rows_deleted = gold_stats.rows_deleted,
+                errors_written = gold_stats.errors_written,
+                "public latest refresh projection nudge finished gold"
+            );
+            if gold_stats.rows_projected > 0 || gold_stats.rows_deleted > 0 {
+                context
+                    .state
+                    .publish_treasury_projection_updated(account_id.clone());
+            }
+        }
+        Err(error) => {
+            tracing::warn!(
+                account_id = account_id,
+                source = %source,
+                error = %error,
+                "public latest refresh projection nudge failed gold"
+            );
+        }
+    }
+
+    Ok(())
 }
 
 async fn handle_backfill_job(

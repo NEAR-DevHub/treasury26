@@ -119,11 +119,54 @@ pub async fn load_bronze_suffix(
     .await
 }
 
-pub async fn upsert_silver_leg(
+pub async fn upsert_silver_legs(
     tx: &mut Transaction<'_, Postgres>,
-    leg: &NormalizedTransferLeg,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    legs: &[NormalizedTransferLeg],
+) -> Result<u64, sqlx::Error> {
+    if legs.is_empty() {
+        return Ok(0);
+    }
+
+    let account_ids: Vec<&str> = legs.iter().map(|leg| leg.account_id.as_str()).collect();
+    let leg_keys: Vec<&str> = legs.iter().map(|leg| leg.leg_key.as_str()).collect();
+    let source_event_ids: Vec<i64> = legs.iter().map(|leg| leg.source_event_id).collect();
+    let sources: Vec<&str> = legs.iter().map(|leg| leg.source.as_str()).collect();
+    let proposal_refs: Vec<Option<i64>> = legs
+        .iter()
+        .map(|leg| leg.proposal_link.as_ref().map(|link| link.proposal_ref))
+        .collect();
+    let proposal_ids: Vec<Option<i64>> = legs
+        .iter()
+        .map(|leg| leg.proposal_link.as_ref().map(|link| link.proposal_id))
+        .collect();
+    let transaction_hashes: Vec<Option<&str>> = legs
+        .iter()
+        .map(|leg| leg.transaction_hash.as_deref())
+        .collect();
+    let receipt_ids: Vec<Option<&str>> = legs.iter().map(|leg| leg.receipt_id.as_deref()).collect();
+    let block_heights: Vec<i64> = legs.iter().map(|leg| leg.block_height).collect();
+    let block_times: Vec<DateTime<Utc>> = legs.iter().map(|leg| leg.block_time).collect();
+    let token_standards: Vec<&str> = legs
+        .iter()
+        .map(|leg| leg.asset.token_standard().as_str())
+        .collect();
+    let token_ids: Vec<&str> = legs.iter().map(|leg| leg.asset.token_id()).collect();
+    let directions: Vec<&str> = legs.iter().map(|leg| leg.direction.as_str()).collect();
+    let counterparties: Vec<Option<&str>> =
+        legs.iter().map(|leg| leg.counterparty.as_deref()).collect();
+    let amount_raws = legs
+        .iter()
+        .map(|leg| leg.amount.raw.clone())
+        .collect::<Vec<_>>();
+    let amounts = legs
+        .iter()
+        .map(|leg| leg.amount.amount.clone())
+        .collect::<Vec<_>>();
+    let decimals: Vec<i32> = legs.iter().map(|leg| leg.amount.decimals).collect();
+    let leg_kinds: Vec<&str> = legs.iter().map(|leg| leg.leg_kind.as_str()).collect();
+    let raw_payloads: Vec<Value> = legs.iter().map(|leg| leg.raw_payload.clone()).collect();
+
+    let result = sqlx::query(
         r#"
         INSERT INTO silver_public_transfer_legs (
             account_id,
@@ -146,11 +189,66 @@ pub async fn upsert_silver_leg(
             leg_kind,
             raw_payload
         )
-        VALUES (
-            $1, $2, $3, $4::public_history_source, $5, $6, $7, $8,
-            $9, $10, $11::public_token_standard, $12,
-            $13::public_transfer_direction, $14, $15, $16, $17,
-            $18::public_transfer_leg_kind, $19
+        SELECT
+            account_id,
+            leg_key,
+            source_event_id,
+            source::public_history_source,
+            proposal_ref,
+            proposal_id,
+            transaction_hash,
+            receipt_id,
+            block_height,
+            block_time,
+            token_standard::public_token_standard,
+            token_id,
+            direction::public_transfer_direction,
+            counterparty,
+            amount_raw,
+            amount,
+            decimals,
+            leg_kind::public_transfer_leg_kind,
+            raw_payload
+        FROM UNNEST(
+            $1::text[],
+            $2::text[],
+            $3::bigint[],
+            $4::text[],
+            $5::bigint[],
+            $6::bigint[],
+            $7::text[],
+            $8::text[],
+            $9::bigint[],
+            $10::timestamptz[],
+            $11::text[],
+            $12::text[],
+            $13::text[],
+            $14::text[],
+            $15::numeric[],
+            $16::numeric[],
+            $17::integer[],
+            $18::text[],
+            $19::jsonb[]
+        ) AS t(
+            account_id,
+            leg_key,
+            source_event_id,
+            source,
+            proposal_ref,
+            proposal_id,
+            transaction_hash,
+            receipt_id,
+            block_height,
+            block_time,
+            token_standard,
+            token_id,
+            direction,
+            counterparty,
+            amount_raw,
+            amount,
+            decimals,
+            leg_kind,
+            raw_payload
         )
         ON CONFLICT (leg_key) DO UPDATE SET
             source_event_id = EXCLUDED.source_event_id,
@@ -173,39 +271,51 @@ pub async fn upsert_silver_leg(
             updated_at = NOW()
         "#,
     )
-    .bind(&leg.account_id)
-    .bind(&leg.leg_key)
-    .bind(leg.source_event_id)
-    .bind(leg.source.as_str())
-    .bind(leg.proposal_link.as_ref().map(|link| link.proposal_ref))
-    .bind(leg.proposal_link.as_ref().map(|link| link.proposal_id))
-    .bind(&leg.transaction_hash)
-    .bind(&leg.receipt_id)
-    .bind(leg.block_height)
-    .bind(leg.block_time)
-    .bind(leg.asset.token_standard().as_str())
-    .bind(leg.asset.token_id())
-    .bind(leg.direction.as_str())
-    .bind(&leg.counterparty)
-    .bind(&leg.amount.raw)
-    .bind(&leg.amount.amount)
-    .bind(leg.amount.decimals)
-    .bind(leg.leg_kind.as_str())
-    .bind(&leg.raw_payload)
+    .bind(&account_ids)
+    .bind(&leg_keys)
+    .bind(&source_event_ids)
+    .bind(&sources)
+    .bind(&proposal_refs)
+    .bind(&proposal_ids)
+    .bind(&transaction_hashes)
+    .bind(&receipt_ids)
+    .bind(&block_heights)
+    .bind(&block_times)
+    .bind(&token_standards)
+    .bind(&token_ids)
+    .bind(&directions)
+    .bind(&counterparties)
+    .bind(&amount_raws)
+    .bind(&amounts)
+    .bind(&decimals)
+    .bind(&leg_kinds)
+    .bind(&raw_payloads)
     .execute(&mut **tx)
     .await?;
 
-    Ok(())
+    Ok(result.rows_affected())
 }
 
-pub async fn upsert_projection_error(
+pub async fn upsert_projection_errors(
     tx: &mut Transaction<'_, Postgres>,
-    source_event_id: i64,
     account_id: &str,
-    reason: &str,
-    raw_payload: &Value,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    errors: &[(i64, String, Value)],
+) -> Result<u64, sqlx::Error> {
+    if errors.is_empty() {
+        return Ok(0);
+    }
+
+    let source_event_ids: Vec<i64> = errors.iter().map(|(id, _, _)| *id).collect();
+    let reasons: Vec<&str> = errors
+        .iter()
+        .map(|(_, reason, _)| reason.as_str())
+        .collect();
+    let raw_payloads: Vec<Value> = errors
+        .iter()
+        .map(|(_, _, raw_payload)| raw_payload.clone())
+        .collect();
+
+    let result = sqlx::query(
         r#"
         INSERT INTO silver_public_history_projection_errors (
             source_event_id,
@@ -213,7 +323,9 @@ pub async fn upsert_projection_error(
             reason,
             raw_payload
         )
-        VALUES ($1, $2, $3, $4)
+        SELECT source_event_id, $2, reason, raw_payload
+        FROM UNNEST($1::bigint[], $3::text[], $4::jsonb[])
+            AS t(source_event_id, reason, raw_payload)
         ON CONFLICT (source_event_id) DO UPDATE SET
             account_id = EXCLUDED.account_id,
             reason = EXCLUDED.reason,
@@ -221,29 +333,33 @@ pub async fn upsert_projection_error(
             updated_at = NOW()
         "#,
     )
-    .bind(source_event_id)
+    .bind(&source_event_ids)
     .bind(account_id)
-    .bind(reason)
-    .bind(raw_payload)
+    .bind(&reasons)
+    .bind(&raw_payloads)
     .execute(&mut **tx)
     .await?;
-    Ok(())
+    Ok(result.rows_affected())
 }
 
-pub async fn clear_projection_error(
+pub async fn clear_projection_errors(
     tx: &mut Transaction<'_, Postgres>,
-    source_event_id: i64,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    source_event_ids: &[i64],
+) -> Result<u64, sqlx::Error> {
+    if source_event_ids.is_empty() {
+        return Ok(0);
+    }
+
+    let result = sqlx::query(
         r#"
         DELETE FROM silver_public_history_projection_errors
-        WHERE source_event_id = $1
+        WHERE source_event_id = ANY($1::bigint[])
         "#,
     )
-    .bind(source_event_id)
+    .bind(source_event_ids)
     .execute(&mut **tx)
     .await?;
-    Ok(())
+    Ok(result.rows_affected())
 }
 
 pub async fn delete_stale_silver_rows(
