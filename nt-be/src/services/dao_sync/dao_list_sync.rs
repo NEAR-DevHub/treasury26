@@ -9,11 +9,6 @@ use sqlx::PgPool;
 /// Sputnik DAO factory contract
 const SPUTNIK_DAO_FACTORY: &str = "sputnik-dao.near";
 
-/// Run the background DAO list sync service
-///
-/// This function runs in a loop, fetching the complete DAO list from sputnik-dao.near
-/// every 5 minutes and upserting into the local database.
-
 /// Sync DAO list from sputnik-dao.near factory
 ///
 /// Fetches all DAOs and upserts them into the database.

@@ -15,11 +15,6 @@ const MAX_DAOS_PER_CYCLE: i64 = 50;
 /// Period after which non-dirty DAOs should be re-synced (24 hours = daily)
 const STALE_THRESHOLD_HOURS: i64 = 24;
 
-/// Run the background DAO policy sync service
-///
-/// This function runs in a loop, processing dirty DAOs immediately
-/// and stale DAOs periodically.
-
 /// Process dirty DAOs (high priority)
 pub async fn process_dirty_daos(
     pool: &PgPool,
