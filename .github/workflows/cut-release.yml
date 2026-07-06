@@ -49,16 +49,6 @@ jobs:
           tag_prefix: release-
           dry_run: true
 
-      - name: Create release branch
-        run: |
-          BRANCH="${{ steps.version.outputs.new_tag }}"
-          if git ls-remote --exit-code --heads origin "$BRANCH"; then
-            echo "Error: branch $BRANCH already exists"
-            exit 1
-          fi
-          git checkout -b "$BRANCH"
-          git push origin "$BRANCH"
-
       - name: Update render.yaml production branches
         run: |
           BRANCH="${{ steps.version.outputs.new_tag }}"
@@ -106,17 +96,22 @@ jobs:
       - name: Commit render.yaml update to release branch and open PR
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          BRANCH: ${{ steps.version.outputs.new_tag }}
+          VERSION: ${{ steps.version.outputs.new_version }}
+          CHANGELOGS: ${{ steps.version.outputs.changelog }}
         run: |
-          BRANCH="${{ steps.version.outputs.new_tag }}"
-          VERSION="${{ steps.version.outputs.new_version }}"
-          git checkout "$BRANCH"
+          if git ls-remote --exit-code --heads origin "$BRANCH"; then
+            echo "Error: branch $BRANCH already exists"
+            exit 1
+          fi
+          git checkout -b "$BRANCH"
           git add render.yaml
           if git diff --cached --quiet; then
             echo "No changes to render.yaml — production branch already set correctly"
           else
             git commit -m "chore: point production deployment to $BRANCH"
-            git push origin "$BRANCH"
           fi
+          git push origin "$BRANCH"
           gh pr create \
             --title "chore: point production deployment to $BRANCH" \
             --body "Automated PR to update render.yaml production branches to \`$BRANCH\`." \
@@ -125,7 +120,7 @@ jobs:
           gh release create "$BRANCH" \
             --title "v${VERSION}" \
             --target "$BRANCH" \
-            --notes '${{ steps.version.outputs.changelog }}'
+            --notes "$CHANGELOGS"
 
       - name: Assign linked issues to release milestone
         uses: actions/github-script@v7
