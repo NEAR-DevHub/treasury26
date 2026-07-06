@@ -6,8 +6,9 @@
 //! (`apalis.jobs`). That gives us, uniformly and for free:
 //!
 //! - per-job queues with task history, results, and errors in Postgres
-//! - the apalis-board web UI (`/` on `JOBS_UI_ADDR`) to inspect queues,
-//!   workers, and task outcomes, and to trigger a job manually (PUT a task)
+//! - the apalis-board web UI (mounted on the main HTTP service behind
+//!   Basic Auth) to inspect queues, workers, and task outcomes, and to
+//!   trigger a job manually (PUT a task)
 //! - tracing spans per task and `concurrency(1)` so cycles never overlap
 //!
 //! Schedules keep their old intervals/env-var overrides. Jobs that used to
@@ -71,12 +72,12 @@ pub fn schedule_every_secs(secs: u64) -> Schedule {
             );
         }
         format!("*/{secs} * * * * *")
-    } else if secs % 86_400 == 0 {
+    } else if secs.is_multiple_of(86_400) {
         if secs > 86_400 {
             tracing::warn!(secs, "multi-day intervals rounded down to daily");
         }
         "0 0 0 * * *".to_string()
-    } else if secs % 3600 == 0 {
+    } else if secs.is_multiple_of(3600) {
         let hours = secs / 3600;
         if 24 % hours != 0 {
             tracing::warn!(
@@ -85,7 +86,7 @@ pub fn schedule_every_secs(secs: u64) -> Schedule {
             );
         }
         format!("0 0 */{hours} * * *")
-    } else if secs % 60 == 0 {
+    } else if secs.is_multiple_of(60) {
         let mins = secs / 60;
         if 60 % mins != 0 {
             tracing::warn!(
@@ -234,7 +235,13 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         );
         // Event-driven wake: a failed creation attempt pings the Notify so
         // the sweep runs within moments instead of waiting for the poll.
-        if let Some(store) = queues.last().map(|(_, s)| s.clone()) {
+        // Look the queue up by name — relying on `last()` breaks silently
+        // if another queue is later registered below this block.
+        if let Some(store) = queues
+            .iter()
+            .find(|(name, _)| *name == "treasury-creation-sweeper")
+            .map(|(_, s)| s.clone())
+        {
             let notify = state.creation_sweep_notify.clone();
             tokio::spawn(async move {
                 loop {
@@ -346,15 +353,108 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         "ft-lockup-refresh",
     ] {
         if let Some(store) = queues.storage(queue) {
-            push_now(store, "startup").await;
+            // Label the push with the real queue name so a failed push is
+            // attributed to the right queue in the logs.
+            push_now(store, queue).await;
         }
     }
 
     queues
 }
 
-/// apalis-board: REST API + web UI over every registered queue.
-pub fn board_router(queues: &JobQueues) -> Router {
+const BOARD_AUTH_REALM: &str = "Trezu Jobs Board";
+
+/// HTTP Basic Auth gate for the board, reusing the same admin credentials
+/// (`ADMIN_USERS`) and check as the warnings admin pages
+/// (`handlers::warnings::admin`).
+async fn board_basic_auth(
+    axum::extract::State(state): axum::extract::State<Arc<AppState>>,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use axum::http::{
+        StatusCode,
+        header::{AUTHORIZATION, WWW_AUTHENTICATE},
+    };
+    use axum::response::IntoResponse;
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+
+    let unauthorized = || {
+        (
+            StatusCode::UNAUTHORIZED,
+            [(
+                WWW_AUTHENTICATE,
+                format!("Basic realm=\"{BOARD_AUTH_REALM}\""),
+            )],
+            "Unauthorized",
+        )
+            .into_response()
+    };
+
+    if state.env_vars.admin_users.is_empty() {
+        tracing::warn!("apalis board UI blocked: no ADMIN_USERS configured");
+        return unauthorized();
+    }
+
+    let credentials = request
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Basic "))
+        .and_then(|encoded| STANDARD.decode(encoded).ok())
+        .and_then(|decoded| String::from_utf8(decoded).ok());
+
+    let authenticated = credentials
+        .as_deref()
+        .and_then(|creds| creds.split_once(':'))
+        .and_then(|(username, password)| {
+            crate::utils::admin_auth::authenticate_admin(
+                &state.env_vars.admin_users,
+                username,
+                password,
+            )
+        })
+        .is_some();
+
+    if authenticated {
+        next.run(request).await
+    } else {
+        unauthorized()
+    }
+}
+
+/// Keeps unknown `/api/*` requests a plain 404 instead of letting the
+/// board's UI fallback answer them. The board's own API lives at
+/// `/api/v1`; every other `/api/*` path belongs to the public API and must
+/// not be shadowed (or challenged for board auth) by mounting the board.
+/// True for `/api/*` paths that belong to the public API, not the board.
+/// The board owns exactly `/api/v1` and everything under `/api/v1/`.
+fn is_foreign_api_path(path: &str) -> bool {
+    path.starts_with("/api/") && path != "/api/v1" && !path.starts_with("/api/v1/")
+}
+
+async fn board_api_guard(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use axum::response::IntoResponse;
+    if is_foreign_api_path(request.uri().path()) {
+        return axum::http::StatusCode::NOT_FOUND.into_response();
+    }
+    next.run(request).await
+}
+
+/// apalis-board: REST API + web UI over every registered queue, gated by
+/// HTTP Basic Auth against the admin credentials.
+///
+/// Mounted as the main HTTP service's `fallback_service` (see `main.rs`)
+/// rather than on a separate port, so it lives behind the same listener as
+/// the rest of the API — like the warnings admin pages. The board frontend
+/// (apalis-board) is a root-mounted SPA (absolute asset paths +
+/// `origin`-based API base), so it must be served from `/`; the API guard
+/// above preserves the public API's 404 behaviour, and Basic Auth gates
+/// every board route (API, UI, and static assets).
+pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
     use apalis_board::axum::framework::{ApiBuilder, RegisterRoute};
     use apalis_board::axum::ui::ServeUI;
 
@@ -366,28 +466,35 @@ pub fn board_router(queues: &JobQueues) -> Router {
     Router::new()
         .nest("/api/v1", api.build())
         .fallback_service(ServeUI::new())
+        // Auth gates every board route. Applied inside the guard so that an
+        // unknown public `/api/*` path 404s without an auth challenge.
+        .layer(axum::middleware::from_fn_with_state(
+            state,
+            board_basic_auth,
+        ))
+        .layer(axum::middleware::from_fn(board_api_guard))
 }
 
-/// Serves the board on its own listener when `JOBS_UI_ADDR` is set
-/// (e.g. `127.0.0.1:3003`). Separate from the public API on purpose —
-/// the board has no auth of its own.
-pub fn spawn_board_server(queues: &JobQueues) {
-    let Ok(addr) = std::env::var("JOBS_UI_ADDR") else {
-        tracing::info!("apalis board UI disabled (JOBS_UI_ADDR not set)");
-        return;
-    };
-    let router = board_router(queues);
-    tokio::spawn(async move {
-        let listener = match tokio::net::TcpListener::bind(&addr).await {
-            Ok(listener) => listener,
-            Err(e) => {
-                tracing::error!(addr, error = %e, "failed to bind jobs UI listener");
-                return;
-            }
-        };
-        tracing::info!(addr = %addr, "apalis board UI running");
-        if let Err(e) = axum::serve(listener, router).await {
-            tracing::error!(error = %e, "jobs UI server exited");
-        }
-    });
+#[cfg(test)]
+mod tests {
+    use super::is_foreign_api_path;
+
+    #[test]
+    fn board_owns_only_api_v1() {
+        // Board's own API — must reach the board (not a public 404).
+        assert!(!is_foreign_api_path("/api/v1"));
+        assert!(!is_foreign_api_path("/api/v1/queues"));
+        assert!(!is_foreign_api_path("/api/v1/queues/price-sync/tasks"));
+
+        // Public API namespace — must stay a 404, never shadowed by the
+        // board or challenged for board auth.
+        assert!(is_foreign_api_path("/api/warnings"));
+        assert!(is_foreign_api_path("/api/user/create"));
+        assert!(is_foreign_api_path("/api/v10/x")); // not a v1 subpath
+
+        // Non-API paths belong to the board UI (served after auth).
+        assert!(!is_foreign_api_path("/"));
+        assert!(!is_foreign_api_path("/queues"));
+        assert!(!is_foreign_api_path("/apalis-board-web-abc.js"));
+    }
 }

@@ -19,35 +19,38 @@ use bigdecimal::BigDecimal;
 /// Maximum number of provider asset IDs to request in one current-price call.
 const CURRENT_PRICE_BATCH_SIZE: usize = 50;
 
+/// Error type for a price sync cycle — boxed so it propagates to the
+/// apalis handler and marks the task failed on apalis-board.
+pub type PriceSyncError = Box<dyn std::error::Error + Send + Sync>;
+
 /// Run one price sync cycle: backfill missing end-of-day prices, then
-/// refresh current prices. Returns a short human-readable summary.
+/// refresh current prices. Returns a short human-readable summary on
+/// success, or an error so a failed run is reported as failed (not
+/// silently `Ok`) on the board.
 pub async fn run_price_sync_cycle<P: PriceProvider + Send + Sync>(
     pool: &PgPool,
     provider: &P,
-) -> String {
-    let provider_asset_ids = match get_all_provider_asset_ids(pool, provider).await {
-        Ok(assets) => assets,
-        Err(e) => {
+) -> Result<String, PriceSyncError> {
+    let provider_asset_ids = get_all_provider_asset_ids(pool, provider)
+        .await
+        .map_err(|e| {
             tracing::error!("Failed to load price sync asset list: {}", e);
-            return format!("failed to load asset list: {e}");
-        }
-    };
+            format!("failed to load asset list: {e}")
+        })?;
 
     if provider_asset_ids.is_empty() {
-        return "no assets to sync".to_string();
+        return Ok("no assets to sync".to_string());
     }
 
     // Find assets that need syncing (don't have yesterday's price).
     // We sync end-of-day prices, so we only sync completed days.
     let yesterday = (Utc::now() - chrono::Duration::days(1)).date_naive();
-    let assets_needing_sync =
-        match get_assets_needing_sync(pool, &provider_asset_ids, yesterday).await {
-            Ok(assets) => assets,
-            Err(e) => {
-                tracing::error!("Failed to check which assets need sync: {}", e);
-                return format!("failed to check sync targets: {e}");
-            }
-        };
+    let assets_needing_sync = get_assets_needing_sync(pool, &provider_asset_ids, yesterday)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to check which assets need sync: {}", e);
+            format!("failed to check sync targets: {e}")
+        })?;
 
     let mut synced_assets = 0usize;
     if !assets_needing_sync.is_empty() {
@@ -63,6 +66,8 @@ pub async fn run_price_sync_cycle<P: PriceProvider + Send + Sync>(
                     tracing::info!("Synced {} prices for {}", count, asset_id);
                 }
                 Err(e) => {
+                    // Per-asset failures are expected (delistings, provider
+                    // gaps) and don't fail the whole cycle.
                     tracing::warn!("Failed to sync prices for {}: {}", asset_id, e);
                 }
             }
@@ -72,18 +77,19 @@ pub async fn run_price_sync_cycle<P: PriceProvider + Send + Sync>(
         }
     }
 
-    let current = match sync_current_prices(pool, provider, &provider_asset_ids).await {
-        Ok(count) => count,
-        Err(e) => {
-            tracing::warn!("Failed to refresh current prices: {}", e);
-            0
-        }
-    };
+    // The current-price refresh is the cycle's main job; a failure here is
+    // a real failure of the run and must surface as such.
+    let current = sync_current_prices(pool, provider, &provider_asset_ids)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to refresh current prices: {}", e);
+            format!("failed to refresh current prices: {e}")
+        })?;
 
-    format!(
+    Ok(format!(
         "backfilled {synced_assets} assets, refreshed {current}/{} current prices",
         provider_asset_ids.len()
-    )
+    ))
 }
 
 /// Get list of provider asset IDs that need syncing (latest price is before target date)

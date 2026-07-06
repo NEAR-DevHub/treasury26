@@ -51,7 +51,7 @@ pub async fn price_sync(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, 
         state.http_client.clone(),
         state.env_vars.defillama_api_base_url.clone(),
     );
-    let summary = crate::services::run_price_sync_cycle(&state.db_pool, &provider).await;
+    let summary = crate::services::run_price_sync_cycle(&state.db_pool, &provider).await?;
     Ok(summary)
 }
 

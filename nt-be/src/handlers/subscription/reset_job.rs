@@ -109,8 +109,6 @@ async fn reset_due_monthly_plan_credits_at(
     Ok(updated_count)
 }
 
-/// Run background service that resets credits at startup and then at every UTC midnight.
-
 #[cfg(test)]
 mod tests {
     use super::*;

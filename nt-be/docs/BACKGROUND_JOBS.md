@@ -17,9 +17,13 @@ What this replaces: 17 hand-rolled `tokio::spawn` + interval loops in
 
 ## Web UI
 
-Set `JOBS_UI_ADDR` (e.g. `127.0.0.1:3003`) to serve the board + its REST
-API (`/api/v1`). **The board has no authentication** — bind it to
-localhost / a private network, never the public interface. Unset = disabled.
+The apalis-board (UI + its REST API at `/api/v1`) is served on the main
+HTTP service — same listener/port as the rest of the API, like the
+warnings admin pages — as the router's `fallback_service`. Every board
+route is behind **HTTP Basic Auth** using the same `ADMIN_USERS`
+credentials as the warnings admin pages; with `ADMIN_USERS` unset the
+board returns `401` for all requests. Unknown public `/api/*` paths keep
+returning a plain `404` (the board only owns `/api/v1`).
 
 ## Queues
 

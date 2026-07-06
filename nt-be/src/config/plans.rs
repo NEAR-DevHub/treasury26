@@ -322,6 +322,10 @@ pub fn get_volume_limit(plan_type: PlanType) -> Option<u64> {
 }
 
 #[cfg(test)]
+// Amounts are in cents; literals group as `dollars_cents` (e.g.
+// `10_000_00` = $10,000.00) for readability, which trips the
+// inconsistent-digit-grouping lint.
+#[allow(clippy::inconsistent_digit_grouping)]
 mod tests {
     use super::*;
 

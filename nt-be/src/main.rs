@@ -31,9 +31,9 @@ async fn async_main() {
 
     // All background jobs run as apalis workers: cron schedules piped into
     // per-job Postgres queues (see src/jobs/). The returned registry backs
-    // the apalis-board web UI served on JOBS_UI_ADDR.
+    // the apalis-board web UI, mounted below on the main HTTP service.
     let job_queues = nt_be::jobs::spawn_all(state.clone()).await;
-    nt_be::jobs::spawn_board_server(&job_queues);
+    let board = nt_be::jobs::board_router(&job_queues, state.clone());
 
     // Configure CORS - must specify exact origins, methods, and headers when using credentials
     let origins: Vec<HeaderValue> = state
@@ -78,6 +78,10 @@ async fn async_main() {
                 .with_state(state)
                 .layer(open_cors),
         )
+        // apalis-board (jobs UI + API) on the same listener, behind Basic
+        // Auth. It answers only paths no other route matched; its API guard
+        // keeps unknown public `/api/*` a plain 404.
+        .fallback_service(board)
         .layer(SentryHttpLayer::new().enable_transaction())
         .layer(NewSentryLayer::<Request<Body>>::new_from_top());
 
