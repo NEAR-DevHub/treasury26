@@ -241,10 +241,11 @@ impl TokenPriceIngestor {
 
         sqlx::query(
             r#"
-            INSERT INTO token_prices (token_id, minute_at, price_usd)
-            SELECT token_id, $2, price_usd
-            FROM UNNEST($1::text[], $3::numeric[]) AS t(token_id, price_usd)
-            ON CONFLICT (token_id, minute_at) DO NOTHING
+            INSERT INTO token_prices (token_ref, minute_at, price_usd)
+            SELECT t.id, $2, u.price_usd
+            FROM UNNEST($1::text[], $3::numeric[]) AS u(token_id, price_usd)
+            JOIN tokens t ON t.token_id = u.token_id
+            ON CONFLICT (token_ref, minute_at) DO NOTHING
             "#,
         )
         .bind(&token_ids)

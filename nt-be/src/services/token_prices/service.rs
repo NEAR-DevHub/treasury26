@@ -19,6 +19,8 @@ const LATEST_PRICE_FRESH_WINDOW: Duration = Duration::minutes(10);
 /// One row of the `tokens` registry as held in the in-memory snapshot.
 #[derive(Debug, Clone)]
 pub struct TokenRecord {
+    /// Surrogate key; `token_prices` rows are keyed on this, not the TEXT id.
+    pub id: i32,
     pub token_id: String,
     pub symbol: String,
     pub decimals: i16,
@@ -37,6 +39,7 @@ struct TokenSnapshot {
 }
 
 type TokenSnapshotRow = (
+    i32,
     String,
     String,
     i16,
@@ -66,7 +69,7 @@ impl TokenPriceService {
     pub async fn refresh_snapshot(&self) -> Result<usize, sqlx::Error> {
         let rows: Vec<TokenSnapshotRow> = sqlx::query_as(
             r#"
-            SELECT token_id, symbol, decimals, blockchain,
+            SELECT id, token_id, symbol, decimals, blockchain,
                    contract_address, coingecko_id, price_usd, price_updated_at
             FROM tokens
             "#,
@@ -77,6 +80,7 @@ impl TokenPriceService {
         let mut by_token_id = HashMap::with_capacity(rows.len());
         let mut by_contract = HashMap::with_capacity(rows.len());
         for (
+            id,
             token_id,
             symbol,
             decimals,
@@ -93,6 +97,7 @@ impl TokenPriceService {
             by_token_id.insert(
                 token_id.clone(),
                 TokenRecord {
+                    id,
                     token_id,
                     symbol,
                     decimals,
@@ -172,7 +177,7 @@ impl TokenPriceService {
         raw_token_id: &str,
         at: DateTime<Utc>,
     ) -> Result<Option<BigDecimal>, sqlx::Error> {
-        let Some(token_id) = self.resolve(raw_token_id) else {
+        let Some(token_ref) = self.token(raw_token_id).map(|t| t.id) else {
             return Ok(None);
         };
 
@@ -180,12 +185,12 @@ impl TokenPriceService {
             r#"
             SELECT price_usd
             FROM token_prices
-            WHERE token_id = $1 AND minute_at <= $2
+            WHERE token_ref = $1 AND minute_at <= $2
             ORDER BY minute_at DESC
             LIMIT 1
             "#,
         )
-        .bind(&token_id)
+        .bind(token_ref)
         .bind(at)
         .fetch_optional(&self.pool)
         .await?;
@@ -200,34 +205,34 @@ impl TokenPriceService {
         raw_token_ids: &[String],
         at: DateTime<Utc>,
     ) -> Result<HashMap<String, BigDecimal>, sqlx::Error> {
-        // canonical token_id -> raw ids that resolved to it
-        let mut canonical_to_raw: HashMap<String, Vec<&String>> = HashMap::new();
+        // token_ref -> raw ids that resolved to it
+        let mut ref_to_raw: HashMap<i32, Vec<&String>> = HashMap::new();
         for raw in raw_token_ids {
-            if let Some(token_id) = self.resolve(raw) {
-                canonical_to_raw.entry(token_id).or_default().push(raw);
+            if let Some(record) = self.token(raw) {
+                ref_to_raw.entry(record.id).or_default().push(raw);
             }
         }
-        if canonical_to_raw.is_empty() {
+        if ref_to_raw.is_empty() {
             return Ok(HashMap::new());
         }
 
-        let token_ids: Vec<String> = canonical_to_raw.keys().cloned().collect();
-        let rows: Vec<(String, BigDecimal)> = sqlx::query_as(
+        let token_refs: Vec<i32> = ref_to_raw.keys().copied().collect();
+        let rows: Vec<(i32, BigDecimal)> = sqlx::query_as(
             r#"
-            SELECT DISTINCT ON (token_id) token_id, price_usd
+            SELECT DISTINCT ON (token_ref) token_ref, price_usd
             FROM token_prices
-            WHERE token_id = ANY($1) AND minute_at <= $2
-            ORDER BY token_id, minute_at DESC
+            WHERE token_ref = ANY($1) AND minute_at <= $2
+            ORDER BY token_ref, minute_at DESC
             "#,
         )
-        .bind(&token_ids)
+        .bind(&token_refs)
         .bind(at)
         .fetch_all(&self.pool)
         .await?;
 
         let mut result = HashMap::new();
-        for (token_id, price) in rows {
-            if let Some(raws) = canonical_to_raw.get(&token_id) {
+        for (token_ref, price) in rows {
+            if let Some(raws) = ref_to_raw.get(&token_ref) {
                 for raw in raws {
                     result.insert((*raw).clone(), price.clone());
                 }
