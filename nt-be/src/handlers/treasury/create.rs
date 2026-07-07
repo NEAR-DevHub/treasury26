@@ -694,14 +694,10 @@ async fn run_creation_inner(
     // Confirm the user's members are on-chain before we declare success. Without
     // this, a failed ChangePolicy vote could still reach `Ok(())` and delete the
     // incomplete row, leaving a sponsor-only DAO with no sweeper recovery.
-    let final_state = classify_treasury_account(
-        state,
-        &treasury,
-        state.signer_id.as_str(),
-        &payload_members,
-    )
-    .await
-    .map_err(error_event)?;
+    let final_state =
+        classify_treasury_account(state, &treasury, state.signer_id.as_str(), &payload_members)
+            .await
+            .map_err(error_event)?;
 
     if final_state != ExistingDaoState::AlreadyOwnedByUser {
         return Err(error_event(format!(

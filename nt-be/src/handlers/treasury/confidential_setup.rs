@@ -584,7 +584,10 @@ async fn submit_and_approve_proposal(
     let proposal_id: u64 = add_outcome.json().map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to parse proposal id from add_proposal return value: {}", e),
+            format!(
+                "Failed to parse proposal id from add_proposal return value: {}",
+                e
+            ),
         )
     })?;
 
