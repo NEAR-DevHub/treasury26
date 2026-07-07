@@ -790,7 +790,7 @@ export default function BalanceWithGraph({
                 <Select value={selectedToken} onValueChange={setSelectedToken}>
                     <SelectTrigger
                         size="sm"
-                        className="w-[140px]"
+                        className="w-[140px] border-0 shadow-none focus:ring-0"
                         disabled={
                             isLoadingTokens || (!isConfidential && isLoading)
                         }
@@ -849,7 +849,10 @@ export default function BalanceWithGraph({
                             setSelectedPeriod(value as TimePeriod)
                         }
                     >
-                        <SelectTrigger size="sm" className="w-[92px]">
+                        <SelectTrigger
+                            size="sm"
+                            className="w-[92px] border-0 shadow-none focus:ring-0"
+                        >
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
