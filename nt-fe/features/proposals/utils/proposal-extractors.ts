@@ -17,6 +17,7 @@ import {
     VestingSchedule,
     AnyProposalData,
     BatchPaymentRequestData,
+    ConfidentialBulkRecipient,
     ConfidentialRequestData,
     MappedConfidentialRequest,
     MembersData,
@@ -840,6 +841,49 @@ export function extractConfidentialRequestData(
 
     let mapped: MappedConfidentialRequest = null;
     let title = "Confidential Request";
+
+    // Bulk overlay (BE-attached when description carries `payload_hashes`).
+    // Takes precedence over single-quote mapping — header quote is not the
+    // user-facing transfer; per-recipient quotes are.
+    if (meta?.bulk) {
+        const bulk = meta.bulk;
+        const recipients: ConfidentialBulkRecipient[] = bulk.recipients.map(
+            (r) => ({
+                payloadHash: r.payload_hash,
+                quoteMetadata: r.quote_metadata,
+                status: r.status,
+                submitResult: r.submit_result,
+            }),
+        );
+
+        // Token + total come from the **header** quote — that's the actual
+        // on-chain spend (DAO → sub). Recipients are downstream legs paid
+        // out of the sub balance and are surfaced in the expanded view.
+        const tokenId = quoteMeta?.quoteRequest?.originAsset ?? "";
+        const totalAmount = quoteMeta?.quote?.amountIn ?? "0";
+
+        mapped = {
+            type: "bulk",
+            data: {
+                bulkAccountId: bulk.bulk_account_id,
+                bulkStatus: bulk.status,
+                tokenId,
+                totalAmount,
+                recipients,
+                notes: meta.notes,
+            },
+        };
+        title = "Confidential Bulk Payment";
+
+        return {
+            correlationId,
+            payloadHash,
+            status: meta.status,
+            mapped,
+            title,
+        };
+    }
+
     if (quoteMeta) {
         const quoteResponse = {
             ...quoteMeta,

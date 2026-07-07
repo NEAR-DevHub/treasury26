@@ -1066,9 +1066,10 @@
             "singleTokenNetwork": "Один токен і одна мережа",
             "limitsUsed": "Ви використали всі ліміти",
             "selectAndProvide": "Оберіть актив і вкажіть дані платежу",
-            "continueToReview": "Перейти до перегляду",
+            "continueToReview": "Переглянути",
             "selectTokenError": "Оберіть токен",
-            "providePaymentDataError": "Вкажіть дані платежу"
+            "providePaymentDataError": "Вкажіть дані платежу",
+            "selectRecipientNetwork": "Оберіть мережу одержувача"
         },
         "editStep": {
             "title": "Редагувати платіж",
@@ -1303,6 +1304,7 @@
             "registeringKey": "Реєструємо публічний ключ",
             "settingUpConfidential": "Налаштовуємо конфіденційні транзакції",
             "configuringMembers": "Налаштовуємо учасників скарбниці",
+            "provisioningBulkPayment": "Налаштовуємо масові платежі",
             "finalizingSetup": "Завершуємо налаштування"
         }
     },

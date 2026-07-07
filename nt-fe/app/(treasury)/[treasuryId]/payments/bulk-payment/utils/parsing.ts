@@ -594,17 +594,23 @@ function parseAndValidateData(
 
 /**
  * Parse and validate CSV data
+ *
+ * `destinationNetwork` overrides the token's own network for address
+ * validation — used by confidential bulk where the recipient chain is
+ * decoupled from the source token's residency.
  */
 export function parseAndValidateCsv(
     csvData: string,
     labels: BulkParsingLabels,
     selectedToken?: { symbol?: string; network?: string; residency?: string },
+    destinationNetwork?: string,
 ): {
     payments: BulkPaymentData[];
     errors: Array<{ row: number; message: string }>;
 } {
-    const blockchain = selectedToken?.network
-        ? getBlockchainType(selectedToken.network)
+    const networkForValidation = destinationNetwork ?? selectedToken?.network;
+    const blockchain = networkForValidation
+        ? getBlockchainType(networkForValidation)
         : NEAR_NETWORK_ID;
     const tokenSymbol = selectedToken?.symbol;
     return parseAndValidateData(
@@ -623,14 +629,16 @@ export function parseAndValidatePasteData(
     pasteData: string,
     labels: BulkParsingLabels,
     selectedToken?: { symbol?: string; network?: string; residency?: string },
+    destinationNetwork?: string,
 ): {
     payments: BulkPaymentData[];
     errors: Array<{ row: number; message: string }>;
 } {
     // Normalize line breaks
     const normalizedInput = pasteData.replace(/\\n/g, "\n").trim();
-    const blockchain = selectedToken?.network
-        ? getBlockchainType(selectedToken.network)
+    const networkForValidation = destinationNetwork ?? selectedToken?.network;
+    const blockchain = networkForValidation
+        ? getBlockchainType(networkForValidation)
         : NEAR_NETWORK_ID;
     const tokenSymbol = selectedToken?.symbol;
     return parseAndValidateData(

@@ -1068,7 +1068,8 @@
             "selectAndProvide": "选择资产并提供付款数据",
             "continueToReview": "继续审核",
             "selectTokenError": "请选择一个代币",
-            "providePaymentDataError": "请提供付款数据"
+            "providePaymentDataError": "请提供付款数据",
+            "selectRecipientNetwork": "请选择收款人网络"
         },
         "editStep": {
             "title": "编辑付款",
@@ -1303,6 +1304,7 @@
             "registeringKey": "正在注册公钥",
             "settingUpConfidential": "正在设置机密交易",
             "configuringMembers": "正在配置金库成员",
+            "provisioningBulkPayment": "正在设置批量支付",
             "finalizingSetup": "正在完成设置"
         }
     },

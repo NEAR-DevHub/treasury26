@@ -1068,7 +1068,8 @@
             "selectAndProvide": "Varlık seçin ve ödeme verilerini sağlayın",
             "continueToReview": "İncelemeye Devam Et",
             "selectTokenError": "Lütfen bir token seçin",
-            "providePaymentDataError": "Lütfen ödeme verilerini sağlayın"
+            "providePaymentDataError": "Lütfen ödeme verilerini sağlayın",
+            "selectRecipientNetwork": "Lütfen bir alıcı ağı seçin"
         },
         "editStep": {
             "title": "Ödemeyi Düzenle",
@@ -1303,6 +1304,7 @@
             "registeringKey": "Genel anahtar kaydediliyor",
             "settingUpConfidential": "Gizli işlemler ayarlanıyor",
             "configuringMembers": "Hazine üyeleri yapılandırılıyor",
+            "provisioningBulkPayment": "Toplu ödemeler ayarlanıyor",
             "finalizingSetup": "Kurulum tamamlanıyor"
         }
     },

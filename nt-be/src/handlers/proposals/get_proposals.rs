@@ -10,8 +10,8 @@ use std::sync::Arc;
 use crate::handlers::proposals::{
     filters::{ProposalFilters, SortBy},
     scraper::{
-        Policy, Proposal, extract_payload_hash_from_kind, fetch_policy, fetch_proposal,
-        fetch_proposals,
+        Policy, Proposal, extract_from_description, extract_payload_hash_from_kind, fetch_policy,
+        fetch_proposal, fetch_proposals,
     },
 };
 use crate::{
@@ -403,10 +403,155 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
         })
         .collect();
 
-    // Attach metadata to proposals
+    // Attach single-intent metadata to proposals
     for (idx, hash) in &hash_indices {
         if let Some(metadata) = metadata_map.get(hash.as_str()) {
             proposals[*idx].confidential_metadata = Some(metadata.clone());
+        }
+    }
+
+    // ── Bulk-payment overlay ────────────────────────────────────────────
+    // Pre-filter: only proposals whose description carries a `payload_hashes`
+    // field can possibly be bulk headers. Skip the DB hop entirely if none.
+    let bulk_candidate_hashes: Vec<&str> = hash_indices
+        .iter()
+        .filter_map(|(idx, hash)| {
+            extract_from_description(&proposals[*idx].description, "Payload Hashes")
+                .map(|_| hash.as_str())
+        })
+        .collect();
+
+    if bulk_candidate_hashes.is_empty() {
+        return;
+    }
+
+    // For any of these hashes that are bulk *headers*, fetch the linked
+    // recipient intents and attach a `bulk` field beside the existing
+    // single-intent metadata. Two batched queries — no N+1.
+    let bulk_rows = sqlx::query_as::<_, (
+        String,         // header_payload_hash
+        String,         // bulk_account_id (sub)
+        Vec<String>,    // recipient_payload_hashes
+        String,         // status
+        Option<i64>,    // proposal_id
+    )>(
+        "SELECT header_payload_hash, bulk_account_id, recipient_payload_hashes, status, proposal_id \
+         FROM confidential_bulk_payments \
+         WHERE dao_id = $1 AND header_payload_hash = ANY($2)",
+    )
+    .bind(dao_id)
+    .bind(&bulk_candidate_hashes)
+    .fetch_all(pool)
+    .await;
+
+    let bulk_rows = match bulk_rows {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::warn!("Failed to fetch bulk-payment metadata: {}", e);
+            return;
+        }
+    };
+
+    if bulk_rows.is_empty() {
+        return;
+    }
+
+    // Flatten all recipient hashes for one batched lookup, paired with the
+    // sub_id (used as `dao_id` for recipient rows in `confidential_intents`).
+    let mut recipient_keys: Vec<(String, String)> = Vec::new(); // (sub_id, hash)
+    for (_, sub_id, recipients, _, _) in &bulk_rows {
+        for h in recipients {
+            recipient_keys.push((sub_id.clone(), h.clone()));
+        }
+    }
+    // Hash alone is unique enough — `confidential_intents.payload_hash` is
+    // a NEP-413 SHA-256, no collisions across DAOs in practice. Skipping
+    // the dao_id filter avoids the per-sub fan-out.
+    let recipient_hashes_flat: Vec<&str> = recipient_keys.iter().map(|(_, h)| h.as_str()).collect();
+
+    let recipient_rows = sqlx::query_as::<
+        _,
+        (
+            String,                    // dao_id
+            String,                    // payload_hash
+            Option<serde_json::Value>, // quote_metadata
+            String,                    // status
+            Option<serde_json::Value>, // submit_result
+        ),
+    >(
+        "SELECT dao_id, payload_hash, quote_metadata, status, submit_result \
+         FROM confidential_intents \
+         WHERE payload_hash = ANY($1)",
+    )
+    .bind(&recipient_hashes_flat)
+    .fetch_all(pool)
+    .await;
+
+    let recipient_rows = match recipient_rows {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::warn!("Failed to fetch bulk recipient intents: {}", e);
+            return;
+        }
+    };
+
+    // hash → recipient summary
+    let recipient_map: std::collections::HashMap<&str, serde_json::Value> = recipient_rows
+        .iter()
+        .map(|(_sub, hash, quote_meta, status, submit_result)| {
+            (
+                hash.as_str(),
+                serde_json::json!({
+                    "payload_hash": hash,
+                    "quote_metadata": quote_meta,
+                    "status": status,
+                    "submit_result": submit_result,
+                }),
+            )
+        })
+        .collect();
+
+    // header_hash → bulk overlay JSON
+    let bulk_map: std::collections::HashMap<&str, serde_json::Value> = bulk_rows
+        .iter()
+        .map(|(header_hash, sub_id, recipients, status, proposal_id)| {
+            let recipients_json: Vec<serde_json::Value> = recipients
+                .iter()
+                .map(|h| {
+                    recipient_map.get(h.as_str()).cloned().unwrap_or_else(|| {
+                        serde_json::json!({
+                            "payload_hash": h,
+                            "quote_metadata": null,
+                            "status": "missing",
+                            "submit_result": null,
+                        })
+                    })
+                })
+                .collect();
+            (
+                header_hash.as_str(),
+                serde_json::json!({
+                    "status": status,
+                    "bulk_account_id": sub_id,
+                    "proposal_id": proposal_id,
+                    "recipients": recipients_json,
+                }),
+            )
+        })
+        .collect();
+
+    // Merge bulk overlay into the per-proposal confidential_metadata.
+    for (idx, hash) in &hash_indices {
+        if let Some(bulk) = bulk_map.get(hash.as_str()) {
+            let existing = proposals[*idx]
+                .confidential_metadata
+                .clone()
+                .unwrap_or_else(|| serde_json::json!({}));
+            let mut merged = existing;
+            if let serde_json::Value::Object(ref mut map) = merged {
+                map.insert("bulk".into(), bulk.clone());
+            }
+            proposals[*idx].confidential_metadata = Some(merged);
         }
     }
 }

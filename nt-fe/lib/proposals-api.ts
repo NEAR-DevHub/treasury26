@@ -267,6 +267,18 @@ export interface Proposal {
             amount_out_usd?: string | null;
             usd_change?: string | null;
         };
+        /** Bulk-payment overlay (only set for bulk header proposals). */
+        bulk?: {
+            status: string;
+            bulk_account_id: string;
+            proposal_id?: number | null;
+            recipients: Array<{
+                payload_hash: string;
+                quote_metadata?: Record<string, unknown> | null;
+                status: string;
+                submit_result?: Record<string, unknown> | null;
+            }>;
+        };
     };
 }
 

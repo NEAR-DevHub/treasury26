@@ -57,6 +57,8 @@ pub struct EnvVars {
     pub disable_staking_rewards: bool,
     // Telegram bot webhook configuration
     pub telegram_webhook_secret: Option<String>,
+    // Static API key guarding the internal analytics export endpoint
+    pub analytics_api_key: Option<String>,
     pub frontend_base_url: String,
     pub admin_users: Vec<crate::utils::admin_auth::AdminCredential>,
     // Confidential auth token lifetime in days (default: 36500 ≈ 100 years)
@@ -210,6 +212,9 @@ impl Default for EnvVars {
                 .parse()
                 .unwrap_or(false),
             telegram_webhook_secret: std::env::var("TELEGRAM_WEBHOOK_SECRET")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            analytics_api_key: std::env::var("ANALYTICS_API_KEY")
                 .ok()
                 .filter(|s| !s.is_empty()),
             frontend_base_url: std::env::var("FRONTEND_BASE_URL")

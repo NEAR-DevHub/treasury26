@@ -1066,9 +1066,10 @@
             "singleTokenNetwork": "Un único token y red",
             "limitsUsed": "Has usado todos tus límites",
             "selectAndProvide": "Selecciona activo y proporciona datos de pago",
-            "continueToReview": "Continuar a revisión",
+            "continueToReview": "Ver vista previa",
             "selectTokenError": "Selecciona un token",
-            "providePaymentDataError": "Proporciona los datos de pago"
+            "providePaymentDataError": "Proporciona los datos de pago",
+            "selectRecipientNetwork": "Selecciona una red de destinatario"
         },
         "editStep": {
             "title": "Editar pago",
@@ -1303,6 +1304,7 @@
             "registeringKey": "Registrando clave pública",
             "settingUpConfidential": "Configurando transacciones confidenciales",
             "configuringMembers": "Configurando miembros de la tesorería",
+            "provisioningBulkPayment": "Configurando pagos masivos",
             "finalizingSetup": "Finalizando configuración"
         }
     },

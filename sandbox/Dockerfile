@@ -8,29 +8,25 @@
 # ============================================================================
 # Stage 1: Build the Bulk Payment Contract
 # ============================================================================
-# cargo-near 0.17.0 requires Rust 1.89+, but the contract needs Rust 1.86
-FROM rust:1.90 AS contract-builder
+FROM rust AS contract-builder
 
 WORKDIR /build
 
 # Install cargo-near via pre-built binary (much faster than cargo install)
-RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.17.0/cargo-near-installer.sh | sh
+RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.21.1/cargo-near-installer.sh | sh
 
 # Install Rust 1.86 toolchain for building the contract
-RUN rustup install 1.86.0 && rustup target add wasm32-unknown-unknown --toolchain 1.86.0
+RUN rustup target add wasm32-unknown-unknown
 
 COPY contracts/bulk-payment/Cargo.toml contracts/bulk-payment/Cargo.lock* ./
 COPY contracts/bulk-payment/src ./src
-
-# Create rust-toolchain.toml to use Rust 1.86 for this crate
-RUN echo '[toolchain]\nchannel = "1.86.0"' > rust-toolchain.toml
 
 RUN cargo near build non-reproducible-wasm
 
 # ============================================================================
 # Stage 2: Build the Sandbox Initializer
 # ============================================================================
-FROM rust:1.90 AS sandbox-builder
+FROM rust AS sandbox-builder
 
 WORKDIR /build
 
@@ -48,7 +44,7 @@ RUN cd sandbox-init && cargo build --release
 # ============================================================================
 # Stage 3: Build the Treasury Backend (nt-be)
 # ============================================================================
-FROM rust:1.90 AS api-builder
+FROM rust AS api-builder
 
 WORKDIR /build
 
@@ -72,7 +68,7 @@ RUN cd nt-be && cargo build --release
 # ============================================================================
 # Stage 4: Build the Sputnik Indexer
 # ============================================================================
-FROM rust:1.90 AS indexer-builder
+FROM rust AS indexer-builder
 
 WORKDIR /app
 

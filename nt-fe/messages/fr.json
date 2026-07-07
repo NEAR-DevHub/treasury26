@@ -1068,7 +1068,8 @@
             "selectAndProvide": "Sélectionnez un actif et fournissez les données de paiement",
             "continueToReview": "Continuer vers la vérification",
             "selectTokenError": "Veuillez sélectionner un token",
-            "providePaymentDataError": "Veuillez fournir les données de paiement"
+            "providePaymentDataError": "Veuillez fournir les données de paiement",
+            "selectRecipientNetwork": "Veuillez sélectionner un réseau de destinataire"
         },
         "editStep": {
             "title": "Modifier le paiement",
@@ -1303,6 +1304,7 @@
             "registeringKey": "Enregistrement de la clé publique",
             "settingUpConfidential": "Configuration des transactions confidentielles",
             "configuringMembers": "Configuration des membres de la trésorerie",
+            "provisioningBulkPayment": "Configuration des paiements groupés",
             "finalizingSetup": "Finalisation de la configuration"
         }
     },

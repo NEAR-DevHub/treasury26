@@ -1068,7 +1068,8 @@
             "selectAndProvide": "בחר נכס וספק נתוני תשלום",
             "continueToReview": "המשך לסקירה",
             "selectTokenError": "אנא בחר טוקן",
-            "providePaymentDataError": "אנא ספק נתוני תשלום"
+            "providePaymentDataError": "אנא ספק נתוני תשלום",
+            "selectRecipientNetwork": "אנא בחר רשת נמען"
         },
         "editStep": {
             "title": "ערוך תשלום",
@@ -1303,6 +1304,7 @@
             "registeringKey": "רושם מפתח ציבורי",
             "settingUpConfidential": "מגדיר עסקאות חסויות",
             "configuringMembers": "מגדיר את חברי האוצר",
+            "provisioningBulkPayment": "מגדיר תשלומים מרובים",
             "finalizingSetup": "משלים הגדרה"
         }
     },

@@ -1068,7 +1068,8 @@
             "selectAndProvide": "Chọn tài sản và cung cấp dữ liệu thanh toán",
             "continueToReview": "Tiếp tục xem lại",
             "selectTokenError": "Vui lòng chọn một token",
-            "providePaymentDataError": "Vui lòng cung cấp dữ liệu thanh toán"
+            "providePaymentDataError": "Vui lòng cung cấp dữ liệu thanh toán",
+            "selectRecipientNetwork": "Vui lòng chọn mạng người nhận"
         },
         "editStep": {
             "title": "Chỉnh sửa thanh toán",
@@ -1303,6 +1304,7 @@
             "registeringKey": "Đang đăng ký khóa công khai",
             "settingUpConfidential": "Đang thiết lập giao dịch bảo mật",
             "configuringMembers": "Đang cấu hình thành viên ngân quỹ",
+            "provisioningBulkPayment": "Đang thiết lập thanh toán hàng loạt",
             "finalizingSetup": "Đang hoàn tất thiết lập"
         }
     },

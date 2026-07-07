@@ -127,7 +127,7 @@ export function ReviewPaymentsStep({
         return null;
     }
 
-    const totalAmount = paymentData.reduce(
+    const recipientsTotal = paymentData.reduce(
         (sum, item) => sum.add(Big(item.amount || "0")),
         Big(0),
     );
@@ -135,9 +135,18 @@ export function ReviewPaymentsStep({
     const hasValidationErrors = paymentData.some(
         (payment) => payment.validationError,
     );
-    const totalNetworkFee = networkFeePerRecipient
-        ? Big(networkFeePerRecipient).mul(paymentData.length)
+    const feePerRecipient = networkFeePerRecipient
+        ? Big(networkFeePerRecipient)
         : null;
+    const totalNetworkFee = feePerRecipient
+        ? feePerRecipient.mul(paymentData.length)
+        : null;
+    // Confidential bulk pads each leg by the estimated fee, so the DAO is
+    // actually charged recipients + fees. Roll fees into the headline total
+    // so the AmountSummary and balance check reflect reality.
+    const totalAmount = totalNetworkFee
+        ? recipientsTotal.add(totalNetworkFee)
+        : recipientsTotal;
 
     // Calculate total USD value and check insufficient balance (amount + fees)
     let totalUSDValue = Big(0);

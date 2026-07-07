@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE confidential_bulk_payments SET status = 'failed', last_error = 'activation missing', updated_at = NOW() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "16e671ed2e497f97d5e72c06abb81fc9fcbd8fa9cca5de618697b0dc5a11ecbc"
+}

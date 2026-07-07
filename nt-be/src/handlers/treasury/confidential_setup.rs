@@ -18,7 +18,9 @@ use tokio::sync::mpsc;
 use super::create::{ProgressEvent, send_progress};
 use crate::AppState;
 use crate::constants::INTENTS_CONTRACT_ID;
-use crate::handlers::intents::confidential::prepare_auth::build_auth_proposal;
+use crate::handlers::intents::confidential::prepare_auth::{
+    build_auth_proposal, build_bulk_payment_auth_proposal,
+};
 use crate::handlers::relay::confidential::{extract_mpc_signature, fetch_mpc_public_key};
 use crate::observability::sanitize_sensitive_json_value;
 
@@ -38,7 +40,8 @@ pub async fn setup_confidential_treasury(
         send_progress(tx, "adding_public_key", "in_progress").await;
     }
 
-    let treasury_id_public_key = fetch_mpc_public_key(state, treasury_id.as_str()).await?;
+    let treasury_id_public_key =
+        fetch_mpc_public_key(state, treasury_id.as_str(), treasury_id.as_str()).await?;
 
     if intents_has_public_key(state, treasury_id, &treasury_id_public_key).await? {
         tracing::info!(
@@ -132,6 +135,27 @@ pub async fn setup_confidential_treasury(
         send_progress(tx, "authenticating", "completed").await;
     }
 
+    // ── Create + auth bulk-payment subaccount ───────────────────────────
+    if let Some(tx) = progress {
+        send_progress(tx, "bulk_payment_setup", "in_progress").await;
+    }
+
+    if let Err(e) = setup_bulk_payment_subaccount(state, treasury_id).await {
+        // Don't fail the whole confidential setup if bulk-payment provisioning
+        // breaks — the DAO is still usable for non-bulk confidential flows.
+        tracing::error!(
+            "Bulk-payment subaccount setup failed for {}: {} ({})",
+            treasury_id,
+            e.1,
+            e.0
+        );
+        if let Some(tx) = progress {
+            send_progress(tx, "bulk_payment_setup", "failed").await;
+        }
+    } else if let Some(tx) = progress {
+        send_progress(tx, "bulk_payment_setup", "completed").await;
+    }
+
     // ── Change policy to user's config ──────────────────────────────────
     if let Some(tx) = progress {
         send_progress(tx, "setting_policy", "in_progress").await;
@@ -159,6 +183,296 @@ pub async fn setup_confidential_treasury(
 
     if let Some(tx) = progress {
         send_progress(tx, "setting_policy", "completed").await;
+    }
+
+    Ok(())
+}
+
+/// Derive `<prefix>.<factory>` from a sputnik-dao id and the factory account.
+/// Mirrors the contract-side derivation in `bulk-payment::create_confidential_subaccount`.
+pub fn derive_bulk_subaccount_id(
+    dao_id: &AccountId,
+    factory_id: &AccountId,
+) -> Result<AccountId, (StatusCode, String)> {
+    let prefix = dao_id
+        .as_str()
+        .strip_suffix(".sputnik-dao.near")
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                format!("dao_id {} must end with .sputnik-dao.near", dao_id),
+            )
+        })?;
+    if prefix.is_empty() || prefix.contains('.') {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!(
+                "dao_id {} must have exactly one label before the suffix",
+                dao_id
+            ),
+        ));
+    }
+    format!("{}.{}", prefix, factory_id).parse().map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("derived sub id invalid: {}", e),
+        )
+    })
+}
+
+/// Provision the per-DAO bulk-payment subaccount and authenticate it with 1Click.
+///
+/// Steps:
+/// 1. Call factory `bulk-payment.near::create_confidential_subaccount({dao_id})`.
+///    Factory creates `<prefix>.bulk-payment.near`, deploys global code, runs init + bootstrap.
+/// 2. Poll `<sub>::get_bootstrap_status` until `Ready { mpc_public_key, dao_mpc_public_key }`.
+/// 3. Build NEP-413 auth proposal with `signer_id=<sub>`, `path=<dao_id>`. The DAO
+///    submits + approves; the resulting MPC signature uses the DAO's key, which is
+///    valid for `<sub>` because `bootstrap` registered the DAO's pubkey under `<sub>`
+///    on intents.near.
+/// 4. Authenticate with 1Click using sub as `signer_id` + DAO's pubkey + extracted sig.
+/// 5. Store JWT in `bulk_payment_*` columns on `monitored_accounts`.
+async fn setup_bulk_payment_subaccount(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+) -> Result<(), (StatusCode, String)> {
+    let factory_id = state.bulk_payment_contract_id.clone();
+    let sub_id = derive_bulk_subaccount_id(treasury_id, &factory_id)?;
+
+    tracing::info!(
+        "Bulk-payment setup: creating subaccount {} via factory {}",
+        sub_id,
+        factory_id
+    );
+
+    // 1. Factory call. Backend-signed (subsidized); the contract requires
+    //    `>= 0.1 NEAR` attached, but we send a bit more for storage headroom.
+    near_api::Contract(factory_id.clone())
+        .call_function(
+            "create_confidential_subaccount",
+            json!({ "dao_id": treasury_id }),
+        )
+        .transaction()
+        .deposit(NearToken::from_millinear(150))
+        .gas(NearGas::from_tgas(150))
+        .with_signer(state.signer_id.clone(), state.signer.clone())
+        .send_to(&state.network)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("factory create_confidential_subaccount failed: {}", e),
+            )
+        })?
+        .into_result()
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("factory create_confidential_subaccount failed: {}", e),
+            )
+        })?;
+
+    // 2. Poll bootstrap status. Bootstrap fans out 2× derived_public_key + 2×
+    //    add_public_key, so it usually settles in 1–2 blocks; cap at ~30s.
+    let dao_mpc_public_key = poll_bootstrap_ready(state, &sub_id).await?;
+
+    // 3. Build + submit auth proposal (DAO signs, JWT issued for sub).
+    let (auth_proposal, auth_payload) =
+        build_bulk_payment_auth_proposal(state, sub_id.as_str()).await?;
+
+    let (proposal_id, vote_result_debug) =
+        submit_and_approve_proposal(state, treasury_id, auth_proposal).await?;
+
+    tracing::info!(
+        "Bulk-payment setup: auth proposal #{} approved for {}",
+        proposal_id,
+        sub_id
+    );
+
+    // 4. Extract MPC sig + authenticate with 1Click.
+    let sig_bytes = extract_mpc_signature(&vote_result_debug).ok_or_else(|| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to extract MPC signature from bulk-payment auth proposal".to_string(),
+        )
+    })?;
+    let sig_b58 = format!("ed25519:{}", bs58::encode(&sig_bytes).into_string());
+
+    authenticate_bulk_payment_with_1click(
+        state,
+        treasury_id,
+        &dao_mpc_public_key,
+        &auth_payload,
+        &sig_b58,
+    )
+    .await?;
+
+    tracing::info!(
+        "Bulk-payment setup: subaccount {} authenticated with 1Click",
+        sub_id
+    );
+
+    Ok(())
+}
+
+/// Poll `<sub>::get_bootstrap_status` until `Ready` or timeout (~30s).
+/// Returns the DAO MPC pubkey from the Ready state.
+async fn poll_bootstrap_ready(
+    state: &Arc<AppState>,
+    sub_id: &AccountId,
+) -> Result<String, (StatusCode, String)> {
+    const MAX_ATTEMPTS: u32 = 30;
+    const SLEEP_MS: u64 = 1000;
+
+    for attempt in 0..MAX_ATTEMPTS {
+        let status: Value = match Contract(sub_id.clone())
+            .call_function("get_bootstrap_status", ())
+            .read_only()
+            .fetch_from(&state.network)
+            .await
+        {
+            Ok(r) => r.data,
+            Err(e) => {
+                // Subaccount may not exist yet on the very first attempts.
+                tracing::debug!(
+                    "get_bootstrap_status attempt {} for {}: {}",
+                    attempt + 1,
+                    sub_id,
+                    e
+                );
+                tokio::time::sleep(std::time::Duration::from_millis(SLEEP_MS)).await;
+                continue;
+            }
+        };
+
+        // Status enum is serialized as `"Pending"` | `"InProgress"` |
+        // `{ "Ready": { "mpc_public_key": ..., "dao_mpc_public_key": ... } }`
+        // | `{ "Failed": { "reason": ... } }`.
+        if let Some(ready) = status.get("Ready") {
+            if let Some(dao_pk) = ready.get("dao_mpc_public_key").and_then(|v| v.as_str()) {
+                return Ok(dao_pk.to_string());
+            }
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Ready state missing dao_mpc_public_key".to_string(),
+            ));
+        }
+        if let Some(failed) = status.get("Failed") {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("bulk-payment subaccount bootstrap failed: {:?}", failed),
+            ));
+        }
+
+        // Pending / InProgress — keep polling.
+        tokio::time::sleep(std::time::Duration::from_millis(SLEEP_MS)).await;
+    }
+
+    Err((
+        StatusCode::GATEWAY_TIMEOUT,
+        format!(
+            "bulk-payment subaccount {} did not reach Ready in time",
+            sub_id
+        ),
+    ))
+}
+
+/// Authenticate the bulk-payment subaccount with the 1Click API and persist
+/// the JWT in the `bulk_payment_*` columns of `monitored_accounts`.
+async fn authenticate_bulk_payment_with_1click(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+    dao_public_key: &str,
+    auth_payload: &Value,
+    signature: &str,
+) -> Result<(), (StatusCode, String)> {
+    let url = format!(
+        "{}/v0/auth/authenticate",
+        state.env_vars.confidential_api_url
+    );
+
+    let body = json!({
+        "signedData": {
+            "standard": "nep413",
+            "payload": auth_payload,
+            "public_key": dao_public_key,
+            "signature": signature,
+        }
+    });
+
+    let mut req = state
+        .http_client
+        .post(&url)
+        .header("content-type", "application/json");
+    if let Some(api_key) = &state.env_vars.oneclick_api_key {
+        req = req.header("x-api-key", api_key);
+    }
+
+    let response = req.json(&body).send().await.map_err(|e| {
+        (
+            StatusCode::BAD_GATEWAY,
+            format!("1Click bulk-payment auth request failed: {}", e),
+        )
+    })?;
+
+    let status = response.status();
+    let resp_body: Value = response.json().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            format!(
+                "1Click bulk-payment auth failed ({}): {:?}",
+                status, resp_body
+            ),
+        ));
+    }
+
+    if let (Some(access_token), Some(refresh_token)) = (
+        resp_body.get("accessToken").and_then(|v| v.as_str()),
+        resp_body.get("refreshToken").and_then(|v| v.as_str()),
+    ) {
+        let expires_in = resp_body
+            .get("expiresIn")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(3600);
+        let expires_at = chrono::Utc::now() + chrono::Duration::seconds(expires_in);
+
+        sqlx::query!(
+            r#"
+            UPDATE monitored_accounts
+            SET bulk_payment_access_token = $1,
+                bulk_payment_refresh_token = $2,
+                bulk_payment_token_expires_at = $3
+            WHERE account_id = $4
+            "#,
+            access_token,
+            refresh_token,
+            expires_at,
+            treasury_id.as_str(),
+        )
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to persist bulk-payment JWT: {}", e),
+            )
+        })?;
+
+        tracing::info!(
+            "Stored bulk-payment JWT for DAO {} (expires in {}s)",
+            treasury_id,
+            expires_in
+        );
+    } else {
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            format!(
+                "1Click bulk-payment auth response missing tokens: {:?}",
+                resp_body
+            ),
+        ));
     }
 
     Ok(())
