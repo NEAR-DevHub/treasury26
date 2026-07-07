@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
+use apalis::layers::WorkerBuilderExt;
 use apalis::prelude::*;
-use apalis_sql::postgres::PostgresStorage;
+use apalis_core::backend::TaskSinkError;
+use apalis_core::task::Task;
+use apalis_postgres::{Config, PgContext, PgTask, PostgresStorage};
 use axum::http::StatusCode;
 use sqlx::PgPool;
 
@@ -19,11 +22,10 @@ use crate::handlers::public_history::gold::projector::project_public_gold_for_ac
 use crate::handlers::public_history::proposals::linker::link_public_proposal_receipts;
 use crate::handlers::public_history::silver::worker::project_public_silver_for_account;
 use crate::jobs::context::JobContext;
-use crate::jobs::postgres::{active_job_exists, is_unique_violation_on, storage};
 
 use super::postgres::{
     PUBLIC_HISTORY_BACKFILL_NAMESPACE, PUBLIC_HISTORY_INFLIGHT_INDEX, PUBLIC_HISTORY_JOB_KEY_FIELD,
-    PUBLIC_HISTORY_LATEST_NAMESPACE,
+    PUBLIC_HISTORY_LATEST_NAMESPACE, active_public_history_job_exists, is_unique_violation_on,
 };
 
 pub(crate) const JOB_CONCURRENCY: usize = 4;
@@ -32,12 +34,12 @@ pub(crate) const BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY: i32 = 20;
 
 type PublicHistoryStorage = PostgresStorage<PublicHistoryJob>;
 
-fn public_history_error(message: impl Into<String>) -> Error {
-    Error::Failed(Arc::new(Box::new(std::io::Error::other(message.into()))))
+fn public_history_error(message: impl Into<String>) -> BoxDynError {
+    std::io::Error::other(message.into()).into()
 }
 
 fn latest_storage(pool: PgPool) -> PublicHistoryStorage {
-    storage(
+    public_history_storage(
         pool,
         PUBLIC_HISTORY_LATEST_NAMESPACE,
         JOB_CONCURRENCY.max(1),
@@ -45,21 +47,47 @@ fn latest_storage(pool: PgPool) -> PublicHistoryStorage {
 }
 
 fn backfill_storage(pool: PgPool) -> PublicHistoryStorage {
-    storage(
+    public_history_storage(
         pool,
         PUBLIC_HISTORY_BACKFILL_NAMESPACE,
         BACKFILL_JOB_CONCURRENCY.max(1),
     )
 }
 
+fn public_history_storage(
+    pool: PgPool,
+    namespace: &'static str,
+    buffer_size: usize,
+) -> PublicHistoryStorage {
+    let config = Config::new(namespace).set_buffer_size(buffer_size);
+    PostgresStorage::new_with_config(&pool, &config)
+}
+
+fn task_with_job_key(job: PublicHistoryJob) -> PgTask<PublicHistoryJob> {
+    let mut metadata = serde_json::Map::new();
+    metadata.insert(
+        PUBLIC_HISTORY_JOB_KEY_FIELD.to_string(),
+        serde_json::Value::String(job.job_key().to_string()),
+    );
+
+    Task::builder(job)
+        .with_ctx(PgContext::new().with_meta(metadata))
+        .build()
+}
+
 async fn push_job(
     storage: &mut PublicHistoryStorage,
     job: PublicHistoryJob,
 ) -> Result<bool, sqlx::Error> {
-    match storage.push(job).await {
+    match storage.push_task(task_with_job_key(job)).await {
         Ok(_) => Ok(true),
-        Err(error) if is_unique_violation_on(&error, PUBLIC_HISTORY_INFLIGHT_INDEX) => Ok(false),
-        Err(error) => Err(error),
+        Err(TaskSinkError::PushError(error))
+            if is_unique_violation_on(&error, PUBLIC_HISTORY_INFLIGHT_INDEX) =>
+        {
+            Ok(false)
+        }
+        Err(TaskSinkError::PushError(error)) => Err(error),
+        Err(TaskSinkError::CodecError(error)) => Err(sqlx::Error::Protocol(error.to_string())),
     }
 }
 
@@ -119,13 +147,8 @@ pub(crate) async fn enqueue_backfill_page_job(
     cursor: Option<String>,
 ) -> Result<bool, sqlx::Error> {
     let job = PublicHistoryJob::backfill_page(account_id, source, cursor);
-    if active_job_exists(
-        pool,
-        PUBLIC_HISTORY_BACKFILL_NAMESPACE,
-        PUBLIC_HISTORY_JOB_KEY_FIELD,
-        job.job_key(),
-    )
-    .await?
+    if active_public_history_job_exists(pool, PUBLIC_HISTORY_BACKFILL_NAMESPACE, job.job_key())
+        .await?
     {
         return Ok(false);
     }
@@ -328,7 +351,10 @@ async fn run_backfill_page(
     Ok((touched, inserted, changed))
 }
 
-async fn handle_latest_job(job: PublicHistoryJob, context: Data<JobContext>) -> Result<(), Error> {
+async fn handle_latest_job(
+    job: PublicHistoryJob,
+    context: Data<JobContext>,
+) -> Result<(), BoxDynError> {
     let PublicHistoryJob::RefreshLatest {
         account_id, source, ..
     } = job
@@ -436,7 +462,7 @@ async fn handle_latest_job(job: PublicHistoryJob, context: Data<JobContext>) -> 
 async fn handle_backfill_job(
     job: PublicHistoryJob,
     context: Data<JobContext>,
-) -> Result<(), Error> {
+) -> Result<(), BoxDynError> {
     let PublicHistoryJob::BackfillPage {
         account_id,
         source,
@@ -471,16 +497,13 @@ pub(crate) fn spawn_public_history_job_workers(state: Arc<AppState>) {
     let latest_state = state.clone();
     tokio::spawn(async move {
         let storage = latest_storage(latest_state.db_pool.clone());
-        let result = Monitor::new()
-            .register(
-                WorkerBuilder::new("public-history-latest")
-                    .concurrency(JOB_CONCURRENCY)
-                    .data(JobContext::new(latest_state))
-                    .backend(storage)
-                    .build_fn(handle_latest_job),
-            )
-            .run()
-            .await;
+        let worker = WorkerBuilder::new("public-history-latest")
+            .backend(storage)
+            .data(JobContext::new(latest_state))
+            .enable_tracing()
+            .concurrency(JOB_CONCURRENCY)
+            .build(handle_latest_job);
+        let result = worker.run().await;
         if let Err(error) = result {
             tracing::error!(error = %error, "public history latest worker stopped");
         }
@@ -488,16 +511,13 @@ pub(crate) fn spawn_public_history_job_workers(state: Arc<AppState>) {
 
     tokio::spawn(async move {
         let storage = backfill_storage(state.db_pool.clone());
-        let result = Monitor::new()
-            .register(
-                WorkerBuilder::new("public-history-backfill")
-                    .concurrency(BACKFILL_JOB_CONCURRENCY)
-                    .data(JobContext::new(state))
-                    .backend(storage)
-                    .build_fn(handle_backfill_job),
-            )
-            .run()
-            .await;
+        let worker = WorkerBuilder::new("public-history-backfill")
+            .backend(storage)
+            .data(JobContext::new(state))
+            .enable_tracing()
+            .concurrency(BACKFILL_JOB_CONCURRENCY)
+            .build(handle_backfill_job);
+        let result = worker.run().await;
         if let Err(error) = result {
             tracing::error!(error = %error, "public history backfill worker stopped");
         }

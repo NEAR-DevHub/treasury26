@@ -1,9 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use std::time::Duration;
-
 use serde::Deserialize;
 use sqlx::PgPool;
+use std::collections::{HashMap, HashSet};
 
 use super::worker::{enqueue_backfill_page_job, enqueue_latest_refresh_job};
 use crate::AppState;
@@ -11,9 +8,14 @@ use crate::handlers::public_history::bronze::store::PublicHistorySource;
 use crate::services::goldsky_cursor::{load_goldsky_cursor, save_goldsky_cursor};
 
 const SCHEDULER_BATCH_SIZE: i64 = 2_000;
-const SCHEDULER_TICK_SECONDS: Duration = Duration::from_secs(2);
 const BACKFILL_SEED_LIMIT_PER_SOURCE: i64 = 100;
 const CONSUMER_NAME: &str = "public_history_scheduler";
+
+#[derive(Debug, Default)]
+pub(crate) struct PublicHistorySchedulerStats {
+    pub latest_enqueued: usize,
+    pub backfill_enqueued: usize,
+}
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 struct IndexedDaoOutcome {
@@ -263,7 +265,7 @@ async fn fetch_next_outcomes(
 async fn tick_goldsky_scheduler(
     state: &AppState,
     goldsky_pool: &PgPool,
-) -> Result<usize, Box<dyn std::error::Error>> {
+) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
     let cursor = load_goldsky_cursor(&state.db_pool, goldsky_pool, CONSUMER_NAME).await?;
     let outcomes = fetch_next_outcomes(
         goldsky_pool,
@@ -344,52 +346,23 @@ async fn seed_backfill_jobs(state: &AppState) -> Result<usize, sqlx::Error> {
     Ok(enqueued)
 }
 
-pub(crate) fn spawn_public_history_scheduler(state: Arc<AppState>) {
-    let Some(goldsky_pool) = state.goldsky_pool.clone() else {
-        tracing::info!("public history Goldsky scheduler disabled (GOLDSKY_DATABASE_URL not set)");
-        return;
+pub(crate) async fn run_public_history_scheduler_cycle(
+    state: &AppState,
+) -> Result<PublicHistorySchedulerStats, Box<dyn std::error::Error + Send + Sync>> {
+    let latest_enqueued = if let Some(goldsky_pool) = state.goldsky_pool.as_ref() {
+        tick_goldsky_scheduler(state, goldsky_pool).await?
+    } else {
+        tracing::debug!(
+            "public history Goldsky latest scheduler skipped (GOLDSKY_DATABASE_URL not set)"
+        );
+        0
     };
 
-    tokio::spawn(async move {
-        tracing::info!(
-            batch_size = SCHEDULER_BATCH_SIZE,
-            tick_seconds = SCHEDULER_TICK_SECONDS.as_secs(),
-            "starting public history Goldsky scheduler"
-        );
-
-        let mut timer = tokio::time::interval(SCHEDULER_TICK_SECONDS);
-        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-
-        loop {
-            timer.tick().await;
-
-            match tick_goldsky_scheduler(&state, &goldsky_pool).await {
-                Ok(enqueued) if enqueued > 0 => {
-                    tracing::info!(
-                        enqueued = enqueued,
-                        "public history Goldsky scheduler enqueued latest refresh jobs"
-                    );
-                }
-                Ok(_) => {}
-                Err(error) => {
-                    tracing::error!(error = %error, "public history Goldsky scheduler failed");
-                }
-            }
-
-            match seed_backfill_jobs(&state).await {
-                Ok(enqueued) if enqueued > 0 => {
-                    tracing::info!(
-                        enqueued = enqueued,
-                        "public history scheduler enqueued backfill jobs"
-                    );
-                }
-                Ok(_) => {}
-                Err(error) => {
-                    tracing::error!(error = %error, "public history backfill seed failed");
-                }
-            }
-        }
-    });
+    let backfill_enqueued = seed_backfill_jobs(state).await?;
+    Ok(PublicHistorySchedulerStats {
+        latest_enqueued,
+        backfill_enqueued,
+    })
 }
 
 #[cfg(test)]

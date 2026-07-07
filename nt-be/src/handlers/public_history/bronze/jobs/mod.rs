@@ -7,19 +7,15 @@ mod postgres;
 mod scheduler;
 mod worker;
 
-pub fn spawn_public_history_queue_workers(state: Arc<AppState>) {
+pub(crate) use scheduler::run_public_history_scheduler_cycle;
+
+pub async fn start_public_history_queue_workers(state: Arc<AppState>) -> Result<(), sqlx::Error> {
     if state.env_vars.nearblocks_api_key.is_none() {
         tracing::warn!("public history queue workers disabled: NEARBLOCKS_API_KEY missing");
-        return;
+        return Ok(());
     }
 
-    tokio::spawn(async move {
-        if let Err(error) = postgres::setup_public_history_jobs(&state.db_pool).await {
-            tracing::error!(error = %error, "public history Apalis setup failed");
-            return;
-        }
-
-        worker::spawn_public_history_job_workers(state.clone());
-        scheduler::spawn_public_history_scheduler(state);
-    });
+    postgres::setup_public_history_jobs(&state.db_pool).await?;
+    worker::spawn_public_history_job_workers(state);
+    Ok(())
 }

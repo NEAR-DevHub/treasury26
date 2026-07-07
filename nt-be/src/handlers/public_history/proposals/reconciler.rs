@@ -28,9 +28,6 @@
 //! off the same rows (`FOR UPDATE SKIP LOCKED`) and defers retry of failed
 //! fetches to the next threshold without extra bookkeeping.
 
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-
 use chrono::{DateTime, Utc};
 use near_api::AccountId;
 use sqlx::PgPool;
@@ -40,7 +37,6 @@ use crate::AppState;
 use crate::handlers::proposals::scraper::fetch_proposal;
 use crate::handlers::public_history::gold::cursors::mark_gold_dirty_tx;
 
-const RECONCILE_TICK: Duration = Duration::from_secs(600);
 const RECONCILE_BATCH_SIZE: i64 = 50;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -160,35 +156,4 @@ pub async fn reconcile_stale_proposals(
     }
 
     Ok(stats)
-}
-
-pub fn spawn_dao_proposal_reconciler(state: Arc<AppState>) {
-    tokio::spawn(async move {
-        tracing::info!(
-            "Starting dao proposal reconciler ({:?} tick)",
-            RECONCILE_TICK
-        );
-
-        let mut timer = tokio::time::interval(RECONCILE_TICK);
-        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        loop {
-            timer.tick().await;
-            let started_at = Instant::now();
-            match reconcile_stale_proposals(&state).await {
-                Ok(stats) if stats.claimed > 0 => {
-                    tracing::info!(
-                        elapsed_secs = started_at.elapsed().as_secs_f64(),
-                        claimed = stats.claimed,
-                        updated = stats.updated,
-                        fetch_failed = stats.fetch_failed,
-                        "dao proposal reconcile cycle finished"
-                    );
-                }
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::error!(error = %e, "dao proposal reconcile cycle failed");
-                }
-            }
-        }
-    });
 }

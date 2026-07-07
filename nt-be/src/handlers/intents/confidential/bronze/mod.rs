@@ -5,7 +5,7 @@ pub mod ingest_worker;
 pub mod store;
 
 pub use api::{HistoryEvent, HistoryPage, fetch_history, fetch_history_with_token};
-pub use ingest_worker::{spawn_confidential_history_worker, trigger_confidential_history_refresh};
+pub use ingest_worker::trigger_confidential_history_refresh;
 pub use store::{
     HistoryCursor, HistoryEventUpsertOutcome, HistoryEventUpsertState, HistoryUpsertResult,
     link_intent_to_history_event, load_confidential_history_accounts,

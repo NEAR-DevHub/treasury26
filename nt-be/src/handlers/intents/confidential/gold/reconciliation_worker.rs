@@ -13,29 +13,8 @@ use super::history_events::{
 
 pub const CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(86_400);
 
-/// Background worker: runs gold reconciliation once at startup, then daily.
-pub fn spawn_confidential_gold_reconciliation_worker(state: Arc<AppState>) {
-    tokio::spawn(async move {
-        tracing::info!(
-            "Starting confidential gold reconciliation ({:?} interval, {} workers)",
-            CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL,
-            CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS
-        );
-
-        run_reconciliation_pass(&state, "startup").await;
-
-        let mut timer = tokio::time::interval(CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL);
-        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        timer.tick().await;
-        loop {
-            timer.tick().await;
-            run_reconciliation_pass(&state, "daily").await;
-        }
-    });
-}
-
 #[tracing::instrument(level = "info", skip_all, fields(job = "confidential_gold_reconciliation", phase = phase))]
-async fn run_reconciliation_pass(state: &AppState, phase: &str) {
+pub async fn run_reconciliation_pass(state: &Arc<AppState>, phase: &str) {
     let pool = &state.db_pool;
     match mark_backfilled_confidential_daos_gold_dirty(pool).await {
         Ok(rows) => tracing::info!(
@@ -76,7 +55,7 @@ async fn run_reconciliation_pass(state: &AppState, phase: &str) {
 }
 
 #[tracing::instrument(level = "info", skip_all, fields(phase = phase, step = step))]
-async fn project_dirty_daos(state: &AppState, phase: &str, step: &str) {
+async fn project_dirty_daos(state: &Arc<AppState>, phase: &str, step: &str) {
     match project_confidential_gold_for_dirty_daos(
         &state.db_pool,
         CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,

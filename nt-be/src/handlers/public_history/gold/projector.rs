@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use bigdecimal::BigDecimal;
 use futures::StreamExt;
@@ -17,14 +16,11 @@ use super::repository::{
     earliest_silver_time, has_gold_before, load_dirty_accounts, load_silver_suffix,
     seed_ledger_before, upsert_gold_event, upsert_projection_error,
 };
-use crate::AppState;
-
 use crate::handlers::public_history::silver::models::{
     PublicTransactionType, PublicTransferDirection, PublicTransferLegKind, SilverTransferLegRow,
 };
 use crate::services::TokenPriceService;
 
-const PUBLIC_GOLD_SCHEDULER_TICK: Duration = Duration::from_secs(5);
 const PUBLIC_GOLD_WORKERS: usize = 4;
 
 /// The NEAR runtime's implicit account; sender of gas-fee reward refunds
@@ -945,50 +941,6 @@ pub async fn project_public_gold_for_dirty_accounts(
     }
 
     Ok(stats)
-}
-
-pub fn spawn_public_gold_projection_worker(state: Arc<AppState>) {
-    tokio::spawn(async move {
-        tracing::info!(
-            "Starting public gold worker ({:?} scheduler tick)",
-            PUBLIC_GOLD_SCHEDULER_TICK
-        );
-
-        let mut timer = tokio::time::interval(PUBLIC_GOLD_SCHEDULER_TICK);
-        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        loop {
-            timer.tick().await;
-            let started_at = Instant::now();
-            match project_public_gold_for_dirty_accounts(
-                &state.db_pool,
-                &state.token_price_service,
-                state.signer_id.as_str(),
-            )
-            .await
-            {
-                Ok(stats) if stats.accounts_seen > 0 => {
-                    tracing::info!(
-                        elapsed_secs = started_at.elapsed().as_secs_f64(),
-                        accounts_seen = stats.accounts_seen,
-                        accounts_projected = stats.accounts_projected,
-                        accounts_skipped_locked = stats.accounts_skipped_locked,
-                        accounts_failed = stats.accounts_failed,
-                        rows_projected = stats.rows_projected,
-                        rows_deleted = stats.rows_deleted,
-                        errors_written = stats.errors_written,
-                        "public gold cycle finished"
-                    );
-                    for account_id in stats.changed_accounts {
-                        state.publish_treasury_projection_updated(account_id);
-                    }
-                }
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::error!(error = %e, "public gold cycle failed");
-                }
-            }
-        }
-    });
 }
 
 #[cfg(test)]

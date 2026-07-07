@@ -1,6 +1,5 @@
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration as StdDuration;
 
 use bigdecimal::{BigDecimal, FromPrimitive, Zero};
 use chrono::{Duration, Utc};
@@ -14,8 +13,6 @@ use crate::AppState;
 use crate::constants::intents_tokens::get_defuse_tokens_map;
 use crate::handlers::intents::confidential::balances::fetch_confidential_balances;
 use crate::handlers::intents::confidential::bronze::store::load_confidential_history_accounts;
-
-pub const HOURLY_SNAPSHOT_CRON_TICK: StdDuration = StdDuration::from_secs(3600);
 
 const SNAPSHOT_DEDUP_WINDOW: Duration = Duration::seconds(3300);
 const CONFIDENTIAL_BALANCE_SNAPSHOT_WORKERS: usize = 5;
@@ -195,23 +192,6 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
             }
         })
         .await;
-}
-
-/// Background worker: periodically ticks the confidential balance snapshot cron.
-pub fn spawn_confidential_snapshot_worker(state: Arc<AppState>) {
-    tokio::spawn(async move {
-        tracing::info!(
-            "Starting confidential balance snapshot cron ({:?} tick)",
-            HOURLY_SNAPSHOT_CRON_TICK
-        );
-
-        let mut timer = tokio::time::interval(HOURLY_SNAPSHOT_CRON_TICK);
-        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        loop {
-            timer.tick().await;
-            tick_confidential_balance_snapshot_cron(&state).await;
-        }
-    });
 }
 
 #[cfg(test)]

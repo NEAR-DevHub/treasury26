@@ -1,9 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-
 use futures::StreamExt;
 use sqlx::PgPool;
+use std::collections::{HashMap, HashSet};
 
 use super::cursors::clear_silver_dirty_if_not_advanced;
 use super::models::{SilverProjectionCycleStats, SilverProjectionResult};
@@ -13,9 +10,6 @@ use super::repository::{
     load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change,
     upsert_projection_errors, upsert_silver_legs,
 };
-use crate::AppState;
-
-const PUBLIC_SILVER_SCHEDULER_TICK: Duration = Duration::from_secs(5);
 const PUBLIC_SILVER_WORKERS: usize = 4;
 
 pub async fn project_public_silver_for_account(
@@ -166,39 +160,4 @@ pub async fn project_public_silver_for_dirty_accounts(
     }
 
     Ok(stats)
-}
-
-pub fn spawn_public_silver_worker(state: Arc<AppState>) {
-    tokio::spawn(async move {
-        tracing::info!(
-            "Starting public silver worker ({:?} scheduler tick)",
-            PUBLIC_SILVER_SCHEDULER_TICK
-        );
-
-        let mut timer = tokio::time::interval(PUBLIC_SILVER_SCHEDULER_TICK);
-        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        loop {
-            timer.tick().await;
-            let started_at = Instant::now();
-            match project_public_silver_for_dirty_accounts(&state.db_pool).await {
-                Ok(stats) if stats.accounts_seen > 0 => {
-                    tracing::info!(
-                        elapsed_secs = started_at.elapsed().as_secs_f64(),
-                        accounts_seen = stats.accounts_seen,
-                        accounts_projected = stats.accounts_projected,
-                        accounts_skipped_locked = stats.accounts_skipped_locked,
-                        accounts_failed = stats.accounts_failed,
-                        rows_projected = stats.rows_projected,
-                        rows_deleted = stats.rows_deleted,
-                        errors_written = stats.errors_written,
-                        "public silver cycle finished"
-                    );
-                }
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::error!(error = %e, "public silver cycle failed");
-                }
-            }
-        }
-    });
 }

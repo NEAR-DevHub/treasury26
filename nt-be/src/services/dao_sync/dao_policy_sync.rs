@@ -9,57 +9,14 @@ use sqlx::PgPool;
 use std::collections::HashSet;
 use std::time::Duration;
 
-/// Interval between policy sync checks (1 second for quick dirty processing)
-const POLICY_SYNC_INTERVAL_SECS: u64 = 1;
-
 /// Max DAOs to process per cycle
 const MAX_DAOS_PER_CYCLE: i64 = 50;
 
 /// Period after which non-dirty DAOs should be re-synced (24 hours = daily)
 const STALE_THRESHOLD_HOURS: i64 = 24;
 
-/// Run the background DAO policy sync service
-///
-/// This function runs in a loop, processing dirty DAOs immediately
-/// and stale DAOs periodically.
-pub async fn run_dao_policy_sync_service(pool: PgPool, network: NetworkConfig) {
-    tracing::info!(
-        "Starting DAO policy sync service (interval: {} seconds)",
-        POLICY_SYNC_INTERVAL_SECS
-    );
-
-    // Initial delay to let server and DAO list sync start
-    tokio::time::sleep(Duration::from_secs(15)).await;
-
-    let mut interval = tokio::time::interval(Duration::from_secs(POLICY_SYNC_INTERVAL_SECS));
-    let mut stale_counter: u64 = 0;
-
-    loop {
-        interval.tick().await;
-
-        // Process dirty DAOs first (high priority)
-        match process_dirty_daos(&pool, &network).await {
-            Ok(count) if count > 0 => tracing::info!("Processed {} dirty DAOs", count),
-            Ok(_) => {}
-            Err(e) => tracing::error!("Error processing dirty DAOs: {}", e),
-        }
-
-        // Process stale DAOs (low priority, periodic refresh)
-        // Only run every 60 seconds to avoid overwhelming with stale processing
-        stale_counter += 1;
-        if stale_counter >= 60 {
-            stale_counter = 0;
-            match process_stale_daos(&pool, &network).await {
-                Ok(count) if count > 0 => tracing::info!("Refreshed {} stale DAOs", count),
-                Ok(_) => {}
-                Err(e) => tracing::error!("Error processing stale DAOs: {}", e),
-            }
-        }
-    }
-}
-
 /// Process dirty DAOs (high priority)
-async fn process_dirty_daos(
+pub async fn process_dirty_daos(
     pool: &PgPool,
     network: &NetworkConfig,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
@@ -104,7 +61,7 @@ async fn process_dirty_daos(
 }
 
 /// Process stale DAOs (low priority, daily refresh)
-async fn process_stale_daos(
+pub async fn process_stale_daos(
     pool: &PgPool,
     network: &NetworkConfig,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {

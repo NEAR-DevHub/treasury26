@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use serde_json::json;
 
@@ -14,8 +13,6 @@ use crate::{
     },
     handlers::warnings::db,
 };
-
-const MONITOR_INTERVAL_SECONDS: u64 = 60;
 
 fn incident_status(status: &OhDearStatus) -> &'static str {
     match status {
@@ -586,27 +583,4 @@ pub async fn run_monitor_cycle(state: &Arc<AppState>) {
             tracing::error!("[status-monitor] Failed stale auto-fallback cleanup: {e}");
         }
     }
-}
-
-pub fn run_status_monitor_loop(state: Arc<AppState>) {
-    tokio::spawn(async move {
-        let initial_delay = std::env::var("STATUS_MONITOR_INITIAL_DELAY_SECONDS")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(30u64);
-
-        tracing::info!(
-            "Starting status monitor worker ({}s interval, {}s initial delay)",
-            MONITOR_INTERVAL_SECONDS,
-            initial_delay,
-        );
-
-        tokio::time::sleep(Duration::from_secs(initial_delay)).await;
-        let mut timer = tokio::time::interval(Duration::from_secs(MONITOR_INTERVAL_SECONDS));
-
-        loop {
-            timer.tick().await;
-            run_monitor_cycle(&state).await;
-        }
-    });
 }

@@ -5,46 +5,15 @@
 
 use near_api::{Contract, NetworkConfig};
 use sqlx::PgPool;
-use std::time::Duration;
-
-/// Interval between DAO list sync cycles (30 minutes)
-const DAO_LIST_SYNC_INTERVAL_SECS: u64 = 1800;
 
 /// Sputnik DAO factory contract
 const SPUTNIK_DAO_FACTORY: &str = "sputnik-dao.near";
-
-/// Run the background DAO list sync service
-///
-/// This function runs in a loop, fetching the complete DAO list from sputnik-dao.near
-/// every 5 minutes and upserting into the local database.
-pub async fn run_dao_list_sync_service(pool: PgPool, network: NetworkConfig) {
-    tracing::info!(
-        "Starting DAO list sync service (interval: {} seconds)",
-        DAO_LIST_SYNC_INTERVAL_SECS
-    );
-
-    // Initial delay to let server start
-    tokio::time::sleep(Duration::from_secs(10)).await;
-
-    let mut interval = tokio::time::interval(Duration::from_secs(DAO_LIST_SYNC_INTERVAL_SECS));
-
-    loop {
-        interval.tick().await;
-
-        tracing::info!("Running DAO list sync cycle...");
-
-        match sync_dao_list(&pool, &network).await {
-            Ok(count) => tracing::info!("DAO list sync complete: {} DAOs synced", count),
-            Err(e) => tracing::error!("DAO list sync failed: {}", e),
-        }
-    }
-}
 
 /// Sync DAO list from sputnik-dao.near factory
 ///
 /// Fetches all DAOs and upserts them into the database.
 /// New DAOs are automatically marked as dirty via the default value.
-async fn sync_dao_list(
+pub async fn sync_dao_list(
     pool: &PgPool,
     network: &NetworkConfig,
 ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {

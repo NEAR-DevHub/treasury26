@@ -24,8 +24,6 @@ chrono = "0.4"
 futures = "0.3"
 async-stream = "0.3"
 governor = "0.7"
-apalis = { version = "0.7.4", features = ["tracing", "retry", "timeout", "catch-panic", "limit"] }
-apalis-sql = { version = "0.7.4", features = ["postgres", "tokio-comp"] }
 sqlx = { version = "0.8", features = [
     "runtime-tokio",
     "tls-rustls",
@@ -58,6 +56,14 @@ near-crypto = "0.34"
 bs58 = "0.5"
 url = "2"
 teloxide = { version = "0.17.0", features = ["rustls"], default-features = false }
+# Background job processing (apalis + web board)
+apalis = { version = "1.0.0-rc.9", features = ["limit", "retry", "tracing"] }
+apalis-core = { version = "1.0.0-rc.9", features = ["serde"] }
+apalis-cron = { version = "1.0.0-rc.8", features = ["serde"] }
+apalis-sql = "1.0.0-rc.8"
+apalis-postgres = { version = "1.0.0-rc.8", features = ["migrate", "tokio-comp"] }
+apalis-board = { version = "1.0.0-rc.8", features = ["axum", "ui"] }
+cron = "0.16"
 
 [[bin]]
 name = "rpc_cache_proxy"
