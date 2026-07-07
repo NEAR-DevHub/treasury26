@@ -59,52 +59,115 @@ fn env_secs(var: &str, default: u64) -> u64 {
 
 /// Builds a cron schedule that fires every `secs` seconds.
 ///
-/// Cron can only express intervals that align with clock boundaries, so
-/// non-divisor intervals are rounded to the nearest expressible one (with a
-/// warning). All defaults used by our jobs divide evenly.
+/// A 6-field cron `*/n` step only expresses intervals that divide their
+/// field's range (seconds/minutes 0–59, hours 0–23). An interval that
+/// doesn't map cleanly is rounded **down** to the largest expressible
+/// interval — a *shorter* one, so the job runs at least as often as asked
+/// (e.g. 90 min → 60 min, 61 s → 60 s) — with a warning naming the
+/// effective interval, rather than silently collapsing to hourly. All
+/// defaults our jobs use divide evenly.
 pub fn schedule_every_secs(secs: u64) -> Schedule {
-    let secs = secs.max(1);
-    let expr = if secs < 60 {
-        if 60 % secs != 0 {
-            tracing::warn!(
-                secs,
-                "interval doesn't divide a minute; cron fires at fixed offsets"
-            );
-        }
-        format!("*/{secs} * * * * *")
-    } else if secs.is_multiple_of(86_400) {
-        if secs > 86_400 {
-            tracing::warn!(secs, "multi-day intervals rounded down to daily");
-        }
-        "0 0 0 * * *".to_string()
-    } else if secs.is_multiple_of(3600) {
-        let hours = secs / 3600;
-        if 24 % hours != 0 {
-            tracing::warn!(
-                secs,
-                "interval doesn't divide a day; cron fires at fixed offsets"
-            );
-        }
-        format!("0 0 */{hours} * * *")
-    } else if secs.is_multiple_of(60) {
-        let mins = secs / 60;
-        if 60 % mins != 0 {
-            tracing::warn!(
-                secs,
-                "interval doesn't divide an hour; cron fires at fixed offsets"
-            );
-        }
-        format!("0 */{mins} * * * *")
+    Schedule::from_str(&cron_every_secs(secs)).expect("generated cron expression is valid")
+}
+
+/// Largest divisor of `base` that is `<= n` (and `>= 1`).
+fn largest_divisor_at_most(base: u64, n: u64) -> u64 {
+    (1..=n.min(base))
+        .rev()
+        .find(|d| base.is_multiple_of(*d))
+        .unwrap_or(1)
+}
+
+/// Largest interval `<= secs` that `cron_every_secs` can express exactly.
+fn round_down_to_expressible(secs: u64) -> u64 {
+    if secs < 60 {
+        largest_divisor_at_most(60, secs).max(1)
+    } else if secs < 3600 {
+        largest_divisor_at_most(60, secs / 60).max(1) * 60
+    } else if secs < 86_400 {
+        largest_divisor_at_most(24, secs / 3600).max(1) * 3600
     } else {
-        let mins = (secs / 60).max(1);
+        86_400
+    }
+}
+
+/// Interval-to-cron translation, split out for testing.
+fn cron_every_secs(secs: u64) -> String {
+    let secs = secs.max(1);
+
+    // Sub-minute: a `*/n` seconds step, only clean when it divides 60.
+    if secs < 60 {
+        if 60u64.is_multiple_of(secs) {
+            return format!("*/{secs} * * * * *");
+        }
+        let rounded = largest_divisor_at_most(60, secs);
         tracing::warn!(
             secs,
-            rounded_to_minutes = mins,
-            "interval not expressible in cron; rounded to whole minutes"
+            effective_secs = rounded,
+            "sub-minute interval not expressible in cron; rounded down"
         );
-        format!("0 */{mins} * * * *")
-    };
-    Schedule::from_str(&expr).expect("generated cron expression is valid")
+        return format!("*/{rounded} * * * * *");
+    }
+
+    // Whole minutes that divide an hour (mins in 1..=59, mins | 60).
+    if secs.is_multiple_of(60) {
+        let mins = secs / 60;
+        if mins < 60 && 60u64.is_multiple_of(mins) {
+            return format!("0 */{mins} * * * *");
+        }
+    }
+
+    // Whole hours that divide a day (hours in 1..=23, hours | 24).
+    if secs.is_multiple_of(3600) {
+        let hours = secs / 3600;
+        if hours < 24 && 24u64.is_multiple_of(hours) {
+            return format!("0 0 */{hours} * * *");
+        }
+    }
+
+    // Whole days -> daily (multi-day rounded down to daily).
+    if secs.is_multiple_of(86_400) {
+        if secs > 86_400 {
+            tracing::warn!(secs, "multi-day interval rounded down to daily");
+        }
+        return "0 0 0 * * *".to_string();
+    }
+
+    // Anything else (e.g. 90 min, 61 s): round down to the nearest
+    // expressible interval and translate that. The rounded value always
+    // hits one of the clean branches above, so this recurses at most once.
+    let rounded = round_down_to_expressible(secs);
+    tracing::warn!(
+        secs,
+        effective_secs = rounded,
+        "interval not expressible in cron; rounded down"
+    );
+    cron_every_secs(rounded)
+}
+
+/// Runs apalis's own sqlx migrations, tracking them in a dedicated
+/// `apalis_migrations` schema instead of the default `public._sqlx_migrations`.
+///
+/// The app runs its own sqlx migrator (`app_state`), and sqlx records every
+/// migrator's applied versions in an unqualified `_sqlx_migrations` table.
+/// If apalis and the app share that table, each migrator sees the other's
+/// versions as unknown and aborts with `VersionMissing`. All apalis objects
+/// are fully schema-qualified (`apalis.*`), so only the bookkeeping table's
+/// placement matters — pointing the connection's `search_path` at a private
+/// schema keeps the two migration lineages isolated.
+async fn setup_apalis(pool: &PgPool) -> Result<(), sqlx::Error> {
+    use sqlx::Executor as _;
+
+    pool.execute("CREATE SCHEMA IF NOT EXISTS apalis_migrations")
+        .await?;
+
+    let mut conn = pool.acquire().await?;
+    // Session-level; persists across the migrator's per-migration
+    // transactions so `_sqlx_migrations` is created in `apalis_migrations`.
+    conn.execute("SET search_path TO apalis_migrations, public")
+        .await?;
+    PostgresStorage::migrations().run(&mut *conn).await?;
+    Ok(())
 }
 
 fn storage(pool: &PgPool, queue: &str) -> TickStorage {
@@ -121,20 +184,44 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
 }
 
 /// One cron-scheduled apalis worker: schedule → postgres queue → handler.
+///
+/// Runs in a supervised loop: a clean exit (graceful shutdown) stops it, but
+/// an error restarts the worker after an exponential backoff (capped) so a
+/// transient failure doesn't permanently take a job offline until the whole
+/// process restarts — matching the resilience of the old interval loops.
 macro_rules! spawn_cron_worker {
     ($queues:expr, $state:expr, $name:literal, $schedule:expr, $handler:path) => {{
         let store = storage(&$state.db_pool, $name);
         $queues.push(($name, store.clone()));
-        let backend = CronStream::new($schedule).pipe_to(store);
-        let worker = WorkerBuilder::new($name)
-            .backend(backend)
-            .data($state.clone())
-            .enable_tracing()
-            .concurrency(1)
-            .build($handler);
+        let schedule = $schedule;
+        let state = $state.clone();
         tokio::spawn(async move {
-            if let Err(e) = worker.run().await {
-                tracing::error!(worker = $name, error = %e, "job worker exited with error");
+            let mut backoff = std::time::Duration::from_secs(1);
+            let max_backoff = std::time::Duration::from_secs(60);
+            loop {
+                let backend = CronStream::new(schedule.clone()).pipe_to(store.clone());
+                let worker = WorkerBuilder::new($name)
+                    .backend(backend)
+                    .data(state.clone())
+                    .enable_tracing()
+                    .concurrency(1)
+                    .build($handler);
+                match worker.run().await {
+                    Ok(()) => {
+                        tracing::info!(worker = $name, "job worker stopped");
+                        break;
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            worker = $name,
+                            error = %e,
+                            backoff_secs = backoff.as_secs(),
+                            "job worker exited with error; restarting after backoff"
+                        );
+                        tokio::time::sleep(backoff).await;
+                        backoff = (backoff * 2).min(max_backoff);
+                    }
+                }
             }
         });
     }};
@@ -144,7 +231,7 @@ macro_rules! spawn_cron_worker {
 /// used to serve the apalis-board UI.
 pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     // apalis schema + tables (idempotent).
-    PostgresStorage::setup(&state.db_pool)
+    setup_apalis(&state.db_pool)
         .await
         .expect("failed to run apalis migrations");
 
@@ -477,7 +564,73 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
 
 #[cfg(test)]
 mod tests {
-    use super::is_foreign_api_path;
+    use super::{cron_every_secs, is_foreign_api_path, schedule_every_secs};
+
+    #[test]
+    fn cron_every_secs_expressible_intervals() {
+        assert_eq!(cron_every_secs(10), "*/10 * * * * *"); // sub-minute
+        assert_eq!(cron_every_secs(60), "0 */1 * * * *"); // 1 min
+        assert_eq!(cron_every_secs(300), "0 */5 * * * *"); // 5 min
+        assert_eq!(cron_every_secs(1800), "0 */30 * * * *"); // 30 min
+        assert_eq!(cron_every_secs(3600), "0 0 */1 * * *"); // hourly
+        assert_eq!(cron_every_secs(21_600), "0 0 */6 * * *"); // 6h
+        assert_eq!(cron_every_secs(86_400), "0 0 0 * * *"); // daily
+    }
+
+    #[test]
+    fn cron_every_secs_rounds_down_non_divisors() {
+        // 61s is not a clean sub-hour step -> nearest minute (60s).
+        assert_eq!(cron_every_secs(61), "0 */1 * * * *");
+        // 90 min would previously produce "0 */90 ..." (cron caps the
+        // minute field at 59, so it silently ran hourly). Now rounded down
+        // to a real 60-min schedule instead of a misleading one.
+        assert_eq!(cron_every_secs(5400), "0 0 */1 * * *");
+        // Multi-day collapses to daily.
+        assert_eq!(cron_every_secs(2 * 86_400), "0 0 0 * * *");
+        // 45s (doesn't divide 60) -> largest divisor of 60 <= 45 = 30s.
+        assert_eq!(cron_every_secs(45), "*/30 * * * * *");
+    }
+
+    #[test]
+    fn schedule_every_secs_produces_valid_cron() {
+        // Every branch (incl. rounded ones) must parse as a real schedule.
+        for secs in [
+            1u64, 5, 10, 45, 60, 61, 300, 3600, 5400, 21_600, 86_400, 200_000,
+        ] {
+            let _ = schedule_every_secs(secs);
+        }
+    }
+
+    /// Regression: apalis migrations must not collide with the app's
+    /// `public._sqlx_migrations`. Runs only when `DATABASE_URL` is set.
+    #[tokio::test]
+    async fn setup_apalis_coexists_with_app_migrations() {
+        let Ok(url) = std::env::var("DATABASE_URL") else {
+            eprintln!("skipping: DATABASE_URL not set");
+            return;
+        };
+        let pool = sqlx::PgPool::connect(&url).await.expect("connect");
+
+        // Isolated + idempotent.
+        super::setup_apalis(&pool).await.expect("first setup");
+        super::setup_apalis(&pool).await.expect("idempotent re-run");
+
+        // apalis objects exist, and its bookkeeping is in its own schema.
+        let apalis_tables: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'apalis'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert!(apalis_tables > 0, "apalis schema should have tables");
+
+        let apalis_tracking: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM apalis_migrations._sqlx_migrations")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(apalis_tracking > 0, "apalis migrations tracked separately");
+    }
 
     #[test]
     fn board_owns_only_api_v1() {
