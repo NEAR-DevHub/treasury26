@@ -238,10 +238,13 @@ pub async fn ft_lockup_refresh(
 /// Deletes finished apalis tasks older than `APALIS_TASK_RETENTION_DAYS`
 /// (default 7) so high-frequency queues don't grow unbounded.
 pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, BoxDynError> {
+    // Clamp so a misconfigured (negative) value can't flip the cutoff into
+    // the future and delete *every* finished task; cap at ~10y for sanity.
     let retention_days: i64 = std::env::var("APALIS_TASK_RETENTION_DAYS")
         .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(7);
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(7)
+        .clamp(0, 3650);
 
     let result = sqlx::query(
         "DELETE FROM apalis.jobs
