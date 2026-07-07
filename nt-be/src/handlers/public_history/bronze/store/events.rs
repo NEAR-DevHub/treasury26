@@ -138,6 +138,8 @@ pub async fn upsert_public_history_events(
             } else {
                 result.rows_changed += 1;
             }
+            // Reproject from the earliest changed source event; later silver/gold
+            // stages delete stale derived rows beyond that point.
             result.earliest_changed_at = min_datetime(result.earliest_changed_at, Some(block_time));
         } else {
             result.rows_unchanged += 1;

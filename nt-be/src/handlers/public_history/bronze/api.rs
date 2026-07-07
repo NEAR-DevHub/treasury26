@@ -303,6 +303,8 @@ pub async fn fetch_ft_transfers(
             block_height,
             block_timestamp,
             block_time: block_timestamp_to_datetime(parse_i64(&timestamp, "block_timestamp")?),
+            // Preserve NearBlocks account semantics: affected is the balance owner,
+            // involved is the counterparty, contract is the FT token contract.
             affected_account_id: item.affected_account_id,
             involved_account_id: item.involved_account_id,
             contract_account_id: Some(item.contract_account_id),
@@ -364,6 +366,8 @@ pub async fn fetch_mt_transfers(
             block_height,
             block_timestamp,
             block_time: block_timestamp_to_datetime(parse_i64(&timestamp, "block_timestamp")?),
+            // Preserve NearBlocks account semantics: affected is the balance owner,
+            // involved is the counterparty, contract is the MT token contract.
             affected_account_id: item.affected_account_id,
             involved_account_id: item.involved_account_id,
             contract_account_id: Some(item.contract_account_id),
@@ -451,6 +455,8 @@ pub async fn fetch_receipts(
                 block_height,
                 block_timestamp: block_timestamp.clone(),
                 block_time: block_timestamp_to_datetime(parse_i64(&timestamp, "block_timestamp")?),
+                // Receipts are not token balance rows: use receiver as affected/contract
+                // and predecessor as involved so proposal/linking code can reason over them.
                 affected_account_id: item
                     .receiver_account_id
                     .clone()

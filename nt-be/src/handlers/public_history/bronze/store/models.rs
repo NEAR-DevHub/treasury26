@@ -59,6 +59,7 @@ impl std::error::Error for PublicHistorySourceParseError {}
 
 #[derive(Debug, Clone)]
 pub struct BronzePublicHistoryEvent {
+    /// Monitored treasury/DAO whose NearBlocks page produced this event.
     pub account_id: String,
     pub source: PublicHistorySource,
     pub source_event_key: String,
@@ -68,8 +69,11 @@ pub struct BronzePublicHistoryEvent {
     pub block_height: i64,
     pub block_timestamp: BigDecimal,
     pub block_time: DateTime<Utc>,
+    /// NearBlocks account with the token balance effect; receipt rows use receiver.
     pub affected_account_id: String,
+    /// NearBlocks counterparty; receipt rows use predecessor/sender when known.
     pub involved_account_id: Option<String>,
+    /// Token contract for FT/MT rows; receipt receiver/contract for receipt rows.
     pub contract_account_id: Option<String>,
     pub token_id: Option<String>,
     pub cause: Option<String>,

@@ -147,6 +147,8 @@ fn normalize_receipt(
     if deposit.is_zero() {
         return Ok(None);
     }
+    // Receipt rows only tell us predecessor/receiver, so direction is inferred
+    // by whether the monitored account is the receiver or predecessor.
     let direction = if row.affected_account_id == row.account_id {
         PublicTransferDirection::Incoming
     } else if row.involved_account_id.as_deref() == Some(row.account_id.as_str()) {
@@ -180,6 +182,8 @@ fn normalize_receipt(
 pub fn normalize_bronze_row(
     row: &BronzePublicHistoryRow,
 ) -> Result<Option<NormalizedTransferLeg>, String> {
+    // Failed receipts can appear in NearBlocks; silver only models effective
+    // balance movements.
     if row.outcome_status == Some(false) {
         return Ok(None);
     }

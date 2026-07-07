@@ -80,6 +80,8 @@ fn choose_recompute_from(
     has_prior_gold: bool,
 ) -> chrono::DateTime<chrono::Utc> {
     let recompute_from = cursor_recompute_from.unwrap_or(earliest);
+    // If this account has no earlier gold seed, start at bronze/silver origin
+    // so balances do not silently begin from zero mid-history.
     if earliest < recompute_from && !has_prior_gold {
         earliest
     } else {
@@ -91,6 +93,8 @@ fn widen_for_pending_exchange(
     recompute_from: chrono::DateTime<chrono::Utc>,
     earliest_pending: Option<chrono::DateTime<chrono::Utc>>,
 ) -> chrono::DateTime<chrono::Utc> {
+    // Pending exchanges can complete after the dirty window. Recompute from the
+    // outgoing leg so the final exchange row can replace the pending row.
     match earliest_pending {
         Some(earliest_pending) if earliest_pending < recompute_from => earliest_pending,
         _ => recompute_from,
@@ -279,6 +283,8 @@ fn is_quote_matched_exchange_deposit(
     let Some(quote_deposit_address) = leg.quote_deposit_address.as_deref() else {
         return Ok(false);
     };
+    // A quote-linked exchange starts as a proposal payment to the quote deposit
+    // address; ordinary transfers to intents.near should stay regular sends.
     if leg.proposal_ref.is_none() || leg.counterparty.as_deref() != Some(quote_deposit_address) {
         return Ok(false);
     }
@@ -371,6 +377,8 @@ fn plan_exchange_pairs(
             continue;
         }
 
+        // Prefer explicit fulfillment hashes from the quote payload; they avoid
+        // pairing a deposit with an unrelated incoming intents transfer.
         if let Some(quote) = quote
             && quote.has_fulfillment_hashes()
         {
@@ -395,6 +403,8 @@ fn plan_exchange_pairs(
             continue;
         }
 
+        // Some historical quote payloads lack fulfillment hashes. Keep them as
+        // pending candidates and match by account/time/asset/amount later.
         fallback_pending_outgoing.push_back(row.id);
     }
 

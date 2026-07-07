@@ -94,6 +94,19 @@ CREATE INDEX IF NOT EXISTS idx_bphe_account_time
 CREATE INDEX IF NOT EXISTS idx_bphe_tx_receipt
     ON bronze_public_history_events (transaction_hash, receipt_id);
 
+COMMENT ON TABLE bronze_public_history_events IS
+    'Raw public-history events from NearBlocks. Bronze preserves provider field names so future indexes and reprocessing can use the original source semantics.';
+COMMENT ON COLUMN bronze_public_history_events.account_id IS
+    'Monitored treasury/DAO account whose public history page was fetched. This is our pipeline partition key, not necessarily the account that changed in the event.';
+COMMENT ON COLUMN bronze_public_history_events.affected_account_id IS
+    'NearBlocks account that had the FT/MT balance effect. For receipt rows, this is the receiver account because receipts do not expose a token balance delta.';
+COMMENT ON COLUMN bronze_public_history_events.involved_account_id IS
+    'NearBlocks counterparty account for token transfers. For receipt rows, this is the predecessor/sender account when available.';
+COMMENT ON COLUMN bronze_public_history_events.contract_account_id IS
+    'Contract account associated with the event. For FT/MT rows this is the token contract; for receipt rows this is the receipt receiver/contract.';
+COMMENT ON COLUMN bronze_public_history_events.raw_payload IS
+    'Original NearBlocks item JSON, kept for fields we do not normalize yet and for future reprocessing/debugging.';
+
 CREATE TABLE IF NOT EXISTS dao_proposals (
     id BIGSERIAL PRIMARY KEY,
     dao_id TEXT NOT NULL,
