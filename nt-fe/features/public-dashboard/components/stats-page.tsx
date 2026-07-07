@@ -2,8 +2,6 @@
 
 import { ChartSpline } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { QueryProvider } from "@/components/query-provider";
-import { WarningsProvider } from "@/components/warnings-provider";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { PageCard } from "@/components/card";
 import Logo from "@/components/icons/logo";
@@ -56,28 +54,24 @@ export function PublicDashboardStatsPage() {
     const tPage = useTranslations("pages.stats");
     const tDash = useTranslations("publicDashboard");
     return (
-        <QueryProvider>
-            <WarningsProvider>
-                <PageComponentLayout
-                    title={tPage("title")}
-                    hideCollapseButton
-                    hideLogin
-                    logo={
-                        <div className="flex items-center gap-2.5">
-                            <Link href="/">
-                                <Logo size="sm" />
-                            </Link>
-                            <span className="hidden sm:inline text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                                {tDash("updatesDaily")}
-                            </span>
-                        </div>
-                    }
-                >
-                    <div className="max-w-3xl mx-auto">
-                        <DashboardContent />
-                    </div>
-                </PageComponentLayout>
-            </WarningsProvider>
-        </QueryProvider>
+        <PageComponentLayout
+            title={tPage("title")}
+            hideCollapseButton
+            hideLogin
+            logo={
+                <div className="flex items-center gap-2.5">
+                    <Link href="/">
+                        <Logo size="sm" />
+                    </Link>
+                    <span className="hidden sm:inline text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                        {tDash("updatesDaily")}
+                    </span>
+                </div>
+            }
+        >
+            <div className="max-w-3xl mx-auto">
+                <DashboardContent />
+            </div>
+        </PageComponentLayout>
     );
 }
