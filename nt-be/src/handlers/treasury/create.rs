@@ -354,7 +354,7 @@ enum ExistingDaoState {
 }
 
 /// Fetch a DAO's current sputnik policy.
-async fn fetch_dao_policy(
+pub(crate) async fn fetch_dao_policy(
     state: &AppState,
     treasury: &AccountId,
 ) -> Result<serde_json::Value, String> {
@@ -368,7 +368,7 @@ async fn fetch_dao_policy(
 }
 
 /// Collect all member account IDs across every `Group` role in a policy.
-fn policy_group_members(policy: &serde_json::Value) -> HashSet<String> {
+pub(crate) fn policy_group_members(policy: &serde_json::Value) -> HashSet<String> {
     let mut members = HashSet::new();
     if let Some(roles) = policy.get("roles").and_then(|r| r.as_array()) {
         for role in roles {
@@ -690,6 +690,24 @@ async fn run_creation_inner(
                 should_mark
             }
         };
+
+    // Confirm the user's members are on-chain before we declare success. Without
+    // this, a failed ChangePolicy vote could still reach `Ok(())` and delete the
+    // incomplete row, leaving a sponsor-only DAO with no sweeper recovery.
+    let final_state = classify_treasury_account(
+        state,
+        &treasury,
+        state.signer_id.as_str(),
+        &payload_members,
+    )
+    .await
+    .map_err(error_event)?;
+
+    if final_state != ExistingDaoState::AlreadyOwnedByUser {
+        return Err(error_event(format!(
+            "Treasury creation incomplete ({final_state:?}): user members are not yet on-chain"
+        )));
+    }
 
     // ── Finalize ───────────────────────────────────────────────────────
     send_progress(tx, "finalizing", "in_progress").await;
