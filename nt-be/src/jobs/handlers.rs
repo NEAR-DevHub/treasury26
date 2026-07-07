@@ -124,16 +124,28 @@ pub async fn goldsky_enrichment(
 
     let mut total = 0usize;
     loop {
-        let processed = crate::handlers::balance_changes::goldsky_enrichment::run_enrichment_cycle(
-            &goldsky_pool,
-            &state.db_pool,
-            &state.archival_network,
-            intents_api_key.as_deref(),
-            &intents_api_url,
-            Some(&state),
-        )
-        .await
-        .map_err(erase)?;
+        let processed =
+            match crate::handlers::balance_changes::goldsky_enrichment::run_enrichment_cycle(
+                &goldsky_pool,
+                &state.db_pool,
+                &state.archival_network,
+                intents_api_key.as_deref(),
+                &intents_api_url,
+                Some(&state),
+            )
+            .await
+            {
+                Ok(processed) => processed,
+                Err(e) => {
+                    // Batches already processed are committed (the cycle advances
+                    // its cursor per batch), so surface the failure without losing
+                    // that progress — the next tick resumes from the cursor.
+                    return Err(format!(
+                        "enrichment cycle failed after {total} outcomes this task: {e}"
+                    )
+                    .into());
+                }
+            };
         total += processed;
         if processed < BATCH_SIZE {
             break;
@@ -159,6 +171,8 @@ pub async fn status_monitor(_t: Tick, state: Data<Arc<AppState>>) -> Result<Stri
 }
 
 /// Event detection + Telegram dispatch, concurrently like the old loop.
+/// Each half runs regardless of the other failing; failures are aggregated
+/// so a bad Telegram token can't stall detection (or vice versa).
 pub async fn notifications(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, BoxDynError> {
     let (detected, dispatched) = tokio::join!(
         crate::handlers::notifications::detector::run_detection_cycle(&state.db_pool),
@@ -168,9 +182,17 @@ pub async fn notifications(_t: Tick, state: Data<Arc<AppState>>) -> Result<Strin
             &state.env_vars.frontend_base_url,
         ),
     );
-    let detected = detected?;
-    let dispatched = dispatched?;
-    Ok(format!("detected {detected}, dispatched {dispatched}"))
+
+    match (detected, dispatched) {
+        (Ok(detected), Ok(dispatched)) => {
+            Ok(format!("detected {detected}, dispatched {dispatched}"))
+        }
+        (Err(e), Ok(dispatched)) => {
+            Err(format!("detection failed: {e} (dispatched {dispatched})").into())
+        }
+        (Ok(detected), Err(e)) => Err(format!("dispatch failed: {e} (detected {detected})").into()),
+        (Err(de), Err(pe)) => Err(format!("detection failed: {de}; dispatch failed: {pe}").into()),
+    }
 }
 
 /// Low-balance ops alerts for sponsor accounts.
@@ -201,15 +223,29 @@ pub async fn dao_policy_stale(_t: Tick, state: Data<Arc<AppState>>) -> Result<St
 }
 
 /// Monthly plan credit reset + export expiry (daily at UTC midnight, plus
-/// a startup task).
+/// a startup task). The steps are independent — both always run, failures
+/// are aggregated.
 pub async fn subscription_monthly_reset(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
-    let reset =
-        crate::handlers::subscription::reset_due_monthly_plan_credits(&state.db_pool).await?;
-    let expired = crate::handlers::subscription::expire_old_exports(&state.db_pool).await?;
-    Ok(format!("reset {reset} accounts, expired {expired} exports"))
+    let reset = crate::handlers::subscription::reset_due_monthly_plan_credits(&state.db_pool).await;
+    let expired = crate::handlers::subscription::expire_old_exports(&state.db_pool).await;
+
+    match (reset, expired) {
+        (Ok(reset), Ok(expired)) => {
+            Ok(format!("reset {reset} accounts, expired {expired} exports"))
+        }
+        (Err(e), Ok(expired)) => {
+            Err(format!("credit reset failed: {e} (expired {expired} exports)").into())
+        }
+        (Ok(reset), Err(e)) => {
+            Err(format!("export expiry failed: {e} (reset {reset} accounts)").into())
+        }
+        (Err(re), Err(ee)) => {
+            Err(format!("credit reset failed: {re}; export expiry failed: {ee}").into())
+        }
+    }
 }
 
 /// Ensures the current week's public dashboard snapshot exists (weekly
@@ -225,14 +261,22 @@ pub async fn public_dashboard_refresh(
     })
 }
 
-/// FT lockup DAO schedule refresh + due claims.
+/// FT lockup DAO schedule refresh + due claims. Claims run even when the
+/// refresh fails (due claims from previously-synced schedules are still
+/// valid); failures are aggregated.
 pub async fn ft_lockup_refresh(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
-    let refresh = crate::services::refresh_ft_lockup_dao_schedules(&state).await?;
-    let claims = crate::services::run_due_ft_lockup_claims(&state, None, false).await?;
-    Ok(format!("refresh: {refresh:?}; claims: {claims:?}"))
+    let refresh = crate::services::refresh_ft_lockup_dao_schedules(&state).await;
+    let claims = crate::services::run_due_ft_lockup_claims(&state, None, false).await;
+
+    match (refresh, claims) {
+        (Ok(refresh), Ok(claims)) => Ok(format!("refresh: {refresh:?}; claims: {claims:?}")),
+        (Err(e), Ok(claims)) => Err(format!("refresh failed: {e} (claims: {claims:?})").into()),
+        (Ok(refresh), Err(e)) => Err(format!("claims failed: {e} (refresh: {refresh:?})").into()),
+        (Err(re), Err(ce)) => Err(format!("refresh failed: {re}; claims failed: {ce}").into()),
+    }
 }
 
 /// Deletes finished apalis tasks older than `APALIS_TASK_RETENTION_DAYS`

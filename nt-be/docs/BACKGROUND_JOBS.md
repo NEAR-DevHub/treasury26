@@ -15,6 +15,30 @@ What this replaces: 17 hand-rolled `tokio::spawn` + interval loops in
 - per-task tracing spans; `concurrency(1)` guarantees cycles never overlap
 - failed cycles are visible as failed tasks instead of just log lines
 
+## Resilience
+
+Every worker is wrapped in three layers of failure containment
+(`spawn_cron_worker!` in `src/jobs/mod.rs`), so a job keeps running through
+transient faults instead of dying until the next process restart:
+
+1. **Task errors** — a failing task is retried up to `TASK_RETRIES` (2)
+   times; after that the failure is recorded and the next cron tick starts
+   a fresh task. One bad cycle never stops the schedule.
+2. **Handler panics** — `catch_panic` turns a panic into a task error
+   (same path as #1) instead of tearing the worker down.
+3. **Worker-loop exit** — on a sustained backend/storage failure the
+   supervisor rebuilds and restarts the worker with capped exponential
+   backoff (1s → 60s), forever; the backoff resets after a run that stayed
+   up `RESTART_HEALTHY_AFTER` (5 min). A worker never dies silently.
+
+Handlers that do several steps run **all** steps and aggregate failures
+rather than aborting on the first error (e.g. notifications detect +
+dispatch, monthly credit reset + export expiry, FT-lockup refresh +
+claims); the goldsky drain reports partial progress on a mid-drain failure
+(its cursor is persisted per batch). Startup migrations for apalis are
+tracked in a private `apalis_migrations` schema so they never collide with
+the app's own `_sqlx_migrations`.
+
 ## Web UI
 
 The apalis-board (UI + its REST API at `/api/v1`) is served on the main

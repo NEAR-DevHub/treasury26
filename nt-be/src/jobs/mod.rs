@@ -21,6 +21,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use apalis::layers::WorkerBuilderExt;
+use apalis::layers::retry::RetryPolicy;
 use apalis::prelude::*;
 use apalis_core::backend::TaskSink;
 use apalis_core::backend::pipe::PipeExt;
@@ -183,12 +184,29 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
     }
 }
 
+/// How many times a failed task is retried within one execution before the
+/// failure is recorded and the job waits for its next cron tick.
+const TASK_RETRIES: usize = 2;
+
+/// Restart backoff for a worker whose run loop exits (sustained
+/// backend/storage failure): 1s doubling to a 60s cap, reset after a run
+/// that stayed up long enough to be considered healthy.
+const RESTART_BACKOFF_INITIAL: std::time::Duration = std::time::Duration::from_secs(1);
+const RESTART_BACKOFF_CAP: std::time::Duration = std::time::Duration::from_secs(60);
+const RESTART_HEALTHY_AFTER: std::time::Duration = std::time::Duration::from_secs(300);
+
 /// One cron-scheduled apalis worker: schedule → postgres queue → handler.
 ///
-/// Runs in a supervised loop: a clean exit (graceful shutdown) stops it, but
-/// an error restarts the worker after an exponential backoff (capped) so a
-/// transient failure doesn't permanently take a job offline until the whole
-/// process restarts — matching the resilience of the old interval loops.
+/// Three layers of failure containment, inside out:
+/// 1. **Task errors** → the task is retried up to [`TASK_RETRIES`] times
+///    (apalis `retry`), then the failure is recorded and the next cron tick
+///    starts a fresh task regardless — one bad cycle never stops the job.
+/// 2. **Handler panics** → `catch_panic` converts a panic into a task error
+///    (same path as #1) instead of tearing down the worker.
+/// 3. **Worker-loop exit** (sustained backend/storage failure) → the
+///    supervisor rebuilds and restarts the worker with capped exponential
+///    backoff, forever; the backoff resets after a healthy run. A worker
+///    never dies silently and stays down until a full process restart.
 macro_rules! spawn_cron_worker {
     ($queues:expr, $state:expr, $name:literal, $schedule:expr, $handler:path) => {{
         let store = storage(&$state.db_pool, $name);
@@ -196,32 +214,36 @@ macro_rules! spawn_cron_worker {
         let schedule = $schedule;
         let state = $state.clone();
         tokio::spawn(async move {
-            let mut backoff = std::time::Duration::from_secs(1);
-            let max_backoff = std::time::Duration::from_secs(60);
+            let mut backoff = RESTART_BACKOFF_INITIAL;
             loop {
-                let backend = CronStream::new(schedule.clone()).pipe_to(store.clone());
                 let worker = WorkerBuilder::new($name)
-                    .backend(backend)
+                    .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
                     .data(state.clone())
+                    .retry(RetryPolicy::retries(TASK_RETRIES))
+                    .catch_panic()
                     .enable_tracing()
                     .concurrency(1)
                     .build($handler);
+
+                let started = std::time::Instant::now();
                 match worker.run().await {
-                    Ok(()) => {
-                        tracing::info!(worker = $name, "job worker stopped");
-                        break;
-                    }
-                    Err(e) => {
-                        tracing::error!(
-                            worker = $name,
-                            error = %e,
-                            backoff_secs = backoff.as_secs(),
-                            "job worker exited with error; restarting after backoff"
-                        );
-                        tokio::time::sleep(backoff).await;
-                        backoff = (backoff * 2).min(max_backoff);
-                    }
+                    // CronStream is infinite, so a clean return means the
+                    // worker stopped unexpectedly (shutdown, backend drop) —
+                    // restart it rather than leave the job dead.
+                    Ok(()) => tracing::warn!(worker = $name, "job worker exited; restarting"),
+                    Err(e) => tracing::error!(
+                        worker = $name,
+                        error = %e,
+                        backoff_secs = backoff.as_secs(),
+                        "job worker crashed; restarting after backoff"
+                    ),
                 }
+
+                if started.elapsed() >= RESTART_HEALTHY_AFTER {
+                    backoff = RESTART_BACKOFF_INITIAL;
+                }
+                tokio::time::sleep(backoff).await;
+                backoff = (backoff * 2).min(RESTART_BACKOFF_CAP);
             }
         });
     }};
