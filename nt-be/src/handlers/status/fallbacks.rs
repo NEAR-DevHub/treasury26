@@ -57,12 +57,62 @@ const EXCHANGE_FALLBACK: FallbackConfig = FallbackConfig {
     }],
 };
 
+const BRIDGE_RPC_FALLBACK: FallbackConfig = FallbackConfig {
+    targets: &[
+        FallbackTarget {
+            slot: "exchange",
+            response: "paused",
+            severity: "high",
+            situation: "features_paused",
+        },
+        FallbackTarget {
+            slot: "deposit",
+            response: "paused",
+            severity: "high",
+            situation: "features_paused",
+        },
+        FallbackTarget {
+            slot: "payments",
+            response: "paused",
+            severity: "high",
+            situation: "features_paused",
+        },
+    ],
+};
+
 const NEAR_RPC_FALLBACK: FallbackConfig = FallbackConfig {
     targets: &[FallbackTarget {
         slot: "app",
         response: "paused",
         severity: "high",
         situation: "transactions_halted",
+    }],
+};
+
+const FASTNEAR_FALLBACK: FallbackConfig = FallbackConfig {
+    targets: &[FallbackTarget {
+        slot: "data.balances",
+        response: "notice",
+        severity: "high",
+        situation: "balance_unavailable",
+    }],
+};
+
+const GOLDSKY_FALLBACK: FallbackConfig = FallbackConfig {
+    targets: &[FallbackTarget {
+        slot: "data.activity",
+        response: "notice",
+        severity: "high",
+        situation: "history_not_loading",
+    }],
+};
+
+const INTENTS_EXPLORER_FALLBACK: FallbackConfig = FallbackConfig {
+    targets: &[FallbackTarget {
+        slot: "data.activity",
+        response: "notice",
+        severity: "high",
+        situation: "history_not_loading",
     }],
 };
 
@@ -77,9 +127,13 @@ const WHOLE_APP_DOWN_FALLBACK: FallbackConfig = FallbackConfig {
 
 const FALLBACK_CONFIGS: &[(&str, FallbackConfig)] = &[
     ("backend", BACKEND_DOWN_FALLBACK),
+    ("bridge-rpc", BRIDGE_RPC_FALLBACK),
     ("exchange", EXCHANGE_FALLBACK),
     ("near-protocol", WHOLE_APP_DOWN_FALLBACK),
     ("near-rpc", NEAR_RPC_FALLBACK),
+    ("fastnear", FASTNEAR_FALLBACK),
+    ("goldsky", GOLDSKY_FALLBACK),
+    ("intents-explorer", INTENTS_EXPLORER_FALLBACK),
 ];
 
 pub fn fallback_config(service: &str) -> Option<&'static FallbackConfig> {
