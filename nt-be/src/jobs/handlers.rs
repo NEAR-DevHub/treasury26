@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use apalis::prelude::*;
 use apalis_cron::Tick;
+use tokio::sync::{Mutex, OnceCell};
 
 use crate::AppState;
 
@@ -53,6 +54,39 @@ pub async fn price_sync(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, 
     );
     let summary = crate::services::run_price_sync_cycle(&state.db_pool, &provider).await?;
     Ok(summary)
+}
+
+/// Ingests the Chaindefuser token registry into `tokens` + `token_prices`.
+pub async fn token_price_ingest(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    static INGESTOR: OnceCell<Mutex<crate::services::TokenPriceIngestor>> = OnceCell::const_new();
+
+    let ingestor = INGESTOR
+        .get_or_init(|| async {
+            Mutex::new(crate::services::TokenPriceIngestor::new(
+                state.http_client.clone(),
+                state.db_pool.clone(),
+                Arc::clone(&state.token_price_service),
+            ))
+        })
+        .await;
+
+    let mut ingestor = ingestor.lock().await;
+    let summary = ingestor.tick_result().await?;
+
+    if summary.upstream_unchanged {
+        return Ok("tokens API unchanged".to_string());
+    }
+
+    Ok(format!(
+        "tokens={} sampled={} price_rows={} snapshot_tokens={}",
+        summary.tokens_seen,
+        summary.sampled_prices,
+        summary.price_rows_written,
+        summary.snapshot_tokens
+    ))
 }
 
 /// Confidential history (bronze) ingest scheduler tick.

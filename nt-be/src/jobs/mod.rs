@@ -305,6 +305,14 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     spawn_cron_worker!(
         queues,
         state,
+        "token-price-ingest",
+        schedule_every_secs(60),
+        handlers::token_price_ingest
+    );
+
+    spawn_cron_worker!(
+        queues,
+        state,
         "confidential-history-ingest",
         schedule_every_secs(10),
         handlers::confidential_history_ingest

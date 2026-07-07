@@ -68,6 +68,15 @@ pub struct TokenPriceIngestor {
     partitions_ensured_for: Option<NaiveDate>,
 }
 
+#[derive(Debug, Clone)]
+pub struct TokenPriceIngestSummary {
+    pub tokens_seen: usize,
+    pub price_rows_written: usize,
+    pub snapshot_tokens: usize,
+    pub sampled_prices: bool,
+    pub upstream_unchanged: bool,
+}
+
 impl TokenPriceIngestor {
     pub fn new(http: reqwest::Client, pool: PgPool, service: Arc<TokenPriceService>) -> Self {
         Self {
@@ -84,61 +93,75 @@ impl TokenPriceIngestor {
     /// retries, and consumers keep serving the last known prices.
     #[tracing::instrument(level = "info", skip_all, fields(job = "token_price_ingest"))]
     pub async fn tick(&mut self) {
+        match self.tick_result().await {
+            Ok(summary) if summary.upstream_unchanged => {
+                tracing::debug!("tokens API unchanged (304), skipping tick");
+            }
+            Ok(summary) => {
+                if summary.price_rows_written > 0 {
+                    tracing::info!(
+                        "wrote {} price rows for {} tokens",
+                        summary.price_rows_written,
+                        summary.tokens_seen
+                    );
+                }
+                tracing::debug!(
+                    "refreshed token snapshot ({} tokens)",
+                    summary.snapshot_tokens
+                );
+            }
+            Err(e) => tracing::warn!("token price ingest tick failed: {}", e),
+        }
+    }
+
+    /// One ingest cycle with a structured result for apalis task reporting.
+    #[tracing::instrument(level = "info", skip_all, fields(job = "token_price_ingest"))]
+    pub async fn tick_result(
+        &mut self,
+    ) -> Result<TokenPriceIngestSummary, Box<dyn std::error::Error + Send + Sync>> {
         let now = Utc::now();
 
-        if let Err(e) = self.maintain_partitions(now.date_naive()).await {
-            tracing::error!("token_prices partition maintenance failed: {}", e);
-            return;
-        }
+        self.maintain_partitions(now.date_naive()).await?;
 
         let items = match self.fetch_tokens().await {
             Ok(Some(items)) => items,
             Ok(None) => {
-                tracing::debug!("tokens API unchanged (304), skipping tick");
-                return;
+                return Ok(TokenPriceIngestSummary {
+                    tokens_seen: 0,
+                    price_rows_written: 0,
+                    snapshot_tokens: 0,
+                    sampled_prices: false,
+                    upstream_unchanged: true,
+                });
             }
-            Err(e) => {
-                tracing::warn!("tokens API fetch failed: {}", e);
-                return;
-            }
+            Err(e) => return Err(e),
         };
 
         if items.is_empty() {
-            tracing::warn!("tokens API returned an empty item list, skipping tick");
-            return;
+            return Err("tokens API returned an empty item list".into());
         }
 
-        if let Err(e) = self.upsert_registry(&items).await {
-            tracing::warn!("tokens registry upsert failed: {}", e);
-            return;
-        }
+        self.upsert_registry(&items).await?;
 
         let minute_at = now
             .duration_trunc(Duration::minutes(1))
             .expect("minute truncation cannot fail");
+        let mut price_rows_written = 0usize;
+        let mut sampled_prices = false;
         if should_persist_price_sample(minute_at) {
-            match self.insert_changed_prices(&items, minute_at).await {
-                Ok(written) => {
-                    if written > 0 {
-                        tracing::info!(
-                            "wrote {} price rows for {} tokens at {}",
-                            written,
-                            items.len(),
-                            minute_at
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!("token_prices insert failed: {}", e);
-                    return;
-                }
-            }
+            sampled_prices = true;
+            price_rows_written = self.insert_changed_prices(&items, minute_at).await?;
         }
 
-        match self.service.refresh_snapshot().await {
-            Ok(count) => tracing::debug!("refreshed token snapshot ({} tokens)", count),
-            Err(e) => tracing::warn!("token snapshot refresh failed: {}", e),
-        }
+        let snapshot_tokens = self.service.refresh_snapshot().await?;
+
+        Ok(TokenPriceIngestSummary {
+            tokens_seen: items.len(),
+            price_rows_written,
+            snapshot_tokens,
+            sampled_prices,
+            upstream_unchanged: false,
+        })
     }
 
     /// Fetch the token list; `Ok(None)` means unchanged since last fetch (304).
