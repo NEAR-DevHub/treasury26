@@ -13,43 +13,37 @@ on:
       - ".github/workflows/frontend-e2e.yml"
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-
 jobs:
   e2e-tests:
     name: Playwright E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Determine sandbox image tag
-        id: sandbox-tag
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            PR_TAG="pr-${{ github.event.pull_request.number }}"
-            # Check if PR-specific image exists
-            if docker manifest inspect ghcr.io/near-devhub/trezu/near-treasury-sandbox:${PR_TAG} > /dev/null 2>&1; then
-              echo "tag=${PR_TAG}" >> $GITHUB_OUTPUT
-              echo "Using PR-specific sandbox image: ${PR_TAG}"
-            else
-              echo "tag=main" >> $GITHUB_OUTPUT
-              echo "PR-specific image not found, using main"
-            fi
-          else
-            echo "tag=main" >> $GITHUB_OUTPUT
-            echo "Using main sandbox image"
-          fi
+      - name: Build sandbox image locally
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./sandbox/Dockerfile
+          platforms: linux/amd64
+          # Build in-runner (no registry) so this runs for fork PRs too, and
+          # test against the PR's actual sandbox instead of a stale `main`
+          # image. The shared `near-treasury-sandbox` gha cache scope means
+          # the expensive `cargo build --release` layers are reused from the
+          # bulk-payment-e2e build (and prior runs) — no extra recompilation.
+          load: true
+          push: false
+          tags: near-treasury-sandbox
+          cache-from: type=gha,scope=near-treasury-sandbox
+          cache-to: type=gha,scope=near-treasury-sandbox,mode=max
 
       - name: Start sandbox container
         run: |
@@ -60,7 +54,7 @@ jobs:
             --health-timeout 5s \
             --health-retries 30 \
             --health-start-period 120s \
-            ghcr.io/near-devhub/trezu/near-treasury-sandbox:${{ steps.sandbox-tag.outputs.tag }}
+            near-treasury-sandbox
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

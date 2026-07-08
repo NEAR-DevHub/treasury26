@@ -59,8 +59,12 @@ jobs:
           load: true
           push: false
           tags: near-treasury-sandbox
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Shared, named gha cache scope so the expensive `cargo build
+          # --release` layers are reused across runs AND across the other
+          # workflow that builds this same image (frontend-e2e) — no
+          # per-workflow recompilation.
+          cache-from: type=gha,scope=near-treasury-sandbox
+          cache-to: type=gha,scope=near-treasury-sandbox,mode=max
 
       - name: Start Docker container
         run: |
