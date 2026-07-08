@@ -177,21 +177,11 @@ fn resolve_token_meta_and_unified_id<'a>(
     Some((token_meta, unified_id))
 }
 
-/// Base URL for the FastNear account API. Overridable via
-/// `FASTNEAR_API_BASE_URL` so tests can route it through the offline RPC
-/// cache proxy (like the other external base URLs); defaults to production.
-fn fastnear_api_base_url() -> String {
-    std::env::var("FASTNEAR_API_BASE_URL")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "https://api.fastnear.com".to_string())
-}
-
 /// Fetch full account data from the FastNear API.
 ///
-/// Queries `{base}/v1/account/{account_id}/full` (base defaults to
-/// `https://api.fastnear.com`) and returns the parsed response. Shared by the
-/// assets endpoint and the monitor cycle's FT token discovery.
+/// Queries `https://api.fastnear.com/v1/account/{account_id}/full` and returns
+/// the parsed response. Shared by the assets endpoint and the monitor cycle's
+/// FT token discovery.
 pub async fn fetch_fastnear_account_full(
     http_client: &reqwest::Client,
     fastnear_api_key: &str,
@@ -199,8 +189,7 @@ pub async fn fetch_fastnear_account_full(
 ) -> Result<FastNearResponse, Box<dyn std::error::Error + Send + Sync>> {
     let response = http_client
         .get(format!(
-            "{}/v1/account/{}/full",
-            fastnear_api_base_url(),
+            "https://api.fastnear.com/v1/account/{}/full",
             account_id
         ))
         .header("Authorization", format!("Bearer {}", fastnear_api_key))

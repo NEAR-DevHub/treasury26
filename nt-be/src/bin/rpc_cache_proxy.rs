@@ -59,10 +59,6 @@ const ROUTES: &[UpstreamRoute] = &[
         prefix: "/intents-explorer",
         upstream: "https://explorer.near-intents.org",
     },
-    UpstreamRoute {
-        prefix: "/fastnear-api",
-        upstream: "https://api.fastnear.com",
-    },
 ];
 
 #[derive(Clone)]
