@@ -224,7 +224,7 @@ pub async fn seed_policy_member(pool: &sqlx::PgPool, dao_id: &str, account_id: &
 /// `ChangePolicy` (delete templates, flip the custom-requests feature flag) alike — so it stands in
 /// for anyone allowed to do all template management. Requestor-only access is exercised separately.
 #[cfg(test)]
-pub async fn seed_change_policy_member(
+pub async fn seed_full_admin_member(
     state: &std::sync::Arc<AppState>,
     pool: &sqlx::PgPool,
     dao_id: &str,

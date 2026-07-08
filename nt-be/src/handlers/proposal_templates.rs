@@ -464,7 +464,7 @@ mod tests {
     use crate::{
         routes::create_routes,
         utils::test_utils::{
-            DAO_ID, USER_ACCOUNT_ID, issue_auth_cookie, policy_granting, seed_change_policy_member,
+            DAO_ID, USER_ACCOUNT_ID, issue_auth_cookie, policy_granting, seed_full_admin_member,
             seed_policy_member, seed_treasury_policy, send, test_state,
         },
     };
@@ -531,7 +531,7 @@ mod tests {
         let app = create_routes(state.clone());
 
         let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
-        seed_change_policy_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
+        seed_full_admin_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
         let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
 
         let mut manifest = valid_manifest();
@@ -553,7 +553,7 @@ mod tests {
         let app = create_routes(state.clone());
 
         let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
-        seed_change_policy_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
+        seed_full_admin_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
         let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
 
         // CREATE
@@ -931,7 +931,7 @@ mod tests {
         let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
 
         seed_policy_member(&pool, DAO_ID, USER_ACCOUNT_ID).await;
-        let dao: near_api::AccountId = DAO_ID.parse().unwrap();
+        let dao: near_api::AccountId = DAO_ID.parse().expect("valid dao id");
         seed_treasury_policy(
             &state,
             &dao,
@@ -950,9 +950,10 @@ mod tests {
         )
         .await;
         assert_eq!(status, StatusCode::CREATED, "requestor create: {body}");
-        let id = serde_json::from_str::<Value>(&body).unwrap()["id"]
+        let created: Value = serde_json::from_str(&body).expect("create response is JSON");
+        let id = created["id"]
             .as_str()
-            .unwrap()
+            .expect("create response has a string id")
             .to_string();
         let item = format!("{base}/{id}");
 
@@ -982,7 +983,7 @@ mod tests {
         let app = create_routes(state.clone());
         let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
 
-        seed_change_policy_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
+        seed_full_admin_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
         let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
 
         let padded = json!({

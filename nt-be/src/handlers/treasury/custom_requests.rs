@@ -104,7 +104,7 @@ mod tests {
         config::{PlanType, get_initial_credits},
         routes::create_routes,
         utils::test_utils::{
-            DAO_ID, USER_ACCOUNT_ID, issue_auth_cookie, policy_granting, seed_change_policy_member,
+            DAO_ID, USER_ACCOUNT_ID, issue_auth_cookie, policy_granting, seed_full_admin_member,
             seed_policy_member, seed_treasury_policy, send, test_state,
         },
     };
@@ -140,7 +140,7 @@ mod tests {
     async fn test_enable_then_disable_round_trips(pool: PgPool) {
         let state = test_state(pool.clone());
         let app = create_routes(state.clone());
-        seed_change_policy_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
+        seed_full_admin_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
         let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
 
         // ENABLE -> 200, and a follow-up GET reflects it.
