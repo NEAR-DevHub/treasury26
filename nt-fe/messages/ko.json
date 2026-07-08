@@ -1703,8 +1703,8 @@
         "incompatible": "호환되지 않음",
         "comingSoon": "곧 제공",
         "forMembersOnly": "회원 전용",
-        "nearComDescription": "near.com 및 trezu용 기밀 네트워크",
-        "nearDescription": "공개 출금을 위한 네트워크"
+        "nearComDescription": "기밀 trezu용 네트워크",
+        "nearDescription": "공개 출금 및 near.com 지갑용 네트워크"
     },
     "addressBookTable": {
         "emptyTitle": "아직 수신자가 없습니다",

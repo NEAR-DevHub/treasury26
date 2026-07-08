@@ -1703,8 +1703,8 @@
         "incompatible": "Uyumsuz",
         "comingSoon": "Yakında",
         "forMembersOnly": "Yalnızca Üyelere Özel",
-        "nearComDescription": "near.com ve trezu için gizli ağ",
-        "nearDescription": "Herkese açık para çekme ağı"
+        "nearComDescription": "Gizli trezu için ağ",
+        "nearDescription": "Açık çekim ve near.com cüzdanı için ağ"
     },
     "addressBookTable": {
         "emptyTitle": "Henüz alıcı yok",
