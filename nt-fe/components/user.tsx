@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ContactRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useProfile } from "@/hooks/use-treasury-queries";
@@ -22,6 +23,101 @@ export const sizeClasses = {
 } as const;
 
 type UserSize = keyof typeof sizeClasses;
+
+const avatarTextSizeClasses = {
+    sm: "text-[10px]",
+    md: "text-xs",
+    lg: "text-sm",
+} as const;
+
+function getUserAvatarInitial(name: string, address: string): string {
+    if (name && name !== address) {
+        return name.charAt(0).toUpperCase();
+    }
+    return address.charAt(0).toLowerCase();
+}
+
+function resolveProfileImageUrl(image: unknown): string | undefined {
+    if (!image) return undefined;
+
+    if (typeof image === "string") {
+        const trimmed = image.trim();
+        return trimmed || undefined;
+    }
+
+    if (typeof image === "object") {
+        const value = image as Record<string, unknown>;
+        if (typeof value.url === "string" && value.url.trim()) {
+            return value.url.trim();
+        }
+
+        const cid = value.ipfs_cid ?? value.ipfsCid;
+        if (typeof cid === "string" && cid.trim()) {
+            return `https://ipfs.near.social/ipfs/${cid.trim()}`;
+        }
+    }
+
+    return undefined;
+}
+
+function UserAvatarFallback({
+    name,
+    address,
+    size = "sm",
+}: {
+    name: string;
+    address: string;
+    size?: UserSize;
+}) {
+    return (
+        <div
+            className={cn(
+                "rounded-full shrink-0 flex items-center justify-center bg-accent text-accent-foreground font-medium",
+                sizeClasses[size],
+                avatarTextSizeClasses[size],
+            )}
+            aria-hidden
+        >
+            {getUserAvatarInitial(name, address)}
+        </div>
+    );
+}
+
+function UserAvatar({
+    name,
+    address,
+    imageUrl,
+    size = "sm",
+}: {
+    name: string;
+    address: string;
+    imageUrl?: string;
+    size?: UserSize;
+}) {
+    const [hasImageError, setHasImageError] = useState(false);
+
+    useEffect(() => {
+        setHasImageError(false);
+    }, [imageUrl]);
+
+    if (!imageUrl || hasImageError) {
+        return <UserAvatarFallback name={name} address={address} size={size} />;
+    }
+
+    return (
+        <div className="rounded-full flex bg-muted border border-border">
+            <img
+                src={imageUrl}
+                alt={name}
+                className={cn(
+                    "rounded-full shrink-0 object-cover",
+                    sizeClasses[size],
+                )}
+                onError={() => setHasImageError(true)}
+            />
+        </div>
+    );
+}
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -59,6 +155,7 @@ export function UserSkeleton({
 interface UserWithDataProps {
     name: string;
     address: string;
+    imageUrl?: string;
     iconOnly?: boolean;
     truncatePrimaryAddress?: boolean;
     size?: UserSize;
@@ -71,6 +168,7 @@ interface UserWithDataProps {
 export function UserWithData({
     name,
     address,
+    imageUrl,
     size = "sm",
     iconOnly = false,
     truncatePrimaryAddress = false,
@@ -79,18 +177,16 @@ export function UserWithData({
     chainName = NEAR_NETWORK_ID,
     useAddressBook = false,
 }: UserWithDataProps) {
-    const image = `https://i.near.social/magic/large/https://near.social/magic/img/account/${address}`;
     const explorerUrl = getExplorerAddressUrl(chainName, address);
 
     const content = (
         <>
-            <div className="rounded-full flex bg-muted border border-border">
-                <img
-                    src={image}
-                    alt={name}
-                    className={cn("rounded-full shrink-0", sizeClasses[size])}
-                />
-            </div>
+            <UserAvatar
+                name={name}
+                address={address}
+                imageUrl={imageUrl}
+                size={size}
+            />
             {!iconOnly && (
                 <div className="flex flex-col items-start max-w-60 md:max-w-80 min-w-0">
                     {truncatePrimaryAddress && name === address ? (
@@ -250,11 +346,9 @@ export function User({
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
 }: UserProps) {
-    const { data: profile, isLoading } = useProfile(
-        withName && !nameProp ? accountId : undefined,
-    );
+    const { data: profile, isLoading } = useProfile(accountId);
 
-    if (isLoading) {
+    if (isLoading && withName && !nameProp) {
         return (
             <UserSkeleton iconOnly={iconOnly} size={size} withName={withName} />
         );
@@ -271,6 +365,7 @@ export function User({
         <UserWithData
             name={resolvedName}
             address={accountId}
+            imageUrl={resolveProfileImageUrl(profile?.image)}
             useAddressBook={useAddressBook}
             size={size}
             iconOnly={iconOnly}
