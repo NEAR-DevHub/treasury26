@@ -13,6 +13,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::OnceLock;
+use std::time::Duration;
 
 use super::price_provider::PriceProvider;
 
@@ -124,6 +125,70 @@ struct CoinPrice {
     #[allow(dead_code)]
     confidence: Option<f64>,
 }
+
+/// One coin from /prices/current with the metadata fields DeFiLlama returns
+/// alongside the price — enough to register an unknown token locally.
+#[derive(Debug, Clone, Deserialize)]
+pub struct CurrentCoin {
+    pub price: f64,
+    pub symbol: Option<String>,
+    pub decimals: Option<i16>,
+    pub timestamp: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CurrentCoinsResponse {
+    coins: HashMap<String, CurrentCoin>,
+}
+
+/// Response from DeFiLlama /batchHistorical endpoint
+#[derive(Debug, Deserialize)]
+struct BatchHistoricalResponse {
+    coins: HashMap<String, BatchHistoricalCoin>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BatchHistoricalCoin {
+    prices: Vec<BatchHistoricalPoint>,
+}
+
+/// One nearest-sample price point returned by /batchHistorical. `timestamp`
+/// is the actual sample time DeFiLlama found, not the requested one.
+#[derive(Debug, Clone, Deserialize)]
+pub struct BatchHistoricalPoint {
+    pub timestamp: i64,
+    pub price: f64,
+    #[allow(dead_code)]
+    pub confidence: Option<f64>,
+}
+
+/// Error from [`DeFiLlamaClient::get_batch_historical`]. Single-attempt by
+/// design: the caller owns the retry policy and the rate limiter.
+#[derive(Debug)]
+pub enum BatchHistoricalError {
+    /// 429; delay parsed from the `Retry-After` header when present.
+    RateLimited {
+        retry_after: Option<Duration>,
+    },
+    Transport(reqwest::Error),
+    Status(reqwest::StatusCode),
+    Decode(String),
+}
+
+impl std::fmt::Display for BatchHistoricalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::RateLimited { retry_after } => {
+                write!(f, "DeFiLlama rate limited (retry_after: {retry_after:?})")
+            }
+            Self::Transport(e) => write!(f, "DeFiLlama transport error: {e}"),
+            Self::Status(status) => write!(f, "DeFiLlama API error: {status}"),
+            Self::Decode(e) => write!(f, "DeFiLlama response decode error: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for BatchHistoricalError {}
 
 /// Response from DeFiLlama /chart endpoint for historical data
 #[derive(Debug, Deserialize)]
@@ -298,6 +363,99 @@ impl DeFiLlamaClient {
         );
 
         Ok(prices)
+    }
+
+    /// Fetch current prices with symbol/decimals metadata for many assets in
+    /// one `/prices/current` request. Coins DeFiLlama does not know are
+    /// simply absent from the returned map.
+    pub async fn get_current_coins(
+        &self,
+        asset_ids: &[String],
+    ) -> Result<HashMap<String, CurrentCoin>, Box<dyn std::error::Error + Send + Sync>> {
+        if asset_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let url = format!("{}/prices/current/{}", self.base_url, asset_ids.join(","));
+        let response = self
+            .http_client
+            .get(&url)
+            .header("accept", "application/json")
+            .send()
+            .await?;
+
+        let status = response.status();
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Ok(HashMap::new());
+        }
+        if !status.is_success() {
+            return Err(format!("DeFiLlama API error: {}", status).into());
+        }
+
+        let data: CurrentCoinsResponse = response.json().await?;
+        Ok(data.coins)
+    }
+
+    /// Fetch nearest historical USD samples for many (coin, timestamp) points
+    /// in one request.
+    ///
+    /// Uses `GET /batchHistorical?coins={coin:[ts,...]}&searchWidth={secs}`.
+    /// One HTTP request regardless of how many points are packed in; ~450
+    /// points keep the encoded URL under CloudFront's 8 KB cap. Returns, per
+    /// coin, the samples DeFiLlama found within the search width of each
+    /// requested timestamp (fewer than requested when data is missing).
+    pub async fn get_batch_historical(
+        &self,
+        requests: &HashMap<String, Vec<i64>>,
+        search_width_secs: u32,
+    ) -> Result<HashMap<String, Vec<BatchHistoricalPoint>>, BatchHistoricalError> {
+        if requests.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let coins_param = serde_json::to_string(requests)
+            .map_err(|e| BatchHistoricalError::Decode(e.to_string()))?;
+        let url = format!("{}/batchHistorical", self.base_url);
+
+        let response = self
+            .http_client
+            .get(&url)
+            .query(&[
+                ("coins", coins_param.as_str()),
+                ("searchWidth", &search_width_secs.to_string()),
+            ])
+            .header("accept", "application/json")
+            .send()
+            .await
+            .map_err(BatchHistoricalError::Transport)?;
+
+        let status = response.status();
+
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            let retry_after = response
+                .headers()
+                .get(reqwest::header::RETRY_AFTER)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.trim().parse::<u64>().ok())
+                .map(Duration::from_secs);
+            return Err(BatchHistoricalError::RateLimited { retry_after });
+        }
+
+        if !status.is_success() {
+            // Never read the body — CloudFlare 429/5xx pages can be huge HTML
+            return Err(BatchHistoricalError::Status(status));
+        }
+
+        let data: BatchHistoricalResponse = response
+            .json()
+            .await
+            .map_err(|e| BatchHistoricalError::Decode(e.to_string()))?;
+
+        Ok(data
+            .coins
+            .into_iter()
+            .map(|(coin, body)| (coin, body.prices))
+            .collect())
     }
 
     /// Convert a symbol to DeFiLlama asset ID
@@ -556,6 +714,33 @@ mod tests {
 
         // Unknown symbol - no contract
         assert_eq!(DeFiLlamaClient::symbol_to_asset_id("UNKNOWN", None), None);
+    }
+
+    /// Hits the real DeFiLlama API; run with `cargo test -- --ignored`.
+    #[tokio::test]
+    #[ignore = "hits the real DeFiLlama API"]
+    async fn batch_historical_live_smoke() {
+        let client = DeFiLlamaClient::new(Client::new());
+        let requests = HashMap::from([
+            (
+                "coingecko:ethereum".to_string(),
+                vec![1719878400, 1719878700, 1719879000],
+            ),
+            ("coingecko:bitcoin".to_string(), vec![1719878400]),
+        ]);
+
+        let prices = client
+            .get_batch_historical(&requests, 600)
+            .await
+            .expect("batchHistorical call failed");
+
+        let eth = &prices["coingecko:ethereum"];
+        assert_eq!(eth.len(), 3);
+        for point in eth {
+            assert!(point.price > 0.0);
+            assert!((point.timestamp - 1719878700).unsigned_abs() <= 900);
+        }
+        assert_eq!(prices["coingecko:bitcoin"].len(), 1);
     }
 
     #[test]

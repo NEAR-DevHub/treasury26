@@ -247,6 +247,7 @@ impl TokenPriceService {
 /// - `nep141:...` / `nep245:...` (confidential tables) pass through
 /// - `near`, NULL-as-`near`, and `staking:<pool>` map to `nep141:wrap.near`
 /// - `intents.near:<defuse id>` (public gold/silver) strips the prefix
+/// - bare multi-token ids (`v2_1.omni.hot.tg:<chain>_<asset>`) gain `nep245:`
 /// - bare NEP-141 contract ids (`wrap.near`, balance_changes) gain `nep141:`
 pub fn canonicalize_token_id(raw: &str) -> String {
     if raw == "near" || raw.starts_with("staking:") {
@@ -257,6 +258,9 @@ pub fn canonicalize_token_id(raw: &str) -> String {
     }
     if raw.starts_with("nep141:") || raw.starts_with("nep245:") {
         return raw.to_string();
+    }
+    if raw.starts_with("v2_1.omni.hot.tg:") {
+        return format!("nep245:{raw}");
     }
     format!("nep141:{raw}")
 }
@@ -295,6 +299,14 @@ mod tests {
         assert_eq!(
             canonicalize_token_id("nep245:v2_1.omni.hot.tg:137_abc"),
             "nep245:v2_1.omni.hot.tg:137_abc"
+        );
+    }
+
+    #[test]
+    fn canonicalize_prefixes_bare_multitoken_ids_with_nep245() {
+        assert_eq!(
+            canonicalize_token_id("v2_1.omni.hot.tg:56_2CMMyVTGZkeyNZTSvS5sarzfir6g"),
+            "nep245:v2_1.omni.hot.tg:56_2CMMyVTGZkeyNZTSvS5sarzfir6g"
         );
     }
 

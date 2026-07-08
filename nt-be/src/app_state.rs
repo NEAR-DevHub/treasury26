@@ -26,6 +26,10 @@ use crate::{
 /// on-demand v1 call sites; the daily/monthly budget is enforced separately.
 const NEARBLOCKS_MAX_PER_MINUTE: u32 = 10;
 
+/// Sustained DeFiLlama request ceiling (per minute) shared by every DeFiLlama
+/// caller. The free tier enforces 500/min per IP; we stay well under it.
+const DEFILLAMA_MAX_PER_MINUTE: u32 = 200;
+
 /// Per-endpoint RPC retries before near-api fails over to the next endpoint
 /// (near-api's default is 5). Bumped so transient RPC hiccups are absorbed
 /// before giving up on an endpoint.
@@ -75,6 +79,9 @@ pub struct AppState {
     /// preempt backfill (bulk) requests for the next permit. Replaces the raw
     /// limiter so the priority ordering can't be bypassed at the one acquire site.
     pub nearblocks_gate: PriorityRateGate<NearblocksPriority>,
+    /// Shared budget for all DeFiLlama callers (free tier allows 500/min;
+    /// we self-cap well under it). Clones share one limiter.
+    pub defillama_limiter: RateLimiter,
     pub cache: Cache,
     pub signer: Arc<Signer>,
     pub bulk_payment_signer: Arc<Signer>,
@@ -400,11 +407,14 @@ impl AppStateBuilder {
             PriorityRateGate::<NearblocksPriority>::new(nearblocks_limiter);
         tokio::spawn(nearblocks_gate_driver.run());
 
+        let defillama_limiter = RateLimiter::per_minute("defillama", DEFILLAMA_MAX_PER_MINUTE, 0);
+
         let (event_tx, _) = broadcast::channel(EVENT_BUS_CAPACITY);
 
         Ok(AppState {
             http_client: self.http_client.unwrap_or_default(),
             nearblocks_gate,
+            defillama_limiter,
             cache: self.cache.unwrap_or_default(),
             signer,
             bulk_payment_signer,

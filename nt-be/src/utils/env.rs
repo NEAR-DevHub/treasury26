@@ -18,6 +18,9 @@ pub struct EnvVars {
     pub disable_treasury_creation: bool,
     pub disable_stats_generation: bool,
     pub disable_ft_lockup_scheduler: bool,
+    pub disable_balance_changes_usd_backfill: bool,
+    pub disable_gold_public_usd_backfill: bool,
+    pub disable_gold_confidential_usd_backfill: bool,
     pub monitor_interval_seconds: u64,
     pub telegram_bot_token: Option<String>,
     /// General notifications channel (user creation, treasury creation, etc.)
@@ -125,6 +128,22 @@ impl Default for EnvVars {
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
+            disable_balance_changes_usd_backfill: std::env::var(
+                "DISABLE_BALANCE_CHANGES_USD_BACKFILL",
+            )
+            .unwrap_or_else(|_| "false".to_string())
+            .parse()
+            .unwrap_or(false),
+            disable_gold_public_usd_backfill: std::env::var("DISABLE_GOLD_PUBLIC_USD_BACKFILL")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            disable_gold_confidential_usd_backfill: std::env::var(
+                "DISABLE_GOLD_CONFIDENTIAL_USD_BACKFILL",
+            )
+            .unwrap_or_else(|_| "false".to_string())
+            .parse()
+            .unwrap_or(false),
             monitor_interval_seconds: std::env::var("MONITOR_INTERVAL_SECONDS")
                 .ok()
                 .and_then(|s| s.parse().ok())

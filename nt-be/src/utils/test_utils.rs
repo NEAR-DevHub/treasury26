@@ -139,6 +139,11 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         telegram_client: crate::utils::telegram::TelegramClient::default(),
         http_client,
         nearblocks_gate,
+        defillama_limiter: crate::utils::rate_limiter::RateLimiter::per_minute(
+            "defillama-test",
+            10_000,
+            10_000,
+        ),
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
         bulk_payment_signer: Signer::from_secret_key(env_vars.bulk_payment_signer.clone())

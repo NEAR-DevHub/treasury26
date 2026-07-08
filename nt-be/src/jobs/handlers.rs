@@ -56,6 +56,59 @@ pub async fn price_sync(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, 
     Ok(summary)
 }
 
+/// Backfills historical `token_prices` samples from DeFiLlama for the
+/// (token, 5-minute bucket) pairs `balance_changes` rows need.
+pub async fn token_price_backfill(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let backfill = crate::services::HistoricalPriceBackfill::new(
+        state.http_client.clone(),
+        state.env_vars.defillama_api_base_url.clone(),
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+        state.defillama_limiter.clone(),
+    );
+    let summary = backfill.run().await?;
+    Ok(summary.to_string())
+}
+
+/// Fills `balance_changes.usd_value` from the `token_prices` series.
+pub async fn balance_changes_usd_backfill(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let backfill = crate::services::BalanceChangesUsdBackfill::new(
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+    );
+    Ok(backfill.run().await?.to_string())
+}
+
+/// Fills NULL `amount_in_usd`/`amount_out_usd` on public gold events.
+pub async fn gold_public_usd_backfill(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let backfill = crate::services::GoldPublicUsdBackfill::new(
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+    );
+    Ok(backfill.run().await?.to_string())
+}
+
+/// Fills NULL `amount_in_usd`/`amount_out_usd` on confidential gold events.
+pub async fn gold_confidential_usd_backfill(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let backfill = crate::services::GoldConfidentialUsdBackfill::new(
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+    );
+    Ok(backfill.run().await?.to_string())
+}
+
 /// Ingests the Chaindefuser token registry into `tokens` + `token_prices`.
 pub async fn token_price_ingest(
     _t: Tick,

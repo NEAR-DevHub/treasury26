@@ -313,6 +313,50 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     spawn_cron_worker!(
         queues,
         state,
+        "token-price-backfill",
+        schedule_every_secs(env_secs("TOKEN_PRICE_BACKFILL_INTERVAL_SECONDS", 3600)),
+        handlers::token_price_backfill
+    );
+
+    if !state.env_vars.disable_balance_changes_usd_backfill {
+        spawn_cron_worker!(
+            queues,
+            state,
+            "balance-changes-usd-backfill",
+            schedule_every_secs(env_secs(
+                "BALANCE_CHANGES_USD_BACKFILL_INTERVAL_SECONDS",
+                3600
+            )),
+            handlers::balance_changes_usd_backfill
+        );
+    }
+
+    if !state.env_vars.disable_gold_public_usd_backfill {
+        spawn_cron_worker!(
+            queues,
+            state,
+            "gold-public-usd-backfill",
+            schedule_every_secs(env_secs("GOLD_PUBLIC_USD_BACKFILL_INTERVAL_SECONDS", 3600)),
+            handlers::gold_public_usd_backfill
+        );
+    }
+
+    if !state.env_vars.disable_gold_confidential_usd_backfill {
+        spawn_cron_worker!(
+            queues,
+            state,
+            "gold-confidential-usd-backfill",
+            schedule_every_secs(env_secs(
+                "GOLD_CONFIDENTIAL_USD_BACKFILL_INTERVAL_SECONDS",
+                3600
+            )),
+            handlers::gold_confidential_usd_backfill
+        );
+    }
+
+    spawn_cron_worker!(
+        queues,
+        state,
         "confidential-history-ingest",
         schedule_every_secs(10),
         handlers::confidential_history_ingest
@@ -486,6 +530,10 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         "subscription-monthly-reset",
         "public-dashboard-refresh",
         "ft-lockup-refresh",
+        "token-price-backfill",
+        "balance-changes-usd-backfill",
+        "gold-public-usd-backfill",
+        "gold-confidential-usd-backfill",
     ] {
         if let Some(store) = queues.storage(queue) {
             // Label the push with the real queue name so a failed push is
