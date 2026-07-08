@@ -61,12 +61,23 @@ jobs:
 
     - name: Create .env file
       working-directory: nt-be
+      # The suite is fully hermetic: every RPC/API call is routed through the
+      # `rpc_cache_proxy` below, which replays recorded fixtures offline
+      # (record=false, no upstream). The proxy keys its cache by
+      # (host, path, query, body) — NOT the auth header — so the key *value*
+      # is irrelevant to test outcomes. It only needs to be non-empty: env
+      # parsing does `.filter(|s| !s.is_empty())`, and e.g. swap detection is
+      # skipped when the intents-explorer key is `None`. So fall back to a
+      # dummy key when the secret is absent (fork PRs get no secrets), which
+      # lets fork PRs run the *identical* suite against the same fixtures —
+      # full coverage, no secrets required. The real secrets are only needed
+      # in RECORD=1 mode to regenerate the fixtures.
       run: |
         cat > .env << EOF
         DATABASE_URL=postgres://treasury_test:test_password@localhost:5433/treasury_test_db
         PORT=3000
-        FASTNEAR_API_KEY=${{ secrets.FASTNEAR_API_KEY }}
-        INTENTS_EXPLORER_API_KEY=${{ secrets.INTENTS_EXPLORER_API_KEY }}
+        FASTNEAR_API_KEY=${{ secrets.FASTNEAR_API_KEY || 'ci-fixture-key' }}
+        INTENTS_EXPLORER_API_KEY=${{ secrets.INTENTS_EXPLORER_API_KEY || 'ci-fixture-key' }}
         JWT_SECRET=test-jwt-secret-for-ci-testing
         EOF
 

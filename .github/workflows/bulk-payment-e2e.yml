@@ -23,8 +23,13 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  # Publish the multi-arch sandbox image to GHCR. Only on non-PR events:
+  # pushing to an org package needs a write-scoped GITHUB_TOKEN, which fork
+  # PRs don't get (they run with a read-only token). PR validation instead
+  # builds the image locally in the `e2e-test` job below — no registry.
   build:
     name: Build (${{ matrix.platform }})
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     permissions:
@@ -83,6 +88,7 @@ jobs:
 
   merge-manifest:
     name: Merge Multi-Arch Manifest
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -124,21 +130,17 @@ jobs:
 
   e2e-test:
     name: Run E2E Tests
-    needs: merge-manifest
-    if: ${{ always() && (needs.merge-manifest.result == 'success' || needs.merge-manifest.result == 'skipped') }}
+    # Independent of the publish jobs: the image is built locally here, so
+    # this runs for every event — including fork PRs, which can't push to or
+    # pull the org's GHCR package.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: read
-      packages: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set lowercase image name
-        run: |
-          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}/near-treasury-sandbox" >> $GITHUB_ENV
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -149,18 +151,23 @@ jobs:
         working-directory: ./e2e-tests/bulk-payment
         run: npm install
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Pull Docker image
-        run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${SHORT_SHA}
-          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${SHORT_SHA} near-treasury-sandbox
+      - name: Build sandbox image locally
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./sandbox/Dockerfile
+          platforms: linux/amd64
+          # Load into the local docker daemon — no registry push, so no
+          # write token / secrets are needed. `load` only supports a single
+          # platform, which is all the E2E runner needs.
+          load: true
+          push: false
+          tags: near-treasury-sandbox
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Start Docker container
         run: |
