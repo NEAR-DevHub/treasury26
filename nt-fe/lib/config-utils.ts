@@ -271,10 +271,16 @@ export function isRequestor(
 }
 
 /**
- * Whether the account may change the DAO policy. This is the permission the backend requires for
- * authoring/managing proposal templates (create/edit/pin/delete) — nt-be gates those writes on the
- * `ChangePolicy` action, and the app's canonical permission string for it is `proposal:ChangePolicy`
- * (council roles carry `*:*`). Use it to hide authoring UI from members who can't perform the write.
+ * Whether the account holds the DAO's admin / policy-management capability. Used to gate the
+ * admin-only template action (delete) and the custom-requests feature flag.
+ *
+ * This mirrors nt-be's `role_has_action_permission(role, "ChangePolicy")` EXACTLY, so the UI never
+ * shows an action the backend will 403. nt-be matches on the *action* segment only, so this is true
+ * when the account is in a role holding a permission whose action is `ChangePolicy` or the wildcard
+ * `*`. For real SputnikDAO policies that means a wildcard-action role — `policy:*`, `config:*`,
+ * `*:*` — i.e. governance; a Requestor's `call:AddProposal` (action `AddProposal`) does NOT match.
+ * (`ChangePolicy` is a proposal *kind*, not an action — the only strings that carry it are synthetic
+ * `*:ChangePolicy` fixtures or a wildcard action.)
  */
 export function canChangePolicy(
     policy: Policy | null | undefined,
@@ -282,5 +288,12 @@ export function canChangePolicy(
 ): boolean {
     if (!policy || !accountId) return false;
 
-    return hasPermission(policy, accountId, "proposal", "ChangePolicy");
+    return policy.roles.some(
+        (role) =>
+            checkRoleMembership(role.kind, accountId) &&
+            role.permissions.some((permission) => {
+                const action = permission.split(":")[1];
+                return action === "ChangePolicy" || action === "*";
+            }),
+    );
 }

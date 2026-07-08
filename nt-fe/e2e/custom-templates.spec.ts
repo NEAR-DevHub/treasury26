@@ -46,7 +46,7 @@ const TREASURY_POLICY = {
     bounty_forgiveness_period: "604800000000000",
 };
 
-/** A member who can file requests (Requestor) but cannot author templates (no ChangePolicy). */
+/** A Requestor: can file requests AND author templates (create/edit, #1046), but not delete them. */
 const PROPOSER_POLICY = {
     ...TREASURY_POLICY,
     roles: [
@@ -72,7 +72,8 @@ const BARE_MEMBER_POLICY = {
     ],
 };
 
-/** Can author templates (ChangePolicy) but cannot file one (no `call:AddProposal`). */
+/** An admin (ChangePolicy): can author AND delete templates, but cannot file one (no
+ * `call:AddProposal`). */
 const MANAGER_ONLY_POLICY = {
     ...TREASURY_POLICY,
     roles: [
@@ -94,6 +95,54 @@ const TRANSFER_ONLY_POLICY = {
             name: "transfer-requestors",
             kind: { Group: [ACCOUNT_ID] },
             permissions: ["transfer:AddProposal"],
+            vote_policy: {},
+        },
+    ],
+};
+
+/**
+ * A REAL trezu-created DAO (see nt-be create.rs) where a single account is the whole DAO — in the
+ * Requestor, Admin and Approver roles at once. This is the sole-member case #1046 regressed on, and
+ * the shape NO other fixture uses: the Admin role carries wildcard-*action* perms (`config:*`,
+ * `policy:*`), NOT the synthetic `*:ChangePolicy` the other fixtures lean on. The old buggy
+ * `canChangePolicy` (checking `proposal:ChangePolicy`) matched `*:ChangePolicy` but not `policy:*`,
+ * so every synthetic fixture stayed green while real DAOs were locked out. This fixture exists to
+ * make that class of regression fail loudly.
+ */
+const SOLE_MEMBER_POLICY = {
+    ...TREASURY_POLICY,
+    roles: [
+        {
+            name: "Requestor",
+            kind: { Group: [ACCOUNT_ID] },
+            permissions: [
+                "call:AddProposal",
+                "transfer:AddProposal",
+                "call:VoteRemove",
+                "transfer:VoteRemove",
+            ],
+            vote_policy: {},
+        },
+        {
+            name: "Admin",
+            kind: { Group: [ACCOUNT_ID] },
+            permissions: [
+                "config:*",
+                "policy:*",
+                "add_member_to_role:*",
+                "remove_member_from_role:*",
+            ],
+            vote_policy: {},
+        },
+        {
+            name: "Approver",
+            kind: { Group: [ACCOUNT_ID] },
+            permissions: [
+                "call:VoteApprove",
+                "transfer:VoteApprove",
+                "call:VoteReject",
+                "transfer:VoteReject",
+            ],
             vote_policy: {},
         },
     ],
@@ -480,16 +529,19 @@ test.describe("Custom Templates — access gates", () => {
         await page.waitForURL(/\/dashboard$/, { timeout: 15000 });
     });
 
-    test("Requestor may reach the list but not the create page — bounced to the list (#1027)", async ({
+    test("Requestor may reach the create page — authoring is a Requestor capability (#1046)", async ({
         page,
     }) => {
         await setupMocks(page, [template()], { policy: PROPOSER_POLICY });
         await page.goto(`/${TREASURY_ID}/custom-templates/create`);
-        await page.waitForURL(/custom-templates$/, { timeout: 15000 });
-        await expect(page.getByText("Set Greeting")).toBeVisible();
+        // Not bounced: the create form loads and stays on /create.
+        await expect(
+            page.getByRole("heading", { name: "New Template" }),
+        ).toBeVisible({ timeout: 15000 });
+        await expect(page).toHaveURL(/custom-templates\/create$/);
     });
 
-    test("Requestor gets an enabled Create Request; Add New is disabled, ⋮ menu hidden", async ({
+    test("Requestor: Create Request + Add New enabled; ⋮ menu offers Edit/Pin, Delete shown disabled", async ({
         page,
     }) => {
         await setupMocks(page, [template()], { policy: PROPOSER_POLICY });
@@ -502,17 +554,29 @@ test.describe("Custom Templates — access gates", () => {
         await expect(
             page.getByRole("button", { name: "Create Request" }),
         ).toBeEnabled();
-        // ...authoring "Add New" is shown disabled (with a tooltip), not hidden...
+        // ...and author: "Add New" is now enabled for a Requestor (#1046)...
         await expect(
             page.getByRole("button", { name: "Add New" }),
-        ).toBeDisabled();
-        // ...and the per-row ⋮ overflow (edit/pin/delete) stays hidden.
+        ).toBeEnabled();
+        // ...the per-row ⋮ overflow is shown, with Edit + Pin enabled and Delete visible but
+        // disabled (admin-only) — discoverable, not hidden.
+        await page.getByRole("button", { name: "Template actions" }).click();
         await expect(
-            page.getByRole("button", { name: "Template actions" }),
-        ).toHaveCount(0);
+            page.getByRole("menuitem", { name: "Edit", exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole("menuitem", { name: /pin to the sidebar/i }),
+        ).toBeVisible();
+        // Delete is present (discoverable) but marked disabled — Radix sets aria-disabled.
+        const deleteItem = page.getByRole("menuitem", {
+            name: "Delete",
+            exact: true,
+        });
+        await expect(deleteItem).toBeVisible();
+        await expect(deleteItem).toHaveAttribute("aria-disabled", "true");
     });
 
-    test("manager without call:AddProposal: authoring enabled, Create Request disabled", async ({
+    test("admin without call:AddProposal: authoring + Delete available, Create Request disabled", async ({
         page,
     }) => {
         await setupMocks(page, [template()], { policy: MANAGER_ONLY_POLICY });
@@ -521,13 +585,15 @@ test.describe("Custom Templates — access gates", () => {
         await expect(page.getByText("Set Greeting")).toBeVisible({
             timeout: 15000,
         });
-        // Can manage (⋮ menu + Add New enabled)...
-        await expect(
-            page.getByRole("button", { name: "Template actions" }),
-        ).toBeVisible();
+        // Can author (Add New enabled)...
         await expect(
             page.getByRole("button", { name: "Add New" }),
         ).toBeEnabled();
+        // ...and the ⋮ menu exposes the admin-only Delete...
+        await page.getByRole("button", { name: "Template actions" }).click();
+        await expect(
+            page.getByRole("menuitem", { name: "Delete", exact: true }),
+        ).toBeVisible();
         // ...but can't file a FunctionCall template → Create Request shown disabled, not hidden.
         await expect(
             page.getByRole("button", { name: "Create Request" }),
@@ -541,5 +607,32 @@ test.describe("Custom Templates — access gates", () => {
         await setupMocks(page, [template()], { policy: TRANSFER_ONLY_POLICY });
         await page.goto(`/${TREASURY_ID}/custom-templates`);
         await page.waitForURL(/\/dashboard$/, { timeout: 15000 });
+    });
+
+    test("sole member of a real trezu DAO (Requestor+Admin+Approver) has full access (#1046 regression)", async ({
+        page,
+    }) => {
+        // The exact case that regressed: one account IS the DAO, Admin role uses config:*/policy:*
+        // (real shape), not the synthetic *:ChangePolicy. Must get every affordance enabled.
+        await setupMocks(page, [template()], { policy: SOLE_MEMBER_POLICY });
+        await page.goto(`/${TREASURY_ID}/custom-templates`);
+
+        await expect(page.getByText("Set Greeting")).toBeVisible({
+            timeout: 15000,
+        });
+        await expect(
+            page.getByRole("button", { name: "Add New" }),
+        ).toBeEnabled();
+        await expect(
+            page.getByRole("button", { name: "Create Request" }),
+        ).toBeEnabled();
+        // Admin → the ⋮ Delete is live, not the disabled/tooltip variant.
+        await page.getByRole("button", { name: "Template actions" }).click();
+        const deleteItem = page.getByRole("menuitem", {
+            name: "Delete",
+            exact: true,
+        });
+        await expect(deleteItem).toBeVisible();
+        await expect(deleteItem).not.toHaveAttribute("aria-disabled", "true");
     });
 });

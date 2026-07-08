@@ -219,8 +219,10 @@ pub async fn seed_policy_member(pool: &sqlx::PgPool, dao_id: &str, account_id: &
     .expect("seed policy member");
 }
 
-/// Seed a policy member who also holds the on-chain `ChangePolicy` permission — i.e. someone
-/// allowed to author templates / flip the custom-requests flag.
+/// Seed a full-admin ("council") policy member: a wildcard `*:*` role. Under the action-only
+/// permission matcher this satisfies every gate — `AddProposal` (author templates, flip the
+/// custom-requests flag) and `ChangePolicy` (delete templates) alike — so it stands in for anyone
+/// allowed to do all template management. Requestor-only access is exercised separately.
 #[cfg(test)]
 pub async fn seed_change_policy_member(
     state: &std::sync::Arc<AppState>,
@@ -230,12 +232,7 @@ pub async fn seed_change_policy_member(
 ) {
     seed_policy_member(pool, dao_id, account_id).await;
     let dao: near_api::AccountId = dao_id.parse().expect("valid dao id");
-    seed_treasury_policy(
-        state,
-        &dao,
-        policy_granting(account_id, &["*:ChangePolicy"]),
-    )
-    .await;
+    seed_treasury_policy(state, &dao, policy_granting(account_id, &["*:*"])).await;
 }
 
 /// Create a user + session for `account_id` and return its auth `cookie` header value.
