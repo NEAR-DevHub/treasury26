@@ -648,7 +648,6 @@ async fn submit_and_approve_proposal(
         .transaction()
         .gas(NearGas::from_tgas(100))
         .with_signer(state.signer_id.clone(), state.signer.clone())
-        .wait_until(near_openapi_types::TxExecutionStatus::ExecutedOptimistic)
         .send_to(&state.network)
         .await
         .map_err(|e| {
@@ -733,7 +732,6 @@ async fn approve_existing_proposal(
         .max_gas()
         .deposit(NearToken::from_yoctonear(0))
         .with_signer(state.signer_id.clone(), state.signer.clone())
-        .wait_until(near_openapi_types::TxExecutionStatus::ExecutedOptimistic)
         .send_to(&state.network)
         .await
         .map_err(|e| {
