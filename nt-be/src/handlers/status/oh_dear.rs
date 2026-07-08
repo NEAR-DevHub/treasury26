@@ -14,6 +14,9 @@ use std::{
 
 use super::config::OhDearHealthConfig;
 use crate::AppState;
+use crate::constants::external_apis::{
+    FASTNEAR_ACCOUNT_API_BASE, FASTNEAR_TRANSFERS_BASE, NEARBLOCKS_API_BASE, NEARDATA_DEFAULT_BASE,
+};
 use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
 
 pub const SUPPORTED_SERVICES: &[&str] = &[
@@ -591,7 +594,7 @@ async fn check_fastnear(state: &AppState) -> OhDearCheckResult {
         .env_vars
         .transfer_hints_base_url
         .as_deref()
-        .unwrap_or(&config.fastnear_transfers_base_url);
+        .unwrap_or(FASTNEAR_TRANSFERS_BASE);
     let account_id = &config.fastnear_probe_account_id;
     let api_key = &state.env_vars.fastnear_api_key;
 
@@ -617,7 +620,7 @@ async fn probe_fastnear_account(
     timeout: Duration,
 ) -> ProbeResult {
     let started = Instant::now();
-    let url = format!("https://api.fastnear.com/v1/account/{account_id}/full");
+    let url = format!("{FASTNEAR_ACCOUNT_API_BASE}/v1/account/{account_id}/full");
     let request = state
         .http_client
         .get(url)
@@ -832,7 +835,7 @@ async fn check_nearblocks(state: &AppState) -> OhDearCheckResult {
 
     let request = state
         .http_client
-        .get("https://api.nearblocks.io/v1/fts/?search=wrap.near")
+        .get(format!("{NEARBLOCKS_API_BASE}/v1/fts/?search=wrap.near"))
         .header("accept", "application/json")
         .header("Authorization", format!("Bearer {api_key}"));
 
@@ -890,8 +893,8 @@ async fn check_intents_explorer(state: &AppState) -> OhDearCheckResult {
 async fn check_neardata(state: &AppState) -> OhDearCheckResult {
     let config = OhDearHealthConfig::default();
     let timeout = Duration::from_secs(config.http_timeout_seconds);
-    let base_url = std::env::var("NEARDATA_BASE_URL")
-        .unwrap_or_else(|_| "https://mainnet.neardata.xyz".to_string());
+    let base_url =
+        std::env::var("NEARDATA_BASE_URL").unwrap_or_else(|_| NEARDATA_DEFAULT_BASE.to_string());
     let block_height = config.neardata_probe_block_height;
     let started = Instant::now();
     let mut request = state.http_client.get(format!(
@@ -1240,45 +1243,95 @@ mod tests {
         matchers::{method, path},
     };
 
-    async fn test_state(
-        oneclick_url: Option<String>,
-        near_status_url: Option<String>,
-        near_intents_status_url: Option<String>,
-        near_rpc_url: Option<String>,
+    #[derive(Default)]
+    struct TestStateOptions {
+        goldsky_pool: bool,
+    }
+
+    async fn build_test_state(
+        configure: impl FnOnce(&mut crate::utils::env::EnvVars),
+        options: TestStateOptions,
     ) -> Arc<AppState> {
         dotenvy::from_filename(".env").ok();
         dotenvy::from_filename(".env.test").ok();
 
         let mut env_vars = crate::utils::env::EnvVars::default();
-        if let Some(url) = oneclick_url {
-            env_vars.oneclick_api_url = url;
-        }
-        if let Some(url) = near_status_url {
-            env_vars.near_status_page_json_url = url;
-        }
-        if let Some(url) = near_intents_status_url {
-            env_vars.near_intents_status_api_url = url;
-        }
-        if let Some(url) = near_rpc_url {
-            env_vars.near_rpc_url = Some(url);
+        configure(&mut env_vars);
+
+        let database_url = env_vars.database_url.clone();
+        let db_pool = lazy_test_pool(&database_url);
+
+        let mut builder = AppState::builder().db_pool(db_pool).env_vars(env_vars);
+
+        if options.goldsky_pool {
+            builder = builder.goldsky_pool(lazy_test_pool(&database_url));
         }
 
-        let db_pool = PgPoolOptions::new()
-            .acquire_timeout(Duration::from_millis(100))
-            .connect_lazy(&env_vars.database_url)
-            .expect("failed to create lazy test pool");
-
-        Arc::new(
-            AppState::builder()
-                .db_pool(db_pool)
-                .env_vars(env_vars)
-                .build()
-                .await
-                .expect("failed to build test state"),
-        )
+        Arc::new(builder.build().await.expect("failed to build test state"))
     }
 
-    async fn get_status_json(state: Arc<AppState>, path: &str) -> Value {
+    async fn test_state(configure: impl FnOnce(&mut crate::utils::env::EnvVars)) -> Arc<AppState> {
+        build_test_state(configure, TestStateOptions::default()).await
+    }
+
+    fn lazy_test_pool(database_url: &str) -> sqlx::PgPool {
+        PgPoolOptions::new()
+            .acquire_timeout(Duration::from_millis(100))
+            .connect_lazy(database_url)
+            .expect("failed to create lazy test pool")
+    }
+
+    /// Keeps `NEARDATA_BASE_URL` scoped to a single test (must run serially).
+    struct NeardataEnvGuard;
+
+    impl NeardataEnvGuard {
+        fn set(base_url: impl AsRef<str>) -> Self {
+            unsafe {
+                std::env::set_var("NEARDATA_BASE_URL", base_url.as_ref());
+            }
+            Self
+        }
+    }
+
+    impl Drop for NeardataEnvGuard {
+        fn drop(&mut self) {
+            unsafe {
+                std::env::remove_var("NEARDATA_BASE_URL");
+            }
+        }
+    }
+
+    fn fresh_near_rpc_status_body() -> Value {
+        json!({
+            "jsonrpc": "2.0",
+            "id": "dontcare",
+            "result": {
+                "sync_info": {
+                    "latest_block_height": 123,
+                    "latest_block_time": Utc::now().to_rfc3339(),
+                    "syncing": false
+                }
+            }
+        })
+    }
+
+    fn without_nearblocks_key(env: &mut crate::utils::env::EnvVars) {
+        env.nearblocks_api_key = None;
+    }
+
+    fn without_intents_explorer_key(env: &mut crate::utils::env::EnvVars) {
+        env.intents_explorer_api_key = None;
+    }
+
+    fn with_intents_explorer_key(env: &mut crate::utils::env::EnvVars, key: &str) {
+        env.intents_explorer_api_key = Some(key.to_string());
+    }
+
+    fn without_goldsky(env: &mut crate::utils::env::EnvVars) {
+        env.goldsky_database_url = None;
+    }
+
+    async fn get_status_response(state: Arc<AppState>, path: &str) -> (StatusCode, Value) {
         let app = create_routes(state);
         let response = app
             .oneshot(
@@ -1290,11 +1343,33 @@ mod tests {
             .await
             .expect("request failed");
 
-        assert_eq!(response.status(), StatusCode::OK);
+        let status = response.status();
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
             .await
             .expect("failed to read body");
-        serde_json::from_slice(&body).expect("failed to parse json")
+        let json = serde_json::from_slice(&body).unwrap_or(json!({}));
+        (status, json)
+    }
+
+    async fn get_status_json(state: Arc<AppState>, path: &str) -> Value {
+        let (status, json) = get_status_response(state, path).await;
+        assert_eq!(status, StatusCode::OK, "unexpected response: {json}");
+        json
+    }
+
+    fn assert_check(json: &Value, name: &str, status: &str) {
+        assert_eq!(json["checkResults"][0]["name"], name);
+        assert_eq!(json["checkResults"][0]["status"], status);
+    }
+
+    #[tokio::test]
+    async fn unsupported_service_returns_not_found() {
+        let state = test_state(|_| {}).await;
+        let (status, json) = get_status_response(state, "/api/oh-dear/status/not-a-service").await;
+
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(json["error"], "unsupported_service");
+        assert_eq!(json["supported"], json!(SUPPORTED_SERVICES));
     }
 
     #[tokio::test]
@@ -1311,12 +1386,11 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let state = test_state(Some(mock_server.uri()), None, None, None).await;
+        let state = test_state(|env| env.oneclick_api_url = mock_server.uri()).await;
         let json = get_status_json(state, "/api/oh-dear/status/exchange").await;
 
         assert!(json["finishedAt"].as_i64().is_some());
-        assert_eq!(json["checkResults"][0]["name"], "exchange.quote");
-        assert_eq!(json["checkResults"][0]["status"], "ok");
+        assert_check(&json, "exchange.quote", "ok");
     }
 
     #[tokio::test]
@@ -1330,11 +1404,81 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let state = test_state(Some(mock_server.uri()), None, None, None).await;
+        let state = test_state(|env| env.oneclick_api_url = mock_server.uri()).await;
         let json = get_status_json(state, "/api/oh-dear/status/exchange").await;
 
-        assert_eq!(json["checkResults"][0]["status"], "failed");
+        assert_check(&json, "exchange.quote", "failed");
         assert_eq!(json["checkResults"][0]["meta"]["http_status"], 500);
+    }
+
+    #[tokio::test]
+    async fn bridge_rpc_endpoint_maps_success_to_ok() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "jsonrpc": "2.0",
+                "id": "dontcare",
+                "result": { "tokens": [] }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let state = test_state(|env| env.bridge_rpc_url = mock_server.uri()).await;
+        let json = get_status_json(state, "/api/oh-dear/status/bridge-rpc").await;
+
+        assert_check(&json, "bridge-rpc.supported-tokens", "ok");
+    }
+
+    #[tokio::test]
+    async fn bridge_rpc_endpoint_maps_http_error_to_failed() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .respond_with(ResponseTemplate::new(503))
+            .mount(&mock_server)
+            .await;
+
+        let state = test_state(|env| env.bridge_rpc_url = mock_server.uri()).await;
+        let json = get_status_json(state, "/api/oh-dear/status/bridge-rpc").await;
+
+        assert_check(&json, "bridge-rpc.supported-tokens", "failed");
+        assert_eq!(json["checkResults"][0]["meta"]["http_status"], 503);
+    }
+
+    #[tokio::test]
+    async fn defillama_endpoint_maps_prices_to_ok() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/prices/current/coingecko:near"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "coins": {
+                    "coingecko:near": { "price": 3.5 }
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let state = test_state(|env| env.defillama_api_base_url = mock_server.uri()).await;
+        let json = get_status_json(state, "/api/oh-dear/status/defillama").await;
+
+        assert_check(&json, "defillama.prices", "ok");
+    }
+
+    #[tokio::test]
+    async fn defillama_endpoint_maps_missing_coins_to_failed() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/prices/current/coingecko:near"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "status": "ok" })))
+            .mount(&mock_server)
+            .await;
+
+        let state = test_state(|env| env.defillama_api_base_url = mock_server.uri()).await;
+        let json = get_status_json(state, "/api/oh-dear/status/defillama").await;
+
+        assert_check(&json, "defillama.prices", "failed");
+        assert_eq!(json["checkResults"][0]["meta"]["error"], "missing_coins");
     }
 
     #[tokio::test]
@@ -1353,16 +1497,13 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let state = test_state(
-            None,
-            Some(format!("{}/json", mock_server.uri())),
-            None,
-            None,
-        )
+        let state = test_state(|env| {
+            env.near_status_page_json_url = format!("{}/json", mock_server.uri());
+        })
         .await;
         let json = get_status_json(state, "/api/oh-dear/status/near-protocol").await;
 
-        assert_eq!(json["checkResults"][0]["status"], "ok");
+        assert_check(&json, "near-protocol.status-page", "ok");
     }
 
     #[tokio::test]
@@ -1381,16 +1522,13 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let state = test_state(
-            None,
-            Some(format!("{}/json", mock_server.uri())),
-            None,
-            None,
-        )
+        let state = test_state(|env| {
+            env.near_status_page_json_url = format!("{}/json", mock_server.uri());
+        })
         .await;
         let json = get_status_json(state, "/api/oh-dear/status/near-protocol").await;
 
-        assert_eq!(json["checkResults"][0]["status"], "failed");
+        assert_check(&json, "near-protocol.status-page", "failed");
     }
 
     #[tokio::test]
@@ -1412,16 +1550,13 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let state = test_state(
-            None,
-            None,
-            Some(format!("{}/api/posts", mock_server.uri())),
-            None,
-        )
+        let state = test_state(|env| {
+            env.near_intents_status_api_url = format!("{}/api/posts", mock_server.uri());
+        })
         .await;
         let json = get_status_json(state, "/api/oh-dear/status/near-intents").await;
 
-        assert_eq!(json["checkResults"][0]["status"], "warning");
+        assert_check(&json, "near-intents.status", "warning");
     }
 
     #[tokio::test]
@@ -1443,16 +1578,13 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let state = test_state(
-            None,
-            None,
-            Some(format!("{}/api/posts", mock_server.uri())),
-            None,
-        )
+        let state = test_state(|env| {
+            env.near_intents_status_api_url = format!("{}/api/posts", mock_server.uri());
+        })
         .await;
         let json = get_status_json(state, "/api/oh-dear/status/near-intents").await;
 
-        assert_eq!(json["checkResults"][0]["status"], "failed");
+        assert_check(&json, "near-intents.status", "failed");
     }
 
     #[tokio::test]
@@ -1460,24 +1592,126 @@ mod tests {
         let mock_server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "jsonrpc": "2.0",
-                "id": "dontcare",
-                "result": {
-                    "sync_info": {
-                        "latest_block_height": 123,
-                        "latest_block_time": Utc::now().to_rfc3339(),
-                        "syncing": false
-                    }
-                }
-            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(fresh_near_rpc_status_body()))
             .mount(&mock_server)
             .await;
 
-        let state = test_state(None, None, None, Some(mock_server.uri())).await;
+        let state = test_state(|env| env.near_rpc_url = Some(mock_server.uri())).await;
         let json = get_status_json(state, "/api/oh-dear/status/near-rpc").await;
 
-        assert_eq!(json["checkResults"][0]["status"], "ok");
+        assert_check(&json, "near-rpc.status", "ok");
+    }
+
+    #[tokio::test]
+    async fn fastnear_endpoint_returns_oh_dear_json() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v0/transfers"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "transfers": [] })))
+            .mount(&mock_server)
+            .await;
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(fresh_near_rpc_status_body()))
+            .mount(&mock_server)
+            .await;
+
+        let state = test_state(|env| {
+            env.transfer_hints_base_url = Some(mock_server.uri());
+            env.near_archival_rpc_url = Some(mock_server.uri());
+        })
+        .await;
+        let json = get_status_json(state, "/api/oh-dear/status/fastnear").await;
+
+        assert_eq!(json["checkResults"][0]["name"], "fastnear.api");
+        assert!(json["checkResults"][0]["status"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn goldsky_endpoint_skips_when_not_configured() {
+        let state = test_state(without_goldsky).await;
+        let json = get_status_json(state, "/api/oh-dear/status/goldsky").await;
+
+        assert_check(&json, "goldsky.database", "skipped");
+    }
+
+    #[tokio::test]
+    async fn goldsky_endpoint_maps_connected_pool_to_ok() {
+        let state =
+            build_test_state(without_goldsky, TestStateOptions { goldsky_pool: true }).await;
+        let json = get_status_json(state, "/api/oh-dear/status/goldsky").await;
+
+        assert_check(&json, "goldsky.database", "ok");
+    }
+
+    #[tokio::test]
+    async fn nearblocks_endpoint_skips_without_api_key() {
+        let state = test_state(without_nearblocks_key).await;
+        let json = get_status_json(state, "/api/oh-dear/status/nearblocks").await;
+
+        assert_check(&json, "nearblocks.api", "skipped");
+    }
+
+    #[tokio::test]
+    async fn intents_explorer_endpoint_skips_without_api_key() {
+        let state = test_state(without_intents_explorer_key).await;
+        let json = get_status_json(state, "/api/oh-dear/status/intents-explorer").await;
+
+        assert_check(&json, "intents-explorer.api", "skipped");
+    }
+
+    #[tokio::test]
+    async fn intents_explorer_endpoint_maps_success_to_ok() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/transactions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "transactions": [] })))
+            .mount(&mock_server)
+            .await;
+
+        let state = test_state(|env| {
+            env.intents_explorer_api_url = mock_server.uri();
+            with_intents_explorer_key(env, "test-key");
+        })
+        .await;
+        let json = get_status_json(state, "/api/oh-dear/status/intents-explorer").await;
+
+        assert_check(&json, "intents-explorer.api", "ok");
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn neardata_endpoint_maps_success_to_ok() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v0/block/100000000"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "header": {} })))
+            .mount(&mock_server)
+            .await;
+
+        let _neardata_env = NeardataEnvGuard::set(mock_server.uri());
+        let state = test_state(|_| {}).await;
+        let json = get_status_json(state, "/api/oh-dear/status/neardata").await;
+
+        assert_check(&json, "neardata.api", "ok");
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn neardata_endpoint_maps_http_error_to_failed() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v0/block/100000000"))
+            .respond_with(ResponseTemplate::new(503))
+            .mount(&mock_server)
+            .await;
+
+        let _neardata_env = NeardataEnvGuard::set(mock_server.uri());
+        let state = test_state(|_| {}).await;
+        let json = get_status_json(state, "/api/oh-dear/status/neardata").await;
+
+        assert_check(&json, "neardata.api", "failed");
+        assert_eq!(json["checkResults"][0]["meta"]["http_status"], 503);
     }
 
     #[test]
@@ -1554,7 +1788,7 @@ mod tests {
 
     #[tokio::test]
     async fn backend_endpoint_returns_oh_dear_json_even_without_auth() {
-        let state = test_state(None, None, None, None).await;
+        let state = test_state(|_| {}).await;
         let json = get_status_json(state, "/api/oh-dear/status/backend").await;
 
         assert!(json["finishedAt"].as_i64().is_some());

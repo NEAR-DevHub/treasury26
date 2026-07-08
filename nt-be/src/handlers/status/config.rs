@@ -17,7 +17,6 @@ pub struct OhDearHealthConfig {
     pub exchange_slippage_tolerance: u16,
     pub exchange_quote_waiting_time_ms: u64,
     pub fastnear_probe_account_id: String,
-    pub fastnear_transfers_base_url: String,
     pub neardata_probe_block_height: u64,
 }
 
@@ -41,7 +40,6 @@ impl Default for OhDearHealthConfig {
             exchange_slippage_tolerance: 100,
             exchange_quote_waiting_time_ms: 3000,
             fastnear_probe_account_id: "trezu.sputnik-dao.near".to_string(),
-            fastnear_transfers_base_url: "https://transfers.main.fastnear.com".to_string(),
             neardata_probe_block_height: 100_000_000,
         }
     }
