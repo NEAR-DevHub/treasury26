@@ -279,6 +279,12 @@ pub async fn create_proposal_template(
     Path(dao_id): Path<AccountId>,
     Json(req): Json<CreateProposalTemplateRequest>,
 ) -> Result<(StatusCode, Json<ProposalTemplate>), (StatusCode, String)> {
+    // Writes must be at least as strict as the member-gated reads. `verify_can_perform_action`
+    // alone honors `Everyone` roles, so a DAO granting `AddProposal` to `Everyone` would otherwise
+    // let non-members write templates — gate on DAO membership first, then the action permission.
+    auth_user
+        .verify_dao_member_for_http(&state.db_pool, &dao_id)
+        .await?;
     // A template is a reusable shape for a request its author will later file, so authoring is gated
     // on the same capability as filing — `AddProposal` (issue #1046: Requestors manage templates).
     // Deletion is the exception: it stays `ChangePolicy` (admin-only) — see `delete_proposal_template`.
@@ -365,7 +371,11 @@ pub async fn update_proposal_template(
     Path((dao_id, id)): Path<(AccountId, Uuid)>,
     Json(req): Json<UpdateProposalTemplateRequest>,
 ) -> Result<Json<ProposalTemplate>, (StatusCode, String)> {
-    // Editing/pinning is authoring — same `AddProposal` bar as create (issue #1046).
+    // Member-gated first (see `create_proposal_template`), then authoring. Editing/pinning is
+    // authoring — same `AddProposal` bar as create (issue #1046).
+    auth_user
+        .verify_dao_member_for_http(&state.db_pool, &dao_id)
+        .await?;
     auth_user
         .verify_can_perform_action(&state, &dao_id, "AddProposal")
         .await?;
@@ -436,9 +446,13 @@ pub async fn delete_proposal_template(
     auth_user: AuthUser,
     Path((dao_id, id)): Path<(AccountId, Uuid)>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    // Deletion is destructive and removes a template other members rely on, so it stays admin-only:
+    // Member-gated first (see `create_proposal_template`), then the admin action. Deletion is
+    // destructive and removes a template other members rely on, so it stays admin-only:
     // `ChangePolicy`. With the action-only permission matcher this resolves to roles holding a
     // wildcard-action permission (`policy:*`, `config:*`, `*:*`) — i.e. governance, not Requestors.
+    auth_user
+        .verify_dao_member_for_http(&state.db_pool, &dao_id)
+        .await?;
     auth_user
         .verify_can_perform_action(&state, &dao_id, "ChangePolicy")
         .await?;
@@ -975,6 +989,48 @@ mod tests {
             StatusCode::FORBIDDEN,
             "delete must be admin-only, forbidden for a Requestor"
         );
+    }
+
+    /// Writes are DAO-member-gated, not action-permission-gated alone. A DAO whose policy grants
+    /// everything to an `Everyone` role would pass `verify_can_perform_action` for ANY account, so
+    /// the membership check must still reject a caller who is not a DAO member.
+    #[sqlx::test]
+    async fn test_everyone_role_still_requires_membership(pool: PgPool) {
+        let state = test_state(pool.clone());
+        let app = create_routes(state.clone());
+        let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
+
+        // The DAO exists (seed a *different* member for the daos/monitored rows) and its policy
+        // grants `*:*` to `Everyone` — so the action check alone would pass for anyone.
+        seed_policy_member(&pool, DAO_ID, "someone-else.near").await;
+        let dao: near_api::AccountId = DAO_ID.parse().expect("valid dao id");
+        seed_treasury_policy(
+            &state,
+            &dao,
+            json!({ "roles": [{ "name": "all", "kind": "Everyone", "permissions": ["*:*"] }] }),
+        )
+        .await;
+        // USER_ACCOUNT_ID is authenticated but NOT a member of this DAO.
+        let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
+
+        let item = format!("{base}/{}", Uuid::new_v4());
+        let writes: [(&str, String, Option<Value>); 3] = [
+            (
+                "POST",
+                base.clone(),
+                Some(json!({ "name": "X", "manifest": valid_manifest() })),
+            ),
+            ("PUT", item.clone(), Some(json!({ "enabled": true }))),
+            ("DELETE", item.clone(), None),
+        ];
+        for (method, uri, body) in writes {
+            let (status, _) = send(app.clone(), method, uri, &cookie, body).await;
+            assert_eq!(
+                status,
+                StatusCode::FORBIDDEN,
+                "{method} must require DAO membership even when Everyone grants the action"
+            );
+        }
     }
 
     #[sqlx::test]
