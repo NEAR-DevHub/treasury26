@@ -188,64 +188,41 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
 /// failure is recorded and the job waits for its next cron tick.
 const TASK_RETRIES: usize = 2;
 
-/// Restart backoff for a worker whose run loop exits (sustained
-/// backend/storage failure): 1s doubling to a 60s cap, reset after a run
-/// that stayed up long enough to be considered healthy.
-const RESTART_BACKOFF_INITIAL: std::time::Duration = std::time::Duration::from_secs(1);
-const RESTART_BACKOFF_CAP: std::time::Duration = std::time::Duration::from_secs(60);
-const RESTART_HEALTHY_AFTER: std::time::Duration = std::time::Duration::from_secs(300);
-
-/// One cron-scheduled apalis worker: schedule → postgres queue → handler.
+/// Registers one cron-scheduled apalis worker on the [`Monitor`]:
+/// schedule → postgres queue → handler.
 ///
-/// Three layers of failure containment, inside out:
+/// Failure containment, inside out:
 /// 1. **Task errors** → the task is retried up to [`TASK_RETRIES`] times
 ///    (apalis `retry`), then the failure is recorded and the next cron tick
 ///    starts a fresh task regardless — one bad cycle never stops the job.
 /// 2. **Handler panics** → `catch_panic` converts a panic into a task error
 ///    (same path as #1) instead of tearing down the worker.
-/// 3. **Worker-loop exit** (sustained backend/storage failure) → the
-///    supervisor rebuilds and restarts the worker with capped exponential
-///    backoff, forever; the backoff resets after a healthy run. A worker
-///    never dies silently and stays down until a full process restart.
-macro_rules! spawn_cron_worker {
-    ($queues:expr, $state:expr, $name:literal, $schedule:expr, $handler:path) => {{
+/// 3. **Worker exit** (sustained backend/storage failure) → the `Monitor`
+///    rebuilds and restarts the worker (see `should_restart` in
+///    [`spawn_all`]); a clean exit on shutdown is honoured so in-flight
+///    tasks drain instead of being fought by a restart.
+///
+/// The `Monitor` is passed by value and reassigned (`register` is
+/// builder-style), so this must be used as `monitor = register_cron_worker!(monitor, …)`.
+macro_rules! register_cron_worker {
+    ($monitor:expr, $queues:expr, $state:expr, $name:literal, $schedule:expr, $handler:path) => {{
         let store = storage(&$state.db_pool, $name);
         $queues.push(($name, store.clone()));
         let schedule = $schedule;
         let state = $state.clone();
-        tokio::spawn(async move {
-            let mut backoff = RESTART_BACKOFF_INITIAL;
-            loop {
-                let worker = WorkerBuilder::new($name)
-                    .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
-                    .data(state.clone())
-                    .retry(RetryPolicy::retries(TASK_RETRIES))
-                    .catch_panic()
-                    .enable_tracing()
-                    .concurrency(1)
-                    .build($handler);
-
-                let started = std::time::Instant::now();
-                match worker.run().await {
-                    // CronStream is infinite, so a clean return means the
-                    // worker stopped unexpectedly (shutdown, backend drop) —
-                    // restart it rather than leave the job dead.
-                    Ok(()) => tracing::warn!(worker = $name, "job worker exited; restarting"),
-                    Err(e) => tracing::error!(
-                        worker = $name,
-                        error = %e,
-                        backoff_secs = backoff.as_secs(),
-                        "job worker crashed; restarting after backoff"
-                    ),
-                }
-
-                if started.elapsed() >= RESTART_HEALTHY_AFTER {
-                    backoff = RESTART_BACKOFF_INITIAL;
-                }
-                tokio::time::sleep(backoff).await;
-                backoff = (backoff * 2).min(RESTART_BACKOFF_CAP);
-            }
-        });
+        // `register` takes a factory `Fn(attempt) -> Worker`: the Monitor
+        // calls it to (re)build the worker, so a restart gets a fresh
+        // backend/connection.
+        $monitor.register(move |_attempt| {
+            WorkerBuilder::new($name)
+                .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
+                .data(state.clone())
+                .retry(RetryPolicy::retries(TASK_RETRIES))
+                .catch_panic()
+                .enable_tracing()
+                .concurrency(1)
+                .build($handler)
+        })
     }};
 }
 
@@ -259,15 +236,30 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
 
     let mut queues: Vec<(&'static str, TickStorage)> = Vec::new();
 
+    // apalis's own supervisor: runs every worker, restarts one that exits
+    // (backend/storage failure) via `should_restart`, and drains in-flight
+    // tasks on shutdown. Replaces the old per-worker `tokio::spawn` loops.
+    let mut monitor = Monitor::new().should_restart(|ctx, err, attempt| {
+        tracing::error!(
+            worker = %ctx.name(),
+            error = %err,
+            attempt,
+            "job worker exited; monitor restarting it"
+        );
+        true
+    });
+
     if !state.env_vars.disable_balance_monitoring {
-        spawn_cron_worker!(
+        monitor = register_cron_worker!(
+            monitor,
             queues,
             state,
             "account-maintenance",
             schedule_every_secs(env_secs("MAINTENANCE_INTERVAL_SECONDS", 60)),
             handlers::account_maintenance
         );
-        spawn_cron_worker!(
+        monitor = register_cron_worker!(
+            monitor,
             queues,
             state,
             "confidential-poll",
@@ -276,7 +268,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         );
     }
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "price-sync",
@@ -284,7 +277,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::price_sync
     );
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "confidential-history-ingest",
@@ -292,7 +286,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::confidential_history_ingest
     );
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "confidential-snapshots",
@@ -300,7 +295,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::confidential_snapshots
     );
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "confidential-gold-reconciliation",
@@ -308,7 +304,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::confidential_gold_reconciliation
     );
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "bulk-payment-payout",
@@ -317,7 +314,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     );
 
     if state.goldsky_pool.is_some() {
-        spawn_cron_worker!(
+        monitor = register_cron_worker!(
+            monitor,
             queues,
             state,
             "goldsky-enrichment",
@@ -335,7 +333,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
             "Treasury creation sweeper disabled (DISABLE_TREASURY_CREATION_SWEEPER=true)"
         );
     } else {
-        spawn_cron_worker!(
+        monitor = register_cron_worker!(
+            monitor,
             queues,
             state,
             "treasury-creation-sweeper",
@@ -361,7 +360,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         }
     }
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "status-monitor",
@@ -369,7 +369,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::status_monitor
     );
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "notifications",
@@ -377,7 +378,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::notifications
     );
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "sponsor-balance-monitor",
@@ -385,7 +387,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::sponsor_balance_monitor
     );
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "dao-list-sync",
@@ -395,7 +398,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
 
     // Was a 1s poll; 5s keeps dirty-DAO latency low without writing a task
     // row to Postgres every second.
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "dao-policy-dirty",
@@ -403,7 +407,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::dao_policy_dirty
     );
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "dao-policy-stale",
@@ -411,7 +416,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::dao_policy_stale
     );
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "subscription-monthly-reset",
@@ -420,7 +426,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     );
 
     if !state.env_vars.disable_stats_generation {
-        spawn_cron_worker!(
+        monitor = register_cron_worker!(
+            monitor,
             queues,
             state,
             "public-dashboard-refresh",
@@ -430,7 +437,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     }
 
     if !state.env_vars.disable_ft_lockup_scheduler {
-        spawn_cron_worker!(
+        monitor = register_cron_worker!(
+            monitor,
             queues,
             state,
             "ft-lockup-refresh",
@@ -443,7 +451,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
 
     // Retention: prune finished apalis tasks so high-frequency queues don't
     // grow unbounded. Daily at 03:30 UTC.
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "apalis-prune",
@@ -467,6 +476,15 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
             push_now(store, queue).await;
         }
     }
+
+    // Drive all workers under the monitor on one supervised task. It runs
+    // until a shutdown signal, then drains in-flight tasks (see
+    // `shutdown_timeout` if a bound is needed).
+    tokio::spawn(async move {
+        if let Err(e) = monitor.run_with_signal(tokio::signal::ctrl_c()).await {
+            tracing::error!(error = %e, "jobs monitor exited");
+        }
+    });
 
     queues
 }

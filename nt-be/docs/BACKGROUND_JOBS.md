@@ -17,19 +17,30 @@ What this replaces: 17 hand-rolled `tokio::spawn` + interval loops in
 
 ## Resilience
 
-Every worker is wrapped in three layers of failure containment
-(`spawn_cron_worker!` in `src/jobs/mod.rs`), so a job keeps running through
-transient faults instead of dying until the next process restart:
+All workers run under a single apalis `Monitor` (`spawn_all` in
+`src/jobs/mod.rs`) — the framework's own multi-worker supervisor, rather
+than a hand-rolled `tokio::spawn` loop per worker. It gives three layers of
+failure containment plus coordinated shutdown:
 
 1. **Task errors** — a failing task is retried up to `TASK_RETRIES` (2)
-   times; after that the failure is recorded and the next cron tick starts
-   a fresh task. One bad cycle never stops the schedule.
+   times (apalis `retry` layer); after that the failure is recorded and the
+   next cron tick starts a fresh task. One bad cycle never stops the
+   schedule.
 2. **Handler panics** — `catch_panic` turns a panic into a task error
    (same path as #1) instead of tearing the worker down.
-3. **Worker-loop exit** — on a sustained backend/storage failure the
-   supervisor rebuilds and restarts the worker with capped exponential
-   backoff (1s → 60s), forever; the backoff resets after a run that stayed
-   up `RESTART_HEALTHY_AFTER` (5 min). A worker never dies silently.
+3. **Worker exit** — if a worker's run loop exits on a sustained
+   backend/storage failure, the `Monitor`'s `should_restart` hook rebuilds
+   and restarts it (the factory gets a fresh connection); a clean exit on
+   shutdown is honoured, so in-flight tasks drain instead of being fought by
+   a restart. The whole set runs on one supervised task and stops together
+   on `Ctrl-C`/`SIGINT` (`run_with_signal`).
+
+Restarts are immediate (apalis's `Monitor` has no built-in backoff). This
+is fine because the common failure mode — a handler erroring — is handled
+by the retry layer and paced by the cron schedule, not by restarting the
+worker; a worker only exits on a terminal backend failure, which is rare.
+If a sustained-outage cooldown is later wanted, apalis's native
+`circuit_breaker` worker ext (with a `recovery_timeout`) is the tool.
 
 Handlers that do several steps run **all** steps and aggregate failures
 rather than aborting on the first error (e.g. notifications detect +
