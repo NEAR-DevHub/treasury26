@@ -1154,68 +1154,6 @@ pub async fn run_enrichment_cycle(
     Ok(batch_size)
 }
 
-/// Background worker: reads outcomes from the Goldsky sink DB, writes enriched
-/// balance_changes to the app DB. If the previous batch was full, skip the
-/// sleep — there's likely more data waiting. Disabled when no Goldsky pool is
-/// configured (logs once and returns).
-pub fn spawn_goldsky_enrichment_worker(state: std::sync::Arc<AppState>) {
-    let Some(goldsky_pool) = state.goldsky_pool.clone() else {
-        tracing::info!("Goldsky enrichment worker disabled (GOLDSKY_DATABASE_URL not set)");
-        return;
-    };
-
-    tokio::spawn(async move {
-        const BATCH_SIZE: usize = 100;
-        let enrichment_initial_delay = std::env::var("ENRICHMENT_INITIAL_DELAY_SECONDS")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(10u64);
-        let enrichment_interval = std::env::var("ENRICHMENT_INTERVAL_SECONDS")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(15u64);
-        tracing::info!(
-            "Starting Goldsky enrichment worker ({}s interval, {}s initial delay)",
-            enrichment_interval,
-            enrichment_initial_delay
-        );
-
-        tokio::time::sleep(std::time::Duration::from_secs(enrichment_initial_delay)).await;
-
-        let app_pool = state.db_pool.clone();
-        let network = state.archival_network.clone();
-        let intents_api_key = state.env_vars.intents_explorer_api_key.clone();
-        let intents_api_url = state.env_vars.intents_explorer_api_url.clone();
-
-        loop {
-            let should_sleep = match run_enrichment_cycle(
-                &goldsky_pool,
-                &app_pool,
-                &network,
-                intents_api_key.as_deref(),
-                &intents_api_url,
-                Some(&state),
-            )
-            .await
-            {
-                Ok(processed) => {
-                    if processed > 0 {
-                        tracing::info!("Processed {} outcomes this cycle", processed);
-                    }
-                    processed < BATCH_SIZE
-                }
-                Err(e) => {
-                    tracing::error!("Enrichment cycle failed: {}", e);
-                    true
-                }
-            };
-            if should_sleep {
-                tokio::time::sleep(std::time::Duration::from_secs(enrichment_interval)).await;
-            }
-        }
-    });
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------

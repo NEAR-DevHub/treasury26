@@ -12,7 +12,6 @@
 //! within moments of a failure rather than at the next tick.
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use tokio::sync::mpsc;
 
@@ -21,11 +20,6 @@ use crate::AppState;
 use super::create::run_creation;
 use super::creation_requests::{self, MAX_SWEEP_ATTEMPTS, SweepCandidate, claim_stale_pending};
 
-/// How often to scan for resumable creations. Kept short so a failed attempt is
-/// retried within seconds rather than minutes; the scan is a single indexed
-/// query that usually returns nothing, so it's cheap to run often.
-const INTERVAL_SECS: u64 = 15;
-const INITIAL_DELAY_SECS: u64 = 15;
 /// Per-attempt backoff for `pending` (failed) rows: eligible after
 /// `LEAST(attempts * base, cap)` seconds of idleness. A freshly-failed row has
 /// `attempts = 0`, so it's retried on the very next cycle (≈ interval);
@@ -39,45 +33,7 @@ const STALE_SECS: i32 = 300;
 /// Max requests to process per cycle.
 const BATCH_LIMIT: i32 = 10;
 
-/// Spawn the treasury creation sweeper. Disabled via
-/// `DISABLE_TREASURY_CREATION_SWEEPER=true`.
-pub fn spawn_treasury_creation_sweeper(state: Arc<AppState>) {
-    if env_flag("DISABLE_TREASURY_CREATION_SWEEPER") {
-        tracing::info!(
-            "Treasury creation sweeper disabled (DISABLE_TREASURY_CREATION_SWEEPER=true)"
-        );
-        return;
-    }
-
-    tokio::spawn(async move {
-        tracing::info!(
-            interval_secs = INTERVAL_SECS,
-            initial_delay_secs = INITIAL_DELAY_SECS,
-            backoff_base_secs = BACKOFF_BASE_SECS,
-            backoff_cap_secs = BACKOFF_CAP_SECS,
-            stale_secs = STALE_SECS,
-            "Starting treasury creation sweeper"
-        );
-        tokio::time::sleep(Duration::from_secs(INITIAL_DELAY_SECS)).await;
-
-        let notify = state.creation_sweep_notify.clone();
-        let mut timer = tokio::time::interval(Duration::from_secs(INTERVAL_SECS));
-        loop {
-            // Run a cycle on the periodic tick OR as soon as a failed attempt
-            // pings us — so a fresh failure is retried within moments, while the
-            // poll stays as a fallback for crashed/abandoned creations.
-            tokio::select! {
-                _ = timer.tick() => {}
-                _ = notify.notified() => {}
-            }
-            if let Err(e) = run_sweep_cycle(&state).await {
-                tracing::error!("Treasury creation sweep cycle failed: {e}");
-            }
-        }
-    });
-}
-
-async fn run_sweep_cycle(state: &Arc<AppState>) -> Result<(), sqlx::Error> {
+pub async fn run_sweep_cycle(state: &Arc<AppState>) -> Result<(), sqlx::Error> {
     let candidates = claim_stale_pending(
         &state.db_pool,
         BACKOFF_BASE_SECS,
@@ -156,10 +112,4 @@ async fn resume_one(state: &Arc<AppState>, candidate: SweepCandidate) {
             }
         }
     }
-}
-
-fn env_flag(key: &str) -> bool {
-    std::env::var(key)
-        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
-        .unwrap_or(false)
 }

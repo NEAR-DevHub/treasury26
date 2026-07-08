@@ -9,6 +9,6 @@ mod dao_list_sync;
 mod dao_policy_sync;
 mod dirty_trigger;
 
-pub use dao_list_sync::run_dao_list_sync_service;
-pub use dao_policy_sync::run_dao_policy_sync_service;
+pub use dao_list_sync::sync_dao_list;
+pub use dao_policy_sync::{process_dirty_daos, process_stale_daos};
 pub use dirty_trigger::{mark_dao_dirty, register_new_dao, register_new_dao_and_wait};

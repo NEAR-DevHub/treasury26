@@ -6,8 +6,10 @@ import { getLocaleDirection } from "@/i18n/config";
 import "../globals.css";
 import { GleapWidget } from "@/components/gleap-widget";
 import { GoogleAnalytics } from "@/components/google-analytics";
+import { QueryProvider } from "@/components/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/toaster";
+import { WarningsProvider } from "@/components/warnings-provider";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -80,9 +82,13 @@ export default async function RootLayout({
             >
                 <NextIntlClientProvider locale={locale} messages={messages}>
                     <ThemeProvider>
-                        {children}
-                        <Toaster />
-                        <GoogleAnalytics />
+                        <QueryProvider>
+                            <WarningsProvider>
+                                {children}
+                                <Toaster />
+                                <GoogleAnalytics />
+                            </WarningsProvider>
+                        </QueryProvider>
                         <GleapWidget />
                     </ThemeProvider>
                 </NextIntlClientProvider>

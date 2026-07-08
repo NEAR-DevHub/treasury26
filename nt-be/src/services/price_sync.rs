@@ -16,93 +16,80 @@ use super::price_lookup::token_id_to_unified_asset_id;
 use super::price_provider::PriceProvider;
 use bigdecimal::BigDecimal;
 
-/// Interval between current price cache refreshes.
-const SYNC_CHECK_INTERVAL_SECS: u64 = 60;
-
 /// Maximum number of provider asset IDs to request in one current-price call.
 const CURRENT_PRICE_BATCH_SIZE: usize = 50;
 
-/// Run the background price sync service
-///
-/// This function runs in a loop, refreshing current prices every 60 seconds
-/// and backfilling historical daily prices for assets that need them.
-///
-/// The list of assets is derived from public and confidential treasury data.
-pub async fn run_price_sync_service<P: PriceProvider + Send + Sync>(pool: PgPool, provider: P) {
-    tracing::info!(
-        "Starting background price sync service (check interval: {} seconds)",
-        SYNC_CHECK_INTERVAL_SECS
-    );
+/// Error type for a price sync cycle — boxed so it propagates to the
+/// apalis handler and marks the task failed on apalis-board.
+pub type PriceSyncError = Box<dyn std::error::Error + Send + Sync>;
 
-    // Run initial sync after a short delay to let server start
-    tokio::time::sleep(Duration::from_secs(5)).await;
+/// Run one price sync cycle: backfill missing end-of-day prices, then
+/// refresh current prices. Returns a short human-readable summary on
+/// success, or an error so a failed run is reported as failed (not
+/// silently `Ok`) on the board.
+pub async fn run_price_sync_cycle<P: PriceProvider + Send + Sync>(
+    pool: &PgPool,
+    provider: &P,
+) -> Result<String, PriceSyncError> {
+    let provider_asset_ids = get_all_provider_asset_ids(pool, provider)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to load price sync asset list: {}", e);
+            format!("failed to load asset list: {e}")
+        })?;
 
-    let mut interval = tokio::time::interval(Duration::from_secs(SYNC_CHECK_INTERVAL_SECS));
+    if provider_asset_ids.is_empty() {
+        return Ok("no assets to sync".to_string());
+    }
 
-    loop {
-        interval.tick().await;
+    // Find assets that need syncing (don't have yesterday's price).
+    // We sync end-of-day prices, so we only sync completed days.
+    let yesterday = (Utc::now() - chrono::Duration::days(1)).date_naive();
+    let assets_needing_sync = get_assets_needing_sync(pool, &provider_asset_ids, yesterday)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to check which assets need sync: {}", e);
+            format!("failed to check sync targets: {e}")
+        })?;
 
-        let provider_asset_ids = match get_all_provider_asset_ids(&pool, &provider).await {
-            Ok(assets) => assets,
-            Err(e) => {
-                tracing::error!("Failed to load price sync asset list: {}", e);
-                continue;
-            }
-        };
+    let mut synced_assets = 0usize;
+    if !assets_needing_sync.is_empty() {
+        tracing::info!(
+            "Price sync: {} assets need updating",
+            assets_needing_sync.len()
+        );
 
-        if provider_asset_ids.is_empty() {
-            tracing::debug!("No assets found for price sync");
-            continue;
-        }
-
-        // Find assets that need syncing (don't have yesterday's price)
-        // We sync end-of-day prices, so we only sync completed days (yesterday and earlier)
-        let yesterday = (Utc::now() - chrono::Duration::days(1)).date_naive();
-        let assets_needing_sync =
-            match get_assets_needing_sync(&pool, &provider_asset_ids, yesterday).await {
-                Ok(assets) => assets,
+        for asset_id in assets_needing_sync {
+            match sync_asset_prices(pool, provider, &asset_id).await {
+                Ok(count) => {
+                    synced_assets += 1;
+                    tracing::info!("Synced {} prices for {}", count, asset_id);
+                }
                 Err(e) => {
-                    tracing::error!("Failed to check which assets need sync: {}", e);
-                    continue;
+                    // Per-asset failures are expected (delistings, provider
+                    // gaps) and don't fail the whole cycle.
+                    tracing::warn!("Failed to sync prices for {}: {}", asset_id, e);
                 }
-            };
-
-        if assets_needing_sync.is_empty() {
-            tracing::debug!("All assets have yesterday's prices, no sync needed");
-        } else {
-            tracing::info!(
-                "Price sync: {} assets need updating",
-                assets_needing_sync.len()
-            );
-
-            for asset_id in assets_needing_sync {
-                match sync_asset_prices(&pool, &provider, &asset_id).await {
-                    Ok(count) => {
-                        tracing::info!("Synced {} prices for {}", count, asset_id);
-                    }
-                    Err(e) => {
-                        tracing::warn!("Failed to sync prices for {}: {}", asset_id, e);
-                    }
-                }
-
-                // Small delay between assets to avoid rate limiting
-                tokio::time::sleep(Duration::from_millis(500)).await;
             }
-        }
 
-        match sync_current_prices(&pool, &provider, &provider_asset_ids).await {
-            Ok(count) => {
-                tracing::info!(
-                    "Refreshed {} current prices for {} tracked assets",
-                    count,
-                    provider_asset_ids.len()
-                );
-            }
-            Err(e) => {
-                tracing::warn!("Failed to refresh current prices: {}", e);
-            }
+            // Small delay between assets to avoid rate limiting
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
     }
+
+    // The current-price refresh is the cycle's main job; a failure here is
+    // a real failure of the run and must surface as such.
+    let current = sync_current_prices(pool, provider, &provider_asset_ids)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to refresh current prices: {}", e);
+            format!("failed to refresh current prices: {e}")
+        })?;
+
+    Ok(format!(
+        "backfilled {synced_assets} assets, refreshed {current}/{} current prices",
+        provider_asset_ids.len()
+    ))
 }
 
 /// Get list of provider asset IDs that need syncing (latest price is before target date)

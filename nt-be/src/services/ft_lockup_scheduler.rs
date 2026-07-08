@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use near_api::{
@@ -16,8 +16,6 @@ use crate::{
     },
 };
 
-const REFRESH_INTERVAL_SECS: u64 = 6 * 60 * 60;
-const STARTUP_DELAY_SECS: u64 = 20;
 const CLAIM_RETRY_BACKOFF_SECS: i64 = 10 * 60;
 const DEFAULT_CLAIM_BATCH_LIMIT: i64 = 100;
 const REFRESH_CONCURRENCY: usize = 8;
@@ -576,48 +574,6 @@ pub async fn run_due_ft_lockup_claims(
     }
 
     Ok(summary)
-}
-
-#[tracing::instrument(level = "info", skip_all, fields(job = "ft_lockup_scheduler"))]
-pub async fn run_ft_lockup_schedule_refresh_service(state: Arc<AppState>) {
-    tracing::info!(
-        "Starting FT lockup schedule refresh service (startup + every {}h)",
-        REFRESH_INTERVAL_SECS / 3600
-    );
-
-    tokio::time::sleep(Duration::from_secs(STARTUP_DELAY_SECS)).await;
-
-    loop {
-        match refresh_ft_lockup_dao_schedules(&state).await {
-            Ok(summary) => {
-                tracing::info!(
-                    "scheduler refresh complete instances={} rows_upserted={}",
-                    summary.instances,
-                    summary.rows_upserted
-                );
-
-                match run_due_ft_lockup_claims(&state, None, false).await {
-                    Ok(claim_summary) => {
-                        tracing::info!(
-                            "claim cycle done due_rows={} attempted={} succeeded={} failed={}",
-                            claim_summary.due_rows,
-                            claim_summary.attempted,
-                            claim_summary.succeeded,
-                            claim_summary.failed
-                        );
-                    }
-                    Err(e) => {
-                        tracing::error!("claim cycle failed after refresh: {}", e);
-                    }
-                }
-            }
-            Err(e) => {
-                tracing::error!("scheduler refresh failed: {}", e);
-            }
-        }
-
-        tokio::time::sleep(Duration::from_secs(REFRESH_INTERVAL_SECS)).await;
-    }
 }
 
 #[cfg(test)]

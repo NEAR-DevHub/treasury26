@@ -3,7 +3,6 @@ use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
     sync::Arc,
-    time::Duration,
 };
 use tokio::{sync::Semaphore, task::JoinSet};
 
@@ -16,11 +15,9 @@ use sqlx::{FromRow, PgPool};
 use crate::{
     AppState,
     handlers::user::assets::{SimplifiedToken, compute_user_assets},
-    utils::datetime::duration_until_next_monday_utc_midnight,
 };
 
 const TOP_TOKENS_LIMIT: usize = 20;
-const STARTUP_DELAY_SECS: u64 = 20;
 const REFRESH_CONCURRENCY: usize = 10;
 const REFRESH_LOG_INTERVAL: usize = 10;
 
@@ -70,7 +67,7 @@ struct StoredDailyBalance {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct RefreshSummary {
+pub struct RefreshSummary {
     snapshot_date: NaiveDate,
     dao_count: i32,
     trezu_dao_count: i32,
@@ -661,7 +658,7 @@ async fn snapshot_exists_this_week(pool: &PgPool) -> Result<bool, sqlx::Error> {
 }
 
 #[tracing::instrument(level = "info", skip_all, fields(job = "public_dashboard_refresh"))]
-async fn ensure_this_week_public_dashboard_snapshot(
+pub async fn ensure_this_week_public_dashboard_snapshot(
     state: &Arc<AppState>,
 ) -> Result<Option<RefreshSummary>, Box<dyn std::error::Error + Send + Sync>> {
     if snapshot_exists_this_week(&state.db_pool).await? {
@@ -672,64 +669,6 @@ async fn ensure_this_week_public_dashboard_snapshot(
     refresh_public_dashboard_snapshot_for_date(state, today)
         .await
         .map(Some)
-}
-
-#[tracing::instrument(level = "info", skip_all, fields(job = "public_dashboard_refresh"))]
-pub async fn run_public_dashboard_refresh_service(state: Arc<AppState>) {
-    tracing::info!(
-        "Starting public dashboard refresh service (startup check + weekly Monday UTC midnight schedule)"
-    );
-
-    tokio::time::sleep(Duration::from_secs(STARTUP_DELAY_SECS)).await;
-
-    match ensure_this_week_public_dashboard_snapshot(&state).await {
-        Ok(Some(summary)) => {
-            tracing::info!(
-                "Startup refresh stored snapshot for {} ({} DAOs, {} Trezu, {} failures, {} balance rows)",
-                summary.snapshot_date,
-                summary.dao_count,
-                summary.trezu_dao_count,
-                summary.failed_dao_count,
-                summary.balance_rows
-            );
-        }
-        Ok(None) => {
-            tracing::info!("Startup refresh skipped, this week's snapshot already exists");
-        }
-        Err(err) => {
-            tracing::error!("Startup refresh failed: {}", err);
-        }
-    }
-
-    loop {
-        let now = Utc::now();
-        let sleep_for = duration_until_next_monday_utc_midnight(now);
-        let wake_at = now + chrono::Duration::from_std(sleep_for).unwrap_or_default();
-
-        tracing::info!(
-            "Next refresh scheduled at {} UTC",
-            wake_at.format("%Y-%m-%d %H:%M:%S")
-        );
-
-        tokio::time::sleep(sleep_for).await;
-
-        let snapshot_date = Utc::now().date_naive();
-        match refresh_public_dashboard_snapshot_for_date(&state, snapshot_date).await {
-            Ok(summary) => {
-                tracing::info!(
-                    "Weekly snapshot stored for {} ({} DAOs, {} Trezu, {} failures, {} balance rows)",
-                    summary.snapshot_date,
-                    summary.dao_count,
-                    summary.trezu_dao_count,
-                    summary.failed_dao_count,
-                    summary.balance_rows
-                );
-            }
-            Err(err) => {
-                tracing::error!("Weekly refresh failed: {}", err);
-            }
-        }
-    }
 }
 
 #[cfg(test)]

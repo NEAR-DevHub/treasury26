@@ -6,7 +6,6 @@ use axum::{
 };
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use std::sync::Arc;
-use std::time::Duration;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 fn main() {
@@ -30,224 +29,11 @@ async fn async_main() {
             .expect("Failed to initialize application state"),
     );
 
-    // Spawn account maintenance worker (processes dirty accounts every 5 minutes)
-    // Replaces the previous main monitor (30s, all accounts) and dirty monitor (5s poll).
-    // Goldsky enrichment worker is now the primary event source for ongoing monitoring.
-    if !state.env_vars.disable_balance_monitoring {
-        let state_clone = state.clone();
-        tokio::spawn(async move {
-            use near_api::Chain;
-            use nt_be::handlers::balance_changes::account_monitor::run_maintenance_cycle;
-
-            let interval_secs = std::env::var("MAINTENANCE_INTERVAL_SECONDS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(60); // default 60 seconds
-            let initial_delay_secs = std::env::var("MAINTENANCE_INITIAL_DELAY_SECONDS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(30u64);
-            let interval = Duration::from_secs(interval_secs);
-
-            tracing::info!(
-                "Starting account maintenance worker ({}s interval, {}s initial delay)",
-                interval_secs,
-                initial_delay_secs
-            );
-
-            // Wait for server to fully start
-            tokio::time::sleep(Duration::from_secs(initial_delay_secs)).await;
-
-            let mut interval_timer = tokio::time::interval(interval);
-
-            loop {
-                interval_timer.tick().await;
-
-                // Get current block height from the network
-                let up_to_block = match Chain::block().fetch_from(&state_clone.network).await {
-                    Ok(block) => block.header.height as i64,
-                    Err(e) => {
-                        tracing::error!("Failed to get current block height: {}", e);
-                        continue;
-                    }
-                };
-
-                match run_maintenance_cycle(&state_clone, up_to_block).await {
-                    Ok(()) => {}
-                    Err(e) => {
-                        tracing::error!("Cycle failed: {}", e);
-                    }
-                }
-            }
-        });
-    }
-
-    // Spawn confidential treasury balance-polling worker (every 5 minutes by default).
-    // Owns the "incoming" side (deposits + solver swap fulfillments) for confidential
-    // DAOs. Outgoing legs are produced by the Goldsky enrichment worker.
-    if !state.env_vars.disable_balance_monitoring {
-        let state_clone = state.clone();
-        tokio::spawn(async move {
-            use nt_be::handlers::balance_changes::confidential_monitor::run_confidential_poll_cycle;
-
-            let interval_secs = std::env::var("CONFIDENTIAL_POLL_INTERVAL_SECONDS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(300u64); // 5 minutes
-            let initial_delay = std::env::var("CONFIDENTIAL_POLL_INITIAL_DELAY_SECONDS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(45u64);
-
-            tracing::info!(
-                interval_secs = interval_secs,
-                initial_delay_secs = initial_delay,
-                "Starting confidential poll worker"
-            );
-
-            tokio::time::sleep(Duration::from_secs(initial_delay)).await;
-            let mut timer = tokio::time::interval(Duration::from_secs(interval_secs));
-            loop {
-                timer.tick().await;
-                if let Err(e) = run_confidential_poll_cycle(&state_clone).await {
-                    tracing::error!(error = %e, "confidential poll cycle failed");
-                }
-            }
-        });
-    }
-
-    // Spawn background price sync service
-    {
-        let pool = state.db_pool.clone();
-        let http_client = state.http_client.clone();
-        let base_url = state.env_vars.defillama_api_base_url.clone();
-        tokio::spawn(async move {
-            let provider = nt_be::services::DeFiLlamaClient::with_base_url(http_client, base_url);
-            nt_be::services::run_price_sync_service(pool, provider).await;
-        });
-    }
-
-    nt_be::handlers::intents::confidential::bronze::ingest_worker::spawn_confidential_history_worker(
-        state.clone(),
-    );
-
-    nt_be::handlers::intents::confidential::gold::snapshots::spawn_confidential_snapshot_worker(
-        state.clone(),
-    );
-
-    nt_be::handlers::intents::confidential::gold::reconciliation_worker::spawn_confidential_gold_reconciliation_worker(
-        state.db_pool.clone(),
-    );
-
-    // TODO: Re-enable once we have a DefiLlama API key or higher rate limit
-    // Spawn usd_value backfill service
-    // {
-    //     let pool = state.db_pool.clone();
-    //     let http_client = state.http_client.clone();
-    //     let base_url = state.env_vars.defillama_api_base_url.clone();
-    //     tokio::spawn(async move {
-    //         let client = nt_be::services::DeFiLlamaClient::with_base_url(http_client, base_url);
-    //         nt_be::services::run_usd_value_backfill_service(pool, client).await;
-    //     });
-    // }
-
-    // Spawn bulk payment payout worker
-    {
-        let state_clone = state.clone();
-        tokio::spawn(async move {
-            tracing::info!("Starting bulk payment payout worker (5 second poll interval)");
-
-            // Wait a bit before first run to let server fully start
-            tokio::time::sleep(Duration::from_secs(15)).await;
-
-            let mut interval_timer = tokio::time::interval(Duration::from_secs(5));
-
-            loop {
-                interval_timer.tick().await;
-
-                // Query the bulk payment contract for pending lists
-                match nt_be::handlers::bulkpayment::worker::query_and_process_pending_lists(
-                    &state_clone,
-                )
-                .await
-                {
-                    Ok(processed) => {
-                        if processed > 0 {
-                            tracing::info!("Processed {} payment batches", processed);
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!("Payout worker error: {}", e);
-                    }
-                }
-            }
-        });
-    }
-
-    nt_be::handlers::balance_changes::goldsky_enrichment::spawn_goldsky_enrichment_worker(
-        state.clone(),
-    );
-
-    // Spawn treasury creation sweeper (finishes half-created treasuries left
-    // pending by failed/interrupted creation attempts).
-    nt_be::handlers::treasury::creation_sweeper::spawn_treasury_creation_sweeper(state.clone());
-
-    // Spawn status monitor worker (Oh Dear health checks + fallback warnings)
-    nt_be::handlers::status::run_status_monitor_loop(state.clone());
-
-    // Spawn notification worker (event detection + Telegram dispatch)
-    nt_be::handlers::notifications::run_notification_loop(
-        state.clone(),
-        state.telegram_client.clone(),
-        state.env_vars.frontend_base_url.clone(),
-    );
-
-    // Spawn sponsor balance monitor (low-balance ops alerts)
-    nt_be::services::run_sponsor_balance_monitor_loop(state.clone(), state.telegram_client.clone());
-
-    // Spawn DAO list sync service (fetches DAOs from sputnik-dao.near every 5 minutes)
-    {
-        let pool = state.db_pool.clone();
-        let network = state.network.clone();
-        tokio::spawn(async move {
-            nt_be::services::run_dao_list_sync_service(pool, network).await;
-        });
-    }
-
-    // Spawn DAO policy sync service (processes dirty/stale DAOs to extract members)
-    {
-        let pool = state.db_pool.clone();
-        let network = state.network.clone();
-        tokio::spawn(async move {
-            nt_be::services::run_dao_policy_sync_service(pool, network).await;
-        });
-    }
-
-    // Spawn subscription monthly credit reset service
-    {
-        let pool = state.db_pool.clone();
-        tokio::spawn(async move {
-            nt_be::handlers::subscription::run_monthly_plan_reset_service(pool).await;
-        });
-    }
-
-    // Spawn public dashboard daily refresh service
-    if !state.env_vars.disable_stats_generation {
-        let state_clone = state.clone();
-        tokio::spawn(async move {
-            nt_be::services::run_public_dashboard_refresh_service(state_clone).await;
-        });
-    }
-
-    // Spawn FT lockup DAO schedule refresh service (every 6 hours).
-    if !state.env_vars.disable_ft_lockup_scheduler {
-        let state_clone = state.clone();
-        tokio::spawn(async move {
-            nt_be::services::run_ft_lockup_schedule_refresh_service(state_clone).await;
-        });
-    } else {
-        tracing::info!("FT lockup scheduler disabled (DISABLE_FT_LOCKUP_SCHEDULER=true)");
-    }
+    // All background jobs run as apalis workers: cron schedules piped into
+    // per-job Postgres queues (see src/jobs/). The returned registry backs
+    // the apalis-board web UI, mounted below on the main HTTP service.
+    let job_queues = nt_be::jobs::spawn_all(state.clone()).await;
+    let board = nt_be::jobs::board_router(&job_queues, state.clone());
 
     // Configure CORS - must specify exact origins, methods, and headers when using credentials
     let origins: Vec<HeaderValue> = state
@@ -292,6 +78,10 @@ async fn async_main() {
                 .with_state(state)
                 .layer(open_cors),
         )
+        // apalis-board (jobs UI + API) on the same listener, behind Basic
+        // Auth. It answers only paths no other route matched; its API guard
+        // keeps unknown public `/api/*` a plain 404.
+        .fallback_service(board)
         .layer(SentryHttpLayer::new().enable_transaction())
         .layer(NewSentryLayer::<Request<Body>>::new_from_top());
 

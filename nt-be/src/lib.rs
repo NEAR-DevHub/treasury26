@@ -3,6 +3,7 @@ pub mod auth;
 pub mod config;
 pub mod constants;
 pub mod handlers;
+pub mod jobs;
 pub mod observability;
 pub mod routes;
 pub mod services;

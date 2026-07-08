@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use crate::config::{PlanType, get_monthly_reset_credits};
-use crate::utils::datetime::{duration_until_next_utc_midnight, next_month_start_utc};
+use crate::utils::datetime::next_month_start_utc;
 
 /// Expire export history records older than 2 days.
 ///
@@ -107,66 +107,6 @@ async fn reset_due_monthly_plan_credits_at(
 
     tx.commit().await?;
     Ok(updated_count)
-}
-
-/// Run background service that resets credits at startup and then at every UTC midnight.
-pub async fn run_monthly_plan_reset_service(pool: PgPool) {
-    tracing::info!("Starting monthly plan reset service (startup + UTC midnight schedule)");
-
-    // Run once on startup.
-    match reset_due_monthly_plan_credits(&pool).await {
-        Ok(updated) if updated > 0 => {
-            tracing::info!(
-                "Startup reset: monthly plan credits reset for {} account(s)",
-                updated
-            );
-        }
-        Ok(_) => {}
-        Err(e) => {
-            tracing::error!("Startup reset failed: {}", e);
-        }
-    }
-
-    loop {
-        let now = Utc::now();
-        let sleep_for = duration_until_next_utc_midnight(now);
-        let wake_at = now + chrono::Duration::from_std(sleep_for).unwrap_or_default();
-
-        tracing::info!(
-            "Next monthly plan reset check scheduled at {} UTC",
-            wake_at.format("%Y-%m-%d %H:%M:%S")
-        );
-
-        tokio::time::sleep(sleep_for).await;
-
-        // Reset monthly credits
-        match reset_due_monthly_plan_credits(&pool).await {
-            Ok(updated) if updated > 0 => {
-                tracing::info!(
-                    "Midnight reset: monthly plan credits reset for {} account(s)",
-                    updated
-                );
-            }
-            Ok(_) => {}
-            Err(e) => {
-                tracing::error!("Midnight reset failed: {}", e);
-            }
-        }
-
-        // Expire old exports
-        match expire_old_exports(&pool).await {
-            Ok(expired) if expired > 0 => {
-                tracing::info!(
-                    "Midnight: expired {} old export(s) (older than 2 days)",
-                    expired
-                );
-            }
-            Ok(_) => {}
-            Err(e) => {
-                tracing::error!("Midnight export expiration failed: {}", e);
-            }
-        }
-    }
 }
 
 #[cfg(test)]

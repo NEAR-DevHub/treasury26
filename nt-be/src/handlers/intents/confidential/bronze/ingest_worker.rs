@@ -1,5 +1,4 @@
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use futures::StreamExt;
 use near_account_id::AccountIdRef;
@@ -651,50 +650,6 @@ pub async fn tick_confidential_history_scheduler(
     }
 
     Ok(result)
-}
-
-/// Bronze 1Click history ingest worker.
-pub struct BronzeIngestWorker;
-
-impl BronzeIngestWorker {
-    pub fn spawn(state: Arc<AppState>) {
-        spawn_confidential_history_worker(state);
-    }
-}
-
-/// Background worker: periodically ticks the confidential history scheduler.
-pub fn spawn_confidential_history_worker(state: Arc<AppState>) {
-    tokio::spawn(async move {
-        tracing::info!(
-            "Starting confidential history worker ({:?} scheduler tick)",
-            CONFIDENTIAL_HISTORY_SCHEDULER_TICK
-        );
-
-        let mut timer = tokio::time::interval(CONFIDENTIAL_HISTORY_SCHEDULER_TICK);
-        timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-        loop {
-            timer.tick().await;
-            let started_at = Instant::now();
-            match tick_confidential_history_scheduler(&state, 100).await {
-                Ok(result) => {
-                    tracing::info!(
-                        "cycle finished in {:.2}s accounts_seen={} processed={} failed={}",
-                        started_at.elapsed().as_secs_f64(),
-                        result.accounts_seen,
-                        result.accounts_processed,
-                        result.accounts_failed
-                    );
-                }
-                Err(e) => {
-                    tracing::error!(
-                        "cycle failed in {:.2}s: {}",
-                        started_at.elapsed().as_secs_f64(),
-                        e.1
-                    );
-                }
-            }
-        }
-    });
 }
 
 #[cfg(test)]

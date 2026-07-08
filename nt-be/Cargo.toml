@@ -55,6 +55,14 @@ near-crypto = "0.34"
 bs58 = "0.5"
 url = "2"
 teloxide = { version = "0.17.0", features = ["rustls"], default-features = false }
+# Background job processing (apalis + web board)
+apalis = { version = "1.0.0-rc.9", features = ["limit", "retry", "tracing"] }
+apalis-core = { version = "1.0.0-rc.9", features = ["serde"] }
+apalis-cron = { version = "1.0.0-rc.8", features = ["serde"] }
+apalis-sql = "1.0.0-rc.8"
+apalis-postgres = { version = "1.0.0-rc.8", features = ["migrate", "tokio-comp"] }
+apalis-board = { version = "1.0.0-rc.8", features = ["axum", "ui"] }
+cron = "0.16"
 
 [[bin]]
 name = "rpc_cache_proxy"
