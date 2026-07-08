@@ -22,10 +22,13 @@ All workers run under a single apalis `Monitor` (`spawn_all` in
 than a hand-rolled `tokio::spawn` loop per worker. It gives three layers of
 failure containment plus coordinated shutdown:
 
-1. **Task errors** — a failing task is retried up to `TASK_RETRIES` (2)
-   times (apalis `retry` layer); after that the failure is recorded and the
-   next cron tick starts a fresh task. One bad cycle never stops the
-   schedule.
+1. **Task errors** — the failure is recorded and the next cron tick starts
+   a fresh task. One bad cycle never stops the schedule. There is
+   deliberately **no automatic task-level retry**: several handlers have
+   non-idempotent side effects (on-chain `payout_batch` / `claim` txs,
+   Telegram sends), so re-running the whole handler on any error could
+   duplicate them. The cron schedule *is* the retry, and apalis-postgres
+   retries transient DB/poll errors at the backend with its own backoff.
 2. **Handler panics** — `catch_panic` turns a panic into a task error
    (same path as #1) instead of tearing the worker down.
 3. **Worker exit** — if a worker's run loop exits on a sustained
@@ -33,14 +36,16 @@ failure containment plus coordinated shutdown:
    and restarts it (the factory gets a fresh connection); a clean exit on
    shutdown is honoured, so in-flight tasks drain instead of being fought by
    a restart. The whole set runs on one supervised task and stops together
-   on `Ctrl-C`/`SIGINT` (`run_with_signal`).
+   on **`SIGINT` or `SIGTERM`** (`run_with_signal`) — SIGTERM being what
+   containers/systemd send for a graceful stop.
 
-Restarts are immediate (apalis's `Monitor` has no built-in backoff). This
-is fine because the common failure mode — a handler erroring — is handled
-by the retry layer and paced by the cron schedule, not by restarting the
-worker; a worker only exits on a terminal backend failure, which is rare.
-If a sustained-outage cooldown is later wanted, apalis's native
-`circuit_breaker` worker ext (with a `recovery_timeout`) is the tool.
+Restarts are immediate (apalis's `Monitor`'s `should_restart` hook is
+synchronous, so it can't back off). This doesn't hot-loop: transient DB
+outages are absorbed by apalis-postgres's own fetcher backoff (1s→5min)
+*inside* `worker.run()`, so a worker rarely exits on a blip; it only exits
+on a terminal condition, which is rare. If a cooldown on repeated exits is
+later wanted, apalis's native `circuit_breaker` worker ext (with a
+`recovery_timeout`) is the tool.
 
 Handlers that do several steps run **all** steps and aggregate failures
 rather than aborting on the first error (e.g. notifications detect +
@@ -61,12 +66,12 @@ hub initialised in `observability.rs`). Per task it:
   and attempt as Sentry context — better grouping and filtering than a
   formatted log line.
 
-It's layered *outside* `retry`/`catch_panic`, so a failure is reported
-**once** — after all retries, and including panics (which `catch_panic`
-turns into errors). To avoid double-reporting, the per-task tracing layer
-logs failures at `WARN` instead of the default `ERROR` (a single retried
-cycle is a warning); that keeps the generic `tracing → Sentry` bridge from
-emitting a second event for the same failure. `SentryLayer` is a no-op when
+It's layered *outside* `catch_panic`, so a failure is reported **once**,
+including panics (which `catch_panic` turns into errors). To avoid
+double-reporting, the per-task tracing layer logs failures at `WARN`
+instead of the default `ERROR` (a failed cycle is retried by the next cron
+tick, so it's a warning); that keeps the generic `tracing → Sentry` bridge
+from emitting a second event for the same failure. `SentryLayer` is a no-op when
 `SENTRY_DSN` is unset. Worker-level errors (a worker exiting / being
 restarted by the monitor) are still logged at `ERROR` and reach Sentry via
 that bridge.

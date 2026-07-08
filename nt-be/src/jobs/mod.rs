@@ -21,7 +21,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use apalis::layers::WorkerBuilderExt;
-use apalis::layers::retry::RetryPolicy;
 use apalis::layers::sentry::SentryLayer;
 use apalis::layers::tracing::{DefaultOnFailure, TraceLayer};
 use apalis::prelude::*;
@@ -177,6 +176,28 @@ fn storage(pool: &PgPool, queue: &str) -> TickStorage {
     PostgresStorage::new_with_config(pool, &Config::new(queue))
 }
 
+/// Resolves on the first shutdown signal so the monitor can drain in-flight
+/// tasks. On Unix that's SIGINT **or** SIGTERM — SIGTERM is what
+/// containers/systemd send to stop the process, so waiting only on Ctrl-C
+/// (SIGINT) would skip the graceful drain in production.
+async fn jobs_shutdown_signal() -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+        let mut sigint = signal(SignalKind::interrupt())?;
+        let mut sigterm = signal(SignalKind::terminate())?;
+        tokio::select! {
+            _ = sigint.recv() => {}
+            _ = sigterm.recv() => {}
+        }
+        Ok(())
+    }
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c().await
+    }
+}
+
 /// Pushes one task now — used for jobs that must also run at startup and
 /// for event-driven wakeups (treasury creation sweeper).
 async fn push_now(storage: &TickStorage, queue: &'static str) {
@@ -186,17 +207,18 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
     }
 }
 
-/// How many times a failed task is retried within one execution before the
-/// failure is recorded and the job waits for its next cron tick.
-const TASK_RETRIES: usize = 2;
-
 /// Registers one cron-scheduled apalis worker on the [`Monitor`]:
 /// schedule → postgres queue → handler.
 ///
 /// Failure containment, inside out:
-/// 1. **Task errors** → the task is retried up to [`TASK_RETRIES`] times
-///    (apalis `retry`), then the failure is recorded and the next cron tick
-///    starts a fresh task regardless — one bad cycle never stops the job.
+/// 1. **Task errors** → the failure is recorded and the job waits for its
+///    next cron tick, which starts a fresh task — one bad cycle never stops
+///    the job. There is deliberately **no automatic task-level retry**:
+///    several handlers have non-idempotent side effects (on-chain
+///    `payout_batch` / `claim` txs, Telegram sends), so re-running the whole
+///    handler on any error could duplicate them. The cron schedule is the
+///    retry, and apalis-postgres already retries transient DB/poll errors at
+///    the backend with its own backoff.
 /// 2. **Handler panics** → `catch_panic` converts a panic into a task error
 ///    (same path as #1) instead of tearing down the worker.
 /// 3. **Worker exit** (sustained backend/storage failure) → the `Monitor`
@@ -219,19 +241,18 @@ macro_rules! register_cron_worker {
             WorkerBuilder::new($name)
                 .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
                 .data(state.clone())
-                .retry(RetryPolicy::retries(TASK_RETRIES))
                 .catch_panic()
-                // apalis's Sentry integration, layered *outside* retry so it
-                // captures the final failure once (after retries, and after
-                // catch_panic has converted any panic to an error) with the
-                // task's queue / id / attempt as Sentry context, plus a
+                // apalis's Sentry integration: captures a task failure once
+                // (after catch_panic has converted any panic to an error) with
+                // the task's queue / id / attempt as Sentry context, plus a
                 // per-task performance transaction. No-op when Sentry is off.
                 .layer(SentryLayer::new())
                 // Trace failures at WARN, not the default ERROR: a single
-                // failed cycle is retried and is a warning, and this keeps the
-                // tracing→Sentry bridge (ERROR→event) from emitting a *second*
-                // event for the same failure the SentryLayer already captured.
-                // Persistent failures still surface via Sentry + the board.
+                // failed cycle is retried by the next cron tick and is a
+                // warning, and this keeps the tracing→Sentry bridge
+                // (ERROR→event) from emitting a *second* event for the same
+                // failure the SentryLayer already captured. Persistent failures
+                // still surface via Sentry + the board.
                 .layer(
                     TraceLayer::new()
                         .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
@@ -255,6 +276,14 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     // apalis's own supervisor: runs every worker, restarts one that exits
     // (backend/storage failure) via `should_restart`, and drains in-flight
     // tasks on shutdown. Replaces the old per-worker `tokio::spawn` loops.
+    //
+    // The restart is immediate (the `should_restart` hook is synchronous, so
+    // it can't back off). That doesn't hot-loop in practice: transient DB
+    // outages are absorbed by apalis-postgres's own fetcher backoff
+    // (1s→5min) *inside* `worker.run()`, so a worker rarely exits at all on a
+    // blip; it only exits on a terminal condition, which is rare. A restart
+    // then re-establishes the connection. (If a cooldown on repeated exits is
+    // ever needed, apalis's `circuit_breaker` worker ext is the native tool.)
     let mut monitor = Monitor::new().should_restart(|ctx, err, attempt| {
         tracing::error!(
             worker = %ctx.name(),
@@ -497,7 +526,7 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     // until a shutdown signal, then drains in-flight tasks (see
     // `shutdown_timeout` if a bound is needed).
     tokio::spawn(async move {
-        if let Err(e) = monitor.run_with_signal(tokio::signal::ctrl_c()).await {
+        if let Err(e) = monitor.run_with_signal(jobs_shutdown_signal()).await {
             tracing::error!(error = %e, "jobs monitor exited");
         }
     });

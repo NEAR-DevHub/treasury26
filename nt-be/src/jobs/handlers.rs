@@ -138,12 +138,15 @@ pub async fn goldsky_enrichment(
                 Ok(processed) => processed,
                 Err(e) => {
                     // Batches already processed are committed (the cycle advances
-                    // its cursor per batch), so surface the failure without losing
-                    // that progress — the next tick resumes from the cursor.
-                    return Err(format!(
-                        "enrichment cycle failed after {total} outcomes this task: {e}"
-                    )
-                    .into());
+                    // its cursor per batch), so log that progress and surface the
+                    // failure — the next tick resumes from the cursor. The cycle's
+                    // error is `Box<dyn Error>` (not Send+Sync), so it must be
+                    // stringified via `erase` to cross into a task error.
+                    tracing::warn!(
+                        outcomes_this_task = total,
+                        "goldsky enrichment failed mid-drain"
+                    );
+                    return Err(erase(e));
                 }
             };
         total += processed;
@@ -183,15 +186,25 @@ pub async fn notifications(_t: Tick, state: Data<Arc<AppState>>) -> Result<Strin
         ),
     );
 
+    // On a one-sided failure, log the partial progress and return the
+    // *original* error value (preserving its type/source chain for Sentry
+    // grouping) rather than a flattened string.
     match (detected, dispatched) {
         (Ok(detected), Ok(dispatched)) => {
             Ok(format!("detected {detected}, dispatched {dispatched}"))
         }
         (Err(e), Ok(dispatched)) => {
-            Err(format!("detection failed: {e} (dispatched {dispatched})").into())
+            tracing::warn!(dispatched, "notifications: detection failed; dispatch ok");
+            Err(e)
         }
-        (Ok(detected), Err(e)) => Err(format!("dispatch failed: {e} (detected {detected})").into()),
-        (Err(de), Err(pe)) => Err(format!("detection failed: {de}; dispatch failed: {pe}").into()),
+        (Ok(detected), Err(e)) => {
+            tracing::warn!(detected, "notifications: dispatch failed; detection ok");
+            Err(e)
+        }
+        (Err(de), Err(pe)) => {
+            tracing::warn!(dispatch_error = %pe, "notifications: detection and dispatch both failed");
+            Err(de)
+        }
     }
 }
 
@@ -237,13 +250,22 @@ pub async fn subscription_monthly_reset(
             Ok(format!("reset {reset} accounts, expired {expired} exports"))
         }
         (Err(e), Ok(expired)) => {
-            Err(format!("credit reset failed: {e} (expired {expired} exports)").into())
+            tracing::warn!(
+                expired,
+                "monthly reset: credit reset failed; export expiry ok"
+            );
+            Err(e.into())
         }
         (Ok(reset), Err(e)) => {
-            Err(format!("export expiry failed: {e} (reset {reset} accounts)").into())
+            tracing::warn!(
+                reset,
+                "monthly reset: export expiry failed; credit reset ok"
+            );
+            Err(e.into())
         }
         (Err(re), Err(ee)) => {
-            Err(format!("credit reset failed: {re}; export expiry failed: {ee}").into())
+            tracing::warn!(export_error = %ee, "monthly reset: credit reset and export expiry both failed");
+            Err(re.into())
         }
     }
 }
@@ -273,9 +295,18 @@ pub async fn ft_lockup_refresh(
 
     match (refresh, claims) {
         (Ok(refresh), Ok(claims)) => Ok(format!("refresh: {refresh:?}; claims: {claims:?}")),
-        (Err(e), Ok(claims)) => Err(format!("refresh failed: {e} (claims: {claims:?})").into()),
-        (Ok(refresh), Err(e)) => Err(format!("claims failed: {e} (refresh: {refresh:?})").into()),
-        (Err(re), Err(ce)) => Err(format!("refresh failed: {re}; claims failed: {ce}").into()),
+        (Err(e), Ok(claims)) => {
+            tracing::warn!(?claims, "ft-lockup: schedule refresh failed; claims ok");
+            Err(e)
+        }
+        (Ok(refresh), Err(e)) => {
+            tracing::warn!(?refresh, "ft-lockup: claims failed; refresh ok");
+            Err(e)
+        }
+        (Err(re), Err(ce)) => {
+            tracing::warn!(claims_error = %ce, "ft-lockup: refresh and claims both failed");
+            Err(re)
+        }
     }
 }
 
