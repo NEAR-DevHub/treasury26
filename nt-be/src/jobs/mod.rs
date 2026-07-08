@@ -181,11 +181,26 @@ fn storage(pool: &PgPool, queue: &str) -> TickStorage {
 /// containers/systemd send to stop the process, so waiting only on Ctrl-C
 /// (SIGINT) would skip the graceful drain in production.
 async fn jobs_shutdown_signal() -> std::io::Result<()> {
+    // NOTE: `run_with_signal` treats *any* completion of this future — Ok or
+    // Err — as a shutdown request. So on failure to install the signal
+    // handlers we must NOT return (that would stop the whole jobs monitor at
+    // startup); instead log and never resolve, leaving the process killable.
     #[cfg(unix)]
     {
         use tokio::signal::unix::{SignalKind, signal};
-        let mut sigint = signal(SignalKind::interrupt())?;
-        let mut sigterm = signal(SignalKind::terminate())?;
+        let handlers = signal(SignalKind::interrupt())
+            .and_then(|int| Ok((int, signal(SignalKind::terminate())?)));
+        let (mut sigint, mut sigterm) = match handlers {
+            Ok(pair) => pair,
+            Err(e) => {
+                tracing::error!(
+                    error = %e,
+                    "failed to install unix signal handlers; jobs graceful-shutdown signal disabled"
+                );
+                std::future::pending::<()>().await;
+                unreachable!("pending future never resolves");
+            }
+        };
         tokio::select! {
             _ = sigint.recv() => {}
             _ = sigterm.recv() => {}
@@ -194,7 +209,14 @@ async fn jobs_shutdown_signal() -> std::io::Result<()> {
     }
     #[cfg(not(unix))]
     {
-        tokio::signal::ctrl_c().await
+        if let Err(e) = tokio::signal::ctrl_c().await {
+            tracing::error!(
+                error = %e,
+                "failed to listen for ctrl_c; jobs graceful-shutdown signal disabled"
+            );
+            std::future::pending::<()>().await;
+        }
+        Ok(())
     }
 }
 

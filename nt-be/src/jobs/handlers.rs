@@ -144,6 +144,7 @@ pub async fn goldsky_enrichment(
                     // stringified via `erase` to cross into a task error.
                     tracing::warn!(
                         outcomes_this_task = total,
+                        error = %e,
                         "goldsky enrichment failed mid-drain"
                     );
                     return Err(erase(e));
